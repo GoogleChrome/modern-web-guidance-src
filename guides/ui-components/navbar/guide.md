@@ -5,13 +5,14 @@ web-feature-ids:
   - popover
   - nesting
   - anchor-positioning
-  - viewport-units
+  - viewport-unit-variants
   - logical-properties
   - focus-visible
   - forced-colors
   - starting-style
   - transition-behavior
   - interpolate-size
+  - content-visibility
 # - local-link
 guides:
   - icons
