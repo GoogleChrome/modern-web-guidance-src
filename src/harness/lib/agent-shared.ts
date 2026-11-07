@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { DETECTED_AGENT_ENV_VARS, PI_AGENT_PATH_PATTERN } from '../../cli/telemetry/detect-agent.ts';
+import {
+  ALLOWED_CHILD_ENV_KEYS,
+  ALLOWED_ENV_PREFIXES,
+  copySanitizedNpmrc,
+  filterAllowedEnv,
+  sanitizeTextSecrets,
+} from './secret-guard.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
 import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
 import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
@@ -187,9 +193,9 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
     setupIsolatedShellProfiles(tempHome, targetDir);
   }
 
-  // Provide authentication to the isolated environment so npm tasks work
+  // Copy sanitized npm config so isolated runs don't inherit host auth tokens or broken private registries
   const originalHome = process.env.HOME || process.cwd();
-  copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
+  copySanitizedNpmrc(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
   // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
   try {
@@ -522,8 +528,7 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
   } else {
     // For target-based guides, capture agent.patch for patch-only storage
     try {
-      const agentPatchPath = path.join(targetDir, 'agent.patch');
-      capturePatchFromGit(workDir, agentPatchPath);
+      capturePatchFromGit(workDir, path.join(targetDir, 'agent.patch'));
     } catch (err) {
       console.warn(`Failed to capture agent patch: ${err}`);
     }
@@ -557,122 +562,17 @@ export function watchLogFile(logPath: string): () => void {
   return () => clearInterval(interval);
 }
 
-const DEFAULT_PROD_BASE = 'https://trajectory-dev.corp.goog/';
-
 /**
- * Finds trajectory files, copies them to the target directory, and generates HTML exports.
- * @param sourceDir Directory to search for trajectory files
- * @param pattern Glob pattern for trajectory files (relative to sourceDir)
- * @param targetDir Directory to copy files and HTML exports to
- */
-export function exportTrajectories(sourceDir: string, pattern: string, targetDir: string): void {
-  if (!fs.existsSync(sourceDir)) return;
-
-  // fs.globSync is available in Node 22+
-  const files = fs.globSync(pattern, { cwd: sourceDir });
-  
-  for (const relativeSrc of files as string[]) {
-    const srcFile = path.join(sourceDir, relativeSrc);
-    const fileName = path.basename(srcFile);
-    const destFile = path.join(targetDir, fileName);
-    
-    try {
-      fs.copyFileSync(srcFile, destFile);
-      console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
-
-      // Ensure SQLite WAL-mode companion files are copied alongside .db files
-      if (fileName.endsWith('.db')) {
-        const walSrc = `${srcFile}-wal`;
-        const shmSrc = `${srcFile}-shm`;
-        if (fs.existsSync(walSrc)) {
-          fs.copyFileSync(walSrc, `${destFile}-wal`);
-          console.log(`Copied trajectory WAL: ${fileName}-wal to ${targetDir}`);
-        }
-        if (fs.existsSync(shmSrc)) {
-          fs.copyFileSync(shmSrc, `${destFile}-shm`);
-          console.log(`Copied trajectory SHM: ${fileName}-shm to ${targetDir}`);
-        }
-      }
-
-      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
-      const fileBuffer = fs.readFileSync(srcFile);
-      const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
-      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
-      const htmlDest = path.join(targetDir, htmlFileName);
-      fs.writeFileSync(htmlDest, htmlContent, 'utf8');
-      console.log(`Generated HTML export: ${htmlFileName}`);
-    } catch (e) {
-      console.error(`Failed to export trajectory ${fileName}:`, e);
-    }
-  }
-}
-
-const STRIPPED_ENV_FRAGMENTS = [
-  // Package manager & guidance eval harness internals
-  'npm_',
-  'PNPM_',
-  'pnpm_',
-  'GD_SUITE_CONFIG$',
-  'MODERN_WEB_LOG_DIR$',
-  'BASELINE_TARGET$',
-  'INIT_CWD$',
-  'NODE_PATH$',
-  'OLDPWD$',
-  // Non-detection session & prefix markers (exact detection vars come from DETECTED_AGENT_ENV_VARS;
-  // preserve config vars like CLAUDE_CODE_USE_VERTEX, GEMINI_CLI_TRUST_WORKSPACE, ANTIGRAVITY_GCP_PROJECT)
-  'INVOKER_INFO_',
-  'ANTIGRAVITY_(?:AGENTAPI_EXE|APP_DATA_DIR|CONVERSATION_ID|CSRF_TOKEN|LS_ADDRESS|LS_VERSION|PROJECT_ID|SOURCE_METADATA|TRAJECTORY_ID)$',
-  'CLAUDE_CODE_(?:ACTION$|AGENT_NAME$|CHILD_SESSION|ENTRYPOINT$|PARENT_SESSION_ID$|SESSION_|TEAM_NAME$)',
-  'CLAUDE_AGENT_SDK_',
-  'CODEX_HOME$',
-  'CURSOR_TRACE_ID$',
-  'GEMINI_CLI_NO_RELAUNCH$',
-  'GROK_PLUGIN_',
-  'KIMI_PLUGIN_',
-  'PI_CODING_AGENT_',
-];
-
-const HARNESS_STRIPPED_ENV_PATTERN = new RegExp(`^(?:${STRIPPED_ENV_FRAGMENTS.join('|')})`);
-
-/**
- * Strips package-manager, harness-internal, and host AI-agent session markers before
- * spawning child agent processes while preserving provider and harness config variables.
+ * Builds the sanitized environment for child agent processes using an explicit allowlist,
+ * preventing host credentials and session markers from leaking into agent sandboxes.
  */
 export function sanitizeAgentChildEnv(
   sourceEnv: NodeJS.ProcessEnv = process.env,
   overrides?: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
-  const sanitized: NodeJS.ProcessEnv = {};
-
-  for (const [key, value] of Object.entries(sourceEnv)) {
-    if (value === undefined) continue;
-    if (DETECTED_AGENT_ENV_VARS.has(key) || HARNESS_STRIPPED_ENV_PATTERN.test(key)) continue;
-    if (key === 'TERM_PROGRAM' && /kiro/i.test(value)) continue;
-    if (key.toUpperCase() === 'PATH') {
-      const cleaned = value
-        .split(path.delimiter)
-        .filter(entry => entry && !PI_AGENT_PATH_PATTERN.test(entry))
-        .join(path.delimiter);
-      sanitized.PATH = sanitized.PATH && cleaned
-        ? `${sanitized.PATH}${path.delimiter}${cleaned}`
-        : (sanitized.PATH || cleaned);
-      continue;
-    }
-    sanitized[key] = value;
-  }
-
-  if (overrides) {
-    for (const [key, value] of Object.entries(overrides)) {
-      const targetKey = key.toUpperCase() === 'PATH' ? 'PATH' : key;
-      if (value === undefined) {
-        delete sanitized[targetKey];
-      } else {
-        sanitized[targetKey] = value;
-      }
-    }
-  }
-
-  return sanitized;
+  return filterAllowedEnv(sourceEnv, ALLOWED_CHILD_ENV_KEYS, ALLOWED_ENV_PREFIXES, overrides, {
+    filterKiroTerm: true,
+  });
 }
 
 /**
@@ -785,13 +685,13 @@ export async function runCliAgentCommand(
 
     // Save output to chat_log.txt
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
-    fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+    fs.writeFileSync(chatLogPath, sanitizeTextSecrets(stdoutData), 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
 
     // Save stderr to agent_stderr.log to surface unexpected problems
     if (stderrData.length > 0) {
       const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
-      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+      fs.writeFileSync(stderrLogPath, sanitizeTextSecrets(stderrData), 'utf8');
       console.log(`Saved stderr to: ${stderrLogPath}`);
     }
 
@@ -811,13 +711,14 @@ export async function runCliAgentCommand(
     // Save generation failure info so results collector registers early failure
     try {
       const failureFile = path.join(targetDir, 'generation_failed.json');
+      const rawFailureStderr = (timedOut && !stderrData)
+        ? 'Agent timed out after 15 minutes'
+        : (stderrData || err.message || String(err));
       fs.writeFileSync(failureFile, JSON.stringify({
         agentName,
         exitCode: finalExitCode,
-        stderr: (timedOut && !stderrData)
-          ? 'Agent timed out after 15 minutes'
-          : (stderrData || err.message || String(err)),
-        stdout: stdoutData
+        stderr: sanitizeTextSecrets(rawFailureStderr),
+        stdout: sanitizeTextSecrets(stdoutData)
       }, null, 2));
       console.log(`Saved generation failure info to: ${failureFile}`);
     } catch (writeErr) {
@@ -830,97 +731,18 @@ export async function runCliAgentCommand(
     if (stderrData) {
       fallbackContent += `\nCaptured stderr:\n${stderrData}`;
     }
-    fs.writeFileSync(stderrLogPath, fallbackContent, 'utf8');
+    fs.writeFileSync(stderrLogPath, sanitizeTextSecrets(fallbackContent), 'utf8');
     console.log(`Saved fallback error log to: ${stderrLogPath}`);
     
     throw err; // Re-throw to propagate failure
   } finally {
     stopWatchingMcpLog();
     if (runType === 'guided' && fs.existsSync(isolatedLogPath)) {
-      copyFileIfExists(isolatedLogPath, path.join(targetDir, MODERN_WEB_LOG_FILE));
+      const cleanLog = sanitizeTextSecrets(fs.readFileSync(isolatedLogPath, 'utf8'));
+      fs.writeFileSync(path.join(targetDir, MODERN_WEB_LOG_FILE), cleanLog, 'utf8');
     }
     process.off('SIGTERM', onSigTerm);
   }
-}
-
-/**
- * Generates an HTML file that can load and display a trajectory file (JSON/PB) 
- * by embedding it as base64 and posting it to the trajectory viewer iframe.
- * @param fileBuffer Binary content of the trajectory file
- * @param fileName Name of the trajectory file
- * @param prodBase Base URL of the trajectory viewer
- * @returns HTML content
- */
-export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
-    const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
-    const title = `Trajectory - ${trajectoryId}`;
-
-    // Node.js environment: Buffer is faster than manual conversion
-    const base64String = Buffer.from(fileBuffer).toString('base64');
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>${title}</title>
-    <style>
-        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; background: #0f172a; font-family: sans-serif; }
-        iframe { border: none; width: 100%; height: 100%; display: none; }
-        .loading {
-            display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8;
-            flex-direction: column; gap: 1rem;
-        }
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid #1e293b; border-top: 4px solid #3b82f6;
-            border-radius: 50%; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
-    <div id="loading-state" class="loading">
-        <div class="spinner"></div>
-        <div>Loading Trajectory Browser...</div>
-    </div>
-    <iframe id="viewer-frame" src="${prodBase}index.html"></iframe>
-
-    <script id="trajectory-data" type="application/base64">
-        ${base64String}
-    </script>
-    <script>
-        const fileName = ${JSON.stringify(fileName)};
-        const b64Data = document.getElementById('trajectory-data').textContent.trim();
-        const binaryStr = atob(b64Data);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const frame = document.getElementById('viewer-frame');
-        const loading = document.getElementById('loading-state');
-
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'READY') {
-                frame.style.display = 'block';
-                loading.style.display = 'none';
-                frame.contentWindow.postMessage({
-                    type: 'LOAD_RAW_FILE',
-                    fileBuffer: bytes.buffer,
-                    fileName
-                }, '*', [bytes.buffer]);
-            }
-        });
-
-        // Fallback if production is unreachable or slow
-        setTimeout(() => {
-            if (loading.style.display !== 'none') {
-                loading.textContent = "Unable to load viewer. Ensure you are connected to the network or look for CSP errors.";
-            }
-        }, 8000);
-    </script>
-</body>
-</html>`;
 }
 
 /**

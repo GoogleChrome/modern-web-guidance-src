@@ -1,4 +1,5 @@
 import { stripVTControlCharacters } from 'node:util';
+import { PUBLIC_SECRET_PATTERNS } from '../lib/secret-guard.ts';
 
 /**
  * Scrubs machine-specific paths and identity markers from strings before they
@@ -127,11 +128,7 @@ export const LEAK_PATTERNS: readonly { name: string; re: RegExp }[] = [
   { name: 'googlers hostname', re: /\bgooglers\.com\b/gi },
   { name: 'corp hostname', re: /\bcorp\.google\.com\b/gi },
   { name: 'google email', re: /(?<=[\w.+-])@google\.com\b/gi },
-  { name: 'google api key', re: /AIza[0-9A-Za-z_-]{35}/g },
-  { name: 'secret key', re: /\bsk-[A-Za-z0-9_-]{16,}/g },
-  { name: 'oauth token', re: /\bya29\.[0-9A-Za-z_-]+/g },
-  { name: 'github token', re: /\bghp_[A-Za-z0-9]{36}/g },
-  { name: 'private key', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\r?\n\+?|\\r\\n|\\n)[A-Za-z0-9+/]{32,}/g },
+  ...PUBLIC_SECRET_PATTERNS,
 ];
 
 export interface Leak {
