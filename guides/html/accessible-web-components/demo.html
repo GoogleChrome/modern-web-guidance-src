@@ -5,17 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Accessible Web Components: ElementInternals roles and state</title>
   <style>
+    :root {
+      --toggle-switch-inline-size: 3rem;
+      --toggle-switch-block-size: 1.5rem;
+      --toggle-switch-state-label-font-size: 0.8rem;
+      --toggle-switch-inner-size: 1.2rem;
+    }
+    * {
+      box-sizing: border-box;
+    }
     toggle-switch:not(:defined) {
       opacity: 0;
       animation: defined-fallback 0.2s 2s forwards;
     }
     @keyframes defined-fallback { to { opacity: 1; } }
     toggle-switch {
-      display: inline-block; inline-size: 3rem; block-size: 1.5rem;
+      border: 1px solid #000;
       border-radius: 1rem; background: #ccc; cursor: pointer;
+      display: inline-block; inline-size: var(--toggle-switch-inline-size); block-size: var(--toggle-switch-block-size);
+      position: relative;
     }
     /* ARIA state lives in the accessibility tree; a non-ARIA data hook drives styling. */
     toggle-switch[data-checked] { background: seagreen; }
+    toggle-switch::before {
+      background-color: #FFF;
+      border-radius: 1rem;
+      border: 1px solid #000;
+      content: "";
+      display: block;
+      height: var(--toggle-switch-inner-size);
+      left: 0.1rem;
+      position: absolute;
+      top: calc(((var(--toggle-switch-block-size) - var(--toggle-switch-inner-size) - 4px) / 2));
+      width: var(--toggle-switch-inner-size);
+    }
+    toggle-switch[data-checked]::before {
+      left: 1.5rem;
+    }
+    toggle-switch::after {
+      display: inline-block;
+      /* Puts the label to the side of the switch, with a little bit of additional spacing */
+      margin-inline: calc(var(--toggle-switch-inline-size) + 0.2rem);
+      font-size: var(--toggle-switch-state-label-font-size);
+      margin-block: calc((var(--toggle-switch-block-size) - var(--toggle-switch-state-label-font-size)) / 2)
+    }
+    toggle-switch::after { 
+      content: "Off";
+    }
+    toggle-switch[data-checked]::after { 
+      content: "On";
+    }
     toggle-switch:focus-visible { outline: 2px solid #06f; outline-offset: 2px; }
   </style>
 </head>
