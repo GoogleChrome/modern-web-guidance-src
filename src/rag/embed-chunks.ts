@@ -69,6 +69,7 @@ async function postWithRetry(url: string, body: unknown): Promise<unknown> {
 export interface EmbedChunksOptions {
   check?: boolean;
   force?: boolean;
+  prune?: boolean;
   cacheDir?: string;
 }
 
@@ -159,17 +160,24 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
     }
   }
 
-  // Prune unused entries from older guide versions or deleted guides
-  const activeCache = new Map<string, Float32Array>();
-  for (const chunk of allChunks) {
-    const vec = workingCache.get(chunk.hash);
-    if (vec) activeCache.set(chunk.hash, vec);
+  // Prune unused entries from older guide versions or deleted guides only if explicitly requested
+  let targetCache: Map<string, Float32Array>;
+  let prunedCount = 0;
+  if (options.prune) {
+    const activeCache = new Map<string, Float32Array>();
+    for (const chunk of allChunks) {
+      const vec = workingCache.get(chunk.hash);
+      if (vec) activeCache.set(chunk.hash, vec);
+    }
+    prunedCount = workingCache.size - activeCache.size;
+    targetCache = activeCache;
+  } else {
+    targetCache = workingCache;
+    prunedCount = 0;
   }
 
-  const prunedCount = existingCache.size + newEmbeds - activeCache.size;
-
   if (newEmbeds > 0 || prunedCount > 0 || options.force) {
-    const saveStats = saveChunkCache(activeCache, cacheDir);
+    const saveStats = saveChunkCache(targetCache, cacheDir);
     console.log(
       `Saved chunk cache to ${cacheDir}: ${saveStats.count} chunks (${(saveStats.bytes / 1024).toFixed(1)} KB)`
     );
@@ -180,7 +188,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
 
   return {
     totalChunks: allChunks.length,
-    cachedCount: activeCache.size,
+    cachedCount: targetCache.size,
     newEmbeds,
     prunedCount,
     missing: [],
@@ -192,6 +200,7 @@ async function main(): Promise<void> {
     options: {
       check: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
+      prune: { type: "boolean", default: false },
       "cache-dir": { type: "string" },
     },
   });
@@ -199,6 +208,7 @@ async function main(): Promise<void> {
   const res = await embedGuideChunks({
     check: values.check,
     force: values.force,
+    prune: values.prune,
     cacheDir: values["cache-dir"],
   });
 

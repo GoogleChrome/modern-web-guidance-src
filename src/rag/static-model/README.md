@@ -33,7 +33,7 @@ Any change to guide prose, chunk boundaries, baseline data, or macro expansions 
 ### 1. Day-to-Day Development & CI Builds (`pnpm build`)
 
 - Builds use the committed chunk cache.
-- If a guide is edited or added and its teacher vectors are not yet in `chunks.*`, `build-guides.ts` issues a console warning naming the guide, records the chunk in `missingChunks` (so `--fail-on-missing-vectors` blocks release builds until `embed-chunks.ts` is run), and embeds the chunk with `StaticEmbedder` so `gd dev`, PR evaluations, and `bench-rag.ts` still have a 256-d dense vector without requiring network access or `GEMINI_API_KEY`.
+- If a guide is edited or added and its teacher vectors are not yet in `chunks.*`, `build-guides.ts` issues a console warning naming the guide, records the chunk in `missingChunks` (so `--fail-on-missing-vectors` blocks release builds until `embed-chunks.ts` is run), and sets `vector: []` so the uncached chunk is indexed for BM25 lexical search while unchanged chunks of the guide retain their cached teacher vectors (avoiding mixing query-space `StaticEmbedder` vectors into the document chunk index).
 
 ### 2. Pre-Release Embedding Script (`node src/rag/embed-chunks.ts`)
 
@@ -49,7 +49,7 @@ What `embed-chunks.ts` does:
 2. Checks which hashes are missing from the cache. If everything is up to date, it exits immediately (idempotent).
 3. Embeds any missing or changed chunks using `gemini-embedding-001` (`taskType: "RETRIEVAL_DOCUMENT"`, 768 dimensions), batched in groups of 100 with exponential backoff on rate limits.
 4. MRL-truncates new vectors to 256 dimensions and L2-normalizes them.
-5. Prunes stale chunk hashes from deleted guides or old text versions.
+5. Append-only by default; pass `--prune` to remove stale chunk hashes from deleted guides or old text versions.
 6. Quantizes to Int8 + scale factor and writes `chunks.json`, `chunks.i8`, and `chunks.scale.f32`.
 
 To check whether all chunks have cached vectors without calling the API:
@@ -60,10 +60,10 @@ node src/rag/embed-chunks.ts --check
 ### 3. Release & Publish Gate
 
 The release script (`node src/build/publish-skills.ts`) automatically ensures vector completeness before publishing:
-1. On real releases, it runs `embedGuideChunks()`, automatically embedding any missing chunks (requiring `GEMINI_API_KEY` in `.env` or environment) and pruning stale entries. Any updated `src/rag/static-model/chunks.*` files are automatically committed and pushed to `main` right alongside `README.md` and `src/build/eval-results-summary.json`.
+1. On real releases, it runs `embedGuideChunks({ prune: true })`, automatically embedding any missing chunks (requiring `GEMINI_API_KEY` in `.env` or environment) and pruning stale entries. Any updated `src/rag/static-model/chunks.*` files are automatically committed and pushed to `main` right alongside `README.md` and `src/build/eval-results-summary.json`.
 2. `build-dist.ts` and `build-guides.ts` enforce `--fail-on-missing-vectors` during release builds.
-3. On `--dry-run` (used by PR CI), `publish-skills.ts` warns on uncached chunks and builds with `StaticEmbedder` fallback (`failOnMissingVectors: false`) so guide PRs do not need `GEMINI_API_KEY` or `embed-chunks.ts`.
-4. Distribution tests (`src/build/dist.test.ts`) assert that 100% of chunks in `use-cases.vectors.gen.json.gz` contain valid 256-d vectors.
+3. On `--dry-run` (used by PR CI), `publish-skills.ts` warns on uncached chunks and builds with `vector: []` (`failOnMissingVectors: false`) so guide PRs do not need `GEMINI_API_KEY` or `embed-chunks.ts`.
+4. Distribution tests (`src/build/dist.test.ts`) assert that cached chunks contain valid 256-d teacher vectors (`>= 90%` coverage during PR `--dry-run`, `100%` on release via `--fail-on-missing-vectors`).
 
 There are no silent fallbacks.
 

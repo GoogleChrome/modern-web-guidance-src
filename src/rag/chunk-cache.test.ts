@@ -8,6 +8,7 @@ import {
   truncateAndNormalize256,
   loadChunkCache,
   saveChunkCache,
+  scanCorpusChunks,
   TEACHER_MODEL,
   TASK_TYPE,
   STATIC_DIMS,
@@ -129,6 +130,43 @@ describe("chunk-cache", () => {
       assert.strictEqual(checkResult.cachedCount, 0);
     } finally {
       fs.rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks is append-only by default and only prunes when prune: true", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-prune-test-"));
+    try {
+      const allChunks = scanCorpusChunks("skills-cli");
+      const testCache = new Map<string, Float32Array>();
+      const dummyVec = new Float32Array(STATIC_DIMS);
+      dummyVec[0] = 1.0;
+
+      // Populate testCache with all current corpus chunks plus a stale chunk
+      for (const chunk of allChunks) {
+        testCache.set(chunk.hash, dummyVec);
+      }
+      testCache.set("stale-chunk-hash-123", dummyVec);
+      saveChunkCache(testCache, tmpDir);
+
+      // Default run (prune: false) should NOT prune stale entry
+      const resDefault = await embedGuideChunks({ cacheDir: tmpDir });
+      assert.strictEqual(resDefault.prunedCount, 0, "Default embedGuideChunks must not prune");
+      const loadedAfterDefault = loadChunkCache(tmpDir);
+      assert.ok(
+        loadedAfterDefault.has("stale-chunk-hash-123"),
+        "Stale entry must be preserved in append-only mode"
+      );
+
+      // Explicit prune: true should prune the stale entry
+      const resPruned = await embedGuideChunks({ cacheDir: tmpDir, prune: true });
+      assert.strictEqual(resPruned.prunedCount, 1, "embedGuideChunks with prune: true must prune 1 entry");
+      const loadedAfterPrune = loadChunkCache(tmpDir);
+      assert.ok(
+        !loadedAfterPrune.has("stale-chunk-hash-123"),
+        "Stale entry must be removed when prune: true"
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 });
