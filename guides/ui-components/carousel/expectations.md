@@ -1,0 +1,29 @@
+# Expectations
+
+- The carousel track has `overflow-x: auto` or `overflow-y: auto` (or `overflow: auto`) and uses mandatory scroll snapping (`scroll-snap-type: x mandatory`, `inline mandatory`, `y mandatory`, or `block mandatory`) on its scrolling axis.
+- Every carousel slide has `scroll-snap-align: center` (or start) applied so it acts as a snap target.
+- The carousel container is exposed as a labeled region with `aria-roledescription="carousel"` and an accessible name.
+- Each slide is exposed as a group with `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (such as "2 of 4").
+- Previous and next controls stay enabled at the first and last slides, because the carousel loops.
+- Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
+- Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
+- While the first slide is current, the last slide has a computed `order` of -1.
+- While the last slide is current, the first slide has a computed `order` of 1.
+- Slides other than a parked end slide have a computed `order` of 0.
+- A parked slide is `inert` while it is parked.
+- Looping does not change the DOM order of the slides.
+- The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
+- Interactive carousel controls and marker buttons have a visible `:focus-visible` indicator.
+- A polite live region (`role="status"` or `aria-live="polite"`) starts empty on initial load and announces the current slide position after user-initiated scrolling settles.
+- Without JavaScript, the first slide is the one in view when the page loads.
+- The track and the control buttons set `touch-action: manipulation`.
+- The carousel track remains scrollable via touch, pointer, and native keyboard scrolling without requiring JavaScript.
+- Custom key handling does not intercept keys from focused links, form fields, or buttons.
+- Keyboard users can Tab sequentially through controls without encountering a keyboard trap.
+- The carousel uses HTML Previous and Next `<button>` elements, each with an accessible name, that precede the track in DOM order, and does not use native `::scroll-button()` or `::scroll-marker`.
+- Activating the Previous or Next button moves the carousel to the adjacent slide in visual order.
+- The carousel has one HTML marker `<button>` per slide, and activating a marker button navigates to its corresponding slide.
+- Every marker button has an accessible name identifying its destination slide.
+- The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
+- Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
+- The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.
