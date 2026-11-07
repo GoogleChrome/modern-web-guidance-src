@@ -9,9 +9,15 @@ web-feature-ids:
 
 One of the most effective ways to improve page load performance for users navigating a site is to initiate loading the next page they're about to visit *before* they visit it. This can be done through a technique called speculative loading using the Speculation Rules API.
 
+> [!IMPORTANT]
+> **Default starting configuration:** Unless a developer explicitly requests `prerender` or a more aggressive `eagerness` setting, **start with `prefetch` using `"eagerness": "moderate"`** and a `where` document rule that excludes state-changing routes. This delivers most of the navigation speed benefit while avoiding excessive bandwidth use, server load, and analytics or client-state side effects.
+
 ## How it works
 
 Speculative loading works by using JSON-based speculation rules to tell the browser about links that can be prefetched or prerendered improving page load performance when user clicks on them.
+
+- **`prefetch` (Recommended default):** Fetches only the target HTML document response ahead of time without requesting subresources or executing JavaScript. Because no scripts run until the user actually navigates, `prefetch` will not trigger premature analytics pageviews, third-party beacons, or client-side state mutations.
+- **`prerender` (Opt-in progression):** Fetches the HTML document, loads subresources, executes JavaScript, and renders the page in a hidden background tab for near-instant activation. Because the page executes before the user visits it, `prerender` consumes significantly more client and server resources and will fire analytics or stateful scripts early unless they are explicitly deferred until activation.
 
 The rules can either be a hardcoded list of URLs a `urls` key (known as a list rule), or with a `where` key containing a set of href and CSS selectors used to find links on the page (known as a `document` rule).
 
@@ -29,7 +35,11 @@ More eager speculative loading is a good choice for pages that are likely to be 
 
 Less eager speculative loading is a good choice when it is less obvious what the user will do next, when there are many links on the page, each equally likely to be visited. By waiting for more signals, such as hovering, or starting to click on the page, you can get a head-start on the next page and improve the user experience, even if it is not fully prefetched or prerendered.
 
-Similarly, prefetch is a more conservative choice than prerender, using less resources (on both the client and the server side) but providing less benefit to the user. It is a good choice for initial implementation, expanding to prerender later when the developer explicitly requests it.
+- **Start with `prefetch` at `"eagerness": "moderate"`:** For most MPA sites (including static sites, content sites, and server-rendered frameworks like Astro), a single document rule that prefetches same-origin links with `"eagerness": "moderate"` is the safest and most effective baseline. Because `where` document rules default to `"conservative"` when `"eagerness"` is omitted, always set `"eagerness": "moderate"` explicitly.
+- **Consider `prerender` only as a second stage:** Upgrade to `prerender` only when the developer explicitly requests it or after verifying that:
+  1. Analytics, ad beacons, and client-side side effects check `document.prerendering` and wait for the `prerenderingchange` event before firing.
+  2. Server and CDN infrastructure can handle full subresource loads for speculated pages that the user may not visit.
+- **Scope rules to static or idempotent pages:** Always exclude URLs that mutate server or session state (such as `/logout`, `/cart`, or `/admin`) or links marked with `[rel~=nofollow]`.
 
 ## How to use it
 
@@ -109,7 +119,7 @@ This example shows a rule set that prefetches all links eagerly, and then goes f
 
 ## Best Practices
 
-- **DO** use speculation rules to prefetch and prerender pages that the user is likely to visit next.
+- **DO** default to `prefetch` with `"eagerness": "moderate"` on pages that the user is likely to visit next. Treat `prerender` as a later-stage opt-in after accounting for analytics and resource implications.
 - **DO** use speculation rules for static sites, where the content is not likely to change often, and where pages are cheaper to produce—especially if cached at the edge.
 - **DO** take more care when using speculation rules for dynamic pages, where the content is more likely to change often, may become out of date, and where pages are more expensive to produce.
 - **DO** prefer document rules over list rules, as they are more flexible, allow the same rule to be shared across multiple pages, and can be used to prefetch and prerender pages that are not known in advance.
