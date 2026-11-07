@@ -1,7 +1,7 @@
 # Expectations for Passkey Authentication
 
 *   The implementation MUST load a webauthn-polyfills library. 
-*   The HTML form annotates the username input element with autocomplete="username webauthn" and autofocus.
+*   The HTML form annotates the username input element with autocomplete="username webauthn".
 *   The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available.
 *   The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get.
 *   The application registers Conditional UI suggestions automatically on load with mediation="conditional".

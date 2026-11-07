@@ -48,14 +48,20 @@ Securely verify the assertion returned by the client to authenticate the user:
 
 ### HTML Form Annotation
 
-Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters, and autofocus triggers the browser autofill popup immediately when the input is focused.
+Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters.
+
+Use the `autofocus` attribute on dedicated sign-in pages and sign-in dialogs so that the autofill options are immediately displayed. Do not use the `autofocus` attribute on pages or dialogs that are not dedicated sign-in forms. Do not use the `autofocus` attribute on sign-in forms that are embedded in a larger page. Ensure that pages have a concise but descriptive page title, and that dialogs have a concise but descriptive accessible name when the `autofocus` attribute is used on dedicated sign-in pages and dialogs.
+
+Use the `aria-describedby` attribute on elements with `autofocus` so instructions and context are provided for screen reader users.
 
 ```html
+<h1 id="signin-passkey">Sign In with Passkey</h1>
 <!-- Autocomplete tokens must contain webauthn space-separated -->
 <form id="signin-form">
   <input
     type="text"
     name="username"
+    aria-describedby="signin-passkey" 
     autocomplete="username webauthn"
     autofocus
     data-testid="username-field"
