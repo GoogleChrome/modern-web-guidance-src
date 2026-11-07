@@ -10,6 +10,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) and [GOVERNANCE.md](./GOVERNANCE.md) fo
 
 *Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, alongside the web development community.*
 
+[Documentation](https://developer.chrome.com/docs/modern-web-guidance) · [Evaluation Dashboard](https://googlechrome.github.io/modern-web-guidance-src/) · [Source Code](https://github.com/GoogleChrome/modern-web-guidance-src) · [Report an Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues)
+
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
@@ -613,7 +615,7 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-If you'd like to contribute to modern-web-guidance, please see the source repo's [`CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md) and [`GOVERNANCE.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/GOVERNANCE.md). The `modern-web-guidance` repo is purely a publish target for clean skills installation.
+Found a bug, outdated pattern, or missing web platform feature? [Open an issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues) or see [`CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md) and [`GOVERNANCE.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/GOVERNANCE.md) in the [source repository (`GoogleChrome/modern-web-guidance-src`)](https://github.com/GoogleChrome/modern-web-guidance-src).
 
 Huge thanks to everyone who has contributed!
 
