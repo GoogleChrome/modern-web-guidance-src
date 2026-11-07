@@ -12,7 +12,7 @@
   <form id="translate-form">
     <button type="submit">Translate</button>
   </form>
-  <p id="translation"></p>
+  <p id="translation" aria-live="polite" aria-atomic="true"></p>
 
   <script type="module">
     const options = {
@@ -65,10 +65,15 @@
 
         const text = document.getElementById('source').textContent;
         const stream = translator.translateStreaming(text);
+        const language = translator.targetLanguage;
+
+        p.setAttribute('lang', language);
         p.textContent = '';
         for await (const chunk of stream) {
           p.append(chunk);
         }
+        submitBtn.focus();
+
       } catch (err) {
         console.error(err);
         p.textContent = `Error: ${err.message}`;
