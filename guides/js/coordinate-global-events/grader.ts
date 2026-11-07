@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
   });
 
   // Intercept the polyfill request to record if it's requested, but continue
-  await page.route('**/@js-temporal/polyfill*', async route => {
+  await page.route(/.*(temporal-polyfill|@js-temporal\/polyfill).*/, async route => {
     polyfillRequested = true;
     await route.continue();
   });

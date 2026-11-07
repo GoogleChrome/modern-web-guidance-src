@@ -1,15 +1,15 @@
 import { describe, it } from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { outDir } from "../core/paths.ts";
-import { searchUseCases, applySimilarityGates, type UseCaseVector, type EmbedderLike } from "./search.ts";
+import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.ts";
 
 describe("searchUseCases", () => {
   it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
     const results = await searchUseCases("autofill address form");
-    assert.ok(results.length > 0, "Should return some results");
+    assert.strictEqual(results.length, 10, "Default search should return top-10 results");
     
     const bestMatch = results[0];
     assert.strictEqual(bestMatch.id, "autofill-address-form", "Best match should be autofill-address-form");
@@ -26,6 +26,7 @@ describe("searchUseCases", () => {
     assert.ok(items.length > 0, "Corpus must have vector entries");
 
     for (const item of items) {
+      if (item.vector.length === 0) continue;
       let sumSq = 0;
       for (const val of item.vector) {
         sumSq += val * val;
@@ -40,50 +41,80 @@ describe("searchUseCases", () => {
 
   it("works with a custom mock EmbedderLike", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
   });
 
-  it("returns empty array when top-1 similarity is below top1MinSimilarity", async () => {
+  it("returns empty array when dense top-1 is below floor AND BM25 has no matches", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
-    const results = await searchUseCases("test query", 5, 0.0, mockEmbedder, {
-      top1MinSimilarity: 0.38,
-    });
+    // Nonce query with zero BM25 lexical matches in the guide corpus
+    const results = await searchUseCases("xyznonexistentunmatchedterm998877", 5, 0.3, mockEmbedder);
     assert.strictEqual(results.length, 0);
   });
 
-  describe("applySimilarityGates", () => {
-    const mk = (...sims: number[]) => sims.map((similarity, i) => ({ id: `g${i}`, similarity }));
-
-    it("returns [] when the top-1 result is below top1MinSimilarity", () => {
-      assert.deepStrictEqual(applySimilarityGates(mk(0.379, 0.36)), []);
-      assert.deepStrictEqual(applySimilarityGates([]), []);
-    });
-
-    it("keeps high-confidence matches and results within maxDropFromTop1, prunes the weak tail", () => {
-      // 0.45 clears 0.42 outright; 0.39 is within 0.12 of 0.5; 0.37 and 0.36 are neither
-      const kept = applySimilarityGates(mk(0.5, 0.45, 0.39, 0.37, 0.36)).map((r) => r.id);
-      assert.deepStrictEqual(kept, ["g0", "g1", "g2"]);
-    });
-
-    it("can be disabled explicitly for raw ranking", () => {
-      const raw = mk(0.2, 0.1);
-      assert.deepStrictEqual(
-        applySimilarityGates(raw, { top1MinSimilarity: -Infinity, maxDropFromTop1: Infinity }),
-        raw
-      );
-    });
+  it("fuses and returns results when dense is below floor but BM25 matches", async () => {
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 256 }, () => 0),
+    };
+    // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form".
+    const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
+    assert.ok(results.length > 0, "Should return BM25 matches even when dense similarity is 0");
+    const match = results.find((r) => r.id === "autofill-address-form");
+    assert.ok(match, "BM25 should surface autofill-address-form");
+    assert.strictEqual(match.similarity, 0, "Zero dense similarity is preserved on BM25-surfaced result");
   });
 
+  it("excludes sub-floor dense list and returns only BM25 matches when topDenseSim < minSimilarity", async () => {
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 256 }, () => 0),
+    };
+    // "i18n pluralization" has 1 BM25 match and 0 dense similarity (below floor).
+    // When dense is below floor, only BM25 matches are returned without sub-floor dense padding.
+    const results = await searchUseCases("i18n pluralization", 10, 0.3, zeroEmbedder);
+    assert.strictEqual(results.length, 1, "Should return only the BM25 match, not padded to limit=10");
+    assert.strictEqual(results[0].id, "state-aware-sticky-headers");
+    assert.strictEqual(results[0].similarity, 0);
+  });
+
+  it("returns results for queries matching uncached BM25-only guide entries", async () => {
+    // Queries against real guide text return results even if simulated with 0 dense vector
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 256 }, () => 0),
+    };
+    const results = await searchUseCases("payment card checkout", 5, 0.3, zeroEmbedder);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
+  });
+
+  it("above-floor behavior is unchanged and preserves dense similarities", async () => {
+    const results = await searchUseCases("autofill address form", 5, 0.3);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].id, "autofill-address-form");
+    assert.ok(results[0].similarity > 0.3);
+  });
   it("keeps sibling guides on a cluster query", async () => {
     const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
     assert.ok(
       ids.includes("hovercard") && ids.includes("interest-triggered-tooltips"),
       `Expected both tooltip siblings, got: ${ids.join(", ")}`
     );
+  });
+
+  it("surfaces guides matching by web feature ID via enriched chunk content", async () => {
+    // details-name is a web-feature-id on accordion and search-hidden-content, enriched in chunk header
+    const results = await searchUseCases("details-name", 5);
+    assert.ok(results.length > 0, "Should return results for web feature ID query");
+    assert.strictEqual(results[0].id, "accordion");
+  });
+
+  it("returns results for single-token API queries", async () => {
+    for (const q of ["fetchpriority", "startViewTransition", "WebGPU", "LCP", "INP", "webmcp", "content-visibility", "@starting-style", "field-sizing", "bento"]) {
+      const results = await searchUseCases(q, 5);
+      assert.ok(results.length > 0, `Single-token API query "${q}" should return results`);
+    }
   });
 });

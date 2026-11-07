@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { runAllManifests } from './generate-manifests.js';
+import { runAllManifests, injectPreviewShim } from './generate-manifests.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
@@ -77,6 +77,19 @@ if (STATIC) {
   });
 } else {
 
+const manifestOutDir = path.join(outDir, 'dashboard');
+if (
+  !fs.existsSync(path.join(manifestOutDir, 'features-mapping.gen.js')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'demos.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'grouped-tasks.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'suites.gen.json'))
+) {
+  const resultsSourceDir = process.env.USE_MOCK_RESULTS === 'true'
+    ? path.join(dashboardDir, 'mock-results')
+    : suitesDir;
+  await runAllManifests({ outputDir: manifestOutDir, resultsSourceDir });
+}
+
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -132,9 +145,11 @@ async function getGcsAccessToken() {
 
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
+  const parsedUrl = new URL(reqUrl, 'http://localhost');
   
   // Handle CORS and Private Network Access for Playwright Trace Viewer
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -242,7 +257,7 @@ const server = http.createServer(async (req, res) => {
     try {
       if (fs.existsSync(localSuitesDir)) {
         const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
-          .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
+          .filter(dirent => (dirent.isDirectory() || dirent.isSymbolicLink()) && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
@@ -284,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      
+
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         const category = (info && info.guideDir)
@@ -294,7 +309,7 @@ const server = http.createServer(async (req, res) => {
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
       }
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
@@ -402,12 +417,6 @@ const server = http.createServer(async (req, res) => {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
-          const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
-          if (fs.existsSync(gradeReportDataDir)) {
-            const dataFiles = fs.readdirSync(gradeReportDataDir)
-              .map(f => `grade-report/data/${f}`);
-            files.push(...dataFiles);
-          }
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -434,7 +443,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     let filePath;
-    if (checkPath === 'features-mapping.gen.js' || checkPath === 'features_mapping.gen.js' || checkPath === 'grouped-tasks.gen.json' || checkPath === 'suites.gen.json') {
+    if (
+      checkPath === 'features-mapping.gen.js' ||
+      checkPath === 'features_mapping.gen.js' ||
+      checkPath === 'grouped-tasks.gen.json' ||
+      checkPath === 'suites.gen.json'
+    ) {
       const canonicalCheckPath = checkPath === 'features_mapping.gen.js' ? 'features-mapping.gen.js' : checkPath;
       filePath = path.join(outDir, 'dashboard', canonicalCheckPath);
     } else if (checkPath.startsWith('base_apps/')) {
@@ -464,13 +478,16 @@ const server = http.createServer(async (req, res) => {
 
   let filePath;
   // Serve generated manifests from out/dashboard
-  if (decodedPath === '/features-mapping.gen.js' || decodedPath === '/features_mapping.gen.js' || decodedPath === '/grouped-tasks.gen.json' || decodedPath === '/suites.gen.json') {
+  if (path.dirname(decodedPath) === '/' && (decodedPath.endsWith('.gen.json') || decodedPath.endsWith('.gen.js'))) {
     const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
     filePath = path.join(outDir, 'dashboard', canonicalName);
   } else if (decodedPath.startsWith('/base_apps/')) {
     filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
     filePath = path.join(guidesDir, decodedPath.substring(8));
+  } else if (decodedPath.startsWith('/public-evals/')) {
+    // Built by `pnpm public:build` into out/; never read from the dashboard dir, which is deployed.
+    filePath = path.join(outDir, decodedPath.substring(1));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join(dashboardDir, relativePath);
@@ -585,6 +602,15 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (isInsideGuides && extname === '.html' && parsedUrl.searchParams.has('preview')) {
+        const injected = injectPreviewShim(content.toString('utf-8'));
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': Buffer.byteLength(injected),
+        });
+        res.end(injected, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }

@@ -1,212 +1,280 @@
 import {
   test,
   expect,
+  skipUnless,
   getTargetFiles,
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { CSSStyleRule, type CSSRule, getCascadedStyle } from 'cssomnom';
-import { SyntaxKind } from 'ts-morph';
+} from '../../../../../src/grading/test-fixture.ts';
+import { SyntaxKind, type Project } from 'ts-morph';
+import type { Document } from 'linkedom';
+import { CSSRule, CSSStyleRule, type CSSStyleSheet } from 'cssomnom';
 
-// @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
+function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
   const result: CSSStyleRule[] = [];
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
       result.push(rule);
     }
     if ('cssRules' in rule && rule.cssRules) {
-      result.push(...getAllStyleRules(rule.cssRules as Iterable<CSSRule>));
+      result.push(...collectStyleRules(rule.cssRules as Iterable<CSSRule>));
     }
   }
   return result;
 }
 
-test.describe('Daily Grind Scrollspy Grader', () => {
+function getStringLiteralsText(project: Project): string[] {
+  return project.getSourceFiles().flatMap((sf) => [
+    ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((lit) => lit.getLiteralValue()),
+    ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral).map((lit) => lit.getLiteralValue()),
+  ]);
+}
 
-  // Requirement 1: Navigation links use fragment identifiers that match unique IDs of target content sections
-  test('navigation links use fragment identifiers matching unique IDs of target content sections', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const matched = docs.some(({ document }) => {
-      const navLinks = Array.from(document.querySelectorAll('nav a[href^="#"], [role="navigation"] a[href^="#"], .nav-links a[href^="#"]'));
-      if (navLinks.length === 0) return false;
-      return navLinks.every(link => {
-        const targetId = (link as any).getAttribute('href')?.replace(/^#/, '');
-        return Boolean(targetId && document.getElementById(targetId));
+test.describe('scrollspy Target Grader', () => {
+  test('Navigation links use fragment identifiers that match unique IDs of target content sections', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const hasValidFragmentNav = docs.some(({ document }) => {
+      const navLinks = Array.from(document.querySelectorAll('nav a[href^="#"]:not([href="#"])'));
+      if (navLinks.length < 2) return false;
+
+      const fragmentIds = navLinks
+        .map((link) => (link.getAttribute('href') || '').slice(1).trim())
+        .filter((id) => id.length > 0);
+
+      if (fragmentIds.length !== navLinks.length) return false;
+
+      const uniqueFragmentIds = new Set(fragmentIds);
+      if (uniqueFragmentIds.size !== fragmentIds.length) return false;
+
+      return fragmentIds.every((id) => {
+        const matchingTargets = document.querySelectorAll(`[id="${id}"]`);
+        return matchingTargets.length === 1;
       });
     });
-    expect(matched).toBe(true);
+
+    expect(hasValidFragmentNav).toBe(true);
   });
 
-  // Requirement 2: The navigation container has scroll-target-group: auto applied
-  test('navigation container has scroll-target-group: auto applied', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const docs = getHtmlDocuments(targetFiles);
-    const rules = getAllStyleRules(stylesheet.cssRules);
+  test('Navigation container has scroll-target-group: auto applied to enable native browser tracking', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
-    const hasRule = rules.some(r => {
-      const val = r.style.getPropertyValue('scroll-target-group')?.trim();
-      if (val !== 'auto') return false;
-      if (/\b(nav|nav-links|site-nav)\b/i.test(r.selectorText)) return true;
+    const hasScrollTargetGroup = styleRules.some((rule) => {
+      const value = rule.style.getPropertyValue('scroll-target-group').trim();
+      if (value !== 'auto') return false;
+
+      if (/\b(nav|ul|menu)\b/i.test(rule.selectorText) || rule.selectorText === '[style]') {
+        return true;
+      }
+
       return docs.some(({ document }) => {
-        try {
-          const matchedEls = Array.from(document.querySelectorAll(r.selectorText));
-          return matchedEls.some(el => (el as any).tagName === 'NAV' || (el as any).querySelector?.('a[href^="#"]'));
-        } catch {
-          return false;
-        }
+        const matched = Array.from(document.querySelectorAll(rule.selectorText));
+        return matched.some((el) => Boolean(el.querySelector('a[href^="#"]')) || Boolean(el.closest('nav')));
       });
     });
 
-    const hasCascaded = docs.some(({ document }) => {
-      const nav = document.querySelector('nav, [role="navigation"], .nav-links');
-      if (!nav) return false;
-      return getCascadedStyle(nav, rules).getPropertyValue('scroll-target-group')?.trim() === 'auto';
+    expect(hasScrollTargetGroup).toBe(true);
+  });
+
+  test('Navigation links use the :target-current pseudo-class for active state styling', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const hasTargetCurrentRule = styleRules.some(
+      (rule) => /(?<!\\):target-current\b/.test(rule.selectorText) && rule.style.length > 0
+    );
+
+    expect(hasTargetCurrentRule).toBe(true);
+  });
+
+  test('Active navigation link is visually highlighted with a color change and a non-color indicator or sufficient contrast', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const activeRules = styleRules.filter((rule) => /target-current\b/.test(rule.selectorText));
+
+    const hasColorChange = activeRules.some((rule) => {
+      const color = rule.style.getPropertyValue('color').trim().toLowerCase();
+      const bgColor = rule.style.getPropertyValue('background-color').trim().toLowerCase();
+      const bg = rule.style.getPropertyValue('background').trim().toLowerCase();
+      const hasDistinctTextColor =
+        color.length > 0 && !['white', '#fff', '#ffffff', 'rgb(255, 255, 255)', 'inherit', 'initial'].includes(color);
+      const hasDistinctBg =
+        (bgColor.length > 0 && !['transparent', 'none', 'initial', 'inherit'].includes(bgColor)) ||
+        (bg.length > 0 && !['transparent', 'none', 'initial', 'inherit'].includes(bg));
+      return hasDistinctTextColor || hasDistinctBg;
     });
 
-    expect(hasRule || hasCascaded).toBe(true);
+    const nonColorProps = [
+      'font-weight',
+      'text-decoration',
+      'text-decoration-line',
+      'border-bottom',
+      'border-bottom-color',
+      'border-bottom-width',
+      'border',
+      'border-color',
+      'border-top',
+      'border-left',
+      'border-right',
+      'outline',
+      'box-shadow',
+      'transform',
+      'scale',
+      'content',
+    ];
+
+    const hasNonColorIndicator = activeRules.some((rule) =>
+      nonColorProps.some((prop) => {
+        const val = rule.style.getPropertyValue(prop).trim().toLowerCase();
+        return val.length > 0 && !['none', 'normal', 'transparent', '0', '0px', 'initial', 'inherit'].includes(val);
+      })
+    );
+
+    expect(hasColorChange && hasNonColorIndicator).toBe(true);
   });
 
-  // Requirement 3: Navigation links use the :target-current pseudo-class for active state styling
-  test('navigation links use :target-current pseudo-class for active state styling', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(stylesheet.cssRules);
-
-    const hasTargetCurrent = rules.some(r => {
-      return r.selectorText.includes(':target-current') && /\b(nav|a|links)\b/i.test(r.selectorText);
-    });
-
-    expect(hasTargetCurrent).toBe(true);
-  });
-
-  // Requirement 4: Visual highlight with color change
-  test('active navigation link style specifies a color change', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(stylesheet.cssRules);
-
-    const activeRules = rules.filter(r => r.selectorText.includes('target-current'));
-    const hasColorChange = activeRules.some(r => Boolean(r.style.getPropertyValue('color')?.trim()));
-
-    expect(hasColorChange).toBe(true);
-  });
-
-  // Requirement 4: Visual highlight with at least one non-color indicator
-  test('active navigation link style specifies at least one non-color indicator', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(stylesheet.cssRules);
-
-    const activeRules = rules.filter(r => r.selectorText.includes('target-current'));
-    const hasNonColorIndicator = activeRules.some(r => {
-      const s = r.style;
-      const fw = s.getPropertyValue('font-weight')?.trim();
-      const td = s.getPropertyValue('text-decoration')?.trim() || s.getPropertyValue('text-decoration-line')?.trim();
-      const bb = s.getPropertyValue('border-bottom')?.trim() || s.getPropertyValue('border-bottom-color')?.trim() || s.getPropertyValue('border-color')?.trim() || s.getPropertyValue('border-bottom-width')?.trim();
-      const outline = s.getPropertyValue('outline')?.trim();
-      return Boolean(fw || (td && td.includes('underline')) || bb || outline);
-    });
-
-    expect(hasNonColorIndicator).toBe(true);
-  });
-
-  // Requirement 5: aria-current is updated on navigation links
-  test('script updates aria-current attribute on navigation links', () => {
-    const project = getJsProject(targetFiles);
+  test('The aria-current attribute is set to "true" on the active navigation link and "false" on all other links', () => {
+    const project: Project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const callExprs = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const hasAriaCurrentCall = callExprs.some(call => {
-      const text = call.getExpression().getText();
-      if (!text.endsWith('setAttribute')) return false;
-      const args = call.getArguments();
-      const arg0 = args[0]?.getText().replace(/['"`]/g, '');
-      return arg0 === 'aria-current';
+    const ariaCurrentValueNodes = sourceFiles.flatMap((sf) => {
+      const setAttrArgs = sf
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .filter((call) => {
+          const expr = call.getExpression();
+          const args = call.getArguments();
+          if (args.length < 2) return false;
+          const isSetAttr =
+            expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'setAttribute';
+          const firstArg = args[0];
+          const isAriaCurrent =
+            (firstArg.isKind(SyntaxKind.StringLiteral) ||
+              firstArg.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) &&
+            firstArg.getLiteralValue() === 'aria-current';
+          return isSetAttr && isAriaCurrent;
+        })
+        .map((call) => call.getArguments()[1]);
+
+      const propAssignRhs = sf
+        .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+        .filter((bin) => {
+          const left = bin.getLeft();
+          return (
+            bin.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+            left.isKind(SyntaxKind.PropertyAccessExpression) &&
+            left.getName() === 'ariaCurrent'
+          );
+        })
+        .map((bin) => bin.getRight());
+
+      return [...setAttrArgs, ...propAssignRhs];
     });
 
-    const propAccess = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression));
-    const hasAriaCurrentProp = propAccess.some(p => p.getName() === 'ariaCurrent');
+    const hasDynamicTrueFalseToggle = ariaCurrentValueNodes.some(
+      (node) =>
+        node.isKind(SyntaxKind.ConditionalExpression) ||
+        node.isKind(SyntaxKind.CallExpression) ||
+        node.isKind(SyntaxKind.BinaryExpression) ||
+        node.isKind(SyntaxKind.Identifier) ||
+        node.isKind(SyntaxKind.TemplateExpression)
+    );
 
-    expect(hasAriaCurrentCall || hasAriaCurrentProp).toBe(true);
+    const literalValues = new Set(
+      ariaCurrentValueNodes
+        .filter(
+          (node) =>
+            node.isKind(SyntaxKind.StringLiteral) || node.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)
+        )
+        .map((node) => node.getText().replace(/^['"`]|['"`]$/g, ''))
+    );
+
+    const setsBothTrueAndFalse =
+      hasDynamicTrueFalseToggle || (literalValues.has('true') && literalValues.has('false'));
+
+    expect(setsBothTrueAndFalse).toBe(true);
   });
 
-  // Requirement 6: aria-current is synchronized when scrolling stops (scrollend event)
-  test('aria-current state is synchronized using a scrollend event listener', () => {
-    const project = getJsProject(targetFiles);
+  test('The aria-current state is synchronized with the visible section when scrolling stops', () => {
+    const project: Project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
+    const stringLiterals = getStringLiteralsText(project);
 
-    const callExprs = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const hasScrollendListener = callExprs.some(call => {
-      const text = call.getExpression().getText();
-      if (!text.includes('addEventListener')) return false;
-      const args = call.getArguments();
-      const eventName = args[0]?.getText().replace(/['"`]/g, '');
-      return eventName === 'scrollend';
+    const hasScrollStopListener = sourceFiles.some((sf) => {
+      const hasScrollEndEvent = sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression();
+        const isAddEventListener =
+          (expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'addEventListener') ||
+          (expr.isKind(SyntaxKind.Identifier) && expr.getText() === 'addEventListener');
+        if (!isAddEventListener) return false;
+        const firstArg = call.getArguments()[0];
+        return (
+          Boolean(firstArg) &&
+          (firstArg.isKind(SyntaxKind.StringLiteral) ||
+            firstArg.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) &&
+          firstArg.getLiteralValue() === 'scrollend'
+        );
+      });
+
+      const hasOnScrollEndProp = sf
+        .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+        .some((prop) => prop.getName() === 'onscrollend');
+
+      return hasScrollEndEvent || hasOnScrollEndProp;
     });
 
-    const propAssignments = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.BinaryExpression));
-    const hasOnScrollend = propAssignments.some(b => b.getLeft().getText().endsWith('onscrollend'));
+    const queriesTargetCurrent = stringLiterals.some((str) => /(?<!\\):target-current\b/.test(str));
 
-    expect(hasScrollendListener || hasOnScrollend).toBe(true);
+    expect(hasScrollStopListener && queriesTargetCurrent).toBe(true);
   });
 
-  // Requirement 7: Feature detection for scroll-target-group
-  test('script checks feature support for native scroll-target-group', () => {
-    const project = getJsProject(targetFiles);
+  test('An IntersectionObserver fallback applies the target-current class in browsers without native CSS scrollspy support', () => {
+    skipUnless({ unsupported: 'scroll-target-group' });
+
+    const project: Project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
+    const stringLiterals = getStringLiteralsText(project);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
 
-    const callExprs = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const hasFeatureDetection = callExprs.some(call => {
-      const text = call.getExpression().getText();
-      if (!text.includes('CSS.supports')) return false;
-      const args = call.getArguments();
-      return args.some(arg => arg.getText().includes('scroll-target-group'));
+    const hasFeatureDetection = sourceFiles.some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression();
+        return (
+          expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+          expr.getName() === 'supports' &&
+          call.getArguments().length > 0
+        );
+      })
+    );
+
+    const hasIntersectionObserver = sourceFiles.some((sf) => {
+      const createsObserver = sf.getDescendantsOfKind(SyntaxKind.NewExpression).some((newExpr) =>
+        /\bIntersectionObserver\b/.test(newExpr.getExpression().getText())
+      );
+      const callsObserve = sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression();
+        return expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'observe';
+      });
+      return createsObserver && callsObserve;
     });
 
-    expect(hasFeatureDetection).toBe(true);
-  });
+    const appliesTargetCurrentClass = stringLiterals.some(
+      (str) => /^\\?:?target-current$/.test(str)
+    );
 
-  // Requirement 7: IntersectionObserver fallback detects visible sections
-  test('fallback uses IntersectionObserver to detect visible sections', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
+    const hasFallbackSelectorInCss = styleRules.some((rule) =>
+      /\.(?:\\:)?target-current\b/.test(rule.selectorText)
+    );
 
-    const hasIntersectionObserver = sourceFiles.some(sf => {
-      const newExprs = sf.getDescendantsOfKind(SyntaxKind.NewExpression);
-      const idExprs = sf.getDescendantsOfKind(SyntaxKind.Identifier);
-      return newExprs.some(ne => ne.getExpression().getText() === 'IntersectionObserver')
-        || idExprs.some(id => id.getText() === 'IntersectionObserver');
-    });
-
-    expect(hasIntersectionObserver).toBe(true);
-  });
-
-  // Requirement 7: IntersectionObserver fallback applies :target-current class
-  test('fallback applies :target-current class to the active navigation link', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const stringLiterals = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.StringLiteral));
-    const hasTargetCurrentClass = stringLiterals.some(sl => {
-      const val = sl.getLiteralValue();
-      return val === ':target-current' || val === '\\:target-current' || val.includes(':target-current');
-    });
-
-    expect(hasTargetCurrentClass).toBe(true);
-  });
-
-  // Requirement 3 & 7: Fallback class selector in CSS for unsupported browsers
-  test('navigation active styles include fallback class selector for unsupported browsers', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(stylesheet.cssRules);
-
-    const hasFallbackClass = rules.some(r => {
-      return (r.selectorText.includes('target-current') && r.selectorText.includes('.'))
-        || r.selectorText.includes('\\:target-current')
-        || r.selectorText.includes('.:target-current');
-    });
-
-    expect(hasFallbackClass).toBe(true);
+    expect(
+      hasFeatureDetection &&
+        hasIntersectionObserver &&
+        appliesTargetCurrentClass &&
+        hasFallbackSelectorInCss
+    ).toBe(true);
   });
 });

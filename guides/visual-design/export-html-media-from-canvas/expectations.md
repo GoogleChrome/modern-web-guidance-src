@@ -1,6 +1,7 @@
 - Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API for HTML content export.
-- The `<canvas>` element MUST include the `layoutsubtree` attribute to allow descendant HTML elements to be exposed to canvas rendering and export features.
+- The `<canvas>` element MUST include the `content="drawable"` attribute to allow descendant HTML elements to be exposed to canvas rendering and export features.
+- Every HTML element that needs to be individually drawn into the canvas MUST include the `drawable` attribute. Direct canvas children of the `<canvas>` element MUST include the `drawable` attribute.
 - Canvas rendering MUST be executed inside an `onpaint` event handler attached to the canvas element to trigger re-rendering when descendant HTML elements change.
-- The rendering logic MUST use `drawElementImage`, `texElementImage2D`, or `copyElementImageToTexture` to draw HTML elements onto the canvas.
-- The CSS `transform` property of the descendant HTML element MUST be updated based on the transform matrix calculated during rendering.
+- The rendering logic MUST use `drawElementImage`, `texElementSubImage2D`, or `drawElementImageToTexture` to draw HTML elements onto the canvas.
+- The DOM position of each drawn HTML element MUST match where it's drawn, so users can click and type into it: in 2D, `drawElementImage()` syncs it automatically, so its return value is not applied to `style.transform`; in WebGL and WebGPU, the element is registered with `canvas.updateElementGeometry()`, passing a `canvasTransform`.
 - Screen size changes MUST be observed to update the canvas size to match device pixels to prevent blurriness.

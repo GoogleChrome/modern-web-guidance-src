@@ -1,14 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-import { parseJsonlFile } from './agent-shared.ts';
+import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { Agents } from '../config.ts';
+import { parseJsonlFile } from './agent-shared.ts';
+import { guideIdsFromLog } from './guide-usage.ts';
 
 // Colocated agent parsers
-import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
-import { parseGeminiTrajectory } from '../agents/gemini-cli-agent.ts';
-import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
+import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
+import { parseGeminiTrajectory, loadGeminiLogs } from '../agents/gemini-cli-agent.ts';
+import { parseCodexTrajectory, loadCodexLogs } from '../agents/codex-cli-agent.ts';
 import { parseJetskiTrajectory, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
-import { parsePiTrajectory } from '../agents/pi-agent.ts';
+import { parsePiTrajectory, loadPiLogs } from '../agents/pi-agent.ts';
 
 // Re-export for test compatibility and legacy callers
 export {
@@ -63,13 +65,20 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 2;
+export const NORMALIZER_VERSION = 4;
 
-const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
 export function getSessionFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
   return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
+}
+
+export function extractSubagentIdFromFilename(file: string): string {
+  const base = path.basename(file);
+  return base
+    .replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '')
+    .replace(/\.(?:json|jsonl)$/, '');
 }
 
 export function hasRawSessionLogs(dir: string): boolean {
@@ -241,6 +250,51 @@ export function extractTimestamp(entry: any): string | undefined {
   return undefined;
 }
 
+/**
+ * Extracts retrieved guide IDs from a shell command string invoking `modern-web-guidance retrieve`.
+ * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma- or space-separated lists.
+ */
+export function extractRetrievedGuidesFromCommand(command: string): string[] {
+  if (!command.includes('modern-web-guidance') || !command.includes('retrieve')) {
+    return [];
+  }
+  const normalized = command
+    .replace(/\\+u003e/gi, '>')
+    .replace(/\\+u003c/gi, '<')
+    .replace(/\\+u0026/gi, '&');
+  const guides: string[] = [];
+  const invocationRegex =
+    /(?:\b(?:npx|pnpx|pnpm|node)(?:\.cmd)?\s+(?:-[a-z]+\s+)*)?[^\s"';|&><)`\\]*modern-web-guidance(?:@[^\s"';|&><)`\\]+|\/[^\s"';|&><)`\\]*modern-web\.[cm]?[jt]s)?(?:\s+(?:--skill-version(?:=\S+|\s+\S+)|--[a-z-]+(?:=\S+)?))*\s+(?:--)?retrieve\s+([^;|&><`\n\r)]+)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = invocationRegex.exec(normalized)) !== null) {
+    // Ignore inline markdown code references inside guide text, e.g. `(via \`npx -y modern-web-guidance@latest retrieve "css"\`)`
+    const lineStart = normalized.lastIndexOf('\n', match.index) + 1;
+    const linePrefix = normalized.slice(lineStart, match.index);
+    if ((linePrefix.split('`').length - 1) % 2 === 1) {
+      continue;
+    }
+    const argSegment = match[1]
+      .split(/","|"\}/)[0]
+      .replace(/\s+\d+$/, '')
+      .trim();
+    const tokens = argSegment.split(/[\s,]+/);
+    for (let i = 0; i < tokens.length; i++) {
+      const cleaned = tokens[i].trim().replace(/^["'\\]+|["'\\;]+$/g, '');
+      if (!cleaned) continue;
+      if (cleaned.startsWith('-')) {
+        if (cleaned === '--skill-version') {
+          i++;
+        }
+        continue;
+      }
+      if (/^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
+        guides.push(cleaned);
+      }
+    }
+  }
+  return guides;
+}
+
 export function categorizeAction(
   name: string,
   params?: Record<string, any>,
@@ -278,7 +332,7 @@ export function categorizeAction(
     if (cmdLower.includes('retrieve')) {
       return 'guide_retrieval';
     }
-    if (cmdLower.includes('search')) {
+    if (cmdLower.includes('search') || cmdLower.includes('analyze') || cmdLower.includes('legacy-scan')) {
       return 'skill_search';
     }
   }
@@ -425,77 +479,37 @@ export function generateNormalizedTrajectorySync(
       summary = finalizeTrajectorySummary(parseJetskiCliSession(targetDir));
     } else if (normalizedAgent === Agents.ANTIGRAVITY_CLI) {
       summary = finalizeTrajectorySummary({ ...parseJetskiCliSession(targetDir), agent: Agents.ANTIGRAVITY_CLI });
-    } else {
-      let allFiles: string[] = [];
-      try {
-        allFiles = fs.readdirSync(targetDir);
-      } catch (err) {
-        if (!isEnoent(err)) throw err;
+    } else if (normalizedAgent === Agents.CLAUDE_CODE) {
+      const { logData, subagentsMap } = loadClaudeLogs(targetDir);
+      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parseClaudeTrajectory(logData, subagentsMap);
       }
-
-      const mainSessionFiles = allFiles
-        .filter(
-          (f) =>
-            (f.startsWith('session-') && !f.includes('-subagents-') && (f.endsWith('.json') || f.endsWith('.jsonl'))) ||
-            f === 'trajectory.jsonl'
-        )
-        .sort((a, b) => a.localeCompare(b));
-
-      const subagentFiles = allFiles
-        .filter((f) => (f.startsWith('subagent-') || f.includes('-subagents-')) && (f.endsWith('.json') || f.endsWith('.jsonl')))
-        .sort((a, b) => a.localeCompare(b));
-
-      const subagentsMap: Record<string, any[]> = {};
-      for (const file of subagentFiles) {
-        const filePath = path.join(targetDir, file);
-        try {
-          const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          let key = file.replace(/\.jsonl?$/, '');
-          const agentMatch = key.match(/(?:^|[-_])agent[-_]([a-zA-Z0-9_-]+)$/);
-          if (agentMatch) {
-            key = agentMatch[1];
-          } else {
-            key = key.replace(/^(?:subagent-|session-)/, '');
-          }
-          subagentsMap[key] = Array.isArray(logData) ? logData : ((logData as any)?.messages || []);
-        } catch (e) {
-          console.warn(`[TrajectoryParser] Failed to parse subagent file ${file}:`, e);
-        }
+    } else if (normalizedAgent === Agents.GEMINI_CLI) {
+      const { logData, subagentsMap } = loadGeminiLogs(targetDir);
+      const msgs = Array.isArray(logData) ? logData : (logData?.messages || []);
+      if (msgs.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parseGeminiTrajectory(logData, subagentsMap);
       }
-
-      const allMainEntries: any[] = [];
-      for (const file of mainSessionFiles) {
-        const filePath = path.join(targetDir, file);
-        try {
-          const logData = file.endsWith('.jsonl') ? parseJsonlFile(filePath) : JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          if (Array.isArray(logData)) {
-            allMainEntries.push(...logData);
-          } else if (logData && Array.isArray((logData as any).messages)) {
-            allMainEntries.push(...(logData as any).messages);
-          } else if (logData) {
-            allMainEntries.push(logData);
-          }
-        } catch (e) {
-          console.warn(`[TrajectoryParser] Failed to parse main session file ${file}:`, e);
-        }
+    } else if (normalizedAgent === Agents.CODEX_CLI) {
+      const { logData, subagentsMap } = loadCodexLogs(targetDir);
+      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parseCodexTrajectory(logData, subagentsMap);
       }
-
-      if (allMainEntries.length > 0 || Object.keys(subagentsMap).length > 0) {
-        if (normalizedAgent === Agents.CLAUDE_CODE) {
-          summary = parseClaudeTrajectory(allMainEntries, subagentsMap);
-        } else if (normalizedAgent === Agents.GEMINI_CLI) {
-          summary = parseGeminiTrajectory(allMainEntries, subagentsMap);
-        } else if (normalizedAgent === Agents.CODEX_CLI) {
-          summary = parseCodexTrajectory(allMainEntries, subagentsMap);
-        } else if (normalizedAgent === Agents.PI) {
-          summary = parsePiTrajectory(allMainEntries, subagentsMap);
-        }
+    } else if (normalizedAgent === Agents.PI) {
+      const { logData, subagentsMap } = loadPiLogs(targetDir);
+      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
+        summary = parsePiTrajectory(logData, subagentsMap);
       }
     }
 
     if (summary) {
       if (initialPrompt !== undefined) {
         summary.initialPrompt = initialPrompt;
+      }
+      const logEntries = parseJsonlFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+      if (logEntries.length > 0) {
+        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides ?? []), ...guideIdsFromLog(logEntries)])];
+        summary.toolsUsed = [...new Set([...(summary.toolsUsed ?? []), 'modern-web-guidance'])];
       }
       finalizeTrajectorySummary(summary);
       writeTrajectorySummary(targetDir, summary);
@@ -548,12 +562,4 @@ export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySumm
 
 export async function ensureFreshTrajectorySummary(runDir: string): Promise<TrajectorySummary | null> {
   return ensureFreshTrajectorySummarySync(runDir);
-}
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && 'code' in err;
-}
-
-function isEnoent(err: unknown): boolean {
-  return isNodeError(err) && err.code === 'ENOENT';
 }

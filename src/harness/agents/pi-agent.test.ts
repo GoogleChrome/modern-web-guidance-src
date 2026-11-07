@@ -174,11 +174,37 @@ test('collectPiToolsFromTrajectory detects modern-web-guidance usage', async () 
     fs.writeFileSync(path.join(tempDir, 'session-abc.jsonl'), sessionLines.join('\n'));
 
     const tools = collectPiToolsFromTrajectory(tempDir);
-    
-    // Note: current implementation only detects tools by name, not by file reads
-    // This test documents current behavior - may need to enhance detection
-    assert.strictEqual(tools.length, 0, 'Built-in read tool should be filtered');
-    
+    assert.strictEqual(tools.length, 0, 'Reading a guide.md directly should not count as skill activation');
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('collectPiToolsFromTrajectory detects SKILL.md read as skill activation', async () => {
+  const tempDir = createTempDir();
+  try {
+    const sessionLines = [
+      JSON.stringify({
+        type: 'message',
+        message: {
+          role: 'assistant',
+          content: [
+            {
+              type: 'toolCall',
+              name: 'read',
+              arguments: { path: '/tmp/ghh-pi-123/.agents/skills/modern-web-guidance/SKILL.md' }
+            }
+          ]
+        }
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-skill.jsonl'), sessionLines.join('\n'));
+
+    const tools = collectPiToolsFromTrajectory(tempDir);
+    const guides = await collectPiGuidesFromTrajectory(tempDir);
+    assert.deepStrictEqual(tools, ['modern-web-guidance']);
+    assert.deepStrictEqual(guides.fileReadGuides, [], 'SKILL.md should not be recorded as a file-read guide');
   } finally {
     removeTempDir(tempDir);
   }

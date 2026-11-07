@@ -2,16 +2,27 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
+import {
+  ALLOWED_CHILD_ENV_KEYS,
+  ALLOWED_ENV_PREFIXES,
+  copySanitizedNpmrc,
+  filterAllowedEnv,
+  sanitizeTextSecrets,
+} from './secret-guard.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
+import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
+import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
+import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
+import { gitExec } from '../../core/git-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
-import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs, getPiEnvOverrides } from '../agents/pi-agent.ts';
 import { setupAntigravityCliCredentials, getAntigravityCliCommandAndArgs } from '../agents/antigravity-cli-agent.ts';
 
 export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
@@ -38,7 +49,11 @@ export function setupAgentCredentials(agent: Agents, tempHome: string): void {
   }
 }
 
-export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
+export function getAgentCommandAndArgs(
+  agent: Agents,
+  prompt: string,
+  homeDir?: string,
+): { command: string; commandArgs: string[]; envOverrides?: NodeJS.ProcessEnv } {
   switch (agent) {
     case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
@@ -49,7 +64,7 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
     case Agents.CODEX_CLI:
       return getCodexCliCommandAndArgs(prompt);
     case Agents.PI:
-      return getPiCommandAndArgs(prompt);
+      return { ...getPiCommandAndArgs(prompt), envOverrides: getPiEnvOverrides(homeDir) };
     case Agents.ANTIGRAVITY_CLI:
       return getAntigravityCliCommandAndArgs(prompt);
     default:
@@ -57,13 +72,30 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
   }
 }
 
+export function setupInterceptorShims(homeDir: string, runType: string = 'guided'): string {
+  const shimDir = path.join(homeDir, '.gd-bin');
+  fs.mkdirSync(shimDir, { recursive: true });
+  const templatePath = path.join(import.meta.dirname, '..', 'npx-intercept.template.ts');
+  const localCliPath = runType === 'guided'
+    ? path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs')
+    : '';
+  const templateContent = fs.readFileSync(templatePath, 'utf8').replace('__LOCAL_CLI_PATH__', localCliPath);
+  for (const binName of ['npx', 'pnpx', 'pnpm']) {
+    const wrapperPath = path.join(shimDir, binName);
+    fs.writeFileSync(wrapperPath, templateContent, { mode: 0o755 });
+    fs.chmodSync(wrapperPath, 0o755);
+  }
+  return shimDir;
+}
+
 export function setupIsolatedWorkDir(
   agent: Agents,
   templateDir: string,
-  runType: string,
-  targetDir?: string
+  runType: string
 ): string {
-  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const tempHome = createIsolatedHome(`ghh-${agent}`);
+  const shimDir = setupInterceptorShims(tempHome, runType);
+  setupIsolatedShellProfiles(tempHome, shimDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   setupAgentCredentials(agent, tempHome);
@@ -123,14 +155,14 @@ export function spawnAsync(command: string, args: string[], options: SpawnOption
 
 /**
  * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
- * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * to ensure that shimDir (containing our npx interceptor shim) remains at the front of PATH even if
  * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
  * @param homeDir Path to the isolated HOME directory
- * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ * @param shimDir Path to the directory containing our intercepted binaries (like npx)
  */
-export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+export function setupIsolatedShellProfiles(homeDir: string, shimDir: string): void {
   try {
-    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileContent = `export PATH="${shimDir}:$PATH"\n`;
     const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
     for (const file of profileFiles) {
       fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
@@ -161,9 +193,9 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
     setupIsolatedShellProfiles(tempHome, targetDir);
   }
 
-  // Provide authentication to the isolated environment so npm tasks work
+  // Copy sanitized npm config so isolated runs don't inherit host auth tokens or broken private registries
   const originalHome = process.env.HOME || process.cwd();
-  copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
+  copySanitizedNpmrc(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
   // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
   try {
@@ -434,18 +466,36 @@ export function parseAgentArgs(scriptName: string): AgentArgs {
  * @returns The path to the working directory within the isolated home
  */
 export function createWorkDir(templateDir: string, homeDir: string, runType: string): string {
-  // For the single task run, there is no template
-  // Create the empty work dir with the runType as the directory name
-  if (templateDir === '') {
-    const workDir = path.join(homeDir, runType);
+  const isSingleTask = templateDir === '';
+  const workDir = isSingleTask
+    ? path.join(homeDir, runType)
+    : path.join(homeDir, path.basename(templateDir));
+
+  if (isSingleTask) {
     fs.mkdirSync(workDir, { recursive: true });
-    return workDir;
+  } else {
+    execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
-  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
-  const workDir = path.join(homeDir, path.basename(templateDir));
+
+  // Guided sandboxes are pre-opted-in so gated guides can be retrieved; .mwgrc must land in the
+  // root commit so it stays out of agent.patch (suite templates arrive with .git already).
+  // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
+  // still resolve the sandbox's .mwgrc via the HOME fallback.
+  if (runType === 'guided') {
+    const mwgConfig: MwgConfig = { ...DEFAULT_GUIDED_MWGRC };
+    const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
+    if (normalizedBaseline && normalizedBaseline !== 'widely') {
+      mwgConfig.baseline = normalizedBaseline;
+    }
+    const serialized = JSON.stringify(mwgConfig, null, 2) + '\n';
+    fs.writeFileSync(path.join(workDir, '.mwgrc'), serialized, 'utf8');
+    fs.writeFileSync(path.join(homeDir, '.mwgrc'), serialized, 'utf8');
+  }
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
+  } else if (runType === 'guided') {
+    gitExec(['add', '.mwgrc'], { cwd: workDir, isolated: true, stdio: 'ignore' });
+    gitExec(['commit', '-q', '--amend', '--no-edit'], { cwd: workDir, isolated: true, stdio: 'ignore' });
   }
   return workDir;
 }
@@ -478,8 +528,7 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
   } else {
     // For target-based guides, capture agent.patch for patch-only storage
     try {
-      const agentPatchPath = path.join(targetDir, 'agent.patch');
-      capturePatchFromGit(workDir, agentPatchPath);
+      capturePatchFromGit(workDir, path.join(targetDir, 'agent.patch'));
     } catch (err) {
       console.warn(`Failed to capture agent patch: ${err}`);
     }
@@ -513,54 +562,17 @@ export function watchLogFile(logPath: string): () => void {
   return () => clearInterval(interval);
 }
 
-const DEFAULT_PROD_BASE = 'https://trajectory-dev.corp.goog/';
-
 /**
- * Finds trajectory files, copies them to the target directory, and generates HTML exports.
- * @param sourceDir Directory to search for trajectory files
- * @param pattern Glob pattern for trajectory files (relative to sourceDir)
- * @param targetDir Directory to copy files and HTML exports to
+ * Builds the sanitized environment for child agent processes using an explicit allowlist,
+ * preventing host credentials and session markers from leaking into agent sandboxes.
  */
-export function exportTrajectories(sourceDir: string, pattern: string, targetDir: string): void {
-  if (!fs.existsSync(sourceDir)) return;
-
-  // fs.globSync is available in Node 22+
-  const files = fs.globSync(pattern, { cwd: sourceDir });
-  
-  for (const relativeSrc of files as string[]) {
-    const srcFile = path.join(sourceDir, relativeSrc);
-    const fileName = path.basename(srcFile);
-    const destFile = path.join(targetDir, fileName);
-    
-    try {
-      fs.copyFileSync(srcFile, destFile);
-      console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
-
-      // Ensure SQLite WAL-mode companion files are copied alongside .db files
-      if (fileName.endsWith('.db')) {
-        const walSrc = `${srcFile}-wal`;
-        const shmSrc = `${srcFile}-shm`;
-        if (fs.existsSync(walSrc)) {
-          fs.copyFileSync(walSrc, `${destFile}-wal`);
-          console.log(`Copied trajectory WAL: ${fileName}-wal to ${targetDir}`);
-        }
-        if (fs.existsSync(shmSrc)) {
-          fs.copyFileSync(shmSrc, `${destFile}-shm`);
-          console.log(`Copied trajectory SHM: ${fileName}-shm to ${targetDir}`);
-        }
-      }
-
-      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
-      const fileBuffer = fs.readFileSync(srcFile);
-      const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
-      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
-      const htmlDest = path.join(targetDir, htmlFileName);
-      fs.writeFileSync(htmlDest, htmlContent, 'utf8');
-      console.log(`Generated HTML export: ${htmlFileName}`);
-    } catch (e) {
-      console.error(`Failed to export trajectory ${fileName}:`, e);
-    }
-  }
+export function sanitizeAgentChildEnv(
+  sourceEnv: NodeJS.ProcessEnv = process.env,
+  overrides?: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  return filterAllowedEnv(sourceEnv, ALLOWED_CHILD_ENV_KEYS, ALLOWED_ENV_PREFIXES, overrides, {
+    filterKiroTerm: true,
+  });
 }
 
 /**
@@ -571,6 +583,7 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
  * @param targetDir The target directory for logs and results
  * @param agentName Name of the agent (for error messages)
  * @param runType The run type ('guided' or 'unguided'); controls what the sandbox exposes
+ * @param envOverrides Optional environment variables to set after sanitizing process.env
  */
 export async function runCliAgentCommand(
   command: string,
@@ -578,18 +591,35 @@ export async function runCliAgentCommand(
   workDir: string,
   targetDir: string,
   agentName: string,
-  runType: string
+  runType: string,
+  envOverrides?: NodeJS.ProcessEnv,
 ): Promise<void> {
-  const sanitizedEnv = {
-    ...process.env,
-    PWD: workDir,
-    PWTEST_CACHE_DIR: path.join(process.env.HOME || workDir, '.cache', 'playwright-transform'),
-  };
+  const tempHome = path.dirname(workDir);
+  const shimDir = path.join(tempHome, '.gd-bin');
+  const resultsRoot = path.join(rootDir, 'results');
+  const sanitizedEnv = sanitizeAgentChildEnv(process.env, envOverrides);
+  sanitizedEnv.PWD = workDir;
+  sanitizedEnv.PATH = [
+    shimDir,
+    ...(sanitizedEnv.PATH || '')
+      .split(path.delimiter)
+      .filter(p => p && p !== targetDir && !p.startsWith(targetDir + path.sep) && !p.startsWith(resultsRoot + path.sep)),
+  ].join(path.delimiter);
+  sanitizedEnv.PWTEST_CACHE_DIR = path.join(sanitizedEnv.HOME || process.env.HOME || workDir, '.cache', 'playwright-transform');
+
+  const isolatedLogPath = path.join(tempHome, MODERN_WEB_LOG_FILE);
+  let stopWatchingMcpLog = () => {};
+  if (runType === 'guided') {
+    sanitizedEnv.MODERN_WEB_LOG_DIR = tempHome;
+    sanitizedEnv.ENABLE_FILE_LOGGING = 'true';
+    stopWatchingMcpLog = watchLogFile(isolatedLogPath);
+  }
+
   // Hide the repo from the agent so it can't read guides/expectations/graders.
-  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(targetDir, runType));
+  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(tempHome, runType));
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
-    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
+    env: sanitizedEnv,
     stdio: ['ignore', 'pipe', 'pipe'], // 'pipe' captures output for log files but does NOT print to terminal natively
     detached: true
   });
@@ -655,13 +685,13 @@ export async function runCliAgentCommand(
 
     // Save output to chat_log.txt
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
-    fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+    fs.writeFileSync(chatLogPath, sanitizeTextSecrets(stdoutData), 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
 
     // Save stderr to agent_stderr.log to surface unexpected problems
     if (stderrData.length > 0) {
       const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
-      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+      fs.writeFileSync(stderrLogPath, sanitizeTextSecrets(stderrData), 'utf8');
       console.log(`Saved stderr to: ${stderrLogPath}`);
     }
 
@@ -672,22 +702,23 @@ export async function runCliAgentCommand(
     }
 
     if (timedOut || exitCode !== 0) {
-      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (10m)' : exitCode}`);
+      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (15m)' : exitCode}`);
     }
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
-    const finalExitCode = timedOut ? 'TIMEOUT (10m)' : recordedExit;
+    const finalExitCode = timedOut ? 'TIMEOUT (15m)' : recordedExit;
     
     // Save generation failure info so results collector registers early failure
     try {
       const failureFile = path.join(targetDir, 'generation_failed.json');
+      const rawFailureStderr = (timedOut && !stderrData)
+        ? 'Agent timed out after 15 minutes'
+        : (stderrData || err.message || String(err));
       fs.writeFileSync(failureFile, JSON.stringify({
         agentName,
         exitCode: finalExitCode,
-        stderr: (timedOut && !stderrData)
-          ? 'Agent timed out after 10 minutes'
-          : (stderrData || err.message || String(err)),
-        stdout: stdoutData
+        stderr: sanitizeTextSecrets(rawFailureStderr),
+        stdout: sanitizeTextSecrets(stdoutData)
       }, null, 2));
       console.log(`Saved generation failure info to: ${failureFile}`);
     } catch (writeErr) {
@@ -700,93 +731,18 @@ export async function runCliAgentCommand(
     if (stderrData) {
       fallbackContent += `\nCaptured stderr:\n${stderrData}`;
     }
-    fs.writeFileSync(stderrLogPath, fallbackContent, 'utf8');
+    fs.writeFileSync(stderrLogPath, sanitizeTextSecrets(fallbackContent), 'utf8');
     console.log(`Saved fallback error log to: ${stderrLogPath}`);
     
     throw err; // Re-throw to propagate failure
   } finally {
+    stopWatchingMcpLog();
+    if (runType === 'guided' && fs.existsSync(isolatedLogPath)) {
+      const cleanLog = sanitizeTextSecrets(fs.readFileSync(isolatedLogPath, 'utf8'));
+      fs.writeFileSync(path.join(targetDir, MODERN_WEB_LOG_FILE), cleanLog, 'utf8');
+    }
     process.off('SIGTERM', onSigTerm);
   }
-}
-
-/**
- * Generates an HTML file that can load and display a trajectory file (JSON/PB) 
- * by embedding it as base64 and posting it to the trajectory viewer iframe.
- * @param fileBuffer Binary content of the trajectory file
- * @param fileName Name of the trajectory file
- * @param prodBase Base URL of the trajectory viewer
- * @returns HTML content
- */
-export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
-    const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
-    const title = `Trajectory - ${trajectoryId}`;
-
-    // Node.js environment: Buffer is faster than manual conversion
-    const base64String = Buffer.from(fileBuffer).toString('base64');
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>${title}</title>
-    <style>
-        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; background: #0f172a; font-family: sans-serif; }
-        iframe { border: none; width: 100%; height: 100%; display: none; }
-        .loading {
-            display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8;
-            flex-direction: column; gap: 1rem;
-        }
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid #1e293b; border-top: 4px solid #3b82f6;
-            border-radius: 50%; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
-    <div id="loading-state" class="loading">
-        <div class="spinner"></div>
-        <div>Loading Trajectory Browser...</div>
-    </div>
-    <iframe id="viewer-frame" src="${prodBase}index.html"></iframe>
-
-    <script id="trajectory-data" type="application/base64">
-        ${base64String}
-    </script>
-    <script>
-        const fileName = ${JSON.stringify(fileName)};
-        const b64Data = document.getElementById('trajectory-data').textContent.trim();
-        const binaryStr = atob(b64Data);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const frame = document.getElementById('viewer-frame');
-        const loading = document.getElementById('loading-state');
-
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'READY') {
-                frame.style.display = 'block';
-                loading.style.display = 'none';
-                frame.contentWindow.postMessage({
-                    type: 'LOAD_RAW_FILE',
-                    fileBuffer: bytes.buffer,
-                    fileName
-                }, '*', [bytes.buffer]);
-            }
-        });
-
-        // Fallback if production is unreachable or slow
-        setTimeout(() => {
-            if (loading.style.display !== 'none') {
-                loading.textContent = "Unable to load viewer. Ensure you are connected to the network or look for CSP errors.";
-            }
-        }, 8000);
-    </script>
-</body>
-</html>`;
 }
 
 /**
@@ -795,14 +751,15 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
 export function getGraderScriptContent(
   targetDir: string,
   graderPath: string,
-  guideName: string
+  guideName: string,
+  baselineTarget?: string
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
-  const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
+  const resolvedBaselineTarget = baselineTarget || 'widely';
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -814,10 +771,12 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      ${JSON.stringify(gradeReportDir)},
-      'inherit',
-      patchFile,
-      zeroPassrateFile
+      {
+        stdio: 'inherit',
+        patchFile,
+        zeroPassrateFile,
+        baselineTarget: ${JSON.stringify(resolvedBaselineTarget)},
+      }
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {

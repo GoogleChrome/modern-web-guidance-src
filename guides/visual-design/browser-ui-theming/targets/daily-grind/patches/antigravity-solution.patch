@@ -1,0 +1,445 @@
+diff --git a/index.html b/index.html
+index 66c9173..9ab8d4b 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,15 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light dark;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: thin;
++    }
++
++    ::selection {
++      background-color: var(--accent);
++      color: var(--text);
+     }
+ 
+     * {
+@@ -44,6 +53,7 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      user-select: none;
+     }
+ 
+     nav ul {
+@@ -129,12 +139,315 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn-reset {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-reset:hover {
++      background: #bcaaa4;
++    }
++
++    /* Order Customization Section */
++    .order-section {
++      margin-top: 50px;
++    }
++
++    .order-form {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++      display: grid;
++      gap: 20px;
++    }
++
++    .form-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .form-group > label,
++    .form-group legend {
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    fieldset.form-group {
++      border: none;
++    }
++
++    /* Textual fields & Pickers */
++    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
++    textarea,
++    select {
++      font-family: inherit;
++      font-size: 1rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 1.5px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 12px;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    input[type="text"],
++    input[type="email"],
++    textarea {
++      field-sizing: content;
++      min-width: 100%;
++    }
++
++    textarea {
++      resize: vertical;
++      min-height: 80px;
++    }
++
++    input::placeholder,
++    textarea::placeholder {
++      color: #8d6e63;
++      opacity: 0.85;
++    }
++
++    input:placeholder-shown,
++    textarea:placeholder-shown {
++      background-color: #fffdf9;
++    }
++
++    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
++    textarea:focus,
++    select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--primary);
++    }
++
++    /* User validity states (excluding range sliders) */
++    input:not(input[type="range"]):user-invalid,
++    textarea:user-invalid,
++    select:user-invalid {
++      border-color: #c62828;
++      background-color: #ffebee;
++    }
++
++    input:not(input[type="range"]):user-valid,
++    textarea:user-valid,
++    select:user-valid {
++      border-color: #2e7d32;
++    }
++
++    /* Customizable Select & Picker */
++    select,
++    ::picker(select) {
++      appearance: base-select;
++    }
++
++    ::picker(select) {
++      background: white;
++      color: var(--text);
++      border: 1.5px solid var(--primary);
++      border-radius: 6px;
++      padding: 4px;
++      box-shadow: 0 4px 12px rgba(62, 39, 35, 0.15);
++    }
++
++    option {
++      padding: 8px 12px;
++      border-radius: 4px;
++    }
++
++    option:hover,
++    option:focus {
++      background-color: var(--secondary);
++      color: var(--text);
++    }
++
++    option:checked {
++      background-color: var(--primary);
++      color: white;
++    }
++
++    /* Inline Radio & Checkbox Options */
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 4px;
++    }
++
++    .choice-label {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 8px 14px;
++      border: 1.5px solid var(--secondary);
++      border-radius: 6px;
++      background-color: var(--light);
++      color: var(--text);
++      cursor: pointer;
++      font-weight: 500;
++      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .choice-label:hover {
++      border-color: var(--primary);
++    }
++
++    label:has(:checked) {
++      background-color: var(--secondary);
++      border-color: var(--primary);
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    input[type="radio"],
++    input[type="checkbox"] {
++      appearance: none;
++      width: 1.15rem;
++      height: 1.15rem;
++      border: 2px solid var(--primary);
++      background-color: white;
++      display: inline-grid;
++      place-content: center;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input[type="radio"] {
++      border-radius: 50%;
++    }
++
++    input[type="checkbox"] {
++      border-radius: 4px;
++    }
++
++    input[type="radio"]::before {
++      content: "";
++      width: 0.55rem;
++      height: 0.55rem;
++      border-radius: 50%;
++      transform: scale(0);
++      transition: transform 0.15s ease-in-out;
++      background-color: var(--primary);
++    }
++
++    input[type="checkbox"]::before {
++      content: "";
++      width: 0.65rem;
++      height: 0.65rem;
++      transform: scale(0);
++      transition: transform 0.15s ease-in-out;
++      background-color: var(--primary);
++      clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
++    }
++
++    input[type="radio"]:checked::before,
++    input[type="checkbox"]:checked::before {
++      transform: scale(1);
++    }
++
++    input[type="radio"]:focus-visible,
++    input[type="checkbox"]:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Range Slider */
++    input[type="range"] {
++      appearance: none;
++      width: 100%;
++      background: transparent;
++      cursor: pointer;
++      padding: 6px 0;
++    }
++
++    input[type="range"]::-webkit-slider-runnable-track {
++      height: 8px;
++      border-radius: 4px;
++      background: var(--secondary);
++    }
++
++    input[type="range"]::-moz-range-track {
++      height: 8px;
++      border-radius: 4px;
++      background: var(--secondary);
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      appearance: none;
++      width: 20px;
++      height: 20px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      margin-top: -6px;
++      transition: transform 0.15s ease;
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      width: 20px;
++      height: 20px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 2px solid var(--accent);
++      transition: transform 0.15s ease;
++    }
++
++    input[type="range"]::-webkit-slider-thumb:hover,
++    input[type="range"]::-moz-range-thumb:hover {
++      transform: scale(1.1);
++    }
++
++    /* File Input */
++    input[type="file"] {
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    input[type="file"]::file-selector-button {
++      font-family: inherit;
++      font-weight: 600;
++      background-color: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 14px;
++      border-radius: 5px;
++      margin-right: 12px;
++      cursor: pointer;
++      transition: background-color 0.2s;
++    }
++
++    input[type="file"]::file-selector-button:hover {
++      background-color: var(--text);
++    }
++
++    .form-actions {
++      display: flex;
++      gap: 12px;
++      justify-content: flex-end;
++      margin-top: 10px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +508,100 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="order-section" aria-labelledby="customize-order-heading">
++      <h2 id="customize-order-heading" style="text-align: center;">Customize Your Order</h2>
++      <form class="order-form" action="/order-online" method="post">
++        <div class="form-row">
++          <div class="form-group">
++            <label for="customer-name">Name for Cup</label>
++            <input type="text" id="customer-name" name="customerName" placeholder="e.g., Alex" required minlength="2">
++          </div>
++          <div class="form-group">
++            <label for="customer-email">Receipt Email</label>
++            <input type="email" id="customer-email" name="customerEmail" placeholder="alex@example.com" required>
++          </div>
++        </div>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="coffee-blend">Coffee Blend &amp; Drink</label>
++            <select id="coffee-blend" name="coffeeBlend" required>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">18-Hour Cold Brew</option>
++              <option value="house-drip">House Blend Pour-Over</option>
++              <option value="cappuccino">Artisanal Cappuccino</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="pickup-time">Pickup Date &amp; Time</label>
++            <input type="datetime-local" id="pickup-time" name="pickupTime" required>
++          </div>
++        </div>
++
++        <fieldset class="form-group">
++          <legend>Cup Size</legend>
++          <div class="choice-group">
++            <label class="choice-label">
++              <input type="radio" name="cupSize" value="small">
++              Small (8 oz)
++            </label>
++            <label class="choice-label">
++              <input type="radio" name="cupSize" value="medium" checked>
++              Medium (12 oz)
++            </label>
++            <label class="choice-label">
++              <input type="radio" name="cupSize" value="large">
++              Large (16 oz)
++            </label>
++          </div>
++        </fieldset>
++
++        <fieldset class="form-group">
++          <legend>Milk &amp; Add-ins</legend>
++          <div class="choice-group">
++            <label class="choice-label">
++              <input type="checkbox" name="extras" value="oat-milk" checked>
++              Oat Milk
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="extras" value="extra-shot">
++              Extra Espresso Shot
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="extras" value="maple-syrup">
++              Vermont Maple Drizzle
++            </label>
++            <label class="choice-label">
++              <input type="checkbox" name="extras" value="cinnamon">
++              Cinnamon Dusting
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-row">
++          <div class="form-group">
++            <label for="sweetness-level">Sweetness Level (0% – 100%)</label>
++            <input type="range" id="sweetness-level" name="sweetnessLevel" min="0" max="100" step="25" value="50">
++          </div>
++          <div class="form-group">
++            <label for="latte-art-photo">Custom Latte Art / Mug Photo (Optional)</label>
++            <input type="file" id="latte-art-photo" name="latteArtPhoto" accept="image/*">
++          </div>
++        </div>
++
++        <div class="form-group">
++          <label for="barista-notes">Special Instructions for Barista</label>
++          <textarea id="barista-notes" name="baristaNotes" placeholder="Extra foam, light ice, allergy notes..."></textarea>
++        </div>
++
++        <div class="form-actions">
++          <button type="reset" class="btn btn-reset">Reset</button>
++          <button type="submit" class="btn">Place Custom Order</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

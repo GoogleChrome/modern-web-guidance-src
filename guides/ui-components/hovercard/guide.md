@@ -65,7 +65,7 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
 
 {{ FEATURE("interest-invokers", "timing") }}
 
-Use `@starting-style` to define the entry animation and `transition-behavior: allow-discrete` (along with `display` and `overlay`) to animate the exit from the top layer, gating the transitions behind `@media (prefers-reduced-motion: no-preference)`.
+Use `@starting-style` to define the entry animation and `transition-behavior: allow-discrete` (along with `display` and `overlay`) to animate the exit from the top layer, gating the transitions behind `@media (prefers-reduced-motion: no-preference)`. Declare `transition-behavior: allow-discrete` as a separate property after `transition` rather than inside the `transition` shorthand so older browsers do not ignore the entire `transition` declaration.
 
 ```css
 [popover].hovercard {
@@ -94,6 +94,7 @@ Use `@starting-style` to define the entry animation and `transition-behavior: al
       display,
       overlay;
     transition-duration: 0.4s;
+    /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
     transition-behavior: allow-discrete;
   }
 }
@@ -185,10 +186,18 @@ Because the trigger is a standard `<a href="...">` link, browsers without suppor
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("popover-hint") }}
+### Fallbacks & browser support for `popover="hint"`
+
+{{ BASELINE_STATUS("popover-hint") }}
+
+The `@oddbird/popover-polyfill` package does not polyfill `popover="hint"` in browsers that already support native `popover` (`auto` and `manual`). In those browsers, the unrecognized `"hint"` value defaults to `popover="manual"` (the HTML invalid value default), so a hovercard opened via keyboard focus may remain open if a second hovercard is opened via pointer hover unless explicitly dismissed on loss of interest by the invoker.
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}
 
-{{ FEATURE_FALLBACKS("cross-document-view-transitions") }}
+### Fallbacks & browser support for Cross-document view transitions
+
+{{ BASELINE_STATUS("cross-document-view-transitions") }}
+
+Cross-document view transitions are a progressive enhancement. In browsers that do not support `@view-transition { navigation: auto; }`, the rule (along with `blocking="render"` and `<link rel="expect">` on the destination page) degrades gracefully and clicking the link performs a standard page navigation without the morph animation.

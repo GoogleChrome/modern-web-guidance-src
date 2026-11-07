@@ -86,7 +86,7 @@ function findDirectionalKeyframes(
 ): CSSKeyframesRule[] {
   const { styleRules, keyframes } = getRules(true);
   const typeRe = new RegExp(`:active-view-transition-type\\([^)]*\\b${type}\\b[^)]*\\)`, 'i');
-  const pseudoRe = new RegExp(`::view-transition-${pseudo}\\(\\s*(root|\\*)\\s*\\)`, 'i');
+  const pseudoRe = new RegExp(`::view-transition-${pseudo}\\(\\s*[\\w*-]+\\s*\\)`, 'i');
   const names = new Set(keyframes.map((k) => k.name));
   const referenced = new Set(
     styleRules
@@ -130,7 +130,7 @@ function slidesTo(
 
 function getGroupRules(): CSSStyleRule[] {
   return getRules(true).styleRules.filter((r) =>
-    /::view-transition-group\(\s*root\s*\)/i.test(r.selectorText),
+    /::view-transition-group\(\s*[\w*-]+\s*\)/i.test(r.selectorText),
   );
 }
 

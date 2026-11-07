@@ -1,0 +1,1 @@
+- Audit the Daily Grind website's HTML markup, client-side scripts, and security headers, and implement preventative client-side security measures to safely deploy security policies.

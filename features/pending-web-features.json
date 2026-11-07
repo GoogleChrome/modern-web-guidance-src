@@ -17,31 +17,9 @@
     "group": "security",
     "compat_features": "api.SubtleCrypto.encapsulateKey"
   },
-  "tmp-window-management-resizing": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
-    "compat_features": "api.Window.minimize"
-  },
-  "tmp-display-state": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
-    "group": "css",
-    "compat_features": "css.at-rules.media.display-state"
-  },
-  "tmp-resizable": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
-    "group": "css",
-    "compat_features": "css.at-rules.media.resizable"
-  },
   "tmp-media-playback-while-not-visible": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4292",
     "compat_features": "html.elements.iframe.allow.media-playback-while-not-visible"
-  },
-  "tmp-scroll-triggered-animations": {
-    "issue": "https://github.com/web-platform-dx/web-features/pull/4163",
-    "group": [
-      "scrolling",
-      "animation"
-    ],
-    "compat_features": "css.properties.animation-trigger"
   },
   "tmp-navigation-source": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4301",
@@ -51,7 +29,10 @@
   "tmp-calc-dimensions": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4196",
     "group": "css",
-    "compat_features": "css.types.calc.dimension_division"
+    "compat_features": [
+      "css.types.calc.typed_division_produces_unitless_number",
+      "css.types.sign.typed_division_produces_unitless_number"
+    ]
   },
   "tmp-long-animation-frames-style-layout": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4453",
@@ -61,16 +42,6 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4429",
     "group": "css",
     "compat_features": "css.types.basic-shape.polygon.round"
-  },
-  "tmp-column-wrap": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4430",
-    "group": "css",
-    "compat_features": "css.properties.column-wrap"
-  },
-  "tmp-revert-rule": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4431",
-    "group": "css",
-    "compat_features": "css.types.global_keywords.revert-rule"
   },
   "tmp-path-length": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4307",
@@ -89,5 +60,13 @@
       "html.elements.camera",
       "html.elements.microphone"
     ]
+  },
+  "tmp-customizable-select-listbox": {
+    "issue": "https://github.com/web-platform-dx/web-features/issues/4551",
+    "group": [
+      "forms",
+      "html-elements"
+    ],
+    "compat_features": "css.properties.appearance.base-select.list_box"
   }
 }

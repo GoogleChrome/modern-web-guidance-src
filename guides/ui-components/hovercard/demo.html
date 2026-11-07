@@ -81,12 +81,14 @@
       /* Respect reduced motion */
       @media (prefers-reduced-motion: no-preference) {
         [popover] {
-           /* Entry animation setup */
-        transition:
-          display 0.4s allow-discrete,
-          overlay 0.4s allow-discrete,
-          opacity 0.4s,
-          transform 0.4s;
+          /* Entry animation setup */
+          transition:
+            display,
+            overlay,
+            opacity,
+            transform;
+          transition-duration: 0.4s;
+          transition-behavior: allow-discrete;
         }
       }
 

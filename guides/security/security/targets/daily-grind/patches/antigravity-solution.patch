@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+index 66c9173..240b763 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+diff --git a/package.json b/package.json
+index 2bd4d77..52fef7d 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "node --check server.js",
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..f8c338e
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,169 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++
++const PORT = parseInt(process.env.PORT || '11222', 10);
++const WORK_DIR = __dirname;
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.mjs': 'application/javascript; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.gif': 'image/gif',
++  '.svg': 'image/svg+xml',
++  '.ico': 'image/x-icon',
++  '.txt': 'text/plain; charset=utf-8',
++};
++
++function generateNonce() {
++  return crypto.randomBytes(16).toString('base64');
++}
++
++function getBaseHeaders() {
++  return {
++    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
++    'X-Content-Type-Options': 'nosniff',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++  };
++}
++
++function getDocumentHeaders(nonce) {
++  const cspDirectives = [
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'self'",
++    "require-trusted-types-for 'script'",
++    "report-to main-endpoint",
++  ];
++
++  return {
++    ...getBaseHeaders(),
++    'Content-Security-Policy': cspDirectives.join('; '),
++    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy': 'camera=(), geolocation=(), microphone=()',
++    'Reporting-Endpoints': 'default="https://reports.example/default", main-endpoint="https://reports.example/main"',
++    'X-Frame-Options': 'SAMEORIGIN',
++  };
++}
++
++const server = http.createServer((req, res) => {
++  const site = req.headers['sec-fetch-site'];
++  const mode = req.headers['sec-fetch-mode'];
++  const dest = req.headers['sec-fetch-dest'];
++
++  // Server-side Fetch Metadata protection (Expectation 14)
++  if (site) {
++    const isAllowedSite = ['same-origin', 'same-site', 'none'].includes(site);
++    const isAllowedNavigation =
++      site === 'cross-site' &&
++      mode === 'navigate' &&
++      (req.method === 'GET' || req.method === 'HEAD') &&
++      !['object', 'embed'].includes(dest);
++
++    if (!isAllowedSite && !isAllowedNavigation) {
++      res.writeHead(403, {
++        ...getBaseHeaders(),
++        'Content-Type': 'text/plain; charset=utf-8',
++      });
++      res.end('Forbidden');
++      return;
++    }
++  }
++
++  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++  const pathname = parsedUrl.pathname;
++
++  // Logout route (Expectation 20)
++  if (pathname === '/logout' || pathname === '/logout/') {
++    const nonce = generateNonce();
++    res.writeHead(200, {
++      ...getDocumentHeaders(nonce),
++      'Clear-Site-Data': '"cookies", "storage", "cache"',
++      'Content-Type': 'text/html; charset=utf-8',
++    });
++    res.end('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta http-equiv="refresh" content="2;url=/"><title>Logged Out</title></head><body><p>You have been logged out. <a href="/">Return to home</a></p></body></html>');
++    return;
++  }
++
++  let requestedFile = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
++  let filePath = path.join(WORK_DIR, requestedFile);
++
++  // Security check: prevent directory traversal
++  const normalizedPath = path.normalize(filePath);
++  if (!normalizedPath.startsWith(WORK_DIR)) {
++    res.writeHead(403, {
++      ...getBaseHeaders(),
++      'Content-Type': 'text/plain; charset=utf-8',
++    });
++    res.end('Forbidden');
++    return;
++  }
++
++  let isHtml = false;
++  if (!fs.existsSync(normalizedPath) || fs.statSync(normalizedPath).isDirectory()) {
++    // Fallback to index.html for SPA routes
++    filePath = path.join(WORK_DIR, 'index.html');
++    isHtml = true;
++  } else {
++    isHtml = path.extname(normalizedPath) === '.html';
++    filePath = normalizedPath;
++  }
++
++  const ext = path.extname(filePath);
++  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++
++  if (isHtml) {
++    const nonce = generateNonce();
++    fs.readFile(filePath, 'utf8', (err, html) => {
++      if (err) {
++        res.writeHead(500, {
++          ...getBaseHeaders(),
++          'Content-Type': 'text/plain; charset=utf-8',
++        });
++        res.end('Internal Server Error');
++        return;
++      }
++
++      // Inject nonce into any script tags or replace placeholder
++      const injectedHtml = html
++        .replace(/<script\b(?![^>]*\bnonce=)([^>]*)>/gi, `<script nonce="${nonce}"$1>`)
++        .replace(/CSP_NONCE/g, nonce);
++
++      res.writeHead(200, {
++        ...getDocumentHeaders(nonce),
++        'Content-Type': contentType,
++      });
++      res.end(injectedHtml);
++    });
++  } else {
++    fs.readFile(filePath, (err, data) => {
++      if (err) {
++        res.writeHead(404, {
++          ...getBaseHeaders(),
++          'Content-Type': 'text/plain; charset=utf-8',
++        });
++        res.end('Not Found');
++        return;
++      }
++
++      res.writeHead(200, {
++        ...getBaseHeaders(),
++        'Content-Type': contentType,
++      });
++      res.end(data);
++    });
++  }
++});
++
++server.listen(PORT, () => {
++  console.log(`Daily Grind running on http://localhost:${PORT}`);
++});

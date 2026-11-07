@@ -1,0 +1,1 @@
+- Update the stylesheet in `index.html` for The Daily Grind so that progressive-enhancement styles for the seasonal favorite cards, hero section, and navigation bar only take effect in browsers that support newer CSS @-rules.

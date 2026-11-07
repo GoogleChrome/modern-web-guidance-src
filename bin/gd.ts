@@ -3,19 +3,15 @@
 import { parseArgs } from 'util';
 import path from 'path';
 import fs from 'fs';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
+import { loadAllowedEnvFile } from '../src/harness/lib/secret-guard.ts';
 
-// Load environment variables (Node 20.12+)
-try {
-  process.loadEnvFile(path.join(rootDir, '.env'));
-} catch {
-  // Ignore if file doesn't exist
-}
+loadAllowedEnvFile(path.join(rootDir, '.env'));
 
 // --- Single Source of Truth Metadata ---
 
@@ -27,7 +23,6 @@ const ALL_OPTIONS = {
   'gen-grader': { type: 'boolean', desc: 'Generate a new grader script' },
   guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
-  usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
   config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
   'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
@@ -35,12 +30,15 @@ const ALL_OPTIONS = {
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
   targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
+  json: { type: 'boolean', desc: 'Output analyzer findings in structured JSON format' },
+  guide: { type: 'string', desc: 'Filter analyzer to a specific guide ID' },
+  'include-docs-and-tests': { type: 'boolean', desc: 'Include documentation, example, demo, and test files in analysis' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
-  audit: { desc: 'Show status of all guides', flags: ['usecases'] },
+  'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
@@ -108,8 +106,6 @@ completion.on('arg1', ({ before, line, reply }) => {
     reply([...listResultsRunDirs(), ...flags]);
   } else if (before === 'gen') {
     reply(['grader']);
-  } else if (before === 'audit') {
-    reply(flags);
   } else if (['dev', 'test', 'grade', 'pr'].includes(before)) {
     reply([...listGuideDirs(), ...flags]);
   } else {
@@ -198,9 +194,12 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'pr', 'dev-gap', 'audit'],
+      commands: ['dev', 'pr', 'dev-gap'],
     },
-
+    {
+      title: 'Codebase Analysis',
+      commands: ['legacy-scan'],
+    },
     {
       title: 'Evaluation & Dashboard',
       commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
@@ -228,13 +227,13 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : '';
+          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : flagName === 'guide' ? ' <id>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -250,6 +249,13 @@ function showHelp() {
 
 async function main() {
   const command = positionals[0];
+
+  if (command === 'legacy-scan' || command === 'analyze') {
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
+    const result = await runAnalyzeCli(process.argv.slice(3));
+    writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
 
   if (values.help || !command) {
     showHelp();
@@ -309,7 +315,18 @@ async function main() {
         break;
       }
 
-      // Default dev-guide pipeline
+      // Default dev-guide pipeline. From main, work on a new gd-dev/ branch so generation and
+      // post-report fixes land in separate commits (an existing branch may be stale, so skip it).
+      const branch = (await import('../src/authoring/pr.ts')).devPrBranch(path.basename(path.resolve(dir)));
+      try {
+        const current = execSync('git branch --show-current', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        if (current === 'main' && fs.existsSync(path.resolve(dir))) {
+          execSync(`git checkout -b "${branch}"`, { stdio: 'ignore' });
+          console.log(cCyan(`Switched to new branch '${branch}'.`));
+        }
+      } catch {
+        console.warn(cDim(`Could not switch to branch '${branch}'; continuing on the current branch.`));
+      }
       const { devGuide } = await import('../src/authoring/dev.ts');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
       const success = await devGuide(dir, {
@@ -326,12 +343,6 @@ async function main() {
     case 'dev-all': {
       const { devAll } = await import('../src/authoring/dev.ts');
       await devAll({ verbose: !!values.verbose });
-      break;
-    }
-
-    case 'audit': {
-      const { auditGuides } = await import('../src/authoring/dev.ts');
-      auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
 

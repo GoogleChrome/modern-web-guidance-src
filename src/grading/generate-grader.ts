@@ -8,6 +8,7 @@ import { buildTargetGraderPrompt } from '../authoring/dev-prompts.ts';
 import {
   GUIDE_FILE,
   EXPECTATIONS_FILE,
+  TASK_FILE,
   getDefaultSolutionAgent,
   getActiveSolutionAgents,
   SOLUTION_PATCH_FILES,
@@ -21,7 +22,16 @@ import {
 } from '../core/guide-validation.ts';
 import { cCyan, cGreen } from '../core/colors.ts';
 
-export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
+export async function generateTargetGrader(
+  guideDirAbs: string,
+  baseApp: string,
+  failureContext?: string,
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  }
+): Promise<void> {
   const repoRoot = rootDir;
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
@@ -34,6 +44,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     });
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE), path.join(workDir, TASK_FILE));
     
     // =========================================================================
     // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
@@ -44,6 +55,15 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     fs.copyFileSync(
       path.resolve(repoRoot, 'src', 'core', 'patch-utils.ts'),
       path.join(tempHome, 'src', 'core', 'patch-utils.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'src', 'core', 'baseline.ts'),
+      path.join(tempHome, 'src', 'core', 'baseline.ts')
+    );
+    fs.mkdirSync(path.join(tempHome, 'features'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'features', 'pending-web-features.json'),
+      path.join(tempHome, 'features', 'pending-web-features.json')
     );
     fs.mkdirSync(path.join(tempHome, 'src', 'grading'), { recursive: true });
     fs.copyFileSync(
@@ -87,13 +107,18 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       path.join(workDir, 'linkedom.d.ts')
     );
     fs.copyFileSync(
-      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'index.d.ts'),
       path.join(workDir, 'cssomnom.d.ts')
     );
 
     const sourcePatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
     if (fs.existsSync(sourcePatches)) {
       fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
+    }
+
+    const existingGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
+    if (failureContext && fs.existsSync(existingGrader)) {
+      fs.copyFileSync(existingGrader, path.join(workDir, GRADER_FILE));
     }
 
     const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
@@ -106,6 +131,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     const prompt = buildTargetGraderPrompt({
       guideFile: GUIDE_FILE,
       expectationsFile: EXPECTATIONS_FILE,
+      taskFile: TASK_FILE,
       solutionPatchFiles,
       zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
       graderFile: GRADER_FILE,
@@ -119,6 +145,7 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       cssomnomDtsPath: path.join(workDir, 'cssomnom.d.ts'),
       failureContext,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      prContext,
     });
 
     await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
@@ -130,11 +157,11 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.copyFileSync(generatedGrader, destGrader);
     }
 
-    const generatedPatches = path.join(workDir, PATCHES_DIR);
-    if (fs.existsSync(generatedPatches)) {
-      const destPatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
-      fs.mkdirSync(destPatches, { recursive: true });
-      fs.cpSync(generatedPatches, destPatches, { recursive: true });
+    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
+    if (fs.existsSync(generatedZeroPassrate)) {
+      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
+      fs.mkdirSync(path.dirname(destZeroPassrate), { recursive: true });
+      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
     }
   } finally {
     try {
