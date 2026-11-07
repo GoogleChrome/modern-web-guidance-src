@@ -16,16 +16,21 @@ To implement a soft edge fade:
 ### Fading the bottom edge of a container
 This is useful for indicating that there is more content below in a scrollable area.
 
+The mask stays fixed to the container while the content scrolls, so give the fade a fixed length and add the same amount of padding at the end of the container. The last lines can then scroll clear of the fade and be read at full contrast (WCAG 1.4.3 Contrast (Minimum)). This only applies to containers that scroll: when the fade marks content that is withheld on purpose, such as a paywall teaser with `overflow: hidden`, the faded text isn't meant to be read, so a fixed percentage-based fade is fine.
+
 ```css
 .container {
   /* Enable scrolling */
   overflow-y: auto;
+
+  /* Same length as the fade, so the last lines can scroll clear of it */
+  padding-block-end: 3em;
   
   /* MANDATORY: Use vendor prefix for wider support in older browsers */
-  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 3em), transparent 100%);
   
   /* Standard property for modern browsers */
-  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black calc(100% - 3em), transparent 100%);
 }
 ```
 
@@ -34,9 +39,12 @@ You can use a single gradient with multiple color stops to fade both edges.
 
 ```css
 .dual-fade-container {
-  /* Content is visible between 10% and 90% of the height */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  /* Same length as the fades, so the first and last lines can scroll clear of them */
+  padding-block: 3em;
+
+  /* Content is fully visible except within 3em of the top and bottom edges */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 3em, black calc(100% - 3em), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 3em, black calc(100% - 3em), transparent 100%);
 }
 ```
 
