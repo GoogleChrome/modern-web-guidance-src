@@ -1,0 +1,298 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..178135c
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++/dist/
+diff --git a/index.html b/index.html
+index 66c9173..5536cb5 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,19 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++      --in-oklch: ;
++      --flavor-sweet: #b76a20;
++      --flavor-roast: #4e342e;
++      --flavor-creamy: #ead5b1;
++    }
++
++    @supports (background: linear-gradient(to right in oklab, white, black)) {
++      :root { --in-oklab: in oklab; }
++    }
++
++    @supports (background: linear-gradient(to right in oklch, white, black)) {
++      :root { --in-oklch: in oklch; }
+     }
+ 
+     * {
+@@ -74,9 +87,13 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      position: relative;
++      isolation: isolate;
++      min-height: 60vh;
++      background-color: #34231f;
++      background-image: linear-gradient(to bottom var(--in-oklab), #291a16e6, #513124d9),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-blend-mode: multiply, normal;
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -85,12 +102,39 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 70px 20px;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      pointer-events: none;
++      background:
++        radial-gradient(ellipse at 15% 10% var(--in-oklch), #c97935a6, #c9793500 65%),
++        linear-gradient(115deg var(--in-oklab), #b5632b33, #56352a00 55%, #d9a26240);
++      mix-blend-mode: screen;
++    }
++
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0;
++      height: 12px;
++      pointer-events: none;
++      background: repeating-linear-gradient(135deg, #d4a46b 0 8px, #795137 0 16px);
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 4px #21140dcc, 0 6px 24px #21140d80;
++    }
++
++    .hero p {
++      max-width: 42rem;
++      text-shadow: 0 1px 4px #21140d;
+     }
+ 
+     /* Content Sections */
+@@ -108,13 +152,76 @@
+     }
+ 
+     .card {
+-      background: white;
++      position: relative;
++      background: #fffdf8;
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid #ece1d4;
++      border-radius: 12px;
++      box-shadow:
++        0 1px 2px #38231814,
++        0 4px 8px -2px #3823181a,
++        0 12px 20px -8px #38231826,
++        0 24px 36px -18px #38231833;
+       text-align: center;
+     }
+ 
++    .card::before {
++      content: "";
++      display: block;
++      height: 24px;
++      margin-bottom: 12px;
++      background: radial-gradient(circle, #b48b5659 2px, transparent 3px) center / 12px 12px;
++    }
++
++    .flavor-profile {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .flavor-pie {
++      flex: 0 0 76px;
++      width: 76px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: conic-gradient(from -90deg,
++        var(--flavor-sweet) 0 var(--sweet),
++        var(--flavor-roast) 0 var(--roast-end),
++        var(--flavor-creamy) 0 100%);
++    }
++
++    .maple { --sweet: 45%; --roast-end: 65%; }
++    .espresso { --sweet: 10%; --roast-end: 90%; }
++    .cold-brew { --sweet: 25%; --roast-end: 90%; }
++
++    .flavor-profile table {
++      border-collapse: collapse;
++      font-size: 0.75rem;
++      text-align: left;
++    }
++
++    .flavor-profile caption {
++      font-weight: 700;
++      text-align: left;
++      margin-bottom: 4px;
++    }
++
++    .flavor-profile th, .flavor-profile td { padding: 1px 5px; }
++    .flavor-profile tbody th { font-weight: 400; }
++    .flavor-profile td { text-align: right; }
++    .flavor-profile tbody th::before {
++      content: "";
++      display: inline-block;
++      width: 8px;
++      height: 8px;
++      margin-right: 5px;
++      background: var(--flavor-sweet);
++    }
++    .flavor-profile tbody tr:nth-child(2) th::before { background: var(--flavor-roast); }
++    .flavor-profile tbody tr:nth-child(3) th::before { background: var(--flavor-creamy); }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -122,21 +229,60 @@
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      position: relative;
++      isolation: isolate;
++      background: linear-gradient(120deg var(--in-oklab), #704332, #4e342e 65%, #38251f);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      box-shadow: 0 1px 2px #26180d33, 0 4px 8px -3px #26180d40;
++      transition: box-shadow 0.2s;
++    }
++
++    .btn::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      border-radius: inherit;
++      pointer-events: none;
++      background: linear-gradient(to bottom var(--in-oklab), #ffd5a42e, #ffd5a400 65%);
++      mix-blend-mode: screen;
++    }
++
++    .btn:hover, .btn:focus-visible {
++      box-shadow: 0 2px 4px #26180d40, 0 8px 16px -4px #26180d66;
++    }
++
++    a:focus-visible {
++      outline: 3px solid #b76a20;
++      outline-offset: 4px;
++    }
++
++    .hero .btn {
++      color: #302016;
++      font-weight: 700;
++      background: linear-gradient(110deg var(--in-oklch), #ffe0a1, #edb55f 55%, #d99a48);
++    }
++
++    nav a:focus-visible, .hero a:focus-visible { outline-color: #ffe0a1; }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn, nav a { transition: none; }
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    @media (max-width: 640px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.4rem; }
+     }
+ 
+     footer {
+       background: var(--secondary);
++      background-image: repeating-conic-gradient(#c9b8ad45 0 25%, transparent 0 50%);
++      background-size: 24px 24px;
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -181,16 +327,52 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="flavor-profile">
++            <div class="flavor-pie maple" aria-hidden="true"></div>
++            <table>
++              <caption>Maple Oat Latte flavor profile</caption>
++              <thead><tr><th scope="col">Flavor</th><th scope="col">Share</th></tr></thead>
++              <tbody>
++                <tr><th scope="row">Sweet</th><td>45%</td></tr>
++                <tr><th scope="row">Roasted</th><td>20%</td></tr>
++                <tr><th scope="row">Creamy</th><td>35%</td></tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="flavor-profile">
++            <div class="flavor-pie espresso" aria-hidden="true"></div>
++            <table>
++              <caption>Dark Roast Espresso flavor profile</caption>
++              <thead><tr><th scope="col">Flavor</th><th scope="col">Share</th></tr></thead>
++              <tbody>
++                <tr><th scope="row">Sweet</th><td>10%</td></tr>
++                <tr><th scope="row">Roasted</th><td>80%</td></tr>
++                <tr><th scope="row">Creamy</th><td>10%</td></tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="flavor-profile">
++            <div class="flavor-pie cold-brew" aria-hidden="true"></div>
++            <table>
++              <caption>Cold Brew flavor profile</caption>
++              <thead><tr><th scope="col">Flavor</th><th scope="col">Share</th></tr></thead>
++              <tbody>
++                <tr><th scope="row">Sweet</th><td>25%</td></tr>
++                <tr><th scope="row">Roasted</th><td>65%</td></tr>
++                <tr><th scope="row">Creamy</th><td>10%</td></tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

@@ -1,1 +1,5 @@
-- The implementation MUST specify perceptual color interpolation spaces (`in oklch` or `in oklab`) when defining CSS gradients or `color-mix()` expressions.
+- Smooth color gradients and `color-mix()` expressions specify a perceptual interpolation color space (`in oklch` or `in oklab`), either directly or through a custom property that holds the token (such as `--in-oklab`), and none specify `in srgb`.
+- At least one element's `box-shadow` has two or more comma-separated shadow layers to create depth.
+- A lighting or texture overlay uses `background-blend-mode`, or uses `mix-blend-mode` on an element inside an `isolation: isolate` stacking context.
+- Decorative patterns (such as stripes, dots, or checkerboards) are drawn with CSS gradients that use hard color stops, not with image or SVG files.
+- A chart drawn with a CSS gradient (such as a `conic-gradient()` pie) is accompanied by a semantic `<table>` that exposes the same data.

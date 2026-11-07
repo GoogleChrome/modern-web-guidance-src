@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+index 66c9173..08a252a 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,22 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++      --in-oklch: ;
++    }
++
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
++    }
++
++    @supports (linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
+     }
+ 
+     * {
+@@ -75,10 +91,12 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background-image: linear-gradient(to bottom var(--in-oklch), var(--primary), color-mix(in oklab, var(--primary) 60%, var(--accent))),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-blend-mode: soft-light;
+       background-size: cover;
+       background-position: center;
++      isolation: isolate;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -86,33 +104,85 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      mix-blend-mode: screen;
++      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
++    }
++
++    .hero .btn {
++      background: linear-gradient(to right var(--in-oklab), var(--primary), var(--accent));
++      mix-blend-mode: normal;
++      box-shadow:
++        0 2px 4px rgba(0, 0, 0, 0.15),
++        0 6px 12px rgba(0, 0, 0, 0.2),
++        0 12px 24px rgba(0, 0, 0, 0.25);
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+-      padding: 0 20px;
++      padding: 30px 20px;
++      --distance: 2em;
++      --radius: .5em;
++      --color-1: color-mix(in oklab, var(--secondary) 35%, transparent);
++      --color-2: var(--light);
++      --polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
++      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
++      border-radius: 12px;
+     }
+ 
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow:
++        0 1px 2px rgba(62, 39, 35, 0.06),
++        0 4px 8px rgba(62, 39, 35, 0.08),
++        0 12px 24px rgba(62, 39, 35, 0.12),
++        0 24px 48px rgba(62, 39, 35, 0.08);
+       text-align: center;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
++    }
++
++    .card::before {
++      content: "";
++      display: block;
++      height: 12px;
++      margin: -24px -20px 18px -20px;
++      --color-1: color-mix(in oklab, var(--primary) 18%, white);
++      --color-2: color-mix(in oklab, var(--secondary) 45%, white);
++    }
++
++    .card-stripes::before {
++      background: repeating-linear-gradient(-45deg, var(--color-1) 0 1em, var(--color-2) 0 2em);
++    }
++
++    .card-checkerboard::before {
++      background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%) 0 / 2em 2em;
++    }
++
++    .card-dots::before {
++      --distance: 2em;
++      --radius: .5em;
++      --polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
++      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
+     }
+ 
+     .card h3 {
+@@ -120,23 +190,75 @@
+       color: var(--primary);
+     }
+ 
++    .flavor-profile {
++      margin: 18px 0;
++      padding: 12px;
++      background: color-mix(in oklab, var(--secondary) 20%, white);
++      border-radius: 8px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .pie {
++      --p: 70%;
++      --color-1: var(--primary);
++      --color-2: var(--accent);
++      width: 60px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: conic-gradient(var(--color-1) var(--p), transparent 0%) var(--color-2);
++      filter: drop-shadow(0 2px 4px rgba(62, 39, 35, 0.2));
++    }
++
++    .flavor-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.8rem;
++      color: var(--text);
++    }
++
++    .flavor-table caption {
++      font-weight: 600;
++      margin-bottom: 4px;
++      color: var(--primary);
++    }
++
++    .flavor-table th,
++    .flavor-table td {
++      padding: 3px 6px;
++      border-bottom: 1px solid color-mix(in oklab, var(--secondary) 60%, white);
++      text-align: left;
++    }
++
++    .flavor-table td:last-child,
++    .flavor-table th:last-child {
++      text-align: right;
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: linear-gradient(to bottom var(--in-oklab), var(--primary), color-mix(in oklab, var(--primary) 75%, var(--accent)));
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, box-shadow 0.3s;
++      box-shadow:
++        0 1px 2px rgba(0, 0, 0, 0.12),
++        0 4px 8px rgba(0, 0, 0, 0.14);
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: linear-gradient(to bottom var(--in-oklab), #3e2723, var(--primary));
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      --color-1: var(--secondary);
++      --color-2: color-mix(in oklab, var(--secondary) 85%, white);
++      background: linear-gradient(to right, var(--color-1) 50%, var(--color-2) 0) 0 / 2em;
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -178,19 +300,85 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card card-stripes">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="flavor-profile">
++            <div class="pie" style="--p: 65%; --color-1: var(--primary); --color-2: var(--accent);" aria-hidden="true"></div>
++            <table class="flavor-table">
++              <caption>Maple Oat Latte Flavor Profile</caption>
++              <thead>
++                <tr>
++                  <th scope="col">Flavor Note</th>
++                  <th scope="col">Share</th>
++                </tr>
++              </thead>
++              <tbody>
++                <tr>
++                  <td>Rich Espresso &amp; Oat</td>
++                  <td>65%</td>
++                </tr>
++                <tr>
++                  <td>Maple Sweetness</td>
++                  <td>35%</td>
++                </tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card-checkerboard">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="flavor-profile">
++            <div class="pie" style="--p: 85%; --color-1: var(--primary); --color-2: var(--secondary);" aria-hidden="true"></div>
++            <table class="flavor-table">
++              <caption>Dark Roast Espresso Flavor Profile</caption>
++              <thead>
++                <tr>
++                  <th scope="col">Flavor Note</th>
++                  <th scope="col">Share</th>
++                </tr>
++              </thead>
++              <tbody>
++                <tr>
++                  <td>Bold &amp; Smokey Roast</td>
++                  <td>85%</td>
++                </tr>
++                <tr>
++                  <td>Caramel Finish</td>
++                  <td>15%</td>
++                </tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card card-dots">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="flavor-profile">
++            <div class="pie" style="--p: 75%; --color-1: var(--primary); --color-2: var(--accent);" aria-hidden="true"></div>
++            <table class="flavor-table">
++              <caption>Cold Brew Flavor Profile</caption>
++              <thead>
++                <tr>
++                  <th scope="col">Flavor Note</th>
++                  <th scope="col">Share</th>
++                </tr>
++              </thead>
++              <tbody>
++                <tr>
++                  <td>Smooth Cocoa Body</td>
++                  <td>75%</td>
++                </tr>
++                <tr>
++                  <td>Bright Citrus Notes</td>
++                  <td>25%</td>
++                </tr>
++              </tbody>
++            </table>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
