@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import matter from "@11ty/gray-matter";
+import { marked } from "marked";
 import { rootDir } from "../core/paths.ts";
 import {
   scanAllGuides,
@@ -12,7 +13,6 @@ import {
 } from "../core/guide-validation.ts";
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
 import { getFeatureName } from "../core/baseline.ts";
-import { chunkMarkdown, formatChunkHeader } from "../build/build-guides.ts";
 import { config } from "../core/skills-config.ts";
 
 export const TEACHER_MODEL = "gemini-embedding-001";
@@ -30,6 +30,157 @@ export interface GuideChunk {
   chunkContent: string;
   embeddedText: string;
   hash: string;
+}
+
+/**
+ * Splits markdown content by headings, grouping consecutive headings without body text.
+ */
+export function chunkMarkdown(markdown: string): string[] {
+  const tokens = marked.lexer(markdown);
+  const chunks: string[] = [];
+  let currentChunk: string[] = [];
+  let hasNonHeadingContent = false;
+
+  for (const token of tokens) {
+    if (token.type === "heading") {
+      if (currentChunk.length > 0 && hasNonHeadingContent) {
+        chunks.push(currentChunk.join("\n\n"));
+        currentChunk = [];
+        hasNonHeadingContent = false;
+      }
+      currentChunk.push(token.raw);
+    } else {
+      currentChunk.push(token.raw);
+      if (token.type !== "space") {
+        hasNonHeadingContent = true;
+      }
+    }
+  }
+
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join("\n\n"));
+  }
+
+  return chunks.filter((chunk) => chunk.trim().length > 0);
+}
+
+/**
+ * Formats a consistent header prepended to every guide chunk embedding input.
+ */
+export function formatChunkHeader(
+  title: string,
+  id: string,
+  category: string,
+  featureIds: string[]
+): string {
+  const header = `${title}\n${id} (${category})`;
+  if (featureIds.length === 0) return header;
+
+  const features = featureIds.map((rawFid) => {
+    const name = getFeatureName(rawFid);
+    const fid = rawFid.replace(/^tmp-/, "");
+    const aliases = [...new Set([fid, fid.replaceAll("-", " ")])].filter(
+      (a) => a.toLowerCase() !== name.toLowerCase()
+    );
+    return aliases.length > 0 ? `${name} (${aliases.join(", ")})` : name;
+  });
+
+  return `${header}\nFeatures: ${features.join(", ")}`;
+}
+
+export interface ExtractedGuideData {
+  title: string;
+  description: string;
+  featureIds: string[];
+  featuresUsed: string[];
+  processedMarkdown: string;
+  chunks: string[];
+  header: string;
+  embeddedChunks: Array<{
+    chunk: string;
+    embeddedText: string;
+    hash: string;
+  }>;
+}
+
+export interface ExtractGuideChunksOptions {
+  filePath: string;
+  category: string;
+  id: string;
+  target?: BuildTarget;
+  noChunking?: boolean;
+  includedFiles?: Set<string>;
+}
+
+/**
+ * Parses a guide markdown file, runs macro expansion, extracts title/features/description,
+ * chunks the markdown (or preserves single chunk if noChunking is true), formats the header,
+ * and generates embedded texts with their deterministic chunk hashes.
+ *
+ * Returns null if the guide is a draft or empty stub.
+ */
+export function extractGuideChunks(
+  options: ExtractGuideChunksOptions
+): ExtractedGuideData | null {
+  const {
+    filePath,
+    category,
+    id,
+    target = "skills-cli",
+    noChunking = false,
+    includedFiles,
+  } = options;
+
+  const content = fs.readFileSync(filePath, "utf-8");
+  const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
+
+  if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+    return null;
+  }
+  if (!data.description || !frontmatter) {
+    throw new Error(`Missing frontmatter or description in ${filePath}`);
+  }
+
+  const processedMarkdown = replaceMacros(markdownBody, filePath, {
+    target,
+    includedFiles,
+  });
+  const featureIds: string[] = data["web-feature-ids"] || [];
+  const featuresUsed = featureIds.map(getFeatureName);
+
+  const h1Title = extractH1Heading(processedMarkdown);
+  const title = (
+    (typeof data.title === "string" && data.title.trim()) ||
+    h1Title ||
+    ""
+  ).trim();
+  if (!title) {
+    throw new Error(`Guide has no H1 heading or frontmatter title: ${filePath}`);
+  }
+
+  const header = formatChunkHeader(title, id, category, featureIds);
+  const summaryChunk = `# ${title}\n\n${data.description}`;
+
+  const chunks = noChunking
+    ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
+    : [...chunkMarkdown(processedMarkdown), summaryChunk];
+
+  const embeddedChunks = chunks.map((chunk) => {
+    const embeddedText = `${header}\n\n${chunk}`;
+    const hash = computeChunkHash(embeddedText);
+    return { chunk, embeddedText, hash };
+  });
+
+  return {
+    title,
+    description: data.description,
+    featureIds,
+    featuresUsed,
+    processedMarkdown,
+    chunks,
+    header,
+    embeddedChunks,
+  };
 }
 
 /**
@@ -99,7 +250,12 @@ export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float3
   }
 
   const qTable = new Int8Array(i8Buf.buffer, i8Buf.byteOffset, i8Buf.byteLength);
-  const scales = new Float32Array(scaleBuf.buffer, scaleBuf.byteOffset, N);
+  // Slice to a fresh ArrayBuffer so Float32Array is guaranteed 4-byte aligned regardless of Buffer slab pooling.
+  const alignedScaleBuf = scaleBuf.buffer.slice(
+    scaleBuf.byteOffset,
+    scaleBuf.byteOffset + scaleBuf.byteLength
+  );
+  const scales = new Float32Array(alignedScaleBuf);
 
   const cache = new Map<string, Float32Array>();
   for (let i = 0; i < N; i++) {
@@ -183,41 +339,26 @@ export function scanCorpusChunks(target: BuildTarget = "skills-cli"): GuideChunk
 
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    const content = fs.readFileSync(guidePath, "utf-8");
-    const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
+    const extracted = extractGuideChunks({
+      filePath: guidePath,
+      category: inv.category,
+      id: inv.name,
+      target,
+    });
 
-    if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+    if (!extracted) {
       continue;
     }
-    if (!data.description || !frontmatter) {
-      throw new Error(`Missing frontmatter or description in ${guidePath}`);
-    }
 
-    const processedMarkdown = replaceMacros(markdownBody, guidePath, { target });
-    const featureIds: string[] = data["web-feature-ids"] || [];
-    const featuresUsed = featureIds.map(getFeatureName);
-
-    const h1Title = extractH1Heading(processedMarkdown);
-    const title = ((typeof data.title === "string" && data.title.trim()) || h1Title || "").trim();
-    if (!title) {
-      throw new Error(`Guide has no H1 heading or frontmatter title: ${guidePath}`);
-    }
-
-    const header = formatChunkHeader(title, inv.name, inv.category, featureIds);
-    const summaryChunk = `# ${title}\n\n${data.description}`;
-    const chunks = [...chunkMarkdown(processedMarkdown), summaryChunk];
-
-    for (const chunk of chunks) {
-      const embeddedText = `${header}\n\n${chunk}`;
-      const hash = computeChunkHash(embeddedText);
+    for (const ec of extracted.embeddedChunks) {
       allChunks.push({
         guideId: inv.name,
         category: inv.category,
-        description: data.description,
-        featuresUsed,
-        chunkContent: embeddedText,
-        embeddedText,
-        hash,
+        description: extracted.description,
+        featuresUsed: extracted.featuresUsed,
+        chunkContent: ec.embeddedText,
+        embeddedText: ec.embeddedText,
+        hash: ec.hash,
       });
     }
   }

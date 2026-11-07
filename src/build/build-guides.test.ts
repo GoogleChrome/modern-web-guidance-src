@@ -198,19 +198,16 @@ describe('processSingleGuideFile cache miss regression', () => {
       const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
       const emptyCache = new Map<string, Float32Array>();
 
-      await processSingleGuideFile(
-        guideFile,
-        'css',
-        'test-guide',
-        [],
+      await processSingleGuideFile({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        useCases: [],
         storeUseCases,
         embedder,
-        undefined,
-        undefined,
-        undefined,
-        emptyCache,
-        missingChunks
-      );
+        chunkCache: emptyCache,
+        missingChunks,
+      });
 
       assert.ok(missingChunks.length > 0, 'Should record cache miss');
       assert.ok(storeUseCases.length > 0, 'Should have generated store use cases');

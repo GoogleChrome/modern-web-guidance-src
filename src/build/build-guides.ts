@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import matter from "@11ty/gray-matter";
-import { marked } from "marked";
 import { parseArgs } from "node:util";
 
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
@@ -52,7 +51,14 @@ export interface DevsiteGuideMetadata {
 }
 
 import type { EmbedderLike } from "../rag/search.ts";
-import { loadChunkCache, computeChunkHash } from "../rag/chunk-cache.ts";
+import {
+  loadChunkCache,
+  chunkMarkdown,
+  formatChunkHeader,
+  extractGuideChunks,
+} from "../rag/chunk-cache.ts";
+
+export { chunkMarkdown, formatChunkHeader };
 
 export interface BuildOptions {
   outputDir: string;
@@ -63,11 +69,6 @@ export interface BuildOptions {
   noChunking?: boolean;
   failOnMissingVectors?: boolean;
 }
-
-// Global variables to be set by processGuides
-let BUILD_GUIDES_DIR: string;
-let IS_NO_CHUNKING = false;
-let TARGET: BuildTarget = 'skills-cli';
 
 interface CachePaths {
   cacheDir: string;
@@ -345,14 +346,14 @@ export function generateGuidesTocYaml(guides: DevsiteGuideMetadata[]): string {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target, force, targetGuidePath, modelName, noChunking, failOnMissingVectors } = opts;
+  const { outputDir, target: targetOpt, force, targetGuidePath, modelName, noChunking, failOnMissingVectors } = opts;
 
-  TARGET = target || 'skills-cli';
-  IS_NO_CHUNKING = !!noChunking;
+  const target = targetOpt || 'skills-cli';
+  const isNoChunking = !!noChunking;
 
   // 1. Configuration & Paths
-  const cachePaths = resolveCachePaths(TARGET);
-  BUILD_GUIDES_DIR = cachePaths.cachedGuides;
+  const cachePaths = resolveCachePaths(target);
+  const buildGuidesDir = cachePaths.cachedGuides;
 
   // 2. Scan & Hash
   let readyGuides = scanAllGuides().filter(inv => {
@@ -361,16 +362,16 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   });
   const currentHash = await computePipelineHash(
     readyGuides,
-    TARGET,
-    IS_NO_CHUNKING,
+    target,
+    isNoChunking,
     modelName,
     failOnMissingVectors
   );
 
   // 3. Cache Evaluation
-  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides, TARGET);
+  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides, target);
   if (isHit) {
-    restoreFromCache(cachePaths, outputDir, TARGET);
+    restoreFromCache(cachePaths, outputDir, target);
     console.log("👌");
     return true; // Skipped
   }
@@ -381,22 +382,15 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
   const devsiteGuides: DevsiteGuideMetadata[] = [];
-  const gitInfo = TARGET === 'devsite' ? loadGitFileDates() : { fileDates: new Map(), sourceCommit: "unknown" };
+  const gitInfo = target === 'devsite' ? loadGitFileDates() : { fileDates: new Map(), sourceCommit: "unknown" };
 
   let embedder: EmbedderLike | undefined;
-  if (TARGET !== 'devsite') {
-    if (modelName) {
-      console.log(`Using custom embedding model: ${modelName}`);
-      const { Embedder } = await import("../rag/transformers-embedder.ts");
-      const inst = Embedder.getInstance(modelName);
-      await inst.init();
-      embedder = inst;
-    } else {
-      const { StaticEmbedder } = await import("../rag/static-embedder.ts");
-      const inst = StaticEmbedder.getInstance();
-      inst.init();
-      embedder = inst;
-    }
+  if (target !== 'devsite' && modelName) {
+    console.log(`Using custom embedding model: ${modelName}`);
+    const { Embedder } = await import("../rag/transformers-embedder.ts");
+    const inst = Embedder.getInstance(modelName);
+    await inst.init();
+    embedder = inst;
   }
 
   if (targetGuidePath) {
@@ -414,25 +408,28 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
-  const chunkCache = TARGET !== 'devsite' && !modelName ? loadChunkCache() : null;
+  const chunkCache = target !== 'devsite' && !modelName ? loadChunkCache() : null;
   const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
 
-  console.log(TARGET === 'devsite' ? "Exporting DevSite guides…" : "Generating embeddings…");
+  console.log(target === 'devsite' ? "Exporting DevSite guides…" : "Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile(
-      guidePath,
-      inv.category,
-      inv.name,
+    await processSingleGuideFile({
+      filePath: guidePath,
+      category: inv.category,
+      id: inv.name,
       useCases,
       storeUseCases,
+      target,
+      noChunking: isNoChunking,
+      buildGuidesDir,
       embedder,
       devsiteGuides,
       gitInfo,
       modelName,
       chunkCache,
-      missingChunks
-    );
+      missingChunks,
+    });
   }
 
   if (missingChunks.length > 0) {
@@ -454,24 +451,24 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     }
   }
 
-  if (TARGET === 'skills-cli') {
+  if (target === 'skills-cli') {
     fs.writeFileSync(cachePaths.cachedGuidesJson, JSON.stringify(useCases, null, 2) + '\n');
     console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, cachePaths.cachedGuidesJson)}`);
 
     const jsonContent = JSON.stringify(storeUseCases);
     const compressed = zlib.gzipSync(jsonContent);
     fs.writeFileSync(cachePaths.cachedVectors, compressed);
-  } else if (TARGET === 'devsite') {
+  } else if (target === 'devsite') {
     const latestGuideDate = devsiteGuides.reduce(
       (max, g) => (g.refreshDate > max ? g.refreshDate : max),
       '2026-01-01'
     );
 
     const indexContent = generateGuidesIndex(devsiteGuides, latestGuideDate);
-    fs.writeFileSync(path.join(BUILD_GUIDES_DIR, 'index.md'), indexContent);
+    fs.writeFileSync(path.join(buildGuidesDir, 'index.md'), indexContent);
 
     const tocContent = generateGuidesTocYaml(devsiteGuides);
-    fs.writeFileSync(path.join(BUILD_GUIDES_DIR, '_toc.yaml'), tocContent);
+    fs.writeFileSync(path.join(buildGuidesDir, '_toc.yaml'), tocContent);
 
     const manifestPath = path.join(cachePaths.cacheDir, 'manifest.json');
     const manifest = {
@@ -488,42 +485,18 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     JSON.stringify({ hash: currentHash }, null, 2) + '\n'
   );
 
-  restoreFromCache(cachePaths, outputDir, TARGET);
+  restoreFromCache(cachePaths, outputDir, target);
   return false;
 }
 
-export function chunkMarkdown(markdown: string): string[] {
-  const tokens = marked.lexer(markdown);
-  const chunks: string[] = [];
-  let currentChunk: string[] = [];
-  let hasNonHeadingContent = false;
-
-  for (const token of tokens) {
-    if (token.type === 'heading') {
-      if (currentChunk.length > 0 && hasNonHeadingContent) {
-        chunks.push(currentChunk.join("\n\n"));
-        currentChunk = [];
-        hasNonHeadingContent = false;
-      }
-      currentChunk.push(token.raw);
-    } else {
-      currentChunk.push(token.raw);
-      if (token.type !== 'space') {
-        hasNonHeadingContent = true;
-      }
-    }
-  }
-
-  if (currentChunk.length > 0) {
-    chunks.push(currentChunk.join("\n\n"));
-  }
-
-  return chunks.filter(chunk => chunk.trim().length > 0);
-}
-
-function writeBuiltGuide(category: string, id: string, content: string): string | undefined {
-  if (!BUILD_GUIDES_DIR) return undefined;
-  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+function writeBuiltGuide(
+  buildGuidesDir: string | undefined,
+  category: string,
+  id: string,
+  content: string
+): string | undefined {
+  if (!buildGuidesDir) return undefined;
+  const buildCategoryDir = path.join(buildGuidesDir, category);
   fs.mkdirSync(buildCategoryDir, { recursive: true });
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
   fs.writeFileSync(buildFilePath, content);
@@ -537,56 +510,63 @@ function requireTitle(title: unknown, filePath: string): string {
   return title.trim();
 }
 
-export function formatChunkHeader(
-  title: string,
-  id: string,
-  category: string,
-  featureIds: string[],
-): string {
-  const header = `${title}\n${id} (${category})`;
-  if (featureIds.length === 0) return header;
+function approxTokens(text: string): number {
+  return (text.match(/\w+|[^\w\s]/g) || []).length;
+}
 
-  const features = featureIds.map((rawFid) => {
-    const name = getFeatureName(rawFid);
-    const fid = rawFid.replace(/^tmp-/, "");
-    const aliases = [...new Set([fid, fid.replaceAll("-", " ")])].filter(
-      (a) => a.toLowerCase() !== name.toLowerCase()
-    );
-    return aliases.length > 0 ? `${name} (${aliases.join(", ")})` : name;
-  });
-
-  return `${header}\nFeatures: ${features.join(", ")}`;
+export interface ProcessSingleGuideFileOptions {
+  filePath: string;
+  category: string;
+  id: string;
+  useCases: UseCase[];
+  storeUseCases: StoreUseCase[];
+  target?: BuildTarget;
+  noChunking?: boolean;
+  buildGuidesDir?: string;
+  embedder?: EmbedderLike;
+  devsiteGuides?: DevsiteGuideMetadata[];
+  gitInfo?: GitInfo;
+  modelName?: string;
+  chunkCache?: Map<string, Float32Array> | null;
+  missingChunks?: Array<{ guideId: string; category: string; chunk: string }>;
 }
 
 export async function processSingleGuideFile(
-  filePath: string,
-  category: string,
-  id: string,
-  useCases: UseCase[],
-  storeUseCases: StoreUseCase[],
-  embedder?: EmbedderLike,
-  devsiteGuides?: DevsiteGuideMetadata[],
-  gitInfo?: GitInfo,
-  modelName?: string,
-  chunkCache?: Map<string, Float32Array> | null,
-  missingChunks?: Array<{ guideId: string; category: string; chunk: string }>
-) {
-  const content = fs.readFileSync(filePath, "utf-8");
-  const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
+  options: ProcessSingleGuideFileOptions
+): Promise<void> {
+  const {
+    filePath,
+    category,
+    id,
+    useCases,
+    storeUseCases,
+    target = 'skills-cli',
+    noChunking = false,
+    buildGuidesDir,
+    embedder,
+    devsiteGuides,
+    gitInfo,
+    modelName,
+    chunkCache,
+    missingChunks,
+  } = options;
 
-  if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
-    // Just a stub guide. No content to index.
-    return;
-  }
+  if (target === 'devsite') {
+    const content = fs.readFileSync(filePath, "utf-8");
+    const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
-  if (!data.description || !frontmatter) {
-    throw new Error(`Missing frontmatter or description in ${filePath}`);
-  }
+    if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+      // Just a stub guide. No content to index.
+      return;
+    }
 
-  const includedFiles = new Set<string>();
-  const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET, includedFiles });
+    if (!data.description || !frontmatter) {
+      throw new Error(`Missing frontmatter or description in ${filePath}`);
+    }
 
-  if (TARGET === 'devsite') {
+    const includedFiles = new Set<string>();
+    const processedMarkdown = replaceMacros(markdownBody, filePath, { target, includedFiles });
+
     const h1Title = extractH1Heading(processedMarkdown);
     const title = requireTitle((typeof data.title === 'string' && data.title.trim()) || h1Title, filePath);
     const featureIds: string[] = (data['web-feature-ids'] || []).filter(
@@ -660,7 +640,7 @@ export async function processSingleGuideFile(
     const bodyWithoutH1 = stripLeadingH1(devsiteResult.markdown);
     const finalContent = `${devsiteFrontmatter}\n\n${headerParts.join('\n\n')}\n\n${bodyWithoutH1.trim()}\n\n${sourceFooter}\n`;
 
-    writeBuiltGuide(category, id, finalContent);
+    writeBuiltGuide(buildGuidesDir, category, id, finalContent);
 
     if (devsiteGuides) {
       devsiteGuides.push({
@@ -676,18 +656,30 @@ export async function processSingleGuideFile(
     return;
   }
 
-  if (!embedder) {
-    throw new Error(`Embedder is required for target ${TARGET}`);
+  const extracted = extractGuideChunks({
+    filePath,
+    category,
+    id,
+    target,
+    noChunking,
+  });
+  if (!extracted) {
+    return;
   }
-  const featureIds: string[] = data['web-feature-ids'] || [];
-  const featuresUsed = featureIds.map(getFeatureName);
+
+  if (modelName && !embedder) {
+    throw new Error(`Embedder is required when modelName "${modelName}" is provided for target ${target}`);
+  }
+  const { description, featureIds, featuresUsed, processedMarkdown } = extracted;
   const originTrials = getGuideOriginTrials(featureIds);
   const volatileFeatures = getGuideVolatileFeatures(featureIds);
-  const tokenCount = embedder.countTokens ? await embedder.countTokens(processedMarkdown) : 0;
+  const tokenCount = embedder?.countTokens
+    ? await embedder.countTokens(processedMarkdown)
+    : approxTokens(processedMarkdown);
 
   useCases.push({
     id,
-    description: data.description,
+    description,
     category,
     featuresUsed,
     tokenCount,
@@ -695,45 +687,33 @@ export async function processSingleGuideFile(
     ...(volatileFeatures.length > 0 ? { volatileFeatures } : {}),
   });
 
-  const h1Title = extractH1Heading(processedMarkdown);
-  const title = requireTitle((typeof data.title === 'string' && data.title.trim()) || h1Title, filePath);
-  const summaryChunk = `# ${title}\n\n${data.description}`;
-
-  const chunks = IS_NO_CHUNKING
-    ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
-    : [...chunkMarkdown(processedMarkdown), summaryChunk];
-
-  const header = formatChunkHeader(title, id, category, featureIds);
-
-  for (const chunk of chunks) {
-    const embeddingText = `${header}\n\n${chunk}`;
+  for (const ec of extracted.embeddedChunks) {
     let vector: number[] = [];
-    if (modelName) {
-      vector = await embedder.embed(embeddingText);
+    if (modelName && embedder) {
+      vector = await embedder.embed(ec.embeddedText);
     } else {
-      const hash = computeChunkHash(embeddingText);
-      const cached = chunkCache?.get(hash);
+      const cached = chunkCache?.get(ec.hash);
       if (cached) {
         vector = Array.from(cached);
       } else {
-        missingChunks?.push({ guideId: id, category, chunk });
-        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (indexed for BM25 only; vector: []): ${chunk.slice(0, 50).trim()}...`);
+        missingChunks?.push({ guideId: id, category, chunk: ec.chunk });
+        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (indexed for BM25 only; vector: []): ${ec.chunk.slice(0, 50).trim()}...`);
         vector = [];
       }
     }
 
     storeUseCases.push({
       id,
-      description: data.description,
+      description,
       category,
       featuresUsed,
       tokenCount,
-      chunkContent: embeddingText,
+      chunkContent: ec.embeddedText,
       vector
     });
   }
 
-  writeBuiltGuide(category, id, processedMarkdown.trimStart());
+  writeBuiltGuide(buildGuidesDir, category, id, processedMarkdown.trimStart());
 }
 
 // Only run automatically if executed directly
