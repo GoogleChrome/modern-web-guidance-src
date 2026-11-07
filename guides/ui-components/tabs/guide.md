@@ -145,7 +145,7 @@ The rest of this section covers only what is specific to tabs.
 - **Hide overflowed tabs with `visibility: hidden`**, not `display: none` or `hidden`. They keep their layout box, so the observer still reports when they fit again, and they leave the focus order and the accessibility tree. Set `overflow: clip` on the tablist so they don’t overflow the page.
 - **Mirror each tab as a `menuitem`**. Show only the items whose tab is hidden. Activating an item selects its tab and focuses it. Focus the tab before hiding the popover: otherwise the popover returns focus to the previously focused tab, which selects it again.
 - **Hide the “More” button when no tab overflows.** This cannot loop: showing the button only narrows the tablist, so at least one tab still overflows.
-- **Keep the selected tab in the tablist.** DO NOT leave it in the menu or mark the “More” button as selected: it is a button, not a tab. When the selected tab overflows (selected from the menu, by find-in-page, or after a resize), set `display: none` on the tabs before it, closest first, until it fits. The observer then reports them as overflowed, so they appear in the menu. DO NOT reorder tabs (in the DOM or with CSS `order`): the removed tabs are gone from both the visual and the focus order, so the two still match. Keep overflowed tabs visible while they are selected, so they can be focused before the observer catches up.
+- **Keep the selected tab in the tablist.** DO NOT leave it in the menu or mark the “More” button as selected: it is a button, not a tab. When the selected tab overflows (selected from the menu, by find-in-page, or after a resize), set `display: none` on the tabs before it, closest first, until it fits. The observer then reports them as overflowed, so they appear in the menu. DO NOT reorder tabs (in the DOM or with CSS `order`): the removed tabs are gone from both the visual and the focus order, so the two still match. Keep overflowed tabs visible while they are selected or focused: a selected tab can then be focused before the observer catches up, and a focused tab keeps focus when a resize overflows it.
 
 ```html
 <div class="tabs">
@@ -166,7 +166,7 @@ The rest of this section covers only what is specific to tabs.
 const observer = new IntersectionObserver(entries => {
   for (const { target: tab, intersectionRatio } of entries) {
     const overflowed = intersectionRatio < 1;
-    // CSS: .clipped:not([aria-selected="true"]) { visibility: hidden; }
+    // CSS: .clipped:not([aria-selected="true"], :focus) { visibility: hidden; }
     tab.classList.toggle('clipped', overflowed);
     menuItemFor(tab).hidden = !overflowed;
   }
@@ -189,7 +189,7 @@ function reveal() {
 }
 ```
 
-{# NOTE: Unhandled edge cases: a focused inactive tab that starts overflowing (e.g. on resize) becomes visibility: hidden and loses focus. reveal() measures with `right`, so it needs adapting for RTL. #}
+{# NOTE: Unhandled edge cases: with selection by activation, a focused inactive tab that reveal() displaces loses focus, and one that overflows entirely keeps focus while clipped out of view. reveal() measures with `right`, so it needs adapting for RTL. #}
 
 {# PENDING_GUIDE_REF: See {{ GUIDE_REF("overflow-popup") }} for more details on moving overflowing controls into a popup. #}
 

@@ -176,8 +176,9 @@
   }
 
   /* Not display: none, so IntersectionObserver still reports when the tab fits again.
-     The selected tab stays visible, so it can be focused before the observer catches up. */
-  .tablist .clipped:not([aria-selected=true]) {
+     The selected tab stays visible, so it can be focused before the observer catches up.
+     A focused tab stays visible, so a resize does not drop focus. */
+  .tablist .clipped:not([aria-selected=true], :focus) {
     visibility: hidden;
   }
 
