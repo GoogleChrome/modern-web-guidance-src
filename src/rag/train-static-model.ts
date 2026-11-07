@@ -26,19 +26,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import matter from "@11ty/gray-matter";
 import { marked, type Tokens } from "marked";
 import {
-  extractH1Heading,
   getGuideMarkdownPath,
-  isDraftStub,
   scanAllGuides,
-  stripAllComments,
 } from "../core/guide-validation.ts";
-import { replaceMacros } from "../core/macros.ts";
 import { outDir, rootDir } from "../core/paths.ts";
 import { config } from "../core/skills-config.ts";
-import { chunkMarkdown, formatChunkHeader } from "../build/build-guides.ts";
+import { extractGuideChunks } from "./chunk-cache.ts";
 import { tokenize, tokenizeBm25 } from "./bm25.ts";
 import { dotProduct } from "./search.ts";
 import {
@@ -208,22 +203,21 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
 
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    const raw = fs.readFileSync(guidePath, "utf8");
-    const { data, content: markdownBody } = matter(raw);
-    if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+    const extracted = extractGuideChunks({
+      filePath: guidePath,
+      category: inv.category,
+      id: inv.name,
+      target: "skills-cli",
+    });
+
+    if (!extracted) {
       continue;
     }
-    const description = typeof data.description === "string" ? data.description.trim() : "";
-    const processed = replaceMacros(markdownBody, guidePath, { target: "skills-cli" });
-    const h1Title = extractH1Heading(processed);
-    const title = ((typeof data.title === "string" && data.title.trim()) || h1Title || inv.name.replace(/-/g, " ")).trim();
-    const featureIds: string[] = data["web-feature-ids"] || [];
-    const header = formatChunkHeader(title, inv.name, inv.category, featureIds);
-    const summaryChunk = `# ${title}\n\n${description}`;
-    const chunks = [...chunkMarkdown(processed), summaryChunk];
 
-    for (const chunk of chunks) {
-      chunkTexts.push(`${header}\n\n${chunk}`);
+    const { title, description, processedMarkdown, embeddedChunks } = extracted;
+
+    for (const ec of embeddedChunks) {
+      chunkTexts.push(ec.embeddedText);
     }
 
     syntheticQueries.push(inv.name.replace(/-/g, " "));
@@ -231,7 +225,7 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
     if (description) syntheticQueries.push(description);
 
     const headings = marked
-      .lexer(processed)
+      .lexer(processedMarkdown)
       .filter((t): t is Tokens.Heading => t.type === "heading" && (t.depth === 2 || t.depth === 3))
       .map((t) => t.text.trim());
     for (const h of headings) {

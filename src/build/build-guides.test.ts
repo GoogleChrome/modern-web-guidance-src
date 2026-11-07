@@ -4,15 +4,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  chunkMarkdown,
-  formatChunkHeader,
   generateGuidesIndex,
   generateGuidesTocYaml,
   processSingleGuideFile,
   type DevsiteGuideMetadata,
   type StoreUseCase,
 } from './build-guides.ts';
-import { StaticEmbedder } from '../rag/static-embedder.ts';
+import { chunkMarkdown, formatChunkHeader } from '../rag/chunk-cache.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {
@@ -191,9 +189,6 @@ describe('processSingleGuideFile cache miss regression', () => {
         guideFile,
         `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`
       );
-      const embedder = StaticEmbedder.getInstance();
-      embedder.init();
-
       const storeUseCases: StoreUseCase[] = [];
       const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
       const emptyCache = new Map<string, Float32Array>();
@@ -204,7 +199,6 @@ describe('processSingleGuideFile cache miss regression', () => {
         id: 'test-guide',
         useCases: [],
         storeUseCases,
-        embedder,
         chunkCache: emptyCache,
         missingChunks,
       });

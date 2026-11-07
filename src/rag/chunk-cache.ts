@@ -25,9 +25,6 @@ export const DEFAULT_CACHE_DIR = path.join(rootDir, "src/rag/static-model");
 export interface GuideChunk {
   guideId: string;
   category: string;
-  description: string;
-  featuresUsed: string[];
-  chunkContent: string;
   embeddedText: string;
   hash: string;
 }
@@ -94,8 +91,6 @@ export interface ExtractedGuideData {
   featureIds: string[];
   featuresUsed: string[];
   processedMarkdown: string;
-  chunks: string[];
-  header: string;
   embeddedChunks: Array<{
     chunk: string;
     embeddedText: string;
@@ -177,8 +172,6 @@ export function extractGuideChunks(
     featureIds,
     featuresUsed,
     processedMarkdown,
-    chunks,
-    header,
     embeddedChunks,
   };
 }
@@ -354,9 +347,6 @@ export function scanCorpusChunks(target: BuildTarget = "skills-cli"): GuideChunk
       allChunks.push({
         guideId: inv.name,
         category: inv.category,
-        description: extracted.description,
-        featuresUsed: extracted.featuresUsed,
-        chunkContent: ec.embeddedText,
         embeddedText: ec.embeddedText,
         hash: ec.hash,
       });

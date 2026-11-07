@@ -53,12 +53,8 @@ export interface DevsiteGuideMetadata {
 import type { EmbedderLike } from "../rag/search.ts";
 import {
   loadChunkCache,
-  chunkMarkdown,
-  formatChunkHeader,
   extractGuideChunks,
 } from "../rag/chunk-cache.ts";
-
-export { chunkMarkdown, formatChunkHeader };
 
 export interface BuildOptions {
   outputDir: string;
