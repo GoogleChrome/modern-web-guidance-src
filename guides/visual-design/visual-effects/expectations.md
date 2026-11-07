@@ -1,1 +1,4 @@
 - The implementation MUST specify perceptual color interpolation spaces (`in oklch` or `in oklab`) when defining CSS gradients or `color-mix()` expressions.
+- For charts and graphs that use visual effects, the implementation MUST have a fallback text description for screen readers.
+- For charts and graphs that use visual effects, a semantic data table MUST be provide as an accessible alternative for the implementation.
+- When the implementation is used as a background effect, the contrast of any non-decorative content and the implementation MUST have a contrast ratio of 4.5:1 for normal text and 3:1 for large text (at least 24px, or at least 18.66px bold), and 3:1 for icons.
