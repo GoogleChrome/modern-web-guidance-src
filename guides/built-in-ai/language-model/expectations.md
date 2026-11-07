@@ -14,3 +14,8 @@
 1. When using `AbortController` to cancel a prompt, the same signal should be passed to the `prompt()` or `promptStreaming()` call, not to `LanguageModel.create()`.
 1. Session clones created with `session.clone()` share the base session's initial context but accumulate their own separate conversation history afterwards. The base session should be destroyed after cloning if it will not be used further.
 1. `session.contextUsage` and `session.contextWindow` reflect the current token count and maximum respectively. Code should not assume a fixed token limit.
+1. `downloadprogress` events update the value of a `<progress>` element that has an accessible name.
+1. The element that receives streamed output has `aria-live="polite"` and was in the page when it loaded.
+1. The element that receives streamed output has `aria-busy="true"` while the response streams in.
+1. After a streamed response finishes, the element that received it has `aria-busy="false"`.
+1. When `LanguageModel.availability()` returns `"downloadable"` or `"downloading"`, `LanguageModel.create()` is only called during transient user activation (`navigator.userActivation.isActive` is `true`), such as from a button's click handler.
