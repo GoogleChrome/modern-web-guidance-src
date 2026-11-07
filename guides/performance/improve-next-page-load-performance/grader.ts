@@ -24,6 +24,49 @@ function getSpeculationRules(html: string) {
   }
 }
 
+// Collect the URL and selector patterns a `where` clause matches, split by polarity.
+// Each `not` flips the polarity, so a doubly negated matcher still counts as a
+// positive match (e.g. {"not": {"not": {"href_matches": "/logout"}}}).
+function getWhereMatchers(
+  clause: unknown,
+  negated = false,
+  matchers: { positive: string[]; negated: string[] } = { positive: [], negated: [] }
+): { positive: string[]; negated: string[] } {
+  if (!clause || typeof clause !== 'object') {
+    return matchers;
+  }
+
+  const record = clause as Record<string, unknown>;
+
+  if ('not' in record) {
+    getWhereMatchers(record.not, !negated, matchers);
+  }
+
+  for (const key of ['and', 'or']) {
+    const subclauses = record[key];
+    if (Array.isArray(subclauses)) {
+      for (const subclause of subclauses) {
+        getWhereMatchers(subclause, negated, matchers);
+      }
+    }
+  }
+
+  for (const key of ['href_matches', 'selector_matches']) {
+    const value = record[key];
+    const patterns = typeof value === 'string'
+      ? [value]
+      : Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : [];
+    for (const pattern of patterns) {
+      const bucket = negated ? matchers.negated : matchers.positive;
+      bucket.push(pattern.toLowerCase());
+    }
+  }
+
+  return matchers;
+}
+
 test.describe(`Improve next page load performance Expectations: ${demoName}`, () => {
   
   // 1. Check for <script type="speculationrules">
@@ -120,20 +163,25 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
   });
 
   // 8. Check for state-changing URLs
-  test('Do not speculate URLs that likely trigger state changes (e.g., /logout)', async () => {
+  test('URLs that likely trigger state changes (such as "/logout") are not listed as a positive match in urls or where', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
       expect(ruleSets.length).toBeGreaterThan(0);
+      // A catch-all pattern only leaks a logout link if the page actually has one.
+      const pageLinksToLogout = /<a\b[^>]*\bhref\s*=\s*["'][^"']*logout/i.test(html);
       for (const set of ruleSets) {
         if (set.urls) {
-          expect(set.urls.some((url: string) => url.includes('logout'))).toBe(false);
+          expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
         }
         if (set.where) {
-          // Simplistic check for /logout in where clause
-          const whereStr = JSON.stringify(set.where);
-          expect(whereStr.includes('logout')).toBe(false);
+          const { positive, negated } = getWhereMatchers(set.where);
+          expect(positive.some((matcher) => matcher.includes('logout'))).toBe(false);
+          const isCatchAll = positive.some((matcher) => matcher === '*' || matcher === '/*' || matcher === '/**');
+          if (pageLinksToLogout && isCatchAll) {
+            expect(negated.some((matcher) => matcher.includes('logout'))).toBe(true);
+          }
         }
       }
     } else {
