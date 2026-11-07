@@ -17,20 +17,6 @@
     "group": "security",
     "compat_features": "api.SubtleCrypto.encapsulateKey"
   },
-  "tmp-window-management-resizing": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
-    "compat_features": "api.Window.minimize"
-  },
-  "tmp-display-state": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
-    "group": "css",
-    "compat_features": "css.at-rules.media.display-state"
-  },
-  "tmp-resizable": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4257",
-    "group": "css",
-    "compat_features": "css.at-rules.media.resizable"
-  },
   "tmp-media-playback-while-not-visible": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4292",
     "compat_features": "html.elements.iframe.allow.media-playback-while-not-visible"
@@ -43,7 +29,10 @@
   "tmp-calc-dimensions": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4196",
     "group": "css",
-    "compat_features": "css.types.calc.dimension_division"
+    "compat_features": [
+      "css.types.calc.typed_division_produces_unitless_number",
+      "css.types.sign.typed_division_produces_unitless_number"
+    ]
   },
   "tmp-long-animation-frames-style-layout": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4453",
@@ -78,6 +67,6 @@
       "forms",
       "html-elements"
     ],
-    "compat_features": "css.properties.appearance.base-select.listbox"
+    "compat_features": "css.properties.appearance.base-select.list_box"
   }
 }
