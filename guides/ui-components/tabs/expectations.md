@@ -27,7 +27,8 @@
 - Dispatching a `beforematch` event on a hidden tab panel sets `focusgroupstart` on its tab.
 - Dispatching a `beforematch` event on a hidden tab panel hides every other tab panel.
 - Every tab panel has a computed padding, border width, and margin of 0.
-- The selected tab has a different computed `color`, `background`, `box-shadow`, or `text-decoration` from the unselected tabs.
+- The selected tab is distinguished from the unselected tabs by more than color: it, its `::before`/`::after`, or a tablist pseudo-element anchored to it has a visible border or `text-decoration` that the unselected tabs lack.
+- With `forced-colors: active` emulated, the selected tab's indicator is still drawn with a border or `text-decoration`, not only with `box-shadow` or a background.
 - At a viewport narrower than the combined width of the tabs, all tabs are laid out on a single row (same `offsetTop`).
 - At a viewport narrower than the combined width of the tabs, every tab remains reachable: either the tablist scrolls horizontally, or the tabs that do not fit are listed in a menu opened by a button outside the tablist.
 - At a viewport narrower than the combined width of the tabs, the selected tab is fully visible within the tablist after it is selected by click, keyboard, or a `beforematch` event.

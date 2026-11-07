@@ -61,13 +61,17 @@ Use selection by activation instead when showing a panel has a cost the user sho
 - Selecting a tab has side effects: it changes the URL or history, sends analytics, starts media, or saves state.
 - The panel shifts the layout significantly (e.g. panels of very different heights push the rest of the page around).
 
-With either pattern, focus entering the group must land on the selected item. By default it returns to the last focused item instead, which is wrong once selection can change without focus (find-in-page, script). Use `nomemory` and move `focusgroupstart` to the selected item:
+With either pattern, focus entering the group must land on the selected item. By default it returns to the last focused item instead, which is wrong once selection can change without focus (find-in-page, script).
+Use `nomemory` and move `focusgroupstart` to the selected tab:
+
+```html
+<div focusgroup="tablist nomemory" aria-label="Web platform technologies">
+```
 
 ```js
-// <div focusgroup="tablist nomemory">
-for (const i of items) {
-  i.ariaSelected = i === item;
-  i.toggleAttribute('focusgroupstart', i === item);
+for (const tab of tabs) {
+  tab.ariaSelected = tab === selected;
+  tab.toggleAttribute('focusgroupstart', tab === selected);
 }
 ```
 
@@ -78,15 +82,28 @@ for (const i of items) {
 Style the selected tab from `aria-selected`, so the visual state can never disagree with the accessible one.
 Do not apply any styling that changes the dimensions of the tab (e.g., `padding`, `border`, `margin`, `font-size`, `font-weight`, etc).
 
+- MANDATORY: Do not indicate the selected tab with color alone (WCAG 1.4.1). Add a shape, such as an underline.
+- Draw the underline with a border on a pseudo-element. DO NOT use `box-shadow` or a background: forced colors mode removes both, leaving no indicator.
+
 ```css
+[role="tab"] {
+  position: relative;
+}
+
 [aria-selected="true"] {
   color: var(--accent);
+
   /* Example: a 3px underline that takes no space */
-  box-shadow: inset 0 -3px var(--accent);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    border-block-end: 3px solid var(--accent);
+  }
 }
 ```
 
-To animate the underline between tabs, use `::before` + anchor-positioning, see {{ GUIDE_REF("anchor-positioning-tab-underline") }} for details.
+To animate the underline between tabs, move the pseudo-element to the tablist and tether it to the selected tab with anchor positioning. See {{ GUIDE_REF("anchor-positioning-tab-underline") }} for details.
 
 
 - DO NOT put padding, borders, margins, or backgrounds on the panel element itself. `hidden=until-found` does not use `display: none`: it only hides the panel's contents, so a hidden panel still renders its padding, border, margin, and background as an empty strip. Put these styles on a child wrapper inside the panel instead.
@@ -98,9 +115,11 @@ See {{ GUIDE_REF("search-hidden-content") }} for more details.
 
 Keep tabs on a single row. DO NOT wrap them onto multiple rows: wrapped rows make the tab order and the selected tab hard to follow.
 When the tabs are wider than the available space, either scroll the tablist or move the tabs that don’t fit into a popup menu.
+Optionally, also shrink the inactive tabs, so more tabs fit before either kicks in.
 
-- **Scrolling** keeps every tab in the tablist and in the keyboard order, and works with touch swiping. It needs no script beyond selection. Use it by default, and always on touch-first interfaces.
-- **An overflow menu** shows the names of all hidden tabs at once, in a list, without scrolling. Use it when there are a few primary tabs and a tail of less used ones, and users mostly use a pointer. It needs script to detect overflow.
+1. **Scrolling** keeps every tab in the tablist and in the keyboard order, and works with touch swiping. It needs no script beyond selection. Use it by default, and always on touch-first interfaces.
+2. **An overflow menu** shows the names of all hidden tabs at once, in a list, without scrolling. Use it when there are a few primary tabs and a tail of less used ones, and users mostly use a pointer. It needs script to detect overflow.
+3. **Shrinking inactive tabs** truncates their labels, so it suits tabs the user creates (e.g. open documents in an editor) better than a fixed set of tabs with short labels. Combine it with scrolling or an overflow menu.
 
 ### Strategy 1: scrolling
 

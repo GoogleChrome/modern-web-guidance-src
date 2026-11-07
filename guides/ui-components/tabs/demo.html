@@ -87,10 +87,21 @@
     }
   }
 
-  /* Color and decorations only: font-weight would change the tab width */
+  /* Color and an underline only: font-weight would change the tab width */
+  .tablist button {
+    position: relative;
+  }
+
   .tablist [aria-selected=true] {
     color: var(--accent);
-    box-shadow: inset 0 -3px var(--accent);
+
+    /* A border, not box-shadow: forced colors mode removes shadows */
+    &::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      border-block-end: 3px solid var(--accent);
+    }
   }
 
   /* All panels share one grid cell, so hidden ones add no rows */
@@ -204,7 +215,7 @@
 </style>
 
 <script type=module>
-  if (!('focusGroup' in HTMLElement.prototype)) {
+  if (!Object.hasOwn(HTMLElement.prototype, 'focusGroup')) {
     const { polyfill } = await import('https://esm.sh/@microsoft/focusgroup-polyfill@1');
     polyfill();
   }
