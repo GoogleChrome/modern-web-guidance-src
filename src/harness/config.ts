@@ -2,16 +2,13 @@ import path from 'path';
 import os from 'os';
 import { pathToFileURL } from 'url';
 import { rootDir } from '../core/paths.ts';
+import { loadAllowedEnvFile } from './lib/secret-guard.ts';
 
 // Disable telemetry for eval harness runs (`node --test` runs are covered
 // automatically via NODE_TEST_CONTEXT in ClearcutLogger).
 process.env.DISABLE_TELEMETRY = '1';
 
-try {
-  process.loadEnvFile(path.join(rootDir, '.env'));
-} catch {
-  // Ignore if missing
-}
+loadAllowedEnvFile(path.join(rootDir, '.env'));
 
 export const Agents = {
   JETSKI_CLI: 'jetski_cli',
