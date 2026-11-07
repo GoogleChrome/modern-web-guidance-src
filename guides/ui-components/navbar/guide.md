@@ -159,7 +159,7 @@ Synchronize the layout state from the same function that handles the navigation 
 
 ```js
 const wide = inner.scrollWidth <= inner.clientWidth; // measured with is-wide set
-submenu.toggleAttribute("popover", wide);
+submenu.popover = wide ? "auto" : null;
 submenu.hidden = !wide;
 trigger.setAttribute("aria-expanded", "false");
 ```
