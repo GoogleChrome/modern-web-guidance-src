@@ -21,6 +21,8 @@ The `:user-invalid` pseudo-class allows you to defer the error state until the u
 2.  **Visual Feedback**: DO use `:user-invalid` to apply error styling only after interaction.
 3.  **Positive Reinforcement**: DO optionally use `:user-valid` to give a green "success" indicator once the requirements are met.
 4.  **Graceful Recovery**: As soon as the user corrects the input to a valid format, `:user-invalid` stops matching, removing the error state immediately.
+5.  **Error Text**: DO show visible error text with the error styling, so the error isn't shown by color alone. DO start each message with an error icon that has a text alternative such as "Error" (the safest choice), or word every message as an error, for example "Please enter a valid email address.", and use the same approach for every error in the form. DO say how to fix the error when you know how, for example "Enter an email address in the format you@example.com."
+6.  **Error Link**: DO list the error message in the field's `aria-describedby`, after any hint, only while the field is invalid, so screen readers read it with the field. A reference in the markup would read the hidden message from page load. The script in "Consistent ARIA Experience" does this for each field whose `data-error` attribute is set to its error message's `id`.
 
 ## Implementation Guide
 
@@ -35,6 +37,7 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
     <!-- MANDATORY: Place format hints above the input so autocomplete popovers don't cover them during editing -->
     <span id="email-hint" class="hint">Format: you@example.com</span>
     <!-- DO: Use standard HTML validation attributes like type="email" and required -->
+    <!-- Set data-error to the error message's id. The aria-invalid script lists that id in aria-describedby while the field is invalid. -->
     <input
       type="email"
       id="email"
@@ -42,10 +45,10 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
       required
       autocomplete="email"
       aria-describedby="email-hint"
-      aria-errormessage="email-error"
+      data-error="email-error"
     >
     <div id="email-error" class="error-msg">
-      <span aria-hidden="true">❌</span> Please enter a valid email address.
+      <span role="img" aria-label="Error">❌</span> Enter an email address in the format you@example.com.
     </div>
   </div>
 </form>
@@ -98,12 +101,14 @@ MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pa
     <ul id="password-rules" class="rules-list">
       <li>At least 8 characters</li>
       <li>One uppercase letter</li>
+      <li>One lowercase letter</li>
       <li>One number</li>
       <li>One special character</li>
     </ul>
     <!-- DO: Use pattern and minlength for complex password validation
          DO: Match all constraints with lookaheads via pattern attribute
      -->
+    <!-- Set data-error to the error message's id. The aria-invalid script lists that id in aria-describedby while the field is invalid. -->
     <input
       type="password"
       id="password"
@@ -112,7 +117,13 @@ MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pa
       pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
       minlength="8"
       aria-describedby="password-rules"
+      data-error="password-error"
     >
+    <!-- MANDATORY: Give the password its own error text. Turning the rules list red
+         doesn't say what is wrong, and screen readers don't convey the color change. -->
+    <div id="password-error" class="error-msg">
+      <span role="img" aria-label="Error">❌</span> Password doesn't meet all the requirements listed above.
+    </div>
   </div>
 </form>
 ```
@@ -130,6 +141,11 @@ input:user-invalid {
   background-color: #fce8e6;
 }
 
+/* DO: Reveal the error message using the adjacent sibling selector */
+input:user-invalid + .error-msg {
+  display: block;
+}
+
 /* DO: Highlight rules list when error is shown using the modern :has() selector */
 .field:has(input:user-invalid) .rules-list {
   color: #d93025;
@@ -141,9 +157,11 @@ input:user-valid {
   border-color: #188038;
 }
 
-/* DO: Hide rules once satisfied */
+/* DO: Hide rules once satisfied. visibility keeps their space: collapsing the list on
+   blur would move the submit button between mousedown and mouseup, and the click
+   would be lost. */
 .field:has(input:user-valid) .rules-list {
-  display: none;
+  visibility: hidden;
 }
 ```
 

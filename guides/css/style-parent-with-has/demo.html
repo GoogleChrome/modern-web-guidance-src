@@ -50,7 +50,7 @@
     input {
       width: 100%;
       padding: 0.5rem;
-      border: 1px solid #ccc;
+      border: 1px solid #767676;
       border-radius: 4px;
     }
 
@@ -60,8 +60,9 @@
       change the card's accent color and background.
     */
 
-    .card:has(input:user-invalid),
-    .card.has-error-fallback {
+    /* :is() keeps each rule working where :user-invalid isn't supported: in a plain
+       selector list, one unsupported selector drops the whole rule. */
+    .card:is(:has(input:user-invalid), .has-error-fallback) {
       border-left-color: #d93025;
       background-color: #fff8f8;
       box-shadow: 0 4px 12px rgba(217, 48, 37, 0.1);
@@ -69,18 +70,29 @@
 
     /* Update the status icon */
     .status-icon::after {
-      content: "✅";
+      content: "✅" / "";
     }
 
-    .card:has(input:user-invalid) .status-icon::after,
-    .card.has-error-fallback .status-icon::after {
-      content: "⚠️";
+    /* The icon repeats what the field's error text says, so give it empty
+       alternative text. */
+    .card:is(:has(input:user-invalid), .has-error-fallback) .status-icon::after {
+      content: "⚠️" / "";
     }
 
     /* Also style the input itself */
-    input:user-invalid,
-    input.user-invalid-fallback {
+    input:is(:user-invalid, .user-invalid-fallback) {
       border-color: #d93025;
+    }
+
+    /* Field-level error text: the card styling doesn't say which field is wrong or why */
+    .error-msg {
+      display: none;
+      color: #d93025;
+      margin-top: 0.25rem;
+    }
+
+    input:is(:user-invalid, .user-invalid-fallback)+.error-msg {
+      display: block;
     }
 
     .status-banner {
@@ -120,11 +132,13 @@
     <form id="demo-form" action="#" onsubmit="event.preventDefault();" novalidate>
       <div class="form-group">
         <label for="username">Username (Required)</label>
-        <input type="text" id="username" name="username" required>
+        <input type="text" id="username" name="username" required data-error="username-error">
+        <div id="username-error" class="error-msg">Username is required.</div>
       </div>
       <div class="form-group">
         <label for="email">Email (Required)</label>
-        <input type="email" id="email" name="email" required>
+        <input type="email" id="email" name="email" required data-error="email-error">
+        <div id="email-error" class="error-msg">Email address is missing or not valid. Enter it in the format you@example.com.</div>
       </div>
       <div style="display: flex; gap: 1rem;">
         <button type="submit">Save</button>
@@ -156,18 +170,23 @@
         const reason = forced ? "(Forced)" : "(Missing support)";
         statusDiv.textContent = `⚠️ Using JS fallback logic ${reason}.`;
         statusDiv.style.background = "#fff8e1";
-        statusDiv.style.color = "#b06000";
+        statusDiv.style.color = "#8a4b00";
       }
 
       // Reset artifacts
       form.querySelectorAll('input').forEach(input => {
         input.classList.remove('user-invalid-fallback');
         input.classList.remove('user-valid-fallback');
+        input.setAttribute('aria-invalid', 'false');
+        linkError(input, false);
       });
 
       // Initialize
       if (!useNativeLogic) {
         UserInvalidFallback.init(form);
+      } else {
+        // Start every field at aria-invalid="false", or "true" if it's already :user-invalid
+        document.querySelectorAll('input, select, textarea').forEach((el) => syncAria(el));
       }
     };
 
@@ -180,7 +199,8 @@
       const dirtyState = new WeakMap();
 
       const updateState = (input) => {
-        const isValid = input.checkValidity();
+        // validity.valid gives the current state without firing an 'invalid' event, as checkValidity() does.
+        const isValid = input.validity.valid;
 
         // Update both visual and ARIA state
         input.classList.toggle('user-invalid-fallback', !isValid);
@@ -189,11 +209,25 @@
         if (!isValid) {
           input.setAttribute('aria-invalid', 'true');
         } else {
-          input.removeAttribute('aria-invalid');
+          input.setAttribute('aria-invalid', 'false');
         }
+        linkError(input, !isValid);
+      };
+
+      // List the error message (the id in data-error) in aria-describedby only while it's
+      // shown: text that aria-describedby references is announced even when it's hidden.
+      const linkError = (input, shown) => {
+        const errorId = input.dataset.error;
+        if (!errorId) return;
+        const ids = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== errorId);
+        if (shown) ids.push(errorId);
+        if (ids.length) input.setAttribute('aria-describedby', ids.join(' '));
+        else input.removeAttribute('aria-describedby');
       };
 
       const handleEvent = (event) => {
+        if (useNativeLogic) return; // Listeners stay attached after leaving fallback mode
+
         const input = event.target;
 
         if (event.type === 'reset') {
@@ -202,12 +236,22 @@
             dirtyState.delete(control);
             control.classList.remove('user-invalid-fallback');
             control.classList.remove('user-valid-fallback');
-            control.removeAttribute('aria-invalid');
+            // form.elements includes buttons, which don't take aria-invalid
+            if (control.matches('input, select, textarea')) control.setAttribute('aria-invalid', 'false');
+            if (control.dataset?.error) linkError(control, false);
           }
           return;
         }
 
         if (!input.checkValidity) return;
+
+        // A submit attempt counts as interaction: the browser fires 'invalid' on each failing
+        // field, including required fields the user never touched, so flag them all.
+        if (event.type === 'invalid') {
+          dirtyState.set(input, { hasInteracted: true, hasBlurred: true });
+          updateState(input);
+          return;
+        }
 
         if (event.type === 'input' || event.type === 'change') {
           const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
@@ -233,18 +277,118 @@
         root.addEventListener('blur', handleEvent, true);
         root.addEventListener('input', handleEvent);
         root.addEventListener('change', handleEvent);
+        root.addEventListener('invalid', handleEvent, true); // invalid doesn't bubble
         root.addEventListener('reset', handleEvent, true);
       };
 
       return { init };
     })();
 
+    // List the field's error message (the id in data-error) in aria-describedby only while
+    // it's shown: text that aria-describedby references is announced even when it's hidden.
+    const linkError = (el, shown) => {
+      const errorId = el.dataset.error;
+      if (!errorId) return;
+      const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== errorId);
+      if (shown) ids.push(errorId);
+      if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+      else el.removeAttribute('aria-describedby');
+    };
+
+    // One polite live region for the page announces an error that appears when the user
+    // leaves or changes a field. Run this once the form is in the page.
+    const announcer = document.createElement('div');
+    announcer.setAttribute('aria-live', 'polite');
+    announcer.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;';
+    document.body.append(announcer);
+    let announceTimer;
+    let announcedField;
+
+    // Text as a screen reader reads it: icons' text alternatives in, aria-hidden text out.
+    const spokenText = (node) => {
+      const copy = node.cloneNode(true);
+      copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+      copy.querySelectorAll('[role="img"][aria-label]').forEach((n) => n.replaceWith(`${n.getAttribute('aria-label')}: `));
+      return copy.textContent.replace(/\s+/g, ' ').trim();
+    };
+    const announceError = (el) => {
+      const error = document.getElementById(el.dataset.error);
+      if (!error) return;
+      const label = el.labels?.[0] ? `${spokenText(el.labels[0])}: ` : '';
+      clearTimeout(announceTimer);
+      announcer.textContent = '';
+      announcedField = el;
+      // Wait until the screen reader has announced the field that receives focus next.
+      announceTimer = setTimeout(() => { announcer.textContent = label + spokenText(error); }, 500);
+    };
+
+    // aria-invalid sync for native mode: mirror :user-invalid for screen readers. Only form
+    // fields are synced, and an aria-invalid="true" that this script didn't set (for example
+    // from a server check) is left alone.
+    const flagged = new WeakSet();
+    // Fields whose current error has been announced, or read out by focus after a failed
+    // submit. A field can become invalid while the user types, so this is tracked separately.
+    const announced = new WeakSet();
+    const syncAria = (el, announce = false) => {
+      if (!el.matches?.('input, select, textarea')) return;
+      const invalid = el.matches(':user-invalid');
+      if (invalid) {
+        if (announce && !announced.has(el)) {
+          announceError(el);
+          announced.add(el);
+        }
+        el.setAttribute('aria-invalid', 'true');
+        flagged.add(el);
+      } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
+        el.setAttribute('aria-invalid', 'false');
+        flagged.delete(el);
+        announced.delete(el);
+        // Clear a fixed field's announcement so it isn't found later when reading the page.
+        if (announcedField === el) {
+          clearTimeout(announceTimer);
+          announcer.textContent = '';
+        }
+      }
+      linkError(el, invalid);
+    };
+
+    // Update on blur (to show and announce an error) and input (to clear it)
+    document.addEventListener('blur', (e) => {
+      if (useNativeLogic) syncAria(e.target, true);
+    }, true);
+
+    document.addEventListener('input', (e) => {
+      if (useNativeLogic && e.target.hasAttribute('aria-invalid')) syncAria(e.target);
+    });
+
+    // Checkboxes, radio buttons and other controls that commit on 'change' can become
+    // :user-invalid without losing focus, so update on change too.
+    document.addEventListener('change', (e) => {
+      if (useNativeLogic) syncAria(e.target, true);
+    }, true);
+
+    // A failed submit fires 'invalid' on each failing field, including required fields the
+    // user never touched, so update those too. 'invalid' doesn't bubble. Focus moving to the
+    // first invalid field announces its error, so these aren't announced.
+    document.addEventListener('invalid', (e) => {
+      if (useNativeLogic) {
+        announced.add(e.target);
+        syncAria(e.target);
+      }
+    }, true);
+
+    // Reset clears :user-invalid after the 'reset' event, so update each field afterwards.
+    document.addEventListener('reset', (e) => {
+      if (!useNativeLogic) return;
+      setTimeout(() => [...e.target.elements].forEach((el) => syncAria(el)));
+    }, true);
+
     // 3. Specialized Application Layer (Parent Styling)
     const updateParentStyles = (target) => {
       if (useNativeLogic) return;
       const container = target.closest('.card');
       if (!container) return;
-      const hasError = container.querySelector('.user-invalid-fallback');
+      const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
       container.classList.toggle('has-error-fallback', !!hasError);
     };
 
@@ -255,12 +399,23 @@
 
     form.addEventListener('input', (e) => updateParentStyles(e.target));
 
+    // invalid is the only event a submit attempt fires on fields the user never touched.
+    // Wait a task so the fallback's listener has flagged the field first.
+    form.addEventListener('invalid', (e) => {
+      setTimeout(() => updateParentStyles(e.target), 0);
+    }, true);
+
+    // The card wraps the form, so re-check it after the fallback has cleared the fields
     form.addEventListener('reset', () => {
-      setTimeout(() => {
-        form.querySelectorAll('.has-error-fallback').forEach(el => {
-          el.classList.remove('has-error-fallback');
-        });
-      }, 0);
+      setTimeout(() => updateParentStyles(form), 0);
+    });
+
+    // Submit: the form uses novalidate for its custom error UI, so the browser doesn't block
+    // submission or move focus. Do both here so a failed submit is announced.
+    form.addEventListener('submit', (event) => {
+      if (form.checkValidity()) return; // checkValidity() fires 'invalid' on each failing field
+      event.preventDefault();
+      form.querySelector('input:invalid, select:invalid, textarea:invalid')?.focus();
     });
 
     // Init

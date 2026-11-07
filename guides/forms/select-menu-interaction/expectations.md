@@ -5,3 +5,6 @@
 - DO NOT assume specific container class names. The AI might structure the form slightly differently than the demo.
 - DO NOT write static assertions (e.g., `fs.readFileSync`) checking for specific JavaScript data structures like `WeakMap` or exact function names in the source code. Tests must evaluate behavior, not specific code syntax.
 - DO NOT assume the `<select>` element is nested inside a `<form>` tag.
+- The select has `aria-invalid="true"` while its error state is shown, and doesn't have `aria-invalid="true"` before the error appears or after it clears.
+- While the select has `aria-invalid="true"`, its accessible description includes its visible error text.
+- On page load, the select's accessible description doesn't include its error text.

@@ -1,5 +1,6 @@
 - On page load, the required input field MUST have a neutral border (not red), even if it is empty.
-- Clicking into the required empty input field and clicking away (blur) MUST trigger the `:user-invalid` state (e.g. red border, visible error message) without writing custom JS event listeners.
+- Focusing and then leaving an untouched required field leaves it without an error state.
+- Typing an invalid value into a field and leaving it shows the error state.
 - Typing a valid value MUST remove the error state immediately (on input) or after blur.
 - Submitting the form with an empty required field MUST trigger the error state.
 - DO NOT assert the presence of a Password field, complexity lists, or specific labels unless explicitly asked for by the test prompt.
@@ -7,3 +8,8 @@
 - Input format hints and password complexity rules MUST be positioned above the input element in the markup to prevent obstruction by mobile keyboards.
 - The `placeholder` attribute MUST NOT be used to communicate format constraints or examples.
 - Visual error feedback MUST incorporate multiple state indicators (e.g. an icon alongside border color changes) to avoid color-only communication.
+- When a value doesn't meet a field's requirements, visible error text says so.
+- A field has `aria-invalid="true"` while its error state is shown, and doesn't have `aria-invalid="true"` before the error appears or after it clears.
+- After the form is submitted with an invalid field, focus is on the first invalid field.
+- While a field has `aria-invalid="true"`, its accessible description includes its visible error text.
+- On page load, no field's accessible description includes its error text.
