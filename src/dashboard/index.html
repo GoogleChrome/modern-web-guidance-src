@@ -97,22 +97,29 @@
       </section>
       <section id="agents-section" class="hero-agents page-section" aria-labelledby="agents-heading">
         <div class="hero-agents-header">
-          <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
-          <p class="hero-agents-note">Latest nightly run per agent. Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
+          <div class="hero-agents-intro">
+            <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
+            <p class="hero-agents-note"><span id="hero-agents-window-note">Latest nightly suite per agent.</span> Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
+          </div>
+          <fieldset id="agents-window-toggle" class="window-pill-toggle" hidden>
+            <legend class="visually-hidden">Agent summary window</legend>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="1" checked>Latest night</label>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="5" id="agents-window-multi"><span id="agents-window-multi-label">Last 5 nights</span></label>
+          </fieldset>
         </div>
         <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
           <table class="agent-table">
-            <caption id="agent-table-caption" class="visually-hidden">Latest nightly runs per agent family, pooled. Unguided → guided.</caption>
+            <caption id="agent-table-caption" class="visually-hidden">Latest nightly suite per agent family. Unguided → guided.</caption>
             <thead>
               <tr>
                 <th scope="col">Agent</th>
                 <th scope="col">Pass rate</th>
                 <th scope="col">Accessibility</th>
-                <th scope="col">Runs</th>
+                <th scope="col">Sample</th>
               </tr>
             </thead>
             <tbody id="agent-table-body">
-              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Runs">—</td></tr>
+              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Sample">—</td></tr>
             </tbody>
           </table>
         </div>
@@ -144,7 +151,7 @@
                 </div>
                 <div class="method-item">
                   <dt>Grading &amp; pass rate</dt>
-                  <dd>Playwright opens the finished app in a real browser and checks the DOM, styles, and source against each requirement. Pass rate is checks passed divided by checks run (crashes or timeouts before grading count as one failed check). Lift is shown in <strong>percentage points (pp)</strong>: 25% → 90% is +65 pp.</dd>
+                  <dd>Playwright opens the finished app in a real browser and checks the DOM, styles, and source against each requirement. Pass rate is checks passed divided by checks run (runs that crash or time out before grading are left out, along with their paired run). Lift is shown in <strong>percentage points (pp)</strong>: 25% → 90% is +65 pp.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Why isn't "With MWG" 100%?</dt>
@@ -164,7 +171,7 @@
                 </div>
                 <div class="method-item">
                   <dt>Scheduled nightly runs</dt>
-                  <dd>Automated suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run the full task set on a schedule. Headline numbers pool the <span id="method-recent-n">latest nightly run</span> per agent<span id="method-agents"></span>.</dd>
+                  <dd>Automated suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run the full task set on a schedule. Headline numbers pool the <span id="method-recent-n">latest nightly suite</span> per agent<span id="method-agents"></span>.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Open-source benchmark</dt>
