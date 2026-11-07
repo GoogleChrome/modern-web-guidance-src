@@ -1,5 +1,7 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
 let allTestData = {}; // Cache all test data by testId
@@ -25,14 +27,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         initGoogleAuth(async () => {
-            await loadRemoteTests();
+            const source = resolveDataSource();
+            if (source === 'remote' || source === 'public') {
+                reloadAsRemote();
+                return;
+            }
+            await loadManifestTests('remote');
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
 
-        await loadLocalTests();
-        if (getAccessToken()) {
-            await loadRemoteTests();
+        if (resolveDataSource(params) === 'public') {
+            await loadManifestTests('public');
+        } else {
+            await loadLocalTests();
+            if (getAccessToken()) {
+                await loadManifestTests('remote');
+            }
         }
         setupNavigationControls(guideName);
         renderGraphs(guideName);
@@ -88,10 +99,8 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 }
 
 async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; 
-    }
-    
+    if (!isLocalServer()) return;
+
     try {
         let response = await fetch(`/api/suites?t=${Date.now()}`);
         let manifest;
@@ -136,22 +145,24 @@ async function loadLocalTests() {
     }
 }
 
-async function loadRemoteTests() {
+/** @param {'remote' | 'public'} source */
+async function loadManifestTests(source) {
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
-            for (const item of manifest) {
-                if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote');
-                }
+        const manifest = await new ApiClient(source).getSuitesManifest();
+        for (const item of manifest) {
+            if (item && item.testId) {
+                registerSuiteSummary(item, source);
             }
         }
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error(`Error loading ${source} suites:`, error);
+        // The bucket rejected the token; show the public copy rather than nothing. Not on the
+        // dev server's local view, so a stale token there does not mix out/public-evals/ into
+        // local results. (Checked by mode rather than `=== 'remote'` because a 401 has already
+        // cleared the token by this point.)
+        if (source === 'remote' && resolveDataSource() !== 'local' && isAuthRejection(error)) {
+            await loadManifestTests('public');
+        }
     }
 }
 
@@ -189,7 +200,9 @@ function setupNavigationControls(currentGuide) {
     const { signal } = navListenersAbort;
     const params = new URLSearchParams(window.location.search);
     const isA11yMode = params.get('mode') === 'a11y';
-    const modeSuffix = isA11yMode ? '&mode=a11y' : '';
+    const sourceParam = params.get('source');
+    // Carry mode and data source forward so navigating between guides does not drop ?source=public.
+    const querySuffix = `${isA11yMode ? '&mode=a11y' : ''}${sourceParam ? `&source=${encodeURIComponent(sourceParam)}` : ''}`;
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
         if (run.guides) {
@@ -217,20 +230,20 @@ function setupNavigationControls(currentGuide) {
         prevBtn.disabled = false;
         prevBtn.addEventListener('click', () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${modeSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${querySuffix}`;
         }, { signal });
 
         nextBtn.disabled = false;
         nextBtn.addEventListener('click', () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${modeSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${querySuffix}`;
         }, { signal });
     }
 
     goBtn.addEventListener('click', () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${modeSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${querySuffix}`;
         }
     }, { signal });
 

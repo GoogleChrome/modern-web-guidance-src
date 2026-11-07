@@ -9,13 +9,9 @@ import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
+import { loadAllowedEnvFile } from '../src/harness/lib/secret-guard.ts';
 
-// Load environment variables (Node 20.12+)
-try {
-  process.loadEnvFile(path.join(rootDir, '.env'));
-} catch {
-  // Ignore if file doesn't exist
-}
+loadAllowedEnvFile(path.join(rootDir, '.env'));
 
 // --- Single Source of Truth Metadata ---
 
@@ -42,7 +38,7 @@ const ALL_OPTIONS = {
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
-  analyze: { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
+  'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
@@ -202,7 +198,7 @@ function showHelp() {
     },
     {
       title: 'Codebase Analysis',
-      commands: ['analyze'],
+      commands: ['legacy-scan'],
     },
     {
       title: 'Evaluation & Dashboard',
@@ -231,7 +227,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'analyze' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -254,7 +250,7 @@ function showHelp() {
 async function main() {
   const command = positionals[0];
 
-  if (command === 'analyze') {
+  if (command === 'legacy-scan' || command === 'analyze') {
     const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
     const result = await runAnalyzeCli(process.argv.slice(3));
     writeAnalyzeCliResult(result);

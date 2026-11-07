@@ -6,7 +6,6 @@ import config, { Agents } from '../config.ts';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  exportTrajectories,
   runCliAgentCommand,
   createTrustedFolders,
   copyFileIfExists,
@@ -14,6 +13,7 @@ import {
   isEnoent,
   type GuideUsage
 } from '../lib/agent-shared.ts';
+import { exportTrajectories } from '../lib/trajectory-export.ts';
 import {
   type StandardizedStep,
   type TrajectorySummary,
