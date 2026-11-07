@@ -1,0 +1,22 @@
+- A `<select>` element with a `name` attribute and an associated `<label>` is present.
+- `appearance: base-select` is applied to both the `<select>` and its `::picker(select)` pseudo-element.
+- The `<select>` contains a `<button>` with a `<selectedcontent>` element as its trigger.
+- At runtime, the `<select>` contains a descendant `<input type="text">` filter field (inserted by script, not present in the parsed HTML source) that appears before the first `<option>`.
+- Typing into the filter input hides `<option>` elements whose text does not contain the typed string and leaves matching `<option>` elements visible.
+- Typing printable characters into the filter input does not change the `<select>` element's `value` (type-ahead selection is suppressed).
+- When no `<option>` matches the typed text, an empty-state element inside the `<select>` becomes visible; it is hidden again when at least one option matches.
+- Pressing Enter inside the filter input does not submit the form.
+- Pressing Enter inside the filter input moves focus to the first visible `<option>`.
+- An element with `role="status"` (or `aria-live`) updates its text content with the number of matching options as the filter changes.
+- When `customizable-select` is unsupported, the filter `<input>` is not inserted into the `<select>`, leaving a standard `<select>` control.
+- When the picker closes, the filter input is cleared, all non-placeholder `<option>` elements are visible again, and the `role="status"` element's text is empty.
+- A multiple-selection control has a trigger `<button>` with `popovertarget` referencing an element with the `popover` attribute.
+- The popover contains a text filter input and `<input type="checkbox">` elements that share one `name`.
+- Typing into the popover's filter input hides checkbox labels whose text does not contain the typed string.
+- Checkboxes that are checked before filtering remain checked after being hidden and are included in `new FormData(form).getAll(name)`.
+- A text element associated with the trigger lists the labels of the checked checkboxes and updates as they change.
+- Pressing ArrowDown in the popover's filter input moves focus to the first visible checkbox.
+- Checkboxes in the multiple-selection popover use `appearance: none` with a `mask` for the check icon.
+- Checkboxes in the multiple-selection popover have a visible `:focus-visible` style.
+- Pressing ArrowDown on a checkbox in the popover moves focus to the next visible checkbox, and ArrowUp on the first visible checkbox moves focus to the filter input.
+- When the popover closes, the filter input is cleared and all checkbox labels are visible again.
