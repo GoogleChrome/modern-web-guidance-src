@@ -52,13 +52,18 @@ ul::before {
 }
 ```
 
-Add a height and other visual styles.
+Add a height and other visual styles. Forced colors mode replaces background colors, so in `@media (forced-colors: active)`, give the indicator a system color background, or the indicator disappears.
 
 ```css
 ul::before {
   /* Apply your project's styles for the indicator */
   block-size: .25lh;
   background: red;
+
+  @media (forced-colors: active) {
+    /* A system color, which forced colors mode keeps, so the indicator stays visible */
+    background: CanvasText;
+  }
 }
 ```
 
