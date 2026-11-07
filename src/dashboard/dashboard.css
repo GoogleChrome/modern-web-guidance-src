@@ -649,6 +649,14 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   border-radius: 4px;
 }
 
+.dashboard-grid:not(.is-sorted-flat) .row-category-tag {
+  display: none;
+}
+
+.dashboard-grid:not(.is-sorted-flat) .task-badges-row:not(:has(> :not(.row-category-tag))) {
+  display: none;
+}
+
 .dashboard-grid {
   --evals-cols: minmax(0, 1fr) 72px 72px 84px 190px 88px;
 }
@@ -1580,7 +1588,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .mode-toggle-btn { position: relative; display: inline-flex; align-items: center; appearance: none; border: none; background: transparent; color: var(--color-on-surface-variant); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; }
 .mode-toggle-btn:has(> input[type="radio"]:checked) { background: var(--color-primary); color: var(--color-on-primary); }
 .mode-toggle-btn:hover:not(:has(> input[type="radio"]:checked)) { background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
-:is(.mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill) > input[type="radio"] {
+:is(.mode-toggle-btn, .metric-mode-btn, .window-pill-btn, .ab-agent-pill, .ab-task-pill) > input[type="radio"] {
   position: absolute;
   inset-block-start: 50%;
   inset-inline-start: 50%;
@@ -1590,7 +1598,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   opacity: 0;
   pointer-events: none;
 }
-:is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+:is(.mode-toggle-btn, .metric-mode-btn, .window-pill-btn):has(> input[type="radio"]:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .guide-section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
 .guide-title-group { display: flex; align-items: baseline; gap: 10px; }
 .evals-count { font-size: 0.82rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
@@ -1677,9 +1685,9 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 :root:root .guide-legend-swatch:is(.unguided, .guided)::before { background: GrayText; opacity: 1; }
 :root:root .ab-meter-seg.pass { background: CanvasText; }
 :root:root .ab-meter-seg.fail { background: Canvas; outline: 1px solid CanvasText; outline-offset: -1px; }
-:root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; text-decoration: underline 2px; text-underline-offset: 3px; }
-:root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked:focus-visible) { outline: 2px solid CanvasText; outline-offset: 2px; }
-:root:root :is(.mode-toggle-btn, .metric-mode-btn) { border: 1px solid ButtonText; }
+:root:root :is(.mode-toggle-btn, .metric-mode-btn, .window-pill-btn):has(> input[type="radio"]:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; text-decoration: underline 2px; text-underline-offset: 3px; }
+:root:root :is(.mode-toggle-btn, .metric-mode-btn, .window-pill-btn):has(> input[type="radio"]:checked:focus-visible) { outline: 2px solid CanvasText; outline-offset: 2px; }
+:root:root :is(.mode-toggle-btn, .metric-mode-btn, .window-pill-btn) { border: 1px solid ButtonText; }
 :root:root :is(.insight-dumbbell-track, .suite-dumbbell-track) .variance-band[class] { background: GrayText; opacity: 1; }
 #dumbbell-chart :is(.dc-connector, .dc-gtick) { stroke: Highlight; }
 #dumbbell-chart :is(.dc-connector.regressed, .dc-utick) { stroke: CanvasText; }
@@ -1694,8 +1702,8 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 @media (pointer: coarse) {
 .info-hint-btn { inline-size: 44px; block-size: 44px; border: 10px solid transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--color-outline); }
 .trend-link, .sort-direction-btn { min-inline-size: 44px; min-block-size: 44px; }
-.header-link, .ab-prov-link, .takeaway-action-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .task-toggle, .secondary-btn, .sort-select, .tfoot-action-btn, .hero-drawers > details > summary, .toggle-label { min-block-size: 44px; }
-.header-link, .ab-prov-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .secondary-btn { display: inline-flex; align-items: center; }
+.header-link, .ab-prov-link, .takeaway-action-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .window-pill-btn, .ab-agent-pill, .ab-task-pill, .ab-checks-toggle, .ab-score-a11y, .agent-rate-trigger, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .task-toggle, .secondary-btn, .sort-select, .tfoot-action-btn, .hero-drawers > details > summary, .toggle-label { min-block-size: 44px; }
+.header-link, .ab-prov-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .window-pill-btn, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .secondary-btn { display: inline-flex; align-items: center; }
 .takeaway-action-link { display: inline-block; padding-block: 10px; }
 .guide-nav-controls .secondary-btn { min-inline-size: 44px; justify-content: center; }
 .toggle-label input[type="checkbox"], .filter-item input[type="checkbox"] { inline-size: 24px; block-size: 24px; }

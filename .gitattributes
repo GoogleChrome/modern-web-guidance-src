@@ -5,4 +5,5 @@ guides/**/grader.ts           linguist-generated
 guides/**/negative-demo.html  linguist-generated
 guides/**/prompts.md          linguist-generated
 guides/**/demo.html           linguist-generated
+guides/**/*.patch            linguist-generated
 src/ci/feature-to-groups.gen.json linguist-generated

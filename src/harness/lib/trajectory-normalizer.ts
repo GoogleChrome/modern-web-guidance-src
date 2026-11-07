@@ -65,7 +65,7 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 2;
+export const NORMALIZER_VERSION = 4;
 
 const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
@@ -332,7 +332,7 @@ export function categorizeAction(
     if (cmdLower.includes('retrieve')) {
       return 'guide_retrieval';
     }
-    if (cmdLower.includes('search') || cmdLower.includes('analyze')) {
+    if (cmdLower.includes('search') || cmdLower.includes('analyze') || cmdLower.includes('legacy-scan')) {
       return 'skill_search';
     }
   }

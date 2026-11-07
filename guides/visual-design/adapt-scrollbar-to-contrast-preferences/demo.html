@@ -65,8 +65,8 @@
     
     .scroller.adaptive-contrast {
       /* Define default colors as CSS variables (subtle grey theme) */
-      --scrollbar-thumb: #bbb;
-      --scrollbar-thumb-hover: #999;
+      --scrollbar-thumb: #707070;
+      --scrollbar-thumb-hover: #555;
       --scrollbar-track: #f1f1f1;
       
       /* Apply standard property natively */
@@ -124,9 +124,9 @@
   <p>Scroll down inside the box. Use Chrome DevTools (Rendering tab) to emulate the <strong>prefers-contrast: more</strong> media feature and watch the scrollbar switch to a highly legible black-and-white theme.</p>
 
   <div class="container">
-    <div class="scroller adaptive-contrast" tabindex="0" aria-label="Sample scrollable content region">
+    <div class="scroller adaptive-contrast" tabindex="0" role="region" aria-label="Sample scrollable content region">
       <h2>Scroll me</h2>
-      <p>This container features a scrollbar that is intentionally subtle by default, utilizing light gray tones for the track and thumb.</p>
+      <p>This container features a scrollbar that is intentionally subtle by default, utilizing gray tones for the track and thumb.</p>
       <p>However, accessibility is crucial. Users with visual impairments may enable high contrast modes in their operating system to improve legibility.</p>
       <p>When high contrast is detected via <code>@media (prefers-contrast: more)</code>, the CSS custom properties defining this scrollbar will automatically swap.</p>
       <p>The subtle gray tones are instantly replaced with stark black and white, guaranteeing the scrollbar thumb is clearly demarcated against the track and page background.</p>

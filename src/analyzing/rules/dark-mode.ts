@@ -5,7 +5,7 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
-export const DARK_MODE_GUIDE_HASH = '796876897c2c';
+export const DARK_MODE_GUIDE_HASH = '6e7f5c252c32';
 
 const matchedCssContexts = new WeakSet<CssMatcherContext>();
 

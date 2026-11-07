@@ -1,0 +1,41 @@
+{
+  "connection-allowlists": {
+    "reason": "recent-single-engine"
+  },
+  "frame-sizing": {
+    "reason": "recent-single-engine"
+  },
+  "html-setters": {
+    "reason": "recent-single-engine"
+  },
+  "html-streaming-setters": {
+    "reason": "recent-single-engine"
+  },
+  "languagedetector": {
+    "reason": "built-in-ai"
+  },
+  "languagemodel": {
+    "reason": "built-in-ai"
+  },
+  "scroll-axis-lock": {
+    "reason": "recent-single-engine"
+  },
+  "summarizer": {
+    "reason": "built-in-ai"
+  },
+  "text-decoration-skip-spaces": {
+    "reason": "recent-single-engine"
+  },
+  "tmp-camera-microphone": {
+    "reason": "recent-single-engine"
+  },
+  "tmp-webcrypto-modern-algos": {
+    "reason": "recent-single-engine"
+  },
+  "translator": {
+    "reason": "built-in-ai"
+  },
+  "window-drag": {
+    "reason": "recent-single-engine"
+  }
+}

@@ -16,6 +16,7 @@ Search and retrieve standardized modern web best practices at the **start** of i
 
 Run `modern-web-guidance` directly with `npx` using a **2–5 word action-oriented query** for a **single web platform capability or UI pattern**:
 - **Keep queries focused and generic**: Describe the user-visible capability (`<verb> + <UI/platform object>`, optionally paired with the target HTML/CSS/JS feature name if known). Omit framework/library names (`React`, `Vue`, `Tailwind`, etc.) and app/domain nouns (product, route, or component/file names). Split multi-feature tasks into separate `search` calls.
+- **Name implied UI primitives**: When the user's prompt expresses intent without naming the UI primitive (e.g. "confirm first", "delete with confirmation", "pick a date"), translate the domain intent into the implied UI component or platform mechanism (e.g. search `"confirmation modal dialog"` or `"confirm dialog"` rather than `"confirm destructive action"`, or `"date picker input"` rather than `"pick a date"`).
 - **Example**: Search `"light dismiss dialog"` or `"responsive data table"`, **not** `"dialog"` (too terse), `"responsive table dark mode"` (compound — split into two searches), or `"close React settings modal on outside click"` (framework/app noise).
 
 ```sh
@@ -24,8 +25,8 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
 
 > **Note**: Returns `[{ "id", "description" }, ...]`. Judge results by their `description` fields:
 > - **Match found**: Call `retrieve` directly—do not also run `list`.
-> - **No match on a web UI/CSS/DOM behavior (or broad UI audit)**: If `search` returns `[]` or unrelated descriptions because your phrasing differed from the catalog (or your task spans multiple categories), run `npx -y modern-web-guidance@latest list` once to check if the pattern is covered under more general terminology.
-> - **Topic not covered**: If no guide `description` directly matches your task, proceed with your implementation without retry loops or retrieving unrelated guides.
+> - **Weak or empty results**: If `search` returns `[]` or unrelated descriptions, **rephrase `search` once** using the concrete HTML/CSS/UI component noun or synonym (e.g., `dialog`, `modal`, `popover`, `table`, `form`) before falling back to `list` (or use `list` once for broad UI audits).
+> - **Topic not covered**: If no `description` matches after rephrasing, proceed without retrieving unrelated guides.
 
 ### Step 2. Retrieve Best Practices
 
@@ -42,7 +43,7 @@ If `retrieve` saves large output (> 9.5 KB) to a temporary file to prevent trunc
 When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
-- Do not run `analyze`; it's for detecting legacy patterns to modernize, not this.
+- Do not run `legacy-scan`; it's for detecting legacy patterns to modernize, not this.
 
 ### Step 4. Disclose Skill Usage
 
@@ -54,18 +55,19 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 
 ## Alternative flow: Modernize an existing codebase
 
-**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
+**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `legacy-scan` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
 
-> **Note**: `analyze` scans for a curated subset (~20% of the guidance corpus).
+> **Note**: `legacy-scan` scans for a curated subset (~20% of the guidance corpus).
 
 ```sh
-npx -y modern-web-guidance@latest analyze <path> --json
+npx -y modern-web-guidance@latest legacy-scan <path> --json
 ```
 
-1. Scan: Run `analyze <path> --json` to detect legacy web platform patterns across a directory or file.
-2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
-3. Report: Summarize verified findings (and the modernization plan, if editing) for the user.
-4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm resolution.
+1. Scan: Run `legacy-scan <path> --json` to detect legacy web platform patterns across the project or directory.
+2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, cross-file helpers, vendor code, lookalikes).
+3. Report: Summarize verified findings (and the modernization plan, if editing) for the user, noting that `legacy-scan` only checks the subset of guides (~20% of the catalog) that have deterministic legacy rules.
+4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement (keeping existing libraries as fallbacks where the guide requires one), and re-run `legacy-scan <path>` on the modified files to confirm resolution.
+   - Dropped findings and kept fallbacks still match static scans; do not edit safe code or inspect `legacy-scan.mjs` to force 0 findings.
 
 ## Using npx / pnpx
 

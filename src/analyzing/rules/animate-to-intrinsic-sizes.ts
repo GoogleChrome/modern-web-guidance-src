@@ -126,7 +126,7 @@ const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
 export const animateToIntrinsicSizesRule: AnalyzerRule = {
   id: 'animate-to-intrinsic-sizes',
   guideId: 'animate-to-intrinsic-sizes',
-  guideHash: '290b14ca7ee4',
+  guideHash: '1193fea41a0b',
   summary:
     'CSS transition on max-height simulates intrinsic size animation; modernize with interpolate-size: allow-keywords or calc-size().',
   matcher: animateToIntrinsicSizesCssMatcher,
