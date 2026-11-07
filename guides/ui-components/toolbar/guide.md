@@ -86,14 +86,20 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 
 * Keep a clear `:focus-visible` outline with an offset; never remove it.
 * Style toggled state from the ARIA attribute (`[aria-pressed="true"]`), not a separate class, so visual and accessible state cannot diverge.
-* Show the toggled state with the button background alone; do not add an underline or other mark. Under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`). Draw separators and tooltip boxes with a border (a `transparent` one is fine), not `background` alone, which forced colors replaces with the page color.
+* Show the toggled state by changing the button background; if the contrast between the button background and the adjacent background color is less than 3:1 in each supported color scheme, provide an additional visual cue such as an outline around the background that meets the 3:1 threshold. For more information, see {{ GUIDE_REF("color") }}.
+* Under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`).
+* Draw separators and tooltip boxes with a border (a `transparent` one is fine), not `background` alone, which forced colors replaces with the page color.
 * Wrap hover styles in `@media (hover: hover)` and transitions in `@media (prefers-reduced-motion: no-preference)`.
 
 ## Tooltips for icon-only buttons
 
 Give each icon-only button a `title` as the baseline tooltip. Only where both interest invokers and anchor positioning are supported, upgrade it to an interest invoker with `popover="hint"`, which shows the tooltip without closing an open menu popover. Elsewhere the native `title` tooltip stays.
 
+Be mindful that the native `title` attribute is not keyboard focusable in any browser. If a button triggers a non-standard feature, where the icon may not be understood by users, do not give the button a `title`. Instead, use a text label or a combined text and icon label on the button.
+
 MANDATORY: Position the hint on the axis the toolbar does not stack along: `position-area: block-end` (fallback `flip-block`) for a horizontal toolbar, `position-area: inline-end` (fallback `flip-inline`) for a vertical one. A hint placed along the stacking axis covers the next control and swallows its click, because the hint stays open while the pointer is over it.
+
+As popovers are added to the end of the DOM, hide them using `aria-hidden="true"` so that they are not exposed to screen readers out of context. The tooltip text duplicates the accessible name for each of their related toolbar buttons, so screen reader users will not miss out on anything.
 
 ```html
 <button type="button" aria-label="Bold" title="Bold">…</button>
@@ -108,6 +114,7 @@ if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("positio
     b.setAttribute("interestfor", tip.id);
     b.removeAttribute("title"); // avoid a second, native tooltip
     document.body.append(tip); // keep open hint nodes out of role="group" / role="toolbar"
+    tip.setAttribute("aria-hidden", "true"); // hide popovers from screen readers
   });
 }
 ```
