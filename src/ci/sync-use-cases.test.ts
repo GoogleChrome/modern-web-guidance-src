@@ -59,6 +59,23 @@ Body content.
     assert.ok(result.errors.some((e: string) => /Missing "name"/.test(e)));
   });
 
+  test('returns error when frontmatter name does not match directory name', () => {
+    const filePath = writeTempGuide(`---
+name: wrong-name
+description: A description
+web-feature-ids:
+  - dialog-closedby
+---
+
+# My Use Case
+
+Body content.
+`);
+    const result = validateGuide(filePath);
+    assert.strictEqual(result.errors.length, 1);
+    assert.match(result.errors[0], /does not match directory name/);
+  });
+
   test('returns error for missing description field', () => {
     const filePath = writeTempGuide(`---
 name: my-use-case
