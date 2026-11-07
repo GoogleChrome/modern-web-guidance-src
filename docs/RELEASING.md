@@ -6,8 +6,10 @@ To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS 
 
 Releases are published automatically via GitHub Actions:
 * **Workflow**: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
-* **Schedule**: Runs every Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT).
-* **Manual Trigger**: Can be triggered manually at any time via GitHub Actions **Run workflow** (`workflow_dispatch`).
+* **Schedule**: Runs every 12 hours at 02:50 UTC and 14:50 UTC, publishing to the `next` npm dist-tag and the `next` branch of `GoogleChrome/modern-web-guidance` whenever `main` has new commits.
+* **Manual Trigger (`workflow_dispatch`)**: Can be triggered manually via GitHub Actions **Run workflow** with:
+  * `dist_tag`: `next` (default) or `latest` (also updates the `next` dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`).
+  * `version`: Optional explicit semver override (e.g. `1.0.0`); leave blank to auto-increment the patch version.
 
 ## Manual Publishing via CLI
 
@@ -17,17 +19,19 @@ To publish manually from your terminal:
 # 1. Preview changes and release notes (dry run)
 pnpm run publish-skills --dry-run
 
-# 2. Publish release
+# 2. Publish to @latest (or pass --tag next / --version X.Y.Z)
 pnpm run publish-skills
+pnpm run publish-skills --tag next
+pnpm run publish-skills --tag latest --version 1.0.0
 ```
 
 **What the publishing pipeline does under the hood:**
 1. Collects the latest nightly eval benchmark summary from GCS.
-2. Increments the patch version (`v0.0.x`) across all extension manifests.
+2. Resolves the target version (`vX.Y.Z`, either explicit `--version` or auto-incremented patch) and updates all distribution and plugin manifests.
 3. Compiles source guides and skills into the distribution format (`dist/skills-cli/`).
 4. Runs distribution validation and installation test suites.
-5. Pushes the compiled `dist/skills-cli/` directory to the `main` branch of `git@github.com:GoogleChrome/modern-web-guidance.git`.
-6. Tags the release `v0.0.x`.
+5. Pushes the compiled `dist/skills-cli/` directory to the target branch (`main` for `latest`, `next` for `next`) of `GoogleChrome/modern-web-guidance`.
+6. Tags the release `vX.Y.Z` (and marks `next` releases as GitHub pre-releases).
 7. Generates consumer-facing release notes using Gemini and creates the official GitHub Release via `gh release create`.
 
 ## Generating & Previewing Release Notes

@@ -4,7 +4,7 @@ This repo is the source repository for [GoogleChrome/modern-web-guidance](https:
 
 [**Modern Web Guidance**](https://developer.chrome.com/docs/modern-web-guidance) is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orientation of the codebase. We're open to contributions to guidance, eval cases, eval infra and more. :) 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and [GOVERNANCE.md](./GOVERNANCE.md) for how we work on the project and orientation of the codebase. We're open to contributions to guidance, eval cases, eval infra and more. :) 
 
 ---
 
@@ -445,9 +445,18 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 * **Progressive Enhancement & Nuanced Fallbacks**: We distinguish between purely additive enhancements (like speculative preloading) which are safe to let older browsers silently ignore, and critical behaviors (like dialog controls or network beacons) where we write highly considered, low-overhead fallbacks.
 * **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
-* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences (configurable via `npx modern-web-guidance@latest set-baseline <widely|newly|limited|YYYY>` or `"baseline"` in `.mwgrc`).
-* **Origin Trial Opt-In Gate**: Guides for experimental Origin Trial APIs are discoverable via search, but gated on `retrieve` so agents do not adopt unstable APIs without consent. Run `npx modern-web-guidance@latest set-allow-origin-trials` in your terminal to opt a project in (writes `{"allowOriginTrials": true}` to `.mwgrc`; set to `false` or delete `.mwgrc` to opt out).
-* **Volatile Feature Opt-In Gate**: Guides relying on volatile features (single-engine features shipped within 3 months, plus pinned features) are discoverable via search, but gated on `retrieve` so agents do not adopt unstable APIs without consent. Run `npx modern-web-guidance@latest set-allow-volatile-features` in your terminal to opt a project in (writes `{"allowVolatileFeatures": true}` to `.mwgrc`; set to `false` or delete `.mwgrc` to opt out).
+* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents dynamically adapt to current browser support and your project's target threshold.
+* **Origin Trial & Volatile Feature Gates**: Guides covering experimental **Origin Trial** APIs or **volatile features** (single-engine features shipped within the last 3 months or still stabilizing) remain discoverable via `search`, but are gated on `retrieve` so agents do not adopt unstable APIs without explicit developer consent.
+
+### Project Configuration (`.mwgrc`)
+
+Configure browser support targets and feature opt-ins for a repository with an optional `.mwgrc` JSON file in your project root (or `~/.mwgrc` as a user-level fallback), which you can commit to share across your team:
+
+| CLI Command | `.mwgrc` Key | Effect |
+| :--- | :--- | :--- |
+| `npx modern-web-guidance@latest set-baseline <widely\|newly\|limited\|YYYY>` | `"baseline"` | Sets the browser support target (`"widely"` by default). Retrieved guides instruct agents to omit fallbacks and polyfills for features that already meet your target. |
+| `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs (interactive terminal prompt; set to `false` or remove to opt out). |
+| `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features (interactive terminal prompt; set to `false` or remove to opt out). |
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
@@ -538,28 +547,30 @@ Otherwise, consult your agent's documentation for updating plugins and skills.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
 
-We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to ensure AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
+We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** so AI agents write better code. We run automated evaluations using a closed-loop validation pipeline:
 
 ```
-  [ Expert-authored guidance and demo ]
+  [ Expert-authored guidance, demo & expectations ]
             │
             ▼
-  [ Generated assets ] ──> Playwright Grader (.spec.ts) & Negative Demo (.html)
+  [ Target generation ] ──> Base-app tasks (task.md), golden solution patches & Playwright grader (grader.ts)
             │
             ▼
-  [ Calibration loop ] ───────> Runs Grader on Gold-Standard Demo (Must Pass 100%)
-            │                   Runs Grader on Negative Demo (Must Fail 100%)
+  [ Calibration loop ] ───> Runs Grader on Golden Solution Patches (Must Pass 100%)
+            │               Runs Grader on Unmodified Base App (Must Fail 100%)
             ▼
-  [ E2E agent evals ] ────────> Runs coding agents in guided vs. unguided modes
-                                Compares accuracy w/ and w/o the skill
+  [ E2E agent evals ] ────> Runs coding agents in guided vs. unguided modes
+                            Compares pass rates and accessibility w/ and w/o the skill
 ```
 
-0. **Simulated Developer Tasks**: We define realistic, developer prompts that mimic real-world requests (e.g., "make my images load faster"). The prompts avoid naming APIs or features, testing whether the agent can successfully discover the relevant guides naturally.
-1. **Browser-based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, accessibility states, etc.
-2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
-3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
+1. **Simulated Developer Tasks**: We define realistic developer prompts against full base applications (`daily-grind`, `devtools-times`) that mimic real-world requests (e.g., "make my images load faster"). Prompts avoid naming APIs or features, testing whether the agent can naturally discover and apply the right guides.
+2. **Static & Browser-Based Assertions**: Playwright graders (`grader.ts`) verify that each expectation in `expectations.md` was followed—checking source patterns, computed styles, runtime DOM behaviors, and accessibility states.
+3. **Self-Healing Calibration**: Graders are calibrated against multi-agent golden solution patches (100% pass target) and an unmodified baseline application (`zero-passrate.patch`, 0% pass target).
+4. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key: if models already succeed without guidance, we prune redundant advice; where agents struggle, we refine guides to maximize uplift.
 
 ### Recent eval results snapshot
+
+Explore full per-agent and per-guide breakdowns on the **[Evaluation Dashboard](https://googlechrome.github.io/modern-web-guidance-src/)**.
 
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
@@ -602,7 +613,7 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-If you'd like to contribute to modern-web-guidance, please see the [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md). The `modern-web-guidance` repo is purely a publish target for clean skills installation.
+If you'd like to contribute to modern-web-guidance, please see the source repo's [`CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md) and [`GOVERNANCE.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/GOVERNANCE.md). The `modern-web-guidance` repo is purely a publish target for clean skills installation.
 
 Huge thanks to everyone who has contributed!
 
