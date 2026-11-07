@@ -61,6 +61,12 @@ Use the `@container` rule with the `scroll-state` function. To check if the user
 }
 ```
 
+### Accessibility considerations
+
+When hiding elements that are dependant on scroll position, ensure to account for loss of focus when the control disappears. For example, if creating a back to top button that is hidden when scrolled to the top, account for the interaction where someone may be focused on the control and using `Page up` or `Home` keys to scroll the container in the background, and not interacting with the control directly. In this scenario, once the person reaches the top of the scrollable region, the control will be hidden, and focus should be moved to the region, so that people can continue to navigate it, otherwise, focus will be returned to the body element.
+
+To ensure consistent operability across different browsers and assistive technology combinations, if the scrollable container is not the `<body>` element, ensure that it can receive focus (by applying `tabindex="0"`), and has an accessible name that describes the content, along with an appropriate role (such as `role="region"`), if it does not already have an implicit role (which elements like `<main>` do).
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
