@@ -423,10 +423,13 @@
           opacity: 0;
           transform: translateY(-0.25rem);
           transition:
-            opacity 150ms,
-            transform 150ms,
-            display 150ms allow-discrete,
-            overlay 150ms allow-discrete;
+            opacity,
+            transform,
+            display,
+            overlay;
+          transition-duration: 150ms;
+          /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+          transition-behavior: allow-discrete;
         }
 
         .dropdown-list[popover]:popover-open {
@@ -443,9 +446,13 @@
       .site-header {
         .site-menu {
           transition:
-            display 180ms allow-discrete,
-            opacity 180ms ease,
-            transform 180ms ease;
+            display,
+            overlay,
+            opacity ease,
+            transform ease;
+          transition-duration: 180ms;
+          /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+          transition-behavior: allow-discrete;
           opacity: 0;
           transform: translateY(-0.5rem);
         }

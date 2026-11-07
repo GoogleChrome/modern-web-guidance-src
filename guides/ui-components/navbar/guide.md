@@ -194,6 +194,11 @@ Position the wide submenu below its trigger with CSS Anchor Positioning (`positi
     block-size: 0.5rem;
   }
 
+  /* Also hides the list before script sets popover, so an open narrow disclosure cannot widen the measured row */
+  .dropdown-list:not(:popover-open) {
+    display: none;
+  }
+
   .dropdown-list:popover-open {
     display: grid;
   }
@@ -208,14 +213,14 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 ## Transitions and Accessibility
 
-If the navigation is animated (optional; add it when the abrupt open and close feels out of place), use `@starting-style` and `display` / `overlay` with `allow-discrete` for popover entry and exit (for both the mobile menu and the wide floating submenu), animate only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
+If the navigation is animated (optional; add it when the abrupt open and close feels out of place), use `@starting-style`, include `display` and `overlay` in `transition`, and declare `transition-behavior: allow-discrete` as a separate property after `transition` (DO NOT put `allow-discrete` in the `transition` shorthand, which makes older browsers ignore the entire `transition` declaration) for both the mobile menu and the wide floating submenu. Animate only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
 
 ### Optional: Narrow submenu slide-down
 
 Optional. In the narrow layout the submenu is an inline list toggled with `hidden`, which opens instantly by default and is fully functional that way. To slide it open and closed:
 
 - Keep the `[hidden]` list rendered with `display: grid` and `block-size: 0`, then transition `block-size` to `auto` with `interpolate-size: allow-keywords` and `clip-path: inset(-6px)` to clip the slide without cutting off the focus ring (not `overflow: clip`, which clips the ring; `6px` is an example, use at least the ring's outline width plus offset).
-- Include `content-visibility: hidden` with `allow-discrete` in the transition so the content stays rendered until the close finishes.
+- Set `content-visibility: hidden` on the `[hidden]` list, include `content-visibility` in `transition`, and declare `transition-behavior: allow-discrete` separately after `transition` so the content stays rendered until the close finishes.
 - Scope it to the collapsed layout and `prefers-reduced-motion: no-preference`; outside it, `[hidden]` must stay `display: none`. In the wide layout the submenu is a popover and must not be clipped.
 - For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.
 
@@ -252,7 +257,9 @@ For the wide floating submenu, without CSS Anchor Positioning a popover falls ba
 
 {{ BASELINE_STATUS("interpolate-size") }}
 
-Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover transitions are skipped, and without `interpolate-size` the narrow submenu slide-down is skipped too; the navigation and submenu open and close instantly, which is progressive enhancement and fully functional.
+{{ BASELINE_STATUS("content-visibility") }}
+
+Gate the optional narrow submenu slide-down rules that override `[hidden]` with `display: grid` behind `@supports (interpolate-size: allow-keywords) and (content-visibility: hidden)` so browsers lacking either feature keep native `[hidden]` behavior. Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover entry or exit transitions fall back to opening or closing immediately.
 
 Without script nothing adds `is-wide`, so the header stays collapsed: the menu button opens the native popover and the submenu is a nested list. Do not write a separate no-script layout or a `no-js` class.
 
