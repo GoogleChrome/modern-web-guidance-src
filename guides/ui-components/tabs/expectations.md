@@ -31,5 +31,4 @@
 - At a viewport narrower than the combined width of the tabs, all tabs are laid out on a single row (same `offsetTop`).
 - At a viewport narrower than the combined width of the tabs, every tab remains reachable: either the tablist scrolls horizontally, or the tabs that do not fit are listed in a menu opened by a button outside the tablist.
 - At a viewport narrower than the combined width of the tabs, the selected tab is fully visible within the tablist after it is selected by click, keyboard, or a `beforematch` event.
-- When `focusgroup` is unsupported, `@microsoft/focusgroup-polyfill` is loaded.
-- When `focusgroup` is supported, `@microsoft/focusgroup-polyfill` is not loaded.
+- Native `focusGroup` support is detected with `Object.hasOwn(HTMLElement.prototype, 'focusGroup')`, and the `@microsoft/focusgroup-polyfill` polyfill is conditionally loaded only when native support is missing.
