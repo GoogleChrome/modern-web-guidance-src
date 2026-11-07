@@ -18,9 +18,11 @@ Swipe-to-reveal patterns let users slide a foreground row or content pane horizo
 
 Whether you are revealing action buttons on a list item or a side menu next to a scrollable pane, the mechanics are identical: wrap the foreground content and the hidden panel inside an outer horizontal scroll container configured with **CSS Scroll Snap** (`scroll-snap-type: x mandatory`) and **`overscroll-behavior: chain`**. The browser's native scrolling engine handles momentum, snapping, keyboard focus scrolling, and scroll chaining without JavaScript gesture listeners.
 
+**MANDATORY:** give every swipe action a visible button (or menu item) that performs the same action with a single click or the Enter key, as WCAG 2.5.1 Pointer Gestures requires for path-based gestures. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and name it after the item it acts on. Hidden buttons or menus should be removed from the focus order until visible, as to reduce the number of tab stops.
+
 ### Step 1: Mark up the swipe wrapper, content, and revealed panel
 
-Place the foreground content first and the revealed controls (action buttons or a side menu) second inside the `.SwipeReveal` scroll container. Because the content is first in DOM order, the scroll container naturally starts at scroll offset `0` with the panel hidden off-screen to the right.
+Place the foreground content first and the revealed controls (action buttons or a side menu) second inside the `.SwipeReveal` scroll container. Because the content is first in DOM order, the scroll container naturally starts at scroll offset `0` with the panel hidden off-screen to the right. For each swipe action, ensure that the accessible name includes the content that it relates to, so that people can differentiate between the available controls.
 
 ```html
 <!-- Example A: List item with revealable action buttons -->
@@ -28,11 +30,12 @@ Place the foreground content first and the revealed controls (action buttons or 
   <div class="SwipeReveal-content">
     <strong>Design review notes</strong>
     <p>Updated component specs for the Q3 release.</p>
+    <button aria-label="Design review notes actions" aria-expanded="false">…</button>
   </div>
   <div class="SwipeReveal-panel" role="group" aria-label="Item actions">
-    <button type="button">Pin</button>
-    <button type="button">Archive</button>
-    <button type="button">Delete</button>
+    <button type="button" tabindex="-1">Pin</button>
+    <button type="button" tabindex="-1">Archive</button>
+    <button type="button" tabindex="-1">Delete</button>
   </div>
 </div>
 
@@ -41,11 +44,12 @@ Place the foreground content first and the revealed controls (action buttons or 
   <div class="SwipeReveal-content is-scrollable" tabindex="0">
     <h2>Article Preview</h2>
     <p>Scroll vertically through this pane, or swipe left to reveal the side menu...</p>
+    <button aria-label="Article actions" aria-expanded="false">…</button>
   </div>
   <nav class="SwipeReveal-panel" aria-label="Contextual menu">
-    <a href="#share">Share</a>
-    <a href="#bookmark">Bookmark</a>
-    <a href="#export">Export PDF</a>
+    <a href="#share" tabindex="-1">Share</a>
+    <a href="#bookmark" tabindex="-1">Bookmark</a>
+    <a href="#export" tabindex="-1">Export PDF</a>
   </nav>
 </div>
 ```
@@ -117,24 +121,76 @@ Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`
 
 > If you also want to reveal controls on the left (`inline-start`) side using three columns (`grid-template-columns: max-content 100% max-content`) or two columns (`max-content 100%`), place the leading `.SwipeReveal-panel` before `.SwipeReveal-content`. Because `.SwipeReveal-content` has `scroll-initial-target: nearest`, the scroll container initially rests on the content column rather than the leading panel.
 
-### Step 3: Snap focusable content panes back into view on keyboard focus
+### Step 3: Reveal controls when trigger button is activated
 
-Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest, tabbing into them with a keyboard automatically scrolls `.SwipeReveal` to reveal the focused control. However, because `.SwipeReveal-content` spans `100%` of the outer container's width, most of it remains inside the scrollport even while the side panel is open—so pressing `Shift+Tab` to move focus back onto `.SwipeReveal-content` (or onto a focusable element inside it) will not automatically scroll the track back to `0`.
-
-Listen for `focusin` on `.SwipeReveal-content` and check `event.target.matches(':focus-visible')` so keyboard focus on the pane or any descendant snaps `.SwipeReveal-content` back to the start without interfering with pointer clicks or touch drags:
+Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest and do not receive focus by default (due to the `tabindex="-1"` attributes), when the corresponding trigger button is activated, we need to ensure that they are revealed as expected. When this happens, we also need to set the `tabindex` attributes to be `tabindex="0"` so that people can move to them and interact with them, and set the `aria-expanded` attribute on the trigger control to be `aria-expanded="true"`. When the trigger control is interacted with when the controls are already revealed, these changes should be reversed.
 
 ```js
-for (const content of document.querySelectorAll('.SwipeReveal-content')) {
-  content.addEventListener('focusin', (event) => {
-    if (event.target.matches(':focus-visible')) {
-      content.scrollIntoView({
-        block: 'nearest',
-        inline: 'start',
-      });
+for (const trigger of document.querySelectorAll('.SwipeReveal-content [aria-label$="actions"]')) {
+  trigger.addEventListener('click', () => {
+    const reveal = trigger.closest('.SwipeReveal');
+    if (!reveal) return;
+
+    const label = (trigger.getAttribute('aria-label') || '').toLowerCase();
+    const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
+    if (isExpanded) {
+      if (label.includes('leading')) {
+        let leadingScrollPanelWidth = reveal.querySelector('.SwipeReveal-panel').offsetWidth;
+        reveal.scrollTo({
+          left: leadingScrollPanelWidth,
+          behavior: 'smooth',
+        });
+      } else if (label.includes('trailing')) {
+        let leadingScrollPanelWidth = reveal.querySelector('.SwipeReveal-panel').offsetWidth;
+        reveal.scrollTo({
+          left: leadingScrollPanelWidth,
+          behavior: 'smooth',
+        });
+      } else {
+        reveal.scrollTo({
+          left: 0,
+          behavior: 'smooth',
+        });
+      }
+
+      for (const actionButton of reveal.querySelectorAll('[aria-label$="actions"]')) {
+        actionButton.setAttribute('aria-expanded', 'false');
+      }
+      setActionTabIndexes(reveal, false);
+      return;
     }
+
+    const panels = Array.from(reveal.querySelectorAll('.SwipeReveal-panel'));
+    if (panels.length === 0) return;
+
+    let targetScrollLeft = reveal.scrollWidth;
+
+    if (label.includes('leading')) {
+      targetScrollLeft = 0;
+    } else if (label.includes('trailing')) {
+      targetScrollLeft = reveal.scrollWidth;
+    } else if (panels.length === 1) {
+      targetScrollLeft = reveal.scrollWidth;
+    } else {
+      const content = reveal.querySelector('.SwipeReveal-content');
+      const firstTrigger = content.querySelector('[aria-label$="actions"]');
+      targetScrollLeft = trigger === firstTrigger ? 0 : reveal.scrollWidth;
+    }
+
+    reveal.scrollTo({
+      left: targetScrollLeft,
+      behavior: 'smooth',
+    });
+
+    for (const actionButton of reveal.querySelectorAll('[aria-label$="actions"]')) {
+      actionButton.setAttribute('aria-expanded', actionButton === trigger ? 'true' : 'false');
+    }
+    setActionTabIndexes(reveal, true);
   });
 }
 ```
+
+Along with this, use {{ GUIDE_REF('scroll-snap-realtime-feedback') }} to ensure that the accessibility state information is kept up to date, if someone swipes open the associated content, rather than triggering it directly with the button.
 
 ## Best practices and pitfalls
 
