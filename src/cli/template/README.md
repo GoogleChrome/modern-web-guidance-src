@@ -6,10 +6,7 @@
 
 [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance) is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
 
-*Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
-
-> [!NOTE]
-> This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
+*Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, alongside the web development community.*
 
 <!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
 
@@ -79,7 +76,7 @@ We cover the past several years of the web platform's new features, all the way 
   </tr>
 </table>
 
-_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/overlays/navigation-drawer.md).
+_View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/navigation-drawer.md).
 
 <!-- INJECT_SKILL_COVERAGE_START -->
 <!-- INJECT_SKILL_COVERAGE_END -->
@@ -242,6 +239,10 @@ Huge thanks to everyone who has contributed!
   <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src&max=101" />
 </a>
 
-## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Attribution
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;">  License
+
+Unless otherwise noted:
+* Software code in this repository is licensed under the [Apache License 2.0](LICENSE).
+* Documentation and guide content under `guides/` are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
 Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors and [W3C](https://www.w3.org/), [WHATWG](https://whatwg.org), and [IETF](https://www.ietf.org) specifications.
