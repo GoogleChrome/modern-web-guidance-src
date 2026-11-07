@@ -226,14 +226,13 @@
     const tabs = [...element.querySelectorAll('.tablist button')];
     const panels = element.querySelectorAll('[role=tabpanel]');
     tabs.forEach((tab, i) => {
-      tab.ariaControlsElements = [panels[i]];
       panels[i].ariaLabelledByElements = [tab];
     });
 
     function select(tab) {
-      for (const t of tabs) {
+      tabs.forEach((t, i) => {
         const selected = t === tab;
-        const panel = t.ariaControlsElements[0];
+        const panel = panels[i];
         t.ariaSelected = selected;
         t.toggleAttribute('focusgroupstart', selected);
         panel.hidden = selected ? false : 'until-found';
@@ -244,7 +243,7 @@
         else {
           panel.removeAttribute('tabindex');
         }
-      }
+      });
       tab.dispatchEvent(new Event('tabselect', { bubbles: true }));
     }
 

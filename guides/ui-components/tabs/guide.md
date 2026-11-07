@@ -25,13 +25,13 @@ Instead of manually implementing a roving tabindex or ARIA activedescendant patt
 ```html
 <div class="tabs">
   <div focusgroup="tablist" aria-label="Web platform technologies">
-      <button type="button" aria-selected="true" focusgroupstart>HTML</button>
-      <button type="button">CSS</button>
-      <button type="button">JavaScript</button>
+      <button type="button" id="html-tab" aria-selected="true" focusgroupstart>HTML</button>
+      <button type="button" id="css-tab">CSS</button>
+      <button type="button" id="js-tab">JavaScript</button>
   </div>
-  <div role="tabpanel" tabindex="0"><!-- content for HTML tab --></div>
-  <div role="tabpanel" hidden="until-found"><!-- content for CSS tab --></div>
-  <div role="tabpanel" hidden="until-found"><!-- content for JavaScript tab --></div>
+  <div role="tabpanel" aria-labelledby="html-tab" tabindex="0"><!-- content for HTML tab --></div>
+  <div role="tabpanel" aria-labelledby="css-tab" hidden="until-found"><!-- content for CSS tab --></div>
+  <div role="tabpanel" aria-labelledby="js-tab" hidden="until-found"><!-- content for JavaScript tab --></div>
 </div>
 ```
 
@@ -44,6 +44,7 @@ Tablist:
 
 Tab panels:
 - Set `role=tabpanel` on the tab panels and use `aria-labelledby` or `aria-label` to give the panel an accessible name (e.g. `aria-labelledby` can reference the associated tab).
+- Do not add `aria-controls` to the tabs: no screen reader uses it.
 - Use `hidden="until-found"` to hide tab panels whose tab is not actively selected while still keeping them searchable by the browser’s find-in-page feature. Use `hidden` with no value to remove the content from the browser's search in-page feature as well.
 - When using `hidden="until-found"`, use the `beforematch` event to sync the tab & tab panel selection state when find-in-page makes a different tab active.
 - Set `tabindex=0` on the visible tab panel if it contains no focusable elements, and remove it from hidden panels.

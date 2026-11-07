@@ -4,7 +4,6 @@
 - The tablist container has an accessible name from `aria-label` or `aria-labelledby`.
 - The tablist container contains no focusable elements other than the tabs.
 - Every tab panel has `role="tabpanel"`.
-- Every tab is associated with its tab panel via `aria-controls` or `ariaControlsElements`.
 - Every tab panel is labelled by its tab via `aria-labelledby` or `ariaLabelledByElements`.
 - With JavaScript disabled, exactly one tab has `aria-selected="true"`.
 - With JavaScript disabled, every tab panel except the one associated with the selected tab is hidden.
