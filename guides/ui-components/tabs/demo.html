@@ -4,100 +4,430 @@
 <meta name=viewport content="width=device-width">
 <title>Tabs demo | Modern Web Guidance</title>
 <style>
-  mwg-tabpanel {
-    display: block;
+  :root {
+    color-scheme: light dark;
+    --accent: light-dark(#0b57d0, #a8c7fa);
+    --surface: light-dark(white, #1e1f20);
+    --border: light-dark(#c4c7c5, #444746);
+    font: 100%/1.5 system-ui, sans-serif;
+  }
+
+  body {
+    max-inline-size: 24rem;
+    margin: 2rem auto;
+    padding-inline: 1rem;
+    background: var(--surface);
+  }
+
+  .tabs {
+    display: grid;
+    /* Column 2 holds the "More" button, if any */
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Not a solid color: the scrollability hints must not depend on one */
+  .gradient {
+    background: linear-gradient(135deg, light-dark(#d3e3fd, #0b3a7a), light-dark(#fde2f3, #5c1946));
+  }
+
+  .tablist {
+    display: flex;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .tablist button,
+  .more {
+    padding: .75rem 1rem;
+    border: none;
+    background: none;
+    font: inherit;
+    white-space: nowrap;
+
+    &:hover {
+      background: color-mix(in oklab, currentColor 8%, transparent);
+    }
+
+    /* Inset, so overflow clipping on the tablist does not cut it off */
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+  }
+
+  .tablist:not(.shrink) button {
+    flex: none;
+  }
+
+  /* Overflow strategy 3: inactive tabs shrink, the selected one keeps its full width */
+  .tablist.shrink {
+    /* Lets min-inline-size transition to and from max-content */
+    interpolate-size: allow-keywords;
+  }
+
+  .tablist.shrink button {
+    flex: 0 1 auto;
+    /* Example values */
+    min-inline-size: 7rem;
+    max-inline-size: 12rem;
+
+    /* A min-inline-size, not flex-shrink: 0, so it can transition. It also overrides max-inline-size. */
+    &[aria-selected=true] {
+      min-inline-size: max-content;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: min-inline-size .3s;
+    }
+
+    /* On a child, so overflow: hidden doesn't clip the focus ring */
+    & .label {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  /* Color and an underline only: font-weight would change the tab width */
+  .tablist button {
+    position: relative;
+  }
+
+  .tablist [aria-selected=true] {
+    color: var(--accent);
+
+    /* A border, not box-shadow: forced colors mode removes shadows */
+    &::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      border-block-end: 3px solid var(--accent);
+    }
+  }
+
+  /* All panels share one grid cell, so hidden ones add no rows */
+  [role=tabpanel] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+
+    /* Padding on a child: hidden=until-found panels still render their own box */
+    & > p {
+      margin: 0;
+      padding: 1rem;
+    }
+  }
+
+  /* Overflow strategy 1: scrolling, with fading edges as the scroll affordance */
+  .tablist[data-overflow=scroll] {
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: inline proximity;
+    /* Example value: how far each fade reaches */
+    --fade-size: 3rem;
+    /* Keeps snapped and focused tabs out of the fades */
+    scroll-padding-inline: var(--fade-size);
+    mask-image: linear-gradient(to right, transparent, black var(--fade-start),
+      black calc(100% - var(--fade-end)), transparent);
+    /* The tablist's own scroll position sets the fade lengths */
+    animation: reveal-fade-start linear both, hide-fade-end linear both;
+    animation-timeline: scroll(self inline);
+    animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+
+    & button {
+      scroll-snap-align: start;
+    }
+
+    /* Fallback without scroll-driven animations: script marks the edges with more tabs */
+    &.more-start {
+      --fade-start: var(--fade-size);
+    }
+
+    &.more-end {
+      --fade-end: var(--fade-size);
+    }
+  }
+
+  @property --fade-start {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  @property --fade-end {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  @keyframes reveal-fade-start {
+    to {
+      --fade-start: var(--fade-size);
+    }
+  }
+
+  @keyframes hide-fade-end {
+    from {
+      --fade-end: var(--fade-size);
+    }
+  }
+
+  /* Overflow strategy 2: tabs that don't fit move into a menu */
+  .tablist[data-overflow=menu] {
+    overflow: clip;
+  }
+
+  /* Not display: none, so IntersectionObserver still reports when the tab fits again.
+     The selected tab stays visible, so it can be focused before the observer catches up.
+     A focused tab stays visible, so a resize does not drop focus. */
+  .tablist .clipped:not([aria-selected=true], :focus) {
+    visibility: hidden;
+  }
+
+  /* Tabs that make room for the selected tab */
+  .tablist .displaced {
+    display: none;
+  }
+
+  .more {
+    border-block-end: 1px solid var(--border);
+  }
+
+  [popover] {
+    position-area: block-end span-inline-start;
+    inset: auto;
+    margin: 0;
+    padding: .25rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+
+    & button:not([hidden]) {
+      display: block;
+      inline-size: 100%;
+      padding: .5rem 1rem;
+      border: none;
+      background: none;
+      font: inherit;
+      text-align: start;
+
+      &:hover {
+        background: color-mix(in oklab, currentColor 8%, transparent);
+      }
+    }
   }
 </style>
 
 <script type=module>
-  import { polyfill } from 'https://esm.sh/@microsoft/focusgroup-polyfill';
-  polyfill();
+  if (!Object.hasOwn(HTMLElement.prototype, 'focusGroup')) {
+    const { polyfill } = await import('https://esm.sh/@microsoft/focusgroup-polyfill@1');
+    polyfill();
+  }
 
-  class TabsElement extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: 'open' });
-      this.shadowRoot.innerHTML = '<slot>';
-      this.shadowRoot.addEventListener('slotchange', this);
-      this.addEventListener('focusin', this, true);
-      this.addEventListener('click', this, true);
-      this.addEventListener('beforematch', this);
+  // Core: link tabs to panels and keep the selection in sync.
+  // Fires `tabselect` on the selected tab, so overflow behaviors can react to it.
+  function tabs(element) {
+    const tabs = [...element.querySelectorAll('.tablist button')];
+    const panels = element.querySelectorAll('[role=tabpanel]');
+    tabs.forEach((tab, i) => {
+      panels[i].ariaLabelledByElements = [tab];
+    });
+
+    function select(tab) {
+      tabs.forEach((t, i) => {
+        const selected = t === tab;
+        const panel = panels[i];
+        t.ariaSelected = selected;
+        t.toggleAttribute('focusgroupstart', selected);
+        panel.hidden = selected ? false : 'until-found';
+        // Panels have no focusable content, so make the visible one reachable with Tab
+        if (selected) {
+          panel.tabIndex = 0;
+        }
+        else {
+          panel.removeAttribute('tabindex');
+        }
+      });
+      tab.dispatchEvent(new Event('tabselect', { bubbles: true }));
     }
 
-    handleEvent(event) {
-      switch (event.type) {
-        case 'slotchange': {
-          this.tabList = this.querySelector('mwg-tablist');
-          this.tabList.setAttribute('focusgroup', 'tablist nomemory');
-          polyfill(this);
-          let i = 0;
-          for (const tab of this.querySelectorAll('button')) {
-            const isFirstTab = i === 0;
-            const tabPanel = this.querySelector(`mwg-tabpanel:nth-of-type(${i + 1})`);
-            tab.ariaSelected = isFirstTab;
-            tab.toggleAttribute('focusgroupstart', isFirstTab);
-            tab.ariaControlsElements = [tabPanel];
-            tabPanel.ariaLabelledByElements = [tab];
-            tabPanel.hidden = isFirstTab ? false : "until-found";
-            if (isFirstTab) tabPanel.tabIndex = 0;
-            i++;
-          }
+    // Selection follows focus. Also on click: not every browser focuses buttons on click.
+    for (const type of ['focusin', 'click']) {
+      element.addEventListener(type, event => {
+        const tab = event.target.closest('.tablist button');
+        if (tab) {
+          select(tab);
+        }
+      });
+    }
 
-          break;
-        }
-        case 'click':
-        case 'focusin': {
-          const tab = event.target.closest('mwg-tablist button');
-          if (!tab) return;
-          this.select(tab);
-          break;
-        }
-        case 'beforematch': {
-          this.select(event.target.closest('mwg-tabpanel').ariaLabelledByElements.at(0));
-          break;
-        }
+    // Find-in-page matched text in a hidden panel
+    element.addEventListener('beforematch', event => {
+      select(event.target.closest('[role=tabpanel]').ariaLabelledByElements[0]);
+    });
+  }
+
+  // Overflow strategy 1: scrolling
+  function scrollSelectedIntoView(tablist) {
+    tablist.addEventListener('tabselect', event => {
+      // `container` scrolls only the tablist, not the page
+      event.target.scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' });
+    });
+  }
+
+  // Scrollability hints fallback: mark the edges that have more content
+  function scrollHints(scroller) {
+    if (CSS.supports('animation-timeline', 'scroll()')) {
+      return;
+    }
+    const [first, last] = [scroller.firstElementChild, scroller.lastElementChild];
+    // rootMargin: without it, sub-pixel widths can leave an edge child a fraction of a pixel short of fully visible
+    const observer = new IntersectionObserver(entries => {
+      for (const { target, intersectionRatio } of entries) {
+        scroller.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
+      }
+    }, { root: scroller, threshold: 1, rootMargin: '1px' });
+    observer.observe(first);
+    observer.observe(last);
+  }
+
+  // Overflow strategy 2: tabs that don't fit move into a menu
+  function overflowMenu(tablist, more) {
+    const tabs = [...tablist.children];
+    const menu = more.commandForElement;
+    const list = menu.querySelector('[focusgroup]');
+
+    // Mirror every tab as a menu item; show only those whose tab does not fit
+    for (const tab of tabs) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.role = 'menuitem';
+      item.textContent = tab.textContent;
+      item.hidden = true;
+      item.addEventListener('click', () => {
+        tab.click();
+        // Before hiding: otherwise the popover returns focus to the previously focused tab, selecting it
+        tab.focus();
+        menu.hidePopover();
+      });
+      tab.menuItem = item;
+      list.append(item);
+    }
+
+    // The selected tab must stay in the tablist: remove the tabs before it from the layout,
+    // closest first, until it fits. They are hidden in both visual and focus order, so the two still match.
+    function reveal() {
+      const tab = tabs.find(tab => tab.ariaSelected === 'true');
+      const before = tabs.slice(0, tabs.indexOf(tab));
+      for (const t of tabs) {
+        t.classList.remove('displaced');
+      }
+      while (before.length && !fits(tab)) {
+        before.pop().classList.add('displaced');
       }
     }
 
-    select(tab) {
-      const tabPanel = tab.ariaControlsElements.at(0);
-      const previousTab = this.querySelector('mwg-tablist [aria-selected=true]');
-      const previousTabPanel = previousTab.ariaControlsElements.at(0);
-
-      previousTab.ariaSelected = false;
-      previousTab.toggleAttribute('focusgroupstart', false);
-      previousTabPanel.hidden = 'until-found';
-      previousTabPanel.removeAttribute('tabindex');
-
-      tab.ariaSelected = true;
-      tab.toggleAttribute('focusgroupstart', true);
-      tabPanel.hidden = false;
-      tabPanel.tabIndex = 0;
+    // Checks both edges, so it works in either writing direction
+    function fits(tab) {
+      const list = tablist.getBoundingClientRect();
+      const { left, right } = tab.getBoundingClientRect();
+      return left >= list.left && right <= list.right;
     }
+
+    // threshold 1: a partially visible tab counts as overflowed
+    const observer = new IntersectionObserver(entries => {
+      for (const { target, intersectionRatio } of entries) {
+        target.classList.toggle('clipped', intersectionRatio < 1);
+        target.menuItem.hidden = intersectionRatio === 1;
+      }
+      more.hidden = !tabs.some(tab => tab.classList.contains('clipped'));
+      reveal();
+    }, { root: tablist, threshold: 1 });
+    tabs.forEach(tab => observer.observe(tab));
+
+    tablist.addEventListener('tabselect', reveal);
+
+    menu.addEventListener('toggle', event => {
+      more.ariaExpanded = event.newState === 'open';
+      if (event.newState === 'open') {
+        list.querySelector(':scope > :not([hidden])').focus();
+      }
+    });
   }
 
-  customElements.define('mwg-tabs', TabsElement);
+  for (const element of document.querySelectorAll('.tabs')) {
+    tabs(element);
+  }
+
+  for (const tablist of document.querySelectorAll('.tablist[data-overflow=scroll]')) {
+    scrollSelectedIntoView(tablist);
+    scrollHints(tablist);
+  }
+
+  for (const tablist of document.querySelectorAll('.tablist[data-overflow=menu]')) {
+    overflowMenu(tablist, tablist.nextElementSibling);
+  }
 </script>
 
-<main>
-  <mwg-tabs>
-    <mwg-tablist aria-label="Browsers">
-      <button>Blink</button>
-      <button>WebKit</button>
-      <button>Gecko</button>
-      <button>Servo</button>
-    </mwg-tablist>
-    <mwg-tabpanel>
-      Contents for Blink tab panel.
-    </mwg-tabpanel>
-    <mwg-tabpanel>
-      Contents for WebKit tab panel.
-    </mwg-tabpanel>
-    <mwg-tabpanel>
-      Contents for Gecko tab panel.
-    </mwg-tabpanel>
-    <mwg-tabpanel>
-      Contents for Servo tab panel.
-    </mwg-tabpanel>
-  </mwg-tabs>
-</main>
+<p>Try find-in-page for “Rust” or “warranty”.</p>
+
+<h2>Scrolling</h2>
+<div class="tabs gradient">
+  <div class="tablist" data-overflow="scroll" focusgroup="tablist nomemory" aria-label="Browser engines">
+    <button type="button" aria-selected="true" focusgroupstart>Blink</button>
+    <button type="button">WebKit</button>
+    <button type="button">Gecko</button>
+    <button type="button">Servo</button>
+    <button type="button">Ladybird</button>
+    <button type="button">Presto</button>
+    <button type="button">Trident</button>
+  </div>
+  <div role="tabpanel" tabindex="0"><p>Blink powers Chrome and most Chromium-based browsers.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>WebKit powers Safari.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Gecko powers Firefox.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Servo is an embeddable engine written in Rust.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Ladybird is an independent engine.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Presto powered Opera until 2013.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Trident powered Internet Explorer.</p></div>
+</div>
+
+<h2>Shrinking inactive tabs</h2>
+<div class="tabs">
+  <div class="tablist shrink" data-overflow="scroll" focusgroup="tablist nomemory" aria-label="Open documents">
+    <button type="button" aria-selected="true" focusgroupstart><span class="label">Quarterly planning</span></button>
+    <button type="button"><span class="label">Meeting notes from Tuesday</span></button>
+    <button type="button"><span class="label">Design review feedback</span></button>
+    <button type="button"><span class="label">Budget spreadsheet</span></button>
+    <button type="button"><span class="label">Hiring plan draft</span></button>
+    <button type="button"><span class="label">Launch checklist</span></button>
+  </div>
+  <div role="tabpanel" tabindex="0"><p>Goals and milestones for next quarter.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Action items from Tuesday’s sync.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Feedback on the new onboarding flow.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Projected spend by team.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Open roles and interview loops.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Everything left before launch day.</p></div>
+</div>
+
+<h2>Overflow menu</h2>
+<div class="tabs">
+  <div class="tablist" data-overflow="menu" focusgroup="tablist nomemory" aria-label="Product details">
+    <button type="button" aria-selected="true" focusgroupstart>Overview</button>
+    <button type="button">Specifications</button>
+    <button type="button">Reviews</button>
+    <button type="button">Shipping</button>
+    <button type="button">Returns</button>
+    <button type="button">Warranty</button>
+    <button type="button">Frequently asked questions</button>
+  </div>
+  <!-- Outside the tablist: a tablist may only contain tabs. Icon, so it doesn't read as a tab. -->
+  <button type="button" class="more" hidden aria-label="More tabs" aria-haspopup="menu" aria-expanded="false"
+    commandfor="more-tabs" command="toggle-popover">⋯</button>
+  <div id="more-tabs" popover>
+    <div focusgroup="menu nomemory" aria-label="More product details"></div>
+  </div>
+  <div role="tabpanel" tabindex="0"><p>A lightweight trail running shoe.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Weight: 245 g. Drop: 6 mm.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>4.6 out of 5 from 312 reviews.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Free shipping on orders over $50.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Return unworn items within 30 days.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Two-year warranty against defects.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Yes, they’re machine washable.</p></div>
+</div>
