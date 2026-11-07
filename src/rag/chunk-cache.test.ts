@@ -8,11 +8,11 @@ import {
   truncateAndNormalize256,
   loadChunkCache,
   saveChunkCache,
-  scanCorpusChunks,
   TEACHER_MODEL,
   TASK_TYPE,
   STATIC_DIMS,
 } from "./chunk-cache.ts";
+import { scanCorpusChunks } from "../core/guide-chunks.ts";
 import { embedGuideChunks } from "./embed-chunks.ts";
 
 describe("chunk-cache", () => {

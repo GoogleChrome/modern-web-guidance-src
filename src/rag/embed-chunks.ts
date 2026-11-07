@@ -14,17 +14,19 @@ import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { rootDir } from "../core/paths.ts";
 import {
-  scanCorpusChunks,
-  loadChunkCache,
-  saveChunkCache,
   truncateAndNormalize256,
   TEACHER_MODEL,
   TASK_TYPE,
   TEACHER_DIM,
   STATIC_DIMS,
   DEFAULT_CACHE_DIR,
-  type GuideChunk,
+  loadChunkCache,
+  saveChunkCache,
 } from "./chunk-cache.ts";
+import {
+  scanCorpusChunks,
+  type GuideChunk,
+} from "../core/guide-chunks.ts";
 
 interface BatchEmbeddingResponse {
   embeddings: Array<{ values: number[] }>;

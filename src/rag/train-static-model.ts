@@ -33,7 +33,7 @@ import {
 } from "../core/guide-validation.ts";
 import { outDir, rootDir } from "../core/paths.ts";
 import { config } from "../core/skills-config.ts";
-import { extractGuideChunks } from "./chunk-cache.ts";
+import { extractGuideChunks } from "../core/guide-chunks.ts";
 import { tokenize, tokenizeBm25 } from "./bm25.ts";
 import { dotProduct } from "./search.ts";
 import {

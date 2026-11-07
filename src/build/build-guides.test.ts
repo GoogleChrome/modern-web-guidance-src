@@ -10,7 +10,7 @@ import {
   type DevsiteGuideMetadata,
   type StoreUseCase,
 } from './build-guides.ts';
-import { chunkMarkdown, formatChunkHeader } from '../rag/chunk-cache.ts';
+import { chunkMarkdown, formatChunkHeader } from '../core/guide-chunks.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {

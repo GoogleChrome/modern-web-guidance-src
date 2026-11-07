@@ -1,18 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import matter from "@11ty/gray-matter";
 import { parseArgs } from "node:util";
-
-import { replaceMacros, type BuildTarget } from "../core/macros.ts";
+import { type BuildTarget } from "../core/macros.ts";
 import { gitExec } from "../core/git-utils.ts";
 import {
   scanAllGuides,
   type GuideInventory,
   getGuideMarkdownPath,
-  extractH1Heading,
-  stripAllComments,
-  isDraftStub,
   stripLeadingH1,
 } from "../core/guide-validation.ts";
 import {
@@ -51,10 +46,11 @@ export interface DevsiteGuideMetadata {
 }
 
 import type { EmbedderLike } from "../rag/search.ts";
+import { loadChunkCache } from "../rag/chunk-cache.ts";
 import {
-  loadChunkCache,
+  parseGuideFile,
   extractGuideChunks,
-} from "../rag/chunk-cache.ts";
+} from "../core/guide-chunks.ts";
 
 export interface BuildOptions {
   outputDir: string;
@@ -103,6 +99,7 @@ export async function computePipelineHash(
     path.join(rootDir, "src/rag/static-model/words.i8"),
     path.join(rootDir, "src/rag/static-model/words.scale.f32"),
     path.join(rootDir, "src/rag/chunk-cache.ts"),
+    path.join(rootDir, "src/core/guide-chunks.ts"),
     path.join(rootDir, "src/rag/static-model/chunks.json"),
     path.join(rootDir, "src/rag/static-model/chunks.i8"),
     path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
@@ -499,13 +496,6 @@ function writeBuiltGuide(
   return buildFilePath;
 }
 
-function requireTitle(title: unknown, filePath: string): string {
-  if (typeof title !== "string" || !title.trim()) {
-    throw new Error(`Guide has no H1 heading or frontmatter title: ${path.relative(WORKSPACE_ROOT, filePath)}`);
-  }
-  return title.trim();
-}
-
 function approxTokens(text: string): number {
   return (text.match(/\w+|[^\w\s]/g) || []).length;
 }
@@ -548,26 +538,15 @@ export async function processSingleGuideFile(
   } = options;
 
   if (target === 'devsite') {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
-
-    if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+    const includedFiles = new Set<string>();
+    const parsed = parseGuideFile({ filePath, target, includedFiles });
+    if (!parsed) {
       // Just a stub guide. No content to index.
       return;
     }
 
-    if (!data.description || !frontmatter) {
-      throw new Error(`Missing frontmatter or description in ${filePath}`);
-    }
-
-    const includedFiles = new Set<string>();
-    const processedMarkdown = replaceMacros(markdownBody, filePath, { target, includedFiles });
-
-    const h1Title = extractH1Heading(processedMarkdown);
-    const title = requireTitle((typeof data.title === 'string' && data.title.trim()) || h1Title, filePath);
-    const featureIds: string[] = (data['web-feature-ids'] || []).filter(
-      (fid: string) => !isTmpFeature(fid)
-    );
+    const { title, description, featureIds: rawFeatureIds, processedMarkdown } = parsed;
+    const featureIds = rawFeatureIds.filter((fid: string) => !isTmpFeature(fid));
 
     // Compute refresh_date: max date of guide file and any included files
     const relGuidePath = path.relative(WORKSPACE_ROOT, filePath);
@@ -583,7 +562,7 @@ export async function processSingleGuideFile(
       refreshDate = new Date().toISOString().slice(0, 10);
     }
 
-    const cleanDesc = String(data.description || "").replace(/\r\n/g, " ").replace(/\n/g, " ").trim();
+    const cleanDesc = String(description || "").replace(/\r\n/g, " ").replace(/\n/g, " ").trim();
 
     const devsiteFrontmatter = [
       'project_path: /docs/modern-web-guidance/_project.yaml',
