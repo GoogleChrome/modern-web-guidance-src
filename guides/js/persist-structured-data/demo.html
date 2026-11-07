@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IndexedDB Notes Demo</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+        color: #1a1a1a;
+        background: #fafafa;
+      }
+
+      h1 {
+        margin-bottom: 0.25rem;
+      }
+
+      .subtitle {
+        margin-top: 0;
+        color: #555;
+      }
+
+      .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+
+      input[type="text"] {
+        flex: 1 1 240px;
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        border: 2px solid #ccc;
+        border-radius: 6px;
+      }
+
+      button {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.95rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #0066cc;
+        color: white;
+        font-weight: 500;
+      }
+
+      button:hover {
+        background: #0052a3;
+      }
+
+      .secondary-btn {
+        background: #4a5568;
+      }
+
+      .secondary-btn:hover {
+        background: #2d3748;
+      }
+
+      .status-banner {
+        font-size: 0.85rem;
+        color: #444;
+        margin-bottom: 1rem;
+      }
+
+      .note-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .note-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: #fff;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+
+      .note-item.pinned {
+        border-inline-start: 4px solid #0066cc;
+      }
+
+      .note-body {
+        flex: 1;
+      }
+
+      .note-meta {
+        display: block;
+        font-size: 0.8rem;
+        color: #666;
+      }
+
+      .pin-btn {
+        background: #e2e8f0;
+        color: #1a202c;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.85rem;
+      }
+
+      .pin-btn:hover {
+        background: #cbd5e0;
+      }
+
+      .delete-btn {
+        background: #cc3333;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.85rem;
+      }
+
+      .delete-btn:hover {
+        background: #aa2222;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #888;
+        padding: 2rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Notes</h1>
+    <p class="subtitle">
+      Persists structured notes and binary <code>Blob</code> attachments in
+      IndexedDB across reloads.
+    </p>
+
+    <div class="form-row">
+      <input
+        type="text"
+        id="note-input"
+        aria-label="Note text"
+        placeholder="Write a note…"
+      />
+      <button type="button" id="add-btn">Add Note</button>
+      <button type="button" id="batch-btn" class="secondary-btn">
+        Add 3 Sample Notes (Single Tx)
+      </button>
+    </div>
+
+    <div class="status-banner" id="status-banner" aria-live="polite"></div>
+
+    <ul class="note-list" id="note-list"></ul>
+
+    <script type="module">
+      const DB_NAME = "demo-notes";
+      const DB_VERSION = 1;
+      const STORE_NAME = "notes";
+
+      let db = null;
+      let dbPromise = null;
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            // Apply schema migrations incrementally using oldVersion.
+            if (event.oldVersion < 1) {
+              const store = database.createObjectStore(STORE_NAME, {
+                keyPath: "id",
+                autoIncrement: true,
+              });
+              // Secondary index on `updatedAt` for reverse-chronological queries.
+              store.createIndex("updatedAt", "updatedAt", { unique: false });
+            }
+          };
+
+          request.onsuccess = () => {
+            const database = request.result;
+
+            // Close connection if another tab initiates a version upgrade.
+            database.onversionchange = () => {
+              database.close();
+              db = null;
+              dbPromise = null;
+            };
+
+            resolve(database);
+          };
+
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async function getDb() {
+        if (db) return db;
+        if (!dbPromise) {
+          dbPromise = openDatabase().then(
+            (database) => {
+              db = database;
+              return database;
+            },
+            (err) => {
+              dbPromise = null;
+              throw err;
+            },
+          );
+        }
+        return dbPromise;
+      }
+
+      // Close open IndexedDB connections on pagehide to preserve bfcache eligibility.
+      window.addEventListener("pagehide", () => {
+        if (db) {
+          db.close();
+          db = null;
+        }
+        dbPromise = null;
+      });
+
+      window.addEventListener("pageshow", async (event) => {
+        if (event.persisted) {
+          await getDb();
+          await refresh();
+        }
+      });
+
+      // Coalesce one or more record writes into a single "readwrite" transaction.
+      function saveNotes(database, notesToSave) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          const ids = [];
+          const baseTime = Date.now();
+
+          notesToSave.forEach((note, idx) => {
+            const record = {
+              ...note,
+              text: note.text,
+              pinned: Boolean(note.pinned),
+              // Store binary Blob payloads natively without string conversion.
+              attachment:
+                note.attachment ??
+                new Blob([note.text], { type: "text/plain" }),
+              updatedAt: baseTime + idx,
+            };
+            const request = store.put(record);
+            request.onsuccess = () => {
+              ids.push(request.result);
+            };
+          });
+
+          // Commit immediately once all requests in the batch are queued.
+          tx.commit();
+
+          // Wait for transaction complete to confirm the batch committed without rollback.
+          tx.oncomplete = () => resolve(ids);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () =>
+            reject(
+              tx.error ||
+                new DOMException("Transaction aborted", "AbortError"),
+            );
+        });
+      }
+
+      // Read-modify-write inside a single active transaction without awaiting mid-transaction.
+      function toggleNotePinned(database, id) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+
+          const getReq = store.get(id);
+          getReq.onsuccess = () => {
+            const note = getReq.result;
+            if (!note) {
+              tx.commit();
+              return;
+            }
+            note.pinned = !note.pinned;
+            note.updatedAt = Date.now();
+            store.put(note);
+            tx.commit();
+          };
+
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () =>
+            reject(
+              tx.error ||
+                new DOMException("Transaction aborted", "AbortError"),
+            );
+        });
+      }
+
+      function getRecentNotes(database, limit = 50) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readonly");
+          const index = tx.objectStore(STORE_NAME).index("updatedAt");
+          const range = IDBKeyRange.lowerBound(0);
+
+          if ("getAllRecords" in IDBIndex.prototype) {
+            const req = index.getAllRecords({
+              query: range,
+              count: limit,
+              direction: "prev",
+            });
+            req.onsuccess = () =>
+              resolve(req.result.map((record) => record.value));
+          } else {
+            const results = [];
+            const cursorReq = index.openCursor(range, "prev");
+            cursorReq.onsuccess = () => {
+              const cursor = cursorReq.result;
+              if (cursor && results.length < limit) {
+                results.push(cursor.value);
+                cursor.continue();
+              } else {
+                resolve(results);
+              }
+            };
+          }
+
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () =>
+            reject(
+              tx.error ||
+                new DOMException("Transaction aborted", "AbortError"),
+            );
+        });
+      }
+
+      function deleteNote(database, id) {
+        return new Promise((resolve, reject) => {
+          const tx = database.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.delete(id);
+          tx.commit();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () =>
+            reject(
+              tx.error ||
+                new DOMException("Transaction aborted", "AbortError"),
+            );
+        });
+      }
+
+      // --- UI ---
+
+      const noteInput = document.getElementById("note-input");
+      const addBtn = document.getElementById("add-btn");
+      const batchBtn = document.getElementById("batch-btn");
+      const noteList = document.getElementById("note-list");
+      const statusBanner = document.getElementById("status-banner");
+
+      function handleStorageError(err) {
+        if (err?.name === "QuotaExceededError") {
+          statusBanner.textContent =
+            "Storage quota exceeded. Please delete old notes to free space.";
+        } else {
+          statusBanner.textContent = `Database error: ${err?.message || err}`;
+        }
+      }
+
+      function renderNotes(notes) {
+        noteList.replaceChildren();
+        if (notes.length === 0) {
+          const empty = document.createElement("li");
+          empty.className = "empty-state";
+          empty.textContent = "No notes yet. Add one above.";
+          noteList.append(empty);
+          return;
+        }
+
+        for (const note of notes) {
+          const li = document.createElement("li");
+          li.className = `note-item${note.pinned ? " pinned" : ""}`;
+          li.dataset.id = String(note.id);
+
+          const body = document.createElement("div");
+          body.className = "note-body";
+
+          const title = document.createElement("span");
+          title.textContent = note.text;
+
+          const meta = document.createElement("span");
+          meta.className = "note-meta";
+          const blobSize =
+            note.attachment instanceof Blob ? note.attachment.size : 0;
+          meta.textContent = `${new Date(note.updatedAt).toLocaleTimeString()} · ${blobSize} B Blob`;
+
+          body.append(title, meta);
+
+          const pinBtn = document.createElement("button");
+          pinBtn.type = "button";
+          pinBtn.className = "pin-btn";
+          pinBtn.setAttribute("aria-pressed", String(Boolean(note.pinned)));
+          pinBtn.textContent = note.pinned ? "Unpin" : "Pin";
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "delete-btn";
+          deleteBtn.setAttribute("aria-label", "Delete note");
+          deleteBtn.textContent = "Delete";
+
+          li.append(body, pinBtn, deleteBtn);
+          noteList.append(li);
+        }
+      }
+
+      async function refresh() {
+        try {
+          const database = await getDb();
+          const notes = await getRecentNotes(database);
+          renderNotes(notes);
+        } catch (err) {
+          handleStorageError(err);
+        }
+      }
+
+      addBtn.addEventListener("click", async () => {
+        const text = noteInput.value.trim();
+        if (!text) return;
+        try {
+          const database = await getDb();
+          await saveNotes(database, [{ text }]);
+          noteInput.value = "";
+          statusBanner.textContent = "Saved 1 note.";
+          await refresh();
+        } catch (err) {
+          handleStorageError(err);
+        }
+      });
+
+      batchBtn.addEventListener("click", async () => {
+        try {
+          const database = await getDb();
+          await saveNotes(database, [
+            { text: "Offline draft #1" },
+            { text: "Cached article payload #2" },
+            { text: "Pinned project checklist #3", pinned: true },
+          ]);
+          statusBanner.textContent =
+            "Saved 3 notes atomically in a single readwrite transaction.";
+          await refresh();
+        } catch (err) {
+          handleStorageError(err);
+        }
+      });
+
+      noteInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addBtn.click();
+      });
+
+      noteList.addEventListener("click", async (e) => {
+        const item = e.target.closest(".note-item");
+        if (!item) return;
+        const id = Number(item.dataset.id);
+        const database = await getDb();
+
+        try {
+          if (e.target.closest(".pin-btn")) {
+            await toggleNotePinned(database, id);
+            await refresh();
+          } else if (e.target.closest(".delete-btn")) {
+            await deleteNote(database, id);
+            await refresh();
+          }
+        } catch (err) {
+          handleStorageError(err);
+        }
+      });
+
+      await refresh();
+    </script>
+  </body>
+</html>
