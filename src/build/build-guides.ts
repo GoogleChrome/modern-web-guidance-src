@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { execSync } from "node:child_process";
 import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
 
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
+import { gitExec } from "../core/git-utils.ts";
 import {
   scanAllGuides,
   type GuideInventory,
@@ -15,8 +15,11 @@ import {
   stripAllComments,
   isDraftStub,
   stripLeadingH1,
-  getGuideOriginTrials,
 } from "../core/guide-validation.ts";
+import {
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+} from "../core/feature-gates.ts";
 import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
@@ -107,7 +110,9 @@ export async function computePipelineHash(
     path.join(rootDir, "src/rag/static-model/chunks.i8"),
     path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
+    path.join(rootDir, "features/volatile-features.json"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
     path.join(rootDir, "src/core/categories.ts"),
     path.join(rootDir, "src/core/headings.ts"),
@@ -208,11 +213,9 @@ export function loadGitFileDates(): GitInfo {
   const fileDates = new Map<string, string>();
   let sourceCommit = "unknown";
   try {
-    sourceCommit = execSync("git rev-parse HEAD", { cwd: WORKSPACE_ROOT, encoding: "utf-8" }).trim();
-    const raw = execSync('git log --format="COMMIT %cs" --name-only HEAD -- guides/ features/', {
+    sourceCommit = gitExec(["rev-parse", "HEAD"], { cwd: WORKSPACE_ROOT }).trim();
+    const raw = gitExec(["log", "--format=COMMIT %cs", "--name-only", "HEAD", "--", "guides/", "features/"], {
       cwd: WORKSPACE_ROOT,
-      encoding: "utf-8",
-      maxBuffer: 50 * 1024 * 1024,
     });
     let currentDate = "";
     for (const line of raw.split("\n")) {
@@ -441,7 +444,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
       console.warn(`   - ${g}`);
     }
     console.warn(
-      `   These chunks use StaticEmbedder fallback vectors. Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
+      `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
     );
 
     if (failOnMissingVectors) {
@@ -518,7 +521,8 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-function writeBuiltGuide(category: string, id: string, content: string): string {
+function writeBuiltGuide(category: string, id: string, content: string): string | undefined {
+  if (!BUILD_GUIDES_DIR) return undefined;
   const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
   fs.mkdirSync(buildCategoryDir, { recursive: true });
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
@@ -554,7 +558,7 @@ export function formatChunkHeader(
   return `${header}\nFeatures: ${features.join(", ")}`;
 }
 
-async function processSingleGuideFile(
+export async function processSingleGuideFile(
   filePath: string,
   category: string,
   id: string,
@@ -678,6 +682,7 @@ async function processSingleGuideFile(
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
   const originTrials = getGuideOriginTrials(featureIds);
+  const volatileFeatures = getGuideVolatileFeatures(featureIds);
   const tokenCount = embedder.countTokens ? await embedder.countTokens(processedMarkdown) : 0;
 
   useCases.push({
@@ -687,6 +692,7 @@ async function processSingleGuideFile(
     featuresUsed,
     tokenCount,
     ...(originTrials.length > 0 ? { originTrials } : {}),
+    ...(volatileFeatures.length > 0 ? { volatileFeatures } : {}),
   });
 
   const h1Title = extractH1Heading(processedMarkdown);
@@ -711,8 +717,8 @@ async function processSingleGuideFile(
         vector = Array.from(cached);
       } else {
         missingChunks?.push({ guideId: id, category, chunk });
-        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (using StaticEmbedder fallback): ${chunk.slice(0, 50).trim()}...`);
-        vector = embedder ? await embedder.embed(embeddingText) : [];
+        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (indexed for BM25 only; vector: []): ${chunk.slice(0, 50).trim()}...`);
+        vector = [];
       }
     }
 

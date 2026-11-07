@@ -299,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      
+
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         const category = (info && info.guideDir)
@@ -309,7 +309,7 @@ const server = http.createServer(async (req, res) => {
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
       }
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
@@ -485,6 +485,9 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
     filePath = path.join(guidesDir, decodedPath.substring(8));
+  } else if (decodedPath.startsWith('/public-evals/')) {
+    // Built by `pnpm public:build` into out/; never read from the dashboard dir, which is deployed.
+    filePath = path.join(outDir, decodedPath.substring(1));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join(dashboardDir, relativePath);

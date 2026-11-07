@@ -52,13 +52,12 @@ ul::before {
 }
 ```
 
-Add a height and other visual styles.
+Draw the underline with a border. DO NOT use a background or `box-shadow`: forced colors mode removes both, leaving no indicator.
 
 ```css
 ul::before {
   /* Apply your project's styles for the indicator */
-  block-size: .25lh;
-  background: red;
+  border-block-end: .25lh solid red;
 }
 ```
 

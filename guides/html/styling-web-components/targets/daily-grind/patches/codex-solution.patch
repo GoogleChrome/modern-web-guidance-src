@@ -1,0 +1,271 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..1304ad2
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,8 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++for (const file of ['index.html', 'drink-card.js']) {
++  await copyFile(new URL(file, import.meta.url), new URL(file, output));
++}
++console.log('Built static site in dist/');
+diff --git a/drink-card.js b/drink-card.js
+new file mode 100644
+index 0000000..7c344a6
+--- /dev/null
++++ b/drink-card.js
+@@ -0,0 +1,144 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    @layer base, theme, variants, layout;
++
++    @layer base {
++      :host {
++        display: block;
++        min-width: 0;
++        box-sizing: border-box;
++        container: drink-card / inline-size;
++        border: 1px solid transparent;
++        border-radius: 8px;
++        box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
++      }
++
++      *, *::before, *::after { box-sizing: border-box; }
++
++      article {
++        display: grid;
++        gap: 15px;
++        padding: 20px;
++        text-align: center;
++        overflow-wrap: anywhere;
++      }
++
++      .content { min-width: 0; }
++      .heading { margin-bottom: 10px; }
++      ::slotted(h3), ::slotted(p) { margin: 0; }
++      ::slotted(h3) { font-size: 1.17em; }
++
++      .action {
++        justify-self: center;
++        align-self: end;
++        display: inline-block;
++        max-width: 100%;
++        padding: 10px 20px;
++        border-radius: 5px;
++        font: inherit;
++        text-decoration: none;
++        transition: background 0.3s;
++      }
++
++      .action:focus-visible {
++        outline: 3px solid var(--_accent);
++        outline-offset: 3px;
++      }
++    }
++
++    @layer theme {
++      :host {
++        /* Keep public properties unset so ancestor themes can supply them. */
++        --_background: var(--drink-card-background, var(--light, white));
++        --_color: var(--drink-card-color, var(--text, #3e2723));
++        --_heading: var(--drink-card-heading, var(--primary, #4e342e));
++        --_action-background: var(--drink-card-action-background, var(--primary, #4e342e));
++        --_action-color: var(--drink-card-action-color, white);
++        --_accent: var(--drink-card-accent, var(--accent, #ffab40));
++        background: var(--_background);
++        color: var(--_color);
++        font-family: inherit;
++        line-height: inherit;
++      }
++
++      .heading { color: var(--_heading); }
++      .action {
++        background: var(--_action-background);
++        color: var(--_action-color);
++      }
++      .action:hover { background: var(--drink-card-action-hover, #3e2723); }
++    }
++
++    @layer variants {
++      :host([variant="featured"]) {
++        border-color: var(--_accent);
++        box-shadow: 0 3px 10px rgb(78 52 46 / 0.16);
++      }
++      :host([variant="subtle"]) {
++        border-color: var(--secondary, #d7ccc8);
++        box-shadow: none;
++      }
++    }
++
++    @layer layout {
++      /* Query the host's available space, independently of the viewport. */
++      @container drink-card (min-width: 20rem) {
++        article { padding: 24px; }
++      }
++      @container drink-card (min-width: 28rem) {
++        article {
++          grid-template-columns: minmax(0, 1fr) auto;
++          align-items: center;
++          gap: 24px;
++          text-align: start;
++        }
++        .action { align-self: center; }
++      }
++    }
++  </style>
++  <article>
++    <div class="content">
++      <div class="heading" part="heading"><slot name="title"></slot></div>
++      <slot name="description"></slot>
++    </div>
++    <a class="action" part="action"><slot name="action-label">View Details</slot></a>
++  </article>
++`;
++
++/**
++ * Seasonal drink presentation. Slots: title, description, action-label.
++ * Public styling hooks: --drink-card-* properties and heading/action parts.
++ * Variants: featured, subtle; an omitted or unknown variant uses the base style.
++ */
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['href'];
++
++  constructor() {
++    super();
++    const shadow = this.attachShadow({ mode: 'open' });
++    shadow.append(template.content.cloneNode(true));
++  }
++
++  connectedCallback() {
++    this.updateLink();
++  }
++
++  attributeChangedCallback() {
++    this.updateLink();
++  }
++
++  updateLink() {
++    const action = this.shadowRoot?.querySelector('a');
++    if (!action) return;
++
++    const href = this.getAttribute('href');
++    if (href === null) {
++      action.removeAttribute('href');
++    } else {
++      action.setAttribute('href', href);
++    }
++  }
++}
++
++customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..0c50882 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,29 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    .seasonal-favorites {
++      /* These public theme values inherit through each card's shadow boundary. */
++      --drink-card-background: white;
++      --drink-card-color: var(--text);
++      --drink-card-heading: var(--primary);
++      --drink-card-action-background: var(--primary);
++      --drink-card-accent: var(--accent);
++    }
++
++    /* Projected content remains owned and customizable by the page. */
++    drink-card .seasonal-title {
++      letter-spacing: 0.02em;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    /* The component exposes its action without exposing its DOM structure. */
++    drink-card[variant="featured"]::part(action) {
++      background: var(--accent);
+       color: var(--primary);
++      font-weight: 600;
++    }
++
++    drink-card[variant="featured"]::part(action):hover {
++      background: var(--secondary);
+     }
+ 
+     .btn {
+@@ -153,6 +165,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -175,24 +188,21 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card variant="featured" href="/menu/seasonal">
++          <h3 slot="title" class="seasonal-title">Maple Oat Latte</h3>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++        </drink-card>
++        <drink-card href="/menu/espresso">
++          <h3 slot="title" class="seasonal-title">Dark Roast Espresso</h3>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
++        </drink-card>
++        <drink-card variant="subtle" href="/menu/cold-brew">
++          <h3 slot="title" class="seasonal-title">Cold Brew</h3>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++        </drink-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..2078b08 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check drink-card.js && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
