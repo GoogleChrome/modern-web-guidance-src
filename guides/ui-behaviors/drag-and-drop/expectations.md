@@ -1,0 +1,28 @@
+- Dragging an item with a pointer, either from a dedicated drag handle or from the item itself, changes the item's DOM and visible position within the collection.
+- During a pointer drag, sibling items do not change position.
+- During a pointer drag, a drop marker between the two items around the drop spot shows where the dragged item will land.
+- Showing the drop marker does not shift the layout of the items.
+- While the list autoscrolls during a drag, the drop marker stays between the two items around the drop spot.
+- When the drop spot is after the last item, the drop marker is positioned inside the scroll container.
+- The dragged item's DOM position changes once, on release.
+- The drop marker's color and size come from CSS custom properties.
+- In a horizontal row, dragging an item with a pointer along the row's axis changes its DOM position by its horizontal position, and the visible order of the items matches their DOM order.
+- In a horizontal row, the arrow keys follow the visual direction: in a right-to-left row the arrow key pointing left moves a grabbed item later in the DOM and the one pointing right moves it earlier.
+- Pressing `Escape` during a pointer drag cancels it, removes the marker, and leaves the item in its original position.
+- Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.
+- Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports the arrow keys for its axis (`ArrowUp` and `ArrowDown` in a vertical list, `ArrowLeft` and `ArrowRight` in a horizontal row), or separate movement buttons (or an options menu containing them).
+- Moving an item toward the start of the list with the keyboard mechanism (`ArrowUp` in a vertical list, the arrow key pointing toward the start of a horizontal row, or activating its "move earlier" control) places it immediately before its previous sibling in the DOM.
+- Moving an item toward the end of the list with the keyboard mechanism (`ArrowDown` in a vertical list, the arrow key pointing toward the end of a horizontal row, or activating its "move later" control) places it immediately after its next sibling in the DOM.
+- Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
+- Moving the first item toward the start or the last item toward the end with the keyboard mechanism leaves the DOM order unchanged.
+- If the keyboard mechanism is a drag handle, `Space` or `Enter` toggles a grabbed state exposed with `aria-pressed`, arrow keys move the item only while grabbed, and `Escape` restores the item's original position.
+- Reordering is animated: displaced siblings travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
+- During a pointer drag, the real dragged item (not a clone) follows the pointer via `translate`, stays a child of the list, and animates to its resting place when the drag ends.
+- When the items are in a scrollable container, holding a dragged item near or beyond the container's start or end edge on its axis scrolls the container, and the item can still be dropped at the first or last position.
+- Reordering actions are announced in a live region with the item's new position.
+- Releasing a drag without changing the item's position (such as a plain click on the handle) does not announce a move.
+- A grabbed item is dropped, and its `aria-pressed` reset, when its handle loses focus.
+- After a keyboard move, an `Escape` cancel, or a pointer drop, the moved item is scrolled into view within its scrollable container.
+- When keyboard focus enters an item in a scrollable container, the whole item, including its focus ring, is scrolled into view.
+- The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
+- On a narrow mobile viewport, the items and their movement controls fit without horizontal scrolling.
