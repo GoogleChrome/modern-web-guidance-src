@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -25,7 +25,7 @@ export interface PlaywrightOptions {
   pageLoadOutputName?: string;
   serverPidsOutputName?: string;
   patchFile?: string;
-  stdio?: 'inherit' | 'ignore' | 'pipe';
+  stdio?: StdioOptions;
   baselineTarget?: string;
   prebuiltTargetUrl?: string;
   prebuiltTargetError?: string;
@@ -137,7 +137,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 }
 
 export interface RunPlaywrightOptions {
-  stdio?: 'inherit' | 'ignore' | 'pipe';
+  stdio?: StdioOptions;
   patchFile?: string;
   zeroPassrateFile?: string;
   testResultsDir?: string;
@@ -153,17 +153,18 @@ function graderUsesTargetServer(graderPath: string): boolean {
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  optionsOrStdio: RunPlaywrightOptions | 'inherit' | 'ignore' | 'pipe' = 'inherit',
+  optionsOrStdio: RunPlaywrightOptions | StdioOptions = 'inherit',
   maybePatchFile?: string,
   maybeTestResultsDir?: string,
 ): Promise<any> {
-  const options: RunPlaywrightOptions = typeof optionsOrStdio === 'object' && optionsOrStdio !== null
-    ? optionsOrStdio
-    : {
-        stdio: optionsOrStdio,
-        patchFile: maybePatchFile,
-        testResultsDir: maybeTestResultsDir,
-      };
+  const options: RunPlaywrightOptions =
+    typeof optionsOrStdio === 'object' && optionsOrStdio !== null && !Array.isArray(optionsOrStdio)
+      ? optionsOrStdio
+      : {
+          stdio: optionsOrStdio,
+          patchFile: maybePatchFile,
+          testResultsDir: maybeTestResultsDir,
+        };
 
   const stdio = options.stdio ?? 'inherit';
   const patchFile = options.patchFile;
@@ -223,11 +224,13 @@ export async function runPlaywright(
       pageLoadOutputName: tmpPageLoadJson,
       serverPidsOutputName: tmpServerPidsFile,
       patchFile: patchFile,
-      stdio: stdio === 'ignore' ? 'pipe' : stdio,
+      stdio: stdio === 'ignore' || stdio === 'pipe' ? ['ignore', 'ignore', 'pipe'] : stdio,
       baselineTarget,
       prebuiltTargetUrl,
       prebuiltTargetError,
     });
+
+    child.stdout?.resume();
 
     if (child.stderr) {
       child.stderr.on('data', (data) => {

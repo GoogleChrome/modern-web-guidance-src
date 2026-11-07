@@ -400,6 +400,29 @@ describe('sanitizeAgentChildEnv', () => {
     const allDetected = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map(key => [key, '1']));
     assert.deepStrictEqual(sanitizeAgentChildEnv(allDetected), {});
   });
+
+  test('strips host credentials and arbitrary unknown env vars via allowlist', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      HTTP_PROXY: 'http://proxy.example:8080',
+      ANTHROPIC_MODEL: 'claude-sonnet-4-6',
+      PLAYWRIGHT_BROWSERS_PATH: '/cache/ms-playwright',
+      GEMINI_API_KEY: `AIzaSy${'X'.repeat(33)}`,
+      GITHUB_TOKEN: `ghp_${'A'.repeat(36)}`,
+      GOOGLE_APPLICATION_CREDENTIALS: '/home/user/.config/gcloud/adc.json',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+
+    assert.strictEqual(sanitized.PATH, '/usr/bin');
+    assert.strictEqual(sanitized.HOME, '/tmp/isolated');
+    assert.strictEqual(sanitized.HTTP_PROXY, 'http://proxy.example:8080');
+    assert.strictEqual(sanitized.ANTHROPIC_MODEL, 'claude-sonnet-4-6');
+    assert.strictEqual(sanitized.PLAYWRIGHT_BROWSERS_PATH, '/cache/ms-playwright');
+    for (const dropped of ['GEMINI_API_KEY', 'GITHUB_TOKEN', 'GOOGLE_APPLICATION_CREDENTIALS', 'CUSTOM_ARBITRARY_SECRET']) {
+      assert.strictEqual(sanitized[dropped], undefined);
+    }
+  });
 });
 
 

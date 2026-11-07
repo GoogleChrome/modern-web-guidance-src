@@ -6,11 +6,11 @@ import config, { Agents } from '../config.ts';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  exportTrajectories,
   runCliAgentCommand,
   setupIsolatedWorkDir,
   isEnoent
 } from '../lib/agent-shared.ts';
+import { exportTrajectories } from '../lib/trajectory-export.ts';
 import {
   type TrajectorySummary,
   finalizeTrajectorySummary,

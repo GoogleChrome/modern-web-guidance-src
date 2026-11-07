@@ -9,13 +9,9 @@ import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
+import { loadAllowedEnvFile } from '../src/harness/lib/secret-guard.ts';
 
-// Load environment variables (Node 20.12+)
-try {
-  process.loadEnvFile(path.join(rootDir, '.env'));
-} catch {
-  // Ignore if file doesn't exist
-}
+loadAllowedEnvFile(path.join(rootDir, '.env'));
 
 // --- Single Source of Truth Metadata ---
 
