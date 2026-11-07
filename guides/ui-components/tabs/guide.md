@@ -181,15 +181,21 @@ tabs.forEach(tab => observer.observe(tab));
 function reveal() {
   const tab = tabs.find(tab => tab.ariaSelected === 'true');
   const before = tabs.slice(0, tabs.indexOf(tab));
-  const end = tablist.getBoundingClientRect().right;
   tabs.forEach(tab => tab.classList.remove('displaced'));
-  while (before.length && tab.getBoundingClientRect().right > end) {
+  while (before.length && !fits(tab)) {
     before.pop().classList.add('displaced');
   }
 }
+
+// Checks both edges, so it works in either writing direction
+function fits(tab) {
+  const list = tablist.getBoundingClientRect();
+  const { left, right } = tab.getBoundingClientRect();
+  return left >= list.left && right <= list.right;
+}
 ```
 
-{# NOTE: Unhandled edge cases: with selection by activation, a focused inactive tab that reveal() displaces loses focus, and one that overflows entirely keeps focus while clipped out of view. reveal() measures with `right`, so it needs adapting for RTL. #}
+{# NOTE: Unhandled edge cases: with selection by activation, a focused inactive tab that reveal() displaces loses focus, and one that overflows entirely keeps focus while clipped out of view. #}
 
 {# PENDING_GUIDE_REF: See {{ GUIDE_REF("overflow-popup") }} for more details on moving overflowing controls into a popup. #}
 

@@ -316,13 +316,19 @@
     function reveal() {
       const tab = tabs.find(tab => tab.ariaSelected === 'true');
       const before = tabs.slice(0, tabs.indexOf(tab));
-      const end = tablist.getBoundingClientRect().right;
       for (const t of tabs) {
         t.classList.remove('displaced');
       }
-      while (before.length && tab.getBoundingClientRect().right > end) {
+      while (before.length && !fits(tab)) {
         before.pop().classList.add('displaced');
       }
+    }
+
+    // Checks both edges, so it works in either writing direction
+    function fits(tab) {
+      const list = tablist.getBoundingClientRect();
+      const { left, right } = tab.getBoundingClientRect();
+      return left >= list.left && right <= list.right;
     }
 
     // threshold 1: a partially visible tab counts as overflowed
