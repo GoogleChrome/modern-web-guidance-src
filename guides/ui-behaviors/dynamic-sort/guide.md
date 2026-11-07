@@ -9,7 +9,7 @@ guides:
   - move-dom-element-without-losing-state
 ---
 
-# User-Triggered Dynamic Sort
+# Handling dynamic changes to sort order
 
 Use this pattern when a user action reorders a list, card grid or table, with no item mid-interaction. It covers only applying the new order to the DOM (moving nodes, animating, announcing, performance), not how the order is computed or what triggers it.
 
