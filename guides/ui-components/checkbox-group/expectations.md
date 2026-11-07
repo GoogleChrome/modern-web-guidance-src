@@ -1,0 +1,14 @@
+- The options and the master checkbox are grouped inside a `<fieldset>` that has a `<legend>` child.
+- Every checkbox, including the master checkbox, is a native `<input type="checkbox">` associated with a `<label>` (nested or via matching `for` and `id`).
+- The master checkbox has no `name` attribute, so it is not submitted with the form.
+- The master checkbox is checked and not indeterminate when all enabled option checkboxes are checked.
+- The master checkbox has its `indeterminate` property set to true when some, but not all, enabled option checkboxes are checked.
+- The master checkbox is unchecked and not indeterminate when no enabled option checkboxes are checked.
+- Clicking the master checkbox changes every enabled option checkbox to match the master's checked state.
+- A disabled option checkbox keeps its checked state when the master checkbox is clicked and is not counted when deriving the master's state.
+- The master checkbox state reflects the initially checked options on page load.
+- An `<output>` live region (or element with `aria-live`) inside the fieldset is updated with a count summary when the checked options change.
+- The master checkbox is `disabled` when there are no enabled option checkboxes, and its checked and indeterminate state mirrors the disabled options (unchecked for an empty list).
+- Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
+- When rows only have a label, each option label is a two-column grid (checkbox, then text), so wrapped label text and hints stay to the right of the checkbox rather than flowing under it. When rows have a secondary column, the options container is a grid and each option row uses `grid-template-columns: subgrid`.
+- When an option has hint text, the hint is outside the option's `<label>` with an `id` that the input references via `aria-describedby`, and it uses smaller, de-emphasized text.
