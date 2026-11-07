@@ -4,13 +4,84 @@
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
     <script type="module">
-      if (!("interestForElement" in HTMLButtonElement.prototype)) {
+      // Native interestfor does not yet expose hint semantics to assistive tech, while the polyfill adds this
+      // ARIA itself, so the wiring below runs only with native support.
+      const native = "interestForElement" in HTMLButtonElement.prototype;
+      if (!native) {
         await import("https://unpkg.com/interestfor@latest");
+      }
+
+      // Same split the browser and polyfill use: anything beyond text, images, and inline formatting is rich.
+      const FOCUSABLE = "a[href], area[href], button, input, select, textarea, iframe, [contenteditable], [tabindex]:not([tabindex='-1'])";
+      const STRUCTURE = "h1, h2, h3, h4, h5, h6, ul, ol, dl, table, details, blockquote, form, nav, section, article, aside, header, footer, main";
+      const RICH = `:is(${FOCUSABLE}, ${STRUCTURE}, [role]:not([role=presentation], [role=none], [role=generic], [role=image]))`;
+      const managed = new WeakSet();
+      const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
+
+      // Approximates the accessible name: aria-labelledby, then aria-label, then content including image alt, then title.
+      function accessibleName(el) {
+        const labels = (el.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((id) => document.getElementById(id)?.textContent);
+        const alts = [...el.querySelectorAll("img[alt]")].map((img) => img.alt);
+        return text(labels.join(" ")) || text(el.getAttribute("aria-label")) || text(el.textContent + " " + alts.join(" ")) || text(el.title);
+      }
+
+      function wireInterestHints(root = document) {
+        for (const trigger of root.querySelectorAll("[interestfor]")) {
+          const hint = document.getElementById(trigger.getAttribute("interestfor"));
+          if (hint?.getAttribute("popover") !== "hint") {
+            continue;
+          }
+          if (hint.querySelector(RICH)) {
+            // Rich hint: expose open/closed state. Skip triggers whose aria-expanded belongs to something else.
+            if (!trigger.hasAttribute("aria-expanded")) {
+              trigger.ariaExpanded = hint.matches(":popover-open");
+              managed.add(trigger);
+            }
+          } else {
+            // Plain hint: nothing to add when it just repeats the trigger's name. Otherwise it labels
+            // an unnamed trigger (icon-only button) or describes a named one, unless author ARIA already does.
+            const name = accessibleName(trigger);
+            if (text(hint.textContent) === name) {
+              continue;
+            }
+            hint.role ??= "tooltip";
+            const relation = name ? "aria-describedby" : "aria-labelledby";
+            if (!trigger.hasAttribute(relation)) {
+              trigger.setAttribute(relation, hint.id);
+            }
+          }
+        }
+      }
+
+      if (native) {
+        // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
+        document.addEventListener("toggle", ({ target, newState }) => {
+          for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
+            if (managed.has(trigger)) {
+              trigger.ariaExpanded = newState === "open";
+            }
+          }
+        }, true);
+        wireInterestHints();
       }
     </script>
     <script type="module">
       if (!("popover" in HTMLElement.prototype)) {
         await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+      }
+      // Without `hint` support the value falls back to `manual`, which never light-dismisses. A toggletip can be
+      // opened by click, with no interest to lose, so switch it to `auto` as it opens. Must happen in `beforetoggle`:
+      // changing the type of an open popover closes it. `beforetoggle` does not bubble, so capture.
+      const probe = document.createElement("div");
+      probe.popover = "hint";
+      if (probe.popover !== "hint") {
+        document.addEventListener("beforetoggle", ({ target, newState }) => {
+          const toggletip = target.getAttribute("popover") === "hint"
+            && document.querySelector(`[popovertarget="${CSS.escape(target.id)}"]`);
+          if (newState === "open" && toggletip) {
+            target.popover = "auto";
+          }
+        }, true);
       }
     </script>
     <script type="module">
@@ -68,6 +139,20 @@
       #tooltip-attrs {
         position-anchor: --tooltip-attrs;
       }
+      button[interestfor="shipping-help"] {
+        anchor-name: --shipping-help;
+      }
+      #shipping-help {
+        position-anchor: --shipping-help;
+      }
+
+      .toggletip {
+        inline-size: 1.5em;
+        block-size: 1.5em;
+        border-radius: 50%;
+        font: inherit;
+        font-size: 0.8em;
+      }
     </style>
   </head>
   <body>
@@ -87,6 +172,16 @@
     <div id="tooltip-attrs" popover="hint">
       Key-value pairs on HTML elements that configure behavior or provide
       metadata, such as class or id.
+    </div>
+
+    <p>
+      <label>Shipping <input name="shipping" value="Standard"></label>
+      <!-- Toggletip: both triggers, so hover/focus and click/tap/Enter all open it. -->
+      <button type="button" class="toggletip" interestfor="shipping-help" popovertarget="shipping-help" popovertargetaction="show" aria-label="More about shipping">?</button>
+    </p>
+    <div id="shipping-help" popover="hint">
+      Free shipping applies to orders over $50. Orders placed before 2pm ship
+      the same day.
     </div>
   </body>
 </html>
