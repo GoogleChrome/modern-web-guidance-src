@@ -1,6 +1,7 @@
 ---
 name: dynamic-sort
-description: Reorder the existing DOM nodes of a list, card grid or table when the user changes its order, with optional animated reordering that respects `prefers-reduced-motion`, a single screen reader announcement, and large-list performance.
+description: Best practices for handling dynamic reordering of a container's children (e.g. list items, table rows, or a card grid), with optional animated reordering that respects user preferences, good screen reader UX, and optimal performance for large lists.
+draft: wip
 web-feature-ids:
   - view-transitions
   - view-transitions-element-scoped
@@ -9,7 +10,7 @@ guides:
   - move-dom-element-without-losing-state
 ---
 
-# User-Triggered Dynamic Sort
+# Handling dynamic changes to sort order
 
 Use this pattern when a user action reorders a list, card grid or table, with no item mid-interaction. It covers only applying the new order to the DOM (moving nodes, animating, announcing, performance), not how the order is computed or what triggers it.
 
