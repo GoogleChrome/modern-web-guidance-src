@@ -14,7 +14,6 @@ guides:
 
 # Using and managing icons
 
-
 ## Choosing an Icon Technique
 
 Icon storage and rendering are separate choices. For example, an SVG sprite can supply an icon to the CSS icon system or be referenced with `<use>`.
@@ -25,6 +24,8 @@ Icon storage and rendering are separate choices. For example, an SVG sprite can 
 * **`<img>` with CSS filters:** Avoid this for recoloring icons. Filters can't reliably apply an arbitrary CSS color value to the image, so recoloring is cumbersome and inflexible.
 
 To decide, ask two questions. Does CSS need to pick or swap the icon (component defaults, state changes, theming)? If yes, use the CSS icon system. Do you need to reach inside the icon beyond color? If yes and you control the icon source, design the symbol with custom properties and use `<use>`; if you do not control the source, inline the SVG. Third-party icon sets rarely expose custom properties, so `<use>` against them gives you color and little else.
+
+Whichever method you choose, make sure that all icons have a contrast of at least 3:1 against their backgrounds in light and dark color schemes. Refer to the Contrast section of {{ GUIDE_REF("color") }} for more details.
 
 ### Embedded or remote icons
 
