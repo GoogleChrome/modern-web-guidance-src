@@ -465,12 +465,19 @@ export async function fillJudgmentsForDataset(
   } else {
     const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
     let nextIdx = 0;
+    let completedCount = 0;
+    const total = pending.length;
+    console.log(`[judge-fill] Grading ${total} queries with concurrency ${concurrency} (${model})...`);
     await Promise.all(
       Array.from({ length: concurrency }, async () => {
         while (nextIdx < pending.length) {
           const item = pending[nextIdx++];
           const judgment = await judgeSingleLive(item.query, item.candidates, apiKey, model, item.existing);
           updated.set(item.qid, mergeJudgmentRecord(item, judgment, model));
+          completedCount++;
+          if (completedCount % 50 === 0 || completedCount === total) {
+            console.log(`[judge-fill] Graded ${completedCount}/${total} queries (${Math.round((completedCount / total) * 100)}%)...`);
+          }
         }
       })
     );
