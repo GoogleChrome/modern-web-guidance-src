@@ -134,24 +134,34 @@
       dialog {
         /* Base state (when closed) */
         opacity: 0;
-        transform: scale(0.9) translateY(20px);
 
         /* Transition for closing */
         transition-property: opacity, transform, overlay, display;
         transition-duration: 0.5s;
         transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
         transition-behavior: allow-discrete;
+
+        @media (prefers-reduced-motion: no-preference) {
+          transform: scale(0.9) translateY(20px);
+        }
       }
 
       dialog[open]:not([data-closing]) {
         /* Open state */
         opacity: 1;
-        transform: scale(1) translateY(0);
 
         @starting-style {
           /* Open starting state */
           opacity: 0;
-          transform: scale(1.05) translateY(-20px);
+        }
+
+        /* Scale and slide only for users who haven't asked for reduced motion */
+        @media (prefers-reduced-motion: no-preference) {
+          transform: scale(1) translateY(0);
+
+          @starting-style {
+            transform: scale(1.05) translateY(-20px);
+          }
         }
       }
 
@@ -179,20 +189,29 @@
       [popover] {
         /* Base state for popover */
         opacity: 0;
-        transform: scale(0.95);
         transition-property: opacity, transform, overlay, display;
         transition-duration: 0.4s;
         transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
         transition-behavior: allow-discrete;
+
+        @media (prefers-reduced-motion: no-preference) {
+          transform: scale(0.95);
+        }
       }
 
       [popover]:popover-open:not([data-closing]) {
         opacity: 1;
-        transform: scale(1);
 
         @starting-style {
           opacity: 0;
-          transform: scale(0.8);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+          transform: scale(1);
+
+          @starting-style {
+            transform: scale(0.8);
+          }
         }
       }
 
@@ -219,16 +238,8 @@
       @media (prefers-reduced-motion: reduce) {
         dialog,
         [popover] {
-          /* Disable movement and shorten duration for a simple fade */
-          transform: none;
+          /* Shorten duration for a simple fade */
           transition-duration: 0.1s;
-        }
-
-        @starting-style {
-          dialog[open],
-          [popover]:popover-open {
-            transform: none;
-          }
         }
       }
     </style>
