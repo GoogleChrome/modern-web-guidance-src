@@ -116,12 +116,17 @@ Fade the content with a `mask-image` gradient on the scroller itself. Animate th
   overflow-x: auto;
   /* Example value: how far each fade reaches */
   --fade-size: 3rem;
-  mask-image: linear-gradient(to right, transparent, black var(--fade-start),
+  --fade-dir: right;
+  mask-image: linear-gradient(to var(--fade-dir), transparent, black var(--fade-start),
     black calc(100% - var(--fade-end)), transparent);
   animation: reveal-fade-start linear both, hide-fade-end linear both;
   animation-timeline: scroll(self inline);
   /* Each fade animates over the first or last --fade-size of scrolling */
   animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+
+  &:dir(rtl) {
+    --fade-dir: left;
+  }
 }
 
 @keyframes reveal-fade-start {
@@ -140,7 +145,7 @@ Fade the content with a `mask-image` gradient on the scroller itself. Animate th
 - MANDATORY: Register `--fade-start` and `--fade-end` with `@property`. Unregistered custom properties do not interpolate, so the fades would jump.
 - Set `scroll-padding-inline` (or `scroll-padding-block`) to the fade size if the scroller uses scroll snapping or contains focusable items, so snapped and focused items never stop inside a fade.
 - For vertical scrollers, use `to bottom`, `scroll(self block)`, and `overflow-y`.
-- For right-to-left content, use `to left` in the gradient: `mask-image` gradients do not follow the writing direction.
+- For right-to-left content, use `to left` in the gradient. The scroll timeline follows the writing direction but gradient directions are physical, so `to right` would put each fade on the wrong edge.
 
 ## Accessibility considerations
 
