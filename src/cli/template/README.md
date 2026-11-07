@@ -102,7 +102,7 @@ Configure browser support targets and feature opt-ins for a repository with an o
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
 1. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web-guidance` CLI for web platform queries.
-2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
+2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, zero-dependency embedding model and BM25 search engine (no network calls, no API keys).
 3. **Guide Fetch**: The agent retrieves the guide via `modern-web-guidance retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
 
 > [!TIP]
