@@ -3,8 +3,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execSync } from 'node:child_process';
-import { extractTargetFilesFromPatch, applyPatchSync, capturePatchFromGit } from './patch-utils.ts';
+import { gitExec } from './git-utils.ts';
+import { extractTargetFilesFromPatch, applyPatchSync, capturePatchFromGit, initGitRepo } from './patch-utils.ts';
 
 describe('extractTargetFilesFromPatch', () => {
   test('extracts modified file paths from unified diff headers and ignores deleted files', () => {
@@ -131,7 +131,93 @@ describe('applyPatchSync', () => {
     assert.strictEqual(res1.success, false);
     assert.match(res1.error || '', /not found/i);
   });
+
+  test('applies mixed text and GIT binary patch atomically without partial state', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-binary-'));
+    try {
+      const srcRepo = path.join(tmpDir, 'src');
+      fs.mkdirSync(srcRepo, { recursive: true });
+      fs.writeFileSync(path.join(srcRepo, 'index.html'), '<p>before</p>\n');
+      initGitRepo(srcRepo);
+
+      const wasmBytes = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0xff, 0xfe]);
+      fs.writeFileSync(path.join(srcRepo, 'index.html'), '<p>after</p>\n');
+      fs.writeFileSync(path.join(srcRepo, 'worker.js'), 'export const ok = true;\n');
+      fs.writeFileSync(path.join(srcRepo, 'module.wasm'), wasmBytes);
+
+      const gitOpts = { cwd: srcRepo, isolated: true, stdio: 'ignore' as const };
+      gitExec(['add', '-N', '.'], gitOpts);
+      const diff = gitExec(['diff', '--binary'], { cwd: srcRepo, isolated: true });
+      assert.match(diff, /^GIT binary patch$/m);
+
+      const patchPath = path.join(tmpDir, 'mixed.patch');
+      fs.writeFileSync(patchPath, diff);
+
+      // Plain target directory (not a git repo) matches staging workspace behavior
+      const targetDir = path.join(tmpDir, 'target');
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(path.join(targetDir, 'index.html'), '<p>before</p>\n');
+
+      const result = applyPatchSync(targetDir, patchPath);
+      assert.strictEqual(result.success, true, `Expected success, got error: ${result.error}`);
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8'), '<p>after</p>\n');
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'worker.js'), 'utf8'), 'export const ok = true;\n');
+      assert.deepStrictEqual(fs.readFileSync(path.join(targetDir, 'module.wasm')), wasmBytes);
+
+      // Failing mixed binary patch must leave targetDir untouched (no partial text hunks or .rej files)
+      const conflictingDir = path.join(tmpDir, 'conflicting');
+      fs.mkdirSync(conflictingDir, { recursive: true });
+      fs.writeFileSync(path.join(conflictingDir, 'index.html'), '<p>different</p>\n');
+      const failResult = applyPatchSync(conflictingDir, patchPath);
+      assert.strictEqual(failResult.success, false);
+      assert.match(failResult.error || '', /patch failed|does not apply/i);
+      assert.deepStrictEqual(fs.readdirSync(conflictingDir), ['index.html']);
+      assert.strictEqual(fs.readFileSync(path.join(conflictingDir, 'index.html'), 'utf8'), '<p>different</p>\n');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('falls back to patch -p1 for fuzzy/offset text patches and reports useful errors when both fail', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-fuzz-'));
+    try {
+      const targetDir = path.join(tmpDir, 'target');
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(path.join(targetDir, 'app.txt'), 'header1\nheader2\nalpha\nbeta\ngamma\n');
+
+      const fuzzPatch = path.join(tmpDir, 'fuzz.patch');
+      fs.writeFileSync(
+        fuzzPatch,
+        '--- a/app.txt\n+++ b/app.txt\n@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n'
+      );
+
+      const res = applyPatchSync(targetDir, fuzzPatch);
+      assert.strictEqual(res.success, true, `Expected fuzz fallback to succeed, got: ${res.error}`);
+      assert.strictEqual(
+        fs.readFileSync(path.join(targetDir, 'app.txt'), 'utf8'),
+        'header1\nheader2\nalpha\nBETA\ngamma\n'
+      );
+
+      // When both git apply and patch -p1 fail, error captures both diagnostics
+      const failDir = path.join(tmpDir, 'fail');
+      fs.mkdirSync(failDir, { recursive: true });
+      fs.writeFileSync(path.join(failDir, 'app.txt'), 'unrelated\n');
+
+      const failRes = applyPatchSync(failDir, fuzzPatch);
+      assert.strictEqual(failRes.success, false);
+      assert.match(failRes.error || '', /git apply:/);
+      assert.match(failRes.error || '', /patch:/);
+      assert.match(failRes.error || '', /FAILED/i);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
+
+function initTestRepo(repoDir: string) {
+  fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
+  initGitRepo(repoDir);
+}
 
 describe('capturePatchFromGit', () => {
   test('captures untracked modifications from git repo into patch file and excludes lockfiles', () => {
@@ -141,10 +227,7 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      // Initialize git repo with one tracked file
-      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
-      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+      initTestRepo(repoDir);
 
       // Create untracked change plus lockfiles that should be excluded
       fs.writeFileSync(path.join(repoDir, 'newfile.txt'), 'world\n');
@@ -171,9 +254,7 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
-      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+      initTestRepo(repoDir);
 
       // Create valid modifications and excluded files
       fs.writeFileSync(path.join(repoDir, 'valid.txt'), 'valid content\n');
@@ -208,17 +289,15 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      // 1. Initial harness repo setup with initial commit
-      execSync('git init && git config user.name "AI" && git config user.email "ai@example.com"', { cwd: repoDir, stdio: 'ignore' });
+      const opts = { cwd: repoDir, isolated: true, stdio: 'ignore' as const };
       fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>original</html>\n');
-      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+      initGitRepo(repoDir);
 
-      // 2. Agent modifies files AND runs git commit
       fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>updated</html>\n');
       fs.writeFileSync(path.join(repoDir, 'translator.js'), 'console.log("translator");\n');
-      execSync('git add . && git commit -m "Agent commit"', { cwd: repoDir, stdio: 'ignore' });
+      gitExec(['add', '.'], opts);
+      gitExec(['commit', '-q', '-m', 'Agent commit'], opts);
 
-      // 3. capturePatchFromGit should capture diff against the initial commit
       const result = capturePatchFromGit(repoDir, patchDest);
       assert.strictEqual(result.success, true);
       assert.strictEqual(fs.existsSync(patchDest), true);
@@ -236,9 +315,7 @@ describe('capturePatchFromGit', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-empty-'));
     const patchDest = path.join(tmpDir, 'empty.patch');
     try {
-      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: tmpDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(tmpDir, 'file.txt'), 'hello\n');
-      execSync('git add . && git commit -m "init"', { cwd: tmpDir, stdio: 'ignore' });
+      initTestRepo(tmpDir);
 
       const result = capturePatchFromGit(tmpDir, patchDest);
       assert.strictEqual(result.success, false);

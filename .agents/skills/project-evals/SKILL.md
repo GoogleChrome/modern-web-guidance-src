@@ -39,6 +39,7 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 * **Avoid untestable conditional expectations** — Avoid `"If the implementation uses X, then Y"` expectations when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
 * **No external links** — The grader generator cannot resolve them.
 * **Avoid over-constraining** — Describe required outcomes, API contracts, or structural invariants rather than prescribing incidental implementation details (specific variable names, helper names, or file paths).
+* **Separate native and fallback expectations** — Write core expectations assuming all features in `guide.md` are natively supported. When `guide.md` includes `## Fallback strategies`, write each fallback requirement as a separate plain-English bullet that names the unsupported feature (e.g., *"When `<feature>` is unsupported, ..."*) rather than combining native and fallback checks in the same bullet, so `gd dev` can scope fallback tests with `skipUnless({ unsupported: '<feature>' })` automatically.
 
 ---
 
@@ -70,7 +71,7 @@ Graders are generated from [`src/grading/template.grader.ts`](../../../src/gradi
 Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtools-times`) never invent URL routes or mock REST API endpoints in `task.md`, though `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs.
 - **Structure and API usage → Parsers**: Check structure and API usage with parsers, never regex on source:
   - **Linkedom** (`getHtmlDocuments`) for HTML structure and DOM querying.
-  - **CSSOMNom** (`getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`), and declarations.
+  - **CSSOMNom** (`getRules`, `getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`, `@position-try`), and declarations.
   - **ts-morph** (`getJsProject`) for JS/TS syntax, API calls, and state wiring.
   - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax.
 - **Runtime behavior → Browser**: Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright:
@@ -84,12 +85,13 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `
 - **Follow variable indirection**: Resolve local `VariableDeclaration`, `BindingElement`, or parameter references when an identifier is passed as an argument instead of assuming inline object literals.
 - **Trace helper & wrapper functions**: Do not assume a platform API is called directly inside a component or event handler. Trace calls and forwarded arguments through helper/wrapper functions across modules.
 - **Flexible error handling**: Accept both `try/catch` (`TryStatement`) and promise `.catch()` handlers.
-- **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
+- **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getRules` / `getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
 
 ### 3. No Vacuous Checks or Swallowed Errors
 - **One expectation per `test()` block**: Each `test('...', ...)` block checks a single expectation for clear failure diagnostics, with a precondition assertion (e.g., asserting the list isn't empty) allowed before the main assertion.
 - **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
 - **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
+- **Fallback-scoped tests (`skipUnless`)**: For expectations that only apply when a feature is unsupported (corresponding to `## Fallback strategies` in `guide.md`), call `skipUnless({ unsupported: '<feature>' })` (imported from `test-fixture.ts`) as the first line of the test body, where `<feature>` is a `web-features` ID from `guide.md` frontmatter or a BCD key. The harness automatically detects `skipUnless({ unsupported: '<feature>' })` calls in `grader.ts` and runs additional evaluation variants (`newly`, `limited`) for any Newly or Limited availability features. Do not call `skipUnless` for universal expectations.
 
 ---
 

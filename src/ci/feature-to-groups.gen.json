@@ -332,8 +332,14 @@
   "display-ruby": [
     "css"
   ],
+  "display-state": [
+    "css"
+  ],
   "display-table": [
     "css"
+  ],
+  "document-isolation-policy": [
+    "security"
   ],
   "dominant-baseline": [
     "css"
@@ -850,6 +856,9 @@
   "rem": [
     "css"
   ],
+  "resizable": [
+    "css"
+  ],
   "resize": [
     "css"
   ],
@@ -1125,9 +1134,6 @@
   "tmp-calc-dimensions": [
     "css"
   ],
-  "tmp-display-state": [
-    "css"
-  ],
   "tmp-email-verification": [
     "security"
   ],
@@ -1138,9 +1144,6 @@
     "css"
   ],
   "tmp-polygon-round": [
-    "css"
-  ],
-  "tmp-resizable": [
     "css"
   ],
   "tmp-text-decoration-inset": [

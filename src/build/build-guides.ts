@@ -1,13 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { execSync } from "node:child_process";
 import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
-import { fileURLToPath } from "node:url";
 
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
+import { gitExec } from "../core/git-utils.ts";
 import {
   scanAllGuides,
   type GuideInventory,
@@ -16,8 +15,11 @@ import {
   stripAllComments,
   isDraftStub,
   stripLeadingH1,
-  getGuideOriginTrials,
 } from "../core/guide-validation.ts";
+import {
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+} from "../core/feature-gates.ts";
 import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
@@ -49,6 +51,9 @@ export interface DevsiteGuideMetadata {
   path: string;
 }
 
+import type { EmbedderLike } from "../rag/search.ts";
+import { loadChunkCache, computeChunkHash } from "../rag/chunk-cache.ts";
+
 export interface BuildOptions {
   outputDir: string;
   target?: BuildTarget;
@@ -56,6 +61,7 @@ export interface BuildOptions {
   targetGuidePath?: string;
   modelName?: string;
   noChunking?: boolean;
+  failOnMissingVectors?: boolean;
 }
 
 // Global variables to be set by processGuides
@@ -82,31 +88,12 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-function getTransformersVersion(): string {
-  try {
-    const entry = fileURLToPath(import.meta.resolve("@huggingface/transformers"));
-    let dir = path.dirname(entry);
-    while (dir !== path.dirname(dir)) {
-      const pkgPath = path.join(dir, "package.json");
-      if (fs.existsSync(pkgPath)) {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-        if (pkg.name === "@huggingface/transformers" && typeof pkg.version === "string") {
-          return pkg.version;
-        }
-      }
-      dir = path.dirname(dir);
-    }
-    throw new Error("Could not find package.json with name '@huggingface/transformers'");
-  } catch (err) {
-    throw new Error(`Failed to extract @huggingface/transformers version for pipeline hash: ${(err as Error).message}`);
-  }
-}
-
-async function computePipelineHash(
+export async function computePipelineHash(
   guides: GuideInventory[],
   target: string,
   noChunking: boolean,
-  modelName?: string
+  modelName?: string,
+  failOnMissingVectors?: boolean
 ): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
@@ -114,9 +101,18 @@ async function computePipelineHash(
   const deps = [
     import.meta.filename,
     path.join(rootDir, "src/core/macros.ts"),
-    path.join(rootDir, "src/rag/transformers-embedder.ts"),
+    path.join(rootDir, "src/rag/static-embedder.ts"),
+    path.join(rootDir, "src/rag/static-model/words.json"),
+    path.join(rootDir, "src/rag/static-model/words.i8"),
+    path.join(rootDir, "src/rag/static-model/words.scale.f32"),
+    path.join(rootDir, "src/rag/chunk-cache.ts"),
+    path.join(rootDir, "src/rag/static-model/chunks.json"),
+    path.join(rootDir, "src/rag/static-model/chunks.i8"),
+    path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
+    path.join(rootDir, "features/volatile-features.json"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
     path.join(rootDir, "src/core/categories.ts"),
     path.join(rootDir, "src/core/headings.ts"),
@@ -124,20 +120,18 @@ async function computePipelineHash(
 
   for (const dep of deps) {
     if (fs.existsSync(dep)) {
-      hash.update(fs.readFileSync(dep, "utf-8"));
+      hash.update(fs.readFileSync(dep));
     }
   }
 
   hash.update(target);
   if (target === 'devsite') hash.update(loadGitFileDates().sourceCommit);
   hash.update(noChunking.toString());
+  hash.update(Boolean(failOnMissingVectors).toString());
 
   if (target !== 'devsite') {
-    const rawModel = modelName || "Xenova/all-MiniLM-L6-v2";
-    const [modelId, dtype = "q8"] = rawModel.split("@");
-    hash.update(getTransformersVersion());
-    hash.update(modelId);
-    hash.update(dtype);
+    const rawModel = modelName || "static-tokenlearn-256d";
+    hash.update(rawModel);
   }
 
   for (const inv of guides) {
@@ -219,11 +213,9 @@ export function loadGitFileDates(): GitInfo {
   const fileDates = new Map<string, string>();
   let sourceCommit = "unknown";
   try {
-    sourceCommit = execSync("git rev-parse HEAD", { cwd: WORKSPACE_ROOT, encoding: "utf-8" }).trim();
-    const raw = execSync('git log --format="COMMIT %cs" --name-only HEAD -- guides/ features/', {
+    sourceCommit = gitExec(["rev-parse", "HEAD"], { cwd: WORKSPACE_ROOT }).trim();
+    const raw = gitExec(["log", "--format=COMMIT %cs", "--name-only", "HEAD", "--", "guides/", "features/"], {
       cwd: WORKSPACE_ROOT,
-      encoding: "utf-8",
-      maxBuffer: 50 * 1024 * 1024,
     });
     let currentDate = "";
     for (const line of raw.split("\n")) {
@@ -353,7 +345,7 @@ export function generateGuidesTocYaml(guides: DevsiteGuideMetadata[]): string {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking, failOnMissingVectors } = opts;
 
   TARGET = target || 'skills-cli';
   IS_NO_CHUNKING = !!noChunking;
@@ -367,7 +359,13 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const excluded = config.monoskill.excludeFromBundling || [];
     return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
-  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING, modelName);
+  const currentHash = await computePipelineHash(
+    readyGuides,
+    TARGET,
+    IS_NO_CHUNKING,
+    modelName,
+    failOnMissingVectors
+  );
 
   // 3. Cache Evaluation
   const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides, TARGET);
@@ -385,15 +383,20 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const devsiteGuides: DevsiteGuideMetadata[] = [];
   const gitInfo = TARGET === 'devsite' ? loadGitFileDates() : { fileDates: new Map(), sourceCommit: "unknown" };
 
-  let embedder: any = null;
+  let embedder: EmbedderLike | undefined;
   if (TARGET !== 'devsite') {
     if (modelName) {
       console.log(`Using custom embedding model: ${modelName}`);
+      const { Embedder } = await import("../rag/transformers-embedder.ts");
+      const inst = Embedder.getInstance(modelName);
+      await inst.init();
+      embedder = inst;
+    } else {
+      const { StaticEmbedder } = await import("../rag/static-embedder.ts");
+      const inst = StaticEmbedder.getInstance();
+      inst.init();
+      embedder = inst;
     }
-
-    const { Embedder } = await import("../rag/transformers-embedder.ts");
-    embedder = Embedder.getInstance(modelName);
-    await embedder.init();
   }
 
   if (targetGuidePath) {
@@ -411,6 +414,9 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
+  const chunkCache = TARGET !== 'devsite' && !modelName ? loadChunkCache() : null;
+  const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
+
   console.log(TARGET === 'devsite' ? "Exporting DevSite guides…" : "Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
@@ -422,8 +428,30 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
       storeUseCases,
       embedder,
       devsiteGuides,
-      gitInfo
+      gitInfo,
+      modelName,
+      chunkCache,
+      missingChunks
     );
+  }
+
+  if (missingChunks.length > 0) {
+    const missingGuides = [...new Set(missingChunks.map((m) => m.guideId))];
+    console.warn(
+      `\n⚠️  WARNING: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:`
+    );
+    for (const g of missingGuides) {
+      console.warn(`   - ${g}`);
+    }
+    console.warn(
+      `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
+    );
+
+    if (failOnMissingVectors) {
+      throw new Error(
+        `Release check failed: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors. Run 'node src/rag/embed-chunks.ts' before release.`
+      );
+    }
   }
 
   if (TARGET === 'skills-cli') {
@@ -493,7 +521,8 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-function writeBuiltGuide(category: string, id: string, content: string): string {
+function writeBuiltGuide(category: string, id: string, content: string): string | undefined {
+  if (!BUILD_GUIDES_DIR) return undefined;
   const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
   fs.mkdirSync(buildCategoryDir, { recursive: true });
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
@@ -529,15 +558,18 @@ export function formatChunkHeader(
   return `${header}\nFeatures: ${features.join(", ")}`;
 }
 
-async function processSingleGuideFile(
+export async function processSingleGuideFile(
   filePath: string,
   category: string,
   id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
-  embedder?: any,
+  embedder?: EmbedderLike,
   devsiteGuides?: DevsiteGuideMetadata[],
-  gitInfo?: GitInfo
+  gitInfo?: GitInfo,
+  modelName?: string,
+  chunkCache?: Map<string, Float32Array> | null,
+  missingChunks?: Array<{ guideId: string; category: string; chunk: string }>
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -644,10 +676,14 @@ async function processSingleGuideFile(
     return;
   }
 
+  if (!embedder) {
+    throw new Error(`Embedder is required for target ${TARGET}`);
+  }
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
   const originTrials = getGuideOriginTrials(featureIds);
-  const tokenCount = await embedder.countTokens(processedMarkdown);
+  const volatileFeatures = getGuideVolatileFeatures(featureIds);
+  const tokenCount = embedder.countTokens ? await embedder.countTokens(processedMarkdown) : 0;
 
   useCases.push({
     id,
@@ -656,6 +692,7 @@ async function processSingleGuideFile(
     featuresUsed,
     tokenCount,
     ...(originTrials.length > 0 ? { originTrials } : {}),
+    ...(volatileFeatures.length > 0 ? { volatileFeatures } : {}),
   });
 
   const h1Title = extractH1Heading(processedMarkdown);
@@ -670,7 +707,20 @@ async function processSingleGuideFile(
 
   for (const chunk of chunks) {
     const embeddingText = `${header}\n\n${chunk}`;
-    const vector = await embedder.embed(embeddingText);
+    let vector: number[] = [];
+    if (modelName) {
+      vector = await embedder.embed(embeddingText);
+    } else {
+      const hash = computeChunkHash(embeddingText);
+      const cached = chunkCache?.get(hash);
+      if (cached) {
+        vector = Array.from(cached);
+      } else {
+        missingChunks?.push({ guideId: id, category, chunk });
+        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (indexed for BM25 only; vector: []): ${chunk.slice(0, 50).trim()}...`);
+        vector = [];
+      }
+    }
 
     storeUseCases.push({
       id,
@@ -694,6 +744,7 @@ if (process.argv[1] === import.meta.filename) {
     'no-chunking': { type: 'boolean' as const },
     target: { type: 'string' as const },
     output: { type: 'string' as const },
+    'fail-on-missing-vectors': { type: 'boolean' as const },
   };
 
   const { values, positionals } = parseArgs({ options, allowPositionals: true });
@@ -704,6 +755,7 @@ if (process.argv[1] === import.meta.filename) {
   const modelName = values.model;
   const target = (values.target as BuildTarget | undefined) || 'skills-cli';
   const output = values.output;
+  const failOnMissingVectors = values['fail-on-missing-vectors'];
 
   processGuides({
     outputDir: output
@@ -713,7 +765,8 @@ if (process.argv[1] === import.meta.filename) {
     force,
     targetGuidePath,
     modelName,
-    noChunking
+    noChunking,
+    failOnMissingVectors,
   }).catch((err) => {
     console.error(err);
     process.exit(1);

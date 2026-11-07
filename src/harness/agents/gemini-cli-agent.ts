@@ -2,7 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
-import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, exportTrajectories, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, runCliAgentCommand, parseJsonlFile, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { exportTrajectories } from '../lib/trajectory-export.ts';
 import type { ConversationRecord } from '@google/gemini-cli-core';
 import {
   type StandardizedStep,

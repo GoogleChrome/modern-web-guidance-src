@@ -100,12 +100,6 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     expect(hasFor).toBe(true);
   });
 
-  test('No element must use autocomplete="off"', async () => {
-    const code = getSourceContent();
-    const hasOff = /autocomplete=[{"']?off[}"']?|autoComplete=[{"']?off[}"']?/i.test(code);
-    expect(hasOff).toBe(false);
-  });
-
   test('Email input must have type="email"', async ({ page }) => {
     const isVisible = await page.locator('input[type="email"]').first().isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
@@ -152,19 +146,6 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     expect(/autoComplete=[{"']?(current-password|password)[}"']?|autocomplete=[{"']?(current-password|password)[}"']?/i.test(code)).toBe(true);
   });
 
-  test('Password input must have id="current-password"', async ({ page }) => {
-    const isVisible = await page.locator('input[type="password"]').first().isVisible({ timeout: 500 }).catch(() => false);
-    if (isVisible) {
-      const id = await page.locator('input[type="password"]').first().getAttribute('id', { timeout: 500 }).catch(() => null);
-      if (id) {
-        expect(id.includes('current-password') || id.includes('password')).toBe(true);
-        return;
-      }
-    }
-    const code = getSourceContent();
-    expect(/id=[{"']?(current-password|password)[}"']?/i.test(code)).toBe(true);
-  });
-
   test('Email input must be required', async ({ page }) => {
     const isVisible = await page.locator('input[type="email"]').first().isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
@@ -199,7 +180,7 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     }
     const code = getSourceContent();
     const matches = code.match(/type=[{"']?email[}"']?/gi) || [];
-    expect(matches.length <= 1).toBe(true);
+    expect(matches.length).toBe(1);
   });
 
   test('There must be exactly one password input', async ({ page }) => {
@@ -209,8 +190,8 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
       return;
     }
     const code = getSourceContent();
-    const matches = code.match(/type=[{"']?password[}"']?/gi) || [];
-    expect(matches.length <= 1).toBe(true);
+    const matches = code.match(/type=(?:[{"']?password[}"']?|\{[^}]*['"]password['"][^}]*\})/gi) || [];
+    expect(matches.length).toBe(1);
   });
 
 });

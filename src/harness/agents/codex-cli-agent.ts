@@ -13,6 +13,7 @@ import {
   type GuideUsage
 } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
+import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import {
   type StandardizedStep,
@@ -144,9 +145,10 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
   for (const relativePath of files) {
     const src = path.join(codexLogDir, relativePath);
     const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
-    fs.copyFileSync(src, path.join(targetDir, `session-${baseName}.jsonl`));
-    const logData = parseJsonlFile(src);
-    const htmlContent = generateCodexTrajectoryHtml(logData);
+    const destJsonl = path.join(targetDir, `session-${baseName}.jsonl`);
+    fs.writeFileSync(destJsonl, sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
+    const logData = parseJsonlFile(destJsonl);
+    const htmlContent = sanitizeTextSecrets(generateCodexTrajectoryHtml(logData));
     fs.writeFileSync(path.join(targetDir, `session-${baseName}.html`), htmlContent, 'utf8');
   }
 }
@@ -504,6 +506,19 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
+          const stepParams =
+            step.action?.params && typeof step.action.params === 'object'
+              ? (step.action.params as Record<string, unknown>)
+              : undefined;
+          if (stepParams && Array.isArray(stepParams.webRuns)) {
+            const failedUrls = Array.from(
+              outStr.matchAll(/(?:Failed to fetch|URL)\s+(https?:\/\/\S+?)(?::(?:\s|$)|\s+is not accessible)/g),
+              (m) => m[1]
+            );
+            if (failedUrls.length > 0) {
+              stepParams.failedOpenUrls = [...new Set(failedUrls)];
+            }
+          }
           const isError =
             p.is_error === true ||
             outStr.startsWith('Script failed') ||

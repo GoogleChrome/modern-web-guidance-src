@@ -8,6 +8,6 @@ declare global {
     __featuresMapping?: Record<string, string[]>;
     openDetailsFromTask?: (scenarioName: string, testId: string) => void;
     openTrajectory?: (usedBasePath: string, sessionFile: string) => void;
-    setInsightFilter?: (filterKey: 'agent' | 'serving' | 'model', value: string) => void;
+    setInsightFilter?: (filterKey: 'agent' | 'model', value: string) => void;
   }
 }
