@@ -3,7 +3,7 @@
 - The last item's link has `aria-current="page"`, and no other trail link has it.
 - Divider characters are not present as text nodes in the DOM; when dividers are rendered between items, they are generated via CSS (`::before` content with empty alt text `/ ""`, a CSS mask, or segment borders/shapes) so the accessible names of the list items contain no divider characters.
 - Each trail item after the first has a visible separator before it: a generated `::before` or `::after` divider (text with empty alt text, or a CSS mask), or an arrow or slant segment shape.
-- Links in the trail show a visible focus indicator (non-zero outline or distinct style) when focused with the keyboard.
+- Links in the trail show a visible focus indicator (non-zero outline or distinct style that has a contrast of at least `3:1` with the background color) when focused with the keyboard.
 - Hovering a non-current trail link changes its computed color, background color, or text decoration.
 - The current-page link has a computed color or font weight different from the other trail links.
 - When a trail uses shaped (arrow or slant) segments, inside an `rtl` container the shaped corners sit on the opposite physical side from the `ltr` container, through mirrored `polygon()` coordinates or logical corner radii.
