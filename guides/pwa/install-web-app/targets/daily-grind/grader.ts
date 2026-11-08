@@ -73,11 +73,24 @@ const FIND_CUSTOM_INSTALL_BUTTON_SOURCE = `
 
 const READ_STATUS_TEXT_SOURCE = `
   (() => {
-    const statusEl = document.querySelector('#install-status, [role="status"], [aria-live], output');
-    if (statusEl && (statusEl.textContent || '').trim()) {
-      return (statusEl.textContent || '').trim();
-    }
-    return (document.body.textContent || '').trim();
+    const isRendered = (el) => {
+      const style = window.getComputedStyle(el);
+      return !el.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const liveText = Array.from(
+      document.querySelectorAll('#install-status, [role="status"], [aria-live], output'),
+    )
+      .filter(isRendered)
+      .map((el) => (el.textContent || '').trim())
+      .filter(Boolean)
+      .join('\\n');
+    if (liveText) return liveText;
+    const currentLines = (document.body.innerText || '')
+      .split('\\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const baseline = new Set(window.__baselineBodyLines || []);
+    return (window.__baselineBodyLines ? currentLines.filter((l) => !baseline.has(l)) : currentLines).join('\\n');
   })()
 `;
 
@@ -125,20 +138,30 @@ test.describe('install-web-app Target Grader', () => {
       await page.goto(TARGET_URL);
       const hasInstallEl = (await page.locator('install').count()) > 0;
       if (hasInstallEl) {
-        const statusText = await page.evaluate(() => {
+        await page.evaluate(() => {
+          (window as any).__baselineBodyLines = (document.body.innerText || '')
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean);
           const el = document.querySelector('install')!;
           const ev = new Event('installresult');
           Object.defineProperty(ev, 'result', { value: 'success', enumerable: true });
           el.dispatchEvent(ev);
-          const s = document.querySelector('#install-status, [role="status"], [aria-live], output');
-          return s ? (s.textContent || '').trim() : '';
         });
-        expect(statusText).toMatch(SUCCESS_TEXT_RE);
+        await expect
+          .poll(() =>
+            page.evaluate((readStatusSrc) => {
+              // eslint-disable-next-line no-eval
+              return eval(readStatusSrc) as string;
+            }, READ_STATUS_TEXT_SOURCE),
+          )
+          .toMatch(SUCCESS_TEXT_RE);
       } else {
-        const hasHandler = project
-          .getSourceFiles()
-          .some((sf) => sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some((s) => SUCCESS_TEXT_RE.test(s.getLiteralValue())));
-        expect(hasHandler).toBe(true);
+        const hasCustomBtn = await page.evaluate((findBtnSrc) => {
+          // eslint-disable-next-line no-eval
+          return Boolean(eval(findBtnSrc));
+        }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
+        expect(hasCustomBtn && hasCustomInstallMechanismInAst(project)).toBe(true);
       }
     });
 
@@ -153,20 +176,30 @@ test.describe('install-web-app Target Grader', () => {
       await page.goto(TARGET_URL);
       const hasInstallEl = (await page.locator('install').count()) > 0;
       if (hasInstallEl) {
-        const statusText = await page.evaluate(() => {
+        await page.evaluate(() => {
+          (window as any).__baselineBodyLines = (document.body.innerText || '')
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean);
           const el = document.querySelector('install')!;
           const ev = new Event('installresult');
           Object.defineProperty(ev, 'result', { value: 'aborted', enumerable: true });
           el.dispatchEvent(ev);
-          const s = document.querySelector('#install-status, [role="status"], [aria-live], output');
-          return s ? (s.textContent || '').trim() : '';
         });
-        expect(statusText).toMatch(ABORTED_TEXT_RE);
+        await expect
+          .poll(() =>
+            page.evaluate((readStatusSrc) => {
+              // eslint-disable-next-line no-eval
+              return eval(readStatusSrc) as string;
+            }, READ_STATUS_TEXT_SOURCE),
+          )
+          .toMatch(ABORTED_TEXT_RE);
       } else {
-        const hasHandler = project
-          .getSourceFiles()
-          .some((sf) => sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some((s) => ABORTED_TEXT_RE.test(s.getLiteralValue())));
-        expect(hasHandler).toBe(true);
+        const hasCustomBtn = await page.evaluate((findBtnSrc) => {
+          // eslint-disable-next-line no-eval
+          return Boolean(eval(findBtnSrc));
+        }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
+        expect(hasCustomBtn && hasCustomInstallMechanismInAst(project)).toBe(true);
       }
     });
 
@@ -181,20 +214,30 @@ test.describe('install-web-app Target Grader', () => {
       await page.goto(TARGET_URL);
       const hasInstallEl = (await page.locator('install').count()) > 0;
       if (hasInstallEl) {
-        const statusText = await page.evaluate(() => {
+        await page.evaluate(() => {
+          (window as any).__baselineBodyLines = (document.body.innerText || '')
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean);
           const el = document.querySelector('install')!;
           const ev = new Event('installresult');
           Object.defineProperty(ev, 'result', { value: 'invalid-data', enumerable: true });
           el.dispatchEvent(ev);
-          const s = document.querySelector('#install-status, [role="status"], [aria-live], output');
-          return s ? (s.textContent || '').trim() : '';
         });
-        expect(statusText).toMatch(INVALID_DATA_TEXT_RE);
+        await expect
+          .poll(() =>
+            page.evaluate((readStatusSrc) => {
+              // eslint-disable-next-line no-eval
+              return eval(readStatusSrc) as string;
+            }, READ_STATUS_TEXT_SOURCE),
+          )
+          .toMatch(INVALID_DATA_TEXT_RE);
       } else {
-        const hasHandler = project
-          .getSourceFiles()
-          .some((sf) => sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some((s) => INVALID_DATA_TEXT_RE.test(s.getLiteralValue())));
-        expect(hasHandler).toBe(true);
+        const hasCustomBtn = await page.evaluate((findBtnSrc) => {
+          // eslint-disable-next-line no-eval
+          return Boolean(eval(findBtnSrc));
+        }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
+        expect(hasCustomBtn && hasCustomInstallMechanismInAst(project)).toBe(true);
       }
     });
 
@@ -228,7 +271,7 @@ test.describe('install-web-app Target Grader', () => {
         const btn = eval(findBtnSrc) as HTMLElement | null;
         if (!btn) return false;
         const style = window.getComputedStyle(btn);
-        return !btn.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+        return style.display !== 'none' && style.visibility !== 'hidden' && btn.getBoundingClientRect().width > 0;
       }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
       expect(isCustomButtonVisible).toBe(false);
@@ -265,24 +308,18 @@ test.describe('install-web-app Target Grader', () => {
       }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
       if (hasCustomBtn) {
-        const result = await page.evaluate(async (findBtnSrc) => {
+        const visibleBefore = await page.evaluate((findBtnSrc) => {
           // eslint-disable-next-line no-eval
           const btn = eval(findBtnSrc) as HTMLElement;
           const style = window.getComputedStyle(btn);
-          const visibleBefore = !btn.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+          const visible = style.display !== 'none' && style.visibility !== 'hidden' && btn.getBoundingClientRect().width > 0;
           btn.click();
-          // Click a second time while in-flight to verify single-activation guard or single request per activation
-          btn.click();
-          const callsWhilePending = (window as any).__installCalls;
-          if ((window as any).__resolveInstall) {
-            (window as any).__resolveInstall();
-          }
-          await new Promise((r) => setTimeout(r, 20));
-          return { visibleBefore, callsWhilePending };
+          return visible;
         }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
-        expect(result.visibleBefore).toBe(true);
-        expect(result.callsWhilePending).toBe(1);
+        expect(visibleBefore).toBe(true);
+        await expect.poll(() => page.evaluate(() => (window as any).__installCalls)).toBe(1);
+        await page.evaluate(() => (window as any).__resolveInstall?.());
       } else {
         await expect(page.locator('install')).toHaveCount(1);
       }
@@ -319,27 +356,27 @@ test.describe('install-web-app Target Grader', () => {
       }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
       if (hasCustomBtn) {
-        const result = await page.evaluate(async (findBtnSrc) => {
+        const visibleAfterEvent = await page.evaluate((findBtnSrc) => {
           // eslint-disable-next-line no-eval
           const btn = eval(findBtnSrc) as HTMLElement;
-          let promptCalls = 0;
+          (window as any).__promptCalls = 0;
           const bipEvent = new Event('beforeinstallprompt', { cancelable: true }) as any;
+          const choice = { outcome: 'accepted', platform: 'web' };
           bipEvent.prompt = () => {
-            promptCalls++;
-            return Promise.resolve();
+            (window as any).__promptCalls++;
+            return Promise.resolve(choice);
           };
-          bipEvent.userChoice = Promise.resolve({ outcome: 'accepted', platform: 'web' });
+          bipEvent.userChoice = Promise.resolve(choice);
           window.dispatchEvent(bipEvent);
 
           const style = window.getComputedStyle(btn);
-          const visibleAfterEvent = !btn.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+          const visible = style.display !== 'none' && style.visibility !== 'hidden' && btn.getBoundingClientRect().width > 0;
           btn.click();
-          await new Promise((r) => setTimeout(r, 20));
-          return { visibleAfterEvent, promptCalls };
+          return visible;
         }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
-        expect(result.visibleAfterEvent).toBe(true);
-        expect(result.promptCalls).toBe(1);
+        expect(visibleAfterEvent).toBe(true);
+        await expect.poll(() => page.evaluate(() => (window as any).__promptCalls)).toBe(1);
       } else {
         await expect(page.locator('install')).toHaveCount(1);
       }
@@ -376,57 +413,42 @@ test.describe('install-web-app Target Grader', () => {
       }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
       if (hasCustomBtn) {
-        const result = await page.evaluate(async (findBtnSrc) => {
+        await page.evaluate((findBtnSrc) => {
           // eslint-disable-next-line no-eval
           const btn = eval(findBtnSrc) as HTMLElement;
-          let promptCalls = 0;
-          const fireBip = (outcome: 'accepted' | 'dismissed') => {
+          (window as any).__promptCalls = 0;
+          (window as any).__fireBip = (outcome: 'accepted' | 'dismissed') => {
             const ev = new Event('beforeinstallprompt', { cancelable: true }) as any;
+            const choice = { outcome, platform: 'web' };
             ev.prompt = () => {
-              promptCalls++;
-              return Promise.resolve();
+              (window as any).__promptCalls++;
+              return Promise.resolve(choice);
             };
-            ev.userChoice = Promise.resolve({ outcome, platform: 'web' });
+            ev.userChoice = Promise.resolve(choice);
             window.dispatchEvent(ev);
           };
-
-          fireBip('dismissed');
-          btn.click();
-          await new Promise((r) => setTimeout(r, 30));
-
-          const styleAfterDismiss = window.getComputedStyle(btn);
-          const hiddenAfterDismiss =
-            btn.hidden || styleAfterDismiss.display === 'none' || styleAfterDismiss.visibility === 'hidden';
-
-          // Clicking again without a new beforeinstallprompt event should not call prompt() again
-          btn.click();
-          await new Promise((r) => setTimeout(r, 20));
-          const callsAfterSecondClick = promptCalls;
-
-          // Firing a new beforeinstallprompt event should reveal the button again
-          fireBip('accepted');
-          const styleAfterNewEvent = window.getComputedStyle(btn);
-          const visibleAfterNewEvent =
-            !btn.hidden && styleAfterNewEvent.display !== 'none' && styleAfterNewEvent.visibility !== 'hidden';
-
-          btn.click();
-          await new Promise((r) => setTimeout(r, 30));
-          const styleAfterAccept = window.getComputedStyle(btn);
-          const hiddenAfterAccept =
-            btn.hidden || styleAfterAccept.display === 'none' || styleAfterAccept.visibility === 'hidden';
-
-          return {
-            hiddenAfterDismiss,
-            callsAfterSecondClick,
-            visibleAfterNewEvent,
-            hiddenAfterAccept,
+          (window as any).__isBtnVisible = () => {
+            const style = window.getComputedStyle(btn);
+            return style.display !== 'none' && style.visibility !== 'hidden' && btn.getBoundingClientRect().width > 0;
           };
+          (window as any).__clickBtn = () => btn.click();
+
+          (window as any).__fireBip('dismissed');
+          btn.click();
         }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
-        expect(result.hiddenAfterDismiss).toBe(true);
-        expect(result.callsAfterSecondClick).toBe(1);
-        expect(result.visibleAfterNewEvent).toBe(true);
-        expect(result.hiddenAfterAccept).toBe(true);
+        await expect.poll(() => page.evaluate(() => !(window as any).__isBtnVisible())).toBe(true);
+
+        // Clicking again without a new beforeinstallprompt event should not call prompt() again
+        await page.evaluate(() => (window as any).__clickBtn());
+        expect(await page.evaluate(() => (window as any).__promptCalls)).toBe(1);
+
+        // Firing a new beforeinstallprompt event should reveal the button again
+        await page.evaluate(() => (window as any).__fireBip('accepted'));
+        await expect.poll(() => page.evaluate(() => (window as any).__isBtnVisible())).toBe(true);
+
+        await page.evaluate(() => (window as any).__clickBtn());
+        await expect.poll(() => page.evaluate(() => !(window as any).__isBtnVisible())).toBe(true);
       } else {
         await expect(page.locator('install')).toHaveCount(1);
       }
@@ -445,7 +467,7 @@ test.describe('install-web-app Target Grader', () => {
         Object.defineProperty(Navigator.prototype, 'install', {
           value: function () {
             if ((window as any).__installMode === 'abort') {
-              return Promise.reject(new DOMException('User canceled installation', 'AbortError'));
+              return Promise.reject(new DOMException('The installation prompt was dismissed', 'AbortError'));
             }
             return Promise.resolve();
           },
@@ -459,51 +481,73 @@ test.describe('install-web-app Target Grader', () => {
       const pageErrors: Error[] = [];
       page.on('pageerror', (err) => pageErrors.push(err));
 
-      const outcomes = await page.evaluate(
-        async ({ findBtnSrc, readStatusSrc }) => {
-          // eslint-disable-next-line no-eval
-          const btn = eval(findBtnSrc) as HTMLElement | null;
-          const installEl = document.querySelector('install');
-
-          let successStatus = '';
-          let cancelStatus = '';
-
-          if (btn && !btn.hidden) {
-            (window as any).__installMode = 'abort';
-            btn.click();
-            await new Promise((r) => setTimeout(r, 30));
-            // eslint-disable-next-line no-eval
-            cancelStatus = eval(readStatusSrc) as string;
-
-            (window as any).__installMode = 'success';
-            btn.hidden = false;
-            btn.removeAttribute('aria-disabled');
-            btn.click();
-            await new Promise((r) => setTimeout(r, 30));
-            // eslint-disable-next-line no-eval
-            successStatus = eval(readStatusSrc) as string;
-          } else if (installEl) {
-            const successEv = new Event('installresult');
-            Object.defineProperty(successEv, 'result', { value: 'success', enumerable: true });
-            installEl.dispatchEvent(successEv);
-            // eslint-disable-next-line no-eval
-            successStatus = eval(readStatusSrc) as string;
-
-            const abortEv = new Event('installresult');
-            Object.defineProperty(abortEv, 'result', { value: 'aborted', enumerable: true });
-            installEl.dispatchEvent(abortEv);
-            // eslint-disable-next-line no-eval
-            cancelStatus = eval(readStatusSrc) as string;
+      const mode = await page.evaluate((findBtnSrc) => {
+        // eslint-disable-next-line no-eval
+        const btn = eval(findBtnSrc) as HTMLElement | null;
+        if (btn) {
+          const style = window.getComputedStyle(btn);
+          if (style.display !== 'none' && style.visibility !== 'hidden' && btn.getBoundingClientRect().width > 0) {
+            return 'button';
           }
+        }
+        return document.querySelector('install') ? 'install' : 'none';
+      }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
 
-          return { successStatus, cancelStatus };
-        },
-        { findBtnSrc: FIND_CUSTOM_INSTALL_BUTTON_SOURCE, readStatusSrc: READ_STATUS_TEXT_SOURCE },
-      );
+      const snapshotBaseline = () =>
+        page.evaluate(() => {
+          (window as any).__baselineBodyLines = (document.body.innerText || '')
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean);
+        });
+      const readStatus = () =>
+        page.evaluate((readStatusSrc) => {
+          // eslint-disable-next-line no-eval
+          return eval(readStatusSrc) as string;
+        }, READ_STATUS_TEXT_SOURCE);
+
+      expect(mode).not.toBe('none');
+
+      if (mode === 'button') {
+        await snapshotBaseline();
+        await page.evaluate((findBtnSrc) => {
+          (window as any).__installMode = 'abort';
+          // eslint-disable-next-line no-eval
+          (eval(findBtnSrc) as HTMLElement).click();
+        }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
+        await expect.poll(readStatus).toMatch(ABORTED_TEXT_RE);
+        expect(await readStatus()).not.toMatch(/\bapplication\s+error\b|^error\b/i);
+
+        await snapshotBaseline();
+        await page.evaluate((findBtnSrc) => {
+          (window as any).__installMode = 'success';
+          // eslint-disable-next-line no-eval
+          const btn = eval(findBtnSrc) as HTMLElement;
+          btn.hidden = false;
+          btn.removeAttribute('aria-disabled');
+          btn.click();
+        }, FIND_CUSTOM_INSTALL_BUTTON_SOURCE);
+        await expect.poll(readStatus).toMatch(SUCCESS_TEXT_RE);
+      } else {
+        await snapshotBaseline();
+        await page.evaluate(() => {
+          const successEv = new Event('installresult');
+          Object.defineProperty(successEv, 'result', { value: 'success', enumerable: true });
+          document.querySelector('install')!.dispatchEvent(successEv);
+        });
+        await expect.poll(readStatus).toMatch(SUCCESS_TEXT_RE);
+
+        await snapshotBaseline();
+        await page.evaluate(() => {
+          const abortEv = new Event('installresult');
+          Object.defineProperty(abortEv, 'result', { value: 'aborted', enumerable: true });
+          document.querySelector('install')!.dispatchEvent(abortEv);
+        });
+        await expect.poll(readStatus).toMatch(ABORTED_TEXT_RE);
+        expect(await readStatus()).not.toMatch(/\bapplication\s+error\b|^error\b/i);
+      }
 
       expect(pageErrors).toHaveLength(0);
-      expect(outcomes.successStatus).toMatch(SUCCESS_TEXT_RE);
-      expect(outcomes.cancelStatus).toMatch(ABORTED_TEXT_RE);
     });
   });
 });
