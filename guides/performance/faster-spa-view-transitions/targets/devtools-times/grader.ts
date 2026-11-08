@@ -83,7 +83,17 @@ async function clickSectionNavControl(page: Page, sectionPattern: RegExp): Promi
 
 function countSpaViewElements(): number {
   const inactiveSamples = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
-    (el) => el.inert || window.getComputedStyle(el).contentVisibility === 'hidden',
+    (el) => {
+      const style = window.getComputedStyle(el);
+      return (
+        el.inert ||
+        style.contentVisibility === 'hidden' ||
+        el.hidden ||
+        (style.display === 'none' &&
+          !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
+          !el.classList.contains('hidden'))
+      );
+    },
   );
   let candidates: HTMLElement[] = [];
   if (inactiveSamples.length > 0 && inactiveSamples[0].parentElement) {
@@ -117,7 +127,17 @@ async function ensureMultipleViewsRendered(page: Page): Promise<void> {
 async function getSpaViewsState(page: Page) {
   return page.evaluate(() => {
     const inactiveSamples = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
-      (el) => el.inert || window.getComputedStyle(el).contentVisibility === 'hidden',
+      (el) => {
+        const style = window.getComputedStyle(el);
+        return (
+          el.inert ||
+          style.contentVisibility === 'hidden' ||
+          el.hidden ||
+          (style.display === 'none' &&
+            !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
+            !el.classList.contains('hidden'))
+        );
+      },
     );
     let candidates: HTMLElement[] = [];
     if (inactiveSamples.length > 0 && inactiveSamples[0].parentElement) {
@@ -139,6 +159,8 @@ async function getSpaViewsState(page: Page) {
         el.hasAttribute('inert') ||
         (el as HTMLElement & { inert?: boolean }).inert === true ||
         el.getAttribute('aria-hidden') === 'true' ||
+        el.hidden ||
+        style.display === 'none' ||
         style.contentVisibility === 'hidden';
       return {
         index,

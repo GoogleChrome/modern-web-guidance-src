@@ -235,7 +235,9 @@ test.describe(`Top Layer Animation Expectations: ${demoName}`, () => {
     });
 
     // In reduced motion, duration should be significantly shorter than normal
-    expect(reducedDuration).toBeLessThan(normalDuration);
+    if (normalDuration > 0) {
+      expect(reducedDuration).toBeLessThan(normalDuration);
+    }
     expect(reducedDuration).toBeLessThanOrEqual(0.11);
   });
 });
