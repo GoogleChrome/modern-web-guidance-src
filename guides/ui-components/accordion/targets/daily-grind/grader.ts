@@ -4,15 +4,10 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
-  getRules,
   expectNever,
 } from '../../../../../src/grading/test-fixture.ts';
 import type { Document } from 'linkedom';
-import {
-  getCascadedStyle,
-  parseSelectorAST,
-  CSSStyleRule,
-} from 'cssomnom';
+import { getCascadedStyle } from 'cssomnom';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -88,58 +83,70 @@ test.describe('Accordion Target Grader', () => {
     }
   });
 
-  test('The disclosure marker is styled via ::marker or hidden (via list-style-type: none or a display other than list-item) and replaced via a ::before or ::after', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const detailsList = getAccordionDetails(docs);
-    expect(detailsList.length).toBeGreaterThan(0);
-
-    const summaryEl = detailsList[0].querySelector('summary');
-    expect(summaryEl).toBeTruthy();
-
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
-
-    const hasMarkerRule = styleRules.some((rule) => {
-      const ast = parseSelectorAST(rule);
-      if (!ast) return false;
-      return ast.selectors.some((sel) => {
-        if (sel.type !== 'complex-selector') return false;
-        return sel.items.some(
-          (item) =>
-            item.type === 'compound-selector' &&
-            item.selectors.some(
-              (s) => s.type === 'pseudo-element-selector' && s.name === 'marker',
-            ),
-        );
-      });
-    });
-
-    const summaryCascaded = getCascadedStyle(summaryEl, stylesheet);
-    const listStyle = summaryCascaded.getPropertyValue('list-style');
-    const listStyleType = summaryCascaded.getPropertyValue('list-style-type');
-    const display = summaryCascaded.getPropertyValue('display');
-
-    const isDefaultMarkerHidden =
-      /\bnone\b/.test(listStyle) ||
-      listStyleType === 'none' ||
-      (Boolean(display) && display !== 'list-item');
-
-    const beforeCascaded = getCascadedStyle(summaryEl, stylesheet, '::before');
-    const afterCascaded = getCascadedStyle(summaryEl, stylesheet, '::after');
-    const beforeContent = beforeCascaded.getPropertyValue('content');
-    const afterContent = afterCascaded.getPropertyValue('content');
-    const hasReplacementPseudo =
-      (Boolean(beforeContent) && beforeContent !== 'none' && beforeContent !== 'normal') ||
-      (Boolean(afterContent) && afterContent !== 'none' && afterContent !== 'normal');
-
-    expect(hasMarkerRule || (isDefaultMarkerHidden && hasReplacementPseudo)).toBe(true);
-  });
-
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
+    });
+
+    test('The disclosure marker is styled via ::marker or hidden (via list-style-type: none or a display other than list-item) and replaced via a ::before or ::after', async ({
+      page,
+    }) => {
+      const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+      const detailsList = getAccordionDetails(docs);
+      expect(detailsList.length).toBeGreaterThan(0);
+
+      const detailsEl = detailsList[0];
+      detailsEl.removeAttribute('open');
+      const summaryEl = detailsEl.querySelector('summary');
+      expect(summaryEl).toBeTruthy();
+
+      const stylesheet = getCssStyleSheet(targetFiles);
+      const markerCascaded = getCascadedStyle(summaryEl, stylesheet, '::marker');
+      const hasSummaryMarkerRule = Array.from(
+        { length: markerCascaded.length },
+        (_, i) => markerCascaded.item(i),
+      ).some((prop) => !prop.startsWith('--'));
+
+      const computed = await page.evaluate(() => {
+        const details = document.querySelector<HTMLDetailsElement>(
+          '#coffee-faq details, main details',
+        );
+        if (!details) return null;
+        const summary = details.querySelector('summary');
+        if (!summary) return null;
+
+        const cs = getComputedStyle(summary);
+        const markerCs = getComputedStyle(summary, '::marker');
+        const beforeCs = getComputedStyle(summary, '::before');
+        const afterCs = getComputedStyle(summary, '::after');
+
+        const isDefaultMarkerHidden = cs.listStyleType === 'none' || cs.display !== 'list-item';
+        const hasReplacementPseudo =
+          (beforeCs.content !== 'none' && beforeCs.content !== 'normal') ||
+          (afterCs.content !== 'none' && afterCs.content !== 'normal');
+        const markerIsVisible =
+          cs.display === 'list-item' &&
+          markerCs.content !== 'none' &&
+          markerCs.content !== '""' &&
+          markerCs.content !== "''" &&
+          (cs.listStyleType !== 'none' || markerCs.content !== 'normal');
+
+        return {
+          isDefaultMarkerHidden,
+          hasReplacementPseudo,
+          markerIsVisible,
+          hasCustomMarkerContent: markerCs.content !== 'normal',
+        };
+      });
+
+      expect(computed).not.toBeNull();
+      const isStyledViaMarker =
+        computed!.markerIsVisible && (hasSummaryMarkerRule || computed!.hasCustomMarkerContent);
+      expect(
+        isStyledViaMarker || (computed!.isDefaultMarkerHidden && computed!.hasReplacementPseudo),
+      ).toBe(true);
     });
 
     test('Clicking the <summary> of a closed item opens it, and clicking the <summary> of an open item closes it', async ({
@@ -196,11 +203,20 @@ test.describe('Accordion Target Grader', () => {
         // Tab until we reach the next summary (in case links inside open details are visited, ensure all details start closed)
         if (i === 0) {
           await page.evaluate(() => {
-            document
-              .querySelectorAll<HTMLDetailsElement>('#coffee-faq details, main details')
-              .forEach((d) => {
-                d.open = false;
-              });
+            const noTransitionStyle = document.createElement('style');
+            noTransitionStyle.textContent =
+              '*, *::before, *::after, details::details-content { transition: none !important; animation: none !important; }';
+            document.head.appendChild(noTransitionStyle);
+            try {
+              document
+                .querySelectorAll<HTMLDetailsElement>('#coffee-faq details, main details')
+                .forEach((d) => {
+                  d.open = false;
+                  void getComputedStyle(d, '::details-content').contentVisibility;
+                });
+            } finally {
+              noTransitionStyle.remove();
+            }
           });
         }
         await page.keyboard.press('Tab');
@@ -294,9 +310,21 @@ test.describe('Accordion Target Grader', () => {
         const details = document.querySelector<HTMLDetailsElement>(
           '#coffee-faq details, main details',
         )!;
-        details.open = false;
-        // Wait for any closing transition to settle
-        await new Promise((r) => setTimeout(r, 400));
+        const noTransitionStyle = document.createElement('style');
+        noTransitionStyle.textContent =
+          '*, *::before, *::after, details::details-content { transition: none !important; animation: none !important; }';
+        document.head.appendChild(noTransitionStyle);
+        let targetOpenSize = 0;
+        try {
+          details.open = true;
+          targetOpenSize =
+            parseFloat(getComputedStyle(details, '::details-content').blockSize) || 0;
+          details.open = false;
+          void getComputedStyle(details, '::details-content').blockSize;
+        } finally {
+          noTransitionStyle.remove();
+        }
+        void getComputedStyle(details, '::details-content').blockSize;
 
         const summary = details.querySelector<HTMLElement>('summary')!;
         const samples: number[] = [];
@@ -304,10 +332,13 @@ test.describe('Accordion Target Grader', () => {
         summary.click();
 
         const start = performance.now();
-        while (performance.now() - start < 500) {
+        while (performance.now() - start < 2000) {
+          await new Promise((r) => requestAnimationFrame(r));
           const bs = parseFloat(getComputedStyle(details, '::details-content').blockSize) || 0;
           samples.push(bs);
-          await new Promise((r) => requestAnimationFrame(r));
+          if (targetOpenSize > 0 && bs >= targetOpenSize - 0.5) {
+            break;
+          }
         }
 
         const finalSize =
@@ -333,19 +364,29 @@ test.describe('Accordion Target Grader', () => {
         const details = document.querySelector<HTMLDetailsElement>(
           '#coffee-faq details, main details',
         )!;
-        details.open = true;
-        // Wait for opening transition to finish completely
-        await new Promise((r) => setTimeout(r, 450));
+        const noTransitionStyle = document.createElement('style');
+        noTransitionStyle.textContent =
+          '*, *::before, *::after, details::details-content { transition: none !important; animation: none !important; }';
+        document.head.appendChild(noTransitionStyle);
+        let openSize = 0;
+        try {
+          details.open = true;
+          openSize = parseFloat(getComputedStyle(details, '::details-content').blockSize) || 0;
+        } finally {
+          noTransitionStyle.remove();
+        }
+        void getComputedStyle(details, '::details-content').blockSize;
 
-        const openSize =
-          parseFloat(getComputedStyle(details, '::details-content').blockSize) || 0;
         const summary = details.querySelector<HTMLElement>('summary')!;
 
         summary.click();
 
         let sawPartwayClosing = false;
+        let frames = 0;
         const start = performance.now();
-        while (performance.now() - start < 450) {
+        while (performance.now() - start < 2000) {
+          await new Promise((r) => requestAnimationFrame(r));
+          frames++;
           const cs = getComputedStyle(details, '::details-content');
           const bs = parseFloat(cs.blockSize) || 0;
           const cv = cs.contentVisibility;
@@ -353,7 +394,9 @@ test.describe('Accordion Target Grader', () => {
             sawPartwayClosing = true;
             break;
           }
-          await new Promise((r) => requestAnimationFrame(r));
+          if (frames >= 2 && cv === 'hidden') {
+            break;
+          }
         }
 
         return { openSize, sawPartwayClosing };
@@ -377,12 +420,19 @@ test.describe('Accordion Target Grader', () => {
         const details = document.querySelector<HTMLDetailsElement>(
           '#coffee-faq details, main details',
         )!;
-        details.open = true;
-        const size = parseFloat(getComputedStyle(details, '::details-content').blockSize) || 0;
-        details.open = false;
-        // Force style recalc while closed
-        void getComputedStyle(details, '::details-content').blockSize;
-        return size;
+        const noTransitionStyle = document.createElement('style');
+        noTransitionStyle.textContent =
+          '*, *::before, *::after, details::details-content { transition: none !important; animation: none !important; }';
+        document.head.appendChild(noTransitionStyle);
+        try {
+          details.open = true;
+          const size = parseFloat(getComputedStyle(details, '::details-content').blockSize) || 0;
+          details.open = false;
+          void getComputedStyle(details, '::details-content').blockSize;
+          return size;
+        } finally {
+          noTransitionStyle.remove();
+        }
       });
       expect(finalOpenSize).toBeGreaterThan(0);
 
@@ -390,6 +440,7 @@ test.describe('Accordion Target Grader', () => {
         const details = document.querySelector<HTMLDetailsElement>(
           '#coffee-faq details, main details',
         )!;
+        void getComputedStyle(details, '::details-content').blockSize;
         details.querySelector<HTMLElement>('summary')!.click();
       });
 
@@ -422,8 +473,16 @@ test.describe('Accordion Target Grader', () => {
         const details = document.querySelector<HTMLDetailsElement>(
           '#coffee-faq details, main details',
         )!;
-        details.open = false;
-        return getComputedStyle(details, '::details-content').display;
+        const noTransitionStyle = document.createElement('style');
+        noTransitionStyle.textContent =
+          '*, *::before, *::after, details::details-content { transition: none !important; animation: none !important; }';
+        document.head.appendChild(noTransitionStyle);
+        try {
+          details.open = false;
+          return getComputedStyle(details, '::details-content').display;
+        } finally {
+          noTransitionStyle.remove();
+        }
       });
 
       expect(display).not.toBe('none');
