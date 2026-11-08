@@ -46,7 +46,7 @@ export interface DevsiteGuideMetadata {
 }
 
 import type { EmbedderLike } from "../rag/search.ts";
-import { loadChunkCache } from "../rag/chunk-cache.ts";
+import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/chunk-cache.ts";
 import {
   parseGuideFile,
   extractGuideChunks,
@@ -65,6 +65,8 @@ export interface BuildOptions {
 interface CachePaths {
   cacheDir: string;
   cachedVectors: string;
+  cachedVectorsI8: string;
+  cachedVectorsScale: string;
   cachedGuidesJson: string;
   cachedManifest: string;
   cachedGuides: string;
@@ -75,6 +77,8 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   return {
     cacheDir,
     cachedVectors: path.join(cacheDir, "use-cases.vectors.gen.json.gz"),
+    cachedVectorsI8: path.join(cacheDir, "use-cases.vectors.gen.i8"),
+    cachedVectorsScale: path.join(cacheDir, "use-cases.vectors.gen.scale.f32"),
     cachedGuidesJson: path.join(cacheDir, "guides.json"),
     cachedManifest: path.join(cacheDir, "manifest.json"),
     cachedGuides: path.join(cacheDir, "guides"),
@@ -149,7 +153,13 @@ function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides
       return false;
     }
   } else {
-    const cacheFiles = [paths.cachedGuidesJson, paths.cachedVectors, paths.cachedGuides];
+    const cacheFiles = [
+      paths.cachedGuidesJson,
+      paths.cachedVectors,
+      paths.cachedVectorsI8,
+      paths.cachedVectorsScale,
+      paths.cachedGuides,
+    ];
     if (cacheFiles.some(file => !fs.existsSync(file))) {
       return false;
     }
@@ -180,6 +190,8 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: BuildTar
   if (target === 'skills-cli') {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
+    fs.copyFileSync(paths.cachedVectorsI8, path.join(outputDir, "use-cases.vectors.gen.i8"));
+    fs.copyFileSync(paths.cachedVectorsScale, path.join(outputDir, "use-cases.vectors.gen.scale.f32"));
     fs.copyFileSync(paths.cachedGuidesJson, path.join(outputDir, "guides.json"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
   } else if (target === 'devsite') {
@@ -448,9 +460,24 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     fs.writeFileSync(cachePaths.cachedGuidesJson, JSON.stringify(useCases, null, 2) + '\n');
     console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, cachePaths.cachedGuidesJson)}`);
 
-    const jsonContent = JSON.stringify(storeUseCases);
+    const firstVec = storeUseCases.find((u) => u.vector && u.vector.length > 0)?.vector;
+    const dims = firstVec ? firstVec.length : STATIC_DIMS;
+    const { qTable, scales } = quantizeVectors(
+      storeUseCases.map((u) => u.vector ?? []),
+      dims
+    );
+    const metadataOnly = storeUseCases.map(({ vector: _vector, ...rest }) => rest);
+    const jsonContent = JSON.stringify(metadataOnly);
     const compressed = zlib.gzipSync(jsonContent);
     fs.writeFileSync(cachePaths.cachedVectors, compressed);
+    fs.writeFileSync(
+      cachePaths.cachedVectorsI8,
+      Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength)
+    );
+    fs.writeFileSync(
+      cachePaths.cachedVectorsScale,
+      Buffer.from(scales.buffer, scales.byteOffset, scales.byteLength)
+    );
   } else if (target === 'devsite') {
     const latestGuideDate = devsiteGuides.reduce(
       (max, g) => (g.refreshDate > max ? g.refreshDate : max),

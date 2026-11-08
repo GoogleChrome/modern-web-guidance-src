@@ -48,6 +48,70 @@ export function truncateAndNormalize256(v768: ArrayLike<number>): Float32Array {
 }
 
 /**
+ * Quantizes an array of vector rows (`number[] | Float32Array`, or empty for uncached chunks)
+ * into a flat `Int8Array(N * dims)` and `Float32Array(N)` scales (`0` for empty vectors).
+ */
+export function quantizeVectors(
+  vectors: ReadonlyArray<ArrayLike<number>>,
+  dims = STATIC_DIMS
+): { qTable: Int8Array; scales: Float32Array } {
+  const N = vectors.length;
+  const qTable = new Int8Array(N * dims);
+  const scales = new Float32Array(N);
+
+  for (let i = 0; i < N; i++) {
+    const vec = vectors[i];
+    if (!vec || vec.length === 0) {
+      scales[i] = 0;
+      continue;
+    }
+    if (vec.length !== dims) {
+      throw new Error(`Invalid vector dimension at index ${i}: expected ${dims}, got ${vec.length}`);
+    }
+
+    let maxAbs = 0;
+    for (let k = 0; k < dims; k++) {
+      const abs = Math.abs(vec[k]);
+      if (abs > maxAbs) maxAbs = abs;
+    }
+
+    const scale = maxAbs > 0 ? maxAbs / 127 : 0;
+    scales[i] = scale;
+    if (scale === 0) continue;
+
+    const offset = i * dims;
+    for (let k = 0; k < dims; k++) {
+      const q = Math.round(vec[k] / scale);
+      qTable[offset + k] = Math.max(-127, Math.min(127, q));
+    }
+  }
+
+  return { qTable, scales };
+}
+
+/**
+ * Dequantizes a single row from `(qTable, scales)` at index `i` and L2-normalizes it.
+ * Returns an empty `Float32Array(0)` when `scales[i] === 0` (uncached BM25-only chunk).
+ */
+export function dequantizeVectorRow(
+  qTable: Int8Array,
+  scales: Float32Array,
+  index: number,
+  dims = STATIC_DIMS
+): Float32Array {
+  const scale = scales[index];
+  if (!scale) {
+    return new Float32Array(0);
+  }
+  const offset = index * dims;
+  const vec = new Float32Array(dims);
+  for (let k = 0; k < dims; k++) {
+    vec[k] = qTable[offset + k] * scale;
+  }
+  return l2Normalize(vec);
+}
+
+/**
  * Loads the committed Int8 chunk vector cache from disk.
  * Returns a map of hash -> 256-d unit Float32Array.
  */
@@ -86,13 +150,7 @@ export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float3
 
   const cache = new Map<string, Float32Array>();
   for (let i = 0; i < N; i++) {
-    const scale = scales[i];
-    const offset = i * STATIC_DIMS;
-    const vec = new Float32Array(STATIC_DIMS);
-    for (let k = 0; k < STATIC_DIMS; k++) {
-      vec[k] = qTable[offset + k] * scale;
-    }
-    cache.set(hashes[i], l2Normalize(vec));
+    cache.set(hashes[i], dequantizeVectorRow(qTable, scales, i, STATIC_DIMS));
   }
 
   return cache;
@@ -111,9 +169,7 @@ export function saveChunkCache(
 
   const sortedHashes = [...cache.keys()].sort();
   const N = sortedHashes.length;
-
-  const qTable = new Int8Array(N * STATIC_DIMS);
-  const scales = new Float32Array(N);
+  const vectors: Float32Array[] = [];
 
   for (let i = 0; i < N; i++) {
     const hash = sortedHashes[i];
@@ -121,22 +177,10 @@ export function saveChunkCache(
     if (!vec || vec.length !== STATIC_DIMS) {
       throw new Error(`Invalid vector for hash ${hash} in saveChunkCache`);
     }
-
-    let maxAbs = 0;
-    for (let k = 0; k < STATIC_DIMS; k++) {
-      const abs = Math.abs(vec[k]);
-      if (abs > maxAbs) maxAbs = abs;
-    }
-
-    const scale = maxAbs > 0 ? maxAbs / 127 : 1;
-    scales[i] = scale;
-
-    const offset = i * STATIC_DIMS;
-    for (let k = 0; k < STATIC_DIMS; k++) {
-      const q = Math.round(vec[k] / scale);
-      qTable[offset + k] = Math.max(-127, Math.min(127, q));
-    }
+    vectors.push(vec);
   }
+
+  const { qTable, scales } = quantizeVectors(vectors, STATIC_DIMS);
 
   const jsonPath = path.join(cacheDir, "chunks.json");
   const i8Path = path.join(cacheDir, "chunks.i8");

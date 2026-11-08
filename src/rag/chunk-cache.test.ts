@@ -6,6 +6,8 @@ import path from "node:path";
 import {
   computeChunkHash,
   truncateAndNormalize256,
+  quantizeVectors,
+  dequantizeVectorRow,
   loadChunkCache,
   saveChunkCache,
   TEACHER_MODEL,
@@ -107,6 +109,24 @@ describe("chunk-cache", () => {
     } finally {
       fs.rmSync(emptyDir, { recursive: true, force: true });
     }
+  });
+
+  it("quantizeVectors and dequantizeVectorRow handle uncached empty vectors (scale 0) alongside dense vectors", () => {
+    const v0 = new Float32Array(STATIC_DIMS);
+    v0[0] = 0.6;
+    v0[1] = -0.8;
+    const { qTable, scales } = quantizeVectors([v0, []], STATIC_DIMS);
+    assert.strictEqual(scales.length, 2);
+    assert.ok(scales[0] > 0, "Non-empty vector must have positive scale");
+    assert.strictEqual(scales[1], 0, "Empty vector must have zero scale");
+
+    const deq0 = dequantizeVectorRow(qTable, scales, 0, STATIC_DIMS);
+    assert.strictEqual(deq0.length, STATIC_DIMS);
+    assert.ok(Math.abs(deq0[0] - 0.6) < 0.01);
+    assert.ok(Math.abs(deq0[1] - -0.8) < 0.01);
+
+    const deq1 = dequantizeVectorRow(qTable, scales, 1, STATIC_DIMS);
+    assert.strictEqual(deq1.length, 0, "Zero-scale row must dequantize to empty Float32Array(0)");
   });
 
   it("loadChunkCache detects corrupted binary files", () => {

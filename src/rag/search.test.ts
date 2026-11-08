@@ -1,10 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
-import zlib from "node:zlib";
 import { outDir } from "../core/paths.ts";
-import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.ts";
+import { loadVectors, searchUseCases, type EmbedderLike } from "./search.ts";
 
 describe("searchUseCases", () => {
   it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
@@ -20,16 +18,14 @@ describe("searchUseCases", () => {
   });
 
   it("corpus vectors are all L2-normalized unit vectors (norm ~ 1.0)", () => {
-    const vectorsFile = path.join(outDir, "build/skills-cli/use-cases.vectors.gen.json.gz");
-    const compressed = fs.readFileSync(vectorsFile);
-    const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString("utf-8"));
+    const items = loadVectors(path.join(outDir, "build/skills-cli"));
     assert.ok(items.length > 0, "Corpus must have vector entries");
 
     for (const item of items) {
       if (item.vector.length === 0) continue;
       let sumSq = 0;
-      for (const val of item.vector) {
-        sumSq += val * val;
+      for (let i = 0; i < item.vector.length; i++) {
+        sumSq += item.vector[i] * item.vector[i];
       }
       const norm = Math.sqrt(sumSq);
       assert.ok(

@@ -15,7 +15,7 @@ It replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dep
 
 At runtime, search operates via asymmetric dense retrieval + BM25 fusion:
 - **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](../static-embedder.ts) in <1 ms using the static word table (`words.*`).
-- **Guide chunks** are embedded at build time with the teacher model `gemini-embedding-001` (`RETRIEVAL_DOCUMENT`, 768-d → MRL 256-d unit vectors) loaded from the committed cache (`chunks.*`) into `use-cases.vectors.gen.json.gz`.
+- **Guide chunks** are embedded at build time with the teacher model `gemini-embedding-001` (`RETRIEVAL_DOCUMENT`, 768-d → MRL 256-d unit vectors) loaded from the committed cache (`chunks.*`) into `use-cases.vectors.gen.json.gz` (metadata & chunk text) plus binary `use-cases.vectors.gen.i8` and `use-cases.vectors.gen.scale.f32`.
 - Both sides share the 256-d normalized embedding space distilled from `gemini-embedding-001`. Search ranks by best-matching chunk cosine fused with BM25.
 
 ---

@@ -23,7 +23,7 @@ export interface UseCaseVector {
   category: string;
   featuresUsed: string[];
   tokenCount: number;
-  vector: number[];
+  vector: ArrayLike<number>;
   /** Markdown text of the chunk this vector embeds; feeds the lexical (BM25) index. */
   chunkContent: string;
 }
@@ -73,21 +73,63 @@ export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return sum;
 }
 
-function loadVectors(): UseCaseVector[] {
-  const VECTORS_FILE = path.join(resolveSkillsCliDataDir(), "use-cases.vectors.gen.json.gz");
-  if (!fs.existsSync(VECTORS_FILE)) {
-    throw new Error(`Vectors file not found at ${VECTORS_FILE}. Run 'pnpm build' first.`);
+export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[] {
+  const VECTORS_FILE = path.join(dataDir, "use-cases.vectors.gen.json.gz");
+  const I8_FILE = path.join(dataDir, "use-cases.vectors.gen.i8");
+  const SCALE_FILE = path.join(dataDir, "use-cases.vectors.gen.scale.f32");
+
+  if (!fs.existsSync(VECTORS_FILE) || !fs.existsSync(I8_FILE) || !fs.existsSync(SCALE_FILE)) {
+    throw new Error(`Vectors files not found in ${dataDir}. Run 'pnpm build' first.`);
   }
   const compressed = fs.readFileSync(VECTORS_FILE);
   const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
-  const items: UseCaseVector[] = JSON.parse(jsonContent);
+  const items: Array<Omit<UseCaseVector, "vector">> = JSON.parse(jsonContent);
+  const i8Buf = fs.readFileSync(I8_FILE);
+  const scaleBuf = fs.readFileSync(SCALE_FILE);
 
-  for (const item of items) {
-    if (!item.id || !Array.isArray(item.vector) || typeof item.chunkContent !== "string") {
-      throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id, vector, or chunkContent`);
-    }
+  const N = items.length;
+  if (scaleBuf.byteLength !== N * 4) {
+    throw new Error(`Corrupt vector scale file ${SCALE_FILE}: byteLength ${scaleBuf.byteLength} !== ${N} * 4`);
   }
-  return items;
+  const dims = N > 0 ? i8Buf.byteLength / N : 256;
+  if (!Number.isInteger(dims) || dims <= 0) {
+    throw new Error(`Corrupt vector i8 file ${I8_FILE}: byteLength ${i8Buf.byteLength} not divisible by ${N}`);
+  }
+
+  const qTable = new Int8Array(i8Buf.buffer, i8Buf.byteOffset, i8Buf.byteLength);
+  const alignedScaleBuf = scaleBuf.buffer.slice(
+    scaleBuf.byteOffset,
+    scaleBuf.byteOffset + scaleBuf.byteLength
+  );
+  const scales = new Float32Array(alignedScaleBuf);
+
+  const out: UseCaseVector[] = [];
+  for (let i = 0; i < N; i++) {
+    const item = items[i];
+    if (!item.id || typeof item.chunkContent !== "string") {
+      throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id or chunkContent`);
+    }
+    const scale = scales[i];
+    let vector: Float32Array;
+    if (!scale) {
+      vector = new Float32Array(0);
+    } else {
+      vector = new Float32Array(dims);
+      const offset = i * dims;
+      let sumSq = 0;
+      for (let k = 0; k < dims; k++) {
+        const val = qTable[offset + k] * scale;
+        vector[k] = val;
+        sumSq += val * val;
+      }
+      const norm = Math.sqrt(sumSq) || 1;
+      for (let k = 0; k < dims; k++) {
+        vector[k] /= norm;
+      }
+    }
+    out.push({ ...item, vector });
+  }
+  return out;
 }
 
 /**

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from '@11ty/gray-matter';
 import { rootDir } from '../core/paths.ts';
-import type { CompactSearchResult, UseCaseResult } from '../rag/search.ts';
+import { loadVectors, type CompactSearchResult, type UseCaseResult } from '../rag/search.ts';
 
 export function assertSearchResults(output: string) {
     const results = JSON.parse(output) as CompactSearchResult[];
@@ -383,10 +383,21 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
 
 test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage', async () => {
   const zlib = await import('node:zlib');
-  const vectorFile = path.join(STAGING_DIR, 'skills/modern-web-guidance/use-cases.vectors.gen.json.gz');
+  const distSkillDir = path.join(STAGING_DIR, 'skills/modern-web-guidance');
+  const vectorFile = path.join(distSkillDir, 'use-cases.vectors.gen.json.gz');
   const compressed = await fs.readFile(vectorFile);
-  const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8'));
-  assert.ok(items.length > 0, 'Corpus should contain chunks');
+  const rawItems = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8')) as Array<Record<string, unknown>>;
+  assert.ok(rawItems.length > 0, 'Corpus should contain chunks');
+  for (const raw of rawItems) {
+    assert.strictEqual(
+      'vector' in raw,
+      false,
+      'use-cases.vectors.gen.json.gz must not contain serialized ASCII vector arrays'
+    );
+  }
+
+  const items = loadVectors(distSkillDir);
+  assert.strictEqual(items.length, rawItems.length);
   let teacherCount = 0;
   for (const item of items) {
     assert.ok(

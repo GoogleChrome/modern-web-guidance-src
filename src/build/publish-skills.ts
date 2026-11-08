@@ -21,7 +21,7 @@ const GH_PUBLISH_PATTERNS = [
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
   '!**/static-model/**',
-  '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/*.{js,mjs,ts,bin,map,gz,i8,f32}',
   '!**/guides.json',
   '!**/skill-version.txt',
   '!THIRD_PARTY_NOTICES',

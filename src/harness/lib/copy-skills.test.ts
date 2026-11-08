@@ -40,9 +40,13 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         // 3. Verify guides and vector_store were copied (they should be inside the skill dir now)
         const guidesDir = path.join(skillDir, 'guides');
         const vectorFile = path.join(skillDir, 'use-cases.vectors.gen.json.gz');
+        const vectorI8File = path.join(skillDir, 'use-cases.vectors.gen.i8');
+        const vectorScaleFile = path.join(skillDir, 'use-cases.vectors.gen.scale.f32');
         
         assert.ok(fs.existsSync(guidesDir), 'guides/ should be inside the skill directory');
         assert.ok(fs.existsSync(vectorFile), 'use-cases.vectors.gen.json.gz should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorI8File), 'use-cases.vectors.gen.i8 should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorScaleFile), 'use-cases.vectors.gen.scale.f32 should be inside the skill directory');
 
         // 4. Run the CLI to search
         // We need to extend PATH to make sure node is available if needed, but it should be
