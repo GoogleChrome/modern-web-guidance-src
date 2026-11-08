@@ -17,7 +17,7 @@ guides:
 
 This guide covers one popup menu: a list of commands or links that users move through with arrow keys. What opens it does not matter: a button (an "Actions" or overflow button), an item in another menu (a submenu), or no visible trigger at all (a context menu).
 
-Several triggers on one page are independent menus: each is its own `Tab` stop, and nothing links them. A row of menus that act as one widget (File, Edit, View: one `Tab` stop, `ArrowLeft`/`ArrowRight` between them, hover switching) is an application menu bar. Build each menu as described here, then see {{ GUIDE_REF("app-menus") }} for the bar.
+Several triggers on one page are independent menus unless you build a bar: each is its own `Tab` stop, and nothing links them. A row of menus that act as one widget (File, Edit, View: one `Tab` stop, `ArrowLeft`/`ArrowRight` between them, hover switching) is an application menu bar. Build each menu as described here, then see {{ GUIDE_REF("app-menus") }} for what links them.
 
 ### Commands, links, and what makes a menu
 
@@ -67,7 +67,7 @@ A menu with no trigger button opens from script with `showPopover({ source })`. 
 </div>
 ```
 
-Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open. Style each trigger as a standalone button: it is its own `Tab` stop, and the styling must say so. Do not add `role="menubar"` or arrow keys between triggers; that is the application menu bar form.
+Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open. Outside a menu bar, style each trigger as a standalone button: it is its own `Tab` stop, and the styling must say so. Anything that links triggers (`role="menubar"`, arrow keys between them, preview on focus) belongs to the application menu bar.
 
 ### Position the menu with CSS Anchor Positioning
 
@@ -262,10 +262,9 @@ An instruction cannot guarantee behavior, so test the result. Open the page and 
 * **Pointer open.** Clicking a trigger opens its menu with focus on the trigger and no ring; `ArrowDown` then enters; clicking again closes it.
 * **Pointer command.** Clicking a command closes every menu and shows no focus ring on the trigger.
 * **Submenu.** Moving diagonally from the middle of a submenu trigger to a submenu item keeps it open; moving to an unrelated sibling closes it.
-* **Several triggers.** With one menu open, hovering or focusing another trigger neither opens it nor closes the open menu; `ArrowLeft` and `ArrowRight` on a trigger do nothing.
 * **Narrow screen.** At 375 px no submenu covers its own trigger.
 * **Check marks.** Checked items show a check mark.
-* **No leftovers.** No console errors, and no `popovertarget`, `popovertargetaction`, `role="menubar"` or `aria-details` on triggers.
+* **No leftovers.** No console errors, and no `popovertarget`, `popovertargetaction` or `aria-details` on triggers.
 
 ## Align menu item content
 

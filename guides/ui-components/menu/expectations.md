@@ -2,10 +2,8 @@
 
 - Each menu list has `focusgroup="menu nomemory"` on an element inside its popover (not on the popover element), exposes `role="menu"` labeled by its trigger via `aria-labelledby`, and exposes `role="menuitem"` on its command buttons.
 - Separators between item groups are `<hr>` elements, and checkable items are `<button type="button">` elements with an explicit `role="menuitemcheckbox"` or `role="menuitemradio"` (radios wrapped in a named `role="group"`) and `aria-checked`; `Space` on a checkbox item toggles it and keeps the menu open, `Enter` toggles it and closes the menu, and radio items close on either key.
-- Each top-level trigger is in the `Tab` order (no `tabindex="-1"`), no element has `role="menubar"`, and pressing `ArrowLeft` or `ArrowRight` on a top-level trigger does not move focus to another trigger.
 - Each trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, and has no `popovertarget` or `popovertargetaction` attribute.
 - Each popover is the immediate next sibling of its trigger (and each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup), so no `aria-details` relation is exposed on the trigger and closed submenus are not rendered inline.
-- Focusing a top-level trigger with `Tab` does not open its menu and leaves `aria-expanded="false"`.
 - Focusing a submenu trigger previews its submenu and sets `aria-expanded="true"` without moving focus into the submenu, and moving focus to a sibling item closes that submenu and sets `aria-expanded="false"`.
 - Pressing `Enter` or `Space` on a previewed submenu trigger closes that preview and sets `aria-expanded="false"` without moving focus from the trigger.
 - Pressing `Enter` or `Space` on a closed trigger opens its menu, sets `aria-expanded="true"`, and moves focus to the first enabled item.
@@ -18,7 +16,6 @@
 - Opening a menu by pointer keeps focus on its trigger with no item focused or matching `:focus-visible`; opening by keyboard focuses the first enabled item.
 - Any open or close animation is under 150 ms, changes only opacity and a small translate, is off under `prefers-reduced-motion: reduce`, and never delays focus.
 - Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time.
-- While a menu is open, moving the pointer over a different top-level trigger neither opens that trigger's menu nor closes the open one.
 - Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu.
 - A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a pointer-following safe triangle), while moving to a sibling item outside that path closes it.
 - Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content.
