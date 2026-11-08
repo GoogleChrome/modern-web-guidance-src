@@ -173,7 +173,7 @@ test.describe('browser-ui-theming Target Grader', () => {
       styleRules.some((r) => r.selectorText.includes('::picker(select)'));
 
     const hasCheckedLabelStyling = styleRules.some((r) =>
-      /:has\(\s*:checked\s*\)/i.test(r.selectorText)
+      /:has\([^)]*:checked/i.test(r.selectorText)
     );
 
     const hasNativeSubmitButton = docs.some((d) => {

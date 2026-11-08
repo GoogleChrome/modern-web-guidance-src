@@ -225,6 +225,8 @@ test.describe('Interactive 3D Content Grader', () => {
     });
 
     await page.goto(fileUrl).catch(() => {});
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     expect(pageErrors).toEqual([]);
 

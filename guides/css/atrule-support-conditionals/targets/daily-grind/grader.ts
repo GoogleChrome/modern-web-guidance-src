@@ -160,7 +160,7 @@ function isAtRuleAssociatedSupportsCondition(conditionText: string): boolean {
   // Custom function --foo() or at-rule-associated properties
   if (/--[a-z0-9_-]+\s*\(/.test(lower)) return true;
   if (
-    /\b(container-type|view-transition-name|view-transition-class|animation-timeline|view-timeline|scroll-timeline|position-anchor|anchor-name|position-try)\s*:/.test(
+    /\b(container-(?:type|name)|view-transition-(?:name|class)|animation-(?:timeline|range(?:-start|-end)?)|(?:view|scroll)-timeline(?:-name|-axis|-inset)?|timeline-scope|position-(?:anchor|area|try(?:-fallbacks|-order)?)|anchor-(?:name|scope)|font-palette|transition-behavior)\s*:|\bfont-(?:tech|format)\s*\(/.test(
       lower
     ) &&
     !lower.replace(/\s+/g, '').includes('container-type:style')

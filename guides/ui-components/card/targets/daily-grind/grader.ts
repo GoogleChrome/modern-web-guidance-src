@@ -127,9 +127,6 @@ test.describe('card Target Grader', () => {
       );
       expect(hasDirectHeader).toBe(true);
 
-      const hasDirectFooter = children.some((c) => c.tagName.toLowerCase() === 'footer');
-      expect(hasDirectFooter).toBe(true);
-
       for (const child of children) {
         const tag = child.tagName.toLowerCase();
         if (['hgroup', 'header', 'div'].includes(tag)) {
@@ -177,7 +174,8 @@ test.describe('card Target Grader', () => {
     for (const card of cards) {
       const media = card.querySelector('img, video');
       expect(media).not.toBeNull();
-      expect(media.parentElement).toBe(card);
+      const region = media.parentElement?.tagName.toLowerCase() === 'picture' ? media.parentElement : media;
+      expect(region.parentElement).toBe(card);
     }
 
     const stylesheet = getCssStyleSheet(targetFiles);

@@ -88,7 +88,7 @@ test.describe('Pull-to-Reveal Grader', () => {
     });
 
     expect(containerStyle).not.toBeNull();
-    expect(containerStyle?.scrollSnapType).toMatch(/^y(\s+(mandatory|proximity))?$/);
+    expect(containerStyle?.scrollSnapType).toMatch(/^(y|block)\s+mandatory$/);
   });
 
   test('The hidden element has scroll-snap-align: start', async ({ page }) => {

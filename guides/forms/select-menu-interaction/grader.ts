@@ -20,10 +20,10 @@ async function isErrorVisible(locator: Locator) {
       return true;
     }
 
-    const errId = el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
+    const errId = el.getAttribute('aria-errormessage');
     if (errId) {
       const errEl = document.getElementById(errId);
-      if (errEl && errEl.textContent?.trim().length && window.getComputedStyle(errEl).display !== 'none') {
+      if (errEl && errEl.textContent?.trim().length && errEl.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
         return true;
       }
     }

@@ -85,7 +85,10 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
 
   test('The checked state of an option incorporates multiple visual indicators.', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/option:checked[\s\S]*?(?:font-weight|border|::after|::before|outline|box-shadow|background|::checkmark)/i.test(html)).toBe(true);
+    const checkedBodies = [...html.matchAll(/option:checked[^{]*\{([^}]*)\}/gi)].map(m => m[1]).join(';');
+    const cues = [/font-weight/i, /\bborder/i, /\boutline/i, /box-shadow/i, /background/i, /\bcontent\s*:/i, /text-decoration/i, /(?:^|[;{\s])color\s*:/i]
+      .filter(re => re.test(checkedBodies));
+    expect(cues.length).toBeGreaterThanOrEqual(2);
   });
 
   test.beforeEach(async ({ page }) => {

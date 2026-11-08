@@ -35,7 +35,8 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForLoadState('domcontentloaded');
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     const drawElementImageErrors = pageErrors.filter(err => err.message.includes('drawElementImage'));
     expect(drawElementImageErrors.length).toBe(0);
@@ -240,10 +241,12 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForFunction(() => {
-      const c = document.querySelector('canvas#canvas') as HTMLCanvasElement;
-      return c && c.width > 0;
-    });
+    await expect.poll(() => page.evaluate(() => {
+      const c = document.querySelector('canvas#canvas') as HTMLCanvasElement | null;
+      if (!c) return false;
+      const dpr = window.devicePixelRatio;
+      return Math.abs(c.width - Math.round(c.clientWidth * dpr)) <= 1 && Math.abs(c.height - Math.round(c.clientHeight * dpr)) <= 1;
+    })).toBe(true);
 
     const canvas = page.locator('canvas#canvas');
     await expect(canvas).toBeVisible();

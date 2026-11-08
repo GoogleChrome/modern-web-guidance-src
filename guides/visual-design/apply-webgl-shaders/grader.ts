@@ -107,7 +107,8 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     });
 
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForLoadState('domcontentloaded');
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     expect(hasError).toBe(false);
   });
@@ -205,7 +206,8 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     });
 
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForLoadState('domcontentloaded');
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     expect(pageErrors).toEqual([]);
 

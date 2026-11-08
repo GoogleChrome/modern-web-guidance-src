@@ -327,18 +327,11 @@ test.describe("CSS Function Grader", () => {
       }) || document.querySelector('main .grid') || document.querySelector('.grid') || document.querySelector('main');
       if (!mainEl) return 'main element not found.';
 
-      // 1. Verify computed grid-template-columns has 2 columns of equal width OR the @function body defines responsive logic for 2 columns
+      // 1. Verify computed grid-template-columns has exactly 2 columns of equal width
       const gridStyle = window.getComputedStyle(mainEl).gridTemplateColumns;
       const tracks = gridStyle.trim().split(/\s+/).filter(Boolean);
-      const computedHasTwoColumns = tracks.length === 2 && tracks[0] === tracks[1];
-
-      const functionHasTwoColumns = rawRules.some((r: any) => {
-        if (!r.selector.startsWith('@function')) return false;
-        return /@media[\s\S]*?(?:repeat\s*\(\s*(?:2|var\(--[^)]+\))\s*,|1fr\s+1fr)/i.test(r.bodyText);
-      });
-
-      if (!computedHasTwoColumns && !functionHasTwoColumns) {
-        return `At 1000px viewport, main grid-template-columns has ${tracks.length} tracks and custom function does not define 2 columns: "${gridStyle}"`;
+      if (tracks.length !== 2 || tracks[0] !== tracks[1]) {
+        return `At 1000px viewport, main grid-template-columns is not two equal columns: "${gridStyle}"`;
       }
 
       // 2. Verify main uses a custom @function for grid-template-columns

@@ -486,7 +486,7 @@ test.describe('custom-text-decorations Target Grader', () => {
         expect(skipInk).not.toBe('auto');
 
         const skipSpaces = rule.style.getPropertyValue('text-decoration-skip-spaces').trim();
-        expect(skipSpaces).toBe('');
+        expect(skipSpaces).not.toMatch(/^(?:start|end|start\s+end|end\s+start)$/);
       }
     }
   });

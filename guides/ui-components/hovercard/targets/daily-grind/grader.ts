@@ -116,7 +116,7 @@ test.describe('hovercard Target Grader', () => {
           const style = getRuleStyle(r);
           if (!style) return false;
           const trans = `${style.getPropertyValue('transition')} ${style.getPropertyValue('transition-property')} ${style.getPropertyValue('transition-duration')}`.toLowerCase();
-          return /\b(opacity|transform|all)\b/.test(trans) || /[1-9]/.test(trans);
+          return /\b(opacity|transform|translate|scale|all)\b/.test(trans) && /[1-9]/.test(trans);
         });
       }
 
