@@ -206,6 +206,7 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     const hasPopovers = await page.evaluate(() => document.querySelectorAll('[popover]').length > 0);
     expect(hasPopovers).toBe(true);
     const hasPopoverFeatureCheck =
+      /Object\.hasOwn\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\s*\)/.test(html) ||
       html.includes('hasOwnProperty("popover")') ||
       html.includes("hasOwnProperty('popover')") ||
       html.includes('"popover" in') ||
