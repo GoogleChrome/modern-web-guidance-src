@@ -10,4 +10,3 @@
 * The highlight effects (scale, background, shadow) are NOT applied when the user prefers reduced motion.
 * When the carousel is scrolled so a different item is snapped, the highlight styles move to the new snapped item's card.
 * Non-snapped items remain in their default state (grey background, no scale)
-* If scroll-state is not supported, the `.is-snapped` class is correctly toggled by JavaScript.

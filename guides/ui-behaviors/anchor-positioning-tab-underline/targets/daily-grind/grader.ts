@@ -132,12 +132,18 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
           const left = cbLeft + parseFloat(style.left);
           const top = cbTop + parseFloat(style.top);
           const width = parseFloat(style.width);
-          const height = parseFloat(style.height);
-          const bg = style.backgroundColor;
           const borderBottomWidth = parseFloat(style.borderBottomWidth) || 0;
+          const borderTopWidth = parseFloat(style.borderTopWidth) || 0;
+          const rawHeight = parseFloat(style.height) || 0;
+          const height =
+            style.boxSizing === 'border-box'
+              ? Math.max(rawHeight, borderBottomWidth + borderTopWidth)
+              : rawHeight + borderBottomWidth + borderTopWidth;
+          const bg = style.backgroundColor;
           const hasColor =
             (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
             borderBottomWidth > 0 ||
+            borderTopWidth > 0 ||
             style.backgroundImage !== 'none';
 
           if (Number.isFinite(left) && Number.isFinite(top) && width > 0 && height > 0 && hasColor) {
@@ -379,6 +385,81 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       const metrics = await getNavUnderlineAndActiveMetrics(page);
       const offsetBelow = metrics ? metrics.underline.top - metrics.active.bottom : -Infinity;
       expect(offsetBelow).toBeGreaterThanOrEqual(0);
+    });
+
+    test('The underline is drawn with a border, not a background or box-shadow, so it remains visible with forced-colors: active emulated', async ({
+      page,
+    }) => {
+      const checkUnderlineUsesBorder = async () =>
+        page.evaluate(() => {
+          const nav = document.querySelector('nav');
+          if (!nav) return null;
+          const navElements = Array.from(nav.querySelectorAll<HTMLElement>('*'));
+          const hosts: HTMLElement[] = [
+            ...Array.from(nav.querySelectorAll<HTMLElement>('ul, ol')),
+            nav,
+            ...navElements,
+          ];
+
+          for (const host of hosts) {
+            for (const pseudo of ['::before', '::after'] as const) {
+              const style = window.getComputedStyle(host, pseudo);
+              const content = style.content;
+              if (
+                content &&
+                content !== 'none' &&
+                content !== 'normal' &&
+                (style.position === 'absolute' || style.position === 'fixed')
+              ) {
+                const borderMax = Math.max(
+                  parseFloat(style.borderTopWidth) || 0,
+                  parseFloat(style.borderBottomWidth) || 0,
+                  parseFloat(style.borderLeftWidth) || 0,
+                  parseFloat(style.borderRightWidth) || 0,
+                );
+                const bg = style.backgroundColor;
+                const hasBg =
+                  (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
+                  style.backgroundImage !== 'none';
+                const hasBoxShadow = style.boxShadow !== 'none';
+                if (parseFloat(style.width) > 0 && (borderMax > 0 || hasBg || hasBoxShadow)) {
+                  return { borderMax, hasBg, hasBoxShadow };
+                }
+              }
+            }
+          }
+
+          const anchoredEl = navElements.find((el) =>
+            window.getComputedStyle(el).getPropertyValue('position-anchor').trim().startsWith('--'),
+          );
+          if (anchoredEl) {
+            const style = window.getComputedStyle(anchoredEl);
+            const borderMax = Math.max(
+              parseFloat(style.borderTopWidth) || 0,
+              parseFloat(style.borderBottomWidth) || 0,
+              parseFloat(style.borderLeftWidth) || 0,
+              parseFloat(style.borderRightWidth) || 0,
+            );
+            const bg = style.backgroundColor;
+            const hasBg =
+              (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
+              style.backgroundImage !== 'none';
+            const hasBoxShadow = style.boxShadow !== 'none';
+            return { borderMax, hasBg, hasBoxShadow };
+          }
+          return null;
+        });
+
+      const normalStyle = await checkUnderlineUsesBorder();
+      expect(normalStyle).not.toBeNull();
+      expect(normalStyle!.borderMax).toBeGreaterThan(0);
+      expect(normalStyle!.hasBg).toBe(false);
+      expect(normalStyle!.hasBoxShadow).toBe(false);
+
+      await page.emulateMedia({ forcedColors: 'active' });
+      const forcedStyle = await checkUnderlineUsesBorder();
+      expect(forcedStyle).not.toBeNull();
+      expect(forcedStyle!.borderMax).toBeGreaterThan(0);
     });
 
     test('Changing the active page moves the underline element to be positioned underneath the new active tab item', async ({

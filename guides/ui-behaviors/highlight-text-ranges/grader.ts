@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, expectNever } from '../../test-fixture.ts';
 
 declare const process: any;
 
@@ -280,6 +280,10 @@ test('If the fallback builds matches dynamically search input is escaped or inse
     if (window.CSS) {
       delete (window.CSS as any).highlights;
     }
+    (window as any).__threwError = false;
+    window.addEventListener('error', () => {
+      (window as any).__threwError = true;
+    });
   });
   await page.goto(targetUrl);
   
@@ -289,8 +293,7 @@ test('If the fallback builds matches dynamically search input is escaped or inse
   });
 
   await page.fill('#search-input', '[');
-  // Wait a small moment to let event handlers run
-  await page.waitForTimeout(100);
+  await expectNever(page, () => Boolean((window as any).__threwError), { forMs: 150 });
 
   expect(threwError).toBe(false);
 });

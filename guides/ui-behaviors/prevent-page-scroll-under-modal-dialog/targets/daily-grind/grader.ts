@@ -1,143 +1,131 @@
 import {
   test,
   expect,
-  getTargetFiles,
-  getCssStyleSheet,
-  getJsProject,
-  getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { pathToFileURL } from 'node:url';
-import { SyntaxKind } from 'ts-morph';
-import { CSSStyleRule } from 'cssomnom';
-
-const targetFiles: string[] = getTargetFiles(
-  typeof __filename !== 'undefined'
-    ? pathToFileURL(__filename).toString()
-    : pathToFileURL(process.cwd() + '/grader.ts').toString()
-);
 
 test.describe('prevent-page-scroll-under-modal-dialog Target Grader', () => {
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
 
-  test('The <dialog> element exists in the markup and is opened as a modal using showModal()', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasDialog = docs.some(d => Boolean(d.document.querySelector('dialog')));
+    test('The <dialog> element is opened as a modal using showModal() so that it renders in the top layer with a ::backdrop pseudo-element', async ({
+      page,
+    }) => {
+      const modalCount = await page.locator('dialog').count();
+      expect(modalCount).toBeGreaterThan(0);
 
-    const project = getJsProject(targetFiles);
-    const callsShowModal = project.getSourceFiles().some(sf => {
-      const callExpressions = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return callExpressions.some(call => {
-        const text = call.getExpression().getText();
-        return text.endsWith('.showModal') || text === 'showModal';
+      const modalState = await page.evaluate(() => {
+        const dialog = document.querySelector('dialog');
+        if (!dialog) return null;
+        return {
+          open: dialog.open,
+          matchesModal: dialog.matches(':modal'),
+        };
       });
+
+      expect(modalState).not.toBeNull();
+      expect(modalState?.open).toBe(true);
+      expect(modalState?.matchesModal).toBe(true);
     });
 
-    expect(hasDialog && callsShowModal).toBe(true);
-  });
+    test('When open as a modal, the <dialog> element has a computed overscroll-behavior (overscroll-behavior-x and overscroll-behavior-y) of contain or none to prevent scroll chaining from the dialog to the underlying page', async ({
+      page,
+    }) => {
+      const modalCount = await page.locator('dialog:modal').count();
+      expect(modalCount).toBeGreaterThan(0);
 
-  test('When open as a modal, the <dialog> element has overscroll-behavior: contain or none', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const dialogRules = styleRules.filter(r =>
-      (r.selectorText.includes('dialog') || r.selectorText.includes(':modal')) &&
-      !r.selectorText.includes('backdrop')
-    );
-
-    const hasOverscrollContain = dialogRules.some(r => {
-      const ob = r.style.getPropertyValue('overscroll-behavior') ||
-                 r.style.getPropertyValue('overscroll-behavior-y') ||
-                 r.style.getPropertyValue('overscroll-behavior-x');
-      return ob === 'contain' || ob === 'none';
-    });
-
-    expect(hasOverscrollContain).toBe(true);
-  });
-
-  test('When open as a modal, the <dialog> element is a scroll container without visible or clip overflow', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasDialog = docs.some(d => Boolean(d.document.querySelector('dialog')));
-
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const dialogRules = styleRules.filter(r =>
-      (r.selectorText.includes('dialog') || r.selectorText.includes(':modal')) &&
-      !r.selectorText.includes('backdrop')
-    );
-
-    const hasInvalidOverflow = dialogRules.some(r => {
-      const ov = r.style.getPropertyValue('overflow');
-      const ovX = r.style.getPropertyValue('overflow-x');
-      const ovY = r.style.getPropertyValue('overflow-y');
-      return ['visible', 'clip'].includes(ov) || ['visible', 'clip'].includes(ovX) || ['visible', 'clip'].includes(ovY);
-    });
-
-    expect(hasDialog && !hasInvalidOverflow).toBe(true);
-  });
-
-  test('The dialog::backdrop pseudo-element establishes a scroll container with overflow: hidden or auto', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const backdropRules = styleRules.filter(r => r.selectorText.includes('backdrop'));
-
-    const hasValidBackdropOverflow = backdropRules.some(r => {
-      const ov = r.style.getPropertyValue('overflow') ||
-                 r.style.getPropertyValue('overflow-y') ||
-                 r.style.getPropertyValue('overflow-x');
-      return ['hidden', 'auto', 'scroll'].includes(ov);
-    }) && !backdropRules.some(r => {
-      const ov = r.style.getPropertyValue('overflow');
-      const ovX = r.style.getPropertyValue('overflow-x');
-      const ovY = r.style.getPropertyValue('overflow-y');
-      return ['visible', 'clip'].includes(ov) || ['visible', 'clip'].includes(ovX) || ['visible', 'clip'].includes(ovY);
-    });
-
-    expect(hasValidBackdropOverflow).toBe(true);
-  });
-
-  test('The dialog::backdrop pseudo-element has overscroll-behavior: contain or none', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const backdropRules = styleRules.filter(r => r.selectorText.includes('backdrop'));
-
-    const hasBackdropOverscroll = backdropRules.some(r => {
-      const ob = r.style.getPropertyValue('overscroll-behavior') ||
-                 r.style.getPropertyValue('overscroll-behavior-y') ||
-                 r.style.getPropertyValue('overscroll-behavior-x');
-      return ob === 'contain' || ob === 'none';
-    });
-
-    expect(hasBackdropOverscroll).toBe(true);
-  });
-
-  test('While modal dialog is open, html and body are not scroll-locked via overflow: hidden or position: fixed', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasDialog = docs.some(d => Boolean(d.document.querySelector('dialog')));
-
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const rootRules = styleRules.filter(r => /\b(html|body)\b/i.test(r.selectorText));
-    const hasCssScrollLock = rootRules.some(r => {
-      const ov = r.style.getPropertyValue('overflow') || r.style.getPropertyValue('overflow-y');
-      const pos = r.style.getPropertyValue('position');
-      return ['hidden', 'clip'].includes(ov) || pos === 'fixed';
-    });
-
-    const project = getJsProject(targetFiles);
-    const hasJsScrollLock = project.getSourceFiles().some(sf => {
-      const binaryExpressions = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-      return binaryExpressions.some(expr => {
-        const left = expr.getLeft().getText();
-        const right = expr.getRight().getText().replace(/['"]/g, '');
-        return (left.includes('style.overflow') && (right === 'hidden' || right === 'clip')) ||
-               (left.includes('style.position') && right === 'fixed');
+      const overscroll = await page.$eval('dialog:modal', (el) => {
+        const style = window.getComputedStyle(el);
+        return {
+          x: style.overscrollBehaviorX,
+          y: style.overscrollBehaviorY,
+        };
       });
+
+      expect(['contain', 'none']).toContain(overscroll.x);
+      expect(['contain', 'none']).toContain(overscroll.y);
     });
 
-    expect(hasDialog && !hasCssScrollLock && !hasJsScrollLock).toBe(true);
-  });
+    test('When open as a modal, the <dialog> element is a scroll container (its computed overflow-x and overflow-y are auto, scroll, or hidden, and not visible or clip)', async ({
+      page,
+    }) => {
+      const modalCount = await page.locator('dialog:modal').count();
+      expect(modalCount).toBeGreaterThan(0);
 
+      const overflow = await page.$eval('dialog:modal', (el) => {
+        const style = window.getComputedStyle(el);
+        return {
+          x: style.overflowX,
+          y: style.overflowY,
+        };
+      });
+
+      expect(['auto', 'scroll', 'hidden']).toContain(overflow.x);
+      expect(['auto', 'scroll', 'hidden']).toContain(overflow.y);
+    });
+
+    test('The dialog::backdrop pseudo-element establishes a scroll container by having a computed overflow (overflow-x and overflow-y) of hidden or auto, and not visible or clip', async ({
+      page,
+    }) => {
+      const modalCount = await page.locator('dialog:modal').count();
+      expect(modalCount).toBeGreaterThan(0);
+
+      const backdropOverflow = await page.$eval('dialog:modal', (el) => {
+        const style = window.getComputedStyle(el, '::backdrop');
+        return {
+          x: style.overflowX,
+          y: style.overflowY,
+        };
+      });
+
+      expect(['hidden', 'auto']).toContain(backdropOverflow.x);
+      expect(['hidden', 'auto']).toContain(backdropOverflow.y);
+    });
+
+    test('The dialog::backdrop pseudo-element has a computed overscroll-behavior (overscroll-behavior-x and overscroll-behavior-y) of contain or none so scroll gestures over the backdrop do not chain to the underlying page', async ({
+      page,
+    }) => {
+      const modalCount = await page.locator('dialog:modal').count();
+      expect(modalCount).toBeGreaterThan(0);
+
+      const backdropOverscroll = await page.$eval('dialog:modal', (el) => {
+        const style = window.getComputedStyle(el, '::backdrop');
+        return {
+          x: style.overscrollBehaviorX,
+          y: style.overscrollBehaviorY,
+        };
+      });
+
+      expect(['contain', 'none']).toContain(backdropOverscroll.x);
+      expect(['contain', 'none']).toContain(backdropOverscroll.y);
+    });
+
+    test('While the modal <dialog> is open, the <html> and <body> elements are not scroll-locked via overflow: hidden or position: fixed', async ({
+      page,
+    }) => {
+      const modalCount = await page.locator('dialog:modal').count();
+      expect(modalCount).toBeGreaterThan(0);
+
+      const rootStyles = await page.evaluate(() => {
+        const htmlStyle = window.getComputedStyle(document.documentElement);
+        const bodyStyle = window.getComputedStyle(document.body);
+        return {
+          htmlOverflowX: htmlStyle.overflowX,
+          htmlOverflowY: htmlStyle.overflowY,
+          htmlPosition: htmlStyle.position,
+          bodyOverflowX: bodyStyle.overflowX,
+          bodyOverflowY: bodyStyle.overflowY,
+          bodyPosition: bodyStyle.position,
+        };
+      });
+
+      expect(rootStyles.htmlOverflowX).not.toBe('hidden');
+      expect(rootStyles.htmlOverflowY).not.toBe('hidden');
+      expect(rootStyles.htmlPosition).not.toBe('fixed');
+      expect(rootStyles.bodyOverflowX).not.toBe('hidden');
+      expect(rootStyles.bodyOverflowY).not.toBe('hidden');
+      expect(rootStyles.bodyPosition).not.toBe('fixed');
+    });
+  });
 });

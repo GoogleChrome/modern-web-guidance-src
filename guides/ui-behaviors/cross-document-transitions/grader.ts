@@ -178,18 +178,12 @@ test.describe('Cross-document Transitions Grader', () => {
       await page.goto(`${getTargetUrl()}?page=1`);
     }
 
-    // Click the next page link to trigger same-origin navigation
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'load' }).catch(() => {}),
-      page.click('#next')
-    ]);
-
-    // Wait for navigation and check if types are captured
-    await page.waitForTimeout(500);
-
-    const capturedTypes = await page.evaluate(() => (window as any).__capturedTransitionTypes);
-
-    expect(capturedTypes || []).toContain('next');
+    // Click the next page link to trigger same-origin navigation and wait for captured transition types
+    await page.click('#next');
+    await expect.poll(
+      () => page.evaluate(() => (window as any).__capturedTransitionTypes || []),
+      { timeout: 3000 }
+    ).toContain('next');
   });
 
   test('The page-level transition animations use ::view-transition-old(root) and ::view-transition-new(root) to create slide or fade effects', async ({ page }) => {
@@ -228,5 +222,4 @@ test.describe('Cross-document Transitions Grader', () => {
 
     expect(hasPageElements).toBe(true);
   });
-
 });

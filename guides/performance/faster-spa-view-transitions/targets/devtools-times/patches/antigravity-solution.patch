@@ -1,0 +1,468 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..482f6e6 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -8,8 +8,44 @@ interface BottomNavProps {
+     multimedia: any[];
+ }
+ 
++export const SPA_SECTIONS = [
++    { id: 'top-news', label: 'Top News' },
++    { id: 'world', label: 'World' },
++    { id: 'politics', label: 'Politics' },
++    { id: 'multimedia', label: 'Multimedia' },
++    { id: 'reports', label: 'Reports' },
++] as const;
++
++export type SpaViewId = typeof SPA_SECTIONS[number]['id'];
++
++export function switchToView(viewId: string) {
++    const views = document.querySelectorAll('.spa-view');
++    if (views.length === 0) return;
++
++    // Hide all views
++    views.forEach(view => {
++        view.classList.add('inactive');
++        view.setAttribute('aria-hidden', 'true');
++        view.setAttribute('inert', 'inert');
++    });
++
++    // Show the target view
++    const activeView = document.getElementById(viewId);
++    if (activeView) {
++        activeView.classList.remove('inactive');
++        activeView.setAttribute('aria-hidden', 'false');
++        activeView.removeAttribute('inert');
++
++        // MANDATORY: Move focus to the new view to ensure a logical tab-order
++        activeView.focus();
++    }
++
++    window.dispatchEvent(new CustomEvent('spa-view-change', { detail: { viewId } }));
++}
++
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [activeViewId, setActiveViewId] = useState<string>('top-news');
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,10 +54,58 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    useEffect(() => {
++        if (typeof window !== 'undefined') {
++            (window as any).switchToView = switchToView;
++        }
++
++        const handleViewChange = (e: Event) => {
++            const customEvent = e as CustomEvent<{ viewId: string }>;
++            if (customEvent.detail?.viewId) {
++                setActiveViewId(customEvent.detail.viewId);
++            }
++        };
++
++        window.addEventListener('spa-view-change', handleViewChange);
++
++        // Initialize from URL hash, query param, or current pathname if present
++        const hash = window.location.hash.replace('#', '');
++        const params = new URLSearchParams(window.location.search);
++        const pathSegment = window.location.pathname.split('/').filter(Boolean).pop();
++        const initialView = params.get('view') || hash || (pathSegment && SPA_SECTIONS.some(s => s.id === pathSegment) ? pathSegment : '');
++        if (initialView && SPA_SECTIONS.some(s => s.id === initialView)) {
++            setActiveViewId(initialView);
++            switchToView(initialView);
++        } else {
++            // Check if DOM already has a non-inactive .spa-view
++            const activeDomView = document.querySelector('.spa-view:not(.inactive)');
++            if (activeDomView?.id) {
++                setActiveViewId(activeDomView.id);
++            }
++        }
++
++        return () => {
++            window.removeEventListener('spa-view-change', handleViewChange);
++        };
++    }, []);
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+ 
++    const handleSectionClick = (e: React.MouseEvent, viewId: string) => {
++        const targetView = document.getElementById(viewId);
++        if (targetView) {
++            e.preventDefault();
++            setActiveViewId(viewId);
++            setActiveCategory(null);
++            switchToView(viewId);
++            if (window.history?.replaceState) {
++                window.history.replaceState(null, '', `#${viewId}`);
++            }
++        }
++    };
++
+     const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+@@ -29,8 +113,30 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+             <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++                <nav aria-label="Main sections" className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                    {SPA_SECTIONS.map(({ id, label }) => {
++                        const isActive = activeViewId === id;
++                        return (
++                            <div
++                                key={id}
++                                className="h-full flex items-center"
++                            >
++                                <a
++                                    href={`${import.meta.env.BASE_URL}#${id}`}
++                                    data-view-id={id}
++                                    aria-current={isActive ? 'page' : undefined}
++                                    onClick={(e) => handleSectionClick(e, id)}
++                                    className={`flex items-center space-x-1 hover:text-amber-500 whitespace-nowrap h-full border-b-2 transition-colors ${
++                                        isActive ? 'border-amber-400 text-amber-600' : 'border-transparent text-gray-900'
++                                    }`}
++                                >
++                                    <span>{label}</span>
++                                </a>
++                            </div>
++                        );
++                    })}
++                    <span className="text-gray-300 select-none" aria-hidden="true">|</span>
++                    {Object.entries(groupedCategories).map(([groupName]) => {
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -39,6 +145,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                             >
+                                 <a 
+                                     href="#" 
++                                    onClick={(e) => e.preventDefault()}
+                                     className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
+                                 >
+                                     <span>{groupName}</span>
+@@ -57,6 +164,11 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                onSwitchView={(viewId) => {
++                    setActiveViewId(viewId);
++                    setActiveCategory(null);
++                    switchToView(viewId);
++                }}
+             />
+         </div>
+     );
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..d5a5ed6 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -6,9 +6,11 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  onClose?: () => void;
++  onSwitchView?: (viewId: string) => void;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles = [], reports = [], multimedia = [], onSwitchView }) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -74,7 +76,18 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+                       </li>
+                   ))}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
++                      <a
++                        href={`${import.meta.env.BASE_URL}#reports`}
++                        onClick={(e) => {
++                          if (onSwitchView && document.getElementById('reports')) {
++                            e.preventDefault();
++                            onSwitchView('reports');
++                          }
++                        }}
++                        className="text-xs font-semibold hover:underline"
++                      >
++                        See all reports
++                      </a>
+                   </li>
+               </ul>
+           </div>
+@@ -97,7 +110,18 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+                         </li>
+                     ))}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
++                      <a
++                        href={`${import.meta.env.BASE_URL}#multimedia`}
++                        onClick={(e) => {
++                          if (onSwitchView && document.getElementById('multimedia')) {
++                            e.preventDefault();
++                            onSwitchView('multimedia');
++                          }
++                        }}
++                        className="text-xs font-semibold hover:underline"
++                      >
++                        See all multimedia
++                      </a>
+                   </li>
+               </ul>
+           </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..28a75a9 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -7,9 +7,19 @@ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+ 
++export interface Props {
++    initialView?: 'top-news' | 'world' | 'politics' | 'multimedia' | 'reports';
++    title?: string;
++}
++
++const { initialView = 'top-news', title = 'The DevTools Times' } = Astro.props;
++
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
++const multimedia = await getCollection('multimedia');
++const reports = await getCollection('reports');
++
+ // Slicing articles for different sections
+ const topArticle = articles[0];
+ const topStories = articles.slice(1, 4);
+@@ -37,7 +47,7 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout title={title}>
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -54,31 +64,103 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    <!-- SPA Views Container -->
++    <div class="relative max-w-6xl mx-auto">
++        <!-- View 1: Top News -->
++        <div
++            id="top-news"
++            tabindex="-1"
++            class={`spa-view w-full outline-none ${initialView === 'top-news' ? '' : 'inactive'}`}
++            aria-hidden={initialView === 'top-news' ? 'false' : 'true'}
++            inert={initialView === 'top-news' ? undefined : 'inert'}
++        >
++            <div class="px-4 sm:px-6 lg:px-6 mt-6">
++                <ArticleTeaser article={topArticle} large={true} />
++            </div>
++            <div class="divide-y divide-gray-200">
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++                <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++            </div>
++        </div>
+ 
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++        <!-- View 2: World -->
++        <div
++            id="world"
++            tabindex="-1"
++            class={`spa-view w-full outline-none ${initialView === 'world' ? '' : 'inactive'}`}
++            aria-hidden={initialView === 'world' ? 'false' : 'true'}
++            inert={initialView === 'world' ? undefined : 'inert'}
++        >
++            <div class="divide-y divide-gray-200">
++                <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++            </div>
++        </div>
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <!-- View 3: Politics -->
++        <div
++            id="politics"
++            tabindex="-1"
++            class={`spa-view w-full outline-none ${initialView === 'politics' ? '' : 'inactive'}`}
++            aria-hidden={initialView === 'politics' ? 'false' : 'true'}
++            inert={initialView === 'politics' ? undefined : 'inert'}
++        >
++            <div class="divide-y divide-gray-200">
++                <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++            </div>
++        </div>
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++        <!-- View 4: Multimedia -->
++        <div
++            id="multimedia"
++            tabindex="-1"
++            class={`spa-view w-full outline-none ${initialView === 'multimedia' ? '' : 'inactive'}`}
++            aria-hidden={initialView === 'multimedia' ? 'false' : 'true'}
++            inert={initialView === 'multimedia' ? undefined : 'inert'}
++        >
++            <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h2>
++                <div class="prose max-w-none">
++                    <p>Watch our latest multimedia content.</p>
++                    <ul>
++                        {multimedia.map(item => (
++                            <li>
++                                <a href={`/multimedia/${item.slug || item.id}`}>{item.data.title}</a>
++                            </li>
++                        ))}
++                    </ul>
++                </div>
++            </div>
++        </div>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++        <!-- View 5: Reports -->
++        <div
++            id="reports"
++            tabindex="-1"
++            class={`spa-view w-full outline-none ${initialView === 'reports' ? '' : 'inactive'}`}
++            aria-hidden={initialView === 'reports' ? 'false' : 'true'}
++            inert={initialView === 'reports' ? undefined : 'inert'}
++        >
++            <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h2>
++                <div class="prose max-w-none">
++                    <p>Read our latest reports.</p>
++                    <ul>
++                        {reports.map(report => (
++                            <li>
++                                <a href={`/reports/${report.slug || report.id}`}>{report.data.title}</a>
++                            </li>
++                        ))}
++                    </ul>
++                </div>
++            </div>
++        </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..ea8fe1b 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,21 +1,4 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
+-
+-const multimedia = await getCollection('multimedia');
++import IndexPage from './index.astro';
+ ---
+-<Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+-        <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
+-            <ul>
+-                {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
+-    </div>
+-</Layout>
+\ No newline at end of file
++<IndexPage initialView="multimedia" title="Multimedia" />
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..a8ef7c6 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,21 +1,4 @@
+ ---
+-import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
+-
+-const reports = await getCollection('reports');
++import IndexPage from './index.astro';
+ ---
+-<Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+-            <ul>
+-                {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
+-    </div>
+-</Layout>
+\ No newline at end of file
++<IndexPage initialView="reports" title="Reports" />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..a052d26 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,18 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Optional: Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}

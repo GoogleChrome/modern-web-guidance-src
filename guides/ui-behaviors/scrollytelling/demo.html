@@ -8,38 +8,40 @@
     @layer reset, base, demo;
 
     @layer demo {
-      html {
-        timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4, --tl-5;
-      }
-
-      #tracked {
-        section:nth-child(1){ view-timeline: --tl-1 block; }
-        section:nth-child(2){ view-timeline: --tl-2 block; }
-        section:nth-child(3){ view-timeline: --tl-3 block; }
-        section:nth-child(4){ view-timeline: --tl-4 block; }
-        section:nth-child(5){ view-timeline: --tl-5 block; }
-      }
-
-      @keyframes animate-in {
-        from { scale: 0.5; opacity: 0; transform: rotateY(-180deg); }
-        to { transform: rotateY(0deg); }
-      }
-      @keyframes animate-out {
-        to { translate: 100% 0; opacity: 0; }
-      }
-
-      #animated {
-        section {
-          animation: animate-in auto linear both, animate-out auto linear forwards;
-          animation-range: entry 25% cover 50%, exit 50% exit 75%;
-          backface-visibility: hidden;
+      @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+        html {
+          timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4, --tl-5;
         }
 
-        section:nth-child(1){ animation-timeline: --tl-1; }
-        section:nth-child(2){ animation-timeline: --tl-2; }
-        section:nth-child(3){ animation-timeline: --tl-3; }
-        section:nth-child(4){ animation-timeline: --tl-4; }
-        section:nth-child(5){ animation-timeline: --tl-5; }
+        #tracked {
+          section:nth-child(1){ view-timeline: --tl-1 block; }
+          section:nth-child(2){ view-timeline: --tl-2 block; }
+          section:nth-child(3){ view-timeline: --tl-3 block; }
+          section:nth-child(4){ view-timeline: --tl-4 block; }
+          section:nth-child(5){ view-timeline: --tl-5 block; }
+        }
+
+        @keyframes animate-in {
+          from { scale: 0.5; opacity: 0; transform: rotateY(-180deg); }
+          to { transform: rotateY(0deg); }
+        }
+        @keyframes animate-out {
+          to { translate: 100% 0; opacity: 0; }
+        }
+
+        #animated {
+          section {
+            animation: animate-in auto linear both, animate-out auto linear forwards;
+            animation-range: entry 25% cover 50%, exit 50% exit 75%;
+            backface-visibility: hidden;
+          }
+
+          section:nth-child(1){ animation-timeline: --tl-1; }
+          section:nth-child(2){ animation-timeline: --tl-2; }
+          section:nth-child(3){ animation-timeline: --tl-3; }
+          section:nth-child(4){ animation-timeline: --tl-4; }
+          section:nth-child(5){ animation-timeline: --tl-5; }
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {

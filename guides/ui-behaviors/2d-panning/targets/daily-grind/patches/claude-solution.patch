@@ -1,26 +1,39 @@
 diff --git a/index.html b/index.html
-index 66c9173..c57d0a4 100644
+index 66c9173..618fef5 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,65 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -135,6 +135,119 @@
+       background: #3e2723;
      }
-+
-+    /* Locations map */
+ 
++    /* Locations Map */
 +    .locations {
-+      margin-top: 3rem;
++      margin-top: 60px;
++    }
++
++    .locations h2 {
++      text-align: center;
++    }
++
++    .locations-intro {
++      text-align: center;
++      margin: 10px auto 20px;
++      max-width: 640px;
 +    }
 +
 +    .map-viewport {
 +      inline-size: 100%;
 +      block-size: 500px;
++      /* Scroll container that overflows on both axes */
 +      overflow: auto;
++      /* Disable scroll axis-locking ("railing") for free 2D panning */
 +      scroll-axis-lock: none;
++      /* Contain overscroll; prevent swipe navigation / pull-to-refresh */
 +      overscroll-behavior: none;
-+      border: 2px solid var(--primary);
 +      border-radius: 8px;
-+      background: var(--secondary);
++      border: 2px solid var(--primary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      background: #efe7dc;
 +    }
 +
 +    .map-viewport:focus-visible {
@@ -28,85 +41,141 @@ index 66c9173..c57d0a4 100644
 +      outline-offset: 2px;
 +    }
 +
++    /* Only disable native touch panning when the JS fallback is active */
 +    @supports not (scroll-axis-lock: none) {
 +      .map-viewport {
-+        touch-action: none;
++        touch-action: pinch-zoom;
 +      }
 +    }
 +
 +    .map-surface {
 +      position: relative;
-+      inline-size: 3000px;
-+      block-size: 3000px;
-+      background-color: #efebe9;
++      inline-size: 2400px;
++      block-size: 1800px;
++      background-color: #efe7dc;
 +      background-image:
-+        linear-gradient(var(--secondary) 2px, transparent 2px),
-+        linear-gradient(90deg, var(--secondary) 2px, transparent 2px);
-+      background-size: 100px 100px;
++        /* major avenues */
++        linear-gradient(90deg, transparent 0 calc(100% - 14px), #ffffff calc(100% - 14px)),
++        linear-gradient(0deg, transparent 0 calc(100% - 14px), #ffffff calc(100% - 14px)),
++        /* minor streets */
++        linear-gradient(90deg, transparent 0 calc(100% - 4px), #fdfaf5 calc(100% - 4px)),
++        linear-gradient(0deg, transparent 0 calc(100% - 4px), #fdfaf5 calc(100% - 4px));
++      background-size: 600px 600px, 600px 600px, 120px 120px, 120px 120px;
++      user-select: none;
++    }
++
++    .map-park,
++    .map-river {
++      position: absolute;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      font-size: 0.85rem;
++      font-style: italic;
++      color: #2e5d34;
++    }
++
++    .map-park {
++      background: #c5e1a5;
++      border-radius: 12px;
++    }
++
++    .map-river {
++      background: #90caf9;
++      color: #0d47a1;
++      left: 0;
++      top: 1180px;
++      inline-size: 2400px;
++      block-size: 70px;
++      transform: skewY(-4deg);
 +    }
 +
 +    .map-pin {
 +      position: absolute;
 +      transform: translate(-50%, -100%);
 +      background: var(--primary);
-+      color: var(--light);
-+      padding: 0.4rem 0.8rem;
++      color: white;
++      padding: 8px 12px;
 +      border-radius: 6px;
-+      font-size: 0.9rem;
++      font-size: 0.85rem;
++      line-height: 1.3;
 +      white-space: nowrap;
++      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
 +    }
 +
 +    .map-pin::after {
 +      content: "";
 +      position: absolute;
 +      left: 50%;
-+      top: 100%;
-+      margin-left: -6px;
-+      border: 6px solid transparent;
++      bottom: -8px;
++      transform: translateX(-50%);
++      border: 8px solid transparent;
++      border-bottom: 0;
 +      border-top-color: var(--primary);
 +    }
-   </style>
- </head>
- 
-@@ -195,6 +254,20 @@
++
++    .map-pin strong {
++      display: block;
++      color: var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +308,26 @@
          </div>
        </div>
      </section>
 +
-+    <section class="locations">
-+      <h2 style="text-align: center;">Find Our Cafes</h2>
-+      <p style="text-align: center; margin-bottom: 1rem;">Drag or scroll the map in any direction to explore our locations.</p>
++    <section class="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Find a Cafe Near You</h2>
++      <p class="locations-intro">Drag, swipe, or scroll in any direction to explore our neighborhood cafes. Keyboard users can focus the map and pan with the Arrow keys.</p>
 +      <div class="map-viewport" tabindex="0" role="region" aria-label="Coffee shop locations map">
 +        <div class="map-surface">
-+          <span class="map-pin" style="left: 600px; top: 700px;">Downtown Roastery</span>
-+          <span class="map-pin" style="left: 1500px; top: 1400px;">Harbor Street Cafe</span>
-+          <span class="map-pin" style="left: 2300px; top: 600px;">Hillside Espresso Bar</span>
-+          <span class="map-pin" style="left: 800px; top: 2300px;">Riverside Corner</span>
-+          <span class="map-pin" style="left: 2400px; top: 2400px;">Uptown Cold Brew Stand</span>
++          <div class="map-park" style="left: 640px; top: 140px; inline-size: 440px; block-size: 300px;">Roaster's Park</div>
++          <div class="map-park" style="left: 1840px; top: 1340px; inline-size: 420px; block-size: 340px;">Bean Commons</div>
++          <div class="map-river">Espresso River</div>
++
++          <div class="map-pin" style="left: 300px; top: 260px;"><strong>Old Town</strong>12 Mill St &middot; 6am&ndash;6pm</div>
++          <div class="map-pin" style="left: 1320px; top: 380px;"><strong>Market Square</strong>88 Market Ave &middot; 6am&ndash;8pm</div>
++          <div class="map-pin" style="left: 2100px; top: 220px;"><strong>Northgate</strong>401 Ridge Rd &middot; 7am&ndash;5pm</div>
++          <div class="map-pin" style="left: 860px; top: 860px;"><strong>Downtown</strong>5 Central Plaza &middot; 5:30am&ndash;9pm</div>
++          <div class="map-pin" style="left: 1780px; top: 980px;"><strong>University</strong>230 College Blvd &middot; 7am&ndash;11pm</div>
++          <div class="map-pin" style="left: 420px; top: 1520px;"><strong>Harborside</strong>17 Pier Way &middot; 6am&ndash;7pm</div>
++          <div class="map-pin" style="left: 1240px; top: 1640px;"><strong>Southpoint</strong>950 Lakeview Dr &middot; 6am&ndash;6pm</div>
 +        </div>
 +      </div>
 +    </section>
    </main>
  
    <footer>
-@@ -207,6 +280,47 @@
+@@ -207,6 +340,56 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    // Fallback for browsers without scroll-axis-lock support
-+    if (!CSS.supports('scroll-axis-lock', 'none')) {
-+      const viewport = document.querySelector('.map-viewport');
-+      let lastPointer = null;
++    // Fallback for browsers without `scroll-axis-lock`: apply raw, unlocked
++    // 2D deltas directly to scrollLeft/scrollTop (never CSS transform).
++    (function () {
++      if (window.CSS && CSS.supports && CSS.supports('scroll-axis-lock', 'none')) return;
 +
-+      viewport.addEventListener('wheel', (e) => {
++      var viewport = document.querySelector('.map-viewport');
++      if (!viewport) return;
++      var lastPointer = null;
++
++      // 1. Trackpad and mouse wheel fallback
++      viewport.addEventListener('wheel', function (e) {
++        if (e.ctrlKey) return; // leave pinch-zoom gestures to the browser
++        var scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? viewport.clientHeight : 1;
 +        e.preventDefault();
-+        viewport.scrollLeft += e.deltaX;
-+        viewport.scrollTop += e.deltaY;
++        viewport.scrollLeft += e.deltaX * scale;
++        viewport.scrollTop += e.deltaY * scale;
 +      }, { passive: false });
 +
-+      viewport.addEventListener('pointerdown', (e) => {
-+        const rect = viewport.getBoundingClientRect();
++      // 2. Touch and pointer drag fallback
++      viewport.addEventListener('pointerdown', function (e) {
++        // Ignore non-primary buttons and clicks on native scrollbars
++        var rect = viewport.getBoundingClientRect();
 +        if (
 +          !e.isPrimary ||
 +          e.button !== 0 ||
@@ -119,19 +188,19 @@ index 66c9173..c57d0a4 100644
 +        viewport.setPointerCapture(e.pointerId);
 +      });
 +
-+      viewport.addEventListener('pointermove', (e) => {
++      viewport.addEventListener('pointermove', function (e) {
 +        if (!lastPointer) return;
 +        viewport.scrollLeft -= e.clientX - lastPointer.x;
 +        viewport.scrollTop -= e.clientY - lastPointer.y;
 +        lastPointer = { x: e.clientX, y: e.clientY };
 +      });
 +
-+      const endPointerPan = () => {
++      function endPointerPan() {
 +        lastPointer = null;
-+      };
++      }
 +      viewport.addEventListener('pointerup', endPointerPan);
 +      viewport.addEventListener('pointercancel', endPointerPan);
-+    }
++    })();
 +  </script>
 +
  </body>

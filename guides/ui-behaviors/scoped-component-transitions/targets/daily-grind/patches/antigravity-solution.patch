@@ -1,36 +1,180 @@
 diff --git a/index.html b/index.html
-index 66c9173..7a4dd76 100644
+index 66c9173..1605f2d 100644
 --- a/index.html
 +++ b/index.html
-@@ -105,6 +105,7 @@
-       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-       gap: 20px;
+@@ -107,14 +107,6 @@
        margin-top: 20px;
-+      overflow: clip;
      }
  
-     .card {
-@@ -113,11 +114,47 @@
-       border-radius: 8px;
-       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-       text-align: center;
-+      view-transition-name: match-element;
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -135,6 +127,168 @@
+       background: #3e2723;
      }
  
--    .card h3 {
--      margin-bottom: 10px;
--      color: var(--primary);
-+    .grid .card,
-+    .grid > .card,
-+    .card ul li {
++    /* Seasonal Favorites Controls & Scoped View Transitions */
++    .seasonal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .seasonal-controls,
++    .card-controls,
++    .customization-controls {
++      display: flex;
++      gap: 8px;
++      justify-content: center;
++      flex-wrap: wrap;
++    }
++
++    .btn-sm {
++      background: var(--light);
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 6px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .btn-sm:hover {
++      background: var(--secondary);
++      border-color: var(--primary);
++    }
++
++    .btn-sm.btn-danger {
++      color: #b71c1c;
++      border-color: #ef9a9a;
++    }
++
++    .btn-sm.btn-danger:hover {
++      background: #ffebee;
++      border-color: #b71c1c;
++    }
++
++    /* Wrapper participates in outer grid transitions while isolating inner card transitions */
++    .card-wrapper {
 +      view-transition-name: match-element;
 +    }
 +
++    .card {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      overflow: clip;
++      view-transition-scope: all;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
++    .card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 8px;
++    }
++
++    .card-header h3 {
++      margin-bottom: 0;
++      text-align: left;
++    }
++
++    .card p {
++      text-align: left;
++      font-size: 0.95rem;
++    }
++
++    /* Customization list inside each drink card with Nested View Transition Group clipping */
++    .card ul.customizations-list {
++      list-style: none;
++      max-height: 180px;
++      overflow-y: auto;
++      margin: 8px 0;
++      padding: 4px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      view-transition-name: match-element;
++      view-transition-group: contain;
++      view-transition-class: list;
++    }
++
++    ::view-transition-group-children(.list) {
++      overflow: clip;
++    }
++
++    .card ul.customizations-list li {
++      view-transition-name: match-element;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 6px 10px;
++      margin-bottom: 4px;
++      background: white;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
++    }
++
++    .card ul.customizations-list li:last-child {
++      margin-bottom: 0;
++    }
++
++    .item-actions {
++      display: flex;
++      gap: 4px;
++    }
++
++    .btn-icon {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      border-radius: 4px;
++      padding: 2px 6px;
++      cursor: pointer;
++      font-size: 0.75rem;
++      line-height: 1.2;
++    }
++
++    .btn-icon:hover {
++      background: var(--secondary);
++    }
++
++    .btn-icon.remove-item-btn {
++      color: #b71c1c;
++      border-color: #ef9a9a;
++    }
++
++    .btn-icon.remove-item-btn:hover {
++      background: #ffebee;
++    }
++
++    /* View transition timing */
 +    ::view-transition-group(*) {
 +      animation-duration: 300ms;
 +      animation-timing-function: ease-in-out;
 +    }
 +
++    /* Respect user preference for reduced motion */
 +    @media (prefers-reduced-motion: reduce) {
 +      ::view-transition-group(*),
 +      ::view-transition-old(*),
@@ -39,289 +183,335 @@ index 66c9173..7a4dd76 100644
 +      }
 +    }
 +
-+    .toolbar {
-+      display: flex;
-+      justify-content: center;
-+      gap: 10px;
-+      margin-top: 20px;
-+      flex-wrap: wrap;
-+    }
-+
-+    .card-actions {
-+      display: flex;
-+      justify-content: center;
-+      align-items: center;
-+      gap: 10px;
-+      margin-top: 15px;
-+      flex-wrap: wrap;
-+    }
-+
-+    .card-actions .btn {
-+      margin-top: 0;
-     }
- 
-     .btn {
-@@ -129,12 +166,24 @@
-       border-radius: 5px;
-       margin-top: 15px;
-       transition: background 0.3s;
-+      cursor: pointer;
-+      font-family: inherit;
-+      font-size: 0.9rem;
-+      border: none;
-     }
- 
-     .btn:hover {
-       background: #3e2723;
-     }
- 
-+    .btn-secondary {
-+      background: #8d6e63;
-+    }
-+
-+    .btn-secondary:hover {
-+      background: #6d4c41;
-+    }
-+
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -177,21 +226,36 @@
+@@ -175,23 +329,146 @@
+   </header>
+ 
    <main class="container">
-     <section>
-       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
 -        <div class="card">
-+      <div class="toolbar">
-+        <button type="button" id="btn-reorder" class="btn">Reorder Favorites</button>
-+        <button type="button" id="btn-sort" class="btn">Sort A-Z</button>
-+        <button type="button" id="btn-reverse" class="btn">Reverse</button>
-+        <button type="button" id="btn-reset" class="btn">Reset Order</button>
-+      </div>
-+      <div class="grid" id="favorites-grid">
-+        <div class="card" data-id="maple-oat-latte" id="card-maple-oat-latte">
-           <h3>Maple Oat Latte</h3>
-           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <div class="card-actions">
-+            <a href="/menu/seasonal" class="btn">View Details</a>
-+            <button type="button" class="btn btn-secondary btn-remove" aria-label="Remove Maple Oat Latte">Remove</button>
-+          </div>
++    <section id="seasonal-favorites">
++      <div class="seasonal-header">
++        <h2>Seasonal Favorites</h2>
++        <div class="seasonal-controls">
++          <button type="button" class="btn-sm" id="sort-drinks-az">Sort A–Z</button>
++          <button type="button" class="btn-sm" id="reverse-drinks">Reverse Order</button>
          </div>
 -        <div class="card">
-+        <div class="card" data-id="dark-roast-espresso" id="card-dark-roast-espresso">
-           <h3>Dark Roast Espresso</h3>
-           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+          <div class="card-actions">
-+            <a href="/menu/espresso" class="btn">View Details</a>
-+            <button type="button" class="btn btn-secondary btn-remove" aria-label="Remove Dark Roast Espresso">Remove</button>
-+          </div>
++      </div>
++
++      <div class="grid" id="seasonal-grid">
++        <div class="card-wrapper" data-id="maple-oat-latte" data-name="Maple Oat Latte">
++          <article class="card">
++            <div class="card-header">
++              <h3>Maple Oat Latte</h3>
++              <div class="card-controls">
++                <button type="button" class="btn-icon move-card-prev" aria-label="Move Maple Oat Latte left" title="Move left">&larr;</button>
++                <button type="button" class="btn-icon move-card-next" aria-label="Move Maple Oat Latte right" title="Move right">&rarr;</button>
++                <button type="button" class="btn-icon remove-item-btn remove-card-btn" aria-label="Remove Maple Oat Latte" title="Remove card">&times;</button>
++              </div>
++            </div>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <div class="customization-controls">
++              <button type="button" class="btn-sm reverse-items-btn">Reverse Items</button>
++            </div>
++            <ul class="customizations-list" aria-label="Maple Oat Latte customizations">
++              <li data-id="mol-1">
++                <span>Oat Milk Base</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Oat Milk Base up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Oat Milk Base down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Oat Milk Base">&times;</button>
++                </div>
++              </li>
++              <li data-id="mol-2">
++                <span>Vermont Maple Syrup</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Vermont Maple Syrup up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Vermont Maple Syrup down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Vermont Maple Syrup">&times;</button>
++                </div>
++              </li>
++              <li data-id="mol-3">
++                <span>Cinnamon Dusting</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Cinnamon Dusting up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Cinnamon Dusting down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Cinnamon Dusting">&times;</button>
++                </div>
++              </li>
++            </ul>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </article>
          </div>
 -        <div class="card">
-+        <div class="card" data-id="cold-brew" id="card-cold-brew">
-           <h3>Cold Brew</h3>
-           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <div class="card-actions">
++
++        <div class="card-wrapper" data-id="dark-roast-espresso" data-name="Dark Roast Espresso">
++          <article class="card">
++            <div class="card-header">
++              <h3>Dark Roast Espresso</h3>
++              <div class="card-controls">
++                <button type="button" class="btn-icon move-card-prev" aria-label="Move Dark Roast Espresso left" title="Move left">&larr;</button>
++                <button type="button" class="btn-icon move-card-next" aria-label="Move Dark Roast Espresso right" title="Move right">&rarr;</button>
++                <button type="button" class="btn-icon remove-item-btn remove-card-btn" aria-label="Remove Dark Roast Espresso" title="Remove card">&times;</button>
++              </div>
++            </div>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <div class="customization-controls">
++              <button type="button" class="btn-sm reverse-items-btn">Reverse Items</button>
++            </div>
++            <ul class="customizations-list" aria-label="Dark Roast Espresso customizations">
++              <li data-id="dre-1">
++                <span>Double Ristretto Shot</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Double Ristretto Shot up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Double Ristretto Shot down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Double Ristretto Shot">&times;</button>
++                </div>
++              </li>
++              <li data-id="dre-2">
++                <span>Raw Demerara Sugar</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Raw Demerara Sugar up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Raw Demerara Sugar down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Raw Demerara Sugar">&times;</button>
++                </div>
++              </li>
++              <li data-id="dre-3">
++                <span>Lemon Twist Garnish</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Lemon Twist Garnish up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Lemon Twist Garnish down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Lemon Twist Garnish">&times;</button>
++                </div>
++              </li>
++            </ul>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </article>
++        </div>
++
++        <div class="card-wrapper" data-id="cold-brew" data-name="Cold Brew">
++          <article class="card">
++            <div class="card-header">
++              <h3>Cold Brew</h3>
++              <div class="card-controls">
++                <button type="button" class="btn-icon move-card-prev" aria-label="Move Cold Brew left" title="Move left">&larr;</button>
++                <button type="button" class="btn-icon move-card-next" aria-label="Move Cold Brew right" title="Move right">&rarr;</button>
++                <button type="button" class="btn-icon remove-item-btn remove-card-btn" aria-label="Remove Cold Brew" title="Remove card">&times;</button>
++              </div>
++            </div>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <div class="customization-controls">
++              <button type="button" class="btn-sm reverse-items-btn">Reverse Items</button>
++            </div>
++            <ul class="customizations-list" aria-label="Cold Brew customizations">
++              <li data-id="cb-1">
++                <span>Sweet Cream Cold Foam</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Sweet Cream Cold Foam up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Sweet Cream Cold Foam down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Sweet Cream Cold Foam">&times;</button>
++                </div>
++              </li>
++              <li data-id="cb-2">
++                <span>Vanilla Bean Infusion</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Vanilla Bean Infusion up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Vanilla Bean Infusion down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Vanilla Bean Infusion">&times;</button>
++                </div>
++              </li>
++              <li data-id="cb-3">
++                <span>Artisanal Clear Ice</span>
++                <div class="item-actions">
++                  <button type="button" class="btn-icon move-item-up" aria-label="Move Artisanal Clear Ice up">&uarr;</button>
++                  <button type="button" class="btn-icon move-item-down" aria-label="Move Artisanal Clear Ice down">&darr;</button>
++                  <button type="button" class="btn-icon remove-item-btn" aria-label="Remove Artisanal Clear Ice">&times;</button>
++                </div>
++              </li>
++            </ul>
 +            <a href="/menu/cold-brew" class="btn">View Details</a>
-+            <button type="button" class="btn btn-secondary btn-remove" aria-label="Remove Cold Brew">Remove</button>
-+          </div>
++          </article>
          </div>
        </div>
      </section>
-@@ -207,6 +271,180 @@
+@@ -207,6 +484,166 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    // Feature detection specifically on Element.prototype or the target Element instance (not document.startViewTransition)
-+    const supportsScopedTransition = typeof Element !== 'undefined' && 'startViewTransition' in Element.prototype;
++    // Feature detect specifically on Element.prototype (not document.startViewTransition)
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
 +
-+    /**
-+     * Runs an element-scoped view transition.
-+     * Wraps DOM updates in scopeEl.startViewTransition() rather than document.startViewTransition().
-+     * Performs feature detection on Element.prototype or the target Element instance.
-+     * If unsupported, executes the updateDOM callback immediately as a fallback without throwing an error.
-+     */
 +    function runScopedTransition(scopeEl, updateDOM) {
-+      const isSupported = (typeof Element !== 'undefined' && 'startViewTransition' in Element.prototype) ||
-+        (typeof scopeEl?.startViewTransition === 'function');
-+
-+      if (!isSupported || typeof scopeEl?.startViewTransition !== 'function') {
++      if (!supportsScopedTransition) {
 +        updateDOM();
 +        return;
 +      }
 +
++      // Call startViewTransition on the component element, not document
 +      const transition = scopeEl.startViewTransition(() => {
 +        updateDOM();
 +      });
 +
-+      transition?.ready?.catch?.(() => {});
-+      return transition;
++      // Re-triggering startViewTransition() on the same element skips the active transition
++      // and rejects `ready`. Catch the rejection to avoid unhandled promise rejection errors.
++      transition.ready.catch(() => {});
 +    }
 +
-+    function runWithTransition(scopeEl, updateDOM) {
-+      return runScopedTransition(scopeEl, updateDOM);
-+    }
-+
-+    /**
-+     * Reorders items by moving existing DOM nodes rather than recreating them from scratch.
-+     */
++    // Reorder child items by moving existing DOM nodes (required for `match-element`)
 +    function reorderItems(listEl, orderedIds) {
-+      const targetEl = typeof listEl === 'string' ? document.querySelector(listEl) : listEl;
-+      if (!targetEl) return;
-+
 +      const existing = new Map(
-+        Array.from(targetEl.children, (li) => [li.dataset.id || li.id, li])
++        Array.from(listEl.children, (el) => [el.dataset.id, el])
 +      );
 +
-+      runScopedTransition(targetEl, () => {
++      runScopedTransition(listEl, () => {
 +        for (const id of orderedIds) {
-+          const li = existing.get(id);
-+          if (li) {
-+            targetEl.appendChild(li);
-+          }
++          const item = existing.get(id);
++          if (item) listEl.appendChild(item);
 +        }
 +      });
 +    }
 +
-+    /**
-+     * Removes an item while preserving keyboard focus.
-+     */
-+    function removeItem(cardEl, itemEl) {
-+      const targetCard = typeof cardEl === 'string' ? document.querySelector(cardEl) : cardEl;
-+      const targetItem = typeof itemEl === 'string' ? document.querySelector(itemEl) : itemEl;
-+      if (!targetCard || !targetItem) return;
-+
-+      const hadFocus = targetItem.contains(document.activeElement);
++    // Remove an item while preserving exit animation and keyboard focus
++    // Scope to the outer container (`cardEl` or `sectionEl`) so its height/geometry also transitions smoothly
++    function removeItem(scopeEl, itemEl) {
++      const hadFocus = itemEl.contains(document.activeElement);
 +      const nextFocusTarget =
-+        targetItem.nextElementSibling?.querySelector('button, a') ??
-+        targetItem.previousElementSibling?.querySelector('button, a') ??
-+        targetCard.querySelector('button, a');
++        itemEl.nextElementSibling?.querySelector('button') ??
++        itemEl.previousElementSibling?.querySelector('button') ??
++        scopeEl.querySelector('button');
 +
-+      runScopedTransition(targetCard, () => {
-+        targetItem.remove();
++      runScopedTransition(scopeEl, () => {
++        itemEl.remove();
 +        if (hadFocus) {
 +          nextFocusTarget?.focus();
 +        }
 +      });
 +    }
 +
-+    /**
-+     * Updates an item preserving existing DOM nodes.
-+     */
-+    function updateItem(containerEl, idOrEl, updateFnOrData) {
-+      const targetContainer = typeof containerEl === 'string' ? document.querySelector(containerEl) : containerEl;
-+      if (!targetContainer) return;
++    const seasonalSection = document.getElementById('seasonal-favorites');
++    const seasonalGrid = document.getElementById('seasonal-grid');
 +
-+      const targetEl = (typeof idOrEl === 'object' && idOrEl instanceof Element)
-+        ? idOrEl
-+        : targetContainer.querySelector(`[data-id="${idOrEl}"], #${idOrEl}`);
-+      if (!targetEl) return;
++    // Global card reordering controls
++    document.getElementById('sort-drinks-az')?.addEventListener('click', () => {
++      if (!seasonalGrid) return;
++      const orderedIds = Array.from(seasonalGrid.children)
++        .sort((a, b) => (a.dataset.name || '').localeCompare(b.dataset.name || ''))
++        .map((el) => el.dataset.id);
++      reorderItems(seasonalGrid, orderedIds);
++    });
 +
-+      runScopedTransition(targetContainer, () => {
-+        if (typeof updateFnOrData === 'function') {
-+          updateFnOrData(targetEl);
-+        } else if (typeof updateFnOrData === 'object' && updateFnOrData !== null) {
-+          if (updateFnOrData.title) {
-+            const title = targetEl.querySelector('h3');
-+            if (title) title.textContent = updateFnOrData.title;
++    document.getElementById('reverse-drinks')?.addEventListener('click', () => {
++      if (!seasonalGrid) return;
++      const orderedIds = Array.from(seasonalGrid.children)
++        .reverse()
++        .map((el) => el.dataset.id);
++      reorderItems(seasonalGrid, orderedIds);
++    });
++
++    // Event delegation for card and customization item actions
++    seasonalSection?.addEventListener('click', (event) => {
++      const target = event.target.closest('button');
++      if (!target) return;
++
++      // 1. Reverse customization items inside a single drink card (scoped to `ul.customizations-list`)
++      if (target.classList.contains('reverse-items-btn')) {
++        const cardEl = target.closest('.card');
++        const listEl = cardEl?.querySelector('.customizations-list');
++        if (!listEl) return;
++        const orderedIds = Array.from(listEl.children)
++          .reverse()
++          .map((li) => li.dataset.id);
++        reorderItems(listEl, orderedIds);
++        return;
++      }
++
++      // 2. Move customization item up/down inside a drink card (scoped to `ul.customizations-list`)
++      if (target.classList.contains('move-item-up') || target.classList.contains('move-item-down')) {
++        const itemEl = target.closest('li');
++        const listEl = itemEl?.closest('.customizations-list');
++        if (!itemEl || !listEl) return;
++
++        const isUp = target.classList.contains('move-item-up');
++        const sibling = isUp ? itemEl.previousElementSibling : itemEl.nextElementSibling;
++        if (!sibling) return;
++
++        const hadFocus = itemEl.contains(document.activeElement);
++        const focusedEl = document.activeElement;
++
++        runScopedTransition(listEl, () => {
++          if (isUp) {
++            listEl.insertBefore(itemEl, sibling);
++          } else {
++            listEl.insertBefore(sibling, itemEl);
 +          }
-+          if (updateFnOrData.desc) {
-+            const desc = targetEl.querySelector('p');
-+            if (desc) desc.textContent = updateFnOrData.desc;
++          if (hadFocus && focusedEl instanceof HTMLElement) {
++            focusedEl.focus();
 +          }
++        });
++        return;
++      }
++
++      // 3. Remove customization item inside a drink card (scoped to `.card` so card height animates)
++      if (target.classList.contains('remove-item-btn') && !target.classList.contains('remove-card-btn')) {
++        const itemEl = target.closest('li');
++        const cardEl = target.closest('.card');
++        if (itemEl && cardEl) {
++          removeItem(cardEl, itemEl);
 +        }
-+      });
-+    }
-+
-+    // Expose helpers globally
-+    if (typeof window !== 'undefined') {
-+      window.supportsScopedTransition = supportsScopedTransition;
-+      window.runScopedTransition = runScopedTransition;
-+      window.runWithTransition = runWithTransition;
-+      window.reorderItems = reorderItems;
-+      window.removeItem = removeItem;
-+      window.updateItem = updateItem;
-+    }
-+
-+    function setupSeasonalFavorites() {
-+      const gridEl = document.getElementById('favorites-grid');
-+      if (!gridEl) return;
-+
-+      const initialIds = Array.from(gridEl.children, (el) => el.dataset.id || el.id);
-+
-+      const btnReorder = document.getElementById('btn-reorder');
-+      if (btnReorder) {
-+        btnReorder.addEventListener('click', () => {
-+          const currentIds = Array.from(gridEl.children, (el) => el.dataset.id || el.id);
-+          const shuffled = [...currentIds].sort(() => Math.random() - 0.5);
-+          reorderItems(gridEl, shuffled);
-+        });
++        return;
 +      }
 +
-+      const btnSort = document.getElementById('btn-sort');
-+      if (btnSort) {
-+        btnSort.addEventListener('click', () => {
-+          const sortedIds = Array.from(gridEl.children)
-+            .sort((a, b) => {
-+              const titleA = a.querySelector('h3')?.textContent || '';
-+              const titleB = b.querySelector('h3')?.textContent || '';
-+              return titleA.localeCompare(titleB);
-+            })
-+            .map((el) => el.dataset.id || el.id);
-+          reorderItems(gridEl, sortedIds);
-+        });
-+      }
++      // 4. Move drink card left/right in the grid (scoped to `#seasonal-grid`)
++      if (target.classList.contains('move-card-prev') || target.classList.contains('move-card-next')) {
++        const wrapperEl = target.closest('.card-wrapper');
++        if (!wrapperEl || !seasonalGrid) return;
 +
-+      const btnReverse = document.getElementById('btn-reverse');
-+      if (btnReverse) {
-+        btnReverse.addEventListener('click', () => {
-+          const reversedIds = Array.from(gridEl.children, (el) => el.dataset.id || el.id).reverse();
-+          reorderItems(gridEl, reversedIds);
-+        });
-+      }
++        const isPrev = target.classList.contains('move-card-prev');
++        const sibling = isPrev ? wrapperEl.previousElementSibling : wrapperEl.nextElementSibling;
++        if (!sibling) return;
 +
-+      const btnReset = document.getElementById('btn-reset');
-+      if (btnReset) {
-+        btnReset.addEventListener('click', () => {
-+          reorderItems(gridEl, initialIds);
-+        });
-+      }
++        const hadFocus = wrapperEl.contains(document.activeElement);
++        const focusedEl = document.activeElement;
 +
-+      gridEl.addEventListener('click', (event) => {
-+        const removeBtn = event.target.closest('.btn-remove');
-+        if (removeBtn) {
-+          const cardEl = removeBtn.closest('.card');
-+          if (cardEl) {
-+            removeItem(gridEl, cardEl);
++        runScopedTransition(seasonalGrid, () => {
++          if (isPrev) {
++            seasonalGrid.insertBefore(wrapperEl, sibling);
++          } else {
++            seasonalGrid.insertBefore(sibling, wrapperEl);
 +          }
-+        }
-+      });
-+    }
++          if (hadFocus && focusedEl instanceof HTMLElement) {
++            focusedEl.focus();
++          }
++        });
++        return;
++      }
 +
-+    if (document.readyState === 'loading') {
-+      document.addEventListener('DOMContentLoaded', setupSeasonalFavorites);
-+    } else {
-+      setupSeasonalFavorites();
-+    }
++      // 5. Remove drink card from the Seasonal Favorites section (scoped to `#seasonal-favorites`)
++      if (target.classList.contains('remove-card-btn')) {
++        const wrapperEl = target.closest('.card-wrapper');
++        if (wrapperEl && seasonalSection) {
++          removeItem(seasonalSection, wrapperEl);
++        }
++        return;
++      }
++    });
 +  </script>
 +
  </body>
  
  </html>
-diff --git a/package.json b/package.json
-index 2bd4d77..405a02b 100644
---- a/package.json
-+++ b/package.json
-@@ -2,7 +2,8 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "pnpm dlx statikk --port ${PORT:-11222}",
-+    "build": "echo 'Build complete'"
-   },
-   "pnpm": {
-     "onlyBuiltDependencies": []

@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Anchor Positioning Tab Underline
 
-In a tab menu, you should provide visual hints to users about what page they are on. One option is by underlining the tab. With anchor positioning, you can create a smooth animation between the positions of the underline. This does not work when changing the active tab loads a new web page.
+In a tab menu, provide a visual indicator showing users which tab is active by underlining the active tab item. With anchor positioning, you can create a smooth animation between the positions of the underline as the active tab changes. This does not work when changing the active tab loads a new web page.
 
 You can also use this effect to add an animated dot to indicate the active tab in a vertical tab bar.
 

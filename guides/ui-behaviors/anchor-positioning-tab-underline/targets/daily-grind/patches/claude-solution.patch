@@ -27,8 +27,8 @@ index 66c9173..9fdb121 100644
 +      inset-block-start: calc(anchor(bottom) + .1lh);
 +      inset-inline-start: anchor(left);
 +      inset-inline-end: anchor(right);
-+      block-size: .25lh;
-+      background: var(--accent);
++      /* Border-based underline preserves visibility in forced-colors mode */
++      border-block-end: .25lh solid var(--accent);
 +    }
 +
 +    @media (prefers-reduced-motion: no-preference) {

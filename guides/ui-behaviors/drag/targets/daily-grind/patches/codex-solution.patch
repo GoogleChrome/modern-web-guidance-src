@@ -1,209 +1,188 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..b947077
+index 0000000..849ddff
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,2 @@
-+node_modules/
+@@ -0,0 +1 @@
 +dist/
 diff --git a/index.html b/index.html
-index 66c9173..68ff8c0 100644
+index 66c9173..5638df8 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,55 @@
+@@ -152,6 +152,53 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
-+    .coffee-panel {
++    .quick-order {
 +      position: fixed;
-+      right: min(20px, 2vw);
-+      bottom: min(20px, 2vh);
++      right: 20px;
++      bottom: 20px;
 +      z-index: 1100;
-+      width: 300px;
-+      max-width: 96vw;
-+      max-height: 96vh;
-+      max-height: 96dvh;
++      width: 320px;
++      max-width: 100vw;
++      max-height: 100dvh;
 +      overflow: auto;
 +      background: white;
 +      border: 1px solid var(--secondary);
-+      border-radius: 8px;
-+      box-shadow: 0 4px 20px rgb(0 0 0 / 18%);
++      border-radius: 12px;
++      box-shadow: 0 8px 32px #3e272333;
 +    }
 +
-+    .coffee-panel-header {
-+      display: flex;
-+      align-items: center;
-+      justify-content: space-between;
-+      gap: 12px;
-+      padding: 12px 16px;
-+      background: var(--secondary);
++    .order-header {
++      padding: 14px 20px;
++      background: var(--primary);
++      color: white;
 +    }
 +
-+    .coffee-panel-header h2 { font-size: 1rem; }
-+    .coffee-panel-content { padding: 16px; }
-+    .coffee-panel-content p { font-size: 0.9rem; }
-+    .coffee-panel-content .drag-help { margin-top: 12px; font-size: 0.8rem; }
-+
-+    .drag-handle {
-+      flex-shrink: 0;
-+      width: 44px;
-+      height: 44px;
-+      border: 1px solid var(--primary);
-+      border-radius: 5px;
-+      background: white;
-+      color: var(--primary);
-+      font-size: 1.5rem;
++    .order-header h2 { font-size: 1.15rem; }
++    .drag-hint { display: none; font-size: 0.75rem; }
++    .drag-ready .drag-hint { display: block; }
++    .order-header.drag-ready {
 +      cursor: grab;
 +      touch-action: none;
 +      -webkit-user-select: none;
 +      user-select: none;
 +    }
-+
-+    .drag-handle.dragging { cursor: grabbing; }
-+    .drag-handle:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
-+    .drag-handle[hidden] { display: none; }
++    .order-header.dragging { cursor: grabbing; }
++    .order-header:focus-visible { outline: 3px solid var(--accent); outline-offset: -4px; }
++    .order-form { padding: 16px 20px; display: grid; gap: 10px; }
++    .order-form label { font-weight: 600; }
++    .order-form select, .order-form input {
++      width: 100%;
++      padding: 8px;
++      border: 1px solid #8d6e63;
++      border-radius: 4px;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++    .order-form .btn { margin-top: 0; border: 0; font: inherit; cursor: pointer; }
++    .order-total { display: flex; justify-content: space-between; }
++    .order-total[hidden] { display: none; }
    </style>
  </head>
  
-@@ -207,6 +256,21 @@
+@@ -197,6 +244,25 @@
+     </section>
+   </main>
+ 
++  <aside class="quick-order" aria-labelledby="order-title">
++    <header class="order-header" id="order-handle">
++      <h2 id="order-title">Your coffee break</h2>
++      <span class="drag-hint" aria-hidden="true">⠿ Drag to move · or use arrow keys</span>
++    </header>
++    <form class="order-form" action="/order-online" method="get">
++      <label for="coffee">Choose your coffee</label>
++      <select id="coffee" name="coffee">
++        <option value="maple-oat-latte" data-price="575">Maple Oat Latte — $5.75</option>
++        <option value="dark-roast-espresso" data-price="350">Dark Roast Espresso — $3.50</option>
++        <option value="cold-brew" data-price="450">Cold Brew — $4.50</option>
++      </select>
++      <label for="quantity">Quantity</label>
++      <input id="quantity" name="quantity" type="number" min="1" max="20" value="1" required>
++      <p class="order-total" id="order-total" hidden>Total <output id="coffee-total" aria-live="polite" aria-atomic="true">$5.75</output></p>
++      <button class="btn" type="submit">Continue to order</button>
++    </form>
++  </aside>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +273,84 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <aside id="coffee-panel" class="coffee-panel" aria-labelledby="coffee-panel-title">
-+    <div class="coffee-panel-header">
-+      <h2 id="coffee-panel-title">Your next coffee break</h2>
-+      <button id="coffee-drag-handle" class="drag-handle" type="button"
-+        aria-label="Move coffee panel: drag or use arrow keys" aria-describedby="coffee-drag-help" hidden>
-+        <span aria-hidden="true">⠿</span>
-+      </button>
-+    </div>
-+    <div class="coffee-panel-content">
-+      <p>Make time for your favorite roast. Explore our menu and order a cup made just for you.</p>
-+      <a href="/order-online" class="btn">Start an order</a>
-+      <p id="coffee-drag-help" class="drag-help">When the grip is available, drag it or focus it and use the arrow keys to move this panel.</p>
-+    </div>
-+  </aside>
-+  <script type="module" src="/src/drag.ts"></script>
++  <script>
++    // @ts-check
++    const panel = document.querySelector('.quick-order');
++    const handle = document.getElementById('order-handle');
++    const coffee = document.getElementById('coffee');
++    const quantity = document.getElementById('quantity');
++    const total = document.getElementById('coffee-total');
++    const totalRow = document.getElementById('order-total');
++
++    if (coffee instanceof HTMLSelectElement && quantity instanceof HTMLInputElement && total && totalRow) {
++      const updateTotal = () => {
++        const price = Number(coffee.selectedOptions[0]?.dataset.price);
++        total.textContent = quantity.validity.valid
++          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price * quantity.valueAsNumber / 100)
++          : 'Choose 1–20';
++      };
++      coffee.addEventListener('change', updateTotal);
++      quantity.addEventListener('input', updateTotal);
++      totalRow.hidden = false;
++      updateTotal();
++    }
++
++    if (panel instanceof HTMLElement && handle instanceof HTMLElement) {
++      /** @type {{ id: number, offsetX: number, offsetY: number } | null} */
++      let drag = null;
++      const moveTo = (/** @type {number} */ left, /** @type {number} */ top) => {
++        panel.style.left = `${Math.max(0, Math.min(left, window.innerWidth - panel.offsetWidth))}px`;
++        panel.style.top = `${Math.max(0, Math.min(top, window.innerHeight - panel.offsetHeight))}px`;
++        panel.style.right = 'auto';
++        panel.style.bottom = 'auto';
++      };
++      const reclamp = () => {
++        const rect = panel.getBoundingClientRect();
++        moveTo(rect.left, rect.top);
++      };
++      handle.tabIndex = 0;
++      handle.setAttribute('aria-label', 'Move coffee order panel with arrow keys');
++      handle.classList.add('drag-ready');
++      handle.addEventListener('pointerdown', (event) => {
++        if (event.button !== 0 || !event.isPrimary || drag) return;
++        const rect = panel.getBoundingClientRect();
++        handle.setPointerCapture(event.pointerId);
++        drag = { id: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
++        handle.classList.add('dragging');
++        handle.focus({ preventScroll: true });
++      });
++      handle.addEventListener('pointermove', (event) => {
++        if (drag?.id !== event.pointerId) return;
++        moveTo(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
++      });
++      const stopDrag = (/** @type {PointerEvent} */ event) => {
++        if (drag?.id !== event.pointerId) return;
++        drag = null;
++        handle.classList.remove('dragging');
++        if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
++      };
++      handle.addEventListener('pointerup', stopDrag);
++      handle.addEventListener('pointercancel', stopDrag);
++      handle.addEventListener('lostpointercapture', stopDrag);
++      handle.addEventListener('keydown', (event) => {
++        let dx = 0;
++        let dy = 0;
++        switch (event.key) {
++          case 'ArrowLeft': dx = -15; break;
++          case 'ArrowRight': dx = 15; break;
++          case 'ArrowUp': dy = -15; break;
++          case 'ArrowDown': dy = 15; break;
++          default: return;
++        }
++        event.preventDefault();
++        const rect = panel.getBoundingClientRect();
++        moveTo(rect.left + dx, rect.top + dy);
++      });
++      window.addEventListener('resize', reclamp);
++      new ResizeObserver(reclamp).observe(panel);
++      reclamp();
++    }
++  </script>
  </body>
  
  </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..4c59ef3 100644
+index 2bd4d77..587c05a 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,7 +2,12 @@
+@@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
-+    "build": "tsc --noEmit && vite build"
-+  },
-+  "devDependencies": {
-+    "typescript": "^5.9.3",
-+    "vite": "^7.1.9"
++    "build": "node -e \"require('node:fs').mkdirSync('dist', { recursive: true }); require('node:fs').copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-     "onlyBuiltDependencies": []
-diff --git a/src/drag.ts b/src/drag.ts
-new file mode 100644
-index 0000000..edb5406
---- /dev/null
-+++ b/src/drag.ts
-@@ -0,0 +1,78 @@
-+const panel = document.querySelector<HTMLElement>('#coffee-panel');
-+const handle = document.querySelector<HTMLButtonElement>('#coffee-drag-handle');
-+
-+if (panel && handle) {
-+  let activePointer: number | null = null;
-+  let offsetX = 0;
-+  let offsetY = 0;
-+
-+  // Pointer, keyboard, and resize updates all use the same viewport limits.
-+  function moveTo(left: number, top: number): void {
-+    if (!panel) return;
-+    const rect = panel.getBoundingClientRect();
-+    const maxLeft = Math.max(0, window.innerWidth - rect.width);
-+    const maxTop = Math.max(0, window.innerHeight - rect.height);
-+    panel.style.right = 'auto';
-+    panel.style.bottom = 'auto';
-+    panel.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
-+    panel.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
-+  }
-+
-+  function reclamp(): void {
-+    if (!panel) return;
-+    const rect = panel.getBoundingClientRect();
-+    moveTo(rect.left, rect.top);
-+  }
-+
-+  function endDrag(event: PointerEvent): void {
-+    if (!handle || event.pointerId !== activePointer) return;
-+    activePointer = null;
-+    handle.classList.remove('dragging');
-+    if (handle.hasPointerCapture(event.pointerId)) {
-+      handle.releasePointerCapture(event.pointerId);
-+    }
-+  }
-+
-+  handle.addEventListener('pointerdown', (event: PointerEvent) => {
-+    if (event.button !== 0 || !event.isPrimary || activePointer !== null) return;
-+    // Only the dedicated grip starts a drag; panel links and text are unaffected.
-+    const rect = panel.getBoundingClientRect();
-+    offsetX = event.clientX - rect.left;
-+    offsetY = event.clientY - rect.top;
-+    handle.setPointerCapture(event.pointerId);
-+    activePointer = event.pointerId;
-+    handle.classList.add('dragging');
-+    handle.focus({ preventScroll: true });
-+    event.preventDefault();
-+  });
-+
-+  handle.addEventListener('pointermove', (event: PointerEvent) => {
-+    if (event.pointerId !== activePointer) return;
-+    moveTo(event.clientX - offsetX, event.clientY - offsetY);
-+  });
-+  handle.addEventListener('pointerup', endDrag);
-+  handle.addEventListener('pointercancel', endDrag);
-+  handle.addEventListener('lostpointercapture', endDrag);
-+
-+  handle.addEventListener('keydown', (event: KeyboardEvent) => {
-+    const step = 15;
-+    let dx = 0;
-+    let dy = 0;
-+    switch (event.key) {
-+      case 'ArrowLeft': dx = -step; break;
-+      case 'ArrowRight': dx = step; break;
-+      case 'ArrowUp': dy = -step; break;
-+      case 'ArrowDown': dy = step; break;
-+      default: return;
-+    }
-+    event.preventDefault();
-+    const rect = panel.getBoundingClientRect();
-+    moveTo(rect.left + dx, rect.top + dy);
-+  });
-+
-+  // Reveal the grip only after its interactions are ready.
-+  handle.hidden = false;
-+  reclamp();
-+  window.addEventListener('resize', reclamp);
-+  new ResizeObserver(reclamp).observe(panel);
-+}
-diff --git a/tsconfig.json b/tsconfig.json
-new file mode 100644
-index 0000000..dfd4fe3
---- /dev/null
-+++ b/tsconfig.json
-@@ -0,0 +1,11 @@
-+{
-+  "compilerOptions": {
-+    "target": "ES2022",
-+    "module": "ESNext",
-+    "moduleResolution": "Bundler",
-+    "lib": ["ES2022", "DOM"],
-+    "strict": true,
-+    "noEmit": true
-+  },
-+  "include": ["src/**/*.ts"]
-+}
