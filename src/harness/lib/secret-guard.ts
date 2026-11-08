@@ -115,12 +115,6 @@ export const ALLOWED_DOTENV_KEYS: ReadonlySet<string> = new Set([
   'MODERN_WEB_LOG_DIR', 'DEBUG_MWG_TELEMETRY', 'GD_UNSAFE_NO_SANDBOX',
 ]);
 
-/** Returns true if a `.env` key is allowed non-secret configuration. */
-export function isAllowedDotenvKey(key: string): boolean {
-  if (SECRET_ENV_KEY_RE.test(key)) return false;
-  return ALLOWED_DOTENV_KEYS.has(key) || key.endsWith('_MODEL') || key.endsWith('_EFFORT');
-}
-
 const warnedEnvFiles = new Set<string>();
 
 function readUtf8IfExists(filePath: string): string | null {
@@ -130,6 +124,12 @@ function readUtf8IfExists(filePath: string): string | null {
     if (err instanceof Error && 'code' in err && err.code === 'ENOENT') return null;
     throw err;
   }
+}
+
+/** Returns true if a `.env` key is allowed non-secret configuration. */
+export function isAllowedDotenvKey(key: string): boolean {
+  if (SECRET_ENV_KEY_RE.test(key)) return false;
+  return ALLOWED_DOTENV_KEYS.has(key) || /_(?:MODEL|EFFORT)$/i.test(key);
 }
 
 export function loadAllowedEnvFile(
