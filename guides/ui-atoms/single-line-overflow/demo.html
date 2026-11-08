@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang=en>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width">
+<title>Single-line text overflow demo | Modern Web Guidance</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --accent: light-dark(#0b57d0, #a8c7fa);
+    --surface: light-dark(white, #1e1f20);
+    --border: light-dark(#c4c7c5, #444746);
+    font: 100%/1.5 system-ui, sans-serif;
+  }
+
+  body {
+    max-inline-size: 40rem;
+    margin: 2rem auto;
+    padding-inline: 1rem;
+    background: var(--surface);
+  }
+
+  h2 {
+    font-size: 1rem;
+    margin-block: 2rem .5rem;
+  }
+
+  /* Drag the end edge to see each strategy react */
+  .resizable {
+    resize: inline;
+    overflow: hidden;
+    inline-size: 16rem;
+    min-inline-size: 5rem;
+    max-inline-size: 100%;
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+  }
+
+  ul {
+    margin: 0;
+    padding: .25rem;
+    list-style: none;
+  }
+
+  li > a {
+    display: block;
+    padding: .5rem .75rem;
+    border-radius: .25rem;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+      background: color-mix(in oklab, currentColor 8%, transparent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+    }
+  }
+
+  .label {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Lets the inner span measure the available width as 100cqi */
+    container-type: inline-size scroll-state;
+  }
+
+  /* Hint that hovering reveals more, only when the text is truncated */
+  @container scroll-state(scrollable: inline-end) {
+    .label > span {
+      text-decoration: underline dotted;
+      text-underline-offset: .2em;
+    }
+  }
+
+  /* Reveal on hover and focus: scroll the text inside its box */
+  @media (prefers-reduced-motion: no-preference) {
+    .label:is(:hover, :focus-visible) {
+      text-overflow: clip;
+
+      & > span {
+        /* Needs its own box to be translated. Inline otherwise, so the ellipsis renders. */
+        display: inline-block;
+        inline-size: max-content;
+        /* Container width minus text width: negative when truncated, 0 when the text fits */
+        translate: min(0px, 100cqi - 100%);
+        /* Example value. Set only here: the text snaps back when the pointer leaves */
+        transition: translate 2s linear;
+      }
+    }
+  }
+
+  /* Fade instead of an ellipsis: applies only while the text overflows.
+     --fade-size is the configured size, --fade the live value the animation turns on. */
+  @property --fade-size {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  @property --fade {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  .fade .label {
+    text-overflow: clip;
+    /* Example value: how much of the text fades */
+    --fade-size: 2rem;
+    mask-image: linear-gradient(to right, black calc(100% - var(--fade)), transparent);
+    animation: fade-end linear both;
+    animation-timeline: scroll(self inline);
+
+    /* Fallback without scroll-driven animations: script toggles the class */
+    &.truncated {
+      --fade: var(--fade-size);
+    }
+  }
+
+  @keyframes fade-end {
+    from, to {
+      --fade: var(--fade-size);
+    }
+  }
+
+  /* Shrink the fade in step with the scroll, so the end of the text is readable when it arrives */
+  @media (prefers-reduced-motion: no-preference) {
+    .fade .label:is(:hover, :focus-visible) {
+      --fade-size: 0px;
+      /* Set only here, so the fade is back as soon as the text snaps back */
+      transition: --fade-size 2s linear;
+    }
+  }
+
+  /* Keep the end visible: the start truncates, the extension never shrinks */
+  .filename {
+    display: flex;
+    padding: .25rem .75rem;
+
+    & .start {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    & .end {
+      flex: none;
+    }
+  }
+
+  /* Expand on hover and focus: for content-sized items such as chips */
+  .chips {
+    display: flex;
+    gap: .5rem;
+    padding: .5rem;
+  }
+
+  .chip {
+    /* Example values */
+    min-inline-size: 5rem;
+    max-inline-size: 9rem;
+    padding: .25rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: none;
+    font: inherit;
+    interpolate-size: allow-keywords;
+
+    & > span {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &:is(:hover, :focus-visible) {
+      /* min-inline-size overrides max-inline-size, so the full label always fits */
+      min-inline-size: max-content;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: min-inline-size .3s;
+    }
+  }
+
+  /* Swap in a shorter version with a container query on the cell */
+  table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  td {
+    padding: .5rem;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  /* The container is a wrapper: size containment has no effect on table cells themselves */
+  .day {
+    container-type: inline-size;
+  }
+
+  .short {
+    display: none;
+  }
+
+  /* Example threshold, in the cell's own font size */
+  @container (inline-size < 6em) {
+    .long {
+      display: none;
+    }
+
+    .short {
+      display: inline;
+    }
+  }
+
+  /* Scale display text down, with an ellipsis for text still too long at the limit */
+  .stat {
+    padding: .5rem 1rem;
+    font-size: 3rem;
+    font-weight: 600;
+    white-space: nowrap;
+    /* Example value: never below 60% of the font size */
+    text-fit: shrink 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+
+<p>Drag the end edge of each box to make it narrower.</p>
+
+<h2>Ellipsis, with the text scrolling on hover and focus</h2>
+<div class="resizable">
+  <ul>
+    <li><a class="label" href="#"><span>Quarterly planning</span></a></li>
+    <li><a class="label" href="#"><span>Meeting notes from Tuesday afternoon</span></a></li>
+    <li><a class="label" href="#"><span>Design review feedback for the onboarding flow</span></a></li>
+  </ul>
+</div>
+
+<h2>Fade instead of an ellipsis</h2>
+<div class="resizable fade">
+  <ul>
+    <li><a class="label" href="#"><span>Lunch?</span></a></li>
+    <li><a class="label" href="#"><span>Can you send me the slides from yesterday’s talk?</span></a></li>
+    <li><a class="label" href="#"><span>The build is green again, merging now.</span></a></li>
+  </ul>
+</div>
+
+<h2>Keeping the end visible</h2>
+<div class="resizable">
+  <ul>
+    <li><span class="filename"><span class="start">quarterly-report-final-v2</span><span class="end">.pdf</span></span></li>
+    <li><span class="filename"><span class="start">quarterly-report-final-v2-approved</span><span class="end">.docx</span></span></li>
+    <li><span class="filename"><span class="start">hero</span><span class="end">.webp</span></span></li>
+  </ul>
+</div>
+
+<h2>Expanding on hover and focus</h2>
+<div class="resizable" style="inline-size: 100%">
+  <div class="chips">
+    <button type="button" class="chip"><span>Accessibility</span></button>
+    <button type="button" class="chip"><span>Performance budget review</span></button>
+    <button type="button" class="chip"><span>Internationalization</span></button>
+  </div>
+</div>
+
+<h2>Swapping in a shorter version</h2>
+<div class="resizable" style="inline-size: 100%">
+  <table>
+    <tr>
+      <td><div class="day"><span class="long">Monday</span><span class="short">Mon</span></div></td>
+      <td><div class="day"><span class="long">Tuesday</span><span class="short">Tue</span></div></td>
+      <td><div class="day"><span class="long">Wednesday</span><span class="short">Wed</span></div></td>
+      <td><div class="day"><span class="long">Thursday</span><span class="short">Thu</span></div></td>
+      <td><div class="day"><span class="long">Friday</span><span class="short">Fri</span></div></td>
+    </tr>
+  </table>
+</div>
+
+<h2>Scaling display text down</h2>
+<div class="resizable">
+  <div class="stat">1,284,912</div>
+</div>
+
+<script type="module">
+  // Fallback without scroll-driven animations: detect truncation from overflow
+  if (!CSS.supports('animation-timeline', 'scroll()')) {
+    const observer = new ResizeObserver(entries => {
+      for (const { target } of entries) {
+        target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
+      }
+    });
+    for (const label of document.querySelectorAll('.fade .label')) {
+      observer.observe(label);
+    }
+  }
+</script>
