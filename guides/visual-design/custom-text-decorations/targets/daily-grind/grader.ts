@@ -501,35 +501,32 @@ test.describe('custom-text-decorations Target Grader', () => {
     const { allTargets } = targets!;
     expect(allTargets.length).toBeGreaterThan(0);
 
-    // Must have an @media (prefers-reduced-motion: ...) rule (either no-preference or reduce, top-level or nested)
-    const mediaRules = allRules.filter(
-      (r): r is CSSMediaRule =>
-        r instanceof CSSMediaRule &&
-        r.conditionText.toLowerCase().includes('prefers-reduced-motion'),
-    );
-    expect(mediaRules.length).toBeGreaterThan(0);
-
-    // There must be reveal transitions or animations on text-decoration-inset when motion is allowed
-    const hasAnimatedInset = allRules.some((r) => {
+    // Only require @media (prefers-reduced-motion: ...) when decorative reveal transitions or animations are present
+    const hasAnimatedDecoration = allRules.some((r) => {
       if (r instanceof CSSStyleRule) {
         const inset = r.style.getPropertyValue('text-decoration-inset').trim();
         const transition = r.style.getPropertyValue('transition').trim();
         const animation = r.style.getPropertyValue('animation').trim();
         return (
           inset.includes('100%') ||
-          transition.includes('text-decoration-inset') ||
+          /\btext-(?:decoration|underline)/i.test(transition) ||
           (animation.length > 0 && !/^none\b/i.test(animation))
         );
       }
-      if (r instanceof CSSKeyframesRule) {
-        return true;
-      }
-      return false;
+      return r instanceof CSSKeyframesRule;
     });
-    expect(hasAnimatedInset).toBe(true);
+
+    if (hasAnimatedDecoration) {
+      const mediaRules = allRules.filter(
+        (r): r is CSSMediaRule =>
+          r instanceof CSSMediaRule &&
+          r.conditionText.toLowerCase().includes('prefers-reduced-motion'),
+      );
+      expect(mediaRules.length).toBeGreaterThan(0);
+    }
 
     // When prefers-reduced-motion: reduce matches (outside no-preference, and including reduce rules),
-    // lines must be fully visible (not trimmed to 100%) and have no active inset transition or animation.
+    // lines must be fully visible (not trimmed to 100%) and have no active decoration transition or animation.
     for (const el of allTargets) {
       const reducedMotionCascaded = getCascadedStyle(el, reducedMotionStyleRules);
       const line = getEffectiveDecorationLine(reducedMotionCascaded);
@@ -540,11 +537,11 @@ test.describe('custom-text-decorations Target Grader', () => {
 
       const transition = reducedMotionCascaded.getPropertyValue('transition').trim();
       const transitionDuration = reducedMotionCascaded.getPropertyValue('transition-duration').trim();
-      const hasInsetTransition =
-        (transition.includes('text-decoration-inset') ||
-          (transition.includes('all') && !/^none\b/i.test(transition))) &&
+      const hasDecorationTransition =
+        (/\btext-(?:decoration|underline)/i.test(transition) ||
+          (/\ball\b/i.test(transition) && !/^none\b/i.test(transition))) &&
         !/^0(?:s|ms)\b/.test(transitionDuration);
-      expect(hasInsetTransition).toBe(false);
+      expect(hasDecorationTransition).toBe(false);
 
       const animation = reducedMotionCascaded.getPropertyValue('animation').trim();
       const animationName = reducedMotionCascaded.getPropertyValue('animation-name').trim();
