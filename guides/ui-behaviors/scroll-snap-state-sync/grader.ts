@@ -68,15 +68,20 @@ test('The section headers or containers within the container have scroll-snap-al
 
     if (targets.length === 0) return false;
 
-    // Verify if any snap target blocks have scroll-snap-align applied
+    // Verify if any snap target blocks or their inner headers have scroll-snap-align applied
     const snapAlignedElements = targets.filter(el => {
       const style = window.getComputedStyle(el);
-      const align = style.scrollSnapAlign;
-      return align && align.startsWith('start');
+      if (style.scrollSnapAlign && style.scrollSnapAlign.startsWith('start')) return true;
+      const innerHeader = el.querySelector('header, h1, h2, h3, h4, h5, h6, [role="heading"], .section-header');
+      if (innerHeader) {
+        const hStyle = window.getComputedStyle(innerHeader);
+        if (hStyle.scrollSnapAlign && hStyle.scrollSnapAlign.startsWith('start')) return true;
+      }
+      return false;
     });
 
-    // Fallback: check if inner headers have snap-align applied instead
-    const innerHeaders = Array.from(container.querySelectorAll('h2, h3, [role="heading"]'));
+    // Fallback: check if inner headers within container have snap-align applied instead
+    const innerHeaders = Array.from(container.querySelectorAll('header, h1, h2, h3, h4, h5, h6, [role="heading"], .section-header'));
     const snapAlignedHeaders = innerHeaders.filter(el => {
       const style = window.getComputedStyle(el);
       const align = style.scrollSnapAlign;
@@ -150,7 +155,35 @@ test('When the user scrolls to a section, the corresponding link in the Table of
     
     // Flush paint frames for native IntersectionObservers triggers!
     await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-    await new Promise(resolve => setTimeout(resolve, 300));
+  });
+
+  await page.waitForFunction(() => {
+    const getTOCLinks = () => {
+      return Array.from(document.querySelectorAll('a')).filter(a => {
+        const href = a.getAttribute('href');
+        if (!href || !href.startsWith('#')) return false;
+        const parent = a.closest('.seasonal-toc, .toc, nav, aside, .sidebar, [role="directory"]');
+        if (!parent) return false;
+        if (parent.tagName === 'NAV' && parent.closest('header, nav ul')) return false;
+        return true;
+      });
+    };
+    const links = getTOCLinks();
+    if (links.length < 2) return false;
+    const activeLink = links[1];
+    const inactiveLink = links[0];
+    if (!activeLink || !inactiveLink) return false;
+
+    const activeStyle = window.getComputedStyle(activeLink);
+    const inactiveStyle = window.getComputedStyle(inactiveLink);
+
+    return (
+      activeStyle.backgroundColor !== inactiveStyle.backgroundColor ||
+      activeStyle.fontWeight !== inactiveStyle.fontWeight ||
+      activeStyle.color !== inactiveStyle.color ||
+      activeLink.getAttribute('aria-current') === 'true' ||
+      activeLink.getAttribute('aria-current') === 'location'
+    );
   });
 
   const isHighlighted = await page.evaluate(() => {
@@ -185,7 +218,7 @@ test('When the user scrolls to a section, the corresponding link in the Table of
   expect(isHighlighted).toBe(true);
 });
 
-test('When a TOC link is selected, it should have appropriate accessibility attributes like aria-current="true" or "location"', async ({ page }) => {
+test('When a TOC link is selected, it has aria-current="true" or "location"', async ({ page }) => {
   await page.addInitScript(() => {
     delete (HTMLElement.prototype as any).onscrollsnapchange;
     if ('onscrollsnapchange' in window) {
@@ -245,7 +278,24 @@ test('When a TOC link is selected, it should have appropriate accessibility attr
     
     // Flush paint frames for native IntersectionObservers triggers!
     await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-    await new Promise(resolve => setTimeout(resolve, 300));
+  });
+
+  await page.waitForFunction(() => {
+    const getTOCLinks = () => {
+      return Array.from(document.querySelectorAll('a')).filter(a => {
+        const href = a.getAttribute('href');
+        if (!href || !href.startsWith('#')) return false;
+        const parent = a.closest('.seasonal-toc, .toc, nav, aside, .sidebar, [role="directory"]');
+        if (!parent) return false;
+        if (parent.tagName === 'NAV' && parent.closest('header, nav ul')) return false;
+        return true;
+      });
+    };
+    const links = getTOCLinks();
+    if (links.length < 2) return false;
+    const activeLink = links[1];
+    const val = activeLink ? activeLink.getAttribute('aria-current') : null;
+    return val === 'true' || val === 'location';
   });
 
   const ariaCurrent = await page.evaluate(() => {
@@ -328,7 +378,25 @@ test('When the user scrolls to a section, only one TOC link is highlighted as th
     
     // Flush paint frames for native IntersectionObservers triggers!
     await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-    await new Promise(resolve => setTimeout(resolve, 300));
+  });
+
+  await page.waitForFunction(() => {
+    const getTOCLinks = () => {
+      return Array.from(document.querySelectorAll('a')).filter(a => {
+        const href = a.getAttribute('href');
+        if (!href || !href.startsWith('#')) return false;
+        const parent = a.closest('.seasonal-toc, .toc, nav, aside, .sidebar, [role="directory"]');
+        if (!parent) return false;
+        if (parent.tagName === 'NAV' && parent.closest('header, nav ul')) return false;
+        return true;
+      });
+    };
+    const links = getTOCLinks();
+    const count = links.filter(l => {
+      const current = l.getAttribute('aria-current');
+      return current === 'true' || current === 'location';
+    }).length;
+    return count === 1;
   });
 
   const activeCount = await page.evaluate(() => {
@@ -441,7 +509,17 @@ test('Clicking a TOC link causes the container to scroll to the corresponding se
   });
 
   // Wait for scrolling to finish
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => {
+    const elements = Array.from(document.querySelectorAll('*'));
+    for (const el of elements) {
+      const style = window.getComputedStyle(el);
+      const overflow = style.overflowY;
+      if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight && el.scrollTop > 0) {
+        return true;
+      }
+    }
+    return window.scrollY > 0;
+  });
 
   const finalScrollTop = await page.evaluate(() => {
     const elements = Array.from(document.querySelectorAll('*'));
@@ -459,3 +537,110 @@ test('Clicking a TOC link causes the container to scroll to the corresponding se
 
   expect(finalScrollTop).toBeGreaterThan(0);
 });
+
+async function getSnapScrollContainerInfo(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const candidates = Array.from(document.querySelectorAll('*')).filter(el => {
+      if (el.tagName === 'HTML' || el.tagName === 'BODY') return false;
+      const snapType = window.getComputedStyle(el).scrollSnapType;
+      return Boolean(snapType && snapType !== 'none');
+    });
+    const el = candidates[0] || null;
+    if (!el) return null;
+
+    const getName = (node: Element) => {
+      const ariaLabel = (node.getAttribute('aria-label') || '').trim();
+      if (ariaLabel) return ariaLabel;
+      const labelledBy = (node.getAttribute('aria-labelledby') || '').trim();
+      if (!labelledBy) return '';
+      return labelledBy
+        .split(/\s+/)
+        .map(id => document.getElementById(id)?.textContent?.trim() || '')
+        .filter(Boolean)
+        .join(' ');
+    };
+    const getRole = (node: Element) => (node.getAttribute('role') || '').trim().toLowerCase();
+
+    const elHasName = Boolean(getName(el));
+    const elRole = getRole(el);
+    const elTag = el.tagName;
+    const parent = el.parentElement;
+    const parentIsWrapper = Boolean(parent && (parent.tagName === 'SECTION' || getRole(parent) === 'region'));
+    const parentHasName = parentIsWrapper && Boolean(getName(parent!));
+
+    const hasAccessibleName = elHasName || parentHasName;
+    const hasImplicitRole =
+      elTag === 'MAIN' ||
+      elTag === 'ARTICLE' ||
+      elTag === 'ASIDE' ||
+      elTag === 'NAV' ||
+      (elTag === 'SECTION' && elHasName);
+    const parentHasRegionRole =
+      parentIsWrapper && (getRole(parent!) === 'region' || (parent!.tagName === 'SECTION' && parentHasName));
+
+    return {
+      hasAccessibleName,
+      hasRoleRegionOrImplicit: elRole === 'region' || hasImplicitRole || parentHasRegionRole,
+      tabindex: el.getAttribute('tabindex')?.trim() ?? null,
+    };
+  });
+}
+
+test('The scroll container has an accessible name provided using `aria-label` or `aria-labelledby`.', async ({ page }) => {
+  await page.goto(targetFile);
+  const info = await getSnapScrollContainerInfo(page);
+  expect(info).not.toBeNull();
+  expect(info!.hasAccessibleName).toBe(true);
+});
+
+test('The scroll container has an accessible role of `role="region"` if it does not already have an implicit role.', async ({ page }) => {
+  await page.goto(targetFile);
+  const info = await getSnapScrollContainerInfo(page);
+  expect(info).not.toBeNull();
+  expect(info!.hasRoleRegionOrImplicit).toBe(true);
+});
+
+test('The scroll container can receive focus with `tabindex="0"`.', async ({ page }) => {
+  await page.goto(targetFile);
+  const info = await getSnapScrollContainerInfo(page);
+  expect(info).not.toBeNull();
+  expect(info!.tabindex).toBe('0');
+});
+
+test('The section target element that has an ID, acting as the target for the related TOC link, has a `tabindex="-1"` attribute, so that it can receive focus.', async ({ page }) => {
+  await page.goto(targetFile);
+  const result = await page.evaluate(() => {
+    const tocLinks = Array.from(document.querySelectorAll('a')).filter(a => {
+      const href = a.getAttribute('href');
+      if (!href || !href.startsWith('#') || href.length <= 1) return false;
+      const parent = a.closest('.seasonal-toc, .toc, nav, aside, .sidebar, [role="directory"], [aria-label*="table of contents" i]');
+      if (!parent) return false;
+      if (parent.tagName === 'NAV' && parent.closest('header, nav ul')) return false;
+      return true;
+    });
+
+    const targets = tocLinks
+      .map(link => {
+        const id = decodeURIComponent(link.getAttribute('href')!.slice(1));
+        return { id, el: document.getElementById(id) };
+      })
+      .filter((t): t is { id: string; el: HTMLElement } => t.el !== null);
+
+    const hasFocusableTarget = (el: HTMLElement) =>
+      el.getAttribute('tabindex')?.trim() === '-1' ||
+      el.querySelector('h1[tabindex="-1"], h2[tabindex="-1"], h3[tabindex="-1"], h4[tabindex="-1"], h5[tabindex="-1"], h6[tabindex="-1"], [role="heading"][tabindex="-1"]') !== null;
+
+    return {
+      linkCount: tocLinks.length,
+      targetCount: targets.length,
+      missingTabindex: targets
+        .filter(({ el }) => !hasFocusableTarget(el))
+        .map(({ id, el }) => `${el.tagName.toLowerCase()}#${id}`),
+    };
+  });
+
+  expect(result.linkCount).toBeGreaterThan(0);
+  expect(result.targetCount).toBe(result.linkCount);
+  expect(result.missingTabindex).toEqual([]);
+});
+

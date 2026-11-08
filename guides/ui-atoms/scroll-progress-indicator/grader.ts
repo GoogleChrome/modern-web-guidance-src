@@ -67,7 +67,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     await page.goto(TARGET_URL);
   });
 
-  test(`MANDATORY: The agent has defined an @keyframes block that animates transform: scaleX() from 0 to 1 (or similar scaling).`, async ({ page }) => {
+  test(`The agent has defined an @keyframes block that animates transform: scaleX() from 0 to 1 (or similar scaling)`, async ({ page }) => {
     const handle = await findProgressElementHandle(page);
 
     const transformChanges = await handle.evaluate((el: Element | null) => {
@@ -92,7 +92,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(transformChanges).toBe(true);
   });
 
-  test(`MANDATORY: The agent has applied the animation to the progress indicator element using animation-timeline: scroll().`, async ({ page }) => {
+  test(`The agent has applied the animation to the progress indicator element using animation-timeline: scroll()`, async ({ page }) => {
     const handle = await findProgressElementHandle(page);
 
     const hasTimeline = await handle.evaluate((el: any) => {
@@ -103,7 +103,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasTimeline).toBe(true);
   });
 
-  test(`MANDATORY: The progress indicator element has position: fixed or position: absolute to stay in view.`, async ({ page }) => {
+  test(`The progress indicator element has position: fixed or position: absolute to stay in view`, async ({ page }) => {
     const handle = await findProgressElementHandle(page);
 
     const isFixedOrAbsolute = await handle.evaluate((el: any) => {
@@ -114,7 +114,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(isFixedOrAbsolute).toBe(true);
   });
 
-  test(`MANDATORY: The progress indicator element has transform-origin set to the start (e.g., 0 50% or left) so it scales from the correct side.`, async ({ page }) => {
+  test(`The progress indicator element has transform-origin set to the start (e.g., 0 50% or left) so it scales from the correct side`, async ({ page }) => {
     const handle = await findProgressElementHandle(page);
 
     const hasCorrectOrigin = await handle.evaluate((el: any) => {
@@ -126,7 +126,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasCorrectOrigin).toBe(true);
   });
 
-  test(`MANDATORY: The implementation includes feature detection using @supports for scroll-driven animations.`, async ({ page }) => {
+  test(`The implementation includes feature detection using @supports for scroll-driven animations`, async ({ page }) => {
     const hasSupports = await page.evaluate(() => {
       function checkRules(rules: any): boolean {
         for (const rule of rules) {
@@ -155,7 +155,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasSupports).toBe(true);
   });
 
-  test(`MANDATORY: The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion: no-preference).`, async ({ page }) => {
+  test(`The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion: no-preference)`, async ({ page }) => {
     const hasMedia = await page.evaluate(() => {
       function checkRules(rules: any): boolean {
         for (const rule of rules) {
@@ -184,7 +184,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasMedia).toBe(true);
   });
 
-  test(`MANDATORY: The implementation DOES NOT add any scroll event listeners.`, async ({ page }) => {
+  test(`The implementation DOES NOT add any scroll event listeners`, async ({ page }) => {
     const client = await page.context().newCDPSession(page);
     
     const { result } = await client.send('Runtime.evaluate', { expression: 'window' });
@@ -198,9 +198,31 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasScrollListener).toBe(false);
   });
 
-  test(`MANDATORY: Purely decorative scroll progress indicators must define aria-hidden="true"`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/aria-hidden=["']true["']/i.test(html)).toBe(true);
+  test(`Purely decorative scroll progress indicators must define aria-hidden="true"`, async ({ page }) => {
+    const isAccessibleOrHidden = await page.evaluate(() => {
+      const semantic = document.querySelector('progress, [role="progressbar"]');
+      if (semantic) {
+        return Boolean(
+          semantic.getAttribute('aria-label')?.trim() ||
+            semantic.getAttribute('aria-labelledby')?.trim(),
+        );
+      }
+      const decorative = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '#progress, [id*="progress" i], [class*="progress" i], [style*="scroll("]',
+        ),
+      );
+      return (
+        decorative.length > 0 &&
+        decorative.every(
+          (el) =>
+            el.getAttribute('aria-hidden') === 'true' ||
+            el.getAttribute('role') === 'presentation' ||
+            el.getAttribute('role') === 'none',
+        )
+      );
+    });
+    expect(isAccessibleOrHidden).toBe(true);
   });
 
 });
