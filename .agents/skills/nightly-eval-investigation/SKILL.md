@@ -1,147 +1,175 @@
 ---
 name: nightly-eval-investigation
 description: >
-  Downloads and analyzes nightly evaluation runs (Claude Code, Codex CLI, and Jetski CLI) from the GCS remote dashboard or diagnoses single-guide evaluation runs locally.
-  Use this skill to run bulk nightly investigations, triage flagged tasks, inspect eval trajectories, or diagnose low pass rates and grader failures.
+  Downloads and analyzes the latest three distinct nightly evaluation runs (Claude Code, Codex CLI, and Jetski CLI)
+  from the GCS remote dashboard to identify and flag unhealthy tasks and guides, or diagnoses single-guide evaluation runs locally.
+  Use this skill whenever you need to run a bulk investigation on remote nightly runs, track agent health,
+  inspect eval trajectories, or diagnose low pass rates and grader failures.
 ---
 
-# Evaluation & Nightly Investigation
+# Nightly Evaluation Investigation
 
-This skill covers both bulk multi-agent triage of remote nightly evaluation suites from Google Cloud Storage (GCS) and single-guide evaluation diagnosis (`gd eval`).
+This skill automates the retrieval and multi-agent comparison of remote nightly evaluation runs from Google Cloud Storage (GCS) to diagnose system-wide guidance health, task drift, and over-prescribed guides (and also covers single-guide evaluation diagnosis via `gd eval`).
 
-Before blaming a guide or editing an eval, check the 8 red lines and authoring rules in `.agents/skills/project-evals/SKILL.md`.
+### Core Objectives
 
-### Core Principles
+1. **Cross-Agent Diagnostics**: Compare results across three distinct, modern agents (Claude Code, Codex CLI, and Jetski CLI) to locate patterns that are agent-agnostic.
+2. **Guide Discovery Audit**: Catch cases where agents skip the expected guide or over-retrieve irrelevant guides.
+3. **Health Thresholding**: Flag tasks that are over-prescriptive or already baseline-known (meaning unguided runs already pass easily), and surface common guided assertion failures as informational diagnostics without setting a guided pass-rate target.
+4. **Structured Reporting**: Produce reliable Markdown and JSON artifacts that downstream automation can easily ingest.
 
-1. **Read-Only Bulk Nightly Mode vs. Targeted Diagnosis**:
-   - When running a **bulk nightly investigation report** across the 3 nightly suites, operate in **strictly read-only mode**: do not edit any files under `guides/`; record all findings and concrete fix proposals exclusively in `out/nightly-investigation/nightly_investigation_report.md` under `Actionable Recommendations`.
-   - When asked to **diagnose and fix a specific guide's eval**, inspect the artifacts below, check the 8 red lines in `project-evals`, and fix the broken eval artifact (`task.md`, `grader.ts`, or `expectations.md`). Never change `guide.md` to fit a grader; if `guide.md` itself has a technical bug or ambiguity, follow `.agents/skills/project-guides/SKILL.md` (or raise it with the guide's owner).
-2. **How to Read Pass Rates**:
-   - **No pass-rate target**: There is no target guided pass rate (do not chase 100% guided pass rates or tune graders and prompts to hit a number).
-   - **Guided < 100%** is an informational signal. First rule out an eval defect (the 8 red lines in `project-evals`: over-strict grader, task/grader mismatch, untaught expectation, or co-retrieved guide conflict). Only after the eval is clean is a remaining failure a signal that `guide.md` may be unclear on that step.
-   - **Unguided >= 80%** across runs is a triage trigger (`HIGH_UNGUIDED_PASS_RATE`): check for a task leak (`task.md` naming the API, CSS property, attribute, fallback, or guide) or a vacuous check in `grader.ts`. If both the task and grader are clean, the high unguided score is a genuine finding that models already know the pattern and the guide adds little lift on that task.
-
----
-
-## Quick Reference: Evaluation Artifacts & Commands
-
-### Running or Pulling Evals
-
-- **Run a single guide locally** (read-only on source files; does not overwrite `grader.ts` or patches):
-  ```bash
-  gd eval guides/<category>/<slug>
-  ```
-- **Re-check grader calibration** after any `grader.ts` or `expectations.md` edit:
-  ```bash
-  gd dev guides/<category>/<slug> --test-grader
-  ```
-- **Pull a specific suite from GCS**:
-  ```bash
-  gcloud storage rsync gs://guidance-evals/<suite_id> results/suites/<suite_id> --recursive --exclude ".*\.zip$|.*\.png$"
-  ```
-
-### Suite Result Files (`results/suites/<suite_id>/`)
-
-- **Suite Summary & Check Diagnostics** (`results/suites/<suite_id>/evals.json`):
-  - Contains per-task guided and unguided pass rates (keyed as `<target> - <guide> - guided|unguided`, where `<target>` is `daily-grind`, `devtools-times`, or `daily-grind-limited` for Gen 2 and `task` for Gen 1), `guidesUsed` (which guides the agent retrieved), and per-check results with inline failure diagnostics (`error`, `errorLocation`, `pageSnapshot`, `browserErrors`).
-- **Agent Trajectory** (`results/suites/<suite_id>/<run_number>/<guide>/<target>/guided/`):
-  - `<target>` is `daily-grind`, `devtools-times`, or `daily-grind-limited` for Gen 2 guides and `task` for Gen 1 guides.
-  - **Normalized trajectory (`trajectory_summary.json`) & server log (`modern-web.log`)**: Inspect `trajectory_summary.json` first for the standardized step-by-step tool calls, reasoning, `retrievedGuides`, and `fileReadGuides`, alongside `modern-web.log` (JSONL entries logged by the guidance tool).
-  - **Raw session logs** (format varies by agent; see `src/harness/lib/trajectory-normalizer.ts`): `{session,subagent}-*.{json,jsonl}` for Claude Code, Codex CLI, and Gemini CLI, `*.db` + `session-*.html` for Jetski/Antigravity CLI, or `trajectory.jsonl`.
-- **Agent Output** (`results/suites/<suite_id>/<run_number>/<guide>/<target>/guided/`):
-  - Contains `agent.patch` (for Gen 2 targets) or modified target files (`index.html`, JS/CSS bundles, or stray subresources created by the agent), plus `<guide>_results.json` from the Playwright grader run.
-
-### Guide Source Files (`guides/<category>/<slug>/`)
-
-- **Gen 2 (multi-target)**: `targets/<app>/task.md`, `targets/<app>/grader.ts`, `targets/<app>/patches/*-solution.patch`, `targets/<app>/patches/zero-passrate.patch`, plus root `guide.md`, `demo.html`, and `expectations.md`.
-- **Gen 1 (legacy single-target)**: `tasks/task.md` and `grader.ts` at the guide root.
+> [!IMPORTANT]
+> **CRITICAL CONSTRAINT - READ-ONLY INVESTIGATION ONLY**
+> In bulk nightly investigation mode, this skill is **strictly for diagnostics, investigation, and suggesting recommendations**. The agent MUST NOT under any circumstances edit, modify, create, delete, or touch any files under the `guides/` directory (including task files, guides, graders, expectations, or demos). All suggestions for fixes must be documented *exclusively* in the generated investigation report markdown file under the "Actionable Recommendations" section. No automated or manual code remediation should be performed during a bulk nightly audit. (When asked to diagnose and fix a specific single guide's eval locally, check the 8 red lines in `.agents/skills/project-evals/SKILL.md` first and never change `guide.md` to fit a grader.)
 
 ---
 
-## Flagging & Health Criteria (Nightly Bulk Audit)
+## Quick Reference: Remote Dashboard Results (GCS) & Local Eval Artifacts
 
-Nightly evaluation suites are uploaded to `gs://guidance-evals/` under `nightly-YYYY-MM-DD_HH-MM-SS-[agent_type]/` across three agent families:
+All nightly evaluation suites are automatically uploaded to Google Cloud Storage:
+- **GCS Bucket**: `gs://guidance-evals/`
+- **Naming Pattern**: `nightly-YYYY-MM-DD_HH-MM-SS-[agent_type]/` (note: legacy folders may contain an optional trailing `-[ldap]` suffix)
+- **Single-guide local eval** (read-only on source files): `gd eval guides/<category>/<slug>` (and `gd dev guides/<category>/<slug> --test-grader` to verify Gen 2 calibration)
+
+### Distinct Agent Categories
+We track three core agent implementations in our periodic evaluations:
 1. **Claude Code** (`claude_code` or `claude`)
 2. **Codex CLI** (`codex_cli` or `codex`)
-3. **Jetski CLI** (`jetski_cli`, `agy`, or `jetski`)
+3. **Jetski CLI** (`jetski_cli` or `agy` or `jetski`)
 
-For every task evaluated across the 3 latest nightly runs, `investigate.ts` flags three health conditions:
+### Suite Result & Trajectory Files (`results/suites/<folder_name>/`)
+- **Suite Summary (`evals.json`)**: Contains per-task guided and unguided pass rates (keyed as `<target> - <guide> - guided|unguided`, where `<target>` is `daily-grind`, `devtools-times`, or `daily-grind-limited` for Gen 2 and `task` for Gen 1), `guidesUsed`, and per-check results (`id`, `passed`, `error`, `errorLocation`, `pageSnapshot`, `browserErrors`).
+- **Trajectory & Agent Output (`<run_number>/<guide>/<target>/guided/`)**:
+  - **Normalized files**: `trajectory_summary.json` (standardized tool calls, reasoning, `retrievedGuides`, `fileReadGuides`) and `modern-web.log` (JSONL entries logged by the guidance tool).
+  - **Raw session logs** (format varies by agent; see `src/harness/lib/trajectory-normalizer.ts`): `{session,subagent}-*.{json,jsonl}` for Claude/Codex/Gemini, `*.db` + `session-*.html` for Jetski/Antigravity, or `trajectory.jsonl`.
+  - **Output**: `agent.patch` (Gen 2) or modified target files (`index.html`, JS/CSS bundles), plus `<guide>_results.json`.
+
+---
+
+## Flagging & Health Criteria
+
+For every task evaluated in the runs, the investigation tracks three specific flags across the 3 runs (there is no target guided pass rate, so low guided pass rates are never flagged automatically; `investigate.ts` still extracts common guided assertion failures across all 3 runs as informational diagnostic context):
 
 ### 1. Missing Expected Guide (`MISSING_EXPECTED_GUIDE`)
-- **Rule**: The expected guide for a task (matching the task's guide slug) is **not** listed in the run's `guidesUsed` array.
-- **Threshold**: Flagged if **2 out of the 3** nightly runs miss the expected guide.
-- **Implication**: Either the agent searched with terms that did not match `guide.md`'s frontmatter `name`/`description`, or the agent felt confident solving the task from pre-training without consulting the skill.
+- **Rule**: The expected guide for a task (which matches the task's guide name) is **not** listed in the run's `guidesUsed` array.
+- **Threshold**: Flagged if **2 out of the 3** nightly runs for that task are missing the expected guide.
+- **Implication**: Either the agent searched with terms that did not match `guide.md`'s frontmatter `name`/`description`, or the agent felt confident solving `targets/<app>/task.md` (or `tasks/task.md`) from pre-training without consulting the skill.
 
 ### 2. Too Many Guides Consumed (`TOO_MANY_GUIDES_CONSUMED`)
 - **Rule**: The agent consumes **3 or more** guides during a single guided run of the task.
-- **Threshold**: Flagged if **2 out of the 3** nightly runs consume 3 or more guides.
-- **Implication**: Search query sprawl, overlapping guide descriptions, or co-retrieved guides whose instructions interact on the same task.
+- **Threshold**: Flagged if **2 out of the 3** nightly runs for that task are consuming 3 or more guides.
+- **Implication**: The agent is either experiencing search query sprawl, guide definitions overlap too heavily, or co-retrieved guides have conflicting instructions on the task.
 
 ### 3. High Unguided Pass Rate (`HIGH_UNGUIDED_PASS_RATE`)
 - **Rule**: The unguided pass rate for a task is **80% or higher**.
-- **Threshold**: Flagged if **all three** nightly runs have unguided pass rates of 80% or higher.
-- **Implication**: Either `task.md` leaks the solution mechanism, `grader.ts` has loose/vacuous assertions, or models already know the pattern without guidance.
-
-*(Note: Low guided pass rates are never flagged automatically as a health failure. `investigate.ts` still extracts common assertion failures across all 3 guided runs as informational diagnostic context when present.)*
+- **Threshold**: Flagged if **all three** nightly runs for that task have unguided pass rates of 80% or higher.
+- **Implication**: The task prompt is overly prescriptive (giving away the solution), the grader has loose/vacuous assertions, or models already know the pattern without guidance.
 
 ---
 
-## Nightly Bulk Workflow Instructions
+## Workflow Instructions
 
-### Step 1: Query, Pull, and Flag with `investigate.ts`
-Run the automated TypeScript analysis script (which queries `gs://guidance-evals/`, syncs the latest `claude_code`, `codex_cli`, and `jetski_cli` nightly suites excluding `.zip`/`.png` binaries, and generates the report skeleton):
+To perform a nightly evaluation investigation, follow these steps:
+
+### Step 1: Query and Select the Runs
+1. List all suites in GCS:
+   ```bash
+   gcloud storage ls gs://guidance-evals/
+   ```
+2. Parse the output to filter directories starting with `nightly-`.
+3. Group runs by the three distinct agent types (handling both newer clean names and legacy runs containing a user LDAP suffix):
+   - **Claude Code**: matches `claude_code` or `claude`
+   - **Codex CLI**: matches `codex_cli` or `codex`
+   - **Jetski CLI**: matches `jetski_cli`, `agy`, or `jetski`
+4. For each group, select the single folder with the **latest** timestamp.
+
+### Step 2: Pull down Results
+1. For each of the selected 3 folders, create the directory locally:
+   `results/suites/<folder_name>`
+2. Sync the suite folder recursively while excluding heavy binaries (Playwright `trace.zip` and screenshots) to save bandwidth and disk space:
+   ```bash
+   gcloud storage rsync gs://guidance-evals/<folder_name> results/suites/<folder_name> --recursive --exclude ".*\.zip$|.*\.png$"
+   ```
+   *(Note: This is done automatically by the investigate script in Step 3, but can be run manually if needed.)*
+
+### Step 3: Run the Flagging Script
+Run the automated TypeScript analysis script:
 ```bash
 node .agents/skills/nightly-eval-investigation/scripts/investigate.ts
 ```
 
-Outputs:
-- Markdown report: `out/nightly-investigation/nightly_investigation_report.md`
-- JSON context helper: `out/nightly-investigation/flagged_tasks_context.json` (extracted prompts, guide descriptions, and test headers for all flagged tasks)
+This script will automatically cross-examine the results, flag unhealthy tasks, and output the report and context helper artifacts to the output directory:
+- Markdown: `out/nightly-investigation/nightly_investigation_report.md`
+- JSON Context: `out/nightly-investigation/flagged_tasks_context.json` (contains extracted prompts, guide descriptions, and test headers for all flagged tasks to assist in diagnostics)
 
-### Step 2: Perform Qualitative Deep-Dives (Investigation Playbook)
+### Step 4: Perform Qualitative Deep-Dives (Investigation Playbook)
 
-For each task in the Flagged Tasks Table of `nightly_investigation_report.md`, investigate the root cause and write concrete recommendations.
+For each task listed in the Flagged Tasks Table of `nightly_investigation_report.md`, you must perform a qualitative deep-dive to locate the root cause and recommend actionable fixes.
 
 > [!IMPORTANT]
-> **BULK REPORT COMPLIANCE RULES:**
-> 1. **Do Not Modify Source Files**: In bulk nightly investigation mode, do NOT edit any files under `guides/`. Write all diagnostic findings and recommendations *only* inside `out/nightly-investigation/nightly_investigation_report.md`.
-> 2. **Complete All Flagged Tasks**: Populate the diagnostic summary for every flagged task without leaving `TODO` placeholders.
-> 3. **Strict Heading Omission**: Under `Diagnostic Details`, include bullets only for the specific flags triggered on that task (plus `*Failed Assertions*` if extracted by the script). Under `Actionable Recommendations`, include lines only for components (`Prompt`, `Guide`, `Grader`) that actually need changes; omit unchanged components completely rather than writing "N/A" or "No changes".
+> **CRITICAL COMPLIANCE RULES:**
+> 1. **Do Not Modify Source Files**: This is a passive/diagnostic investigation. Do NOT touch, edit, or modify any files under `guides/` (such as task prompts, guide markdown files, or grader TypeScript files). All diagnostic findings and recommendations must be written *only* inside the markdown report.
+> 2. **Complete All Flagged Tasks**: You MUST qualitatively investigate and fully populate the summary for **every single flagged task**. Leaving placeholder text or skipping any flagged task is unacceptable.
+> 3. **Strict Heading Omission**: Under `Diagnostic Details`, only include headings/bullet points for the specific flags that were triggered for the task (plus `*Failed Assertions*` if extracted by the script). Omit any non-triggered flags completely from the markdown file. Do not write "N/A" or "No issues".
+> 4. **Long-Running, Thorough Investigation**: The qualitative investigation phase is a long-running, intensive task. You MUST thoroughly examine each flagged guide/test one by one, inspecting the target prompt (`task.md`), reference guide (`guide.md`), and grading code (`grader.ts`) against the 8 red lines in `.agents/skills/project-evals/SKILL.md` to build a high-quality, task-specific diagnostic summary and actionable recommendation. Do not rush, skip steps, or bundle tasks.
 
-For each flagged task, inspect `targets/<app>/task.md` (or `tasks/task.md`), `guide.md`, `expectations.md`, `targets/<app>/grader.ts`, `trajectory_summary.json`, and `modern-web.log`:
+Follow this linear playbook for each flagged task:
 
-- **`HIGH_UNGUIDED_PASS_RATE`**:
-  1. Check `task.md` against Red Line 2 in `project-evals`: does it name the API, CSS property, HTML attribute, fallback mechanism, or guide slug, or copy the guide's `description`?
-  2. Check `grader.ts` against Red Line 1 and Red Line 8: are assertions tautological, vacuous, or already satisfied by the starting app?
-  3. If both `task.md` and `grader.ts` are clean, report that the task is genuinely baseline-known by current models and no eval change is needed.
-- **`MISSING_EXPECTED_GUIDE`**:
-  1. Inspect `trajectory_summary.json` and `modern-web.log` to see whether the agent called the guidance search tool.
-  2. **Search Mismatch** (agent searched, but got the wrong guide or weak rankings): propose updates to `guide.md`'s frontmatter `description` so it matches the problem terms agents naturally search for (without stuffing feature/API names into `task.md`). Note that `skills-src/modern-web-guidance/SKILL.md` is global and off-limits for per-guide tuning.
-  3. **Tool Skip** (agent did not search): check that `task.md` clearly states the user-facing problem and concrete behavioral outcome in the target app. Do **not** add artificial layout/performance/synchronization constraints that the guide doesn't teach ("constraint forcing" is retired because it causes task/grader drift).
-- **`TOO_MANY_GUIDES_CONSUMED`**:
-  1. Inspect `guidesUsed` in `evals.json` and the trajectory in `trajectory_summary.json`.
-  2. Check whether two guides had overlapping descriptions (disambiguate their frontmatter `description` fields) or whether co-retrieved guides gave contradictory rules on the same task (Red Line 7 in `project-evals`, e.g., one guide banning an element or pattern the other teaches).
-- **Common Guided Assertion Failures & Environment Checks**:
-  1. **Eval vs. Guide Triage**: Check the agent's modified app (`agent.patch` / `index.html`) against `guide.md`. If the agent followed a pattern the guide allows and the test failed, recommend fixing `grader.ts` (never loosen a check speculatively unless the rejected pattern is allowed by the guide or reproduced). If `grader.ts` checks an expectation the guide does not teach, recommend removing or aligning the expectation and check.
-  2. **Transient API / Rate-Limit Failures**: Check `trajectory_summary.json` or raw logs for `429 Rate Limit Exceeded`, quota exhaustion, or untrusted-folder tool skips (`folderTrust` in Gemini CLI settings) before attributing a 0% run to the guide or grader. When running local `gd eval` batches under quota pressure, batch fewer tasks at a time or switch the active harness agent.
+1. **Locate Source Files**
+   Find the task's directory under the local workspace: `guides/[category]/[use-case]/`
+   - Prompt: `targets/<app>/task.md` (or Gen 1 `tasks/task.md`)
+   - Guide: `guide.md`
+   - Grader: `targets/<app>/grader.ts` (or Gen 1 `grader.ts`) and `expectations.md`
 
-### Step 3: Present Report & Publisher Command
+2. **Review Extracted Failed Assertions**
+   The script `investigate.ts` automatically extracts and intersects the failed assertions across all three agents when present, writing them directly into the report.
+   - Only assertions that failed across all three agents are included.
+   - Review these common failures to analyze their root causes. Each failed check in `evals.json` includes inline diagnostics (`error`, `errorLocation`, `pageSnapshot`, and `browserErrors`). First rule out an eval defect (the 8 red lines in `project-evals`: over-strict grader rejecting a pattern the guide allows, task/grader mismatch, untaught expectation, or co-retrieved guide conflict; never loosen a check speculatively unless the rejected pattern is allowed by the guide or reproduced) or a transient environment error (`429 Rate Limit Exceeded`, quota exhaustion, or untrusted-folder tool skips in `trajectory_summary.json`) before concluding `guide.md` is unclear.
 
-Once `out/nightly-investigation/nightly_investigation_report.md` is complete, link [nightly_investigation_report.md](file:///out/nightly-investigation/nightly_investigation_report.md) to the user and share the publisher command so they can review and run it manually:
+3. **Map Flags to Diagnostic Explanations**
+   Analyze the source files based on the specific flags that were triggered, and write a diagnostic summary explaining why the task was flagged under each active flag.
+
+   > [!IMPORTANT]
+   > **OMISSION RULE:** Only include bullets for the specific flags that were triggered for the task. Omit any flags that were not triggered (do not write "N/A" or "No issues").
+
+   - **`HIGH_UNGUIDED_PASS_RATE`**: Explain why unguided runs passed. Inspect `targets/<app>/task.md` (or `tasks/task.md`) to see if the prompt is overly prescriptive (explicitly mentioning CSS attributes, API details, fallback mechanisms, or guide names that act as giveaways). Inspect `targets/<app>/grader.ts` (or `grader.ts`) to check for loose/vacuous assertions. If both the task and grader are clean, report that models already know the pattern without guidance and no eval change is needed.
+   - **`MISSING_EXPECTED_GUIDE`**: Explain why the expected guide was missed by inspecting `trajectory_summary.json` and `modern-web.log`. If the agent searched and missed (**Search Mismatch**), check `guide.md`'s frontmatter `description` for missing problem-domain terms (`skills-src/modern-web-guidance/SKILL.md` is global and off-limits for per-guide tuning). If the agent skipped searching (**Tool Skip**), check whether `task.md` clearly states the user-facing problem in the target app (never add artificial "constraint forcing" rules that the guide doesn't teach).
+   - **`TOO_MANY_GUIDES_CONSUMED`**: Explain why multiple guides (3 or more) were consumed. Check for overly broad prompts that cause query sprawl, overlapping guide descriptions, or co-retrieved guides with contradictory rules on the task (Red Line 7 in `project-evals`).
+
+4. **Draft Specific, Actionable Recommendations**
+   Determine which recommendations to include based on the diagnostics mapped in previous steps. All recommendations must be directly justified by the findings from your investigation of the prompts, guides, and graders. Vague recommendations like "Fix prompt" or "Fix guide" are not acceptable; you must propose exact, concrete changes.
+
+   > [!IMPORTANT]
+   > **OMISSION RULE:** Only include recommendation lines for components that actually require changes. If a component does not require updates (e.g., the grader is correct as-is), you MUST OMIT the corresponding recommendation line completely from the markdown file (do not write "Keep as is" or "No changes").
+
+   - **Prompt**: Propose the specific new phrasing or keywords to add/remove.
+   - **Guide**: Specify the description, metadata, or content updates needed.
+   - **Grader**: Detail the exact logic changes or assertions to modify/loosen.
+
+5. **Synthesize the Markdown Report**
+   Write the summary under the task's section in `out/nightly-investigation/nightly_investigation_report.md` following the template below.
+
+### Step 5: Inform the User of the Publishing Script
+Once the qualitative diagnostics and recommendations have been fully written and saved to the markdown report, present the final report to the user and inform them that they can run the automated publisher script to create the GitHub parent issue and the task-level engineering/devrel subissues.
 
 > [!WARNING]
-> **DO NOT EXECUTE THE PUBLISHER SCRIPT YOURSELF:** Never run `publish_report.ts` or create GitHub issues automatically; let the user verify the report first.
+> **DO NOT EXECUTE THE PUBLISHER SCRIPT YOURSELF:** The agent must never run the publisher script (`publish_report.ts`) or create/publish any GitHub issues itself. It must only inform the user of the command so they can verify the report first and execute it manually.
 
 ```bash
 node .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
 ```
 
+### Step 6: Present and Link
+Present the final report to the user, providing a clickable link, and remind them of the publishing command:
+- Markdown Report: [nightly_investigation_report.md](file:///out/nightly-investigation/nightly_investigation_report.md)
+
 ---
 
-## Report Format Standard (`out/nightly-investigation/nightly_investigation_report.md`)
+## Report Format Standards
 
-`scripts/publish_report.ts` parses the exact structure below (anchor tags, `### \`[task_name]\``, `#### Flags:`, agent table rows, and `- [ ] **Prompt** (\`path\`): ...` recommendation lines):
+All investigation reports MUST strictly follow these templates to ensure downstream compatibility (`publish_report.ts` parses the anchor tags, `### \`[task_name]\``, `#### Flags:`, agent table rows, and `- [ ] **Prompt** (\`path\`): ...` recommendation lines):
 
+### Markdown Standard (`out/nightly-investigation/nightly_investigation_report.md`)
 ```markdown
 # Nightly Evaluation Investigation Report
 
@@ -162,13 +190,13 @@ node .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
 
 | Task / Guide | Flags | Details |
 | :--- | :--- | :--- |
-| `[target_name - guide_name]` | `[FLAG_1]`, `[FLAG_2]` | [Detail explanation of flags] |
+| `[task_name]` | `[FLAG_1]`, `[FLAG_2]` | [Detail explanation of flags] |
 
 
 ## Flagged Tasks Details
 
-<a name="[slugified-task-key]"></a>
-### `[target_name - guide_name]`
+<a name="[slugified-task-name]"></a>
+### `[task_name]`
 
 #### Flags:
 - **`[FLAG_1]`**: [Detail explanation]
@@ -186,11 +214,12 @@ node .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
 - **Diagnostic Details**:
   - *Failed Assertions*:
     - "[Exact assertion error message string]" (Test ID: `[test_id]`)
-  - **[FLAG_1]**: [Concrete root-cause explanation]
+  - **[FLAG_1]**: TODO
+  - **[FLAG_2]**: TODO
 - **Actionable Recommendations**:
-  - [ ] **Prompt** (`guides/<category>/<slug>/targets/<app>/task.md`): [Exact prompt change]
-  - [ ] **Guide** (`guides/<category>/<slug>/guide.md`): [Exact guide metadata or content change]
-  - [ ] **Grader** (`guides/<category>/<slug>/targets/<app>/grader.ts`): [Exact grader logic change]
+  - [ ] **Prompt** (`guides/<category>/<slug>/targets/<app>/task.md`): TODO
+  - [ ] **Guide** (`guides/<category>/<slug>/guide.md`): TODO
+  - [ ] **Grader** (`guides/<category>/<slug>/targets/<app>/grader.ts`): TODO
 
 ---
 ```

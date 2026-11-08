@@ -13,7 +13,7 @@ description: >-
 
 Golden calibration (`gd dev <guide> --test-grader`) only tests three locked solution patches and `zero-passrate.patch` (which is empty on almost every guide, i.e., the untouched starting app). Historical eval runs contain diverse, imperfect agent implementations that expose broken assumptions, parser edge cases, and false positives.
 
-Because replay applies today's graders against yesterday's saved outputs, before/after mismatches are expected; treat them as signals to triage, not an automatic pass/fail gate.
+Because replay applies today's graders against yesterday's saved outputs, before/after mismatches are expected — treat them as signals to triage, not an automatic pass/fail gate.
 
 ## 1. Run Calibration First
 
@@ -66,16 +66,16 @@ Inspect the saved `agent.patch` (or `index.html` for Gen 1 tasks), the modified 
 
 - **Real regression (fix required):** Saved `pass -> fail` where the saved output legitimately satisfies `guide.md` and `expectations.md`, or an assertion stopped matching valid syntax after a refactor.
 - **Intentional grader fix (expected diff):**
-  - `pass -> fail` when tightening a vacuous check that previously false-passed on unrelated CSS/markup. Confirm in `agent.patch` that the saved solution missed the requirement.
+  - `pass -> fail` when tightening a check that previously false-passed on unrelated CSS/markup. Confirm in `agent.patch` that the saved solution missed the requirement.
   - `fail -> pass` when fixing an overly strict check that rejected a pattern `guide.md` allows. Confirm in `agent.patch` that the saved solution complies with `guide.md` and `expectations.md`; never loosen a check speculatively when the rejected pattern is not allowed by the guide (or when no valid solution failed it).
-- **Timeout flakiness:** Specs involving `timedOut` (`pass -> timedOut` or `timedOut -> pass`) point to worker contention rather than grader changes; re-run at lower `--concurrency`.
+- **Timeout flakiness:** Specs involving `timedOut` (`pass -> timedOut` or `timedOut -> pass`) point to worker contention rather than grader changes — re-run at lower `--concurrency`.
 - **Title or structure drift (expected diff):** Spec titles appear as `saved -> <missing>` and `<missing> -> now` because tests were renamed or consolidated on `main`. Check `git log -p -n 3 -- <grader>` and compare pass/fail totals.
-- **Base-app drift (`PATCH_CONFLICT`):** An older `agent.patch` fails to apply against current `src/harness/base-apps/` or `zero-passrate.patch`. Not a grader bug; re-run against a newer nightly suite from GCS.
+- **Base-app drift (`PATCH_CONFLICT`):** An older `agent.patch` fails to apply against current `src/harness/base-apps/` or `zero-passrate.patch`. Not a grader bug — re-run against a newer nightly suite from GCS.
 
 If you edit a `grader.ts` after triaging, re-run `gd dev <guide> --test-grader` and `scripts/replay.ts`, then finish with `pnpm run preflight`.
 
 ## Related Skills
 
-- [`project-evals`](../project-evals/SKILL.md): rules for writing and reviewing `expectations.md`, `task.md`, and `grader.ts`.
-- [`dev-prompt-canary`](../dev-prompt-canary/SKILL.md): empirical validation for edits to `gd dev` prompts and grader generation templates.
-- [`nightly-eval-investigation`](../nightly-eval-investigation/SKILL.md): triaging eval runs and nightly suites in GCS.
+- [`project-evals`](../project-evals/SKILL.md) — rules for writing and reviewing `expectations.md`, `task.md`, and `grader.ts`.
+- [`dev-prompt-canary`](../dev-prompt-canary/SKILL.md) — empirical validation for edits to `gd dev` prompts and grader generation templates.
+- [`nightly-eval-investigation`](../nightly-eval-investigation/SKILL.md) — triaging low-performing tasks across nightly suites in GCS.

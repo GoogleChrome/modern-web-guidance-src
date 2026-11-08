@@ -283,7 +283,7 @@ To prevent SMEs from investing time writing full guides for use cases that might
 
 Guides are read by AI coding agents, not humans directly. Key requirements:
 - YAML frontmatter with `name`, `description`, and `web-feature-ids`
-- Imperative directives: use `DO` and `DO NOT`, with `MANDATORY:` reserved for selective emphasis on critical constraints (not as a required tag on every graded instruction)
+- Imperative directives: use `DO` and `DO NOT`, with `MANDATORY:` reserved for selective emphasis on critical constraints — agents respond to rigid constraints when selectively applied
 - Self-contained: all necessary information must be in the document, no reliance on external links
 - Short, commented, copy-paste valid code snippets (including fallback code) with directives in code comments
 - Fallback strategies section if the feature is not Baseline Widely Available
@@ -297,8 +297,9 @@ Guides are read by AI coding agents, not humans directly. Key requirements:
 
 Natural-language bulleted list of assertions in plain declarative phrasing (see `.agents/skills/project-guides/SKILL.md`). These are the input for automated grader generation. Requirements:
 - Cover every observable outcome `guide.md` requires (including required fallbacks when the feature is not Widely Available), with no arbitrary cap on bullet count; omit optional or "prefer" advice since it is never graded
-- Each assertion maps to one `test()` in new graders and must be specific enough for a Playwright test or structured AST/DOM/CSSOM check to verify
-- Cover both positive outcomes (what a correct implementation does) and negative constraints (what a correct implementation avoids, paired with a positive presence check in the grader)
+- Each assertion should be independently testable (1:1 with `test()` in new graders)
+- Be specific enough that a Playwright test or structured AST/DOM/CSSOM check can verify it (e.g., "The input has a red border after blur" rather than "The form looks good")
+- Cover both positive requirements (what should be present) and negative requirements (what should not be present, paired with a positive presence check in the grader)
 
 ---
 
@@ -312,7 +313,7 @@ The architecture is designed so that each group can work independently without n
 
 **Infrastructure Engineers** focus on the reliability of the `gd` CLI, the evaluation harness, LLM invocation stability, skills serving pipeline correctness, and diagnosing systemic issues (e.g., why guided vs. unguided pass rates show no delta for a particular category of guide).
 
-**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It generates multi-agent golden solution patches and translates natural-language expectations into calibrated Playwright test assertions, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically, so the SME/ATL does not need to understand why a Playwright selector was flaky.
+**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It translates natural-language expectations into executable Playwright test assertions and calibrates them against multi-agent golden solution patches, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically — the SME/ATL should not need to understand why a Playwright selector was flaky.
 
 The boundary is intentionally drawn so that SMEs/ATLs never need to write or debug Playwright code, and infra engineers rarely need to understand the specifics of a web feature. The `gd dev` pipeline is the interface between these two worlds.
 
@@ -321,10 +322,10 @@ The boundary is intentionally drawn so that SMEs/ATLs never need to write or deb
 ## 10. Key Architectural Decisions
 
 ### Why CLI agents for generation?
-Grader, solution, and evaluation artifact generation use CLI coding agents rather than direct API calls because the generation pipeline needs to inspect multiple source files in context and produce file modifications. During `gd dev`, solutions are generated across three distinct agents (the primary solution agent, Antigravity CLI or Jetski CLI, plus Claude Code and Codex CLI) to calibrate graders against diverse, model-realistic implementations. Isolated sandboxes prevent accidental modifications to the user environment.
+Grader, solution, and evaluation artifact generation use CLI coding agents rather than direct API calls because the generation pipeline needs to inspect multiple source files in context and produce file modifications. During `gd dev`, solutions are generated across three distinct agents (the primary solution agent—Antigravity CLI or Jetski CLI—plus Claude Code and Codex CLI) to calibrate graders against diverse, model-realistic implementations. Isolated sandboxes prevent accidental modifications to the user environment.
 
 ### Why Playwright for grading?
-Graders are Playwright test files because runtime behavior (computed styles, layout, visibility, focus, and interaction) must be verified in a real browser. For source-level claims (such as `@supports` blocks, keyframes, or specific AST constructs), graders use structured parsers (`Linkedom`, `CSSOMNom`, `ts-morph`) across all relevant app files rather than raw string or regex matching.
+Graders are Playwright test files because many expectations require browser rendering to verify (CSS properties, layout, visibility, animation behavior). For source-level claims (such as `@supports` blocks, keyframes, or specific AST constructs), graders use structured parsers (`Linkedom`, `CSSOMNom`, `ts-morph`) across all relevant app files rather than raw string or regex matching.
 
 ### Why Skills CLI serving?
 Serving guidance via Agent Skills and the standalone Skills CLI (`dist/skills-cli`) provides deterministic, portable, file-based tool and context access across all supported coding agents without reliance on external server protocols.

@@ -10,8 +10,8 @@ const BUCKET_NAME = 'guidance-evals';
 const repoRoot = rootDir;
 const resultsDir = suitesDir;
 
-function getSlug(taskKey: string): string {
-  return taskKey.toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/\s+/g, '-');
+function getSlug(taskName: string): string {
+  return taskName.toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/\s+/g, '-');
 }
 
 function findGuideDirs(dir: string, result: Record<string, string> = {}): Record<string, string> {

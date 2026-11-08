@@ -37,25 +37,29 @@ Critically evaluate the guide's content against the authoring standards in [proj
     *   **`expectations.md` under review**: SHOULD encode the a11y patterns that the guide prescribes as testable expectations, but MUST NOT include prose-only or manual-verification-only requirements that the grader cannot assert.
 *   **Avoid Gating Critical Content**: Verify that the guide does not recommend interactive reveal patterns (e.g., following the cursor) that are inaccessible to non-pointer users. Ensure accessible alternatives are provided if such patterns are discussed.
 *   **Internal Consistency & Spec Rigor**: Verify API/CSS claims against primary specs and [project-guides](../project-guides/SKILL.md) (token economy, `{# ... #}` maintainer comments vs. inline rationale, `BASELINE_STATUS` vs. `FEATURE_FALLBACKS`, upfront `GUIDE_REF` disambiguation, and no hard-coded browser support claims).
-*   **Copy-Paste Safety**: Ensure that code examples agree with the prose, run without throwing in a real browser, and are safe to copy. If the text requires a constraint (such as `prefers-reduced-motion`), the code example **MUST** implement it. For features that are not Baseline Widely Available, copy-paste safety covers the fallback section's code too (never force main implementation snippets to inline the fallback).
+*   **Copy-Paste Safety**: Ensure that code examples are complete, run without throwing in a real browser, and are safe to copy (including code in the fallback section). If the text recommends a fallback or a constraint (like reduced motion), the code example **MUST** implement it.
 
 ## 3. Expectation Alignment
 
-Review `expectations.md` against `guide.md`, `demo.html`, and primary specs/MDN/BCD using the authoring rules in [project-guides](../project-guides/SKILL.md#writing-expectationsmd) and the 8 red lines in [project-evals](../project-evals/SKILL.md#eval-review-bar-the-8-red-lines). Preserve SME wording in `expectations.md` (edit an existing bullet only when its meaning must change, and state why).
-
-*   **Traceability & Spec Accuracy**: Map each bullet to the `guide.md` section it comes from and verify technical claims against W3C/WHATWG/CSSWG specs, MDN, and BCD. Flag broken code snippets, deprecated syntax (`masonry` vs. `grid-lanes`, `interesttarget` vs. `interestfor`), flawed feature-detection strings, and valid alternatives the expectation would reject. Report `guide.md` errors separately from expectation issues; never change `guide.md` just to fit a grader.
-*   **Internal & Cross-Guide Consistency**: Flag contradictions or redundant overlaps between bullets in `expectations.md`, as well as rules that conflict with companion guides an agent retrieves alongside this one on the same task.
-*   **Missing vs. Unnecessary Bullets**: Flag required guide outcomes or `demo.html` behaviors missing from `expectations.md` (no bullet cap; unprompted guide requirements are fair to grade; never drop hard-to-test requirements), and cut bullets that are untaught, optional/"prefer", fallbacks for Baseline Widely Available features, subjective/meta, or inapplicable to the target app.
-*   **Per-Expectation Grader Read**: Evaluate each bullet as `grader.ts` will test it against the 3 golden solution patches (`100%`) and the untouched starting app (`0%` via `zero-passrate.patch`, except paired `MUST NOT` checks):
+Review `expectations.md` against `guide.md`, `demo.html`, and primary specs/MDN/BCD to prevent both **false failures** (rejecting valid code) and **false passes** (passing broken code). Follow the authoring rules in [project-guides](../project-guides/SKILL.md#writing-expectationsmd) and the 8 red lines in [project-evals](../project-evals/SKILL.md#eval-review-bar-the-8-red-lines) (preserve SME wording in `expectations.md`: edit an existing bullet only when its meaning must change, and state why); sibling `expectations.md` files are useful for calibrating scope and length.
+*   **Accuracy & Contradictions**:
+    *   **Traceability & Strength**: Map each expectation to the `guide.md` section it comes from. Flag expectations absent from the guide, expectations that strengthen or narrow guide wording (e.g., turning a *"Prefer"* or snippet detail into a required rule, or *"preceding"* into *"immediately before"*), and rules that the guide's own code examples, decision trees, or `demo.html` would fail.
+    *   **Actionability**: The guide must provide clear instructions on *how* to meet each expectation. An agent should not have to guess the implementation to satisfy an expectation.
+    *   **Spec & BCD Verification (`guide.md` is not infallible)**: Verify technical claims against specs (W3C, WHATWG, CSSWG), MDN, and BCD. Flag valid alternatives the expectation would reject, deprecated or renamed syntax (`masonry` vs. `grid-lanes`, `interesttarget` vs. `interestfor`), unit and property edge cases, and flawed feature-detection strings. Report `guide.md` errors separately from expectation issues (never change `guide.md` just to fit a grader).
+    *   **Internal & Cross-Guide Consistency**: Flag direct contradictions or redundant overlaps between bullets in `expectations.md`, as well as rules that conflict with companion guides an agent retrieves alongside this one on the same task.
+*   **Coverage (Missing & Unnecessary)**:
+    *   **Missing**: Identify core guide rules (`DO` / `DO NOT` / decision-tree branches, accessibility, overflow, focus order, fallbacks) and `demo.html` behaviors with no corresponding expectation (there is no bullet cap, unprompted guide requirements are fair to grade, and never drop a requirement just because it is hard to test).
+    *   **Unnecessary**: Cut items that are absent from `guide.md`, optional/*"Prefer"*, fallbacks for Baseline Widely Available features, redundant, subjective or untestable (*"where content should determine the size"*), off-scenario or inapplicable to the target app, or so strict that they reject idiomatic correct code.
+*   **Per-Expectation Grader Read**: Evaluate each bullet as the grader generator (`gd dev`) will interpret it when writing a test that must pass every golden solution patch and fail the zero-passrate patch:
 
 | Check | Question |
 |---|---|
-| **Clear** | Is there one unambiguous reading in plain declarative phrasing? |
+| **Clear** | Is there one unambiguous reading with self-evident terms in plain declarative phrasing (no `MUST` / `SHOULD` boilerplate)? |
 | **Succinct** | Is it a single requirement per bullet (no compound assertions)? |
-| **Scoped** | Is it required by `guide.md` (never optional/"prefer"), and for a discipline guide does it name the element/feature it governs? |
+| **Scoped** | Does every correct implementation of this use case satisfy it? If it is a discipline-guide bullet, does it name the element or feature it governs so the grader generator can judge relevance per base app? |
 | **Correct** | Does it match both `guide.md` and the underlying spec/MDN/BCD without rejecting valid alternatives? |
-| **Achievable** | Would all golden solutions satisfy it without overfitting to snippet identifiers or magic numbers? |
-| **Gradable** | Can it be verified deterministically on the target app (browser checks for behavior, static AST/DOM/CSSOM parsers for source claims) without human judgment or unprompted locators? |
+| **Achievable** | Would all golden solutions (written by different agents) satisfy it, or would the generated test overfit to an example value or *"such as"* clause? |
+| **Gradable** | Can it be verified deterministically—statically (DOM, CSSOM, or JS AST) or in-browser (computed style, accessibility tree, runtime behavior)—without human judgment or site-specific locators? |
 
 ## 4. Testing and Verification with DevTools MCP
 
