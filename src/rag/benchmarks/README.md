@@ -2,7 +2,7 @@
 
 This directory contains the evaluation framework used to benchmark retrieval quality, context token cost, out-of-scope rejection, and embedder latency for the `modern-web-guidance` search pipeline (`src/rag/search.ts`).
 
-> **Read the published engineering reports on the embedding pipeline, `wild-v2` corpus construction, and telemetry runbook here:** [go/rxolz](http://go/rxolz) · [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking) · [Search Quality Dashboard (`/search/`)](../../dashboard/search/index.html)
+> **Read the published engineering reports on the embedding pipeline, `wild-v2` corpus construction, and telemetry runbook here:** [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking) · [Search Quality Dashboard (`/search/`)](../../dashboard/search/index.html)
 
 ## Datasets & Relevance Judgments (Qrels)
 
@@ -10,7 +10,7 @@ Retrieval is evaluated against three complementary query sets paired with pooled
 
 | Dataset | Location | Size | Description |
 | :--- | :--- | :---: | :--- |
-| **`wild`** | GCS (`gs://guidance-rag-evals/v2/`, cached at `out/benchmarks/wild/v2/`, gitignored) | 4,000 | Anonymized real-world search queries sampled from post-#1850 CLI telemetry with a fixed 50/50 dev/test split (2,000 dev / 2,000 test, stratified by query word count; see [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking) for extraction & PII screening details). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. Historical `v1` (1,000 pre-#1850 queries) remains archived in GCS (`gs://guidance-rag-evals/v1/`) and accessible via `--wild-version v1`. |
+| **`wild`** | Internal corpus (see [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking)) | 4,000 | Anonymized real-world search queries sampled from post-#1850 CLI telemetry with a fixed 50/50 dev/test split (2,000 dev / 2,000 test, stratified by query word count; see [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking) for extraction & PII screening details). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. Historical `v1` (1,000 pre-#1850 queries) remains accessible via `--wild-version v1`. |
 | **`agent`** | `data/agent-{queries,qrels}.jsonl` | 1,029 | Real `skill_search` queries mined from nightly evaluation trajectories across Antigravity CLI, Claude Code, Codex CLI, and Jetski CLI, deduplicated by normalized query text, filtered for prompt and trajectory answer leakage, and partitioned by connected components of expected guides into a dev/test split (515 dev / 514 test, no shared guides) evaluated with guide-cluster bootstrap CIs. |
 | **`harness`** | `data/harness-{queries,qrels}.jsonl` | 160 | Earlier frozen 160-query agent benchmark (July–Oct 2026) retained for reproducing historical evaluation numbers; superseded by `agent`. |
 | **`oos`** | `data/oos-{queries,qrels}.jsonl` | 90 | Curated out-of-scope queries (`50` far out-of-domain like Python/Kubernetes/SQL, `40` near-miss web topics outside our corpus like React hooks, Next.js App Router, Tailwind, WebGL) to measure false-positive admission and wasted context tokens. |
