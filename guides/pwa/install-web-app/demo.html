@@ -46,7 +46,7 @@
         font-weight: 600;
       }
 
-      button:disabled {
+      button[aria-disabled="true"] {
         cursor: wait;
         opacity: 0.65;
       }
@@ -94,7 +94,7 @@
       installButton.addEventListener("installresult", (event) => {
         switch (event.result) {
           case "success":
-            installStatus.textContent = "The app was installed.";
+            installStatus.textContent = "The app was installed or opened.";
             break;
           case "aborted":
             installStatus.textContent =
@@ -121,13 +121,16 @@
       });
 
       customInstallButton.addEventListener("click", async () => {
-        customInstallButton.disabled = true;
+        if (customInstallButton.getAttribute("aria-disabled") === "true") {
+          return;
+        }
+        customInstallButton.setAttribute("aria-disabled", "true");
 
         try {
           if (supportsWebInstall) {
             // Calling directly from this handler preserves transient user activation.
             await navigator.install();
-            customInstallStatus.textContent = "The app was installed.";
+            customInstallStatus.textContent = "The app was installed or opened.";
             customInstallButton.hidden = true;
           } else if (deferredInstallPrompt) {
             // Clear the single-use event before awaiting the user's choice.
@@ -147,13 +150,12 @@
         } catch (error) {
           if (error.name === "AbortError") {
             customInstallStatus.textContent = "Installation was canceled or could not complete.";
-            customInstallButton.hidden = true;
           } else {
             customInstallStatus.textContent = "Installation could not start.";
             console.error(error);
           }
         } finally {
-          customInstallButton.disabled = false;
+          customInstallButton.removeAttribute("aria-disabled");
         }
       });
 

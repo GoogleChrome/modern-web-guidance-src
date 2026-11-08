@@ -140,7 +140,9 @@ installation prompts.
 Listen for the `installresult` event to handle installation success and errors
 and use the `event.result` property to determine the outcome:
 
-* `"success"`: the app was installed successfully.
+* `"success"`: the app was installed, or the user approved an action (such as
+  opening) for an already-installed app. Pages cannot distinguish between these
+  two cases.
 * `"aborted"`: the user canceled the installation or a browser condition
   prevented the installation from completing.
 * `"invalid-data"`: the `manifest` or `manifestid` attribute values, manifest
@@ -157,7 +159,7 @@ and use the `event.result` property to determine the outcome:
   installButton.addEventListener("installresult", (event) => {
     switch (event.result) {
       case "success":
-        installStatus.textContent = "The app was installed.";
+        installStatus.textContent = "The app was installed or opened.";
         break;
       case "aborted":
         installStatus.textContent =
@@ -194,25 +196,28 @@ call retains the required transient user activation.
   }
 
   installButton.addEventListener("click", async () => {
+    if (installButton.getAttribute("aria-disabled") === "true") {
+      return;
+    }
+    // Use aria-disabled instead of disabled so activating the button does not drop focus.
     installButton.setAttribute("aria-disabled", "true");
 
     try {
       // MANDATORY: Call during the click handler; delayed calls lose user activation.
       await navigator.install();
-      installStatus.textContent = "The app was installed.";
+      installStatus.textContent = "The app was installed or opened.";
       installButton.hidden = true;
     } catch (error) {
       if (error.name === "AbortError") {
-        // Cancelation is an expected user choice, not an application error.
+        // Cancellation is an expected user choice; keep the button available to retry.
         installStatus.textContent = "Installation was canceled or could not complete.";
-        installButton.hidden = true;
       } else {
         installStatus.textContent = "Installation could not start.";
         // Surface invalid manifests and unexpected platform failures to developers.
         console.error(error);
       }
     } finally {
-      installButton.setAttribute("aria-disabled", "false");
+      installButton.removeAttribute("aria-disabled");
     }
   });
 </script>
@@ -250,7 +255,8 @@ match the target manifest's processed ID.
 ### Handle installation success and errors
 
 The `navigator.install()` method returns a promise that resolves when the
-installation completes successfully.
+installation completes or when the user approves an action (such as opening) for
+an already-installed app. Pages cannot distinguish between these two cases.
 
 The promise rejects with the following errors if the installation fails or is
 canceled:
@@ -353,13 +359,17 @@ window.addEventListener("beforeinstallprompt", (event) => {
 });
 
 installButton.addEventListener("click", async () => {
+  if (installButton.getAttribute("aria-disabled") === "true") {
+    return;
+  }
+  // Use aria-disabled instead of disabled so activating the button does not drop focus.
   installButton.setAttribute("aria-disabled", "true");
 
   try {
     if (supportsWebInstall) {
       // Call directly from this handler to preserve transient user activation.
       await navigator.install();
-      installStatus.textContent = "The app was installed.";
+      installStatus.textContent = "The app was installed or opened.";
       installButton.hidden = true;
     } else if (deferredInstallPrompt) {
       // Save and clear the single-use event before awaiting the user's choice.
@@ -378,15 +388,14 @@ installButton.addEventListener("click", async () => {
     }
   } catch (error) {
     if (error.name === "AbortError") {
-      // Cancelation is an expected user choice, not an application error.
+      // Cancellation is an expected user choice; keep the button available to retry.
       installStatus.textContent = "Installation was canceled or could not complete.";
-      installButton.hidden = true;
     } else {
       installStatus.textContent = "Installation could not start.";
       console.error(error);
     }
   } finally {
-    installButton.setAttribute("aria-disabled", "false");
+    installButton.removeAttribute("aria-disabled");
   }
 });
 ```
