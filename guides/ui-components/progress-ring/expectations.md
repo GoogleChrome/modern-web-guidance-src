@@ -10,6 +10,5 @@
 - The component supports displaying text content (e.g., the percentage) in the center of the ring.
 - The ring smoothly transitions between values when the `--value` property is updated (requiring `@property` support in the browser).
 - The `<progress>` element includes an `aria-label` for accessibility.
-- The component's fill color changes to a success color (e.g., green) when the progress value reaches 100%.
 - The component has a distinct visual "track" (background) behind the progress fill.
-- The spinner respects `prefers-reduced-motion` by changing to a new value immediately, rather than having a smooth transition.
+- The progress ring respects `prefers-reduced-motion` by changing to a new value immediately, rather than having a smooth transition.

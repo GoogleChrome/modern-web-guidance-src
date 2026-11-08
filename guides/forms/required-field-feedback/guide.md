@@ -53,7 +53,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 }
 
 /*
-  Only highlight empty required fields AFTER the user visits them.
+  Only highlight empty required fields AFTER the user interacts with them or attempts submission.
   MANDATORY: Provide multiple indicators (border shift + helper text/icon) to avoid color-only state communication.
 */
 input:user-invalid {

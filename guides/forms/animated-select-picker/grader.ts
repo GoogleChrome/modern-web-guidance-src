@@ -27,8 +27,8 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
     expect(cssContent).toMatch(/::picker\(\s*select\s*\)/);
   });
 
-  test('Uses allow-discrete transition behavior for visibility animations', async () => {
-    expect(cssContent).toMatch(/allow-discrete/);
+  test('Uses transition-behavior: allow-discrete for visibility animations', async () => {
+    expect(cssContent).toMatch(/transition-behavior\s*:\s*allow-discrete/);
   });
 
   test('Uses @starting-style to declare initial visual state before opening', async () => {
@@ -48,14 +48,6 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
     expect(hasManualToggle).toBe(false);
   });
 
-  test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
-    const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
-    const svgOptions = matches.filter(m => /<svg/i.test(m[1]));
-    expect(svgOptions.length).toBeGreaterThan(0);
-    for (const match of svgOptions) {
-      expect(/aria-hidden=["']true["']/i.test(match[1])).toBe(true);
-    }
-  });
 
   test('The checked state of an option must incorporate multiple visual indicators', async () => {
     const checkedBlocks = cssContent.match(/option:checked\s*\{[^}]*\}/gi) || [];

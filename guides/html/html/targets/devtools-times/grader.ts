@@ -40,7 +40,7 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
+import { SyntaxKind, type JsxOpeningElement, type JsxSelfClosingElement } from 'ts-morph';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -80,12 +80,53 @@ test.describe('devtools-times Target Grader', () => {
 
   test('Expectation 9: Decorative icon elements include aria-hidden="true"', () => {
     const project = getJsProject(targetFiles);
-    const bookmarkFile = project.getSourceFiles().find(sf => sf.getFilePath().endsWith('BookmarkButton.tsx'));
-    const hasAriaHidden = Boolean(bookmarkFile?.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr =>
-      attr.getNameNode().getText() === 'aria-hidden' &&
-      attr.getInitializer()?.getText().replace(/['"{}]/g, '') === 'true'
-    ));
-    expect(hasAriaHidden).toBe(true);
+    const docs = getHtmlDocuments(targetFiles);
+
+    const getJsxAttrText = (
+      el: JsxOpeningElement | JsxSelfClosingElement,
+      name: string
+    ): string => {
+      const attr = el.getDescendantsOfKind(SyntaxKind.JsxAttribute).find(a => a.getNameNode().getText() === name);
+      if (!attr) return '';
+      const init = attr.getInitializer();
+      if (!init) return '';
+      return init.getText().replace(/^['"{]+|['"}]+$/g, '').trim();
+    };
+
+    const jsxDecorativeSvgs = project.getSourceFiles().flatMap(sf => [
+      ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
+      ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
+    ]).filter(el => {
+      if (el.getTagNameNode().getText() !== 'svg') return false;
+      const hasAriaLabel = getJsxAttrText(el, 'aria-label').length > 0;
+      const hasAriaLabelledBy = getJsxAttrText(el, 'aria-labelledby').length > 0;
+      const parentJsx = el.getParentIfKind(SyntaxKind.JsxElement);
+      const hasTitleChild = Boolean(
+        parentJsx?.getDescendantsOfKind(SyntaxKind.JsxElement).some(
+          child =>
+            child.getOpeningElement().getTagNameNode().getText() === 'title' &&
+            child.getJsxChildren().some(ch => ch.getText().trim().length > 0)
+        )
+      );
+      return !hasAriaLabel && !hasAriaLabelledBy && !hasTitleChild;
+    });
+
+    const jsxAllHidden = jsxDecorativeSvgs.every(el => getJsxAttrText(el, 'aria-hidden') === 'true');
+
+    const htmlDecorativeSvgs = docs.flatMap(d =>
+      Array.from(d.document.querySelectorAll('svg') as unknown as Element[]).filter(svg => {
+        const hasAriaLabel = (svg.getAttribute('aria-label')?.trim().length ?? 0) > 0;
+        const hasAriaLabelledBy = (svg.getAttribute('aria-labelledby')?.trim().length ?? 0) > 0;
+        const hasTitleChild = Boolean(svg.querySelector('title')?.textContent?.trim());
+        return !hasAriaLabel && !hasAriaLabelledBy && !hasTitleChild;
+      })
+    );
+
+    const htmlAllHidden = htmlDecorativeSvgs.every(svg => svg.getAttribute('aria-hidden') === 'true');
+    const totalDecorativeSvgs = jsxDecorativeSvgs.length + htmlDecorativeSvgs.length;
+
+    expect(totalDecorativeSvgs).toBeGreaterThan(0);
+    expect(jsxAllHidden && htmlAllHidden).toBe(true);
   });
 
   test('Expectation 14: LCP hero image has fetchpriority="high" and no loading="lazy"', () => {

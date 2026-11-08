@@ -45,19 +45,19 @@ To style the `<progress>` element as a progress ring, first hide the default bro
 
 ```css
 /* Hide native bars */
-progress.loading-spinner:indeterminate::-webkit-progress-bar {
+progress.progress-ring::-webkit-progress-bar {
   display: none;
   background: none;
 }
-progress.loading-spinner:indeterminate::-webkit-progress-value {
+progress.progress-ring::-webkit-progress-value {
   display: none;
   background: none;
 }
-progress.loading-spinner:indeterminate::-moz-progress-bar {
+progress.progress-ring::-moz-progress-bar {
   display: none;
   background: none;
 }
-progress.loading-spinner:indeterminate::slider-fill {
+progress.progress-ring::slider-fill {
   display: none;
   background: none;
 }

@@ -189,6 +189,142 @@ function extractHtmlOtpInputs(
   return results;
 }
 
+function getJsxDescribedByRefs(
+  el: JsxOpeningElement | JsxSelfClosingElement,
+  sf: { getDescendantsOfKind: (kind: SyntaxKind) => any[] }
+): Set<string> {
+  const refs = new Set<string>();
+  const addTokens = (raw: string) => {
+    for (const token of raw.trim().split(/\s+/).filter(Boolean)) {
+      refs.add(token);
+    }
+  };
+  const sepEndRe = /[-_:./]$/;
+  const sepStartRe = /^[-_:./]/;
+
+  const addExprRefs = (node: Node | undefined, visited = new Set<Node>()) => {
+    if (!node || visited.has(node)) return;
+    visited.add(node);
+
+    if (
+      Node.isParenthesizedExpression(node) ||
+      Node.isAsExpression(node) ||
+      Node.isTypeAssertion(node) ||
+      Node.isSatisfiesExpression(node)
+    ) {
+      addExprRefs(node.getExpression(), visited);
+      return;
+    }
+
+    if (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)) {
+      addTokens(node.getLiteralValue());
+      return;
+    }
+
+    if (Node.isTemplateExpression(node)) {
+      refs.add(node.getText().trim());
+      const headText = node.getHead().getLiteralText();
+      const headTokens = headText.trim().split(/\s+/).filter(Boolean);
+      if (sepEndRe.test(headText) && headTokens.length > 0) {
+        headTokens.pop();
+      }
+      for (const token of headTokens) refs.add(token);
+
+      const spans = node.getTemplateSpans();
+      for (let i = 0; i < spans.length; i++) {
+        const span = spans[i];
+        const prevText = i === 0 ? headText : spans[i - 1].getLiteral().getLiteralText();
+        const litText = span.getLiteral().getLiteralText();
+
+        if (!sepEndRe.test(prevText) && !sepStartRe.test(litText)) {
+          addExprRefs(span.getExpression(), visited);
+        }
+
+        const litTokens = litText.trim().split(/\s+/).filter(Boolean);
+        if (sepStartRe.test(litText) && litTokens.length > 0) {
+          litTokens.shift();
+        }
+        if (i < spans.length - 1 && sepEndRe.test(litText) && litTokens.length > 0) {
+          litTokens.pop();
+        }
+        for (const token of litTokens) refs.add(token);
+      }
+      return;
+    }
+
+    if (Node.isConditionalExpression(node)) {
+      addExprRefs(node.getWhenTrue(), visited);
+      addExprRefs(node.getWhenFalse(), visited);
+      return;
+    }
+
+    if (Node.isBinaryExpression(node)) {
+      const op = node.getOperatorToken().getText();
+      if (op === '&&') {
+        addExprRefs(node.getRight(), visited);
+      } else if (op === '+' || op === '||' || op === '??') {
+        addExprRefs(node.getLeft(), visited);
+        addExprRefs(node.getRight(), visited);
+      }
+      return;
+    }
+
+    if (Node.isArrayLiteralExpression(node)) {
+      for (const elem of node.getElements()) {
+        addExprRefs(elem, visited);
+      }
+      return;
+    }
+
+    if (Node.isCallExpression(node)) {
+      refs.add(node.getText().trim());
+      const callee = node.getExpression();
+      if (
+        Node.isPropertyAccessExpression(callee) &&
+        ['join', 'filter', 'concat', 'trim'].includes(callee.getName())
+      ) {
+        addExprRefs(callee.getExpression(), visited);
+      }
+      for (const arg of node.getArguments()) {
+        addExprRefs(arg, visited);
+      }
+      return;
+    }
+
+    if (Node.isPropertyAccessExpression(node)) {
+      refs.add(node.getText().trim());
+      return;
+    }
+
+    if (Node.isIdentifier(node)) {
+      const identName = node.getText();
+      refs.add(identName);
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (vd.getName() !== identName) continue;
+        const vdInit = vd.getInitializer();
+        if (vdInit) addExprRefs(vdInit, visited);
+      }
+    }
+  };
+
+  for (const attr of el.getAttributes()) {
+    if (!Node.isJsxAttribute(attr)) continue;
+    const name = attr.getNameNode().getText().toLowerCase();
+    if (name !== 'aria-describedby') continue;
+
+    const init = attr.getInitializer();
+    if (!init) continue;
+    if (Node.isStringLiteral(init)) {
+      addTokens(init.getLiteralValue());
+      continue;
+    }
+    if (Node.isJsxExpression(init)) {
+      addExprRefs(init.getExpression());
+    }
+  }
+  return refs;
+}
+
 function getJsxAttrValue(
   el: JsxOpeningElement | JsxSelfClosingElement,
   attrNames: string[]
@@ -326,16 +462,11 @@ function extractJsxOtpInputs(project: Project): OtpInputInfo[] {
       ).trim();
       let isHintAboveInput = true;
       if (ariaDescribedBy) {
-        const quotedLiterals = Array.from(
-          ariaDescribedBy.matchAll(/['"`]([^'"`]+)['"`]/g),
-          (m) => m[1]
-        );
-        const tokenSource =
-          quotedLiterals.length > 0 ? quotedLiterals.join(' ') : ariaDescribedBy;
-        const hintIds = Array.from(new Set(tokenSource.split(/\s+/).filter(Boolean)));
+        const describedByRefs = getJsxDescribedByRefs(input, sf);
         const hintNodes = jsxTagNodes.filter((n) => {
+          if (n === input) return false;
           const nodeId = (getJsxAttrValue(n, ['id']) || '').trim();
-          return hintIds.includes(nodeId);
+          return Boolean(nodeId && describedByRefs.has(nodeId));
         });
         const formatHintNodes = hintNodes.filter((n) => {
           const role = (getJsxAttrValue(n, ['role']) || '').toLowerCase();

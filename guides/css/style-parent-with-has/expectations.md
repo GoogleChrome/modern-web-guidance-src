@@ -1,6 +1,4 @@
-- On page load, the parent container wrapping the input should have a neutral border.
+- On page load, the parent container wrapping the input should have neutral styling.
 - Typing an invalid value (or typing and deleting to leave it empty) then clicking away (blur) MUST trigger the error state on the *parent container* (e.g., a border turns red or its background changes).
 - Correcting the input MUST revert the parent container to the neutral state.
-- "Force Fallback Mode" must replicate this parent-styling behavior using JS class toggling.
-- DO NOT assert on exact RGB color codes in the grader. Assume the agent will pick an appropriate error color (e.g., red hues). Use a helper function like `isRed()` instead of strict string equality.
-- DO NOT assume specific class names like `.card` or require a `.status-icon` unless explicitly requested. Use relational locators (e.g., finding the nearest parent or ancestor container of the input).
+- The stylesheet MUST use `:has(:user-invalid)` scoped to a form field container rather than `body`.

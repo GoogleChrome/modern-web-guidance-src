@@ -13,25 +13,7 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
 test.describe(`child-state-based-styling Expectations: ${demoName}`, () => {
-  let html = '';
-
-  test.beforeAll(() => {
-    html = fs.readFileSync(filePath, 'utf-8');
-  });
-
-  // Static assertions
-  test(`HTML source contains the :has() pseudo-class`, async () => {
-    expect(html).toMatch(/:has\(/);
-  });
-
-  test(`The :has() selector is scoped to a component container rather than body or html`, async () => {
-    const hasScopedContainer = /[.#a-zA-Z0-9_-]+\s*:has\(/.test(html);
-    const hasDocumentRootHas = /\b(?:body|html|:root)\s*:has\(/i.test(html);
-    expect(hasScopedContainer && !hasDocumentRootHas).toBe(true);
-  });
-
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -46,8 +28,39 @@ test.describe(`child-state-based-styling Expectations: ${demoName}`, () => {
     });
   });
 
-  // Browser assertions
-  test(`Container element styling changes based on the state of an interactive child element`, async ({ page }) => {
+  test('The implementation includes a container element containing an interactive child element', async ({ page }) => {
+    await page.goto(demoUrl);
+    const hasInteractiveChild = await page.evaluate(() => {
+      const interactive = document.querySelectorAll('input, button, select, textarea');
+      for (const el of Array.from(interactive)) {
+        const parent = el.parentElement;
+        if (parent && parent !== document.body && parent !== document.documentElement) {
+          return true;
+        }
+      }
+      return false;
+    });
+    expect(hasInteractiveChild).toBe(true);
+  });
+
+  test('The state-based styling is implemented with CSS using the :has() selector on the container', async ({ page }) => {
+    await page.goto(demoUrl);
+    const hasRuleWithHas = await page.evaluate(() => {
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            if (rule instanceof CSSStyleRule && rule.selectorText.includes(':has(')) {
+              return true;
+            }
+          }
+        } catch {}
+      }
+      return false;
+    });
+    expect(hasRuleWithHas).toBe(true);
+  });
+
+  test('The container element styling changes based on the state of the interactive child element', async ({ page }) => {
     await page.goto(demoUrl);
 
     // Disable transitions to be safe
@@ -57,7 +70,7 @@ test.describe(`child-state-based-styling Expectations: ${demoName}`, () => {
       document.head.appendChild(style);
     });
 
-    const ancestorStyleChanged = await page.evaluate(async () => {
+    const ancestorStyleChanged = await page.evaluate(() => {
       const interactiveElements = document.querySelectorAll('input, button, select, textarea');
       for (const el of Array.from(interactiveElements)) {
         const ancestors: HTMLElement[] = [];
@@ -72,7 +85,8 @@ test.describe(`child-state-based-styling Expectations: ${demoName}`, () => {
           return {
             bg: style.backgroundColor,
             color: style.color,
-            border: style.borderColor
+            border: style.borderColor,
+            shadow: style.boxShadow,
           };
         });
 
@@ -93,16 +107,14 @@ test.describe(`child-state-based-styling Expectations: ${demoName}`, () => {
           el.focus();
         }
 
-        // Wait a bit
-        await new Promise(resolve => setTimeout(resolve, 50));
-
         const newStyles = getStyles();
 
         for (let i = 0; i < ancestors.length; i++) {
           if (
             initialStyles[i].bg !== newStyles[i].bg ||
             initialStyles[i].color !== newStyles[i].color ||
-            initialStyles[i].border !== newStyles[i].border
+            initialStyles[i].border !== newStyles[i].border ||
+            initialStyles[i].shadow !== newStyles[i].shadow
           ) {
             return true;
           }

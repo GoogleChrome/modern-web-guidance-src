@@ -13,7 +13,7 @@ Displaying validation errors the moment a user focuses on a field and starts typ
 
 ## The Solution
 
-The `:user-invalid` pseudo-class allows you to defer the error state until the user has "committed" to a value (by blurring the field) or attempted to submit the form. This ensures validation feedback is provided only after the user has finished interacting with the field.
+The `:user-invalid` pseudo-class allows you to defer the error state until the user has "committed" to a value (by modifying and blurring the field) or attempted to submit the form. This ensures validation feedback is provided only after the user has finished interacting with the field.
 
 ### Implementation Strategy
 
