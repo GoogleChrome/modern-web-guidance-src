@@ -58,7 +58,7 @@
     }
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.316",
+    "@anthropic-ai/claude-code": "^2.1.319",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
     "@types/gh-pages": "^6.1.0",
@@ -81,7 +81,7 @@
     "@google-cloud/storage": "^7.22.0",
     "@huggingface/transformers": "^4.3.1",
     "@mdn/browser-compat-data": "^8.1.7",
-    "@openai/codex": "0.166.0",
+    "@openai/codex": "0.167.0",
     "@webref/css": "^8.7.0",
     "@webref/elements": "^2.7.1",
     "@webref/idl": "^3.82.0",
