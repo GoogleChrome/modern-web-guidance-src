@@ -135,17 +135,9 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     });
 
     const calls = await page.evaluate(() => (window as any).__postTaskCalls || []);
-    const priorities = calls.map((c: any) => c.priority);
-    const hasMultiple = ['user-blocking', 'user-visible', 'background'].some(p => priorities.includes(p)) || priorities.length >= 2;
-
-    if (hasMultiple) {
-      expect(hasMultiple).toBe(true);
-      return;
-    }
-
-    const code = getScriptContent();
-    const hasCodePriorities = code.includes('user-blocking') || code.includes('user-visible') || code.includes('background');
-    expect(hasCodePriorities).toBe(true);
+    // At least two distinct priorities must actually be passed to scheduler.postTask()
+    const priorities = new Set(calls.map((c: any) => c.priority));
+    expect(priorities.size).toBeGreaterThanOrEqual(2);
   });
 
   test('The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively', async () => {
@@ -173,17 +165,25 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-    await page.evaluate(() => {
-      document.querySelectorAll('button').forEach(b => b.click());
+    // Click only the batch button and capture the priorities it queues synchronously
+    const queued: string[] = await page.evaluate(() => {
+      const w = window as any;
+      w.__postTaskCalls.length = 0;
+      w.__executionOrder.length = 0;
+      const batch = Array.from(document.querySelectorAll('button')).find((b) => /batch|mixed/i.test(b.textContent || ''));
+      batch?.click();
+      return w.__postTaskCalls.map((c: any) => c.priority);
     });
+    expect(new Set(queued).size).toBeGreaterThanOrEqual(2);
 
-    const order = await page.evaluate(() => (window as any).__executionOrder || []);
-    if (order.length >= 2) {
-      expect(order.length).toBeGreaterThanOrEqual(2);
-      return;
-    }
-    const code = getScriptContent();
-    expect(code.includes('postTask') || code.includes('scheduler.postTask')).toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__executionOrder.length))
+      .toBeGreaterThanOrEqual(queued.length);
+    const order: string[] = await page.evaluate(() => (window as any).__executionOrder);
+    const rank: Record<string, number> = { 'user-blocking': 0, 'user-visible': 1, background: 2 };
+    // Tasks queued together must run highest priority first, whatever order they were queued in
+    const ran = order.slice(0, queued.length).map((p) => rank[p]);
+    expect(ran).toEqual([...ran].sort((a, b) => a - b));
   });
 
 });

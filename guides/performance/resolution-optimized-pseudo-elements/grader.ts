@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE;
@@ -37,6 +38,20 @@ test.describe('Resolution Optimized Pseudo Elements Grader', () => {
       });
     });
     expect(hasImage).toBe(true);
+  });
+
+  test('The pseudo-element declares a url() fallback before image-set() for the same property', () => {
+    // CSSOM keeps only the winning declaration, so the fallback has to be read from source
+    const css = fs.readFileSync(path.resolve(targetFile!), 'utf8');
+    const rules = css.match(/[^{}]*::?(?:before|after)[^{]*\{[^}]*\}/gi) ?? [];
+    const hasOrderedFallback = rules.some((rule) =>
+      ['content', 'background-image', 'background'].some((prop) => {
+        const fallback = rule.search(new RegExp(`${prop}\\s*:\\s*url\\(`, 'i'));
+        const imageSet = rule.search(new RegExp(`${prop}\\s*:\\s*(?:-webkit-)?image-set\\(`, 'i'));
+        return fallback !== -1 && imageSet > fallback;
+      })
+    );
+    expect(hasOrderedFallback).toBe(true);
   });
 
   test('The pseudo-element uses the image-set() function for resolution switching', async ({ page }) => {
