@@ -1,835 +1,1107 @@
 diff --git a/index.html b/index.html
-index 66c9173..5b20629 100644
+index 66c9173..bf38564 100644
 --- a/index.html
 +++ b/index.html
-@@ -4,7 +4,7 @@
- <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
--  <title>The Daily Grind | Artisanal Coffee</title>
-+  <title>smallpt WebAssembly Path Tracer | The Daily Grind</title>
-   <style>
-     :root {
-       --primary: #4e342e;
-@@ -12,6 +12,8 @@
-       --accent: #ffab40;
-       --text: #3e2723;
-       --light: #fafafa;
-+      --surface-dark: #1e1916;
-+      --surface-panel: #2b2420;
+@@ -129,12 +129,50 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
      }
  
-     * {
-@@ -74,8 +76,9 @@
- 
-     /* Hero Section */
-     .hero {
--      height: 60vh;
--      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+      height: 42vh;
-+      min-height: 260px;
-+      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
-         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-       background-size: cover;
-       background-position: center;
-@@ -89,8 +92,8 @@
+     .btn:hover {
+       background: #3e2723;
      }
  
-     .hero h1 {
--      font-size: 3rem;
--      margin-bottom: 1rem;
-+      font-size: 2.6rem;
-+      margin-bottom: 0.75rem;
-     }
- 
-     /* Content Sections */
-@@ -100,6 +103,200 @@
-       padding: 0 20px;
-     }
- 
-+    /* Path Tracer Section */
-+    .pathtracer-card {
-+      background: var(--surface-dark);
-+      color: #f5f0eb;
-+      border-radius: 12px;
-+      padding: 28px;
-+      margin-bottom: 48px;
-+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
-+    }
-+
-+    .pathtracer-header {
-+      display: flex;
-+      flex-wrap: wrap;
-+      justify-content: space-between;
-+      align-items: flex-start;
-+      gap: 16px;
-+      margin-bottom: 22px;
-+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-+      padding-bottom: 16px;
-+    }
-+
-+    .pathtracer-header h2 {
-+      font-size: 1.65rem;
-+      color: #ffffff;
-+      margin-bottom: 4px;
-+    }
-+
-+    .pathtracer-subtitle {
-+      font-size: 0.92rem;
-+      color: #c7bdb6;
-+    }
-+
-+    .pathtracer-subtitle a {
-+      color: var(--accent);
-+      text-decoration: none;
-+    }
-+
-+    .pathtracer-subtitle a:hover {
-+      text-decoration: underline;
-+    }
-+
-+    .pathtracer-layout {
-+      display: grid;
-+      grid-template-columns: minmax(280px, 1.35fr) minmax(260px, 1fr);
-+      gap: 28px;
-+      align-items: start;
-+    }
-+
-+    @media (max-width: 800px) {
-+      .pathtracer-layout {
-+        grid-template-columns: 1fr;
-+      }
-+    }
-+
-+    .canvas-stage {
-+      background: #0d0b0a;
++    .pathtracer-section {
++      background: white;
++      padding: 30px;
 +      border-radius: 8px;
-+      padding: 12px;
-+      border: 1px solid rgba(255, 255, 255, 0.12);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      margin-bottom: 40px;
++    }
++
++    .pathtracer-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .pathtracer-canvas-wrap {
 +      display: flex;
-+      flex-direction: column;
-+      align-items: center;
++      justify-content: center;
++      margin: 20px 0 12px;
 +    }
 +
 +    #smallpt-canvas {
-+      width: 100%;
-+      max-width: 640px;
-+      aspect-ratio: 4 / 3;
-+      background: #000;
-+      border-radius: 4px;
-+      display: block;
-+      image-rendering: auto;
-+    }
-+
-+    .progress-bar-wrap {
-+      width: 100%;
-+      height: 6px;
-+      background: rgba(255, 255, 255, 0.1);
-+      border-radius: 3px;
-+      overflow: hidden;
-+      margin-top: 12px;
-+    }
-+
-+    .progress-bar-fill {
-+      height: 100%;
-+      width: 0%;
-+      background: linear-gradient(90deg, #ffab40, #ff6d00);
-+      transition: width 0.15s ease-out;
-+    }
-+
-+    .render-meta {
-+      width: 100%;
-+      display: flex;
-+      justify-content: space-between;
-+      font-size: 0.85rem;
-+      color: #c7bdb6;
-+      margin-top: 8px;
-+    }
-+
-+    .controls-panel {
-+      background: var(--surface-panel);
-+      border-radius: 8px;
-+      padding: 20px;
-+      border: 1px solid rgba(255, 255, 255, 0.08);
-+      display: flex;
-+      flex-direction: column;
-+      gap: 16px;
-+    }
-+
-+    .control-group {
-+      display: flex;
-+      flex-direction: column;
-+      gap: 6px;
-+    }
-+
-+    .control-group label {
-+      font-size: 0.85rem;
-+      font-weight: 600;
-+      color: #dfd7d0;
-+    }
-+
-+    .control-select {
-+      background: #1a1512;
-+      color: #f5f0eb;
-+      border: 1px solid rgba(255, 255, 255, 0.2);
++      background: #121212;
 +      border-radius: 6px;
-+      padding: 8px 12px;
++      max-width: 100%;
++      height: auto;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
++    }
++
++    .pathtracer-status {
 +      font-size: 0.9rem;
++      color: var(--text);
++      min-height: 1.5em;
 +    }
 +
-+    .button-row {
-+      display: flex;
-+      flex-wrap: wrap;
-+      gap: 10px;
-+    }
-+
-+    .btn-wasm {
-+      cursor: pointer;
-+      border: none;
-+      font-weight: 600;
-+      font-size: 0.95rem;
-+      padding: 11px 18px;
-+      border-radius: 6px;
-+      transition: transform 0.1s ease, background 0.2s ease, opacity 0.2s ease;
-+    }
-+
-+    .btn-wasm:active {
-+      transform: scale(0.98);
-+    }
-+
-+    .btn-primary-wasm {
-+      background: var(--accent);
-+      color: #1e130c;
-+      flex: 1;
-+    }
-+
-+    .btn-primary-wasm:hover {
-+      background: #ffc06b;
-+    }
-+
-+    .btn-secondary-wasm {
-+      background: rgba(255, 255, 255, 0.12);
-+      color: #ffffff;
-+    }
-+
-+    .btn-secondary-wasm:hover {
-+      background: rgba(255, 255, 255, 0.2);
-+    }
-+
-+    .palette-list {
-+      display: grid;
-+      grid-template-columns: repeat(2, 1fr);
-+      gap: 8px;
-+      margin-top: 4px;
-+    }
-+
-+    .palette-item {
-+      display: flex;
-+      align-items: center;
-+      gap: 8px;
-+      background: rgba(0, 0, 0, 0.25);
-+      padding: 6px 10px;
-+      border-radius: 5px;
-+      font-size: 0.8rem;
-+    }
-+
-+    .swatch {
-+      width: 16px;
-+      height: 16px;
-+      border-radius: 50%;
-+      border: 1px solid rgba(255, 255, 255, 0.4);
-+      flex-shrink: 0;
-+    }
-+
-     .grid {
-       display: grid;
-       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-@@ -170,11 +367,70 @@
- 
-   <header class="hero">
-     <h1>Wake Up Your Senses</h1>
--    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
--    <a href="/order-online" class="btn">Order Now</a>
-+    <p>Ethically sourced, locally roasted, and now featuring interactive WebAssembly global illumination.</p>
-+    <a href="#smallpt-section" class="btn">Try Path Tracer</a>
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +213,16 @@
    </header>
  
    <main class="container">
-+    <section id="smallpt-section" class="pathtracer-card" aria-label="smallpt WebAssembly Path Tracer">
-+      <div class="pathtracer-header">
-+        <div>
-+          <h2>smallpt C++ Path Tracer (WebAssembly)</h2>
-+          <p class="pathtracer-subtitle">
-+            Unbiased Monte Carlo global illumination by <a href="http://www.kevinbeason.com/smallpt/" target="_blank" rel="noopener">Kevin Beason</a>, compiled to client-side WebAssembly with Emscripten.
-+          </p>
-+        </div>
++    <section class="pathtracer-section" id="smallpt-section">
++      <h2>smallpt WebAssembly Path Tracer</h2>
++      <p>Client-side Monte Carlo global illumination rendered in a Web Worker using C++ compiled to WebAssembly.</p>
++      <div class="pathtracer-canvas-wrap">
++        <canvas id="smallpt-canvas" width="320" height="240" aria-label="smallpt path tracer output"></canvas>
 +      </div>
-+
-+      <div class="pathtracer-layout">
-+        <div class="canvas-stage">
-+          <canvas id="smallpt-canvas" width="320" height="240"></canvas>
-+          <div class="progress-bar-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="render-progressbar">
-+            <div class="progress-bar-fill" id="progress-fill"></div>
-+          </div>
-+          <div class="render-meta">
-+            <span id="render-status">Initializing WebAssembly module...</span>
-+            <span id="render-timing">0 ms</span>
-+          </div>
-+        </div>
-+
-+        <div class="controls-panel">
-+          <div class="button-row">
-+            <button type="button" id="randomize-btn" class="btn-wasm btn-primary-wasm">
-+              Randomize Sphere Colors &amp; Render
-+            </button>
-+            <button type="button" id="reset-btn" class="btn-wasm btn-secondary-wasm">
-+              Reset Classic Scene
-+            </button>
-+          </div>
-+
-+          <div class="control-group">
-+            <label for="resolution-select">Resolution</label>
-+            <select id="resolution-select" class="control-select">
-+              <option value="200x150">200 &times; 150 (Fast Preview)</option>
-+              <option value="320x240" selected>320 &times; 240 (Balanced)</option>
-+              <option value="512x384">512 &times; 384 (High Detail)</option>
-+            </select>
-+          </div>
-+
-+          <div class="control-group">
-+            <label for="samples-select">Samples Per Pixel (2&times;2 subpixels)</label>
-+            <select id="samples-select" class="control-select">
-+              <option value="1">4 spp (1 pass / subpixel)</option>
-+              <option value="2" selected>8 spp (2 passes / subpixel)</option>
-+              <option value="4">16 spp (4 passes / subpixel)</option>
-+              <option value="8">32 spp (8 passes / subpixel)</option>
-+            </select>
-+          </div>
-+
-+          <div class="control-group">
-+            <label>Current Scene Sphere Colors</label>
-+            <div id="palette-container" class="palette-list"></div>
-+          </div>
-+        </div>
-+      </div>
++      <p id="render-status" class="pathtracer-status" role="status" aria-live="polite">Initializing WebAssembly path tracer...</p>
++      <button id="randomize-btn" type="button" class="btn">Randomize Sphere Colors</button>
 +    </section>
 +
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
-@@ -207,6 +463,190 @@
+@@ -207,6 +255,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script type="module">
-+    const canvas = document.getElementById('smallpt-canvas');
-+    const ctx = canvas.getContext('2d');
-+    const statusEl = document.getElementById('render-status');
-+    const timingEl = document.getElementById('render-timing');
-+    const progressFill = document.getElementById('progress-fill');
-+    const progressBar = document.getElementById('render-progressbar');
-+    const randomizeBtn = document.getElementById('randomize-btn');
-+    const resetBtn = document.getElementById('reset-btn');
-+    const resolutionSelect = document.getElementById('resolution-select');
-+    const samplesSelect = document.getElementById('samples-select');
-+    const paletteContainer = document.getElementById('palette-container');
-+
-+    let renderId = 0;
-+    let currentSeed = 0;
-+    let worker = null;
-+
-+    function updatePaletteUI(palette) {
-+      if (!palette) return;
-+      paletteContainer.replaceChildren(
-+        ...palette.map(item => {
-+          const div = document.createElement('div');
-+          div.className = 'palette-item';
-+          const swatch = document.createElement('span');
-+          swatch.className = 'swatch';
-+          swatch.style.backgroundColor = item.css;
-+          const label = document.createElement('span');
-+          label.textContent = item.name;
-+          div.append(swatch, label);
-+          return div;
-+        })
-+      );
-+    }
-+
-+    function drawPixels(width, height, pixels) {
-+      if (canvas.width !== width || canvas.height !== height) {
-+        canvas.width = width;
-+        canvas.height = height;
-+      }
-+      const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
-+      ctx.putImageData(imageData, 0, 0);
-+    }
-+
-+    function getSelectedParams() {
-+      const [width, height] = resolutionSelect.value.split('x').map(Number);
-+      const samps = Number(samplesSelect.value) || 2;
-+      return { width, height, samps };
-+    }
-+
-+    // Fallback to chunked main-thread rendering if Web Worker initialization fails
-+    let fallbackModulePromise = null;
-+    async function runFallbackOnMainThread({ width, height, samps, randomize, resetDefault, seed, activeRenderId }) {
-+      if (!fallbackModulePromise) {
-+        const { default: createModule } = await import('./smallpt.js');
-+        fallbackModulePromise = createModule();
-+      }
-+      const mod = await fallbackModulePromise;
-+      if (randomize) {
-+        mod._randomize_sphere_colors(seed >>> 0);
-+      } else if (resetDefault) {
-+        mod._reset_default_colors();
-+      }
-+
-+      const SPHERE_META = [
-+        { index: 0, name: 'Left Wall' },
-+        { index: 1, name: 'Right Wall' },
-+        { index: 2, name: 'Back Wall' },
-+        { index: 4, name: 'Floor' },
-+        { index: 5, name: 'Ceiling' },
-+        { index: 6, name: 'Mirror Sphere' },
-+        { index: 7, name: 'Glass Sphere' }
-+      ];
-+      const to255 = v => Math.round(Math.pow(Math.max(0, Math.min(1, v)), 1 / 2.2) * 255);
-+      const palette = SPHERE_META.map(s => {
-+        const r = mod._get_sphere_color_channel(s.index, 0);
-+        const g = mod._get_sphere_color_channel(s.index, 1);
-+        const b = mod._get_sphere_color_channel(s.index, 2);
-+        return { ...s, css: `rgb(${to255(r)}, ${to255(g)}, ${to255(b)})` };
-+      });
-+      updatePaletteUI(palette);
-+
-+      const ptr = mod._init_render(width, height);
-+      const chunkRows = 8;
-+      const startTime = performance.now();
-+
-+      for (let y = 0; y < height; y += chunkRows) {
-+        if (activeRenderId !== renderId) return;
-+        const endY = Math.min(height, y + chunkRows);
-+        mod._render_rows(width, height, y, endY, samps, seed | 0);
-+        const pixels = new Uint8ClampedArray(mod.HEAPU8.buffer, ptr, width * height * 4);
-+        drawPixels(width, height, pixels);
-+        const progress = Math.round((endY / height) * 100);
-+        const elapsed = Math.round(performance.now() - startTime);
-+        progressFill.style.width = `${progress}%`;
-+        progressBar.setAttribute('aria-valuenow', String(progress));
-+        statusEl.textContent = endY >= height
-+          ? `Rendered ${width}×${height} (${samps * 4} spp)`
-+          : `Rendering (${samps * 4} spp)... ${progress}%`;
-+        timingEl.textContent = `${elapsed} ms`;
-+        await new Promise(r => setTimeout(r, 0));
-+      }
-+    }
-+
-+    function startRender({ randomize = false, resetDefault = false } = {}) {
-+      renderId++;
-+      const activeRenderId = renderId;
-+      if (randomize) {
-+        currentSeed = (Math.floor(Math.random() * 0x7fffffff) + Date.now()) >>> 0;
-+      } else if (resetDefault) {
-+        currentSeed = 0;
-+      }
-+
-+      const { width, height, samps } = getSelectedParams();
-+      progressFill.style.width = '0%';
-+      progressBar.setAttribute('aria-valuenow', '0');
-+      statusEl.textContent = `Starting path tracer (${width}×${height}, ${samps * 4} spp)...`;
-+
-+      if (worker) {
-+        worker.postMessage({
-+          type: 'render',
-+          renderId: activeRenderId,
-+          width,
-+          height,
-+          samps,
-+          randomize,
-+          resetDefault,
-+          seed: currentSeed
-+        });
-+      } else {
-+        runFallbackOnMainThread({ width, height, samps, randomize, resetDefault, seed: currentSeed, activeRenderId });
-+      }
-+    }
-+
-+    try {
-+      worker = new Worker(new URL('./smallpt-worker.js', import.meta.url), { type: 'module' });
-+      worker.onmessage = (e) => {
-+        const data = e.data;
-+        if (data.renderId !== renderId) return;
-+
-+        if (data.type === 'palette') {
-+          updatePaletteUI(data.palette);
-+          return;
-+        }
-+
-+        if (data.type === 'progress' || data.type === 'complete') {
-+          drawPixels(data.width, data.height, data.pixels);
-+          progressFill.style.width = `${data.progress}%`;
-+          progressBar.setAttribute('aria-valuenow', String(data.progress));
-+          timingEl.textContent = `${Math.round(data.elapsedMs)} ms`;
-+          if (data.type === 'complete') {
-+            statusEl.textContent = `Rendered ${data.width}×${data.height} (${data.samps} spp)`;
-+          } else {
-+            statusEl.textContent = `Rendering (${data.samps} spp)... ${data.progress}%`;
-+          }
-+        }
-+      };
-+      worker.onerror = () => {
-+        worker = null;
-+        startRender({ randomize: false, resetDefault: true });
-+      };
-+    } catch {
-+      worker = null;
-+    }
-+
-+    randomizeBtn.addEventListener('click', () => {
-+      startRender({ randomize: true });
-+    });
-+
-+    resetBtn.addEventListener('click', () => {
-+      startRender({ randomize: false, resetDefault: true });
-+    });
-+
-+    resolutionSelect.addEventListener('change', () => {
-+      startRender({ randomize: false });
-+    });
-+
-+    samplesSelect.addEventListener('change', () => {
-+      startRender({ randomize: false });
-+    });
-+
-+    // Perform initial render on load
-+    startRender({ randomize: false, resetDefault: true });
-+  </script>
-+
++  <script type="module" src="./main.js"></script>
  </body>
  
  </html>
+diff --git a/main.js b/main.js
+new file mode 100644
+index 0000000..14cdffb
+--- /dev/null
++++ b/main.js
+@@ -0,0 +1,76 @@
++const canvas = document.getElementById('smallpt-canvas');
++const statusEl = document.getElementById('render-status');
++const randomizeBtn = document.getElementById('randomize-btn');
++
++if (canvas instanceof HTMLCanvasElement) {
++  const ctx = canvas.getContext('2d');
++  const worker = new Worker(new URL('./worker.js', import.meta.url), {
++    type: 'module',
++  });
++
++  let nextRenderId = 0;
++  let completedRenders = 0;
++
++  function requestRender(randomize) {
++    nextRenderId += 1;
++    const seed =
++      ((Date.now() & 0xffff) ^ Math.imul(nextRenderId, 0x9e3779b9)) >>> 0;
++
++    canvas.dataset.status = 'rendering';
++    if (statusEl) {
++      statusEl.textContent = randomize
++        ? 'Rendering with randomized sphere colors...'
++        : 'Rendering scene with smallpt WebAssembly path tracer...';
++    }
++
++    worker.postMessage({
++      width: canvas.width,
++      height: canvas.height,
++      samples: 1,
++      randomize,
++      seed,
++      renderId: nextRenderId,
++    });
++  }
++
++  worker.addEventListener('message', (event) => {
++    const { pixels, width, height, elapsedMs, randomized, error } =
++      event.data ?? {};
++
++    if (error) {
++      canvas.dataset.status = 'error';
++      if (statusEl) {
++        statusEl.textContent = `Render error: ${error}`;
++      }
++      return;
++    }
++
++    if (ctx && pixels && width && height) {
++      const clamped =
++        pixels instanceof Uint8ClampedArray
++          ? pixels
++          : new Uint8ClampedArray(pixels.buffer ?? pixels);
++      const imageData = new ImageData(clamped, width, height);
++      ctx.putImageData(imageData, 0, 0);
++
++      completedRenders += 1;
++      canvas.dataset.renderCount = String(completedRenders);
++      canvas.dataset.status = 'complete';
++
++      if (statusEl) {
++        const modeLabel = randomized
++          ? 'Randomized sphere colors'
++          : 'Default Cornell Box';
++        statusEl.textContent = `${modeLabel} — rendered ${width}×${height} in ${Math.round(elapsedMs ?? 0)} ms`;
++      }
++    }
++  });
++
++  if (randomizeBtn) {
++    randomizeBtn.addEventListener('click', () => {
++      requestRender(true);
++    });
++  }
++
++  requestRender(false);
++}
 diff --git a/package.json b/package.json
-index 2bd4d77..9178cc0 100644
+index 2bd4d77..b4e831c 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,6 +2,7 @@
+@@ -1,7 +1,9 @@
+ {
    "name": "daily-grind",
    "version": "1.0.0",
++  "type": "module",
    "scripts": {
-+    "build": "emcc -x c++ smallpt.cpp -O3 -flto -sEXPORT_ES6 -sENVIRONMENT=web,worker -sSTRICT -sALLOW_MEMORY_GROWTH -sEXPORTED_FUNCTIONS=_reset_default_colors,_set_sphere_color,_get_sphere_color_channel,_randomize_sphere_colors,_init_render,_render_rows,_render_scene -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPU8 -o smallpt.js",
++    "build": "em++ -c smallpt.cpp -o smallpt.o -O3 -flto -Werror -Wall && em++ smallpt.o -o smallpt.js -O3 -flto --closure=1 -sSTRICT -sEXPORT_ES6 -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH -sSTACK_SIZE=1MB -sEXPORTED_FUNCTIONS=_render_frame,_randomize_spheres,_malloc,_free -sEXPORTED_RUNTIME_METHODS=HEAPU8",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-diff --git a/smallpt-worker.js b/smallpt-worker.js
-new file mode 100644
-index 0000000..2c4fa22
---- /dev/null
-+++ b/smallpt-worker.js
-@@ -0,0 +1,82 @@
-+import createModule from './smallpt.js';
-+
-+let wasmModule = null;
-+let currentRenderId = 0;
-+
-+const SPHERE_META = [
-+  { index: 0, name: 'Left Wall', role: 'Diffuse' },
-+  { index: 1, name: 'Right Wall', role: 'Diffuse' },
-+  { index: 2, name: 'Back Wall', role: 'Diffuse' },
-+  { index: 4, name: 'Floor', role: 'Diffuse' },
-+  { index: 5, name: 'Ceiling', role: 'Diffuse' },
-+  { index: 6, name: 'Mirror Sphere', role: 'Specular' },
-+  { index: 7, name: 'Glass Sphere', role: 'Refractive' }
-+];
-+
-+function readSpherePalette(mod) {
-+  return SPHERE_META.map(s => {
-+    const r = mod._get_sphere_color_channel(s.index, 0);
-+    const g = mod._get_sphere_color_channel(s.index, 1);
-+    const b = mod._get_sphere_color_channel(s.index, 2);
-+    const to255 = v => Math.round(Math.pow(Math.max(0, Math.min(1, v)), 1 / 2.2) * 255);
-+    return {
-+      ...s,
-+      r, g, b,
-+      css: `rgb(${to255(r)}, ${to255(g)}, ${to255(b)})`
-+    };
-+  });
-+}
-+
-+self.onmessage = async (e) => {
-+  const { type, width = 320, height = 240, samps = 4, randomize = false, seed = 0, renderId = 0 } = e.data;
-+  if (type !== 'render') return;
-+
-+  currentRenderId = renderId;
-+
-+  if (!wasmModule) {
-+    wasmModule = await createModule();
-+  }
-+
-+  if (randomize) {
-+    wasmModule._randomize_sphere_colors(seed >>> 0);
-+  } else if (e.data.resetDefault) {
-+    wasmModule._reset_default_colors();
-+  }
-+
-+  const palette = readSpherePalette(wasmModule);
-+  self.postMessage({ type: 'palette', renderId, palette });
-+
-+  const ptr = wasmModule._init_render(width, height);
-+  const chunkRows = 16;
-+  const startTime = performance.now();
-+
-+  for (let y = 0; y < height; y += chunkRows) {
-+    if (currentRenderId !== renderId) return;
-+    const endY = Math.min(height, y + chunkRows);
-+    wasmModule._render_rows(width, height, y, endY, samps, seed | 0);
-+
-+    const byteLength = width * height * 4;
-+    const pixels = new Uint8ClampedArray(wasmModule.HEAPU8.buffer, ptr, byteLength).slice();
-+    const elapsedMs = performance.now() - startTime;
-+    const progress = Math.round((endY / height) * 100);
-+    const done = endY >= height;
-+
-+    self.postMessage(
-+      {
-+        type: done ? 'complete' : 'progress',
-+        renderId,
-+        width,
-+        height,
-+        samps: samps * 4,
-+        progress,
-+        elapsedMs,
-+        pixels,
-+        palette
-+      },
-+      [pixels.buffer]
-+    );
-+
-+    // Yield briefly in the worker event loop so cancellation messages can be processed
-+    await new Promise(resolve => setTimeout(resolve, 0));
-+  }
-+};
 diff --git a/smallpt.cpp b/smallpt.cpp
 new file mode 100644
-index 0000000..b477aa6
+index 0000000..942df93
 --- /dev/null
 +++ b/smallpt.cpp
-@@ -0,0 +1,208 @@
-+#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
-+#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
-+#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
-+#include <stdint.h>
-+#include <emscripten/emscripten.h>
+@@ -0,0 +1,274 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// Adapted for WebAssembly execution in the browser with Emscripten.
 +
-+struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
-+  double x, y, z;                  // position, also color (r,g,b)
-+  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
-+  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
-+  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
-+  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
-+  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
-+  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
-+  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
-+  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
-+};
-+struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
-+enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
-+struct Sphere {
-+  double rad;       // radius
-+  Vec p, e, c;      // position, emission, color
-+  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
-+  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
-+    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
-+  double intersect(const Ray &r) const { // returns distance, 0 if nohit
-+    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
-+    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
-+    if (det<0) return 0; else det=sqrt(det);
-+    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++#include <cmath>
++#include <cstdint>
++#include <cstdlib>
++
++struct Vec {
++  double x, y, z;  // position, also color (r,g,b)
++  Vec(double x_ = 0, double y_ = 0, double z_ = 0) : x(x_), y(y_), z(z_) {}
++  Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
++  Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
++  Vec mult(const Vec &b) const { return Vec(x * b.x, y * b.y, z * b.z); }
++  Vec &norm() { return *this = *this * (1.0 / std::sqrt(x * x + y * y + z * z)); }
++  double dot(const Vec &b) const { return x * b.x + y * b.y + z * b.z; }
++  Vec operator%(const Vec &b) const {
++    return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x);
 +  }
 +};
 +
-+Sphere default_spheres[] = {//Scene: radius, position, emission, color, material
-+  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
-+  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
-+  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
-+  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
-+  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
-+  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
-+  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
-+  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
-+  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_ = Vec(), Vec d_ = Vec()) : o(o_), d(d_) {}
 +};
 +
-+Sphere spheres[] = {//Scene: radius, position, emission, color, material
-+  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
-+  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
-+  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
-+  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
-+  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
-+  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
-+  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
-+  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
-+  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++
++struct Sphere {
++  double rad;   // radius
++  Vec p, e, c;  // position, emission, color
++  Refl_t refl;  // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_)
++      : rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const {  // returns distance, 0 if nohit
++    Vec op = p - r.o;  // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps = 1e-4, b = op.dot(r.d), det = b * b - op.dot(op) + rad * rad;
++    if (det < 0) return 0;
++    det = std::sqrt(det);
++    return (t = b - det) > eps ? t : ((t = b + det) > eps ? t : 0);
++  }
 +};
 +
-+inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
-+inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
-+inline bool intersect(const Ray &r, double &t, int &id){
-+  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
-+  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
-+  return t<inf;
-+}
-+Vec radiance(const Ray &r, int depth, unsigned short *Xi){
-+  double t;                               // distance to intersection
-+  int id=0;                               // id of intersected object
-+  if (!intersect(r, t, id)) return Vec(); // if miss, return black
-+  const Sphere &obj = spheres[id];        // the hit object
-+  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
-+  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
-+  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
-+  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
-+    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
-+    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
-+    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
-+    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
-+  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
-+    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
-+  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
-+  bool into = n.dot(nl)>0;                // Ray from outside going in?
-+  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
-+  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
-+    return obj.e + f.mult(radiance(reflRay,depth,Xi));
-+  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
-+  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
-+  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
-+  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
-+    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
-+    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++// Scene: radius, position, emission, color, material
++static Sphere spheres[] = {
++    Sphere(1e5, Vec(1e5 + 1, 40.8, 81.6), Vec(), Vec(.75, .25, .25), DIFF),    // Left
++    Sphere(1e5, Vec(-1e5 + 99, 40.8, 81.6), Vec(), Vec(.25, .25, .75), DIFF),  // Rght
++    Sphere(1e5, Vec(50, 40.8, 1e5), Vec(), Vec(.75, .75, .75), DIFF),          // Back
++    Sphere(1e5, Vec(50, 40.8, -1e5 + 170), Vec(), Vec(), DIFF),                // Frnt
++    Sphere(1e5, Vec(50, 1e5, 81.6), Vec(), Vec(.75, .75, .75), DIFF),          // Botm
++    Sphere(1e5, Vec(50, -1e5 + 81.6, 81.6), Vec(), Vec(.75, .75, .75), DIFF),  // Top
++    Sphere(16.5, Vec(27, 16.5, 47), Vec(), Vec(1, 1, 1) * .999, SPEC),         // Mirr
++    Sphere(16.5, Vec(73, 16.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR),         // Glas
++    Sphere(600, Vec(50, 681.6 - .27, 81.6), Vec(12, 12, 12), Vec(), DIFF)      // Lite
++};
++
++static uint32_t randomize_generation = 0;
++
++inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
++inline int toInt(double x) { return int(std::pow(clamp(x), 1.0 / 2.2) * 255.0 + 0.5); }
++
++inline bool intersect(const Ray &r, double &t, int &id) {
++  double n = sizeof(spheres) / sizeof(Sphere), d, inf = t = 1e20;
++  for (int i = int(n); i--;)
++    if ((d = spheres[i].intersect(r)) && d < t) {
++      t = d;
++      id = i;
++    }
++  return t < inf;
 +}
 +
-+static uint8_t *rgba_buf = nullptr;
-+static Vec *accum_buf = nullptr;
-+static int cur_w = 0, cur_h = 0;
++static Vec hsv_to_rgb(double h, double s, double v) {
++  h = h - std::floor(h);
++  double c = v * s;
++  double x = c * (1.0 - std::fabs(std::fmod(h * 6.0, 2.0) - 1.0));
++  double m = v - c;
++  double r = 0, g = 0, b = 0;
++  int sector = static_cast<int>(h * 6.0);
++  switch (sector) {
++    case 0: r = c; g = x; b = 0; break;
++    case 1: r = x; g = c; b = 0; break;
++    case 2: r = 0; g = c; b = x; break;
++    case 3: r = 0; g = x; b = c; break;
++    case 4: r = x; g = 0; b = c; break;
++    default: r = c; g = 0; b = x; break;
++  }
++  return Vec(r + m, g + m, b + m);
++}
++
++struct RayTask {
++  Ray r;
++  Vec throughput;
++  int depth;
++  int E;
++};
++
++// Iterative path-tracing evaluation of radiance along primary_ray to avoid
++// call-stack overflow in WebAssembly linear memory.
++Vec radiance(const Ray &primary_ray, int initial_depth, unsigned short *Xi) {
++  RayTask stack[16];
++  int sp = 0;
++  stack[sp++] = {primary_ray, Vec(1, 1, 1), initial_depth, 1};
++  Vec accum(0, 0, 0);
++
++  while (sp > 0) {
++    RayTask task = stack[--sp];
++    Ray r = task.r;
++    Vec throughput = task.throughput;
++    int depth = task.depth;
++    int E = task.E;
++
++    while (true) {
++      double t;
++      int id = 0;
++      if (!intersect(r, t, id)) break;
++      const Sphere &obj = spheres[id];
++      if (E) {
++        accum = accum + throughput.mult(obj.e);
++      }
++
++      Vec x = r.o + r.d * t;
++      Vec n = (x - obj.p).norm();
++      Vec nl = n.dot(r.d) < 0 ? n : n * -1;
++      Vec f = obj.c;
++      double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z;
++
++      if (++depth > 4) {
++        if (depth < 16 && erand48(Xi) < p)
++          f = f * (1.0 / p);
++        else
++          break;
++      }
++      throughput = throughput.mult(f);
++
++      if (obj.refl == DIFF) {
++        // Explicit direct light sampling of the ceiling light cap (spheres[8])
++        double phi = 2.0 * M_PI * erand48(Xi);
++        double rad_disk = 17.5 * std::sqrt(erand48(Xi));
++        double ly = 681.6 - 0.27 - std::sqrt(600.0 * 600.0 - rad_disk * rad_disk);
++        Vec light_pt(50.0 + rad_disk * std::cos(phi), ly, 81.6 + rad_disk * std::sin(phi));
++        Vec to_light = light_pt - x;
++        double dist2 = to_light.dot(to_light);
++        Vec ldir = to_light * (1.0 / std::sqrt(dist2));
++        double cos_s = ldir.dot(nl);
++        double cos_l = ldir.y;
++        if (cos_s > 0 && cos_l > 0) {
++          double st;
++          int sid = 0;
++          if (intersect(Ray(x, ldir), st, sid) && sid == 8) {
++            double area = M_PI * 17.5 * 17.5;
++            double omega = (area * cos_l) / dist2;
++            accum = accum + throughput.mult(spheres[8].e * (cos_s * omega * M_1_PI));
++          }
++        }
++
++        double r1 = 2.0 * M_PI * erand48(Xi), r2 = erand48(Xi), r2s = std::sqrt(r2);
++        Vec w = nl;
++        Vec u = ((std::fabs(w.x) > 0.1 ? Vec(0, 1) : Vec(1)) % w).norm();
++        Vec v = w % u;
++        Vec d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s + w * std::sqrt(1.0 - r2)).norm();
++        r = Ray(x, d);
++        E = 0;
++        continue;
++      } else if (obj.refl == SPEC) {
++        r = Ray(x, r.d - n * 2.0 * n.dot(r.d));
++        E = 1;
++        continue;
++      }
++
++      Ray reflRay(x, r.d - n * 2.0 * n.dot(r.d));
++      bool into = n.dot(nl) > 0;
++      double nc = 1.0, nt = 1.5, nnt = into ? nc / nt : nt / nc, ddn = r.d.dot(nl), cos2t;
++      if ((cos2t = 1.0 - nnt * nnt * (1.0 - ddn * ddn)) < 0) {
++        r = reflRay;
++        E = 1;
++        continue;
++      }
++      Vec tdir = (r.d * nnt - n * ((into ? 1.0 : -1.0) * (ddn * nnt + std::sqrt(cos2t)))).norm();
++      double a = nt - nc, b = nt + nc, R0 = a * a / (b * b), c = 1.0 - (into ? -ddn : tdir.dot(n));
++      double Re = R0 + (1.0 - R0) * c * c * c * c * c, Tr = 1.0 - Re, P = 0.25 + 0.5 * Re,
++             RP = Re / P, TP = Tr / (1.0 - P);
++      E = 1;
++      if (depth > 2) {
++        if (erand48(Xi) < P) {
++          throughput = throughput * RP;
++          r = reflRay;
++        } else {
++          throughput = throughput * TP;
++          r = Ray(x, tdir);
++        }
++      } else {
++        if (sp < 16) {
++          stack[sp++] = {Ray(x, tdir), throughput * Tr, depth, 1};
++        }
++        throughput = throughput * Re;
++        r = reflRay;
++      }
++    }
++  }
++  return accum;
++}
 +
 +extern "C" {
 +
-+EMSCRIPTEN_KEEPALIVE
-+void reset_default_colors() {
-+  int n = sizeof(spheres) / sizeof(Sphere);
-+  for (int i = 0; i < n; i++) {
-+    spheres[i].c = default_spheres[i].c;
-+  }
-+}
-+
-+EMSCRIPTEN_KEEPALIVE
-+void set_sphere_color(int index, double r, double g, double b) {
-+  int n = sizeof(spheres) / sizeof(Sphere);
-+  if (index >= 0 && index < n) {
-+    spheres[index].c = Vec(r, g, b);
-+  }
-+}
-+
-+EMSCRIPTEN_KEEPALIVE
-+double get_sphere_color_channel(int index, int channel) {
-+  int n = sizeof(spheres) / sizeof(Sphere);
-+  if (index >= 0 && index < n) {
-+    if (channel == 0) return spheres[index].c.x;
-+    if (channel == 1) return spheres[index].c.y;
-+    if (channel == 2) return spheres[index].c.z;
-+  }
-+  return 0.0;
-+}
-+
-+EMSCRIPTEN_KEEPALIVE
-+void randomize_sphere_colors(unsigned int seed) {
++void randomize_spheres(uint32_t seed) {
++  ++randomize_generation;
++  uint32_t mixed = seed ^ (randomize_generation * 0x9E3779B9u);
 +  unsigned short Xi[3] = {
-+    (unsigned short)(seed & 0xFFFF),
-+    (unsigned short)((seed >> 16) & 0xFFFF),
-+    (unsigned short)((seed * 31337 + 12345) & 0xFFFF)
++      static_cast<unsigned short>((mixed & 0xFFFFu) ^ 0x330Eu),
++      static_cast<unsigned short>(((mixed >> 16) & 0xFFFFu) ^ 0xABCDu),
++      static_cast<unsigned short>(((mixed * 2654435761u) >> 16) & 0xFFFFu),
 +  };
-+  // Randomize all non-black, non-emissive spheres (walls + interior spheres: indices 0,1,2,4,5,6,7)
-+  int indices[] = {0, 1, 2, 4, 5, 6, 7};
-+  for (int idx : indices) {
-+    double r = 0.15 + 0.84 * erand48(Xi);
-+    double g = 0.15 + 0.84 * erand48(Xi);
-+    double b = 0.15 + 0.84 * erand48(Xi);
-+    spheres[idx].c = Vec(r, g, b);
++
++  double base_hue = std::fmod(randomize_generation * 0.27 + erand48(Xi) * 0.35, 1.0);
++  const int wall_indices[5] = {0, 1, 2, 4, 5};
++  for (int i = 0; i < 5; i++) {
++    double h = std::fmod(base_hue + i * 0.19 + erand48(Xi) * 0.08, 1.0);
++    double s = 0.65 + 0.25 * erand48(Xi);
++    double v = 0.68 + 0.22 * erand48(Xi);
++    spheres[wall_indices[i]].c = hsv_to_rgb(h, s, v);
 +  }
++
++  // Randomize mirror and glass sphere tint colors
++  spheres[6].c = hsv_to_rgb(
++      std::fmod(base_hue + 0.52 + erand48(Xi) * 0.15, 1.0),
++      0.55 + 0.35 * erand48(Xi),
++      0.92 + 0.079 * erand48(Xi));
++  spheres[7].c = hsv_to_rgb(
++      std::fmod(base_hue + 0.81 + erand48(Xi) * 0.15, 1.0),
++      0.55 + 0.35 * erand48(Xi),
++      0.92 + 0.079 * erand48(Xi));
 +}
 +
-+EMSCRIPTEN_KEEPALIVE
-+uint8_t* init_render(int w, int h) {
-+  if (cur_w != w || cur_h != h || !rgba_buf || !accum_buf) {
-+    free(rgba_buf);
-+    free(accum_buf);
-+    cur_w = w;
-+    cur_h = h;
-+    rgba_buf = (uint8_t*)malloc(w * h * 4);
-+    accum_buf = (Vec*)malloc(sizeof(Vec) * w * h);
-+  }
-+  for (int i = 0; i < w * h; i++) {
-+    accum_buf[i] = Vec();
-+    rgba_buf[i * 4 + 0] = 0;
-+    rgba_buf[i * 4 + 1] = 0;
-+    rgba_buf[i * 4 + 2] = 0;
-+    rgba_buf[i * 4 + 3] = 255;
-+  }
-+  return rgba_buf;
-+}
-+
-+EMSCRIPTEN_KEEPALIVE
-+void render_rows(int w, int h, int start_y, int end_y, int samps, int pass_seed) {
-+  if (!rgba_buf || !accum_buf || cur_w != w || cur_h != h) {
-+    init_render(w, h);
-+  }
++void render_frame(uint8_t *out_pixels, int w, int h, int samps) {
++  if (!out_pixels || w <= 0 || h <= 0) return;
 +  if (samps < 1) samps = 1;
-+  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
-+  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
-+  for (int y = start_y; y < end_y && y < h; y++) {
-+    for (unsigned short x = 0; x < w; x++) {
-+      unsigned short Xi[3] = {
-+        (unsigned short)(x ^ pass_seed),
-+        (unsigned short)(y ^ (pass_seed >> 8)),
-+        (unsigned short)(y * y * y + pass_seed * 17)
-+      };
-+      int i = (h - y - 1) * w + x;
-+      Vec pixel_c = Vec();
++
++  Ray cam(Vec(50, 52, 295.6), Vec(0, -0.042612, -1).norm());
++  Vec cx = Vec(w * 0.5135 / h);
++  Vec cy = (cx % cam.d).norm() * 0.5135;
++
++  for (int y = 0; y < h; y++) {
++    unsigned short Xi[3] = {
++        static_cast<unsigned short>(randomize_generation * 131u),
++        static_cast<unsigned short>(y * 17u + randomize_generation * 31u),
++        static_cast<unsigned short>(y * y * y + randomize_generation * 97u),
++    };
++    for (int x = 0; x < w; x++) {
++      Vec pixel_color(0, 0, 0);
 +      for (int sy = 0; sy < 2; sy++) {
-+        for (int sx = 0; sx < 2; sx++, r = Vec()) {
++        for (int sx = 0; sx < 2; sx++) {
++          Vec r(0, 0, 0);
 +          for (int s = 0; s < samps; s++) {
-+            double r1 = 2 * erand48(Xi), dx = r1 < 1 ? sqrt(r1) - 1 : 1 - sqrt(2 - r1);
-+            double r2 = 2 * erand48(Xi), dy = r2 < 1 ? sqrt(r2) - 1 : 1 - sqrt(2 - r2);
-+            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
-+                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
-+            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) * (1. / samps);
++            double r1 = 2.0 * erand48(Xi);
++            double dx = r1 < 1.0 ? std::sqrt(r1) - 1.0 : 1.0 - std::sqrt(2.0 - r1);
++            double r2 = 2.0 * erand48(Xi);
++            double dy = r2 < 1.0 ? std::sqrt(r2) - 1.0 : 1.0 - std::sqrt(2.0 - r2);
++            Vec d = cx * (((sx + 0.5 + dx) / 2.0 + x) / w - 0.5) +
++                    cy * (((sy + 0.5 + dy) / 2.0 + y) / h - 0.5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140.0, d.norm()), 0, Xi) * (1.0 / samps);
 +          }
-+          pixel_c = pixel_c + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++          pixel_color = pixel_color + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * 0.25;
 +        }
 +      }
-+      accum_buf[i] = pixel_c;
-+      rgba_buf[i * 4 + 0] = (uint8_t)toInt(pixel_c.x);
-+      rgba_buf[i * 4 + 1] = (uint8_t)toInt(pixel_c.y);
-+      rgba_buf[i * 4 + 2] = (uint8_t)toInt(pixel_c.z);
-+      rgba_buf[i * 4 + 3] = 255;
++      int idx = ((h - y - 1) * w + x) * 4;
++      out_pixels[idx + 0] = static_cast<uint8_t>(toInt(pixel_color.x));
++      out_pixels[idx + 1] = static_cast<uint8_t>(toInt(pixel_color.y));
++      out_pixels[idx + 2] = static_cast<uint8_t>(toInt(pixel_color.z));
++      out_pixels[idx + 3] = 255;
 +    }
 +  }
 +}
 +
-+EMSCRIPTEN_KEEPALIVE
-+uint8_t* render_scene(int w, int h, int samps, int seed) {
-+  init_render(w, h);
-+  render_rows(w, h, 0, h, samps, seed);
-+  return rgba_buf;
-+}
-+
-+} // extern "C"
++}  // extern "C"
 diff --git a/smallpt.js b/smallpt.js
 new file mode 100644
-index 0000000..dc36a8a
+index 0000000..3b8b447
 --- /dev/null
 +++ b/smallpt.js
-@@ -0,0 +1,2 @@
-+async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{}Module["ccall"]=ccall;Module["cwrap"]=cwrap;var _reset_default_colors,_set_sphere_color,_get_sphere_color_channel,_randomize_sphere_colors,_init_render,_render_rows,_render_scene,__emscripten_timeout,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_reset_default_colors=Module["_reset_default_colors"]=wasmExports["h"];_set_sphere_color=Module["_set_sphere_color"]=wasmExports["i"];_get_sphere_color_channel=Module["_get_sphere_color_channel"]=wasmExports["j"];_randomize_sphere_colors=Module["_randomize_sphere_colors"]=wasmExports["k"];_init_render=Module["_init_render"]=wasmExports["l"];_render_rows=Module["_render_rows"]=wasmExports["m"];_render_scene=Module["_render_scene"]=wasmExports["n"];__emscripten_timeout=wasmExports["o"];__emscripten_stack_restore=wasmExports["p"];__emscripten_stack_alloc=wasmExports["q"];_emscripten_stack_get_current=wasmExports["r"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
-+;return Module}export default Module;
+@@ -0,0 +1,5 @@
++async function Module(moduleArg={}){var Module=moduleArg;var e=import.meta.url,f="",g,l;try{f=(new URL(".",e)).href}catch{}l=a=>{var b=new XMLHttpRequest;b.open("GET",a,!1);b.responseType="arraybuffer";b.send(null);return new Uint8Array(b.response)};g=async a=>{a=await fetch(a,{credentials:"same-origin"});if(a.ok)return a.arrayBuffer();throw Error(a.status+" : "+a.url);};var m=console.error.bind(console),n=!1;function p(){if(!q?.buffer?.resizable){var a=r.buffer;q=new Int8Array(a);Module.HEAPU8=t=new Uint8Array(a)}}function u(a){a=`Aborted(${a})`;m(a);
++n=!0;throw new WebAssembly.RuntimeError(a+". Build with -sASSERTIONS for more info.");}var v;async function w(a){try{var b=await g(a);return new Uint8Array(b)}catch{}if(l)a=l(a);else throw"both async and sync fetching of the wasm failed";return a}async function x(a,b){try{var d=await w(a);return await WebAssembly.instantiate(d,b)}catch(c){m(`failed to asynchronously prepare wasm: ${c}`),u(c)}}async function y(a){var b=v;try{var d=fetch(b,{credentials:"same-origin"});return await WebAssembly.instantiateStreaming(d,
++a)}catch(c){m(`wasm streaming compile failed: ${c}`),m("falling back to ArrayBuffer instantiation")}return x(b,a)}class z{name="ExitStatus";constructor(a){this.message=`Program terminated with exit(${a})`;this.status=a}}var q,A={},t,B,r,C={d:()=>u(""),c:()=>{},a:(a,b)=>{A[a]&&(clearTimeout(A[a].id),delete A[a]);if(!b)return 0;var d=setTimeout(()=>{delete A[a];var c=[a,performance.now()],h=B;if(!n)try{h(...c)}catch(k){if(!(k instanceof z||k=="unwind"))throw k;}finally{}},b);A[a]={id:d,m:b};return 0},
++e:a=>{var b=t.length;a>>>=0;if(a>2147483648)return!1;for(var d=1;d<=4;d*=2){var c=b*(1+.2/d);c=Math.min(c,a+100663296);a:{c=(Math.min(2147483648,Math.ceil(Math.max(a,c)/65536)*65536)-r.buffer.byteLength+65535)/65536|0;try{r.grow(c);p();var h=1;break a}catch(k){}h=void 0}if(h)return!0}return!1},b:a=>{throw new z(a);}},D;D=await (async function(){var a={a:C};v??=Module.locateFile?f+"smallpt.wasm":(new URL("smallpt.wasm",import.meta.url)).href;a=D=(await y(a)).instance.exports;Module._randomize_spheres=
++a.h;Module._render_frame=a.i;B=a.j;Module._malloc=a.k;Module._free=a.l;r=a.f;p();return D}());await (async function(){n||D.g()}());;return Module}export default Module;
+diff --git a/smallpt.o b/smallpt.o
+new file mode 100644
+index 0000000000000000000000000000000000000000..e3b668cdedadd09f5b30d01bf9625f694d40cf44
+GIT binary patch
+literal 16544
+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
+A1^@s6
+
+literal 0
+HcmV?d00001
+
 diff --git a/smallpt.wasm b/smallpt.wasm
 new file mode 100755
-index 0000000..e69de29
+index 0000000000000000000000000000000000000000..b38dbd8306e5e99db3c434d3f10f6fd7bae1dbc7
+GIT binary patch
+literal 30192
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/worker.js b/worker.js
+new file mode 100644
+index 0000000..54e4c75
+--- /dev/null
++++ b/worker.js
+@@ -0,0 +1,49 @@
++import initSmallpt from './smallpt.js';
++
++const wasmPromise = initSmallpt();
++let queue = Promise.resolve();
++
++async function handleRenderRequest(data) {
++  const width = data?.width ?? 320;
++  const height = data?.height ?? 240;
++  const samples = data?.samples ?? 1;
++  const randomize = Boolean(data?.randomize);
++  const seed = (data?.seed ?? 0) >>> 0;
++  const renderId = data?.renderId ?? 0;
++
++  const wasm = await wasmPromise;
++
++  if (randomize) {
++    wasm._randomize_spheres(seed);
++  }
++
++  const byteLength = width * height * 4;
++  const ptr = wasm._malloc(byteLength);
++
++  try {
++    const startTime = performance.now();
++    wasm._render_frame(ptr, width, height, samples);
++    const elapsedMs = performance.now() - startTime;
++    const pixels = new Uint8ClampedArray(
++      wasm.HEAPU8.buffer,
++      ptr,
++      byteLength,
++    ).slice();
++    self.postMessage(
++      { pixels, width, height, elapsedMs, renderId, randomized: randomize },
++      [pixels.buffer],
++    );
++  } finally {
++    wasm._free(ptr);
++  }
++}
++
++self.addEventListener('message', (event) => {
++  queue = queue
++    .then(() => handleRenderRequest(event.data))
++    .catch((error) => {
++      self.postMessage({
++        error: error instanceof Error ? error.message : String(error),
++      });
++    });
++});

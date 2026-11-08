@@ -1,310 +1,731 @@
-diff --git a/README.md b/README.md
-index 4479b53..36e683f 100644
---- a/README.md
-+++ b/README.md
-@@ -15,3 +15,16 @@ The application will now be running on `http://localhost:11224`.
- - **[React](https://react.dev/)**: Used for UI components.
- - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
- - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
-+
-+## smallpt WebAssembly demo
-+
-+The home page embeds [smallpt](http://www.kevinbeason.com/smallpt/), Kevin Beason's
-+99-line C++ path tracer, compiled to WebAssembly and run in a Web Worker
-+(`src/components/SmallptDemo.tsx`, `public/smallpt/`). The source and build
-+script live in `wasm/smallpt/`; the compiled `smallpt.js`/`smallpt.wasm` are
-+checked in so no Emscripten toolchain is needed for a normal build. To rebuild
-+them after changing the C++ (requires `em++` from the Emscripten SDK):
-+
-+```sh
-+pnpm run build:wasm
-+```
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..712b6e7 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# emscripten intermediate object files
++wasm/build/
 diff --git a/package.json b/package.json
-index 820c637..f200146 100644
+index bfffcf0..658254b 100644
 --- a/package.json
 +++ b/package.json
-@@ -6,6 +6,7 @@
+@@ -5,7 +5,9 @@
+   "scripts": {
      "dev": "astro dev",
      "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
-     "build": "astro build",
-+    "build:wasm": "sh wasm/smallpt/build.sh",
+-    "build": "astro build",
++    "build": "npm run build:wasm && astro build",
++    "build:wasm": "bash scripts/build-wasm.sh release",
++    "build:wasm:debug": "bash scripts/build-wasm.sh debug",
      "preview": "astro preview",
      "astro": "astro"
    },
-diff --git a/public/smallpt/smallpt-worker.js b/public/smallpt/smallpt-worker.js
-new file mode 100644
-index 0000000..6044f1d
---- /dev/null
-+++ b/public/smallpt/smallpt-worker.js
-@@ -0,0 +1,37 @@
-+// Web Worker that drives the smallpt WebAssembly module off the main thread.
-+// Protocol:
-+//   main -> worker: { type: 'render', jobId, width, height, spp, seed, colors: [[r,g,b], ...] }
-+//   worker -> main: { type: 'ready', spheres }
-+//                   { type: 'rows', jobId, row, rows, pixels }   (RGBA8, transferred)
-+//                   { type: 'done', jobId, ms }
-+//                   { type: 'error', jobId, message }
-+import createSmallpt from './smallpt.js';
-+
-+const ROWS_PER_CHUNK = 8;
-+const modulePromise = createSmallpt();
-+
-+modulePromise
-+  .then((M) => self.postMessage({ type: 'ready', spheres: M._sphere_count() }))
-+  .catch((e) => self.postMessage({ type: 'error', message: String(e?.message ?? e) }));
-+
-+self.onmessage = async (event) => {
-+  const { type, jobId, width, height, spp, seed, colors } = event.data;
-+  if (type !== 'render') return;
-+  try {
-+    const M = await modulePromise;
-+    colors.forEach(([r, g, b], i) => M._set_sphere_color(i, r, g, b));
-+    const t0 = performance.now();
-+    M._begin_render(width, height, spp, seed | 0);
-+    for (let row = 0; row < height; row += ROWS_PER_CHUNK) {
-+      const rows = Math.min(ROWS_PER_CHUNK, height - row);
-+      M._render_rows(row, row + rows);
-+      // Re-read HEAPU8 after every call: ALLOW_MEMORY_GROWTH can swap the buffer.
-+      const ptr = M._pixels() + row * width * 4;
-+      const pixels = new Uint8ClampedArray(M.HEAPU8.buffer, ptr, rows * width * 4).slice();
-+      self.postMessage({ type: 'rows', jobId, row, rows, pixels }, [pixels.buffer]);
-+    }
-+    self.postMessage({ type: 'done', jobId, ms: performance.now() - t0 });
-+  } catch (e) {
-+    self.postMessage({ type: 'error', jobId, message: String(e?.message ?? e) });
-+  }
-+};
-diff --git a/public/smallpt/smallpt.js b/public/smallpt/smallpt.js
-new file mode 100644
-index 0000000..7490455
---- /dev/null
-+++ b/public/smallpt/smallpt.js
-@@ -0,0 +1,2 @@
-+async function createSmallpt(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{}var _sphere_count,_set_sphere_color,_begin_render,_render_rows,_pixels,__emscripten_timeout,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_sphere_count=Module["_sphere_count"]=wasmExports["h"];_set_sphere_color=Module["_set_sphere_color"]=wasmExports["i"];_begin_render=Module["_begin_render"]=wasmExports["j"];_render_rows=Module["_render_rows"]=wasmExports["k"];_pixels=Module["_pixels"]=wasmExports["l"];__emscripten_timeout=wasmExports["m"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={d:__abort_js,b:__emscripten_runtime_keepalive_clear,c:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
-+;return Module}export default createSmallpt;
-diff --git a/public/smallpt/smallpt.wasm b/public/smallpt/smallpt.wasm
+diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
 new file mode 100755
-index 0000000..e69de29
-diff --git a/src/components/SmallptDemo.tsx b/src/components/SmallptDemo.tsx
-new file mode 100644
-index 0000000..39aff97
+index 0000000..24b78c9
 --- /dev/null
-+++ b/src/components/SmallptDemo.tsx
-@@ -0,0 +1,182 @@
++++ b/scripts/build-wasm.sh
+@@ -0,0 +1,57 @@
++#!/usr/bin/env bash
++# Compiles the smallpt C++ path tracer to an ES6 WebAssembly module that runs
++# inside a module Web Worker. Invoked by `npm run build` before `astro build`.
++#
++# Usage: scripts/build-wasm.sh [release|debug]   (default: release)
++set -euo pipefail
++
++PROFILE="${1:-release}"
++ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++SRC_DIR="$ROOT/wasm/smallpt"
++OBJ_DIR="$ROOT/wasm/build/$PROFILE"
++OUT_DIR="$ROOT/src/wasm/generated"
++OUT_JS="$OUT_DIR/smallpt.js"
++
++if ! command -v em++ >/dev/null 2>&1; then
++  if [[ -f "$OUT_JS" && -f "$OUT_DIR/smallpt.wasm" ]]; then
++    echo "build-wasm: em++ not found; using prebuilt artifacts in src/wasm/generated" >&2
++    exit 0
++  fi
++  echo "build-wasm: em++ (Emscripten) is required to build the WebAssembly module" >&2
++  exit 1
++fi
++
++case "$PROFILE" in
++  release)
++    COMPILE_FLAGS=(-O3 -flto)
++    LINK_FLAGS=(-O3 -flto)
++    ;;
++  debug)
++    COMPILE_FLAGS=(-g)
++    LINK_FLAGS=(-g -sASSERTIONS)
++    ;;
++  *)
++    echo "build-wasm: unknown profile '$PROFILE' (expected release or debug)" >&2
++    exit 1
++    ;;
++esac
++
++mkdir -p "$OBJ_DIR" "$OUT_DIR"
++
++# Separate compilation: C++ source -> object file.
++em++ -c "$SRC_DIR/smallpt.cpp" -o "$OBJ_DIR/smallpt.o" \
++  -std=c++17 -Werror -Wall "${COMPILE_FLAGS[@]}"
++
++# Link into an ES6 module for a module Web Worker. The JS glue is minified by
++# Vite during `astro build`, so --closure is not used here.
++em++ "$OBJ_DIR/smallpt.o" -o "$OUT_JS" \
++  "${LINK_FLAGS[@]}" \
++  -Werror -Wall \
++  -sSTRICT \
++  -sEXPORT_ES6 \
++  -sENVIRONMENT=worker \
++  -sALLOW_MEMORY_GROWTH \
++  -sEXPORTED_FUNCTIONS=_render,_malloc,_free \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF64
++
++echo "build-wasm: built $PROFILE module -> ${OUT_JS#"$ROOT/"}"
+diff --git a/src/components/SmallptRender.tsx b/src/components/SmallptRender.tsx
+new file mode 100644
+index 0000000..92a843b
+--- /dev/null
++++ b/src/components/SmallptRender.tsx
+@@ -0,0 +1,127 @@
 +import { useCallback, useEffect, useRef, useState } from 'react';
++import {
++  SMALLPT_COLOR_COUNT,
++  type SmallptRenderRequest,
++  type SmallptWorkerResponse,
++} from '../workers/smallpt-protocol';
 +
-+// smallpt's scene: indices into the `spheres[]` array in wasm/smallpt/smallpt.cpp.
-+const SPHERE_NAMES = ['Left wall', 'Right wall', 'Back wall', 'Front wall', 'Floor', 'Ceiling', 'Mirror ball', 'Glass ball', 'Light'];
-+const DEFAULT_COLORS: Color[] = [
-+  [0.75, 0.25, 0.25], [0.25, 0.25, 0.75], [0.75, 0.75, 0.75], [0, 0, 0],
-+  [0.75, 0.75, 0.75], [0.75, 0.75, 0.75], [0.999, 0.999, 0.999], [0.999, 0.999, 0.999], [0, 0, 0],
-+];
-+const WIDTH = 480;
-+const HEIGHT = 360;
-+const SPP = 16; // samples per pixel (smallpt uses 2x2 sub-pixels, so a multiple of 4)
++const WIDTH = 240;
++const HEIGHT = 180;
++/** Samples per sub-pixel (4 sub-pixels per pixel => 24 samples per pixel). */
++const SAMPLES = 6;
 +
-+type Color = [number, number, number];
-+type Phase = 'loading' | 'idle' | 'rendering' | 'error';
++type Status =
++  | { kind: 'rendering' }
++  | { kind: 'done'; durationMs: number }
++  | { kind: 'error'; message: string };
 +
-+type WorkerMessage =
-+  | { type: 'ready'; spheres: number }
-+  | { type: 'rows'; jobId: number; row: number; rows: number; pixels: Uint8ClampedArray<ArrayBuffer> }
-+  | { type: 'done'; jobId: number; ms: number }
-+  | { type: 'error'; jobId?: number; message: string };
-+
-+function hslToRgb(h: number, s: number, l: number): Color {
-+  const k = (n: number) => (n + h / 30) % 12;
-+  const a = s * Math.min(l, 1 - l);
-+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-+  return [f(0), f(8), f(4)];
++function randomColors(): number[] {
++  const colors: number[] = [];
++  for (let i = 0; i < SMALLPT_COLOR_COUNT; i++) {
++    // Random hue with moderate saturation so the scene stays well lit.
++    const h = Math.random();
++    const s = 0.4 + Math.random() * 0.5;
++    const v = 0.65 + Math.random() * 0.3;
++    colors.push(...hsvToRgb(h, s, v));
++  }
++  return colors;
 +}
 +
-+// Random albedos: saturated mid-tones for the diffuse walls, bright tints for the
-+// mirror and glass balls. Kept below 1.0 so the path tracer stays energy-conserving.
-+function randomColors(): Color[] {
-+  return DEFAULT_COLORS.map((c, i) => {
-+    if (i === 8) return c; // the light's colour stays black; it only emits
-+    const hue = Math.random() * 360;
-+    if (i === 6 || i === 7) return hslToRgb(hue, 0.4 + Math.random() * 0.4, 0.82 + Math.random() * 0.12);
-+    return hslToRgb(hue, 0.5 + Math.random() * 0.45, 0.4 + Math.random() * 0.3);
-+  });
++function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
++  const i = Math.floor(h * 6);
++  const f = h * 6 - i;
++  const p = v * (1 - s);
++  const q = v * (1 - f * s);
++  const t = v * (1 - (1 - f) * s);
++  switch (i % 6) {
++    case 0: return [v, t, p];
++    case 1: return [q, v, p];
++    case 2: return [p, v, t];
++    case 3: return [p, q, v];
++    case 4: return [t, p, v];
++    default: return [v, p, q];
++  }
 +}
 +
-+function toCss([r, g, b]: Color): string {
-+  const c = (v: number) => Math.round(Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2) * 255);
-+  return `rgb(${c(r)} ${c(g)} ${c(b)})`;
-+}
-+
-+export default function SmallptDemo() {
++export default function SmallptRender() {
 +  const canvasRef = useRef<HTMLCanvasElement>(null);
 +  const workerRef = useRef<Worker | null>(null);
-+  const jobRef = useRef(0);
-+  const [phase, setPhase] = useState<Phase>('loading');
-+  const [progress, setProgress] = useState(0);
-+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
-+  const [error, setError] = useState<string | null>(null);
-+  const [colors, setColors] = useState<Color[]>(DEFAULT_COLORS);
-+  const base = import.meta.env.BASE_URL;
++  const requestIdRef = useRef(0);
++  const [status, setStatus] = useState<Status>({ kind: 'rendering' });
 +
-+  // Spawn the worker and, once its wasm module is ready, render `initialColors`.
-+  // Rendering happens in a synchronous loop inside the worker, so cancelling a
-+  // job means terminating that worker and starting a fresh one.
-+  const spawnWorker = useCallback((initialColors: Color[]) => {
-+    workerRef.current?.terminate();
-+    const worker = new Worker(`${base}smallpt/smallpt-worker.js`, { type: 'module' });
-+    workerRef.current = worker;
-+    setPhase('loading');
-+    setProgress(0);
-+    setElapsedMs(null);
-+    setColors(initialColors);
-+
-+    const paintBlack = () => {
-+      const ctx = canvasRef.current?.getContext('2d');
-+      if (!ctx) return;
-+      ctx.fillStyle = '#111';
-+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
++  const requestRender = useCallback((colors: number[] | null) => {
++    const worker = workerRef.current;
++    if (!worker) return;
++    const id = ++requestIdRef.current;
++    setStatus({ kind: 'rendering' });
++    const req: SmallptRenderRequest = {
++      type: 'render',
++      id,
++      width: WIDTH,
++      height: HEIGHT,
++      samples: SAMPLES,
++      seed: Math.floor(Math.random() * 0xffffffff),
++      colors,
 +    };
-+
-+    worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-+      const msg = event.data;
-+      if (msg.type === 'ready') {
-+        paintBlack();
-+        const jobId = ++jobRef.current;
-+        setPhase('rendering');
-+        worker.postMessage({
-+          type: 'render',
-+          jobId,
-+          width: WIDTH,
-+          height: HEIGHT,
-+          spp: SPP,
-+          seed: Math.floor(Math.random() * 0xffff),
-+          colors: initialColors,
-+        });
-+        return;
-+      }
-+      if (msg.type === 'error') {
-+        setPhase('error');
-+        setError(msg.message);
-+        return;
-+      }
-+      if (msg.jobId !== jobRef.current) return; // stale job
-+      if (msg.type === 'rows') {
-+        const ctx = canvasRef.current?.getContext('2d');
-+        if (ctx) ctx.putImageData(new ImageData(msg.pixels, WIDTH, msg.rows), 0, msg.row);
-+        setProgress((msg.row + msg.rows) / HEIGHT);
-+      } else if (msg.type === 'done') {
-+        setPhase('idle');
-+        setProgress(1);
-+        setElapsedMs(msg.ms);
-+      }
-+    };
-+    worker.onerror = (event) => {
-+      setPhase('error');
-+      setError(event.message || 'Failed to load the smallpt worker.');
-+    };
-+  }, [base]);
++    worker.postMessage(req);
++  }, []);
 +
 +  useEffect(() => {
-+    if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') {
-+      setPhase('error');
-+      setError('This browser does not support Web Workers or WebAssembly.');
-+      return;
-+    }
-+    spawnWorker(DEFAULT_COLORS);
++    const worker = new Worker(new URL('../workers/smallpt.worker.ts', import.meta.url), {
++      type: 'module',
++    });
++    workerRef.current = worker;
++
++    worker.addEventListener('message', (event: MessageEvent<SmallptWorkerResponse>) => {
++      const msg = event.data;
++      if (msg.id !== requestIdRef.current) return; // stale result
++      if (msg.type === 'error') {
++        setStatus({ kind: 'error', message: msg.message });
++        return;
++      }
++      const ctx = canvasRef.current?.getContext('2d');
++      if (ctx) ctx.putImageData(new ImageData(msg.pixels, msg.width, msg.height), 0, 0);
++      setStatus({ kind: 'done', durationMs: msg.durationMs });
++    });
++    worker.addEventListener('error', (event) => {
++      setStatus({ kind: 'error', message: event.message || 'Worker failed to load' });
++    });
++
++    requestRender(null);
++
 +    return () => {
-+      workerRef.current?.terminate();
++      worker.terminate();
 +      workerRef.current = null;
 +    };
-+  }, [spawnWorker]);
++  }, [requestRender]);
 +
-+  const busy = phase === 'rendering';
-+  const status =
-+    phase === 'loading' ? 'Loading WebAssembly module…'
-+    : phase === 'error' ? `Error: ${error}`
-+    : busy ? `Rendering ${WIDTH}×${HEIGHT} at ${SPP} spp… ${Math.round(progress * 100)}%`
-+    : elapsedMs !== null ? `Rendered ${WIDTH}×${HEIGHT} at ${SPP} spp in ${(elapsedMs / 1000).toFixed(1)} s`
-+    : 'Ready';
++  const rendering = status.kind === 'rendering';
 +
 +  return (
-+    <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start">
-+      <div>
-+        <canvas
-+          ref={canvasRef}
-+          width={WIDTH}
-+          height={HEIGHT}
-+          className="w-full h-auto bg-gray-900 rounded shadow"
-+          aria-label="Path-traced Cornell box rendered by smallpt compiled to WebAssembly"
-+        />
-+        <div className="mt-3 h-1.5 w-full bg-gray-200 rounded overflow-hidden" aria-hidden="true">
-+          <div
-+            className="h-full bg-amber-400 transition-[width] duration-150"
-+            style={{ width: `${Math.round(progress * 100)}%` }}
-+          />
-+        </div>
-+        <p className="mt-2 text-sm text-gray-600" role="status" aria-live="polite">{status}</p>
-+      </div>
-+      <div className="space-y-4">
-+        <button
-+          type="button"
-+          onClick={() => spawnWorker(randomColors())}
-+          disabled={phase === 'error'}
-+          className="w-full bg-gray-800 text-white text-sm font-semibold py-2.5 px-4 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-+        >
-+          {busy ? 'Restart with random colors' : 'Render again with random colors'}
-+        </button>
-+        <ul className="grid grid-cols-3 lg:grid-cols-2 gap-2 text-xs text-gray-700">
-+          {colors.map((c, i) => (
-+            <li key={SPHERE_NAMES[i]} className="flex items-center gap-2">
-+              <span
-+                className="inline-block w-5 h-5 rounded-full border border-gray-300 shrink-0"
-+                style={{ background: i === 8 ? '#fffbe6' : toCss(c) }}
-+                aria-hidden="true"
-+              />
-+              {SPHERE_NAMES[i]}
-+            </li>
-+          ))}
-+        </ul>
-+        <p className="text-xs text-gray-500">
-+          Kevin Beason's <a className="underline hover:text-amber-500" href="http://www.kevinbeason.com/smallpt/">smallpt</a>,
-+          99 lines of C++, compiled with Emscripten and running in a Web Worker. Light bounces are
-+          sampled with Monte Carlo integration, so each run looks slightly different.
-+        </p>
-+      </div>
-+    </div>
++    <figure className="flex flex-col items-center gap-3">
++      <canvas
++        ref={canvasRef}
++        width={WIDTH}
++        height={HEIGHT}
++        className="w-full max-w-md bg-gray-900"
++        style={{ aspectRatio: `${WIDTH} / ${HEIGHT}`, imageRendering: 'auto' }}
++        role="img"
++        aria-label="Path-traced Cornell box with a mirror sphere and a glass sphere, rendered by smallpt"
++      />
++      <figcaption className="text-sm text-gray-600" aria-live="polite">
++        {status.kind === 'rendering' && 'Rendering with smallpt (WebAssembly)…'}
++        {status.kind === 'done' &&
++          `Rendered ${WIDTH}×${HEIGHT} at ${SAMPLES * 4} samples/pixel in ${(status.durationMs / 1000).toFixed(2)}s`}
++        {status.kind === 'error' && `Render failed: ${status.message}`}
++      </figcaption>
++      <button
++        type="button"
++        onClick={() => requestRender(randomColors())}
++        disabled={rendering}
++        className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold hover:bg-amber-400 hover:text-gray-900 disabled:opacity-50 disabled:cursor-wait"
++      >
++        Render again with random colors
++      </button>
++    </figure>
 +  );
 +}
 diff --git a/src/pages/index.astro b/src/pages/index.astro
-index 92f6399..9b80cf3 100644
+index 92f6399..2301d7b 100644
 --- a/src/pages/index.astro
 +++ b/src/pages/index.astro
 @@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
  import Ad from '../components/AdSlotBanner';
  import { getCollection } from 'astro:content';
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
-+import SmallptDemo from '../components/SmallptDemo.tsx';
++import SmallptRender from '../components/SmallptRender';
  import type { RenderResult } from 'astro:content';
  
  const articles = await getCollection('articles');
-@@ -60,6 +61,13 @@ politicsArticles[2] = {
-     </main>
+@@ -79,6 +80,15 @@ politicsArticles[2] = {
  
-     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
-+        <!-- smallpt path tracer compiled to WebAssembly, rendered client-side in a Web Worker -->
-+        <section class="p-4 md:p-6">
-+            <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-2">Interactive: a path tracer in your browser</h2>
-+            <p class="text-gray-600 mb-6">The classic <em>smallpt</em> renderer, compiled from C++ to WebAssembly. Every pixel is traced live on your device.</p>
-+            <SmallptDemo client:load />
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++
++        <section class="p-4 md:p-6" aria-labelledby="smallpt-heading">
++            <h2 id="smallpt-heading" class="text-2xl font-bold text-gray-900 mb-2">Path Tracing in Your Browser</h2>
++            <p class="text-gray-600 mb-4">
++                This image is rendered on your device by <a class="underline hover:text-amber-400" href="http://www.kevinbeason.com/smallpt/">smallpt</a>,
++                Kevin Beason's C++ path tracer, compiled to WebAssembly and run in a Web Worker.
++            </p>
++            <SmallptRender client:visible />
 +        </section>
 +
-         <section class="p-4 md:p-6 text-center">
-             <Ad client:visible />
-         </section>
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/wasm/generated/smallpt.d.ts b/src/wasm/generated/smallpt.d.ts
+new file mode 100644
+index 0000000..ab506bf
+--- /dev/null
++++ b/src/wasm/generated/smallpt.d.ts
+@@ -0,0 +1,28 @@
++// Type declarations for the Emscripten-generated ES6 module produced by
++// scripts/build-wasm.sh from wasm/smallpt/smallpt.cpp.
++
++export interface SmallptModule {
++  /**
++   * Renders the scene into `outPtr` (w * h * 4 bytes, RGBA8).
++   * `colorsPtr` is 0 for default colors, or points to 21 doubles (7 RGB triples).
++   * Returns 0 on success.
++   */
++  _render(
++    outPtr: number,
++    width: number,
++    height: number,
++    samples: number,
++    seed: number,
++    colorsPtr: number,
++  ): number;
++  _malloc(size: number): number;
++  _free(ptr: number): void;
++  HEAPU8: Uint8Array;
++  HEAPF64: Float64Array;
++}
++
++declare const createSmallptModule: (
++  moduleOverrides?: Record<string, unknown>,
++) => Promise<SmallptModule>;
++
++export default createSmallptModule;
+diff --git a/src/wasm/generated/smallpt.js b/src/wasm/generated/smallpt.js
+new file mode 100644
+index 0000000..c8caa13
+--- /dev/null
++++ b/src/wasm/generated/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(false,true){try{scriptDirectory=new URL(".",_scriptName).href}catch{}if(true)readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)};readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok)return response.arrayBuffer();throw new Error(response.status+" : "+response.url)}}console.log.bind(console);var err=console.error.bind(console);var ABORT=false;var EXITSTATUS;function getMemoryBuffer(){return wasmMemory.buffer}function updateMemoryViews(){if(HEAP8?.buffer?.resizable)return;var b=getMemoryBuffer();HEAP8=new Int8Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);Module["HEAPF64"]=new Float64Array(b)}function preRun(){}function initRuntime(){0;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";throw new WebAssembly.RuntimeError(what)}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"])return locateFile("smallpt.wasm");return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary)return readBinary(file);throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(true)try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary)try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP8;var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind")return EXITSTATUS;quit_(0,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive())ABORT=true;quit_(0,new ExitStatus(code))};var _exit=status=>{EXITSTATUS=status;_proc_exit(status)};var maybeExit=()=>{if(!keepRuntimeAlive())try{_exit(EXITSTATUS)}catch(e){handleException(e)}};var callUserCallback=(func,...args)=>{if(ABORT)return;try{return func(...args)}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var HEAPU8;var __emscripten_timeout,wasmMemory;function assignWasmExports(wasmExports){Module["_render"]=wasmExports["h"];__emscripten_timeout=wasmExports["i"];Module["_malloc"]=wasmExports["j"];Module["_free"]=wasmExports["k"];wasmMemory=wasmExports["f"];wasmExports["__indirect_function_table"]}var wasmImports={d:()=>abort(""),c:()=>{0},a:(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(__emscripten_timeout,which,_emscripten_get_now())},timeout_ms);timers[which]={id,timeout_ms};return 0},e:requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize)return false;for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement)return true}return false},b:_proc_exit};var wasmExports;wasmExports=await async function(){function receiveInstance(instance){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(void 0,wasmBinaryFile,info);var exports=function(result){return receiveInstance(result["instance"])}(result);return exports}();await async function(){preRun();if(ABORT)return;initRuntime();postRun()}();
++;return Module}export default Module;
+diff --git a/src/wasm/generated/smallpt.wasm b/src/wasm/generated/smallpt.wasm
+new file mode 100755
+index 0000000000000000000000000000000000000000..38959c645fb40a569ec8504f89a3a4a7412188f9
+GIT binary patch
+literal 27956
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/workers/smallpt-protocol.ts b/src/workers/smallpt-protocol.ts
+new file mode 100644
+index 0000000..b38f072
+--- /dev/null
++++ b/src/workers/smallpt-protocol.ts
+@@ -0,0 +1,25 @@
++/** Number of RGB colors accepted by the renderer: left, right, back, floor, ceiling, mirror, glass. */
++export const SMALLPT_COLOR_COUNT = 7;
++
++export interface SmallptRenderRequest {
++  type: 'render';
++  id: number;
++  width: number;
++  height: number;
++  /** Samples per sub-pixel; total samples per pixel is 4x this. */
++  samples: number;
++  seed: number;
++  /** Flat array of SMALLPT_COLOR_COUNT * 3 values in [0, 1], or null for the default scene. */
++  colors: number[] | null;
++}
++
++export type SmallptWorkerResponse =
++  | {
++      type: 'done';
++      id: number;
++      width: number;
++      height: number;
++      pixels: Uint8ClampedArray<ArrayBuffer>;
++      durationMs: number;
++    }
++  | { type: 'error'; id: number; message: string };
+diff --git a/src/workers/smallpt.worker.ts b/src/workers/smallpt.worker.ts
+new file mode 100644
+index 0000000..86566c7
+--- /dev/null
++++ b/src/workers/smallpt.worker.ts
+@@ -0,0 +1,68 @@
++/// <reference lib="webworker" />
++// Runs the smallpt WebAssembly path tracer off the main thread.
++import createSmallptModule, { type SmallptModule } from '../wasm/generated/smallpt.js';
++import {
++  SMALLPT_COLOR_COUNT,
++  type SmallptRenderRequest,
++  type SmallptWorkerResponse,
++} from './smallpt-protocol';
++
++declare const self: DedicatedWorkerGlobalScope;
++
++let modulePromise: Promise<SmallptModule> | null = null;
++
++function getModule(): Promise<SmallptModule> {
++  modulePromise ??= createSmallptModule();
++  return modulePromise;
++}
++
++function post(message: SmallptWorkerResponse, transfer: Transferable[] = []): void {
++  self.postMessage(message, transfer);
++}
++
++async function handleRender(req: SmallptRenderRequest): Promise<void> {
++  const wasm = await getModule();
++  const byteLength = req.width * req.height * 4;
++  const colorCount = SMALLPT_COLOR_COUNT * 3;
++
++  const outPtr = wasm._malloc(byteLength);
++  const colorsPtr = req.colors ? wasm._malloc(colorCount * Float64Array.BYTES_PER_ELEMENT) : 0;
++  if (!outPtr || (req.colors && !colorsPtr)) {
++    if (outPtr) wasm._free(outPtr);
++    if (colorsPtr) wasm._free(colorsPtr);
++    throw new Error('Out of WebAssembly memory');
++  }
++
++  try {
++    if (req.colors) {
++      if (req.colors.length !== colorCount) {
++        throw new Error(`Expected ${colorCount} color components, got ${req.colors.length}`);
++      }
++      // Read HEAPF64 after malloc, since memory growth replaces the view.
++      wasm.HEAPF64.set(req.colors, colorsPtr / Float64Array.BYTES_PER_ELEMENT);
++    }
++
++    const start = performance.now();
++    const status = wasm._render(outPtr, req.width, req.height, req.samples, req.seed >>> 0, colorsPtr);
++    const durationMs = performance.now() - start;
++    if (status !== 0) throw new Error(`render() failed with status ${status}`);
++
++    // Read HEAPU8 fresh after the call (memory may have grown) and copy out.
++    const pixels = new Uint8ClampedArray(wasm.HEAPU8.buffer, outPtr, byteLength).slice();
++    post(
++      { type: 'done', id: req.id, width: req.width, height: req.height, pixels, durationMs },
++      [pixels.buffer],
++    );
++  } finally {
++    wasm._free(outPtr);
++    if (colorsPtr) wasm._free(colorsPtr);
++  }
++}
++
++self.addEventListener('message', (event: MessageEvent<SmallptRenderRequest>) => {
++  const req = event.data;
++  if (req?.type !== 'render') return;
++  handleRender(req).catch((err: unknown) => {
++    post({ type: 'error', id: req.id, message: err instanceof Error ? err.message : String(err) });
++  });
++});
 diff --git a/wasm/smallpt/LICENSE.txt b/wasm/smallpt/LICENSE.txt
 new file mode 100644
-index 0000000..08255c8
+index 0000000..07d1087
 --- /dev/null
 +++ b/wasm/smallpt/LICENSE.txt
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,25 @@
++smallpt: Global Illumination in 99 lines of C++
++http://www.kevinbeason.com/smallpt/
++
 +LICENSE
 +
 +Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
@@ -327,182 +748,217 @@ index 0000000..08255c8
 +CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 +TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 +SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-diff --git a/wasm/smallpt/build.sh b/wasm/smallpt/build.sh
-new file mode 100755
-index 0000000..b913752
---- /dev/null
-+++ b/wasm/smallpt/build.sh
-@@ -0,0 +1,20 @@
-+#!/bin/sh
-+# Builds smallpt to WebAssembly. Requires the Emscripten SDK (em++ on PATH).
-+# Output goes to public/smallpt/ and is served as a static asset.
-+set -eu
-+cd "$(dirname "$0")"
-+OUT=../../public/smallpt
-+mkdir -p "$OUT"
-+em++ smallpt.cpp -o "$OUT/smallpt.js" \
-+  -O3 -flto -fno-exceptions -fno-rtti \
-+  -sSTRICT \
-+  -sEXPORT_ES6 \
-+  -sEXPORT_NAME=createSmallpt \
-+  -sENVIRONMENT=web,worker \
-+  -sALLOW_MEMORY_GROWTH \
-+  -sSTACK_SIZE=8MB \
-+  -sFILESYSTEM=0 \
-+  -sEXPORTED_RUNTIME_METHODS=HEAPU8 \
-+  --no-entry \
-+  "$@"
-+ls -la "$OUT"
 diff --git a/wasm/smallpt/smallpt.cpp b/wasm/smallpt/smallpt.cpp
 new file mode 100644
-index 0000000..0a5ad71
+index 0000000..6c0b63f
 --- /dev/null
 +++ b/wasm/smallpt/smallpt.cpp
-@@ -0,0 +1,147 @@
-+// smallpt, a Path Tracer by Kevin Beason, 2008 (http://www.kevinbeason.com/smallpt/)
-+// Ported to WebAssembly: the rendering core is unchanged; main() has been replaced
-+// with a small C API (begin_render / render_rows / pixels) so a Web Worker can
-+// drive the renderer incrementally and stream rows to a canvas. See LICENSE.txt.
-+#include <math.h>
-+#include <stdlib.h>
-+#include <stdint.h>
-+#include <string.h>
+@@ -0,0 +1,208 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// http://www.kevinbeason.com/smallpt/  (MIT License, see LICENSE.txt alongside)
++//
++// Adapted for WebAssembly:
++//  - Exposes a single `render` entry point that fills a whole RGBA8 buffer in
++//    linear memory per call (no per-pixel JS <-> Wasm boundary crossings).
++//  - The recursive `radiance` function is rewritten as an iterative loop so it
++//    cannot overflow Emscripten's small default stack.
++//  - erand48 is replaced with a small self-contained xorshift PRNG.
++//  - Diffuse colors of the scene's spheres can be supplied by the caller.
++
++#include <cmath>
++#include <cstdint>
 +#include <emscripten/emscripten.h>
-+struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
-+  double x, y, z;                  // position, also color (r,g,b)
-+  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
-+  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
-+  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
-+  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
-+  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
-+  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
-+  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
-+  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
-+};
-+struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
-+enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
-+struct Sphere {
-+  double rad;       // radius
-+  Vec p, e, c;      // position, emission, color
-+  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
-+  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
-+    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
-+  double intersect(const Ray &r) const { // returns distance, 0 if nohit
-+    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
-+    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
-+    if (det<0) return 0; else det=sqrt(det);
-+    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++
++namespace {
++
++constexpr double kPi = 3.14159265358979323846;
++
++struct Vec {
++  double x, y, z;
++  constexpr Vec(double x_ = 0, double y_ = 0, double z_ = 0) : x(x_), y(y_), z(z_) {}
++  Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
++  Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
++  Vec mult(const Vec &b) const { return Vec(x * b.x, y * b.y, z * b.z); }
++  Vec &norm() { return *this = *this * (1 / std::sqrt(x * x + y * y + z * z)); }
++  double dot(const Vec &b) const { return x * b.x + y * b.y + z * b.z; }
++  Vec operator%(const Vec &b) const {
++    return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x);
 +  }
 +};
-+Sphere spheres[] = {//Scene: radius, position, emission, color, material
-+  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
-+  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
-+  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
-+  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
-+  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
-+  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
-+  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
-+  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
-+  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_, Vec d_) : o(o_), d(d_) {}
 +};
-+static const int NUM_SPHERES = sizeof(spheres)/sizeof(Sphere);
-+inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
-+inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
-+inline bool intersect(const Ray &r, double &t, int &id){
-+  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
-+  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
-+  return t<inf;
-+}
-+Vec radiance(const Ray &r, int depth, unsigned short *Xi){
-+  double t;                               // distance to intersection
-+  int id=0;                               // id of intersected object
-+  if (!intersect(r, t, id)) return Vec(); // if miss, return black
-+  const Sphere &obj = spheres[id];        // the hit object
-+  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
-+  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
-+  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
-+  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
-+    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
-+    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
-+    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
-+    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
-+  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
-+    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
-+  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
-+  bool into = n.dot(nl)>0;                // Ray from outside going in?
-+  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
-+  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
-+    return obj.e + f.mult(radiance(reflRay,depth,Xi));
-+  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
-+  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
-+  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
-+  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
-+    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
-+    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
-+}
 +
-+// ---- WebAssembly API (replaces the original main()) -----------------------
-+static int W = 0, H = 0, SAMPS = 1;       // image size, samples per subpixel
-+static unsigned short SEED = 0;           // extra entropy mixed into erand48 state
-+static Vec *acc = 0;                      // accumulated radiance per pixel
-+static uint8_t *pix = 0;                  // RGBA8 output buffer (top row first)
-+static Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
-+static Vec cx, cy;
++enum Refl_t { DIFF, SPEC, REFR };
 +
-+extern "C" {
++struct Sphere {
++  double rad;
++  Vec p, e, c;
++  Refl_t refl;
++  double intersect(const Ray &r) const {
++    Vec op = p - r.o;
++    double t, eps = 1e-4, b = op.dot(r.d), det = b * b - op.dot(op) + rad * rad;
++    if (det < 0) return 0;
++    det = std::sqrt(det);
++    return (t = b - det) > eps ? t : ((t = b + det) > eps ? t : 0);
++  }
++};
 +
-+EMSCRIPTEN_KEEPALIVE int sphere_count(void){ return NUM_SPHERES; }
++constexpr int kNumSpheres = 9;
 +
-+// Overwrite the diffuse/specular colour (albedo) of sphere i. Emission is kept.
-+EMSCRIPTEN_KEEPALIVE void set_sphere_color(int i, double r, double g, double b){
-+  if (i < 0 || i >= NUM_SPHERES) return;
-+  spheres[i].c = Vec(r, g, b);
-+}
++// Default Cornell box scene from the original smallpt.
++const Sphere kDefaultSpheres[kNumSpheres] = {
++    {1e5, Vec(1e5 + 1, 40.8, 81.6), Vec(), Vec(.75, .25, .25), DIFF},    // Left
++    {1e5, Vec(-1e5 + 99, 40.8, 81.6), Vec(), Vec(.25, .25, .75), DIFF},  // Right
++    {1e5, Vec(50, 40.8, 1e5), Vec(), Vec(.75, .75, .75), DIFF},          // Back
++    {1e5, Vec(50, 40.8, -1e5 + 170), Vec(), Vec(), DIFF},                // Front
++    {1e5, Vec(50, 1e5, 81.6), Vec(), Vec(.75, .75, .75), DIFF},          // Bottom
++    {1e5, Vec(50, -1e5 + 81.6, 81.6), Vec(), Vec(.75, .75, .75), DIFF},  // Top
++    {16.5, Vec(27, 16.5, 47), Vec(), Vec(1, 1, 1) * .999, SPEC},         // Mirror
++    {16.5, Vec(73, 16.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR},         // Glass
++    {600, Vec(50, 681.6 - .27, 81.6), Vec(12, 12, 12), Vec(), DIFF},     // Light
++};
 +
-+// Prepare a w x h render with `spp` samples per pixel (rounded down to a
-+// multiple of 4, as in the original 2x2 sub-pixel layout).
-+EMSCRIPTEN_KEEPALIVE void begin_render(int w, int h, int spp, int seed){
-+  delete[] acc; delete[] pix;
-+  W = w; H = h; SAMPS = spp/4 > 0 ? spp/4 : 1; SEED = (unsigned short)seed;
-+  acc = new Vec[W*H];
-+  pix = new uint8_t[W*H*4];
-+  memset(pix, 0, W*H*4);
-+  cx = Vec(W*.5135/H); cy = (cx%cam.d).norm()*.5135;
++Sphere spheres[kNumSpheres];
++
++struct Rng {
++  uint64_t s;
++  explicit Rng(uint64_t seed) : s(seed ? seed : 0x9E3779B97F4A7C15ull) {}
++  double next() {
++    s ^= s << 13;
++    s ^= s >> 7;
++    s ^= s << 17;
++    return static_cast<double>(s >> 11) * (1.0 / 9007199254740992.0);
++  }
++};
++
++inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
++inline int toInt(double x) { return static_cast<int>(std::pow(clamp(x), 1 / 2.2) * 255 + .5); }
++
++inline bool intersect(const Ray &r, double &t, int &id) {
++  double d, inf = t = 1e20;
++  for (int i = kNumSpheres; i--;) {
++    if ((d = spheres[i].intersect(r)) && d < t) {
++      t = d;
++      id = i;
++    }
++  }
++  return t < inf;
 +}
 +
-+// Render image rows [row0, row1) where row 0 is the TOP of the image, then
-+// convert them to RGBA8 in the pixel buffer. The loop body is the original
-+// smallpt inner loop; smallpt's `y` counts from the bottom, so y = H-1-row.
-+EMSCRIPTEN_KEEPALIVE void render_rows(int row0, int row1){
-+  if (!acc) return;
-+  if (row0 < 0) row0 = 0; if (row1 > H) row1 = H;
-+  int w = W, h = H, samps = SAMPS; Vec r;
-+  for (int row = row0; row < row1; row++){
-+    int y = h-1-row;
-+    for (unsigned short x=0, Xi[3]={0,SEED,(unsigned short)(y*y*y)}; x<w; x++)
-+      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
-+        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
-+          for (int s=0; s<samps; s++){
-+            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
-+            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
-+            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
-+                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
-+            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
-+          } // Camera rays are pushed ^^^^^ forward to start in interior
-+          acc[i] = acc[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
-+        }
-+    for (int x=0; x<w; x++){
-+      int i = row*w + x;
-+      pix[i*4+0] = (uint8_t)toInt(acc[i].x);
-+      pix[i*4+1] = (uint8_t)toInt(acc[i].y);
-+      pix[i*4+2] = (uint8_t)toInt(acc[i].z);
-+      pix[i*4+3] = 255;
++// Iterative version of smallpt's recursive radiance(). The recursive glass
++// branch that splits into both reflection and refraction at shallow depths is
++// replaced by Russian-roulette selection, which is unbiased.
++Vec radiance(Ray r, Rng &rng) {
++  Vec acc;
++  Vec throughput(1, 1, 1);
++  for (int depth = 0;; ++depth) {
++    double t;
++    int id = 0;
++    if (!intersect(r, t, id)) return acc;
++    const Sphere &obj = spheres[id];
++    Vec x = r.o + r.d * t, n = (x - obj.p).norm(), nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
++    acc = acc + throughput.mult(obj.e);
++    double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z;
++    if (depth + 1 > 5) {
++      if (rng.next() < p && depth < 64)
++        f = f * (1 / p);
++      else
++        return acc;
++    }
++    throughput = throughput.mult(f);
++
++    if (obj.refl == DIFF) {
++      double r1 = 2 * kPi * rng.next(), r2 = rng.next(), r2s = std::sqrt(r2);
++      Vec w = nl, u = ((std::fabs(w.x) > .1 ? Vec(0, 1) : Vec(1)) % w).norm(), v = w % u;
++      Vec d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s + w * std::sqrt(1 - r2)).norm();
++      r = Ray(x, d);
++      continue;
++    }
++    if (obj.refl == SPEC) {
++      r = Ray(x, r.d - n * 2 * n.dot(r.d));
++      continue;
++    }
++    Ray reflRay(x, r.d - n * 2 * n.dot(r.d));
++    bool into = n.dot(nl) > 0;
++    double nc = 1, nt = 1.5, nnt = into ? nc / nt : nt / nc, ddn = r.d.dot(nl), cos2t;
++    if ((cos2t = 1 - nnt * nnt * (1 - ddn * ddn)) < 0) {
++      r = reflRay;
++      continue;
++    }
++    Vec tdir = (r.d * nnt - n * ((into ? 1 : -1) * (ddn * nnt + std::sqrt(cos2t)))).norm();
++    double a = nt - nc, b = nt + nc, R0 = a * a / (b * b), c = 1 - (into ? -ddn : tdir.dot(n));
++    double Re = R0 + (1 - R0) * c * c * c * c * c, Tr = 1 - Re, P = .25 + .5 * Re, RP = Re / P,
++           TP = Tr / (1 - P);
++    if (rng.next() < P) {
++      throughput = throughput * RP;
++      r = reflRay;
++    } else {
++      throughput = throughput * TP;
++      r = Ray(x, tdir);
 +    }
 +  }
 +}
 +
-+// Pointer into linear memory of the W*H*4 RGBA8 buffer. Re-read HEAPU8 after
-+// every call: ALLOW_MEMORY_GROWTH may replace the underlying ArrayBuffer.
-+EMSCRIPTEN_KEEPALIVE uint8_t* pixels(void){ return pix; }
++}  // namespace
 +
-+} // extern "C"
++extern "C" {
++
++// Renders the smallpt scene into `out` (w * h * 4 bytes, RGBA8, top row first).
++// `samples` is the number of samples per sub-pixel (smallpt uses 2x2 sub-pixels,
++// so total samples per pixel is 4 * samples).
++// `colors` is either null (use the default scene colors) or points to
++// 7 * 3 = 21 doubles in [0, 1] giving the diffuse RGB colors of:
++// left wall, right wall, back wall, floor, ceiling, mirror ball, glass ball.
++// Returns 0 on success, non-zero on invalid arguments.
++EMSCRIPTEN_KEEPALIVE
++int render(uint8_t *out, int w, int h, int samples, uint32_t seed, const double *colors) {
++  if (!out || w <= 0 || h <= 0 || samples <= 0) return 1;
++
++  for (int i = 0; i < kNumSpheres; ++i) spheres[i] = kDefaultSpheres[i];
++  if (colors) {
++    static const int kColoredIds[] = {0, 1, 2, 4, 5, 6, 7};
++    for (int k = 0; k < 7; ++k) {
++      const double *c = colors + k * 3;
++      // Keep materials energy-conserving (< 1) so Russian roulette terminates.
++      Vec col(clamp(c[0]) * .999, clamp(c[1]) * .999, clamp(c[2]) * .999);
++      spheres[kColoredIds[k]].c = col;
++    }
++  }
++
++  Ray cam(Vec(50, 52, 295.6), Vec(0, -0.042612, -1).norm());
++  Vec cx = Vec(w * .5135 / h), cy = (cx % cam.d).norm() * .5135;
++  Rng rng(static_cast<uint64_t>(seed) * 0x2545F4914F6CDD1Dull + 1);
++
++  for (int y = 0; y < h; ++y) {
++    for (int x = 0; x < w; ++x) {
++      Vec c;
++      for (int sy = 0; sy < 2; ++sy) {
++        for (int sx = 0; sx < 2; ++sx) {
++          Vec r;
++          for (int s = 0; s < samples; ++s) {
++            double r1 = 2 * rng.next(), dx = r1 < 1 ? std::sqrt(r1) - 1 : 1 - std::sqrt(2 - r1);
++            double r2 = 2 * rng.next(), dy = r2 < 1 ? std::sqrt(r2) - 1 : 1 - std::sqrt(2 - r2);
++            // smallpt's y axis points up; flip so row 0 is the top of the image.
++            int py = h - 1 - y;
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + py) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), rng) * (1. / samples);
++          }
++          c = c + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      }
++      uint8_t *px = out + (static_cast<size_t>(y) * w + x) * 4;
++      px[0] = static_cast<uint8_t>(toInt(c.x));
++      px[1] = static_cast<uint8_t>(toInt(c.y));
++      px[2] = static_cast<uint8_t>(toInt(c.z));
++      px[3] = 255;
++    }
++  }
++  return 0;
++}
++
++}  // extern "C"
