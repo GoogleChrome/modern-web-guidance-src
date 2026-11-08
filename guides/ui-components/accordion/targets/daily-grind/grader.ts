@@ -214,47 +214,58 @@ test.describe('Accordion Target Grader', () => {
     test('If the closed-state indicator has a computed rotation or transform, that value differs between right-to-left and left-to-right contexts', async ({
       page,
     }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+
       const items = page.locator('#coffee-faq details, main details');
       const count = await items.count();
       expect(count).toBeGreaterThan(0);
 
       const indicatorStyles = await page.evaluate(() => {
-        const details = document.querySelector<HTMLDetailsElement>(
-          '#coffee-faq details:not([open]), main details:not([open]), #coffee-faq details, main details',
-        )!;
-        details.open = false;
-        const summary = details.querySelector('summary')!;
+        const noTransitionStyle = document.createElement('style');
+        noTransitionStyle.textContent =
+          '*, *::before, *::after, *::marker { transition: none !important; animation: none !important; }';
+        document.head.appendChild(noTransitionStyle);
 
-        const readIndicator = () => {
-          for (const pseudo of ['::before', '::after', '::marker'] as const) {
-            const cs = getComputedStyle(summary, pseudo);
-            if (cs.content && cs.content !== 'none' && cs.content !== 'normal') {
+        try {
+          const details = document.querySelector<HTMLDetailsElement>(
+            '#coffee-faq details:not([open]), main details:not([open]), #coffee-faq details, main details',
+          )!;
+          details.open = false;
+          const summary = details.querySelector('summary')!;
+
+          const readIndicator = () => {
+            for (const pseudo of ['::before', '::after', '::marker'] as const) {
+              const cs = getComputedStyle(summary, pseudo);
+              if (cs.content && cs.content !== 'none' && cs.content !== 'normal') {
+                return { rotate: cs.rotate, transform: cs.transform };
+              }
+            }
+            const child = summary.querySelector<HTMLElement>('svg, i, span, img');
+            if (child) {
+              const cs = getComputedStyle(child);
               return { rotate: cs.rotate, transform: cs.transform };
             }
-          }
-          const child = summary.querySelector<HTMLElement>('svg, i, span, img');
-          if (child) {
-            const cs = getComputedStyle(child);
+            const cs = getComputedStyle(summary, '::before');
             return { rotate: cs.rotate, transform: cs.transform };
+          };
+
+          const prevDir = document.documentElement.getAttribute('dir');
+          document.documentElement.setAttribute('dir', 'ltr');
+          const ltr = readIndicator();
+
+          document.documentElement.setAttribute('dir', 'rtl');
+          const rtl = readIndicator();
+
+          if (prevDir === null) {
+            document.documentElement.removeAttribute('dir');
+          } else {
+            document.documentElement.setAttribute('dir', prevDir);
           }
-          const cs = getComputedStyle(summary, '::before');
-          return { rotate: cs.rotate, transform: cs.transform };
-        };
 
-        const prevDir = document.documentElement.getAttribute('dir');
-        document.documentElement.setAttribute('dir', 'ltr');
-        const ltr = readIndicator();
-
-        document.documentElement.setAttribute('dir', 'rtl');
-        const rtl = readIndicator();
-
-        if (prevDir === null) {
-          document.documentElement.removeAttribute('dir');
-        } else {
-          document.documentElement.setAttribute('dir', prevDir);
+          return { ltr, rtl };
+        } finally {
+          noTransitionStyle.remove();
         }
-
-        return { ltr, rtl };
       });
 
       const hasLtrRotationOrTransform =
