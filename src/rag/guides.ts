@@ -17,8 +17,8 @@ export interface UseCase {
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function resolveSkillsCliDataDir(): string {
-  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), guides.json and guide-chunks.* sit next to modern-web.mjs / search.mjs
-  if (existsSync(path.join(BUNDLE_DIR, 'guides.json')) || existsSync(path.join(BUNDLE_DIR, 'guide-chunks.json.gz'))) {
+  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), gen/guides.json and gen/guide-chunks.* sit next to modern-web.mjs / search.mjs
+  if (existsSync(path.join(BUNDLE_DIR, 'gen/guides.json')) || existsSync(path.join(BUNDLE_DIR, 'gen/guide-chunks.json.gz'))) {
     return BUNDLE_DIR;
   }
   // In repo source mode (src/rag/), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli
@@ -34,7 +34,7 @@ function resolveSkillsCliDataDir(): string {
 
 function loadUseCases(): UseCase[] {
   const dataDir = resolveSkillsCliDataDir();
-  const guidesJsonPath = path.join(dataDir, 'guides.json');
+  const guidesJsonPath = path.join(dataDir, 'gen/guides.json');
   if (!existsSync(guidesJsonPath)) {
     throw new Error(`guides.json not found at ${guidesJsonPath}. Run 'pnpm build' first.`);
   }

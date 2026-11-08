@@ -47,19 +47,19 @@ let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function resolveSkillsCliDataDir(): string {
-  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), guides.json and guide-chunks.* sit next to modern-web.mjs / search.mjs
-  if (existsSync(path.join(BUNDLE_DIR, 'guides.json')) || existsSync(path.join(BUNDLE_DIR, 'guide-chunks.json.gz'))) {
-    return BUNDLE_DIR;
+  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), gen/guides.json and gen/guide-chunks.* sit next to modern-web.mjs / search.mjs
+  if (existsSync(path.join(BUNDLE_DIR, 'gen/guides.json')) || existsSync(path.join(BUNDLE_DIR, 'gen/guide-chunks.json.gz'))) {
+    return path.join(BUNDLE_DIR, 'gen');
   }
-  // In repo source mode (src/rag/), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli
+  // In repo source mode (src/rag/), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli/gen
   let dir = BUNDLE_DIR;
   while (dir !== path.dirname(dir)) {
     if (existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
-      return path.join(dir, 'out/build/skills-cli');
+      return path.join(dir, 'out/build/skills-cli/gen');
     }
     dir = path.dirname(dir);
   }
-  return BUNDLE_DIR;
+  return path.join(BUNDLE_DIR, 'gen');
 }
 
 export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
@@ -74,9 +74,12 @@ export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
 }
 
 export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[] {
-  const VECTORS_FILE = path.join(dataDir, "guide-chunks.json.gz");
-  const I8_FILE = path.join(dataDir, "guide-chunks.i8");
-  const SCALE_FILE = path.join(dataDir, "guide-chunks.scale.f32");
+  const genDir = fs.existsSync(path.join(dataDir, "gen", "guide-chunks.json.gz"))
+    ? path.join(dataDir, "gen")
+    : dataDir;
+  const VECTORS_FILE = path.join(genDir, "guide-chunks.json.gz");
+  const I8_FILE = path.join(genDir, "guide-chunks.i8");
+  const SCALE_FILE = path.join(genDir, "guide-chunks.scale.f32");
 
   if (!fs.existsSync(VECTORS_FILE) || !fs.existsSync(I8_FILE) || !fs.existsSync(SCALE_FILE)) {
     throw new Error(`Vectors files not found in ${dataDir}. Run 'pnpm build' first.`);

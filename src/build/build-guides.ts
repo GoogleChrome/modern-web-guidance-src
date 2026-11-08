@@ -64,6 +64,7 @@ export interface BuildOptions {
 
 interface CachePaths {
   cacheDir: string;
+  cachedGenDir: string;
   cachedVectors: string;
   cachedVectorsI8: string;
   cachedVectorsScale: string;
@@ -74,12 +75,14 @@ interface CachePaths {
 
 function resolveCachePaths(target: BuildTarget): CachePaths {
   const cacheDir = path.join(outDir, 'build', target);
+  const cachedGenDir = path.join(cacheDir, 'gen');
   return {
     cacheDir,
-    cachedVectors: path.join(cacheDir, "guide-chunks.json.gz"),
-    cachedVectorsI8: path.join(cacheDir, "guide-chunks.i8"),
-    cachedVectorsScale: path.join(cacheDir, "guide-chunks.scale.f32"),
-    cachedGuidesJson: path.join(cacheDir, "guides.json"),
+    cachedGenDir,
+    cachedVectors: path.join(cachedGenDir, "guide-chunks.json.gz"),
+    cachedVectorsI8: path.join(cachedGenDir, "guide-chunks.i8"),
+    cachedVectorsScale: path.join(cachedGenDir, "guide-chunks.scale.f32"),
+    cachedGuidesJson: path.join(cachedGenDir, "guides.json"),
     cachedManifest: path.join(cacheDir, "manifest.json"),
     cachedGuides: path.join(cacheDir, "guides"),
   };
@@ -99,14 +102,14 @@ export async function computePipelineHash(
     import.meta.filename,
     path.join(rootDir, "src/core/macros.ts"),
     path.join(rootDir, "src/rag/static-embedder.ts"),
-    path.join(rootDir, "src/rag/static-model/query-words.json"),
-    path.join(rootDir, "src/rag/static-model/query-words.i8"),
-    path.join(rootDir, "src/rag/static-model/query-words.scale.f32"),
+    path.join(rootDir, "src/rag/gen/query-words.json"),
+    path.join(rootDir, "src/rag/gen/query-words.i8"),
+    path.join(rootDir, "src/rag/gen/query-words.scale.f32"),
     path.join(rootDir, "src/rag/guide-chunk-cache.ts"),
     path.join(rootDir, "src/core/guide-chunks.ts"),
-    path.join(rootDir, "src/rag/static-model/guide-chunk-cache.json"),
-    path.join(rootDir, "src/rag/static-model/guide-chunk-cache.i8"),
-    path.join(rootDir, "src/rag/static-model/guide-chunk-cache.scale.f32"),
+    path.join(rootDir, "src/rag/gen/guide-chunk-cache.json"),
+    path.join(rootDir, "src/rag/gen/guide-chunk-cache.i8"),
+    path.join(rootDir, "src/rag/gen/guide-chunk-cache.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
@@ -188,11 +191,12 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: BuildTar
     return;
   }
   if (target === 'skills-cli') {
-    fs.mkdirSync(outputDir, { recursive: true });
-    fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "guide-chunks.json.gz"));
-    fs.copyFileSync(paths.cachedVectorsI8, path.join(outputDir, "guide-chunks.i8"));
-    fs.copyFileSync(paths.cachedVectorsScale, path.join(outputDir, "guide-chunks.scale.f32"));
-    fs.copyFileSync(paths.cachedGuidesJson, path.join(outputDir, "guides.json"));
+    const destGenDir = path.join(outputDir, "gen");
+    fs.mkdirSync(destGenDir, { recursive: true });
+    fs.copyFileSync(paths.cachedVectors, path.join(destGenDir, "guide-chunks.json.gz"));
+    fs.copyFileSync(paths.cachedVectorsI8, path.join(destGenDir, "guide-chunks.i8"));
+    fs.copyFileSync(paths.cachedVectorsScale, path.join(destGenDir, "guide-chunks.scale.f32"));
+    fs.copyFileSync(paths.cachedGuidesJson, path.join(destGenDir, "guides.json"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
   } else if (target === 'devsite') {
     fs.rmSync(outputDir, { recursive: true, force: true });
@@ -207,6 +211,7 @@ function prepareCleanCacheDir(paths: CachePaths): void {
     fs.rmSync(paths.cacheDir, { recursive: true, force: true });
   }
   fs.mkdirSync(paths.cacheDir, { recursive: true });
+  fs.mkdirSync(paths.cachedGenDir, { recursive: true });
   fs.mkdirSync(paths.cachedGuides, { recursive: true });
 }
 

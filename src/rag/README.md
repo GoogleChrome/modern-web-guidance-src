@@ -1,10 +1,10 @@
 # Static Embedding Model (`static-tokenlearn-256d`)
 
-This directory contains the 256-dimensional static word-embedding model used by [`StaticEmbedder`](../static-embedder.ts) for hybrid dense + BM25 search (`modern-web-guidance search`).
+This directory (`src/rag/`) implements hybrid dense + BM25 search (`modern-web-guidance search`), with generated data tables stored under `src/rag/gen/` and benchmark suite documentation in [`./benchmarks/README.md`](./benchmarks/README.md).
 
-It replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dependency lookup table distilled from `gemini-embedding-001` via a [Model2Vec](https://github.com/MinishLab/model2vec) + Tokenlearn recipe:
+[`StaticEmbedder`](./static-embedder.ts) replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dependency lookup table distilled from `gemini-embedding-001` via a [Model2Vec](https://github.com/MinishLab/model2vec) + Tokenlearn recipe:
 
-| File | Format | Size (raw / gzip) | Contents |
+| File (`src/rag/gen/`) | Format | Size (raw / gzip) | Contents |
 | :--- | :--- | :---: | :--- |
 | `query-words.json` | JSON `string[]` | 314 KB / 94 KB | Sorted 29,165-word vocabulary (guide corpus tokens + search aliases + general-English whole words, excluding `bm25.ts` stopwords) |
 | `query-words.i8` | `Int8Array(V × 256)` | 7.5 MB / 5.3 MB | Symmetric per-row `Int8` quantized 256-d unit vectors (`E`) |
@@ -14,15 +14,15 @@ It replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dep
 | `guide-chunk-cache.scale.f32` | `Float32Array(N)` | 7.4 KB / 6.0 KB | Per-chunk quantization scales (`maxAbs / 127`) |
 
 At runtime, search operates via asymmetric dense retrieval + BM25 fusion:
-- **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](../static-embedder.ts) in <1 ms using the static word table (`query-words.*`).
-- **Guide chunks** are embedded at build time with the teacher model `gemini-embedding-001` (`RETRIEVAL_DOCUMENT`, 768-d → MRL 256-d unit vectors) loaded from the committed cache (`guide-chunk-cache.*`) into `guide-chunks.json.gz` (metadata & chunk text) plus binary `guide-chunks.i8` and `guide-chunks.scale.f32`.
+- **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](./static-embedder.ts) in <1 ms using the static word table (`gen/query-words.*`).
+- **Guide chunks** are embedded at build time with the teacher model `gemini-embedding-001` (`RETRIEVAL_DOCUMENT`, 768-d → MRL 256-d unit vectors) loaded from the committed cache (`src/rag/gen/guide-chunk-cache.*`) into `gen/guide-chunks.json.gz` (metadata & chunk text) plus binary `gen/guide-chunks.i8` and `gen/guide-chunks.scale.f32`.
 - Both sides share the 256-d normalized embedding space distilled from `gemini-embedding-001`. Search ranks by best-matching chunk cosine fused with BM25.
 
 ---
 
 ## Guide Chunks Cache & Pre-Release Workflow
 
-Chunk vectors are cached in `guide-chunk-cache.json`, `guide-chunk-cache.i8`, and `guide-chunk-cache.scale.f32`.
+Chunk vectors are cached in `src/rag/gen/guide-chunk-cache.json`, `src/rag/gen/guide-chunk-cache.i8`, and `src/rag/gen/guide-chunk-cache.scale.f32`.
 Each entry is keyed by a SHA-256 hash of:
 ```
 teacher_model (gemini-embedding-001) + "\n" + task_type (RETRIEVAL_DOCUMENT) + "\n" + dims (256) + "\n" + exact_embedded_text
@@ -33,7 +33,7 @@ Any change to guide prose, chunk boundaries, baseline data, or macro expansions 
 ### 1. Day-to-Day Development & CI Builds (`pnpm build`)
 
 - Builds use the committed chunk cache.
-- If a guide is edited or added and its teacher vectors are not yet in `guide-chunk-cache.*`, `build-guides.ts` issues a console warning naming the guide, records the chunk in `missingChunks` (so `--fail-on-missing-vectors` blocks release builds until `embed-guide-chunks.ts` is run), and sets `vector: []` so the uncached chunk is indexed for BM25 lexical search while unchanged chunks of the guide retain their cached teacher vectors (avoiding mixing query-space `StaticEmbedder` vectors into the document chunk index).
+- If a guide is edited or added and its teacher vectors are not yet in `src/rag/gen/guide-chunk-cache.*`, `build-guides.ts` issues a console warning naming the guide, records the chunk in `missingChunks` (so `--fail-on-missing-vectors` blocks release builds until `embed-guide-chunks.ts` is run), and sets `vector: []` so the uncached chunk is indexed for BM25 lexical search while unchanged chunks of the guide retain their cached teacher vectors (avoiding mixing query-space `StaticEmbedder` vectors into the document chunk index).
 
 ### 2. Pre-Release Embedding Script (`node src/rag/embed-guide-chunks.ts`)
 
@@ -50,7 +50,7 @@ What `embed-guide-chunks.ts` does:
 3. Embeds any missing or changed chunks using `gemini-embedding-001` (`taskType: "RETRIEVAL_DOCUMENT"`, 768 dimensions), batched in groups of 100 with exponential backoff on rate limits.
 4. MRL-truncates new vectors to 256 dimensions and L2-normalizes them.
 5. Append-only by default; pass `--prune` to remove stale chunk hashes from deleted guides or old text versions.
-6. Quantizes to Int8 + scale factor and writes `guide-chunk-cache.json`, `guide-chunk-cache.i8`, and `guide-chunk-cache.scale.f32`.
+6. Quantizes to Int8 + scale factor and writes `src/rag/gen/guide-chunk-cache.json`, `src/rag/gen/guide-chunk-cache.i8`, and `src/rag/gen/guide-chunk-cache.scale.f32`.
 
 To check whether all chunks have cached vectors without calling the API:
 ```bash
@@ -60,7 +60,7 @@ node src/rag/embed-guide-chunks.ts --check
 ### 3. Release & Publish Gate
 
 The release script (`node src/build/publish-skills.ts`) automatically ensures vector completeness before publishing:
-1. On real releases, it runs `embedGuideChunks({ prune: true })`, automatically embedding any missing chunks (requiring `GEMINI_API_KEY` in `.env` or environment) and pruning stale entries. Any updated `src/rag/static-model/guide-chunk-cache.*` files are automatically committed and pushed to `main` right alongside `README.md` and `src/build/eval-results-summary.json`.
+1. On real releases, it runs `embedGuideChunks({ prune: true })`, automatically embedding any missing chunks (requiring `GEMINI_API_KEY` in `.env` or environment) and pruning stale entries. Any updated `src/rag/gen/guide-chunk-cache.*` files are automatically committed and pushed to `main` right alongside `README.md` and `src/build/eval-results-summary.json`.
 2. `build-dist.ts` and `build-guides.ts` enforce `--fail-on-missing-vectors` during release builds.
 3. On `--dry-run` (used by PR CI), `publish-skills.ts` warns on uncached chunks and builds with `vector: []` (`failOnMissingVectors: false`) so guide PRs do not need `GEMINI_API_KEY` or `embed-guide-chunks.ts`.
 4. Distribution tests (`src/build/dist.test.ts`) assert that cached chunks contain valid 256-d teacher vectors (`>= 90%` coverage during PR `--dry-run`, `100%` on release via `--fail-on-missing-vectors`).
@@ -78,15 +78,15 @@ When a batch of new guides introduces net-new non-hyphenated web platform identi
 node src/rag/train-query-words.ts
 ```
 
-What [`src/rag/train-query-words.ts`](../train-query-words.ts) does:
-1. **Vocabulary union:** Scans all published `guides/**/*.md` files and unions their tokens with the existing `src/rag/static-model/query-words.json`.
+What [`src/rag/train-query-words.ts`](./train-query-words.ts) does:
+1. **Vocabulary union:** Scans all published `guides/**/*.md` files and unions their tokens with the existing `src/rag/gen/query-words.json`.
 2. **Incremental teacher distillation:** Calls `gemini-embedding-001` (`RETRIEVAL_QUERY`, 768-d → MRL 256-d) only for newly added words or training queries not already present in `out/static-model-cache/`.
 3. **Corpus IDF + Tokenlearn fit:** Recomputes `idfcap` weights across current guide chunks (including formatted chunk headers) and runs 12 epochs of Adagrad (`LR = 0.01`, `MU = 0.05` L2 regularization toward initial teacher word vectors) so bag-of-words combinations match whole-query teacher embeddings. All benchmark queries (`harness`, `oos`, `agent`, `wild-v1`, `wild-v2`) are strictly excluded from training (matching both exact normalized queries and stemmed token signatures).
-4. **Quantization & export:** Writes updated `query-words.json`, `query-words.i8`, and `query-words.scale.f32`, then verifies `Float32 → Int8` cosine fidelity (`> 0.999`).
+4. **Quantization & export:** Writes updated `src/rag/gen/query-words.json`, `src/rag/gen/query-words.i8`, and `src/rag/gen/query-words.scale.f32`, then verifies `Float32 → Int8` cosine fidelity (`> 0.999`).
 
 ### Committed Table Provenance
 
-The committed `query-words.{json,i8,scale.f32}` table (`29,165` words) was distilled from `gemini-embedding-001` (`RETRIEVAL_QUERY`, 768-d → MRL 256-d) and fit across `32,915` holdout-scrubbed queries:
+The committed `src/rag/gen/query-words.{json,i8,scale.f32}` table (`29,165` words) was distilled from `gemini-embedding-001` (`RETRIEVAL_QUERY`, 768-d → MRL 256-d) and fit across `32,915` holdout-scrubbed queries:
 - `2,999` synthetic corpus queries (guide IDs, titles, descriptions, and H2/H3 headings across all published guides)
 - `29,916` unique historical CLI `search_use_cases` telemetry queries collected between `2026-03` and `2026-10` (`30,007` unique queries minus `91` exact/stemmed overlaps with held-out `wild-v1`, `wild-v2`, `agent`, `harness`, and `oos` splits)
 
@@ -96,4 +96,4 @@ Exact command used to produce the committed table:
 node src/rag/train-query-words.ts --extra-queries path/to/train-queries.jsonl
 ```
 
-After updating `src/rag/static-model/`, run `pnpm build` and `pnpm benchmark:rag --public-only` to rebuild the guide vectors and verify retrieval metrics.
+After updating `src/rag/gen/`, run `pnpm build` and `pnpm benchmark:rag --public-only` to rebuild the guide vectors and verify retrieval metrics.

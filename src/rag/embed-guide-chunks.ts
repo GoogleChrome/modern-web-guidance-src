@@ -3,7 +3,7 @@
  *
  * Chunks are embedded with taskType "RETRIEVAL_DOCUMENT", 768 dimensions,
  * MRL-truncated to 256 dimensions and L2-normalized.
- * Results are stored in an Int8 + scale cache in `src/rag/static-model/`.
+ * Results are stored in an Int8 + scale cache in `src/rag/gen/`.
  *
  * Usage:
  *   node src/rag/embed-guide-chunks.ts [--check] [--force] [--prune]

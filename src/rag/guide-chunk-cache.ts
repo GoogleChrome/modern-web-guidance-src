@@ -8,7 +8,7 @@ export const TASK_TYPE = "RETRIEVAL_DOCUMENT";
 export const TEACHER_DIM = 768;
 export const STATIC_DIMS = 256;
 
-export const DEFAULT_CACHE_DIR = path.join(rootDir, "src/rag/static-model");
+export const DEFAULT_CACHE_DIR = path.join(rootDir, "src/rag/gen");
 
 /**
  * Computes a deterministic sha256 hash identifying the embedded chunk:

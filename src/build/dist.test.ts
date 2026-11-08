@@ -284,7 +284,7 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
 });
 
-test('packaged dist contains static-model files and no .cache', async () => {
+test('packaged dist contains gen/ search tables and no .cache', async () => {
   const packJson = execSync('npm pack --dry-run --json', { encoding: 'utf8', cwd: STAGING_DIR });
   const parsed = JSON.parse(packJson);
   const pkgInfo = Array.isArray(parsed) ? parsed[0] : parsed;
@@ -298,19 +298,21 @@ test('packaged dist contains static-model files and no .cache', async () => {
   const metaFiles = paths.filter((p: string) => p.endsWith('.meta.json'));
   assert.strictEqual(metaFiles.length, 0, `Expected 0 .meta.json files in pack, found: ${metaFiles.join(', ')}`);
 
-  // Must have static model files
-  assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/query-words.json')),
-    'Pack must contain static-model/query-words.json'
-  );
-  assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/query-words.i8')),
-    'Pack must contain static-model/query-words.i8'
-  );
-  assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/query-words.scale.f32')),
-    'Pack must contain static-model/query-words.scale.f32'
-  );
+  // Must have generated search and catalog tables under gen/
+  for (const genFile of [
+    'gen/guides.json',
+    'gen/guide-chunks.json.gz',
+    'gen/guide-chunks.i8',
+    'gen/guide-chunks.scale.f32',
+    'gen/query-words.json',
+    'gen/query-words.i8',
+    'gen/query-words.scale.f32',
+  ]) {
+    assert.ok(
+      paths.some((p: string) => p.endsWith(genFile)),
+      `Pack must contain ${genFile}`
+    );
+  }
 });
 
 test('search operates strictly offline with zero socket or fetch calls', async () => {
@@ -384,7 +386,7 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
 test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage', async () => {
   const zlib = await import('node:zlib');
   const distSkillDir = path.join(STAGING_DIR, 'skills/modern-web-guidance');
-  const vectorFile = path.join(distSkillDir, 'guide-chunks.json.gz');
+  const vectorFile = path.join(distSkillDir, 'gen/guide-chunks.json.gz');
   const compressed = await fs.readFile(vectorFile);
   const rawItems = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8')) as Array<Record<string, unknown>>;
   assert.ok(rawItems.length > 0, 'Corpus should contain chunks');

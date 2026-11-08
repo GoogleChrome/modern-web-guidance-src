@@ -1,8 +1,8 @@
 /**
- * Distills and trains the 256-d static word-embedding model (`src/rag/static-model/`)
+ * Distills and trains the 256-d static word-embedding model (`src/rag/gen/`)
  * from `gemini-embedding-001` using a Model2Vec + Tokenlearn recipe:
  *
- * 1. Vocabulary construction: unions existing `src/rag/static-model/query-words.json` (which
+ * 1. Vocabulary construction: unions existing `src/rag/gen/query-words.json` (which
  *    includes general-English whole words and domain aliases) with all tokens found across
  *    current `guides/` markdown chunks.
  * 2. Teacher word distillation: embeds each vocabulary word with `gemini-embedding-001`
@@ -44,7 +44,7 @@ import {
 
 const TEACHER_DIM = 768;
 const DEFAULT_TEACHER_MODEL = "gemini-embedding-001";
-const DEFAULT_OUT_DIR = path.join(rootDir, "src/rag/static-model");
+const DEFAULT_OUT_DIR = path.join(rootDir, "src/rag/gen");
 const DEFAULT_CACHE_DIR = path.join(outDir, "static-model-cache");
 
 export interface QuantizeExportResult {

@@ -96,7 +96,7 @@ export class StaticEmbedder implements EmbedderLike {
   private ensureModel(): StaticModelData {
     if (this.model) return this.model;
 
-    const modelDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "static-model");
+    const modelDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "gen");
     const wordsPath = path.join(modelDir, "query-words.json");
     const tablePath = path.join(modelDir, "query-words.i8");
     const scalesPath = path.join(modelDir, "query-words.scale.f32");
