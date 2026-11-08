@@ -135,7 +135,9 @@ function expressionProducesPromise(arg: Node, scopeNodes: Node[]): boolean {
             if (
               init &&
               (init.isKind(SyntaxKind.ArrowFunction) || init.isKind(SyntaxKind.FunctionExpression)) &&
-              init.isAsync()
+              (init.isAsync() ||
+                (!init.getBody().isKind(SyntaxKind.Block) &&
+                  expressionProducesPromise(init.getBody(), scopeNodes)))
             ) {
               return true;
             }

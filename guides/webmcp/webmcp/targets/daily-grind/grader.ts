@@ -174,15 +174,13 @@ test.describe('webmcp Target Grader', () => {
     for (const call of registerCalls) {
       const firstArg = call.getArguments()[0];
       const toolDef = resolveObjectLiteral(firstArg, project);
-      expect(toolDef).toBeDefined();
-      if (toolDef) {
-        const nameProp = getObjectPropertyInitializer(toolDef, 'name');
-        const descProp = getObjectPropertyInitializer(toolDef, 'description');
-        const execProp = getObjectPropertyInitializer(toolDef, 'execute');
-        expect(nameProp).toBeDefined();
-        expect(descProp).toBeDefined();
-        expect(execProp).toBeDefined();
-      }
+      if (!toolDef) continue; // dynamic definitions are checked at runtime below
+      const nameProp = getObjectPropertyInitializer(toolDef, 'name');
+      const descProp = getObjectPropertyInitializer(toolDef, 'description');
+      const execProp = getObjectPropertyInitializer(toolDef, 'execute');
+      expect(nameProp).toBeDefined();
+      expect(descProp).toBeDefined();
+      expect(execProp).toBeDefined();
     }
   });
 
@@ -253,6 +251,22 @@ test.describe('webmcp Target Grader', () => {
         });
       });
       await page.goto(TARGET_URL);
+    });
+
+    test('Expectation 2 (runtime): Registered tools have name, description, and execute properties', async ({
+      page,
+    }) => {
+      const defs = await page.evaluate(() =>
+        ((window as any).__webmcpRegisteredTools || []).map((t: any) => ({
+          name: typeof t.definition?.name,
+          description: typeof t.definition?.description,
+          execute: typeof t.definition?.execute,
+        }))
+      );
+      expect(defs.length).toBeGreaterThan(0);
+      for (const d of defs) {
+        expect(d).toEqual({ name: 'string', description: 'string', execute: 'function' });
+      }
     });
 
     test('Expectation 3: Define tool input parameters with an inputSchema JSON Schema object where every parameter includes an explicit type and descriptive description', async ({
