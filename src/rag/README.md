@@ -33,7 +33,7 @@ Any change to guide prose, chunk boundaries, baseline data, or macro expansions 
 ### 1. Day-to-Day Development & CI Builds (`pnpm build`)
 
 - Builds use the committed chunk cache.
-- If a guide is edited or added and its teacher vectors are not yet in `src/rag/gen/guide-chunk-cache.*`, `build-guides.ts` issues a console warning naming the guide, records the chunk in `missingChunks` (so `--fail-on-missing-vectors` blocks release builds until `embed-guide-chunks.ts` is run), and sets `vector: []` so the uncached chunk is indexed for BM25 lexical search while unchanged chunks of the guide retain their cached teacher vectors (avoiding mixing query-space `StaticEmbedder` vectors into the document chunk index).
+- If a guide is edited or added and its teacher vectors are not yet in `src/rag/gen/guide-chunk-cache.*`, `build-guides.ts` prints a concise info line (or fails release builds when `--fail-on-missing-vectors` is passed), records the chunk in `missingChunks`, and sets `vector: []` so the uncached chunk is indexed for BM25 lexical search while unchanged chunks of the guide retain their cached teacher vectors (avoiding mixing query-space `StaticEmbedder` vectors into the document chunk index).
 
 ### 2. Pre-Release Embedding Script (`node src/rag/embed-guide-chunks.ts`)
 

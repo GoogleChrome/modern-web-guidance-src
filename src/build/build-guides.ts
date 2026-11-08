@@ -444,20 +444,21 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
 
   if (missingChunks.length > 0) {
     const missingGuides = [...new Set(missingChunks.map((m) => m.guideId))];
-    console.warn(
-      `\n⚠️  WARNING: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:`
-    );
-    for (const g of missingGuides) {
-      console.warn(`   - ${g}`);
-    }
-    console.warn(
-      `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-guide-chunks.ts' to embed them with the teacher model.\n`
-    );
-
     if (failOnMissingVectors) {
+      console.warn(
+        `\n⚠️  WARNING: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:`
+      );
+      for (const g of missingGuides) {
+        console.warn(`   - ${g}`);
+      }
+      console.warn(
+        `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-guide-chunks.ts' to embed them with the teacher model.\n`
+      );
       throw new Error(
         `Release check failed: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors. Run 'node src/rag/embed-guide-chunks.ts' before release.`
       );
+    } else {
+      console.log(`ℹ️  ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) not yet in guide-chunk-cache (using BM25 until release embedding).`);
     }
   }
 
@@ -704,7 +705,6 @@ export async function processSingleGuideFile(
         vector = Array.from(cached);
       } else {
         missingChunks?.push({ guideId: id, category, chunk: ec.chunk });
-        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (indexed for BM25 only; vector: []): ${ec.chunk.slice(0, 50).trim()}...`);
         vector = [];
       }
     }
