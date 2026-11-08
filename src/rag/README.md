@@ -1,8 +1,30 @@
-# Static Embedding Model (`static-tokenlearn-256d`)
+# Local Search & Retrieval (`src/rag/`)
 
-This directory (`src/rag/`) implements hybrid dense + BM25 search (`modern-web-guidance search`), with generated data tables stored under `src/rag/gen/` and benchmark suite documentation in [`./benchmarks/README.md`](./benchmarks/README.md).
+This directory (`src/rag/`) implements hybrid dense + BM25 local search (`modern-web-guidance search`) for sub-millisecond retrieval of relevant guides directly inside coding agents. Data tables and vector caches are stored under `src/rag/gen/`. Detailed evaluation methodology, benchmark suites, and metrics are documented in [`./benchmarks/README.md`](./benchmarks/README.md), and live quality numbers are tracked on the [Search Quality Dashboard (`src/dashboard/search/index.html`)](../dashboard/search/index.html).
 
-[`StaticEmbedder`](./static-embedder.ts) replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dependency lookup table distilled from `gemini-embedding-001` via a [Model2Vec](https://github.com/MinishLab/model2vec) + Tokenlearn recipe:
+[`StaticEmbedder`](./static-embedder.ts) replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dependency lookup table distilled from `gemini-embedding-001` via a [Model2Vec](https://github.com/MinishLab/model2vec) + Tokenlearn recipe.
+
+## Architecture & Retrieval Pipeline
+
+Search operates via asymmetric dense retrieval fused with Okapi BM25 lexical ranking:
+
+- **Hybrid Dense + Okapi BM25 Ranking (`src/rag/search.ts`, `src/rag/bm25.ts`):**
+  - **BM25 Lexical Matching:** Tokenizes text with Lucene `EnglishMinimalStemmer` and scores chunks using Okapi BM25.
+  - **Chunk Header Enrichment (`#3172`):** Every chunk is prepended with its guide title, category, and raw + unslugged `web-feature` IDs to guarantee high lexical recall on exact web platform identifiers.
+  - **Reciprocal Rank Fusion (RRF, $k = 60$):** Combines dense cosine similarity ranks and BM25 lexical ranks into a single balanced score.
+  - **BM25-Aware Fallback Gate:** Enforces a `0.30` dense cosine floor only when BM25 returns 0 hits. If BM25 matches keyword tokens, sub-floor dense candidates are retained as rescues; if BM25 has no hits and the dense top-1 score is below `0.30`, search returns `[]` to reject out-of-scope queries cleanly.
+  - **Compact $K = 10$ Output (`#3048`):** Returns 10 compact `{ id, description }` entries (~53 tokens/result) instead of 5 verbose entries (~105 tokens/result), delivering 2× the candidate coverage within the same ~530-token stdout budget (+7.4pp Hit@K).
+
+- **Why Retrieval is Asymmetric (Symmetric Cone Collapse):**
+  - Summing 3 query words stays sharp in 256-d space (`mean pairwise cosine = 0.28`).
+  - In contrast, averaging ~300 words across a markdown chunk pulls every document vector toward the shared English frequency centroid, collapsing documents into a narrow `0.970` cosine cone on the unit sphere. In symmetric static embedding experiments, unrelated queries like `"best pizza in new york"` scored `0.899` cosine similarity against `<dialog>`.
+  - Pairing 3-word static query vectors (`gen/query-words.i8`, embedded via `RETRIEVAL_QUERY` static distillation) asymmetrically against pre-baked, full-transformer `gemini-embedding-001` document vectors (`gen/guide-chunks.i8`, embedded via `RETRIEVAL_DOCUMENT` at build time) prevents cone collapse while keeping runtime query embedding at `~30 µs`.
+
+- **CLI Harness Ergonomics (`src/rag/retrieve.ts`, `src/cli/modern-web.ts`):**
+  - **Automatic `/tmp` Spilling (`#3191`):** Coding agent harnesses (e.g., Claude Code, Codex CLI) silently middle-truncate inline terminal tool output exceeding ~10 KB (`<truncated ... bytes>`), and agents rarely follow manual redirection instructions. When `retrieve` output exceeds 9.5 KB (`Buffer.byteLength(output) > 9500`) on a non-file pipe (`!fstatSync(1).isFile()`), `retrieve` automatically writes the markdown content to `/tmp/mwg-guide-<pid>-<timestamp>.md` and prints a 2-line instruction for the agent to inspect the file. Single guides under 9.5 KB (76.6% of guides) and file redirects (`>`) stream inline in a single turn.
+  - **Fuzzy Argument Splitting:** Splits CLI guide ID arguments on `/[\s,;]+/` and strips stray quotes and backslashes, gracefully handling space-separated inputs (`retrieve dialog popover`) or shell-escaped quotes.
+
+## Generated Tables & Data Formats (`src/rag/gen/`)
 
 | File (`src/rag/gen/`) | Format | Size (raw / gzip) | Contents |
 | :--- | :--- | :---: | :--- |
@@ -14,7 +36,7 @@ This directory (`src/rag/`) implements hybrid dense + BM25 search (`modern-web-g
 | `guide-chunk-cache.scale.f32` | `Float32Array(N)` | 7.4 KB / 6.0 KB | Per-chunk quantization scales (`maxAbs / 127`) |
 
 At runtime, search operates via asymmetric dense retrieval + BM25 fusion:
-- **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](./static-embedder.ts) in <1 ms using the static word table (`gen/query-words.*`).
+- **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](./static-embedder.ts) in ~30 µs using the static word table (`gen/query-words.*`).
 - **Guide chunks** are embedded at build time with the teacher model `gemini-embedding-001` (`RETRIEVAL_DOCUMENT`, 768-d → MRL 256-d unit vectors) loaded from the committed cache (`src/rag/gen/guide-chunk-cache.*`) into `gen/guide-chunks.json.gz` (metadata & chunk text) plus binary `gen/guide-chunks.i8` and `gen/guide-chunks.scale.f32`.
 - Both sides share the 256-d normalized embedding space distilled from `gemini-embedding-001`. Search ranks by best-matching chunk cosine fused with BM25.
 
@@ -97,3 +119,6 @@ node src/rag/train-query-words.ts --extra-queries path/to/train-queries.jsonl
 ```
 
 After updating `src/rag/gen/`, run `pnpm build` and `pnpm benchmark:rag --public-only` to rebuild the guide vectors and verify retrieval metrics.
+
+For retrieval quality scores, leakage-prevention guardrails, and evaluation datasets, see [`./benchmarks/README.md`](./benchmarks/README.md) and the [Search Quality Dashboard (`src/dashboard/search/index.html`)](../dashboard/search/index.html).
+
