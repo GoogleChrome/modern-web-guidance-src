@@ -186,7 +186,8 @@ test.describe('security Target Grader', () => {
       expect(corp).toBeDefined();
       expect(['same-origin', 'same-site']).toContain((corp ?? '').trim().toLowerCase());
 
-      const logoutRes = await fetch(new URL('/logout', TARGET_URL), {
+      const logoutUrl = new URL('/logout', TARGET_URL);
+      let logoutRes = await fetch(logoutUrl, {
         method: 'GET',
         headers: {
           'Sec-Fetch-Site': 'same-origin',
@@ -195,6 +196,18 @@ test.describe('security Target Grader', () => {
         },
         redirect: 'manual',
       });
+      if (logoutRes.status === 405) {
+        logoutRes = await fetch(logoutUrl, {
+          method: 'POST',
+          headers: {
+            Origin: new URL(TARGET_URL).origin,
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'same-origin',
+            'Sec-Fetch-Dest': 'empty',
+          },
+          redirect: 'manual',
+        });
+      }
       const logoutCorp = logoutRes.headers.get('cross-origin-resource-policy');
       expect(logoutCorp).not.toBeNull();
       expect(['same-origin', 'same-site']).toContain((logoutCorp ?? '').trim().toLowerCase());
@@ -269,7 +282,7 @@ test.describe('security Target Grader', () => {
       TARGET_URL,
     }) => {
       const logoutUrl = new URL('/logout', TARGET_URL);
-      const response = await fetch(logoutUrl, {
+      let response = await fetch(logoutUrl, {
         method: 'GET',
         headers: {
           'Sec-Fetch-Site': 'same-origin',
@@ -278,6 +291,18 @@ test.describe('security Target Grader', () => {
         },
         redirect: 'manual',
       });
+      if (response.status === 405) {
+        response = await fetch(logoutUrl, {
+          method: 'POST',
+          headers: {
+            Origin: new URL(TARGET_URL).origin,
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'same-origin',
+            'Sec-Fetch-Dest': 'empty',
+          },
+          redirect: 'manual',
+        });
+      }
       expect(response.status).toBeLessThan(400);
       const clearSiteData = response.headers.get('clear-site-data') ?? '';
       expect(clearSiteData).toContain('"cookies"');

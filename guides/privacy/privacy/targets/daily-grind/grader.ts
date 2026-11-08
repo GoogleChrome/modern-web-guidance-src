@@ -60,6 +60,23 @@ function getLoadedProject(files: string[]): Project {
   return project;
 }
 
+function resolveValueNodeText(node: Node | undefined): string {
+  if (!node) return '';
+  if (node.isKind(SyntaxKind.Identifier)) {
+    const identName = node.getText();
+    const sf = node.getSourceFile();
+    for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+      if (varDecl.getName() === identName) {
+        const init = varDecl.getInitializer();
+        if (init) {
+          return `${node.getText()} ${init.getText()}`;
+        }
+      }
+    }
+  }
+  return node.getText();
+}
+
 function pairedHeaderValueText(nameLiteral: HeaderNameLiteral): string {
   const parent: Node | undefined = nameLiteral.getParent();
   if (!parent) return '';
@@ -67,25 +84,25 @@ function pairedHeaderValueText(nameLiteral: HeaderNameLiteral): string {
   if (parent.isKind(SyntaxKind.CallExpression)) {
     const args = parent.getArguments();
     if (args.length >= 2 && args[0] === nameLiteral) {
-      return args.slice(1).map(a => a.getText()).join(' ');
+      return args.slice(1).map(a => resolveValueNodeText(a)).join(' ');
     }
     return '';
   }
   if (parent.isKind(SyntaxKind.PropertyAssignment)) {
-    if (parent.getNameNode() === nameLiteral) return parent.getInitializer()?.getText() ?? '';
+    if (parent.getNameNode() === nameLiteral) return resolveValueNodeText(parent.getInitializer());
     const obj = parent.getParentIfKind(SyntaxKind.ObjectLiteralExpression);
-    return obj ? obj.getProperties().filter(p => p !== parent).map(p => p.getText()).join(' ') : '';
+    return obj ? obj.getProperties().filter(p => p !== parent).map(p => resolveValueNodeText(p)).join(' ') : '';
   }
   if (parent.isKind(SyntaxKind.ArrayLiteralExpression)) {
     const els = parent.getElements();
     if (els.length === 2 && els[0] === nameLiteral) {
-      return els[1].getText();
+      return resolveValueNodeText(els[1]);
     }
     return '';
   }
   if (parent.isKind(SyntaxKind.ElementAccessExpression)) {
     const assignment = parent.getParentIfKind(SyntaxKind.BinaryExpression);
-    return assignment ? assignment.getRight().getText() : '';
+    return assignment ? resolveValueNodeText(assignment.getRight()) : '';
   }
   return '';
 }

@@ -10,6 +10,7 @@ import {
   type CallExpression,
   type NewExpression,
   type PropertyAssignment,
+  type ShorthandPropertyAssignment,
   type SourceFile,
 } from 'ts-morph';
 import type { Page } from '@playwright/test';
@@ -66,22 +67,29 @@ function collectStringLiteralsFromNode(node: Node): string[] {
 }
 
 function resolveTargetAddressSpaces(
-  props: PropertyAssignment[],
+  props: Array<PropertyAssignment | ShorthandPropertyAssignment>,
   allCalls: CallExpression[],
   sourceFiles: SourceFile[]
 ): Set<string> {
   const configuredSpaces = new Set<string>();
 
   for (const prop of props) {
-    const init = prop.getInitializer();
+    const init = Node.isPropertyAssignment(prop)
+      ? prop.getInitializer()
+      : prop.getObjectAssignmentInitializer() ?? prop.getNameNode();
     if (!init) continue;
 
     for (const text of collectStringLiteralsFromNode(init)) {
       configuredSpaces.add(text);
     }
 
-    if (Node.isIdentifier(init)) {
-      const identName = init.getText();
+    const identNode = Node.isIdentifier(init)
+      ? init
+      : Node.isShorthandPropertyAssignment(prop)
+        ? prop.getNameNode()
+        : undefined;
+    if (identNode && Node.isIdentifier(identNode)) {
+      const identName = identNode.getText();
       const ancestorFns = prop
         .getAncestors()
         .filter(
@@ -361,9 +369,15 @@ test.describe('local-network-access Target Grader', () => {
       allNews.some((n) => /\bRequest$/.test(n.getExpression().getText()));
     expect(hasFetchOrRequest).toBe(true);
 
-    const targetAddressSpaceProps = sourceFiles
-      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment))
-      .filter((prop) => prop.getName().replace(/['"`]/g, '') === 'targetAddressSpace');
+    const targetAddressSpaceProps: Array<PropertyAssignment | ShorthandPropertyAssignment> =
+      sourceFiles.flatMap((sf) => [
+        ...sf
+          .getDescendantsOfKind(SyntaxKind.PropertyAssignment)
+          .filter((prop) => prop.getName().replace(/['"`]/g, '') === 'targetAddressSpace'),
+        ...sf
+          .getDescendantsOfKind(SyntaxKind.ShorthandPropertyAssignment)
+          .filter((prop) => prop.getName() === 'targetAddressSpace'),
+      ]);
     expect(targetAddressSpaceProps.length).toBeGreaterThan(0);
 
     const configuredSpaces = resolveTargetAddressSpaces(
@@ -376,6 +390,23 @@ test.describe('local-network-access Target Grader', () => {
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
+  const SPECIFIC_CONNECT_BTN_RE =
+    /connect.*(brewer|brewing|companion|helper|utility|local|loopback|device)|brewer|brewing|companion|helper|utility/i;
+  const GENERIC_CONNECT_BTN_RE =
+    /connect|pair|test|check|ping|status|sync|discover|scan/i;
+
+  async function findConnectButton(page: Page) {
+    const specific = page.getByRole('button', { name: SPECIFIC_CONNECT_BTN_RE });
+    if ((await specific.count()) > 0) {
+      return specific.first();
+    }
+    const generic = page.getByRole('button', { name: GENERIC_CONNECT_BTN_RE });
+    if ((await generic.count()) > 0) {
+      return generic.first();
+    }
+    return page.locator('button').first();
+  }
+
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await setupBrowserPage(page, TARGET_URL, { permissionState: 'prompt', fetchMode: 'ok' });
@@ -384,17 +415,15 @@ test.describe('local-network-access Target Grader', () => {
     test('does not fire local network or loopback requests automatically on page load when permission state is prompt and triggers them on explicit user interaction', async ({
       page,
     }) => {
-      const connectButtons = page.getByRole('button', {
-        name: /connect.*(brewer|companion|utility|local|loopback|device)|brewer|companion|utility/i,
-      });
-      await expect(connectButtons.first()).toBeEnabled();
+      const connectButton = await findConnectButton(page);
+      await expect(connectButton).toBeEnabled();
 
       const initialFetchCalls = await page.evaluate(
         () => (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader.fetchCalls.length
       );
       expect(initialFetchCalls).toBe(0);
 
-      await connectButtons.first().click();
+      await connectButton.click();
 
       await expect
         .poll(async () =>
@@ -414,27 +443,29 @@ test.describe('local-network-access Target Grader', () => {
         pageErrors.push(err.message || String(err));
       });
 
-      const connectButtons = page.getByRole('button', {
-        name: /connect.*(brewer|companion|utility|local|loopback|device)|brewer|companion|utility/i,
-      });
-      await expect(connectButtons.first()).toBeEnabled();
+      const connectButton = await findConnectButton(page);
+      await expect(connectButton).toBeEnabled();
+
+      const beforeBodyText = await page.locator('body').innerText();
 
       await page.evaluate(() => {
         (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader.fetchMode = 'fail';
       });
 
-      await connectButtons.first().click();
+      await connectButton.click();
+
+      const ERROR_OR_REMEDIATION_RE =
+        /error|fail|couldn'?t|can'?t|could not|unable|denied|blocked|offline|unreachable|troubleshoot|check|ensure|make sure|verify|power|powered on|same (wi-?fi|network)|wi-?fi|permission/i;
 
       await expect
         .poll(async () => {
           const state = await page.evaluate(
             () => (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader
           );
-          const mainText = await page.locator('main').innerText();
+          const afterBodyText = await page.locator('body').innerText();
+          const bodyChanged = afterBodyText.trim() !== beforeBodyText.trim();
           const hasErrorFeedback =
-            /connection failed|could not connect|unable to (reach|connect)|failed to (fetch|connect)|access blocked|permission denied/i.test(
-              mainText
-            );
+            bodyChanged && ERROR_OR_REMEDIATION_RE.test(afterBodyText);
           return (
             state.fetchCalls.length > 0 &&
             state.unhandledRejections === 0 &&

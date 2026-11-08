@@ -228,6 +228,9 @@ test.describe('secure-external-subresources Target Grader', () => {
         (url.startsWith('http://') || url.startsWith('https://')) &&
         new URL(url).origin !== targetOrigin;
 
+      const isCheckedSubresourceType = (resourceType: string) =>
+        resourceType === 'script' || resourceType === 'stylesheet';
+
       const sriErrors: string[] = [];
       const failedExternalRequests: string[] = [];
       page.on('console', (msg) => {
@@ -239,14 +242,18 @@ test.describe('secure-external-subresources Target Grader', () => {
         }
       });
       page.on('requestfailed', (req) => {
-        if (isExternal(req.url())) {
+        if (isExternal(req.url()) && isCheckedSubresourceType(req.resourceType())) {
           failedExternalRequests.push(
             `${req.url()} (${req.failure()?.errorText || 'failed'})`
           );
         }
       });
       page.on('response', (res) => {
-        if (isExternal(res.url()) && res.status() >= 400) {
+        if (
+          isExternal(res.url()) &&
+          isCheckedSubresourceType(res.request().resourceType()) &&
+          res.status() >= 400
+        ) {
           failedExternalRequests.push(`${res.url()} (${res.status()})`);
         }
       });

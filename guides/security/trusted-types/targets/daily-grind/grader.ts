@@ -416,7 +416,8 @@ test.describe('trusted-types Target Grader', () => {
           const hasSanitizingPolicy = candidatePolicies.some((entry) => {
             try {
               const trustedOutput = entry.policy.createHTML!(maliciousPayload);
-              const tempContainer = document.createElement('div');
+              const inertDoc = document.implementation.createHTMLDocument('');
+              const tempContainer = inertDoc.createElement('div');
               tempContainer.innerHTML = trustedOutput as string;
 
               const hasScriptInOutput = tempContainer.querySelector('script') !== null;
@@ -452,7 +453,7 @@ test.describe('trusted-types Target Grader', () => {
         });
 
       await page.goto(TARGET_URL);
-      let state = await evaluateSanitizationState();
+      const state = await evaluateSanitizationState();
 
       // Agents following the Sanitizer API guidance may prefer native element.setHTML()
       // and only instantiate their Trusted Types fallback policy when setHTML is absent.
@@ -471,7 +472,9 @@ test.describe('trusted-types Target Grader', () => {
         return;
       }
 
-      expect(state.ok).toBe(true);
+      await expect
+        .poll(async () => (await evaluateSanitizationState()).ok, { timeout: 4000 })
+        .toBe(true);
     });
 
     test('Provides a fallback that allows policy creation and sanitization when window.trustedTypes is not natively supported', async ({

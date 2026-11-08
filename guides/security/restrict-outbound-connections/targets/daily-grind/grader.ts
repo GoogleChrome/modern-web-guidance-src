@@ -237,6 +237,13 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
+    await page.addInitScript(() => {
+      (window as unknown as { __unhandledRejections: number }).__unhandledRejections = 0;
+      window.addEventListener('unhandledrejection', () => {
+        (window as unknown as { __unhandledRejections: number }).__unhandledRejections += 1;
+      });
+    });
+
     await page.goto(TARGET_URL);
 
     // Must expose a newsletter form and live status element on the page.
@@ -247,10 +254,24 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     const statusEl = page.locator('[role="status"], [aria-live], output').first();
     await expect(statusEl).toHaveCount(1);
 
+    const PENDING_STATUS_RE = /^(?:\s*|(?:sending|signing|submitting|loading|working|processing)\b.*)$/i;
+
     // Same-origin submission succeeds and updates status feedback.
     await emailInput.fill('coffee@example.com');
-    await submitBtn.click();
-    await expect(statusEl).not.toHaveText(/^\s*$/, { timeout: 5000 });
+    const [firstResponse] = await Promise.all([
+      page.waitForResponse((res) => res.request().method() === 'POST', { timeout: 5000 }),
+      submitBtn.click(),
+    ]);
+    expect(firstResponse.ok()).toBe(true);
+    await expect
+      .poll(
+        async () => {
+          const text = ((await statusEl.textContent()) || '').trim();
+          return text.length > 0 && !PENDING_STATUS_RE.test(text);
+        },
+        { timeout: 5000 },
+      )
+      .toBe(true);
     await expect(statusEl).toBeVisible();
     const successText = ((await statusEl.textContent()) || '').trim();
 
@@ -265,16 +286,32 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     });
 
     await emailInput.fill('blocked@example.com');
-    await submitBtn.click();
+    const [blockedRequest] = await Promise.all([
+      page.waitForEvent('requestfailed', {
+        predicate: (req) => req.method() === 'POST',
+        timeout: 5000,
+      }),
+      submitBtn.click(),
+    ]);
+    expect(blockedRequest.method()).toBe('POST');
+
     await expect
       .poll(
-        async () => ((await statusEl.textContent()) || '').trim(),
+        async () => {
+          const text = ((await statusEl.textContent()) || '').trim();
+          return text.length > 0 && text !== successText && !PENDING_STATUS_RE.test(text);
+        },
         { timeout: 5000 },
       )
-      .not.toBe(successText);
+      .toBe(true);
     await expect(statusEl).toBeVisible();
     const blockedText = ((await statusEl.textContent()) || '').trim();
     expect(blockedText.length).toBeGreaterThan(0);
+
+    const unhandledRejections = await page.evaluate(
+      () => (window as unknown as { __unhandledRejections: number }).__unhandledRejections,
+    );
+    expect(unhandledRejections).toBe(0);
     expect(pageErrors).toEqual([]);
   });
 });

@@ -45,6 +45,44 @@ function getTargetAddressSpaceProperties(
   ]);
 }
 
+function collectRequestFunctionNames(sourceFiles: SourceFile[]): Set<string> {
+  const requestFnNames = new Set<string>();
+  for (const prop of getTargetAddressSpaceProperties(sourceFiles)) {
+    const fnDecl = prop.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration);
+    if (fnDecl?.getName()) {
+      requestFnNames.add(fnDecl.getName()!);
+    }
+    const varDecl = prop.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+    if (varDecl?.getName()) {
+      requestFnNames.add(varDecl.getName());
+    }
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const sf of sourceFiles) {
+      for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+        const calleeName = call.getExpression().getText();
+        if (requestFnNames.has(calleeName)) {
+          const enclosingFn = call.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration);
+          if (enclosingFn?.getName() && !requestFnNames.has(enclosingFn.getName()!)) {
+            requestFnNames.add(enclosingFn.getName()!);
+            changed = true;
+          }
+          const enclosingVar = call.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+          if (enclosingVar?.getName() && !requestFnNames.has(enclosingVar.getName())) {
+            requestFnNames.add(enclosingVar.getName());
+            changed = true;
+          }
+        }
+      }
+    }
+  }
+
+  return requestFnNames;
+}
+
 function getLnaSourceFiles(sourceFiles: SourceFile[]): SourceFile[] {
   return sourceFiles.filter((sf) => {
     const hasGranularString = [
@@ -237,33 +275,7 @@ test.describe('local-network-access Target Grader', () => {
       ].some((lit) => lit.getLiteralValue() === 'prompt')
     );
 
-    const requestFnNames = new Set<string>();
-    for (const prop of getTargetAddressSpaceProperties(lnaFiles)) {
-      const fnDecl = prop.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration);
-      if (fnDecl?.getName()) {
-        requestFnNames.add(fnDecl.getName()!);
-      }
-      const varDecl = prop.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
-      if (varDecl?.getName()) {
-        requestFnNames.add(varDecl.getName());
-      }
-    }
-
-    for (const sf of lnaFiles) {
-      for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-        const calleeName = call.getExpression().getText();
-        if (requestFnNames.has(calleeName)) {
-          const enclosingFn = call.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration);
-          if (enclosingFn?.getName()) {
-            requestFnNames.add(enclosingFn.getName()!);
-          }
-          const enclosingVar = call.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
-          if (enclosingVar?.getName()) {
-            requestFnNames.add(enclosingVar.getName());
-          }
-        }
-      }
-    }
+    const requestFnNames = collectRequestFunctionNames(lnaFiles);
 
     const useEffectCalls = lnaFiles.flatMap((sf) =>
       sf
@@ -275,12 +287,20 @@ test.describe('local-network-access Target Grader', () => {
       const callback = effectCall.getArguments()[0];
       if (!callback) return true;
 
-      const requestCallsInEffect = callback
-        .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .filter((c) => requestFnNames.has(c.getExpression().getText()));
+      const requestNodesInEffect = [
+        ...callback
+          .getDescendantsOfKind(SyntaxKind.CallExpression)
+          .filter((c) => {
+            const callee = c.getExpression().getText();
+            return requestFnNames.has(callee) || /\bfetch$/.test(callee);
+          }),
+        ...callback
+          .getDescendantsOfKind(SyntaxKind.NewExpression)
+          .filter((ne) => /\bRequest$/.test(ne.getExpression().getText())),
+      ];
 
-      return requestCallsInEffect.every((reqCall) => {
-        const ifAncestor = reqCall.getFirstAncestorByKind(SyntaxKind.IfStatement);
+      return requestNodesInEffect.every((reqNode) => {
+        const ifAncestor = reqNode.getFirstAncestorByKind(SyntaxKind.IfStatement);
         if (!ifAncestor) return false;
         const condLiterals = [
           ...ifAncestor.getExpression().getDescendantsOfKind(SyntaxKind.StringLiteral),
@@ -324,29 +344,45 @@ test.describe('local-network-access Target Grader', () => {
 
     expect(lnaFiles.length).toBeGreaterThan(0);
 
-    const catchesRequestErrors = lnaFiles.some((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.TryStatement).some((tryStmt) => {
-        const catchClause = tryStmt.getCatchClause();
-        if (!catchClause) return false;
+    const requestFnNames = collectRequestFunctionNames(lnaFiles);
+    const isLnaRequestCall = (call: CallExpression): boolean => {
+      const callee = call.getExpression().getText();
+      return requestFnNames.has(callee) || /\bfetch$/.test(callee);
+    };
 
-        const tryBlock = tryStmt.getTryBlock();
-        const hasAwaitRequest =
-          tryBlock.getDescendantsOfKind(SyntaxKind.AwaitExpression).length > 0 &&
-          tryBlock
-            .getDescendantsOfKind(SyntaxKind.CallExpression)
-            .some(
-              (call) =>
-                !isPermissionsQueryCall(call) &&
-                call.getExpression().getText() !== 'json' &&
-                !call.getExpression().getText().endsWith('.json')
-            );
+    const catchesRequestErrors = lnaFiles.some(
+      (sf) =>
+        sf.getDescendantsOfKind(SyntaxKind.TryStatement).some((tryStmt) => {
+          const catchClause = tryStmt.getCatchClause();
+          if (!catchClause) return false;
 
-        const catchUpdatesState =
-          catchClause.getBlock().getDescendantsOfKind(SyntaxKind.CallExpression).length > 0 ||
-          catchClause.getBlock().getDescendantsOfKind(SyntaxKind.BinaryExpression).length > 0;
+          const tryBlock = tryStmt.getTryBlock();
+          const hasRequestInTry =
+            tryBlock
+              .getDescendantsOfKind(SyntaxKind.CallExpression)
+              .some((call) => !isPermissionsQueryCall(call) && isLnaRequestCall(call)) ||
+            tryBlock
+              .getDescendantsOfKind(SyntaxKind.NewExpression)
+              .some((ne) => /\bRequest$/.test(ne.getExpression().getText()));
 
-        return hasAwaitRequest && catchUpdatesState;
-      })
+          const catchUpdatesState =
+            catchClause.getBlock().getDescendantsOfKind(SyntaxKind.CallExpression).length > 0 ||
+            catchClause.getBlock().getDescendantsOfKind(SyntaxKind.BinaryExpression).length > 0;
+
+          return hasRequestInTry && catchUpdatesState;
+        }) ||
+        sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+          const expr = call.getExpression();
+          if (!expr.isKind(SyntaxKind.PropertyAccessExpression) || expr.getName() !== 'catch') {
+            return false;
+          }
+          const receiver = expr.getExpression();
+          const receiverCalls = [
+            ...(receiver.isKind(SyntaxKind.CallExpression) ? [receiver] : []),
+            ...receiver.getDescendantsOfKind(SyntaxKind.CallExpression),
+          ];
+          return receiverCalls.some((c) => !isPermissionsQueryCall(c) && isLnaRequestCall(c));
+        })
     );
 
     const handlesDeniedState = lnaFiles.some((sf) =>
