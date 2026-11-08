@@ -53,29 +53,25 @@ Note that `text-fit` does not change the computed `font-size` and does not grow 
 
 #### Keeping the end visible
 
-Split the text into a start that truncates and an end that never shrinks, such as the file extension or the last few characters. The split is in the markup (or done once in script when rendering), never by cutting characters out.
+Wrap the part that may truncate, such as everything before the file extension or the last few characters, and leave the end as plain text after it. The split is in the markup (or done once in script when rendering), never by cutting characters out.
 
 ```html
-<span class="filename"><span class="start">quarterly-report-final-v2</span><span class="end">.pdf</span></span>
+<!-- No whitespace before the extension, or it renders as a space -->
+<span class="filename"><span>quarterly-report-final-v2</span>.pdf</span>
 ```
 
 ```css
 .filename {
   display: flex;
+  white-space: nowrap;
 }
 
-.start {
-  white-space: nowrap;
+/* The trailing text is an anonymous flex item, which never shrinks below its content */
+.filename > span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.end {
-  flex: none;
-}
 ```
-
-{# TODO Do we actually need both wrappers here? #}
 
 ### 2. Fade out the end
 
@@ -243,9 +239,7 @@ If the tooltip adds information beyond the label, hide the label from assistive 
 
 ## Detecting whether the text is truncated
 
-{# TODO Does this work for text-overflow too?! #}
-
-No property reports truncation. Derive it from overflow: the element is truncated when it can scroll toward its inline end.
+No property reports truncation. Derive it from overflow: the element is truncated when it can scroll toward its inline end. `text-overflow` only changes painting, so this holds with an ellipsis too.
 
 - **In CSS, on the element itself**, use a scroll-driven animation on its own inline scroll timeline, as in the fade above. Any declarations in the keyframes apply only while the text overflows.
 - **In CSS, on descendants and pseudo-elements**, make the element a scroll-state container and query it. For example, to hint that hovering reveals more:

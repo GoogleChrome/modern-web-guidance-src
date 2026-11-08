@@ -137,16 +137,13 @@
   /* Keep the end visible: the start truncates, the extension never shrinks */
   .filename {
     display: flex;
+    white-space: nowrap;
     padding: .25rem .75rem;
 
-    & .start {
-      white-space: nowrap;
+    /* The extension is an anonymous flex item, which never shrinks below its content */
+    & > span {
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    & .end {
-      flex: none;
     }
   }
 
@@ -254,9 +251,9 @@
 <h2>Keeping the end visible</h2>
 <div class="resizable">
   <ul>
-    <li><span class="filename"><span class="start">quarterly-report-final-v2</span><span class="end">.pdf</span></span></li>
-    <li><span class="filename"><span class="start">quarterly-report-final-v2-approved</span><span class="end">.docx</span></span></li>
-    <li><span class="filename"><span class="start">hero</span><span class="end">.webp</span></span></li>
+    <li><span class="filename"><span>quarterly-report-final-v2</span>.pdf</span></li>
+    <li><span class="filename"><span>quarterly-report-final-v2-approved</span>.docx</span></li>
+    <li><span class="filename"><span>hero</span>.webp</span></li>
   </ul>
 </div>
 
