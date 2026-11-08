@@ -19,7 +19,7 @@ This guide covers one popup menu: a list of commands or links that users move th
 
 Several triggers on one page are independent menus unless you build a bar: each is its own `Tab` stop, and nothing links them. A row of menus that act as one widget (File, Edit, View: one `Tab` stop, `ArrowLeft`/`ArrowRight` between them, hover switching) is an application menu bar. Build each menu as described here, then see {{ GUIDE_REF("app-menus") }} for what links them.
 
-### Commands, links, and what makes a menu
+## Commands, links, and what makes a menu
 
 Two independent choices. Everything else here applies to both.
 
