@@ -2,6 +2,6 @@
 - Custom element tag names are lowercase kebab-case strings containing at least one hyphen.
 - Any explicit custom element constructor calls `super()` before accessing `this`, so instantiating or upgrading the element succeeds without throwing a `ReferenceError`.
 - Interactive controls inside shadow roots use native semantic HTML elements (such as `<button>`, `<input>`, `<select>`, or `<a href>`) rather than non-semantic `<div>` or `<span>` elements with click handlers or `tabindex`.
-- Interactive controls inside shadow roots provide an accessible name or description via text content or `aria-label`, or via `aria-labelledby`, `aria-describedby`, or `aria-controls` attributes where every referenced `id` resolves to a target element within the same document or shadow root rather than across a shadow boundary.
+- Interactive controls inside shadow roots provide an accessible name or description via text content, `aria-label`, or `<label>`, or via `aria-labelledby` or `aria-describedby` attributes where every referenced `id` resolves to a target element within the same document or shadow root rather than across a shadow boundary.
 - Shadow roots are attached with `mode: 'open'` (or `shadowrootmode="open"` for Declarative Shadow DOM) so `element.shadowRoot` is accessible.
 - Custom elements are defined as autonomous custom elements extending `HTMLElement` rather than customized built-in elements using the `is="..."` attribute.

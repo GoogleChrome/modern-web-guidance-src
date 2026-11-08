@@ -35,15 +35,53 @@ test.describe('custom-elements Target Grader', () => {
 
     expect(defineCalls.length).toBeGreaterThan(0);
 
+    const resolveTagString = (node: any): string | null => {
+      if (!node) return null;
+      const kind = node.getKind();
+      if (kind === SyntaxKind.StringLiteral || kind === SyntaxKind.NoSubstitutionTemplateLiteral) {
+        return node.getText().slice(1, -1);
+      }
+      if (kind === SyntaxKind.Identifier) {
+        const defs = node.getDefinitions?.() ?? [];
+        for (const def of defs) {
+          const decl = def.getDeclarationNode?.();
+          const init = decl?.getInitializer?.();
+          if (init) {
+            const resolved = resolveTagString(init);
+            if (resolved) return resolved;
+          }
+        }
+      }
+      if (kind === SyntaxKind.PropertyAccessExpression) {
+        const propName = node.getName();
+        const objText = node.getExpression().getText();
+        for (const sf of project.getSourceFiles()) {
+          for (const cls of sf.getDescendantsOfKind(SyntaxKind.ClassDeclaration)) {
+            if (cls.getName() === objText) {
+              const prop = cls.getProperty(propName);
+              const init = prop?.getInitializer?.();
+              if (init) {
+                const resolved = resolveTagString(init);
+                if (resolved) return resolved;
+              }
+              const getter = cls.getGetAccessor(propName);
+              const ret = getter?.getDescendantsOfKind(SyntaxKind.ReturnStatement)?.[0]?.getExpression();
+              if (ret) {
+                const resolved = resolveTagString(ret);
+                if (resolved) return resolved;
+              }
+            }
+          }
+        }
+      }
+      return null;
+    };
+
     const hasValidKebabTag = defineCalls.some(call => {
       const args = call.getArguments();
       if (args.length < 2) return false;
-      const firstArg = args[0];
-      if (firstArg.getKind() === SyntaxKind.StringLiteral || firstArg.getKind() === SyntaxKind.NoSubstitutionTemplateLiteral) {
-        const tagName = firstArg.getText().slice(1, -1);
-        return /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/.test(tagName);
-      }
-      return false;
+      const tagName = resolveTagString(args[0]);
+      return tagName !== null && /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/.test(tagName);
     });
 
     expect(hasValidKebabTag).toBe(true);
@@ -84,8 +122,13 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
     const validRule = notDefinedRules.find(r => {
       const selectors = r.selectorText.split(',').map(s => s.trim());
       const isScopedToCustomElement = selectors.every(sel => {
-        const beforePseudo = sel.split(':not(:defined)')[0].trim();
-        return /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/i.test(beforePseudo);
+        if (!sel.includes(':not(:defined)')) return false;
+        const beforeNotDefined = sel.split(':not(:defined)')[0].replace(/:has\(\s*$/, '').trim();
+        if (!beforeNotDefined) return false;
+        if (/^(?:html|body|:root|\*)$/i.test(beforeNotDefined)) return false;
+        const hasCustomTag = /\b[a-z][a-z0-9]*(-[a-z0-9]+)+\b/i.test(sel);
+        const hasScopedSubtree = /[.#[]/.test(beforeNotDefined) || /\b(?!html\b|body\b)[a-z][a-z0-9-]*\b/i.test(beforeNotDefined);
+        return hasCustomTag || hasScopedSubtree;
       });
       if (!isScopedToCustomElement) return false;
 
@@ -179,18 +222,29 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
         const customEls = allElements.filter(el => el.tagName.includes('-'));
         if (customEls.length === 0) return { count: 0, allDefined: false, constructorOk: false };
 
-        const tagName = customEls[0].tagName.toLowerCase();
-        const Ctor = customElements.get(tagName);
-        if (!Ctor) return { count: customEls.length, allDefined: false, constructorOk: false };
+        const ctors = new Set<CustomElementConstructor>();
+        const allDefined = customEls.every(el => {
+          const Ctor = customElements.get(el.tagName.toLowerCase());
+          if (!Ctor) return false;
+          ctors.add(Ctor);
+          return el.matches(':defined') && el instanceof Ctor;
+        });
+        if (!allDefined || ctors.size === 0) {
+          return { count: customEls.length, allDefined: false, constructorOk: false };
+        }
 
-        const allDefined = customEls.every(el => el.matches(':defined') && el instanceof Ctor);
-
-        let constructorOk = false;
-        try {
-          const instance = new Ctor();
-          constructorOk = instance instanceof HTMLElement && instance.matches(':defined');
-        } catch {
-          constructorOk = false;
+        let constructorOk = true;
+        for (const Ctor of ctors) {
+          try {
+            const instance = new Ctor();
+            if (!(instance instanceof HTMLElement) || !instance.matches(':defined')) {
+              constructorOk = false;
+              break;
+            }
+          } catch {
+            constructorOk = false;
+            break;
+          }
         }
 
         return { count: customEls.length, allDefined, constructorOk };
@@ -203,10 +257,13 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
 
     test('A custom element with observed attributes reads initial attribute values in markup upon upgrade and renders the initial state', async ({ page }) => {
       const result = await page.evaluate(() => {
-        const customEls = Array.from(document.querySelectorAll('*')).filter(
-          el => el.tagName.includes('-') && el.matches(':defined')
-        );
-        if (customEls.length === 0) return { count: 0, renderedCount: 0 };
+        const observedEls = Array.from(document.querySelectorAll('*')).filter(el => {
+          if (!el.tagName.includes('-') || !el.matches(':defined')) return false;
+          const Ctor = customElements.get(el.tagName.toLowerCase()) as any;
+          const observed: string[] = Ctor?.observedAttributes || [];
+          return Array.isArray(observed) && observed.length > 0;
+        });
+        if (observedEls.length === 0) return { count: 0, renderedCount: 0 };
 
         const isValueReflected = (node: Element, value: string): boolean => {
           const v = value.trim();
@@ -225,7 +282,7 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
         };
 
         let renderedCount = 0;
-        for (const el of customEls) {
+        for (const el of observedEls) {
           const Ctor = customElements.get(el.tagName.toLowerCase()) as any;
           const observed: string[] = Ctor?.observedAttributes || [];
           const presentObserved = observed.filter(attr => el.hasAttribute(attr) && (el.getAttribute(attr) ?? '') !== '');
@@ -234,7 +291,7 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
           }
         }
 
-        return { count: customEls.length, renderedCount };
+        return { count: observedEls.length, renderedCount };
       });
 
       expect(result.count).toBeGreaterThan(0);
@@ -263,9 +320,11 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
       await page.reload();
 
       const result = await page.evaluate(async () => {
-        const el = Array.from(document.querySelectorAll('*')).find(
-          e => e.tagName.includes('-') && e.matches(':defined')
-        ) as any;
+        const el = Array.from(document.querySelectorAll('*')).find(e => {
+          if (!e.tagName.includes('-') || !e.matches(':defined')) return false;
+          const Ctor = customElements.get(e.tagName.toLowerCase()) as any;
+          return Array.isArray(Ctor?.observedAttributes) && Ctor.observedAttributes.length > 0;
+        }) as any;
         if (!el) return null;
 
         const tagName = el.tagName.toLowerCase();
@@ -379,9 +438,11 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
 
     test('When the custom element reflects a numeric property, reading the property returns a number, not a string', async ({ page }) => {
       const result = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('*')).find(
-          e => e.tagName.includes('-') && e.matches(':defined')
-        ) as any;
+        const el = Array.from(document.querySelectorAll('*')).find(e => {
+          if (!e.tagName.includes('-') || !e.matches(':defined')) return false;
+          const Ctor = customElements.get(e.tagName.toLowerCase()) as any;
+          return Array.isArray(Ctor?.observedAttributes) && Ctor.observedAttributes.length > 0;
+        }) as any;
         if (!el) return null;
 
         const Ctor = customElements.get(el.tagName.toLowerCase()) as any;
@@ -413,9 +474,11 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
 
     test('When the custom element reflects a boolean property, setting the property to false removes the attribute rather than writing "false"', async ({ page }) => {
       const result = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('*')).find(
-          e => e.tagName.includes('-') && e.matches(':defined')
-        ) as any;
+        const el = Array.from(document.querySelectorAll('*')).find(e => {
+          if (!e.tagName.includes('-') || !e.matches(':defined')) return false;
+          const Ctor = customElements.get(e.tagName.toLowerCase()) as any;
+          return Array.isArray(Ctor?.observedAttributes) && Ctor.observedAttributes.length > 0;
+        }) as any;
         if (!el) return null;
 
         const Ctor = customElements.get(el.tagName.toLowerCase()) as any;
@@ -454,9 +517,11 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
 
     test('Changing either a reflected property or its attribute updates the other and the rendered output', async ({ page }) => {
       const result = await page.evaluate(async () => {
-        const el = Array.from(document.querySelectorAll('*')).find(
-          e => e.tagName.includes('-') && e.matches(':defined')
-        ) as any;
+        const el = Array.from(document.querySelectorAll('*')).find(e => {
+          if (!e.tagName.includes('-') || !e.matches(':defined')) return false;
+          const Ctor = customElements.get(e.tagName.toLowerCase()) as any;
+          return Array.isArray(Ctor?.observedAttributes) && Ctor.observedAttributes.length > 0;
+        }) as any;
         if (!el) return null;
 
         const Ctor = customElements.get(el.tagName.toLowerCase()) as any;

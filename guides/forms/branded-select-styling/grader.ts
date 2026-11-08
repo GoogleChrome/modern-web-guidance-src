@@ -71,7 +71,7 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
   test('The `::picker(select)` pseudo-element has `appearance: base-select` applied.', async ({ page }) => {
     const rules = await getCssRules(page);
     const hasPickerAppearance = rules.some(
-      r => /::picker(?:\(select\))?\b/i.test(r.selector) && r.appearance === 'base-select'
+      r => /::picker(?![-\w])/i.test(r.selector) && r.appearance === 'base-select'
     );
     expect(hasPickerAppearance).toBe(true);
   });

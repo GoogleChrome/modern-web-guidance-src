@@ -1,1 +1,1 @@
-- Build an accordion for an FAQ section (using #faq-trigger) and a dismissible promo alert at the top of the page (using #promo-alert and #alert-dismiss) that smoothly animates between collapsed dimensions and natural content height when opened or dismissed.
+- Build an accordion for an FAQ section (using #faq-trigger and #faq-content) and a dismissible promo alert at the top of the page (using #promo-alert and #alert-dismiss) that smoothly animates between collapsed dimensions and natural content height when opened or dismissed.

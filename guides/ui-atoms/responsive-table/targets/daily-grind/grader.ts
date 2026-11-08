@@ -287,7 +287,7 @@ test.describe('responsive-table Target Grader', () => {
     expect(isTheadHidden).toBe(true);
   });
 
-  test('In the stacked view, each data cell (td) displays a label corresponding to its column header using a pseudo-element', () => {
+  test('In the stacked view, each data cell (td) displays a label corresponding to its column header using a pseudo-element', async ({ page, TARGET_URL }) => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = Array.from(stylesheet.cssRules);
@@ -325,7 +325,7 @@ test.describe('responsive-table Target Grader', () => {
       if (literal) resolvedLabels.add(literal);
     }
 
-    const matchesColumnHeaders = docs.some(({ document }) => {
+    const matchesColumnHeadersStatic = docs.some(({ document }) => {
       const table = document.querySelector('table');
       if (!table) return false;
       const ths = Array.from(table.querySelectorAll('thead th'))
@@ -353,12 +353,51 @@ test.describe('responsive-table Target Grader', () => {
       );
     });
 
-    const hasColumnLabels =
+    const hasStaticColumnLabels =
       (pseudoRulesWithContent.length >= 2 ||
         pseudoRulesWithContent.some((r) => /\b(attr|var)\s*\(/.test(r.style.getPropertyValue('content')))) &&
-      matchesColumnHeaders;
+      matchesColumnHeadersStatic;
 
-    expect(hasColumnLabels).toBe(true);
+    if (hasStaticColumnLabels) {
+      expect(hasStaticColumnLabels).toBe(true);
+      return;
+    }
+
+    // Fallback to live browser evaluation at narrow viewport so JS-synced custom properties (from guide.md) also pass
+    await page.setViewportSize({ width: 480, height: 800 });
+    await page.goto(TARGET_URL);
+    const hasRuntimeColumnLabels = await page.evaluate(() => {
+      const table = document.querySelector('table');
+      if (!table) return false;
+      const ths = Array.from(table.querySelectorAll('thead th'))
+        .map((th) => (th.textContent || '').trim().toLowerCase())
+        .filter(Boolean);
+      const dataHeaders = ths.slice(1);
+      if (dataHeaders.length === 0) return false;
+
+      const firstRowTds = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+      if (firstRowTds.length < dataHeaders.length) return false;
+
+      const beforeLabels = firstRowTds.map((td) =>
+        getComputedStyle(td, '::before')
+          .getPropertyValue('content')
+          .replace(/['":\s/]/g, ' ')
+          .trim()
+          .toLowerCase()
+      );
+
+      return dataHeaders.every((headerText, i) => {
+        const cellLabel = beforeLabels[i] || '';
+        return (
+          cellLabel.length > 0 &&
+          cellLabel !== 'none' &&
+          cellLabel !== 'normal' &&
+          (cellLabel.includes(headerText) || headerText.includes(cellLabel))
+        );
+      });
+    });
+
+    expect(hasRuntimeColumnLabels).toBe(true);
   });
 
   test('In the stacked view, row headers (tbody th) are sticky at the top of their respective row block during scroll', () => {

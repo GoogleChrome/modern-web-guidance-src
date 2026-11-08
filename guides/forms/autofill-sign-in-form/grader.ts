@@ -81,9 +81,14 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
   });
 
   test('The email and password inputs have associated label elements', async ({ page }) => {
-    const isVisible = await page.locator('label').first().isVisible({ timeout: 500 }).catch(() => false);
+    const emailInput = page.locator('input[type="email"], input[name="email"], input[name="username"]').first();
+    const passwordInput = page.locator('input[type="password"], input[name="password"]').first();
+    const isVisible = await emailInput.isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
-      expect(isVisible).toBe(true);
+      const emailHasLabel = await emailInput.evaluate((el: HTMLInputElement) => Boolean(el.labels && el.labels.length > 0)).catch(() => false);
+      const passwordHasLabel = await passwordInput.evaluate((el: HTMLInputElement) => Boolean(el.labels && el.labels.length > 0)).catch(() => false);
+      expect(emailHasLabel).toBe(true);
+      expect(passwordHasLabel).toBe(true);
       return;
     }
     const code = getSourceContent();

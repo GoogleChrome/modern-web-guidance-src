@@ -222,9 +222,8 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
             const condition = rule.conditionText || '';
             const normalized = condition.replace(/\s+/g, '');
             const hasScrollState = normalized.includes('scroll-state');
-            const hasValidStuck = normalized.includes('stuck:top') || 
-                                  normalized.includes('stuck:inset-block-start') || 
-                                  normalized.includes('stuck:inset-inline-start');
+            const hasValidStuck = normalized.includes('stuck:top') ||
+                                  normalized.includes('stuck:block-start');
             
             if (hasScrollState && hasValidStuck) {
               return true;
@@ -234,9 +233,8 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
             if (rule.constructor.name === 'CSSContainerRule') {
                const cssText = rule.cssText.replace(/\s+/g, '');
                const hasCssScrollState = cssText.includes('scroll-state');
-               const hasCssValidStuck = cssText.includes('stuck:top') || 
-                                        cssText.includes('stuck:inset-block-start') || 
-                                        cssText.includes('stuck:inset-inline-start');
+               const hasCssValidStuck = cssText.includes('stuck:top') ||
+                                        cssText.includes('stuck:block-start');
                return hasCssScrollState && hasCssValidStuck;
             }
             return false;
@@ -286,9 +284,8 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
           const condition = r.conditionText || '';
           const normalized = condition.replace(/\s+/g, '');
           
-          const hasValidStuck = normalized.includes('stuck:top') || 
-                                normalized.includes('stuck:inset-block-start') || 
-                                normalized.includes('stuck:inset-inline-start');
+          const hasValidStuck = normalized.includes('stuck:top') ||
+                                normalized.includes('stuck:block-start');
           
           if (normalized.includes('scroll-state') && hasValidStuck) {
             // Delete the rule from its parent list

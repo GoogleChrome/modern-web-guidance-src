@@ -144,7 +144,7 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
 
     await page.waitForFunction(
       ({ prevHeight }) => {
-        const el = document.querySelector('.faq-item, details');
+        const el = document.querySelector('#faq-content, .faq-item, details');
         if (!el) return false;
         return el.getBoundingClientRect().height > prevHeight;
       },

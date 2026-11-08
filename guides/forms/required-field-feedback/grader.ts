@@ -217,7 +217,10 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
       const errId = el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
       if (errId && isVisible(document.getElementById(errId))) return true;
 
-      if (el.nextElementSibling && isVisible(el.nextElementSibling)) return true;
+      const next = el.nextElementSibling;
+      if (next && next.matches('.error-msg, .error-message, [role="alert"], [id*="error"]')) {
+        return isVisible(next);
+      }
 
       const container = el.parentElement || el.closest('form');
       if (container) {

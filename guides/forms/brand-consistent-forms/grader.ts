@@ -311,8 +311,6 @@ test.describe('Brand-Consistent Forms Grader', () => {
     const hasAccessibleFallbackInputs = await page.evaluate(async () => {
       let hasSupportsNot = false;
       let hasVisuallyHiddenPattern = false;
-      let hasVisibleCheckboxAppearanceNone = false;
-      let hasVisibleRadioAppearanceNone = false;
       let hidesInputInaccessibly = false;
 
       const walkRules = (rules: CSSRuleList) => {
@@ -331,10 +329,6 @@ test.describe('Brand-Consistent Forms Grader', () => {
             const targetsInputItself = sel.split(',').some((s) => /input[^\s>+~]*$/.test(s.trim()) && !s.includes('::'));
             if (targetsInputItself && /display:none|visibility:hidden|opacity:0(\.0*)?(;|!|$)/.test(cssText)) {
               hidesInputInaccessibly = true;
-            }
-            if (cssText.includes('appearance:none')) {
-              if (sel.includes('checkbox')) hasVisibleCheckboxAppearanceNone = true;
-              if (sel.includes('radio')) hasVisibleRadioAppearanceNone = true;
             }
           } else if ('cssRules' in innerRule && (innerRule as CSSGroupingRule).cssRules) {
             walkRules((innerRule as CSSGroupingRule).cssRules);

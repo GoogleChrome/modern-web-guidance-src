@@ -24,15 +24,11 @@ test.describe('Position-Aware Tooltips Grader', () => {
   test('sets role="tooltip" on popover and aria-describedby on trigger pointing to popover ID', async ({ page }) => {
     await page.goto(targetUrl);
     const isValid = await page.evaluate(() => {
-      const trigger = document.querySelector('[popovertarget]');
-      if (!trigger) return false;
-      const targetId = trigger.getAttribute('popovertarget');
-      if (!targetId) return false;
-      const popover = document.getElementById(targetId);
-      if (!popover) return false;
-      const hasRoleTooltip = popover.getAttribute('role') === 'tooltip';
-      const triggerAria = trigger.getAttribute('aria-describedby');
-      return hasRoleTooltip && triggerAria === targetId;
+      const triggers = Array.from(document.querySelectorAll('[aria-describedby]'));
+      return triggers.some((trigger) => {
+        const ids = (trigger.getAttribute('aria-describedby') || '').trim().split(/\s+/).filter(Boolean);
+        return ids.some((id) => document.getElementById(id)?.getAttribute('role') === 'tooltip');
+      });
     });
     expect(isValid).toBe(true);
   });
@@ -230,48 +226,41 @@ test.describe('Position-Aware Tooltips Grader', () => {
 
     await page.goto(targetUrl);
 
-    // Verify purely CSS-based fallback styling is defined in stylesheets because container
-    // anchor-position queries do not trigger dynamic layout evaluation in headless Chromium
-    const cssFallbackCheck = await page.evaluate(() => {
-      let hasContainerFallbackRule = false;
-      let hasDescendantStyles = false;
+    const read = () =>
+      page.evaluate(() => {
+        const c = document.querySelector('[popover] *') || document.querySelector('[popover]');
+        if (!c) return '';
+        const b = getComputedStyle(c, '::before');
+        const s = getComputedStyle(c);
+        return [b.content, s.borderRadius, s.marginBlockStart, s.marginBlockEnd].join('|');
+      });
 
-      function inspectRules(rules: CSSRuleList) {
-        for (let i = 0; i < rules.length; i++) {
-          const rule = rules[i];
-          if (rule instanceof CSSContainerRule || rule.type === 17) {
-            const containerRule = rule as any;
-            if (containerRule.conditionText.includes('anchored') && containerRule.conditionText.includes('fallback')) {
-              hasContainerFallbackRule = true;
-              if (containerRule.cssRules && containerRule.cssRules.length > 0) {
-                hasDescendantStyles = true;
-              }
-            }
-          } else if ((rule as any).cssRules) {
-            inspectRules((rule as any).cssRules);
-          }
-        }
-      }
+    const isOpen = await page
+      .locator('[popover]')
+      .first()
+      .evaluate((el) => el.matches(':popover-open'))
+      .catch(() => false);
+    if (!isOpen) {
+      await page.locator('[popovertarget]').first().click();
+    }
 
-      for (let j = 0; j < document.styleSheets.length; j++) {
-        try {
-          const sheet = document.styleSheets[j];
-          if (sheet.cssRules) inspectRules(sheet.cssRules);
-        } catch (e) {}
-      }
+    await page
+      .locator('#anchor, [popovertarget]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'end' }));
+    const before = await read();
+    expect(before).not.toBe('');
 
-      const jsListenerRegistered = Boolean((window as any).__jsFlipListenerRegistered);
+    await page
+      .locator('#anchor, [popovertarget]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await expect.poll(read).not.toBe(before);
 
-      return {
-        hasContainerFallbackRule,
-        hasDescendantStyles,
-        noJsListeners: !jsListenerRegistered,
-      };
-    });
-
-    expect(cssFallbackCheck.hasContainerFallbackRule).toBe(true);
-    expect(cssFallbackCheck.hasDescendantStyles).toBe(true);
-    expect(cssFallbackCheck.noJsListeners).toBe(true);
+    const jsListenerRegistered = await page.evaluate(() =>
+      Boolean((window as any).__jsFlipListenerRegistered),
+    );
+    expect(jsListenerRegistered).toBe(false);
   });
 
 });

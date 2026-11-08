@@ -225,7 +225,7 @@ test.describe('Daily Grind Web Components Grader', () => {
     expect(hasSemanticControl && noDisallowedControls).toBe(true);
   });
 
-  test('Interactive controls inside shadow roots provide an accessible name or description via text content or aria-label, or via aria-labelledby, aria-describedby, or aria-controls attributes whose referenced id resolves to a target element within the same shadow root rather than across a shadow boundary', () => {
+  test('Interactive controls inside shadow roots provide an accessible name or description via text content, aria-label, or <label>, or via aria-labelledby or aria-describedby attributes where every referenced id resolves to a target element within the same document or shadow root rather than across a shadow boundary', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles().filter((sf) => !sf.getFilePath().endsWith('.d.ts'));
     const templateDocs = getTemplateHtmlDocuments(sourceFiles, targetFiles);
@@ -272,9 +272,8 @@ test.describe('Daily Grind Web Components Grader', () => {
     const shadowControls = templateDocs.flatMap((d) =>
       Array.from(d.document.querySelectorAll('button, input, select, textarea, a[href]')) as any[]
     );
-    expect(shadowControls.length).toBeGreaterThan(0);
 
-    const everyControlNamedOrSameTreeAria = shadowControls.every((el) => {
+    const everyTemplateControlNamed = shadowControls.every((el) => {
       const hasResolvedSameTreeAria = ['aria-labelledby', 'aria-describedby'].some((attr) => {
         const val = el.getAttribute(attr);
         if (!val) return false;
@@ -291,7 +290,42 @@ test.describe('Daily Grind Web Components Grader', () => {
       return hasResolvedSameTreeAria || hasTextOrAriaLabel;
     });
 
-    expect(everyControlNamedOrSameTreeAria).toBe(true);
+    // Also verify controls constructed via document.createElement(...) in custom element classes
+    const createdControlTagSet = new Set(['button', 'input', 'select', 'textarea', 'a']);
+    const createdControlVars: Array<{ sf: SourceFile; varName: string }> = [];
+    for (const sf of sourceFiles) {
+      for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+        const expr = call.getExpression().getText();
+        if (expr === 'document.createElement' || expr.endsWith('.createElement')) {
+          const arg = call.getArguments()[0];
+          if (arg && (arg.isKind(SyntaxKind.StringLiteral) || arg.isKind(SyntaxKind.NoSubstitutionTemplateLiteral))) {
+            const tag = arg.getLiteralText().toLowerCase();
+            if (createdControlTagSet.has(tag)) {
+              const varDecl = call.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+              const propAssign = call.getFirstAncestorByKind(SyntaxKind.BinaryExpression);
+              const varName =
+                varDecl?.getName() ||
+                (propAssign?.getOperatorToken().getKind() === SyntaxKind.EqualsToken
+                  ? propAssign.getLeft().getText()
+                  : '');
+              if (varName) createdControlVars.push({ sf, varName });
+            }
+          }
+        }
+      }
+    }
+
+    const everyCreatedControlNamed = createdControlVars.every(({ sf, varName }) => {
+      const text = sf.getFullText();
+      const escaped = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const hasTextAssign = new RegExp(`\\b${escaped}\\.(?:textContent|innerText|innerHTML)\\s*=\\s*[^;\\n]+`).test(text);
+      const hasAriaLabelCall = new RegExp(`\\b${escaped}\\.setAttribute\\(\\s*['"\`]aria-(?:label|labelledby|describedby)['"\`]`).test(text);
+      const hasAriaPropAssign = new RegExp(`\\b${escaped}\\.ariaLabel\\s*=\\s*[^;\\n]+`).test(text);
+      return hasTextAssign || hasAriaLabelCall || hasAriaPropAssign || setsShadowControlAriaLabelInClass;
+    });
+
+    expect(shadowControls.length > 0 || createdControlVars.length > 0).toBe(true);
+    expect(everyTemplateControlNamed && everyCreatedControlNamed).toBe(true);
   });
 
   test("Shadow roots are attached with mode: 'open' (or shadowrootmode=\"open\" for Declarative Shadow DOM) so element.shadowRoot is accessible", () => {

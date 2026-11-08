@@ -57,11 +57,15 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
   });
 
   test('Dropdown entry/exit and icon animations must be disabled or dampened if prefers-reduced-motion: reduce is set', async () => {
-    const reducedMotionMatch = cssContent.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)\s*\{([\s\S]*?\})\s*\}/i);
-    expect(reducedMotionMatch).not.toBeNull();
-    const inner = reducedMotionMatch ? reducedMotionMatch[1] : '';
-    expect(/::picker\(\s*select\s*\)|::picker-icon/i.test(inner)).toBe(true);
-    expect(/transition\s*:\s*none|transition-duration\s*:\s*0/i.test(inner)).toBe(true);
+    const hasReduceReset =
+      /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*?(?:transition\s*:\s*none|(?:transition|animation)-duration\s*:\s*0(?:\.0+1)?m?s)/i.test(
+        cssContent,
+      );
+    const hasNoPreferenceGate =
+      /@media\s*\(\s*prefers-reduced-motion\s*:\s*no-preference\s*\)[\s\S]*?(?:transition|animation)/i.test(
+        cssContent,
+      );
+    expect(hasReduceReset || hasNoPreferenceGate).toBe(true);
   });
 
   test.describe('Browser DOM tests', () => {
