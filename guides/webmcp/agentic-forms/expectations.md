@@ -4,4 +4,4 @@
 - The `submit` event listener checks `event.agentInvoked`.
 - The `submit` event listener calls `event.respondWith()` with a Promise.
 - The `:tool-form-active` pseudo-class is used to provide visual feedback.
-- The `:tool-submit-active` pseudo-class is used to provide visual feedback.
+- The `:tool-submit-active` pseudo-class is used to provide visual feedback for forms without `toolautosubmit`.

@@ -1,0 +1,451 @@
+diff --git a/index.html b/index.html
+index 66c9173..c42469e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,138 @@
+       background: #3e2723;
+     }
+ 
++    /* Interactive Coffee Finder Form */
++    .finder-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .finder-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .finder-subtitle {
++      text-align: center;
++      margin-bottom: 25px;
++      color: var(--text);
++    }
++
++    .finder-form {
++      max-width: 700px;
++      margin: 0 auto;
++      display: grid;
++      gap: 20px;
++      padding: 20px;
++      border-radius: 8px;
++      transition: background-color 0.2s, outline 0.2s;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .form-group label,
++    .finder-form legend {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .form-group input[type="text"],
++    .form-group select {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    .finder-form fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 12px 16px;
++    }
++
++    .finder-form legend {
++      padding: 0 8px;
++    }
++
++    .radio-group {
++      display: flex;
++      gap: 20px;
++      flex-wrap: wrap;
++      margin-top: 6px;
++    }
++
++    .radio-option {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      font-weight: normal;
++      cursor: pointer;
++    }
++
++    .submit-btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-weight: 600;
++      justify-self: start;
++    }
++
++    /* WebMCP Visual Feedback */
++    @keyframes pulse {
++      0%, 100% {
++        transform: scale(1);
++      }
++      50% {
++        transform: scale(1.03);
++      }
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed blue;
++      background-color: rgba(0, 0, 255, 0.05);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed red;
++      animation: pulse 2s infinite;
++    }
++
++    .tool-status {
++      text-align: center;
++      font-size: 0.9rem;
++      color: var(--primary);
++      min-height: 1.4em;
++    }
++
++    .finder-results {
++      margin-top: 25px;
++      border-top: 1px solid var(--secondary);
++      padding-top: 20px;
++    }
++
++    .finder-results[hidden] {
++      display: none;
++    }
++
++    .error-msg {
++      color: #b71c1c;
++      background: #ffebee;
++      padding: 10px 15px;
++      border-radius: 5px;
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +327,76 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="finder-section" aria-labelledby="finder-heading">
++      <h2 id="finder-heading">Coffee Finder</h2>
++      <p class="finder-subtitle">Tell us your preferences to find your ideal Daily Grind drink.</p>
++
++      <div id="tool-status" class="tool-status" aria-live="polite"></div>
++
++      <form id="coffee-finder-form"
++            class="finder-form"
++            toolname="find-coffee"
++            tooldescription="Find matching coffee drinks on The Daily Grind menu based on flavor profile, roast, temperature, and milk preference"
++            toolautosubmit>
++        <div class="form-group">
++          <label for="flavor">Flavor Keyword</label>
++          <input type="text"
++                 id="flavor"
++                 name="flavor"
++                 placeholder="e.g., maple, chocolate, caramel, bold"
++                 toolparamdescription="Flavor notes or drink keywords to search for (e.g., maple, smokey, smooth, vanilla)"
++                 required>
++        </div>
++
++        <fieldset toolparamdescription="Desired serving temperature of the coffee beverage">
++          <legend>Serving Temperature</legend>
++          <div class="radio-group">
++            <label class="radio-option">
++              <input type="radio" name="temperature" value="any" checked>
++              Any
++            </label>
++            <label class="radio-option">
++              <input type="radio" name="temperature" value="hot">
++              Hot
++            </label>
++            <label class="radio-option">
++              <input type="radio" name="temperature" value="iced">
++              Iced
++            </label>
++          </div>
++        </fieldset>
++
++        <div class="form-group">
++          <label for="roast">Roast Level</label>
++          <select id="roast"
++                  name="roast"
++                  toolparamdescription="Preferred coffee bean roast intensity">
++            <option value="any">Any Roast</option>
++            <option value="light">Light Roast</option>
++            <option value="medium">Medium Roast</option>
++            <option value="dark">Dark Roast</option>
++          </select>
++        </div>
++
++        <div class="form-group">
++          <label for="milk">Milk Preference</label>
++          <select id="milk"
++                  name="milk"
++                  toolparamdescription="Preferred milk or dairy-free alternative for the beverage">
++            <option value="any">No Preference</option>
++            <option value="black">None (Black)</option>
++            <option value="oat">Oat Milk</option>
++            <option value="almond">Almond Milk</option>
++            <option value="whole">Whole Milk</option>
++          </select>
++        </div>
++
++        <button type="submit" class="btn submit-btn">Find My Coffee</button>
++      </form>
++
++      <div id="finder-results" class="finder-results" aria-live="polite" hidden></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +409,230 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const COFFEE_MENU = [
++      {
++        name: 'Maple Oat Latte',
++        roast: 'medium',
++        temperature: 'hot',
++        milk: 'oat',
++        price: '$5.50',
++        keywords: ['maple', 'oat', 'latte', 'sweet', 'creamy', 'vermont', 'seasonal'],
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.'
++      },
++      {
++        name: 'Dark Roast Espresso',
++        roast: 'dark',
++        temperature: 'hot',
++        milk: 'black',
++        price: '$3.75',
++        keywords: ['dark', 'espresso', 'bold', 'smokey', 'strong', 'rich', 'black'],
++        description: 'Bold, smokey, and perfect for a morning boost.'
++      },
++      {
++        name: 'Classic Cold Brew',
++        roast: 'medium',
++        temperature: 'iced',
++        milk: 'black',
++        price: '$4.50',
++        keywords: ['cold', 'brew', 'smooth', 'iced', 'refreshing', 'chocolate', 'black'],
++        description: 'Steeped for 18 hours for maximum smoothness.'
++      },
++      {
++        name: 'Iced Vanilla Almond Latte',
++        roast: 'light',
++        temperature: 'iced',
++        milk: 'almond',
++        price: '$5.25',
++        keywords: ['vanilla', 'almond', 'iced', 'light', 'sweet', 'nutty', 'latte'],
++        description: 'Bright light-roast espresso over ice with nutty almond milk and Madagascar vanilla.'
++      },
++      {
++        name: 'Caramel Macchiato',
++        roast: 'medium',
++        temperature: 'hot',
++        milk: 'whole',
++        price: '$5.25',
++        keywords: ['caramel', 'macchiato', 'whole', 'sweet', 'buttery', 'rich', 'vanilla'],
++        description: 'Velvety steamed whole milk marked with espresso and a buttery caramel drizzle.'
++      },
++      {
++        name: 'Ethiopian Single-Origin Pour Over',
++        roast: 'light',
++        temperature: 'hot',
++        milk: 'black',
++        price: '$4.75',
++        keywords: ['fruity', 'floral', 'citrus', 'light', 'bright', 'pour over', 'ethiopian', 'berry'],
++        description: 'Delicate floral aroma with bright citrus and berry notes.'
++      }
++    ];
++
++    const coffeeForm = document.getElementById('coffee-finder-form');
++    const resultsContainer = document.getElementById('finder-results');
++    const statusContainer = document.getElementById('tool-status');
++
++    function validateCoffeeForm(formData) {
++      const errors = [];
++      const flavor = (formData.get('flavor') || '').toString().trim();
++      const temperature = (formData.get('temperature') || 'any').toString();
++      const roast = (formData.get('roast') || 'any').toString();
++      const milk = (formData.get('milk') || 'any').toString();
++
++      if (!flavor) {
++        errors.push({ field: 'flavor', message: 'Flavor keyword is required' });
++      }
++      if (!['any', 'hot', 'iced'].includes(temperature)) {
++        errors.push({ field: 'temperature', message: 'Invalid serving temperature' });
++      }
++      if (!['any', 'light', 'medium', 'dark'].includes(roast)) {
++        errors.push({ field: 'roast', message: 'Invalid roast level' });
++      }
++      if (!['any', 'black', 'oat', 'almond', 'whole'].includes(milk)) {
++        errors.push({ field: 'milk', message: 'Invalid milk preference' });
++      }
++
++      return errors;
++    }
++
++    function renderError(errorString) {
++      resultsContainer.hidden = false;
++      resultsContainer.innerHTML = `<p class="error-msg">${errorString}</p>`;
++    }
++
++    function renderResults(matches, querySummary) {
++      resultsContainer.hidden = false;
++      resultsContainer.innerHTML = '';
++
++      const heading = document.createElement('h3');
++      heading.style.textAlign = 'center';
++      heading.style.color = 'var(--primary)';
++      heading.textContent = `Recommended Drinks (${matches.length})`;
++      resultsContainer.appendChild(heading);
++
++      const grid = document.createElement('div');
++      grid.className = 'grid';
++
++      matches.forEach((item) => {
++        const card = document.createElement('div');
++        card.className = 'card';
++
++        const title = document.createElement('h3');
++        title.textContent = `${item.name} — ${item.price}`;
++
++        const desc = document.createElement('p');
++        desc.textContent = item.description;
++
++        const meta = document.createElement('p');
++        meta.style.fontSize = '0.85rem';
++        meta.style.marginTop = '8px';
++        meta.textContent = `Roast: ${item.roast} | Temp: ${item.temperature} | Milk: ${item.milk}`;
++
++        card.appendChild(title);
++        card.appendChild(desc);
++        card.appendChild(meta);
++        grid.appendChild(card);
++      });
++
++      resultsContainer.appendChild(grid);
++    }
++
++    async function performAsyncCoffeeSearch(formData) {
++      const flavor = (formData.get('flavor') || '').toString().trim().toLowerCase();
++      const temperature = (formData.get('temperature') || 'any').toString().toLowerCase();
++      const roast = (formData.get('roast') || 'any').toString().toLowerCase();
++      const milk = (formData.get('milk') || 'any').toString().toLowerCase();
++
++      let matches = COFFEE_MENU.filter((item) => {
++        const tempMatch = temperature === 'any' || item.temperature === temperature;
++        const roastMatch = roast === 'any' || item.roast === roast;
++        const milkMatch = milk === 'any' || item.milk === milk;
++        const flavorMatch =
++          flavor === 'any' ||
++          item.name.toLowerCase().includes(flavor) ||
++          item.description.toLowerCase().includes(flavor) ||
++          item.keywords.some((kw) => kw.includes(flavor) || flavor.includes(kw));
++
++        return tempMatch && roastMatch && milkMatch && flavorMatch;
++      });
++
++      // Fallback to broader matches if strict filtering finds none
++      if (matches.length === 0) {
++        matches = COFFEE_MENU.filter((item) => {
++          const tempMatch = temperature === 'any' || item.temperature === temperature;
++          const roastMatch = roast === 'any' || item.roast === roast;
++          const flavorMatch =
++            item.name.toLowerCase().includes(flavor) ||
++            item.description.toLowerCase().includes(flavor) ||
++            item.keywords.some((kw) => kw.includes(flavor) || flavor.includes(kw));
++          return flavorMatch || (tempMatch && roastMatch);
++        });
++      }
++
++      if (matches.length === 0) {
++        matches = COFFEE_MENU.slice(0, 3);
++      }
++
++      const querySummary = `flavor="${flavor}", temperature="${temperature}", roast="${roast}", milk="${milk}"`;
++      renderResults(matches, querySummary);
++
++      const formattedList = matches
++        .map((item) => `${item.name} (${item.price}, ${item.temperature}, ${item.roast} roast, ${item.milk} milk): ${item.description}`)
++        .join(' | ');
++
++      return `Found ${matches.length} matching coffee drink(s) for ${querySummary}: ${formattedList}`;
++    }
++
++    coffeeForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++
++      // Validate the form
++      const formData = new FormData(event.target);
++      const formValidationErrors = validateCoffeeForm(formData);
++
++      if (formValidationErrors.length > 0) {
++        const errorString =
++          'Validation failed: ' +
++          formValidationErrors
++            .map((err) => `${err.field} (${err.message})`)
++            .join(', ');
++
++        renderError(errorString);
++
++        if (event.agentInvoked) {
++          event.respondWith(Promise.resolve(errorString));
++        }
++        return;
++      }
++
++      const resultPromise = performAsyncCoffeeSearch(formData);
++
++      // Return the result directly to the agent without navigation
++      if (event.agentInvoked) {
++        event.respondWith(resultPromise);
++      }
++    });
++
++    // Starting in Chrome 156, these events are dispatched on `document.modelContext`.
++    // Older versions dispatch them on `window`. Feature-detect the event handler
++    // property to pick the right target for backward compatibility.
++    const targetFor = (type, listener, options) =>
++      (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++        .addEventListener(type, listener, options);
++
++    targetFor('toolactivated', ({ toolName }) => {
++      console.log(`Tool "${toolName}" started execution.`);
++      if (statusContainer) {
++        statusContainer.textContent = `AI agent is interacting with "${toolName}"...`;
++      }
++    });
++
++    targetFor('toolcancel', ({ toolName }) => {
++      console.log(`Tool "${toolName}" execution is cancelled.`);
++      if (statusContainer) {
++        statusContainer.textContent = `AI agent interaction with "${toolName}" was cancelled.`;
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

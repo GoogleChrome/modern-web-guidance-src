@@ -5,12 +5,10 @@
  * Expectation 2: TESTED - Verifies dynamic tools are registered via document.modelContext.registerTool() with name, description, and execute properties.
  * Expectation 3: TESTED - Verifies tools with input parameters define an inputSchema with explicit type and description for each property.
  * Expectation 4: TESTED - Verifies tools querying state without mutating data include annotations: { readOnlyHint: true }.
- * Expectation 5: SKIPPED - DevTools Times does not perform high-stakes or irreversible actions (such as account deletion or financial transactions).
- * Expectation 6: SKIPPED - The application serves static editorial news content rather than user-generated or unvetted third-party content.
- * Expectation 7: TESTED - Verifies an AbortSignal from an AbortController is passed to document.modelContext.registerTool() for lifecycle management.
- * Expectation 8: TESTED - Verifies tool cleanup relies on AbortController.abort() and never calls unregisterTool() directly.
- * Expectation 9: TESTED - Verifies tool execute handlers are asynchronous and await their underlying operations so they resolve after UI updates.
- * Expectation 10: TESTED - Verifies declarative WebMCP <form> elements are annotated with both toolname and tooldescription attributes.
+ * Expectation 5: TESTED - Verifies an AbortSignal from an AbortController is passed to document.modelContext.registerTool() for lifecycle management.
+ * Expectation 6: TESTED - Verifies tool cleanup relies on AbortController.abort() and never calls unregisterTool() directly.
+ * Expectation 7: TESTED - Verifies tool execute handlers are asynchronous and await their underlying operations so they resolve after UI updates.
+ * Expectation 8: TESTED - Verifies declarative WebMCP <form> elements are annotated with both toolname and tooldescription attributes.
  */
 
 import {
@@ -22,6 +20,7 @@ import {
 } from '../../../../test-fixture.ts';
 import { SyntaxKind, Node, type ObjectLiteralExpression, type Project } from 'ts-morph';
 
+// @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function resolveToolObject(node: Node | undefined): ObjectLiteralExpression | undefined {
@@ -179,7 +178,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect(hasReadOnlyAnnotation).toBe(true);
   });
 
-  test('Expectation 7: Pass AbortSignal from AbortController to registerTool', () => {
+  test('Expectation 5: Pass AbortSignal from AbortController to registerTool', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -206,7 +205,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect((hasAbortController && registersWithSignal) || usesWebMcpReactHook(project)).toBe(true);
   });
 
-  test('Expectation 8: Rely on AbortController.abort for tool cleanup without calling unregisterTool', () => {
+  test('Expectation 6: Rely on AbortController.abort for tool cleanup without calling unregisterTool', () => {
     const project = getJsProject(targetFiles);
     let callsUnregisterTool = false;
     let callsAbort = usesWebMcpReactHook(project);
@@ -228,7 +227,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect(usesAbortInsteadOfUnregister).toBe(true);
   });
 
-  test('Expectation 9: Tool execute handlers are asynchronous and resolve after operations complete', () => {
+  test('Expectation 7: Tool execute handlers are asynchronous and resolve after operations complete', () => {
     const project = getJsProject(targetFiles);
     const toolObjects = collectToolObjects(project);
     const hasAsyncAwaitingExecute = toolObjects.some((toolObj) => {
@@ -250,7 +249,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect(hasAsyncAwaitingExecute).toBe(true);
   });
 
-  test('Expectation 10: Annotate declarative form tools with toolname and tooldescription attributes', () => {
+  test('Expectation 8: Annotate declarative form tools with toolname and tooldescription attributes', () => {
     const project = getJsProject(targetFiles);
     const formElements: Array<{ hasToolName: boolean; hasToolDescription: boolean }> = [];
 
@@ -288,8 +287,8 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     // Only forms that opt in as declarative tools (via either attribute) are
     // subject to the rule; those must carry both attributes.
     const toolForms = formElements.filter((f) => f.hasToolName || f.hasToolDescription);
-    const hasAnnotatedForms =
-      toolForms.length > 0 && toolForms.every((f) => f.hasToolName && f.hasToolDescription);
+    expect(toolForms.length).toBeGreaterThan(0);
+    const hasAnnotatedForms = toolForms.every((f) => f.hasToolName && f.hasToolDescription);
     expect(hasAnnotatedForms).toBe(true);
   });
 });
