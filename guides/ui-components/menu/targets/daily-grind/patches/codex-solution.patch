@@ -143,7 +143,7 @@ new file mode 100644
 index 0000000..c2bd748
 --- /dev/null
 +++ b/menus.js
-@@ -0,0 +1,404 @@
+@@ -0,0 +1,407 @@
 +// @ts-check
 +/** @typedef {{label: string, href?: string, children?: Entry[], action?: () => string, role?: 'menuitemcheckbox' | 'menuitemradio', checked?: boolean, group?: string}} Entry */
 +/** @typedef {{trigger: HTMLButtonElement, menu: HTMLDivElement, group: HTMLDivElement, parent: MenuState | null, enter: 'first' | 'last' | null, pointerOpen: boolean, timer?: ReturnType<typeof setTimeout>, bridge?: () => void}} MenuState */
@@ -157,6 +157,9 @@ index 0000000..c2bd748
 +  const states = [];
 +  /** @type {HTMLButtonElement | null} */
 +  let pointerTrigger = null;
++  let windowBlurred = false;
++  window.addEventListener('blur', () => { windowBlurred = true; });
++  window.addEventListener('focus', () => setTimeout(() => { windowBlurred = false; }));
 +  let serial = 0;
 +  const status = document.getElementById('order-status');
 +  /** @param {string} message */
@@ -450,7 +453,7 @@ index 0000000..c2bd748
 +      states.filter(child => child.parent === state).forEach(child => {
 +        clearTimeout(child.timer);
 +        if (child.trigger !== event.target) hide(child);
-+        else if (!isOpen(child) && pointerTrigger !== child.trigger) child.timer = setTimeout(() => {
++        else if (!windowBlurred && !isOpen(child) && pointerTrigger !== child.trigger) child.timer = setTimeout(() => {
 +          if (isOpen(state) && document.activeElement === child.trigger) show(child);
 +        }, 180);
 +      });

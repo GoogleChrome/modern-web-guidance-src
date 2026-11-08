@@ -844,7 +844,7 @@ index 66c9173..17bb065 100644
          </div>
        </div>
      </section>
-@@ -207,6 +848,571 @@
+@@ -207,6 +848,573 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
@@ -1131,6 +1131,8 @@ index 66c9173..17bb065 100644
 +                }
 +              }, 80);
 +              previewTimers.set(trigger, timer);
++            } else {
++              showPopoverAnchored(menu, trigger);
 +            }
 +          } else if (isMenubarTrigger(trigger)) {
 +            // Top-level menubar trigger previews immediately on focus

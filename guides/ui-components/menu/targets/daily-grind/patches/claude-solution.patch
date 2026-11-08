@@ -388,7 +388,7 @@ index 66c9173..248d91e 100644
      </section>
    </main>
  
-@@ -207,6 +550,232 @@
+@@ -207,6 +550,243 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
@@ -536,9 +536,20 @@ index 66c9173..248d91e 100644
 +      });
 +    });
 +
++    let windowBlurred = false;
++    window.addEventListener('blur', () => { windowBlurred = true; });
++    window.addEventListener('focus', () => setTimeout(() => { windowBlurred = false; }));
++
 +    document.querySelectorAll('[popover] button[commandfor]').forEach(trigger => {
 +      const submenu = menuFor(trigger);
 +      let timer;
++      trigger.addEventListener('focus', event => {
++        if (windowBlurred || submenu.contains(event.relatedTarget) || isOpen(submenu)) return;
++        if (trigger.matches(':focus-visible')) try { submenu.showPopover({ source: trigger }); } catch { submenu.showPopover(); }
++      });
++      trigger.addEventListener('blur', event => {
++        if (isOpen(submenu) && !submenu.matches(':focus-within') && !submenu.contains(event.relatedTarget)) submenu.hidePopover();
++      });
 +      trigger.addEventListener('pointerenter', () => {
 +        timer = setTimeout(() => {
 +          if (isOpen(submenu)) return;
