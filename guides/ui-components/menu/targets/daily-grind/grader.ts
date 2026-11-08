@@ -43,6 +43,7 @@ interface MenuGraderHelpers {
   getParentMenu: (el: Element | null) => HTMLElement | null;
   openMenu: (menu: HTMLElement, trigger?: HTMLElement | null) => void;
   closeMenu: (menu: HTMLElement, trigger?: HTMLElement | null) => void;
+  settle: () => Promise<void>;
 }
 
 declare global {
@@ -102,7 +103,14 @@ async function installMenuHelpers(page: Page): Promise<void> {
       if (menu.hasAttribute('popover')) return menu.matches(':popover-open');
       if (menu.hasAttribute('hidden') || menu.getAttribute('aria-hidden') === 'true') return false;
       const style = window.getComputedStyle(menu);
-      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+      if (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.pointerEvents === 'none' ||
+        (style.opacity === '0' && style.animationName === 'none')
+      ) {
+        return false;
+      }
       const rect = menu.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
     };
@@ -157,6 +165,8 @@ async function installMenuHelpers(page: Page): Promise<void> {
       getParentMenu,
       openMenu,
       closeMenu,
+      settle: () =>
+        new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30)))),
     };
   });
 }
@@ -241,7 +251,7 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
 
       const ownCmd = h.getOwnItems(menu).find(
         (el) =>
-          el.tagName === 'BUTTON' &&
+          !el.matches('a[href]') &&
           !h.isMenuTrigger(el) &&
           el.getAttribute('role') !== 'menuitemcheckbox' &&
           el.getAttribute('role') !== 'menuitemradio'
@@ -292,8 +302,8 @@ async function openParentChainForTrigger(page: Page, triggerId: string): Promise
     for (const m of ancestorMenus) {
       const t = allTriggers.find((cand) => h.resolveMenu(cand) === m) || null;
       h.openMenu(m, t);
+      await h.settle();
     }
-    await new Promise((r) => setTimeout(r, 30));
   }, triggerId);
 }
 
@@ -685,8 +695,8 @@ test.describe('menu Target Grader', () => {
         const subMenu = h.resolveMenu(subTrigger);
         if (!subMenu) return;
         h.openMenu(subMenu, subTrigger);
+        await h.settle();
         subTrigger.focus();
-        await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
 
       await page.keyboard.press('Enter');
@@ -756,8 +766,8 @@ test.describe('menu Target Grader', () => {
         const menu = h.resolveMenu(btn);
         if (!menu) return;
         h.openMenu(menu, btn);
+        await h.settle();
         btn.focus();
-        await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
       await page.keyboard.press('ArrowDown');
@@ -1101,7 +1111,7 @@ test.describe('menu Target Grader', () => {
           const trig = document.getElementById(trigId)!;
           const menu = document.getElementById(menuId)!;
           h.openMenu(menu, trig);
-          await new Promise((r) => setTimeout(r, 30));
+          await h.settle();
           const cb = menu.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]');
           if (!cb) return null;
           if (!cb.id) cb.id = 'grader-cb-item';
@@ -1143,7 +1153,7 @@ test.describe('menu Target Grader', () => {
           const trig = document.getElementById(trigId)!;
           const menu = document.getElementById(menuId)!;
           h.openMenu(menu, trig);
-          await new Promise((r) => setTimeout(r, 30));
+          await h.settle();
           const uncheckedRadio =
             menu.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="false"]') ||
             menu.querySelector<HTMLButtonElement>('[role="menuitemradio"]');
@@ -1162,7 +1172,7 @@ test.describe('menu Target Grader', () => {
       const radioResult = await page.evaluate(() => {
         const h = window.__menuGrader!;
         const target = document.getElementById('grader-radio-target');
-        const group = target?.closest('[role="group"]');
+        const group = target?.closest('[role="group"], [focusgroup~="menu"], [role="menu"]');
         if (!target || !group) return false;
         const checkedInGroup = group.querySelectorAll('[role="menuitemradio"][aria-checked="true"]');
         const openMenus = h.getOpenMenus();
@@ -1193,7 +1203,7 @@ test.describe('menu Target Grader', () => {
           const menu = document.getElementById(menuId)!;
           const cmd = h.getOwnItems(menu).find(
             (b) =>
-              b.tagName === 'BUTTON' &&
+              !b.matches('a[href]') &&
               !h.isMenuTrigger(b) &&
               b.getAttribute('role') !== 'menuitemcheckbox' &&
               b.getAttribute('role') !== 'menuitemradio'
@@ -1250,10 +1260,10 @@ test.describe('menu Target Grader', () => {
     }) => {
       const valid = await page.evaluate(() => {
         const checked = document.querySelector<HTMLElement>(
-          ':is([focusgroup~="menu"], [role="menu"]) button[aria-checked="true"]'
+          ':is([focusgroup~="menu"], [role="menu"]) :is(button, [role="menuitemcheckbox"], [role="menuitemradio"])[aria-checked="true"]'
         );
         const unchecked = document.querySelector<HTMLElement>(
-          ':is([focusgroup~="menu"], [role="menu"]) button[aria-checked="false"]'
+          ':is([focusgroup~="menu"], [role="menu"]) :is(button, [role="menuitemcheckbox"], [role="menuitemradio"])[aria-checked="false"]'
         );
         if (!checked || !unchecked) return false;
         const checkedContent = window
