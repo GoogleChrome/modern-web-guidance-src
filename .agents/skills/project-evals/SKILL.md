@@ -90,11 +90,12 @@ Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtool
   - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax or runtime behavior.
 - **Runtime behavior → Browser**: Check runtime behavior (interaction, state changes, computed style, layout, accessibility tree) in the browser with Playwright over HTTP (`page.goto(TARGET_URL)` from `test-fixture.ts`, never `file://` in Gen2 graders):
   - Browser tests locate elements through base-app markup, hooks that `task.md` names, or platform semantics (element types, ARIA roles, standard attributes).
-  - Poll for asynchronous state (`expect.poll`, `waitForFunction`, Playwright web-first assertions); never use fixed `waitForTimeout` waits.
+  - Poll for asynchronous state (`expect.poll`, `waitForFunction`, Playwright web-first assertions); never use fixed `waitForTimeout` waits. When replacing a fixed wait, poll for the end state it was covering (the animation finished, the element is shown after its transition), not a condition that's already true when the test starts.
+  - Prove every new or changed check can fail: run it against a variant with the behavior removed or delayed, and against the guide's own pattern.
   - **Never** use invented routes, custom REST API endpoints/payloads, or IDs or classes that exist only in the 3 golden solution patches.
 
 ### 2. Anti-Overfitting to Golden Solution Patches
-The 3 golden solution patches (`claude`, `codex`, `jetski`/`antigravity`) are generated from `task.md` + `guide.md` (without seeing `expectations.md`) and are **locked** during calibration. They represent valid implementations, **not** an exhaustive specification.
+The 3 golden solution patches (`claude`, `codex`, `jetski`/`antigravity`) are generated from `task.md` + `guide.md` (without seeing `expectations.md`) and are **locked** during calibration. They represent valid implementations, **not** an exhaustive specification. Never edit a golden to make it pass a grader: if a correct check fails a golden, regenerate the golden; if the check is wrong, fix the check.
 - **Never hardcode golden-patch identifiers**: Do not match allowlists of helper function names (e.g., `syncAcceptedCredentials`, `loadCredentials`), React state variable names, or newly created filenames from the calibration patches. Match conceptual roles (e.g., any function calling a WebAuthn method or registered in an event listener).
 - **Unwrap TypeScript expressions**: Always unwrap `AsExpression`, `TypeAssertionExpression`, `SatisfiesExpression`, and `ParenthesizedExpression` before inspecting call arguments or object literals.
 - **Follow variable indirection**: Resolve local `VariableDeclaration`, `BindingElement`, or parameter references when an identifier is passed as an argument instead of assuming inline object literals.
