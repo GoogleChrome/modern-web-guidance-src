@@ -77,6 +77,7 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
 [popover]:has(> [focusgroup~="menu"]) {
   position-area: block-end span-inline-end;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
   inset: auto;
 }
 
