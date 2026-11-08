@@ -6,6 +6,7 @@ web-feature-ids:
   - invoker-commands
   - anchor-positioning
   - focusgroup
+  - has
 guides:
   - viewport-aware-dropdowns
 ---
@@ -74,13 +75,13 @@ Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-po
 
 ```css
 /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
-[popover] {
+[popover]:has(> [focusgroup~="menu"]) {
   position-area: block-end span-inline-end;
   inset: auto;
 }
 
-/* A popover nested in another popover is a submenu: beside its parent item, flipping when it would overflow. */
-[popover] [popover] {
+/* A popover directly inside a menu is a submenu: beside its parent item, flipping when it would overflow. */
+[focusgroup~="menu"] > [popover] {
   position-area: inline-end span-block-end;
   position-try-fallbacks: flip-inline, flip-block, --below;
 }
@@ -107,7 +108,7 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
 ```css
 @media (prefers-reduced-motion: no-preference) {
   /* Closing: this rule is in effect once :popover-open is removed. */
-  [popover] {
+  [popover]:has(> [focusgroup~="menu"]) {
     opacity: 0;
     translate: 0 -.25rem;
     transition: opacity, translate, display, overlay;
@@ -116,7 +117,7 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
     transition-behavior: allow-discrete;
   }
   /* Opening: faster. */
-  [popover]:popover-open {
+  [popover]:has(> [focusgroup~="menu"]):popover-open {
     opacity: 1;
     translate: 0 0;
     transition-duration: .1s;
@@ -175,7 +176,7 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
    * Follow-up: a curved path (`shape()` curve commands) follows real pointer arcs better than a straight triangle. {# Pointer-driven animations ([CSS Pointer Animations](https://drafts.csswg.org/pointer-animations-1/)) may later remove the script. #}
 
 ```css
-[popover] [popover] {
+[focusgroup~="menu"] > [popover] {
   overflow: visible;
 
   &[data-bridge]::before {

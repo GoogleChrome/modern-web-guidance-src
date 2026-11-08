@@ -108,8 +108,6 @@ An instruction cannot guarantee behavior, so test the result. Open the page and 
 
 The bar itself is roving tabindex, focus handling, and `showPopover()`, all widely supported script. The only addition beyond the menus is the `:has()` selector that disables the transition while switching; without it, switching animates like a plain open.
 
-{{ BASELINE_STATUS("has") }}
-
 The menus in the bar use focusgroup, popovers, invoker commands, and anchor positioning. Their fallbacks follow.
 
 {{ INCLUDE("../menu/guide.md#fallback-strategies") }}
