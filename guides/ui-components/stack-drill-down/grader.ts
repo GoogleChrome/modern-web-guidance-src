@@ -9,8 +9,9 @@ const targetFile = process.env.TARGET_FILE || path.join(__dirname, 'demo.html');
 const targetDir = path.dirname(targetFile);
 const targetUrl = `http://localhost/${path.basename(targetFile)}`;
 
-const STACK_SEL = '.Stack, .stack';
-const VIEW_SEL = '.Stack-view, .stack-view';
+const STACK_SEL = '.Stack, .stack, [data-stack], [class*="stack" i]:not([class*="view" i])';
+const VIEW_SEL =
+  ':is(.Stack, .stack, [data-stack], [class*="stack" i]:not([class*="view" i])) > :is(.Stack-view, .stack-view, [data-view], [class*="stack-view" i], [class*="view" i], section, article)';
 const VIEW_CONTENT_SEL = '.Stack-viewContent, .stack-view-content, .view-content';
 const BACK_SEL = '.icon-back, .back, [class*="back" i], button[aria-label*="Back" i]';
 
@@ -48,12 +49,9 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-const ITEM_LINK_SEL =
-  '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item';
-const MAIN_DRILL_LINK_SEL =
-  '.Stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
-const FALLBACK_DRILL_LINK_SEL =
-  '.Stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+const ITEM_LINK_SEL = `${VIEW_SEL}:not([inert]) a.item, ${VIEW_SEL}:not([inert]) .item`;
+const MAIN_DRILL_LINK_SEL = `${VIEW_SEL}:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
+const FALLBACK_DRILL_LINK_SEL = `${VIEW_SEL}:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
 
 const getActiveDrillLink = async (page: any) => {
   for (const sel of [ITEM_LINK_SEL, MAIN_DRILL_LINK_SEL, FALLBACK_DRILL_LINK_SEL]) {
@@ -62,7 +60,7 @@ const getActiveDrillLink = async (page: any) => {
       return loc;
     }
   }
-  return page.locator('a.item, .item, main a[href], .Stack-view a[href], .stack-view a[href]').first();
+  return page.locator(`a.item, .item, main a[href], ${VIEW_SEL} a[href]`).first();
 };
 
 // Helper to click a link inside the currently active (non-inert) view
@@ -74,13 +72,15 @@ const clickActiveLink = async (page: any) => {
 // Helper to click the Back trigger on active view
 const clickBackButton = async (page: any) => {
   const backBtn = page.locator(
-    `.Stack-view:not([inert]) .icon-back, .Stack-view:not([inert]) .back, .Stack-view:not([inert]) [class*="back" i], .Stack-view:not([inert]) button[aria-label*="Back" i], .stack-view:not([inert]) .icon-back, .stack-view:not([inert]) .back, .stack-view:not([inert]) [class*="back" i], .stack-view:not([inert]) button[aria-label*="Back" i]`
+    `${VIEW_SEL}:not([inert]) :is(.icon-back, .back, [class*="back" i], button[aria-label*="Back" i])`,
   );
   if ((await backBtn.count()) > 0 && (await backBtn.first().isVisible())) {
     await backBtn.first().click({ force: true });
   } else {
     // Try click the header if no button (fallback for negative demo structure)
-    const activeHeader = page.locator('.Stack-view:not([inert]) header, .Stack-view:last-child header, .stack-view:not([inert]) header, .stack-view:last-child header');
+    const activeHeader = page.locator(
+      `${VIEW_SEL}:not([inert]) header, ${VIEW_SEL}:last-child header`,
+    );
     await activeHeader.first().click({ force: true });
   }
 };

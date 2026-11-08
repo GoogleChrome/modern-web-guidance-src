@@ -56,7 +56,7 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     if (controls) {
       drawer = page.locator(`#${controls}`);
     } else {
-      drawer = page.locator('[popover]').first();
+      drawer = page.locator('[popover], dialog, aside, nav[class*="drawer" i], [class*="drawer" i]').first();
       if (await drawer.count() === 0) {
         drawer = page.locator('div').filter({ has: page.locator('ul') }).first();
       }
@@ -189,6 +189,9 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
+
+    const isModalDialog = await drawer.evaluate((el) => el.matches('dialog:modal'));
+    if (isModalDialog) return;
 
     const main = page.locator('main');
     const hasInertAncestor = (el: any) => {

@@ -387,10 +387,23 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
     await expect(progress.first()).toBeAttached();
   });
 
-  test('The password toggle button must expose state via aria-pressed and link warning via aria-describedby', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/aria-pressed/i.test(html)).toBe(true);
-    expect(/aria-describedby/i.test(html)).toBe(true);
+  test('The password toggle button must expose state via aria-pressed and link warning via aria-describedby', async ({ page }) => {
+    const isValid = await page.evaluate(() => {
+      const pwdInput = document.querySelector<HTMLInputElement>(
+        'input[type="password"], input[autocomplete*="password" i], input[name*="password" i], input[id*="password" i]',
+      );
+      if (!pwdInput) return false;
+      const describedByIds = (pwdInput.getAttribute('aria-describedby') || '').trim().split(/\s+/).filter(Boolean);
+      const hasLinkedDescription = describedByIds.some((id) => Boolean(document.getElementById(id)?.textContent?.trim()));
+      const toggleBtn = Array.from(document.querySelectorAll('button, [role="button"]')).find((btn) =>
+        btn.hasAttribute('aria-pressed') || /show|hide|password|reveal/i.test(`${btn.textContent} ${btn.getAttribute('aria-label') || ''}`),
+      );
+      if (!toggleBtn) return false;
+      const exposesToggleState =
+        toggleBtn.getAttribute('aria-pressed') === 'true' || toggleBtn.getAttribute('aria-pressed') === 'false';
+      return hasLinkedDescription && exposesToggleState;
+    });
+    expect(isValid).toBe(true);
   });
 
   test('The implementation must not use <section> elements as individual form field layout containers', async () => {

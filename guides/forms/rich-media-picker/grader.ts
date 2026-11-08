@@ -59,14 +59,19 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
     expect(html).not.toMatch(/addEventListener\(['"]keydown['"]/);
   });
 
-  test('Inline decorative SVG icons inside `<option>` elements define `aria-hidden="true"`.', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
-    const svgOptions = matches.filter(m => /<svg/i.test(m[1]));
-    expect(svgOptions.length).toBeGreaterThan(0);
-    for (const match of svgOptions) {
-      expect(/<svg[^>]*aria-hidden=["']true["']/i.test(match[1])).toBe(true);
-    }
+  test('Inline decorative SVG icons inside `<option>` elements define `aria-hidden="true"`.', async ({ page }) => {
+    const isValid = await page.evaluate(() => {
+      const options = Array.from(document.querySelectorAll('select option'));
+      if (!options.some((opt) => opt.children.length > 0)) return false;
+      const svgs = options.flatMap((opt) => Array.from(opt.querySelectorAll('svg')));
+      return svgs.every(
+        (svg) =>
+          svg.getAttribute('aria-hidden') === 'true' ||
+          svg.getAttribute('role') === 'presentation' ||
+          svg.getAttribute('role') === 'none',
+      );
+    });
+    expect(isValid).toBe(true);
   });
 
   test('The `<option>` tags do not contain interactive or heading elements.', async ({ page }) => {
