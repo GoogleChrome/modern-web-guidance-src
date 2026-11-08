@@ -173,7 +173,7 @@ If you need more control, you can run each step individually:
 
 ```
 skillsToEnable: ['modern-web-guidance'],
-agent: Agents.GEMINI_CLI
+agent: Agents.ANTIGRAVITY_CLI
 ```
 
 > Note: to test the agent without any guide access, set `skillsToEnable` to `[]` (and step `2` can be skipped).

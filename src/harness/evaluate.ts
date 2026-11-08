@@ -8,7 +8,7 @@ import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { suitesDir } from '../core/paths.ts';
 
-import { type SuiteConfig } from './config.ts';
+import { defaultSuiteConfig, type SuiteConfig } from './config.ts';
 
 function getCliVersion(): string | undefined {
   try {
@@ -34,7 +34,7 @@ function getSkillVersion(): string | undefined {
 }
 
 function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
-  let agent = 'gemini-cli';
+  let agent = defaultSuiteConfig.agent;
 
   const evalsPath = path.join(suiteResultsDir, 'evals.json');
   if (fs.existsSync(evalsPath)) {

@@ -21,15 +21,12 @@ export const AGENTS = {
     codex: { label: 'Codex CLI', badge: 'openai' },
     antigravity_cli: { label: 'Antigravity CLI', badge: 'gemini' },
     jetski_cli: { label: 'Jetski CLI', badge: 'gemini' },
-    gemini_cli: { label: 'Gemini CLI', badge: 'gemini' },
     pi: { label: 'Pi CLI', badge: 'pi' },
 };
 
 /**
  * Agent families pooled into the headline numbers, in display order. Only agents on the
- * nightly schedule belong here. `gemini_cli` is intentionally excluded: it has only been used
- * for ad hoc experiments (never nightly), and Antigravity CLI is already the Gemini entry, so
- * adding it would count Gemini twice if it were ever scheduled.
+ * nightly schedule belong here.
  * @type {AgentFamilyDef[]}
  */
 export const AGENT_FAMILIES = [
@@ -58,6 +55,7 @@ function inferBadgeKind(name) {
     if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) return 'gemini';
     if (name.includes('codex') || name.includes('openai')) return 'openai';
     if (name.includes('claude')) return 'claude';
+    if (/(?:^|[_-])pi(?:$|[_-])/.test(name)) return 'pi';
     return undefined;
 }
 

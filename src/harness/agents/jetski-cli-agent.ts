@@ -7,7 +7,6 @@ import {
   cleanupIsolatedHome,
   parseAgentArgs,
   runCliAgentCommand,
-  createTrustedFolders,
   copyFileIfExists,
   setupIsolatedWorkDir,
   isEnoent,
@@ -42,6 +41,24 @@ const USAGE_TAG_OUTPUT = 3;
 const USAGE_TAG_CACHED = 5;
 
 const TRAJECTORY_GLOB = '*.db';
+
+function createTrustedFolders(contentsDir: string, folders: string[]): void {
+  const trustedFolders: Record<string, string> = {};
+  for (const folder of folders) {
+    trustedFolders[folder] = 'TRUST_FOLDER';
+  }
+
+  try {
+    fs.mkdirSync(contentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(contentsDir, 'trustedFolders.json'),
+      JSON.stringify(trustedFolders, null, 2)
+    );
+    console.log(`Created trustedFolders.json in ${contentsDir}`);
+  } catch (e) {
+    console.error('Failed to create trustedFolders.json:', e);
+  }
+}
 
 export function setupJetskiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
