@@ -117,7 +117,7 @@ test.describe('Passkey Management Target Grader', () => {
       }
     }
     const callsReachSignalAll = (text: string, depth = 3, seen = new Set<string>()): boolean => {
-      if (text.includes('signalAllAcceptedCredentials') || /sync.*AcceptedCredentials|sync.*Credentials/i.test(text)) {
+      if (text.includes('signalAllAcceptedCredentials')) {
         return true;
       }
       if (depth <= 0) return false;
