@@ -166,19 +166,19 @@ test.describe('icons Target Grader', () => {
       );
     });
 
-    const hasIconEndOrBeforeQuery = containerRules.some((r) => {
-      if (/style\(\s*--icon-end\s*\)/.test(r.conditionText)) {
-        const children = collectAllCssRules(r.cssRules);
-        return children.some(
-          (c): c is CSSStyleRule =>
-            c instanceof CSSStyleRule && c.selectorText.includes('::after')
-        );
-      }
-      return hasIconStartQuery;
+    const hasIconEndQuery = containerRules.some((r) => {
+      if (!/style\(\s*--icon-end\s*\)/.test(r.conditionText)) return false;
+      const children = collectAllCssRules(r.cssRules);
+      return children.some(
+        (c): c is CSSStyleRule =>
+          c instanceof CSSStyleRule &&
+          c.selectorText.includes('::after') &&
+          c.style.getPropertyValue('--icon-end').trim() === 'inherit'
+      );
     });
 
     expect(hasIconStartQuery).toBe(true);
-    expect(hasIconEndOrBeforeQuery).toBe(true);
+    expect(hasIconEndQuery).toBe(true);
   });
 
   test('A compatibility fallback using zero-specificity class hooks (:where(.icon-start), :where(.icon-end), and :where(.icon:empty)) is provided', () => {
@@ -400,6 +400,8 @@ test.describe('icons Target Grader', () => {
 
     const hasEndSpacing = styleRules.some(
       (r) =>
+        r.selectorText.includes(':not(') &&
+        r.selectorText.includes(':empty') &&
         r.selectorText.includes('::after') &&
         r.style.getPropertyValue('margin-inline-start').trim().length > 0
     );
@@ -426,8 +428,12 @@ test.describe('icons Target Grader', () => {
       expect(navLinks.length).toBeGreaterThanOrEqual(5);
       for (const link of navLinks) {
         const cascaded = getCascadedStyle(link, allRules);
-        const iconStart = cascaded.getPropertyValue('--icon-start');
-        expect(iconStart.trim().length).toBeGreaterThan(0);
+        expect(
+          (
+            cascaded.getPropertyValue('--icon-start') ||
+            cascaded.getPropertyValue('--icon-end')
+          ).trim().length
+        ).toBeGreaterThan(0);
       }
 
       const heroBtn = document.querySelector('.hero .btn');

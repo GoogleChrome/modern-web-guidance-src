@@ -1,1 +1,1 @@
-- Add interest-triggered tooltips to the seasonal favorites cards in Daily Grind that reveal additional item details when hovering or focusing the action buttons, ensuring popups are positioned adjacent to their buttons with fallbacks for older browsers.
+- Add tooltips to the seasonal favorites cards in Daily Grind that reveal additional item details when hovering or focusing the action buttons, ensuring popups are positioned adjacent to their buttons with fallbacks for older browsers.

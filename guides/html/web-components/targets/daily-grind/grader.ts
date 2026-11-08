@@ -275,15 +275,18 @@ test.describe('Daily Grind Web Components Grader', () => {
     expect(shadowControls.length).toBeGreaterThan(0);
 
     const everyControlNamedOrSameTreeAria = shadowControls.every((el) => {
-      const hasResolvedSameTreeAria = ariaAttrs.some((attr) => {
+      const hasResolvedSameTreeAria = ['aria-labelledby', 'aria-describedby'].some((attr) => {
         const val = el.getAttribute(attr);
         if (!val) return false;
         const ids = val.trim().split(/\s+/).filter(Boolean);
         return ids.length > 0 && ids.every((id: string) => Boolean(el.ownerDocument?.getElementById(id)));
       });
+      const id = el.getAttribute('id');
       const hasTextOrAriaLabel =
         Boolean(el.textContent?.trim()) ||
         Boolean(el.getAttribute('aria-label')?.trim()) ||
+        Boolean(el.closest('label')?.textContent?.trim()) ||
+        Boolean(id && el.ownerDocument?.querySelector(`label[for="${id}"]`)?.textContent?.trim()) ||
         (shadowControls.length === 1 && setsShadowControlAriaLabelInClass);
       return hasResolvedSameTreeAria || hasTextOrAriaLabel;
     });

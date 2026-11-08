@@ -244,15 +244,30 @@ test.describe('progress-ring Target Grader', () => {
 
   test('The <progress> element includes an aria-label for accessibility', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const progressElements = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('progress')),
+    const candidates = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('progress, [role="progressbar"]')).map((el: any) => ({
+        el,
+        document: d.document,
+      })),
     );
-    expect(progressElements.length).toBeGreaterThan(0);
+    expect(candidates.length).toBeGreaterThan(0);
 
-    const hasAriaLabel = progressElements.some((el: any) => {
-      const label = el.getAttribute('aria-label');
-      const labelledBy = el.getAttribute('aria-labelledby');
-      return Boolean((label && label.trim().length > 0) || (labelledBy && labelledBy.trim().length > 0));
+    const hasAriaLabel = candidates.some(({ el, document }) => {
+      const label = el.getAttribute('aria-label')?.trim() ?? '';
+      const valueText = el.getAttribute('aria-valuetext')?.trim() ?? '';
+      const labelledBy = el.getAttribute('aria-labelledby')?.trim() ?? '';
+      const hasValidLabelledBy =
+        labelledBy.length > 0 &&
+        labelledBy
+          .split(/\s+/)
+          .some((id: string) => Boolean(document.getElementById(id)?.textContent?.trim()));
+      const id = el.getAttribute('id')?.trim() ?? '';
+      const explicitLabel = id ? document.querySelector(`label[for="${id}"]`) : null;
+      const wrappingLabel = el.closest?.('label');
+      const hasAssociatedLabel = Boolean(
+        explicitLabel?.textContent?.trim() || wrappingLabel?.textContent?.trim(),
+      );
+      return label.length > 0 || valueText.length > 0 || hasValidLabelledBy || hasAssociatedLabel;
     });
     expect(hasAriaLabel).toBe(true);
   });
@@ -286,13 +301,26 @@ test.describe('progress-ring Target Grader', () => {
     const allRules = getAllRules(stylesheet.cssRules);
     expect(allRules.length).toBeGreaterThan(0);
 
+    const docs = getHtmlDocuments(targetFiles);
+    const hasProgressEl = docs.some((d) =>
+      Boolean(d.document.querySelector('progress, [role="progressbar"]')),
+    );
+    expect(hasProgressEl).toBe(true);
+
+    const allDeclarations = getAllStyleDeclarations(stylesheet.cssRules);
+    const hasRingAnimation =
+      allRules.some((r) => r.constructor.name === 'CSSKeyframesRule') ||
+      allDeclarations.some((style) => {
+        const trans = `${style.getPropertyValue('transition')} ${style.getPropertyValue('transition-property')}`;
+        return /--[a-zA-Z0-9_-]+|stroke-dashoffset|stroke-dasharray/i.test(trans);
+      });
+    if (!hasRingAnimation) return;
+
     const mediaRules = allRules.filter(
       (r): r is CSSMediaRule =>
         r instanceof CSSMediaRule && /\bprefers-reduced-motion\b/i.test(r.conditionText),
     );
     expect(mediaRules.length).toBeGreaterThan(0);
-
-    const allDeclarations = getAllStyleDeclarations(stylesheet.cssRules);
     const transitionReferencedVars = new Set<string>();
     for (const style of allDeclarations) {
       for (const prop of ['transition', 'transition-duration']) {

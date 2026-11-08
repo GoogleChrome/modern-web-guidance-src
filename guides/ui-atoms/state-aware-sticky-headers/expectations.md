@@ -4,6 +4,6 @@
 - The header container defines `container-type: scroll-state` to enable scroll state queries.
 - The header container defines a `container-name` to avoid collisions.
 - The header visual style changes (e.g., background color or box-shadow) when it is stuck at the top.
-- The visual style changes are implemented using the `@container scroll-state(...)` query (e.g., `stuck: top` or `stuck: inset-block-start`).
+- The visual style changes are implemented using the `@container scroll-state(...)` query (e.g., `stuck: top` or `stuck: block-start`).
 - Stuck styles come from the container query, not JavaScript.
 - `scroll-padding-top` is used to ensure that elements that receive focus aren't obscured by the sticky header.

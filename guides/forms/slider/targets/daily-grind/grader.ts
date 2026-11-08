@@ -331,8 +331,10 @@ test.describe('slider Target Grader', () => {
       });
 
       expect(focusStyles.appearance).toBe('none');
+      // The built-in focus ring (`outline-style: auto`) survives `appearance: none`; require an author-defined indicator.
       const hasVisibleOutline =
         focusStyles.outlineStyle !== 'none' &&
+        focusStyles.outlineStyle !== 'auto' &&
         focusStyles.outlineWidth > 0 &&
         focusStyles.outlineColor !== 'rgba(0, 0, 0, 0)' &&
         focusStyles.outlineColor !== 'transparent';

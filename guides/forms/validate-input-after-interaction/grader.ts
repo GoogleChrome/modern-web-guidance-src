@@ -119,7 +119,8 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
 
     // Now type a valid value and verify the error state clears immediately
     await input.focus();
-    await input.fill('user@example.com');
+    const inputType = await input.getAttribute('type');
+    await input.fill(inputType === 'password' ? 'Valid#Pass1' : 'user@example.com');
 
     const validState = await input.evaluate((el) => ({
       borderColor: window.getComputedStyle(el).borderColor,

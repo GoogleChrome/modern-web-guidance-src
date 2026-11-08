@@ -328,7 +328,8 @@ test.describe('Brand-Consistent Forms Grader', () => {
             ) {
               hasVisuallyHiddenPattern = true;
             }
-            if (sel.includes('input') && (cssText.includes('display:none') || cssText.includes('visibility:hidden') || cssText.includes('opacity:0'))) {
+            const targetsInputItself = sel.split(',').some((s) => /input[^\s>+~]*$/.test(s.trim()) && !s.includes('::'));
+            if (targetsInputItself && /display:none|visibility:hidden|opacity:0(\.0*)?(;|!|$)/.test(cssText)) {
               hidesInputInaccessibly = true;
             }
             if (cssText.includes('appearance:none')) {
@@ -379,7 +380,7 @@ test.describe('Brand-Consistent Forms Grader', () => {
         }
       }
       if (!hasSupportsNot || hidesInputInaccessibly) return false;
-      return hasVisuallyHiddenPattern || (hasVisibleCheckboxAppearanceNone && hasVisibleRadioAppearanceNone);
+      return hasVisuallyHiddenPattern;
     });
     expect(hasAccessibleFallbackInputs).toBe(true);
   });

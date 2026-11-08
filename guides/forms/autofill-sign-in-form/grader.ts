@@ -112,8 +112,8 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     if (isVisible) {
       const type = await passwordInput.getAttribute('type').catch(() => null);
       const auto = await passwordInput.getAttribute('autocomplete').catch(() => null);
-      expect(type).toMatch(/password|text/);
-      expect(auto).toMatch(/current-password|password/i);
+      expect(type).toBe('password');
+      expect(auto).toMatch(/\bcurrent-password\b/i);
       return;
     }
     const code = getSourceContent();

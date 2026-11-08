@@ -60,8 +60,10 @@ test.describe('Overflow Clipping Control Grader', () => {
       const el = document.querySelector('.safety-zone-parent');
       if (!el) return false;
       const comp = window.getComputedStyle(el);
-      const val = comp.overflowClipMargin || comp.getPropertyValue('overflow-clip-margin') || '';
-      return /\b\d+px\b/.test(val) && parseFloat(val) > 0;
+      // overflow-clip-margin is ignored unless overflow is clip
+      if (comp.overflowX !== 'clip' && comp.overflowY !== 'clip') return false;
+      const px = (comp.overflowClipMargin || '').match(/(\d+(?:\.\d+)?)px/);
+      return Boolean(px && parseFloat(px[1]) > 0);
     });
     expect(isLength).toBe(true);
   });

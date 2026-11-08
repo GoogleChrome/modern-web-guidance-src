@@ -42,7 +42,7 @@ These hold across every guide below:
 - **MANDATORY**: call `super()` first in the constructor, before touching `this`; calling it after any statement that reads or writes `this` throws.
 - **MANDATORY**: use semantic elements (`<button>`, `<nav>`, `<ul>`) inside shadow templates. Most accessibility failures in shadow trees come from non-semantic markup; a slot does not change the role of what it projects.
 - **MANDATORY**: ARIA `id` references (`aria-labelledby`, `aria-describedby`, `aria-controls`) cannot cross a shadow boundary; the referencing element and the `id` it points to must live in the same tree.
-- **MANDATORY**: attach shadow roots with `attachShadow({ mode: 'open' })` (or `shadowrootmode="open"` for Declarative Shadow DOM); `mode: 'closed'` blocks dev tools, page scripts, accessibility audits, and server hydration from reaching `element.shadowRoot`.
+- **MANDATORY**: attach shadow roots with `attachShadow({ mode: 'open' })` (or `shadowrootmode="open"` for Declarative Shadow DOM); `mode: 'closed'` hides `element.shadowRoot` from page scripts, test harnesses, and automated accessibility checkers that walk shadow trees.
 - Avoid *customized built-in elements* (`extends HTMLButtonElement` with `is="…"`); Safari has permanently declined to ship them.
 
 ## Use-case guide matrix

@@ -80,7 +80,7 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
     const rules = await getCssRules(page);
     const visualContainerProps = /^(?:border|background|padding|box-shadow|border-radius|color|margin|outline|width|min-width|max-height|font)/i;
     const hasPickerContainerStyles = rules.some(
-      r => /::picker(?:\(select\))?\b/i.test(r.selector) && r.props.some(p => visualContainerProps.test(p))
+      r => /::picker(?![-\w])/i.test(r.selector) && r.props.some(p => visualContainerProps.test(p))
     );
     expect(hasPickerContainerStyles).toBe(true);
   });
