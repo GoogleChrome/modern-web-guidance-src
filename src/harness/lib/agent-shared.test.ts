@@ -270,7 +270,6 @@ describe('runCliAgentCommand', () => {
       PI_CODING_AGENT: 'true',
       PI_CODING_AGENT_DIR: '/tmp/host/.pi/agent',
       CLAUDE_CODE_USE_VERTEX: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       ANTIGRAVITY_GCP_PROJECT: 'eval-gcp-project',
       GPG_AGENT_INFO: '/tmp/gpg-agent',
       PATH: [
@@ -310,7 +309,6 @@ describe('runCliAgentCommand', () => {
         assert.strictEqual(childEnv[stripped], undefined, `Expected ${stripped} to be stripped`);
       }
       assert.strictEqual(childEnv.CLAUDE_CODE_USE_VERTEX, '1');
-      assert.strictEqual(childEnv.GEMINI_CLI_TRUST_WORKSPACE, 'true');
       assert.strictEqual(childEnv.ANTIGRAVITY_GCP_PROJECT, 'eval-gcp-project');
       assert.strictEqual(childEnv.GPG_AGENT_INFO, '/tmp/gpg-agent');
 
@@ -356,7 +354,6 @@ describe('sanitizeAgentChildEnv', () => {
       GROK_PLUGIN_ROOT: '/tmp/grok',
       AMP_CURRENT_THREAD_ID: 't-1',
       GEMINI_CLI: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       CLINE_ACTIVE: 'true',
       CODEX_SANDBOX_NETWORK_DISABLED: '1',
       ANTIGRAVITY_CLI_ALIAS: 'agy',
@@ -381,7 +378,6 @@ describe('sanitizeAgentChildEnv', () => {
       agent: undefined,
     });
     assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
-    assert.strictEqual(sanitized.GEMINI_CLI_TRUST_WORKSPACE, 'true');
     assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
     assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
     assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');

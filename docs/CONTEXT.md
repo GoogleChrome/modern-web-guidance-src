@@ -200,7 +200,6 @@ Configured in `src/harness/config.ts` and `.env`:
 
 - **Antigravity CLI** (default for `gd dev`): Antigravity CLI agent (`antigravity_cli`, `agy` binary).
 - **Jetski CLI**: Local/cloud Jetski CLI agent (`jetski_cli`; `GD_DEV_USE_JETSKI=1` in `gd dev`).
-- **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` (`gemini_cli`).
 - **Claude Code**: Vertex AI backed (`claude_code`).
 - **Codex CLI**: OpenAI/Codex backed (`codex_cli`).
 - **Pi**: Additional experimental agent harness.
@@ -360,7 +359,7 @@ Suite configuration in `src/harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 1-2)
 - `tasks`: Empty array = discover all tasks by scanning guide targets. Set explicitly to run a subset.
 - `skillsToEnable`: Which skills agents can access (`['modern-web-guidance']`, etc.)
-- `agent`: Which agent to use (`Agents.JETSKI_CLI`, `Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`)
+- `agent`: Which agent to use (`Agents.ANTIGRAVITY_CLI`, `Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`)
 
 ---
 

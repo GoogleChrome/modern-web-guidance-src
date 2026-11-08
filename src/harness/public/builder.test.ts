@@ -8,6 +8,7 @@ import {
   buildSelectedSuites,
   buildSuite,
   cleanRelativePath,
+  MANIFEST_VERSION,
   runRelativePath,
   writeManifest,
 } from './builder.ts';
@@ -689,5 +690,36 @@ describe('incremental builds', () => {
     const second = await buildSelectedSuites(options);
     assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'unchanged');
     assert.deepEqual(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), before);
+  });
+
+  test('missing or outdated manifestVersion refreshes suites.gen.json from local evals.json without reading the store', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const manifestPath = path.join(options.outDir, 'public-evals', 'suites.gen.json');
+    const statePath = path.join(options.outDir, 'public-evals', 'build-state.json');
+    const expected = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+    // Simulate a legacy gh-pages checkout: stale manifest entry on disk and no manifestVersion in build-state.json.
+    const staleManifest = [{ ...expected[0], taskCount: 9999 }];
+    fs.writeFileSync(manifestPath, JSON.stringify(staleManifest) + '\n');
+    const legacyState = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    delete legacyState.manifestVersion;
+    fs.writeFileSync(statePath, JSON.stringify(legacyState, null, 2) + '\n');
+
+    let storeReads = 0;
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => {
+        storeReads++;
+        return inner.readFile(relPath);
+      },
+    };
+
+    const refreshed = await buildSelectedSuites(options);
+    assert.equal(refreshed.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+    assert.equal(storeReads, 0, 'manifest refresh must read local evals.json, not GCS');
+    assert.deepEqual(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), expected);
+    assert.equal(JSON.parse(fs.readFileSync(statePath, 'utf8')).manifestVersion, MANIFEST_VERSION);
   });
 });

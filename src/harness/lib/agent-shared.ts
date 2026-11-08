@@ -18,7 +18,6 @@ import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
 import { gitExec } from '../../core/git-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
-import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
@@ -34,18 +33,24 @@ export function isEnoent(err: unknown): boolean {
 }
 
 export function setupAgentCredentials(agent: Agents, tempHome: string): void {
-  if (agent === Agents.JETSKI_CLI) {
-    setupJetskiCliCredentials(tempHome);
-  } else if (agent === Agents.GEMINI_CLI) {
-    setupGeminiCliCredentials(tempHome);
-  } else if (agent === Agents.CLAUDE_CODE) {
-    setupClaudeCodeCredentials(tempHome);
-  } else if (agent === Agents.CODEX_CLI) {
-    setupCodexCliCredentials(tempHome);
-  } else if (agent === Agents.PI) {
-    setupPiCredentials(tempHome);
-  } else if (agent === Agents.ANTIGRAVITY_CLI) {
-    setupAntigravityCliCredentials(tempHome);
+  switch (agent) {
+    case Agents.JETSKI_CLI:
+      setupJetskiCliCredentials(tempHome);
+      break;
+    case Agents.CLAUDE_CODE:
+      setupClaudeCodeCredentials(tempHome);
+      break;
+    case Agents.CODEX_CLI:
+      setupCodexCliCredentials(tempHome);
+      break;
+    case Agents.PI:
+      setupPiCredentials(tempHome);
+      break;
+    case Agents.ANTIGRAVITY_CLI:
+      setupAntigravityCliCredentials(tempHome);
+      break;
+    default:
+      throw new Error(`Unsupported agent: ${agent}`);
   }
 }
 
@@ -57,8 +62,6 @@ export function getAgentCommandAndArgs(
   switch (agent) {
     case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
-    case Agents.GEMINI_CLI:
-      return getGeminiCliCommandAndArgs(prompt);
     case Agents.CLAUDE_CODE:
       return getClaudeCodeCommandAndArgs(prompt);
     case Agents.CODEX_CLI:
@@ -197,20 +200,6 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
   const originalHome = process.env.HOME || process.cwd();
   copySanitizedNpmrc(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
-  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/modern-web-guidance-src/pull/479
-  try {
-    const geminiDir = path.join(tempHome, '.gemini');
-    fs.mkdirSync(geminiDir, { recursive: true });
-    const mockProjects = {
-      projects: {
-        [path.join(tempHome, 'work')]: 'work'
-      }
-    };
-    fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects, null, 2));
-  } catch (err) {
-    console.warn('Warning: Failed to pre-populate projects.json:', err);
-  }
-
   // Configure default timeouts for curl to prevent hanging on unreachable or stalled sockets
   try {
     fs.writeFileSync(path.join(tempHome, '.curlrc'), 'max-time = 15\nconnect-timeout = 5\n', 'utf8');
@@ -276,29 +265,6 @@ export function parseJsonlFile<T = any>(filePath: string): T[] {
 }
 
 /**
- * Creates a trustedFolders.json file to avoid "untrusted folder" errors.
- * @param contentsDir Directory to write the trustedFolders.json file to (e.g. .gemini or .gemini/jetski)
- * @param folders List of absolute paths to trust
- */
-export function createTrustedFolders(contentsDir: string, folders: string[]): void {
-  const trustedFolders: Record<string, string> = {};
-  for (const folder of folders) {
-    trustedFolders[folder] = "TRUST_FOLDER";
-  }
-
-  try {
-    fs.mkdirSync(contentsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(contentsDir, 'trustedFolders.json'),
-      JSON.stringify(trustedFolders, null, 2)
-    );
-    console.log(`Created trustedFolders.json in ${contentsDir}`);
-  } catch (e) {
-    console.error('Failed to create trustedFolders.json:', e);
-  }
-}
-
-/**
  * Copies the enabled Skills into the isolated home directory for the agent.
  * modern-web-guidance (and its resources) is installed from the skills-cli
  * distribution; any other enabled skill contributes its category SKILL.md.
@@ -320,7 +286,7 @@ export function copySkills(homeDir: string, agent: Agents, skillsToEnable: strin
   } else if (agent === Agents.ANTIGRAVITY_CLI) {
     destDir = path.join(homeDir, '.gemini', 'antigravity-cli', 'skills');
   } else {
-    destDir = path.join(homeDir, '.gemini', 'skills');
+    throw new Error(`Unsupported agent: ${agent}`);
   }
 
   try {
@@ -391,30 +357,6 @@ export function copySkills(homeDir: string, agent: Agents, skillsToEnable: strin
   } catch (e: any) {
     console.error(`Failed to copy guides: ${e.message}`);
     return false;
-  }
-}
-
-/**
- * Sleeps for the specified number of milliseconds.
- * @param ms Number of milliseconds to sleep
- */
-export async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Kills any process running on the specified port.
- * @param port The port number to check and kill processes on
- */
-export function killProcessOnPort(port: number | string): void {
-  try {
-    const pid = execSync(`lsof -t -i :${port}`).toString().trim();
-    if (pid) {
-      console.log(`Killing process ${pid} on port ${port}...`);
-      execSync(`kill -9 ${pid}`);
-    }
-  } catch {
-    // Ignore error if no process found (grep/lsof returns exit code 1 if empty)
   }
 }
 

@@ -789,11 +789,11 @@ function renderSummary(data) {
             </div>
         </article>
 
-        <!-- Card 2: Cross-Cutting Accessibility Subscore -->
+        <!-- Card 2: Automated Accessibility Checks -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Accessibility subscore</span>
-                ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
+                <span class="meta-label">Automated accessibility checks</span>
+                ${ratePill(a11yUpliftPp, 'accessibility check pass rate change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
