@@ -152,7 +152,7 @@ function renderPending() {
     if (list) {
         list.innerHTML = [
             pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true),
-            pendingCard('a11y', 'Accessibility', '', false)
+            pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)
         ].join('');
     }
     const body = document.getElementById('agent-table-body');
@@ -217,15 +217,16 @@ function renderTakeaways(insights) {
     } else {
         cards.push(pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true));
     }
-    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Accessibility', '', false)); } else {
+    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)); } else {
         const a = pooled.a11y;
-        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` across ${a.guideCount} guides` : ''}`;
+        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} checks${a.guideCount ? ` · ${a.guideCount} ${a.guideCount === 1 ? 'guide' : 'guides'}` : ''} · 5 dimensions`;
         cards.push(takeawayCard({
             metric: 'a11y',
             primary: false,
-            label: 'Accessibility',
+            label: 'Automated accessibility checks',
             figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(a.unguidedRate)} → <strong>${fmtPct(a.guidedRate)}</strong>)</span>`,
             figureText: `${signed(a.upliftPp, 0)} percentage points (${fmtPct(a.unguidedRate)} to ${fmtPct(a.guidedRate)})`,
+            statement: 'Not a full WCAG audit',
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
@@ -310,7 +311,7 @@ function rateCell(f, r, isA11y) {
     const stackHtml = ` <div class="agent-cell-stack"> <div class="metric-main"> <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span> ${r.upliftPp === null ? naCell() : deltaChip(r.upliftPp)} </div> <span class="metric-sub">${escapeHtml(checksText)}</span> </div>`;
     const href = singleSuiteHref(f, isA11y);
     const subParts = isA11y
-        ? ['Accessibility subscore', f.a11y?.guideCount ? `${f.a11y.guideCount} ${f.a11y.guideCount === 1 ? 'guide' : 'guides'}` : '']
+        ? ['Automated accessibility checks', f.a11y?.guideCount ? `${f.a11y.guideCount} ${f.a11y.guideCount === 1 ? 'guide' : 'guides'}` : '']
         : ['Pass rate', sampleSummaryText(f)];
     const uDetail = r.unguidedTotal > 0 ? `${fmtInt(r.unguidedPassed)}/${fmtInt(r.unguidedTotal)} checks` : '';
     const gDetail = r.guidedTotal > 0 ? `${fmtInt(r.guidedPassed)}/${fmtInt(r.guidedTotal)} checks` : '';
