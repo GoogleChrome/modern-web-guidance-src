@@ -106,8 +106,8 @@ An instruction cannot guarantee behavior, so test the result. Open the page and 
 
 ## Fallback strategies
 
-The bar itself is roving tabindex, focus handling, and `showPopover()`, all widely supported script. The only addition beyond the menus is the `:has()` selector that disables the transition while switching; without it, switching animates like a plain open.
+The bar itself is roving tabindex, focus handling, and `showPopover()`, all widely supported script. Beyond the menus, the bar only adds the `[role="menubar"]:has(> [popover]:popover-open)` rule that disables the transition while switching; without `:has()`, switching animates like a plain open.
 
-The menus in the bar use focusgroup, popovers, invoker commands, and anchor positioning. Their fallbacks follow.
+The menus in the bar use focusgroup, popovers, invoker commands, anchor positioning, and `:has()`. Their fallbacks follow.
 
 {{ INCLUDE("../menu/guide.md#fallback-strategies") }}
