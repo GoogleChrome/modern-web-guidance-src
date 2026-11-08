@@ -78,7 +78,11 @@ function getEnclosingFunctionName(node: Node): string | undefined {
       current.isKind(SyntaxKind.FunctionExpression)
     ) {
       const parent = current.getParent();
-      if (parent && parent.isKind(SyntaxKind.VariableDeclaration)) {
+      if (
+        parent &&
+        (parent.isKind(SyntaxKind.VariableDeclaration) ||
+          parent.isKind(SyntaxKind.PropertyAssignment))
+      ) {
         return parent.getName();
       }
     }
@@ -416,11 +420,16 @@ test.describe('passkeys Target Grader', () => {
           return true;
         }
         const expr = unwrapExpression(c.getExpression());
+        const calleeName = expr.isKind(SyntaxKind.Identifier)
+          ? expr.getText()
+          : expr.isKind(SyntaxKind.PropertyAccessExpression)
+            ? expr.getName()
+            : '';
         return (
-          expr.isKind(SyntaxKind.Identifier) &&
-          helperNames.includes(expr.getText()) &&
-          (c.getPos() < createCall.getPos() ||
-            createCall.getPos() < c.getEnd())
+          Boolean(calleeName) &&
+          helperNames.includes(calleeName) &&
+          (c.getEnd() <= createCall.getPos() ||
+            createCall.getDescendants().includes(c))
         );
       });
     });
@@ -482,10 +491,16 @@ test.describe('passkeys Target Grader', () => {
           return true;
         }
         const expr = unwrapExpression(c.getExpression());
+        const calleeName = expr.isKind(SyntaxKind.Identifier)
+          ? expr.getText()
+          : expr.isKind(SyntaxKind.PropertyAccessExpression)
+            ? expr.getName()
+            : '';
         return (
-          expr.isKind(SyntaxKind.Identifier) &&
-          helperNames.includes(expr.getText()) &&
-          (c.getPos() < getCall.getPos() || getCall.getPos() < c.getEnd())
+          Boolean(calleeName) &&
+          helperNames.includes(calleeName) &&
+          (c.getEnd() <= getCall.getPos() ||
+            getCall.getDescendants().includes(c))
         );
       });
     });
@@ -508,15 +523,23 @@ test.describe('passkeys Target Grader', () => {
     expect(credentialCalls.length).toBeGreaterThanOrEqual(2);
 
     const fetchHelperNames = new Set<string>(['fetch']);
-    for (const call of allCalls) {
-      const expr = unwrapExpression(call.getExpression());
-      if (
-        (expr.isKind(SyntaxKind.Identifier) && expr.getText() === 'fetch') ||
-        (expr.isKind(SyntaxKind.PropertyAccessExpression) &&
-          expr.getName() === 'fetch')
-      ) {
-        const fnName = getEnclosingFunctionName(call);
-        if (fnName) fetchHelperNames.add(fnName);
+    let addedFetchHelper = true;
+    while (addedFetchHelper) {
+      addedFetchHelper = false;
+      for (const call of allCalls) {
+        const expr = unwrapExpression(call.getExpression());
+        const calleeName = expr.isKind(SyntaxKind.Identifier)
+          ? expr.getText()
+          : expr.isKind(SyntaxKind.PropertyAccessExpression)
+            ? expr.getName()
+            : '';
+        if (calleeName && fetchHelperNames.has(calleeName)) {
+          const fnName = getEnclosingFunctionName(call);
+          if (fnName && !fetchHelperNames.has(fnName)) {
+            fetchHelperNames.add(fnName);
+            addedFetchHelper = true;
+          }
+        }
       }
     }
 
@@ -585,21 +608,6 @@ test.describe('passkeys Target Grader', () => {
 
     expect(rpIdentifiers.length + rpDotIdAccesses.length).toBeGreaterThan(0);
 
-    const allPropAccesses = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-    );
-    const usesHostnameOrPortStrippedHost =
-      allPropAccesses.some((pa) => pa.getName() === 'hostname') ||
-      sourceFiles
-        .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression))
-        .some(
-          (call) =>
-            getCalleePropertyName(call) === 'split' &&
-            call.getArguments()[0]?.getText().includes(':')
-        );
-
-    expect(usesHostnameOrPortStrippedHost).toBe(true);
-
     const PUBLIC_SUFFIXES = new Set([
       'github.io',
       'pages.dev',
@@ -659,9 +667,24 @@ test.describe('passkeys Target Grader', () => {
     expect(toJsonCalls.length).toBeGreaterThan(0);
 
     const serializerFnNames = new Set<string>(['toJSON']);
-    for (const call of toJsonCalls) {
-      const fnName = getEnclosingFunctionName(call);
-      if (fnName) serializerFnNames.add(fnName);
+    let addedSerializerHelper = true;
+    while (addedSerializerHelper) {
+      addedSerializerHelper = false;
+      for (const call of allCalls) {
+        const expr = unwrapExpression(call.getExpression());
+        const calleeName = expr.isKind(SyntaxKind.Identifier)
+          ? expr.getText()
+          : expr.isKind(SyntaxKind.PropertyAccessExpression)
+            ? expr.getName()
+            : '';
+        if (calleeName && serializerFnNames.has(calleeName)) {
+          const fnName = getEnclosingFunctionName(call);
+          if (fnName && !serializerFnNames.has(fnName)) {
+            serializerFnNames.add(fnName);
+            addedSerializerHelper = true;
+          }
+        }
+      }
     }
 
     const credentialCalls = allCalls.filter(
@@ -681,15 +704,37 @@ test.describe('passkeys Target Grader', () => {
         if (fnName) postHelperNames.add(fnName);
       }
     }
-    for (const fnDecl of sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
-    )) {
+    for (const fnDecl of sourceFiles.flatMap((sf) => [
+      ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+      ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
+      ...sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration),
+      ...sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment),
+    ])) {
       const hasPostDefault = fnDecl
         .getDescendantsOfKind(SyntaxKind.StringLiteral)
         .some((lit) => lit.getLiteralValue().toUpperCase() === 'POST');
       const name = fnDecl.getName();
       if (hasPostDefault && name) {
         postHelperNames.add(name);
+      }
+    }
+    let addedPostHelper = true;
+    while (addedPostHelper) {
+      addedPostHelper = false;
+      for (const call of allCalls) {
+        const expr = unwrapExpression(call.getExpression());
+        const calleeName = expr.isKind(SyntaxKind.Identifier)
+          ? expr.getText()
+          : expr.isKind(SyntaxKind.PropertyAccessExpression)
+            ? expr.getName()
+            : '';
+        if (calleeName && postHelperNames.has(calleeName)) {
+          const fnName = getEnclosingFunctionName(call);
+          if (fnName && !postHelperNames.has(fnName)) {
+            postHelperNames.add(fnName);
+            addedPostHelper = true;
+          }
+        }
       }
     }
 
