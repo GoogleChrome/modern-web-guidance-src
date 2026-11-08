@@ -10,8 +10,6 @@
 
 [Documentation](https://developer.chrome.com/docs/modern-web-guidance) · [Evaluation Dashboard](https://googlechrome.github.io/modern-web-guidance-src/) · [Source Code](https://github.com/GoogleChrome/modern-web-guidance-src) · [Report an Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues)
 
-<!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
-
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
 
 ```shell
@@ -28,6 +26,9 @@ npx modern-web-guidance@latest search "animate a dialog modal backdrop"
 
 # Retrieve a guide by ID
 npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
+
+# Scan a codebase for legacy patterns to modernize
+npx modern-web-guidance@latest legacy-scan .
 ```
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lightbulb.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Why?
@@ -138,6 +139,14 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 </details>
 
 <details>
+<summary><b>Gemini CLI</b></summary>
+
+```shell
+gemini extensions install https://github.com/GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
 <summary><b>GitHub Copilot CLI</b></summary>
 
 ```shell
@@ -227,8 +236,8 @@ You can customize which skill packs are installed using the `--choose` flag:
 npx modern-web-guidance@latest install --choose
 ```
 
-* **`modern-web-guidance`** (~234 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
-* **`chrome-extensions`** (~181 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
+* **`modern-web-guidance`** (~230 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
+* **`chrome-extensions`** (~230 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
@@ -255,7 +264,7 @@ Huge thanks to everyone who has contributed!
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;">  License
 
 Unless otherwise noted:
-* Software code in this repository is licensed under the [Apache License 2.0](LICENSE).
+* Software code in this project is licensed under the [Apache License 2.0](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/LICENSE).
 * Documentation and guide content under `guides/` are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
 Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors and [W3C](https://www.w3.org/), [WHATWG](https://whatwg.org), and [IETF](https://www.ietf.org) specifications.
