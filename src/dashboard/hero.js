@@ -152,7 +152,7 @@ function renderPending() {
     if (list) {
         list.innerHTML = [
             pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true),
-            pendingCard('a11y', 'Automated accessibility checks', 'lift on testable DOM, keyboard, focus & ARIA mechanics (not a full WCAG audit)', false)
+            pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)
         ].join('');
     }
     const body = document.getElementById('agent-table-body');
@@ -217,16 +217,16 @@ function renderTakeaways(insights) {
     } else {
         cards.push(pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true));
     }
-    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Automated accessibility checks', 'lift on testable DOM, keyboard, focus & ARIA mechanics (not a full WCAG audit)', false)); } else {
+    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)); } else {
         const a = pooled.a11y;
-        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} automated checks${a.guideCount ? ` across ${a.guideCount} guides` : ''} · 5 dimensions`;
+        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} checks${a.guideCount ? ` · ${a.guideCount} ${a.guideCount === 1 ? 'guide' : 'guides'}` : ''} · 5 dimensions`;
         cards.push(takeawayCard({
             metric: 'a11y',
             primary: false,
             label: 'Automated accessibility checks',
             figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(a.unguidedRate)} → <strong>${fmtPct(a.guidedRate)}</strong>)</span>`,
             figureText: `${signed(a.upliftPp, 0)} percentage points (${fmtPct(a.unguidedRate)} to ${fmtPct(a.guidedRate)})`,
-            statement: 'lift on testable DOM, keyboard, focus & ARIA mechanics (not a full WCAG audit)',
+            statement: 'Not a full WCAG audit',
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
