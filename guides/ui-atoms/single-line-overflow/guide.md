@@ -22,18 +22,22 @@ Text that has to stay on one line (tab and chip labels, table cells, sidebar ite
 
 Keep the full text in the DOM and only adapt how it renders: the full text is the accessible name, and what find-in-page, copy, and search see.
 
-## Choosing a strategy
+This guide does not cover use cases where wrapping is an acceptable option.
 
-The strategies combine. Start with one of the first three, then add a reveal or a shorter version as needed.
+There are two components to handling single-line text overflow:
+1. How to display the truncated text
+2. How can users find out what the full text is
 
-- **Truncate with an ellipsis** (default). The start of the text identifies it, and the ellipsis tells users it is cut.
-- **Fade out the end** instead, when the text is a preview rather than an identifier (message snippets, descriptions), or when many truncated items sit together and the ellipses add noise.
-- **Keep the end visible** when the end differentiates: file names with extensions, paths, identifiers with a common prefix.
-- **Reveal the full text on hover and focus** when users compare similar items in place (document lists, tabs, table cells). Scroll the text inside its box, or expand the element.
-- **Swap in a shorter version** when one exists: weekday and month names, units, labels with an established abbreviation. This is also the only option for SVG `<text>`, such as chart labels, which supports none of the properties below.
-- **Scale the text down** only for display text (headings, big numbers in dashboard tiles). Never shrink UI labels or body text.
+{# TODO Handle SVG #}
 
-## Truncating with an ellipsis
+## How to display truncated text
+
+Truncation is visual only. Screen readers announce the full text, find-in-page matches it, and copying copies it. This is why the string must never be cut in script.
+
+If scaling the text down is acceptable, you can use `text-fit: shrink` with a lower limit (e.g. `text-fit: shrink 60%` to never go below 60% of the font size), and combine with any of the strategies below for the remaining overflow, if any.
+Note that `text-fit` does not change the computed `font-size` and does not grow content-sized containers, so the element needs an inline size from its layout.
+
+### 1. Truncate with an ellipsis (at the end or middle)
 
 ```css
 .label {
@@ -43,16 +47,39 @@ The strategies combine. Start with one of the first three, then add a reveal or 
 }
 ```
 
-- Apply it to the element that directly contains the text. It must be a block container: not the flex or grid container, not an inline element.
-- MANDATORY: Let the containing flex or grid item shrink. Items refuse to shrink below their content by default (`min-inline-size: auto`). When the truncated element is the item itself, `overflow: hidden` already allows it; when it is a descendant (such as a label inside a button), set `min-inline-size: 0` on the item.
+- In flex/grid: Let the containing flex or grid item shrink. Items refuse to shrink below their content by default (`min-inline-size: auto`). When the truncated element is the item itself, `overflow: hidden` already allows it; when it is a descendant (such as a label inside a button), set `min-inline-size: 0` on the item.
 - In tables, set `table-layout: fixed` and an inline size on the table. With automatic layout, cells grow to fit their text instead of truncating it.
 - An element's own `overflow: hidden` does not clip its own focus outline, so buttons and links can truncate their text directly. Outlines are clipped by an ancestor that clips overflow, such as a scrolling row of items; give those items an inset outline (`outline-offset: -2px`).
-- DO NOT shorten the string in script (`slice`, character counts). It breaks the accessible name, search, and copy, and it guesses wrong about glyph widths and translations.
-- DO NOT use `direction: rtl` to put the ellipsis at the start. It reorders punctuation and digits. To keep the end visible, split the text instead (below).
 
-## Fading out the end
+#### Keeping the end visible
 
-Replace the ellipsis with a mask that fades the end of the text. Only fade when the text overflows, or text that fits fades for no reason. An element with `overflow: hidden` is a scroll container, so its scroll timeline is only active when its content overflows. An animation on that timeline applies exactly when the text is truncated:
+Split the text into a start that truncates and an end that never shrinks, such as the file extension or the last few characters. The split is in the markup (or done once in script when rendering), never by cutting characters out.
+
+```html
+<span class="filename"><span class="start">quarterly-report-final-v2</span><span class="end">.pdf</span></span>
+```
+
+```css
+.filename {
+  display: flex;
+}
+
+.start {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.end {
+  flex: none;
+}
+```
+
+{# TODO Do we actually need both wrappers here? #}
+
+### 2. Fade out the end
+
+Use a mask that fades the end of the text. Only fade when the text overflows, or text that fits fades for no reason. An element with `overflow: hidden` is a scroll container, so its scroll timeline is only active when its content overflows. An animation on that timeline applies exactly when the text is truncated:
 
 ```css
 /* --fade-size is the configured size, --fade the live value the animation turns on.
@@ -90,40 +117,49 @@ Replace the ellipsis with a mask that fades the end of the text. Only fade when 
 
 Keep the two properties separate. The reveal below transitions `--fade-size`, and a keyframe that set the mask directly would not follow that transition.
 
-## Keeping the end visible
+### 3. Replace with a predefined shorter version
 
-Split the text into a start that truncates and an end that never shrinks, such as the file extension or the last few characters. The split is in the markup (or done once in script when rendering), never by cutting characters out.
+Put both versions in the markup and switch them with a container query on the cell or item. Use a short form that is understood on its own (Sat, Nov, kg), because it becomes the accessible name while shown.
 
 ```html
-<span class="filename"><span class="start">quarterly-report-final-v2</span><span class="end">.pdf</span></span>
+<!-- The wrapper is the container: size containment has no effect on table cells themselves -->
+<td><div class="day"><span class="long">Saturday</span><span class="short">Sat</span></div></td>
 ```
 
 ```css
-.filename {
-  display: flex;
+.day {
+  container-type: inline-size;
 }
 
-.start {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.short {
+  display: none;
 }
 
-.end {
-  flex: none;
+/* Example threshold: relative units resolve against the container's own font */
+@container (inline-size < 6em) {
+  .long {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
 }
 ```
 
-## Revealing the full text on hover and focus
+## Reveal full text on demand
 
 Reveal on `:hover` and `:focus-visible` of the interactive element, never on hover alone. Move the text only when `prefers-reduced-motion` is `no-preference`; otherwise leave the ellipsis. Touch has no hover, so the full text must also be reachable another way (see below).
 
+Hover and focus reveal nothing on touch. Give the full text another route: the selected item shows it untruncated (a selected tab is never shrunk), a row opens a detail view, or the text is also shown in full elsewhere.
+
 Choose by how the element is sized:
 
-- **Scroll the text inside its box** when the element's width comes from its container: a grid track, a fixed-layout table column, a block in a sidebar, a `flex: 1` item. Nothing else moves, so it works in dense layouts.
-- **Expand the element** when its width comes from its content, such as tabs or chips with a `min-inline-size` and `max-inline-size`. Siblings shift to make room, so do not use it in grids or tables, where it breaks alignment.
+1. **Scroll the text inside its box** when the element's width comes from its container: a grid track, a fixed-layout table column, a block in a sidebar, a `flex: 1` item. Nothing else moves, so it works in dense layouts.
+2. **Expand the element** when its width comes from its content, such as tabs or chips with a `min-inline-size` and `max-inline-size`. Siblings shift to make room, so do not use it in grids or tables, where it breaks alignment.
+3. **Use a tooltip** when it would add information beyond the label, or when the full text can be exceedingly long (methods 1 and 2 are less tolerant of extreme variance)
 
-### Scrolling the text
+### 1. Scroll the text inside its box
 
 The element is a size container, so its child can compute "container width minus my width" with container query units. The inner `span` is the only extra markup: it becomes the box that moves. The same class works on non-interactive elements such as list items, where hover still reveals.
 
@@ -174,7 +210,7 @@ With a fade instead of an ellipsis, the text would scroll under the fade and its
 }
 ```
 
-### Expanding the element
+### 2. Expand the element
 
 Let the element grow to its text, and transition the growth. Set `interpolate-size: allow-keywords` so the transition can interpolate to `max-content`.
 
@@ -196,54 +232,18 @@ Let the element grow to its text, and transition the growth. Set `interpolate-si
 }
 ```
 
-## Swapping in a shorter version
+### 3. Use a tooltip
 
-Put both versions in the markup and switch them with a container query on the cell or item. Use a short form that is understood on its own (Sat, Nov, kg), because it becomes the accessible name while shown.
+A tooltip is exposed as the element's description, so one that only repeats the label makes screen readers announce it twice.
+DO NOT rely on `title` alone: it is unreachable from the keyboard and on touch.
+See {{ GUIDE_REF("interest-triggered-tooltips") }} for tooltips.
 
-```html
-<!-- The wrapper is the container: size containment has no effect on table cells themselves -->
-<td><div class="day"><span class="long">Saturday</span><span class="short">Sat</span></div></td>
-```
-
-```css
-.day {
-  container-type: inline-size;
-}
-
-.short {
-  display: none;
-}
-
-/* Example threshold: relative units resolve against the container's own font */
-@container (inline-size < 6em) {
-  .long {
-    display: none;
-  }
-
-  .short {
-    display: inline;
-  }
-}
-```
-
-## Scaling display text down
-
-Use `text-fit: shrink` with a lower limit, and keep an ellipsis as the fallback for text that is still too long at that limit.
-
-```css
-.stat {
-  white-space: nowrap;
-  /* Example value: never below 60% of the font size. Always set a limit, or the text can become unreadable. */
-  text-fit: shrink 60%;
-  /* Takes over when the text does not fit even at the limit */
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-```
-
-`text-fit` does not change the computed `font-size` and does not grow content-sized containers, so the element needs an inline size from its layout.
+If the tooltip only repeats the label, hide it from assistive technology to prevent duplication.
+If the tooltip adds information beyond the label, hide the label from assistive technology to prevent duplication, and leave the rest of it.
 
 ## Detecting whether the text is truncated
+
+{# TODO Does this work for text-overflow too?! #}
 
 No property reports truncation. Derive it from overflow: the element is truncated when it can scroll toward its inline end.
 
@@ -272,12 +272,6 @@ No property reports truncation. Derive it from overflow: the element is truncate
   });
   observer.observe(label);
   ```
-
-## Making the full text reachable
-
-- Truncation is visual only. Screen readers announce the full text, find-in-page matches it, and copying copies it. This is why the string must never be cut in script.
-- Hover and focus reveal nothing on touch. Give the full text another route: the selected item shows it untruncated (a selected tab is never shrunk), a row opens a detail view, or the text is also shown in full elsewhere.
-- Use a tooltip only when it says more than the label (a file's full path, a description). A tooltip is exposed as the element's description, so one that only repeats the label makes screen readers announce it twice. See {{ GUIDE_REF("interest-triggered-tooltips") }} for tooltips. DO NOT rely on `title` alone: it is unreachable from the keyboard and on touch.
 
 ## Fallback strategies
 
