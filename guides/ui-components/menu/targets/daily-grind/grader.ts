@@ -634,7 +634,6 @@ test.describe('menu Target Grader', () => {
       expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
-      await page.locator(`#${info.submenuTriggerId}`).hover();
       await page.evaluate((subTriggerId) => {
         document.getElementById(subTriggerId)?.focus();
       }, info.submenuTriggerId);
@@ -689,8 +688,9 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
-      expect(info.topTriggerIds.length).toBeGreaterThan(0);
-      const firstTopId = info.topTriggerIds[0];
+      expect(info.submenuTriggerId).not.toBe('');
+      await openParentChainForTrigger(page, info.submenuTriggerId);
+      const firstTopId = info.submenuTriggerId;
 
       await page.evaluate(async (triggerId) => {
         const h = window.__menuGrader!;
