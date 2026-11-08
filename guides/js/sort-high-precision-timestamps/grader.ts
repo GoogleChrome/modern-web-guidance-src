@@ -115,7 +115,7 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
         if (hasPolyfill) return true;
 
         const bodyText = document.body.innerText.toLowerCase();
-        const hasWarning = bodyText.includes('temporal') || bodyText.includes('polyfill') || bodyText.includes('support') || bodyText.includes('available') || bodyText.includes('failed');
+        const hasWarning = /not supported|unsupported|unavailable|failed to load/.test(bodyText);
         const button = document.querySelector('button');
         const isBtnDisabled = button && (button as HTMLButtonElement).disabled;
         return !!(hasWarning || isBtnDisabled);
