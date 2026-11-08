@@ -122,7 +122,7 @@
       block-size: 1.25rem;
     }
 
-    .site-header:has(.site-menu:popover-open) {
+    .site-header:has(.site-menu:is(:popover-open, .\:popover-open)) {
       border-block-end-color: var(--accent);
     }
 
@@ -142,7 +142,7 @@
       list-style: none;
     }
 
-    .site-menu:popover-open {
+    .site-menu:is(:popover-open, .\:popover-open) {
       display: grid;
     }
 
@@ -380,11 +380,11 @@
       }
 
       /* Also hides the list while it has no popover, so it cannot widen the measured row. */
-      .dropdown-list:not(:popover-open) {
+      .dropdown-list:not(:is(:popover-open, .\:popover-open)) {
         display: none;
       }
 
-      .dropdown-list:popover-open {
+      .dropdown-list:is(:popover-open, .\:popover-open) {
         display: grid;
       }
 
@@ -432,7 +432,7 @@
           transition-behavior: allow-discrete;
         }
 
-        .dropdown-list[popover]:popover-open {
+        .dropdown-list[popover]:is(:popover-open, .\:popover-open) {
           opacity: 1;
           transform: none;
 
@@ -457,13 +457,13 @@
           transform: translateY(-0.5rem);
         }
 
-        .site-menu:popover-open {
+        .site-menu:is(:popover-open, .\:popover-open) {
           opacity: 1;
           transform: translateY(0);
         }
 
         @starting-style {
-          .site-menu:popover-open {
+          .site-menu:is(:popover-open, .\:popover-open) {
             opacity: 0;
             transform: translateY(-0.5rem);
           }
@@ -613,6 +613,8 @@
     const submenu = dropdown.querySelector(".dropdown-list");
 
     const setExpanded = (open) => trigger.setAttribute("aria-expanded", String(open));
+    // The polyfill cannot define :popover-open, so it sets a class instead
+    const isOpen = (el) => el.matches(":is(:popover-open, .\\:popover-open)");
 
     // Narrow layout: the submenu is an inline disclosure, so the script toggles it.
     // It is hidden by script, so without scripting the links stay visible.
@@ -659,14 +661,14 @@
 
     dropdown.addEventListener("pointerenter", (event) => {
       if (event.pointerType === "touch" || !canHover.matches) return;
-      if (!submenu.matches("[popover]") || submenu.matches(":popover-open")) return;
+      if (!submenu.matches("[popover]") || isOpen(submenu)) return;
       previewing = true;
       submenu.showPopover({ source: trigger });
     });
 
     // Close the wide submenu once focus moves to an element outside the list item
     dropdown.addEventListener("focusout", (event) => {
-      if (!submenu.matches(":popover-open") || !event.relatedTarget || dropdown.contains(event.relatedTarget)) return;
+      if (!isOpen(submenu) || !event.relatedTarget || dropdown.contains(event.relatedTarget)) return;
       submenu.hidePopover();
     });
 
@@ -682,7 +684,7 @@
 
     // Collapse only when the inline row does not fit: show it inline and check for overflow.
     function syncLayoutState() {
-      const wasOpen = menu.matches(":popover-open");
+      const wasOpen = isOpen(menu);
       header.classList.add("is-measuring");
       menu.removeAttribute("popover");
       header.classList.add("is-wide");
@@ -697,8 +699,8 @@
 
       if (wide === isWide) return;
       isWide = wide;
-      submenu.toggleAttribute("popover", wide);
       if (wide) submenu.setAttribute("popover", "auto");
+      else submenu.removeAttribute("popover");
       submenu.hidden = !wide;
       setExpanded(false);
     }

@@ -159,10 +159,14 @@ Synchronize the layout state from the same function that handles the navigation 
 
 ```js
 const wide = inner.scrollWidth <= inner.clientWidth; // measured with is-wide set
-submenu.popover = wide ? "auto" : null;
+if (wide) submenu.setAttribute("popover", "auto");
+else submenu.removeAttribute("popover");
 submenu.hidden = !wide;
 trigger.setAttribute("aria-expanded", "false");
 ```
+
+> [!NOTE]
+> Use `setAttribute()`/`removeAttribute()`, NOT the `popover` JS property, as it can cause race conditions if popover is used through a polyfill.
 
 Do not add document-level click-outside, Escape or focus-restoration handlers. The native popover provides those interactions in the wide layout, and the narrow disclosure needs only the click handler. The declarative `popovertarget` makes the button the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
@@ -195,11 +199,11 @@ Position the wide submenu below its trigger with CSS Anchor Positioning (`positi
   }
 
   /* Also hides the list before script sets popover, so an open narrow disclosure cannot widen the measured row */
-  .dropdown-list:not(:popover-open) {
+  .dropdown-list:not(:is(:popover-open, .\:popover-open)) {
     display: none;
   }
 
-  .dropdown-list:popover-open {
+  .dropdown-list:is(:popover-open, .\:popover-open) {
     display: grid;
   }
 }
