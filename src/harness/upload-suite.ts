@@ -1,15 +1,99 @@
 import { Storage } from '@google-cloud/storage';
+import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { cRed, cGreen, cCyan, cBold } from '../core/colors.ts';
 import { suitesDir as baseResultsDir } from '../core/paths.ts';
 import { extractSuiteSummary } from '../dashboard/summary-extractor.js';
+import {
+  BASE64_TRAJECTORY_SCRIPT_RE,
+  extractBase64TrajectoryPayloads,
+  findSecretLeaks,
+  getHostSecrets,
+  sanitizeTextSecrets,
+} from './lib/secret-guard.ts';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
 
-async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, summaryOnly = false) {
-  const uploadTasks: (() => Promise<void>)[] = [];
+const TEXT_UPLOAD_EXTENSIONS = new Set([
+  '.txt', '.log', '.json', '.jsonl', '.patch', '.md', '.css', '.js', '.mjs', '.cjs',
+  '.ts', '.mts', '.cts', '.tsx', '.jsx', '.astro', '.svelte', '.vue', '.htm',
+  '.xml', '.svg', '.yaml', '.yml', '.csv',
+]);
+
+const BINARY_TRAJECTORY_EXTENSIONS = new Set(['.db', '.db-wal', '.db-shm', '.sqlite', '.pb']);
+
+interface UploadPlanEntry {
+  localPath: string;
+  destinationPath: string;
+  redacted: boolean;
+}
+
+function stageOrVerifyFile(
+  fullPath: string,
+  destinationPath: string,
+  fileName: string,
+  stagingDir: string,
+  extraSecrets: readonly string[],
+  entries: UploadPlanEntry[],
+  leakErrors: string[],
+): void {
+  const ext = path.extname(fileName).toLowerCase();
+  const lowerName = fileName.toLowerCase();
+  const isBinaryTrajectory = BINARY_TRAJECTORY_EXTENSIONS.has(ext)
+    || lowerName.endsWith('.db-wal')
+    || lowerName.endsWith('.db-shm');
+
+  if (ext === '.html' || TEXT_UPLOAD_EXTENSIONS.has(ext)) {
+    const original = fs.readFileSync(fullPath, 'utf8');
+    if (ext === '.html') {
+      for (const payload of extractBase64TrajectoryPayloads(original)) {
+        const payloadLeaks = findSecretLeaks(payload, extraSecrets);
+        if (payloadLeaks.length > 0) {
+          leakErrors.push(`${destinationPath} (embedded payload: ${payloadLeaks.join(', ')})`);
+        }
+      }
+    }
+
+    const redacted = sanitizeTextSecrets(original, extraSecrets, { preserveBase64Scripts: ext === '.html' });
+    const textToVerify = ext === '.html' ? redacted.replace(BASE64_TRAJECTORY_SCRIPT_RE, '') : redacted;
+    const remaining = findSecretLeaks(textToVerify, extraSecrets);
+    if (remaining.length > 0) {
+      leakErrors.push(`${destinationPath} (unredacted: ${remaining.join(', ')})`);
+    }
+
+    if (redacted !== original) {
+      const stagedPath = path.join(stagingDir, destinationPath.replace(/^[/\\]+/, ''));
+      fs.mkdirSync(path.dirname(stagedPath), { recursive: true });
+      fs.writeFileSync(stagedPath, redacted, 'utf8');
+      entries.push({ localPath: stagedPath, destinationPath, redacted: true });
+    } else {
+      entries.push({ localPath: fullPath, destinationPath, redacted: false });
+    }
+    return;
+  }
+
+  const leaks = findSecretLeaks(fs.readFileSync(fullPath), extraSecrets, { scanPatterns: isBinaryTrajectory });
+  if (leaks.length > 0) {
+    leakErrors.push(`${destinationPath} (${leaks.join(', ')})`);
+    return;
+  }
+  entries.push({ localPath: fullPath, destinationPath, redacted: false });
+}
+
+export async function uploadDirectory(
+  bucket: { upload: (localPath: string, opts: { destination: string }) => Promise<unknown> },
+  dirPath: string,
+  gcsPrefix: string,
+  summaryOnly = false,
+  options: { extraSecrets?: readonly string[] } = {},
+): Promise<{ uploaded: number; redacted: number }> {
+  const extraSecrets = options.extraSecrets ?? getHostSecrets();
+  const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-upload-stage-'));
+  const entries: UploadPlanEntry[] = [];
+  const leakErrors: string[] = [];
 
   function collectFiles(currentDir: string, currentPrefix: string) {
     const files = fs.readdirSync(currentDir, { withFileTypes: true });
@@ -26,31 +110,38 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, 
         }
       } else {
         if (file.name === '.DS_Store' || file.name === 'pnpm-workspace.yaml') continue;
-
-        if (summaryOnly) {
-          // Only upload summary files at the root
-          if (file.name !== 'evals.json' && file.name !== 'evals.md') continue;
-        }
-
-        uploadTasks.push(async () => {
-          console.log(`Uploading ${fullPath} to gs://${BUCKET_NAME}/${destinationPath}...`);
-          await bucket.upload(fullPath, {
-            destination: destinationPath,
-          });
-        });
+        if (summaryOnly && file.name !== 'evals.json' && file.name !== 'evals.md') continue;
+        stageOrVerifyFile(fullPath, destinationPath, file.name, stagingDir, extraSecrets, entries, leakErrors);
       }
     }
   }
 
-  collectFiles(dirPath, gcsPrefix);
+  try {
+    collectFiles(dirPath, gcsPrefix);
 
-  console.log(`Discovered ${uploadTasks.length} files to upload. Uploading concurrently...`);
+    if (leakErrors.length > 0) {
+      throw new Error(`Upload blocked: detected credentials in ${leakErrors.length} file(s):\n  - ${leakErrors.join('\n  - ')}`);
+    }
 
-  // Run uploads in concurrent chunks to avoid hitting network/file-descriptor limits
-  const concurrencyLevel = 50;
-  for (let i = 0; i < uploadTasks.length; i += concurrencyLevel) {
-    const chunk = uploadTasks.slice(i, i + concurrencyLevel);
-    await Promise.all(chunk.map(task => task()));
+    const redactedCount = entries.filter(e => e.redacted).length;
+    console.log(
+      `Discovered ${entries.length} files to upload${redactedCount > 0 ? ` (${redactedCount} redacted)` : ''}. Uploading concurrently...`,
+    );
+
+    const concurrencyLevel = 50;
+    for (let i = 0; i < entries.length; i += concurrencyLevel) {
+      const chunk = entries.slice(i, i + concurrencyLevel);
+      await Promise.all(
+        chunk.map(async (entry) => {
+          console.log(`Uploading ${entry.destinationPath} to gs://${BUCKET_NAME}/${entry.destinationPath}...`);
+          await bucket.upload(entry.localPath, { destination: entry.destinationPath });
+        }),
+      );
+    }
+
+    return { uploaded: entries.length, redacted: redactedCount };
+  } finally {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
   }
 }
 
@@ -221,4 +312,6 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(console.error);
+}

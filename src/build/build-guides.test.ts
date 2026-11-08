@@ -1,6 +1,18 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { chunkMarkdown, formatChunkHeader, generateGuidesIndex, generateGuidesTocYaml, type DevsiteGuideMetadata } from './build-guides.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  chunkMarkdown,
+  formatChunkHeader,
+  generateGuidesIndex,
+  generateGuidesTocYaml,
+  processSingleGuideFile,
+  type DevsiteGuideMetadata,
+  type StoreUseCase,
+} from './build-guides.ts';
+import { StaticEmbedder } from '../rag/static-embedder.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {
@@ -167,5 +179,46 @@ describe('formatChunkHeader', () => {
       header,
       'Email verification\nemail-verification (forms)\nFeatures: email-verification (email verification)'
     );
+  });
+});
+
+describe('processSingleGuideFile cache miss regression', () => {
+  it('assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-cache-miss-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`
+      );
+      const embedder = StaticEmbedder.getInstance();
+      embedder.init();
+
+      const storeUseCases: StoreUseCase[] = [];
+      const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
+      const emptyCache = new Map<string, Float32Array>();
+
+      await processSingleGuideFile(
+        guideFile,
+        'css',
+        'test-guide',
+        [],
+        storeUseCases,
+        embedder,
+        undefined,
+        undefined,
+        undefined,
+        emptyCache,
+        missingChunks
+      );
+
+      assert.ok(missingChunks.length > 0, 'Should record cache miss');
+      assert.ok(storeUseCases.length > 0, 'Should have generated store use cases');
+      for (const item of storeUseCases) {
+        assert.deepStrictEqual(item.vector, [], 'Uncached chunk vector must be empty array, not StaticEmbedder vector');
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

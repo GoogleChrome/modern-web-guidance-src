@@ -10,7 +10,7 @@ import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 import { rootDir } from '../../core/paths.ts';
 import { extractTestTitles } from '../../core/grader-coverage.ts';
 import { isSpecSkipped } from '../../grading/run-grader.ts';
-import { type ScenarioCheck } from './metrics.ts';
+import { type PageLoadResult, type ScenarioCheck } from './metrics.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -398,12 +398,8 @@ export function evaluateScenarioResults(
             continue;
           }
 
-          // Strip ANSI colors and local paths (repo root, temp grading dir, home) so diagnostics are portable and shareable.
-          const clean = (text: string) => stripVTControlCharacters(text)
-            .replaceAll(rootDir + path.sep, '')
-            .replace(/\/tmp\/grade-run-[^/]+\//g, '')
-            .replaceAll(os.homedir(), '~')
-            .trim();
+          // Strip ANSI colors and local paths (repo root, temp grading dir, agent homes, home) so diagnostics are portable and shareable.
+          const clean = sanitizeDiagnosticText;
           // A timeout reports "Test timeout exceeded" first (no location) and the action that was cut off second.
           const errors: { message?: string; location?: { file: string; line: number } }[] = lastResult?.errors ?? [];
           const rawError = errors.map(e => e.message).filter(Boolean).join('\n\n');
@@ -440,6 +436,39 @@ export function evaluateScenarioResults(
     console.error(`Error processing results for ${dir}:`, err);
     return makeAgentFailures(err.message || 'System Error');
   }
+}
+
+export function sanitizeDiagnosticText(text: string): string {
+  return stripVTControlCharacters(String(text))
+    .replaceAll(`file://${rootDir}${path.sep}`, '')
+    .replaceAll(`file://${rootDir}`, '')
+    .replaceAll(rootDir + path.sep, '')
+    .replace(/file:\/\/\/tmp\/(?:grade-run|ghh)-[^/]+\//g, '')
+    .replace(/\/tmp\/(?:grade-run|ghh)-[^/]+\//g, '')
+    .replaceAll(`file://${os.homedir()}`, '~')
+    .replaceAll(os.homedir(), '~')
+    .trim();
+}
+
+function extractPageLoadFromResults(graderResults: string): PageLoadResult | undefined {
+  if (!fs.existsSync(graderResults)) return undefined;
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+    const raw = json?.pageLoad;
+    if (raw && typeof raw === 'object' && typeof raw.ok === 'boolean' && Array.isArray(raw.errors)) {
+      if (raw.noPage) return undefined;
+      return {
+        ok: raw.ok,
+        errors: raw.errors.map((e: unknown) => sanitizeDiagnosticText(String(e))),
+        ...(typeof raw.buildWarning === 'string' && raw.buildWarning
+          ? { buildWarning: sanitizeDiagnosticText(raw.buildWarning) }
+          : {}),
+      };
+    }
+  } catch {
+    // ignore malformed or unreadable results file
+  }
+  return undefined;
 }
 
 function readRuntimeData(dir: string): any | undefined {
@@ -530,6 +559,7 @@ async function collectTaskRunEntry(
   const testName = `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
   const tokenUsage = extractTokenUsageFromResults(dir);
   const runtimeData = readRuntimeData(dir);
+  const pageLoad = extractPageLoadFromResults(ctx.graderResults);
 
   const payload = {
     runNumber,
@@ -548,6 +578,7 @@ async function collectTaskRunEntry(
     files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
     runtime: runtimeData,
     tokenUsage,
+    ...(pageLoad ? { pageLoad } : {}),
   };
 
   return { testName, payload };

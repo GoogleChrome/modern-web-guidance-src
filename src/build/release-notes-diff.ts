@@ -53,6 +53,7 @@ const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
+  '!**/static-model/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
   '!**/guides.json',
   '!**/skill-version.txt',

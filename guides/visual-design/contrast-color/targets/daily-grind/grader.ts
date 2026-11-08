@@ -2,46 +2,14 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import {
-  CSSStyleRule,
-  CSSGroupingRule,
-  CSSSupportsRule,
-  type CSSRule,
-  type CSSStyleSheet,
-} from 'cssomnom';
+import { CSSStyleRule, CSSSupportsRule } from 'cssomnom';
 import type { Document } from 'linkedom';
 
 // @ts-ignore - import.meta.url is supported in ESM test runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...getAllStyleRules(rule.cssRules));
-    }
-  }
-  return result;
-}
-
-function getAllSupportsRules(rules: Iterable<CSSRule>): CSSSupportsRule[] {
-  const result: CSSSupportsRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSSupportsRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...getAllSupportsRules(rule.cssRules));
-    }
-  }
-  return result;
-}
 
 function parseColorRgb(colorStr: string): [number, number, number] | null {
   const match = colorStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
@@ -83,8 +51,7 @@ function getContrastRatio(rgb1: [number, number, number], rgb2: [number, number,
 
 test.describe('contrast-color Target Grader', () => {
   test('Applies contrast-color() using a background custom property to define text color on themed elements', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasContrastColorWithVar = styleRules.some((rule) => {
       const colorVal = rule.style.getPropertyValue('color');
@@ -95,9 +62,8 @@ test.describe('contrast-color Target Grader', () => {
   });
 
   test('Provides a readable fallback text color when contrast-color() is not supported', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
-    const supportsRules = getAllSupportsRules(stylesheet.cssRules);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
+    const supportsRules = getRules(targetFiles, CSSSupportsRule);
 
     const hasBtnFallbackColor =
       allStyleRules.some((rule) => {
@@ -119,9 +85,8 @@ test.describe('contrast-color Target Grader', () => {
   });
 
   test('Includes a dynamic background readability fallback (RCS oklch, text-shadow, text-stroke, overlay, or SVG filter) for non-supporting browsers', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
-    const supportsRules = getAllSupportsRules(stylesheet.cssRules);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
+    const supportsRules = getRules(targetFiles, CSSSupportsRule);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const hasRcsFallback =
@@ -152,8 +117,7 @@ test.describe('contrast-color Target Grader', () => {
   });
 
   test('Sets paint-order to stroke fill or markers stroke fill whenever a text stroke fallback is used', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
 
     const strokeRules = allStyleRules.filter((r) => {
       const stroke =
@@ -174,8 +138,7 @@ test.describe('contrast-color Target Grader', () => {
   });
 
   test('Does not use contrast-color() to define background or background-color on any element', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
 
     const usesContrastColorForText = allStyleRules.some((r) =>
       /\bcontrast-color\s*\(/i.test(r.style.getPropertyValue('color') || r.cssText)
@@ -222,8 +185,7 @@ test.describe('contrast-color Target Grader', () => {
     test('Updating the background color custom property dynamically updates the computed text color to maintain >= 4.5:1 contrast', async ({
       page,
     }) => {
-      const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-      const allStyleRules = getAllStyleRules(stylesheet.cssRules);
+      const allStyleRules = getRules(targetFiles, CSSStyleRule);
       const hasStaticDynamicVarContrast = allStyleRules.some((r) =>
         /\bcontrast-color\s*\(\s*var\(--/i.test(r.style.getPropertyValue('color') || r.cssText) ||
         /\boklch\s*\(\s*from\s+var\(--/i.test(r.style.getPropertyValue('color') || r.cssText)

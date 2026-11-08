@@ -24,6 +24,7 @@ import type { EmbedderLike, UseCaseResult } from "../search.ts";
 
 /** Calibrated ~5pp below main's 0.849 to catch ranking regressions without tripping on minor token drift. */
 const AGENT_SANITY_NDCG_FLOOR = 0.80;
+const AGENT_SANITY_HIT1_FLOOR = 0.75;
 const HARNESS_SANITY_NDCG_FLOOR = 0.80;
 
 interface TargetSpec {
@@ -87,6 +88,10 @@ export function computeEmbedderHash(worktreePath = rootDir): string {
   const ragDir = resolveRagDir(worktreePath);
   const hash = crypto.createHash("sha256");
   const candidateFiles = [
+    path.join(ragDir, "static-embedder.ts"),
+    path.join(ragDir, "static-model/words.json"),
+    path.join(ragDir, "static-model/words.i8"),
+    path.join(ragDir, "static-model/words.scale.f32"),
     path.join(ragDir, "tfjs-embedder.ts"),
     path.join(ragDir, "tfjs-kernels.ts"),
     path.join(ragDir, "tfjs-kernels-precise.ts"),
@@ -113,16 +118,19 @@ export function computeEmbedderHash(worktreePath = rootDir): string {
 
 function runEmbeddingWorker(targetDir: string, queries: string[]): Record<string, number[]> {
   const ragDir = resolveRagDir(targetDir);
-  const embedderPath = path.join(ragDir, "tfjs-embedder.ts");
+  const isStatic = fs.existsSync(path.join(ragDir, "static-embedder.ts"));
+  const embedderFile = isStatic ? "static-embedder.ts" : "tfjs-embedder.ts";
+  const embedderExport = isStatic ? "StaticEmbedder" : "TfjsEmbedder";
+  const embedderPath = path.join(ragDir, embedderFile);
   const tmpInput = path.join(os.tmpdir(), `rag-bench-queries-${process.pid}-${Date.now()}.json`);
   const tmpOutput = path.join(os.tmpdir(), `rag-bench-vectors-${process.pid}-${Date.now()}.json`);
   fs.writeFileSync(tmpInput, JSON.stringify(queries), "utf-8");
 
   const workerScript = `
     import fs from "node:fs";
-    import { TfjsEmbedder } from ${JSON.stringify(pathToFileURL(embedderPath).href)};
+    import { ${embedderExport} } from ${JSON.stringify(pathToFileURL(embedderPath).href)};
     const queries = JSON.parse(fs.readFileSync(${JSON.stringify(tmpInput)}, "utf-8"));
-    const embedder = TfjsEmbedder.getInstance();
+    const embedder = ${embedderExport}.getInstance();
     const out = {};
     for (const q of queries) {
       out[q] = await embedder.embed(q);
@@ -607,10 +615,17 @@ async function runSingleBenchmark(
           `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`
         );
       }
-      if ((s.dataset === "agent" || s.dataset.startsWith("agent-")) && s.ndcg5 < AGENT_SANITY_NDCG_FLOOR) {
-        failures.push(
-          `Dataset '${s.dataset}' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${AGENT_SANITY_NDCG_FLOOR.toFixed(3)}.`
-        );
+      if (s.dataset === "agent" || s.dataset.startsWith("agent-")) {
+        if (s.ndcg5 < AGENT_SANITY_NDCG_FLOOR) {
+          failures.push(
+            `Dataset '${s.dataset}' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${AGENT_SANITY_NDCG_FLOOR.toFixed(3)}.`
+          );
+        }
+        if (s.hit1 < AGENT_SANITY_HIT1_FLOOR) {
+          failures.push(
+            `Dataset '${s.dataset}' Hit@1 (${(s.hit1 * 100).toFixed(1)}%) fell below sanity floor ${(AGENT_SANITY_HIT1_FLOOR * 100).toFixed(1)}%.`
+          );
+        }
       }
       if (s.dataset === "harness" && s.ndcg5 < HARNESS_SANITY_NDCG_FLOOR) {
         failures.push(

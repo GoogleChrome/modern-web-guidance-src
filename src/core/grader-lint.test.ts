@@ -1,6 +1,11 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  checkAllGraders,
+  checkGraderFile,
   checkGraderSource,
   isGen2Grader,
   isGraderFile,
@@ -400,6 +405,27 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
       assert.ok(formatted.includes('guides/test/grader.ts'));
       assert.ok(formatted.includes('L12:5'));
       assert.ok(formatted.includes('no-vacuous-boolean-expect'));
+    });
+  });
+
+  describe('checkGraderFile & checkAllGraders', () => {
+    it('lints grader files on disk without TypeScript lib overhead', (t) => {
+      const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grader-lint-disk-'));
+      t.after(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
+
+      const badGrader = path.join(tmpRoot, 'guides', 'css', 'demo', 'targets', 'app', 'grader.ts');
+      const goodGrader = path.join(tmpRoot, 'guides', 'css', 'clean', 'grader.ts');
+      fs.mkdirSync(path.dirname(badGrader), { recursive: true });
+      fs.mkdirSync(path.dirname(goodGrader), { recursive: true });
+
+      fs.writeFileSync(badGrader, `test('bad', async ({ page }) => {\n  await page.goto('file:///tmp/x.html');\n});\n`);
+      fs.writeFileSync(goodGrader, `test('good', async ({ page }) => {\n  await expect(page).toHaveTitle(/x/);\n});\n`);
+
+      assert.deepStrictEqual(checkGraderFile(badGrader).map(v => v.ruleId), ['no-gen2-file-goto']);
+      assert.deepStrictEqual(checkGraderFile(goodGrader), []);
+
+      const all = checkAllGraders({ repoRoot: tmpRoot });
+      assert.deepStrictEqual([...all.keys()], ['guides/css/demo/targets/app/grader.ts']);
     });
   });
 });

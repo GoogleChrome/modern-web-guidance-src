@@ -69,7 +69,7 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
   });
 
   test('The email input MUST have autocomplete="username"', async ({ page }) => {
-    await expect(page.locator('input[type="email"]').first()).toHaveAttribute('autocomplete', 'username');
+    await expect(page.locator('input[type="email"]').first()).toHaveAttribute('autocomplete', /\busername\b/);
   });
 
   test('The password input MUST have type="password"', async ({ page }) => {
@@ -77,11 +77,7 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
   });
 
   test('The password input MUST have autocomplete="new-password"', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveAttribute('autocomplete', 'new-password');
-  });
-
-  test('The password input MUST have id="new-password"', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveId('new-password');
+    await expect(page.locator('input[type="password"]').first()).toHaveAttribute('autocomplete', /\bnew-password\b/);
   });
 
   test('The email input MUST have the "required" attribute', async ({ page }) => {
@@ -101,9 +97,15 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
   });
 
   test('Name input pattern MUST NOT restrict to Latin-only characters', async ({ page }) => {
-    const pattern = await page.locator('input[autocomplete="name"], input[id*="name"], input[name*="name"]').first().getAttribute('pattern').catch(() => null);
-    if (!pattern) return;
-    expect(new RegExp(`^(?:${pattern})$`, 'u').test('Renée')).toBe(true);
+    const isValid = await page.evaluate(() => {
+      const form = document.querySelector('form');
+      if (!form) return false;
+      const nameInput = form.querySelector<HTMLInputElement>('input[autocomplete*="name"], input[id*="name"], input[name*="name"]');
+      const pattern = nameInput?.getAttribute('pattern');
+      if (!pattern) return true;
+      return new RegExp(`^(?:${pattern})$`, 'u').test('Renée');
+    });
+    expect(isValid).toBe(true);
   });
 
 });

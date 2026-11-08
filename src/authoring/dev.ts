@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync, execFileSync } from 'child_process';
 import matter from '@11ty/gray-matter';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
+import { gitExec } from '../core/git-utils.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
@@ -17,6 +17,7 @@ import {
 } from './dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
+import { findGraderFiles } from '../core/grader-lint.ts';
 import {
   type GuideInventory,
   GUIDE_FILE,
@@ -66,23 +67,21 @@ export function extractGuideDescription(rawGuideContent: string): string {
   return desc;
 }
 
+function runGitInDir(cwd: string, args: readonly string[]): string {
+  return gitExec(args, { cwd, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+}
+
 export const devCli = {
   commitStepArtifacts(guideDir: string, commitMessage: string): boolean {
     try {
-      const branch = execSync('git branch --show-current', {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
+      const branch = runGitInDir('.', ['branch', '--show-current']);
       if (!branch.startsWith('gd-dev/')) return false;
 
-      const status = execSync(`git status --porcelain "${guideDir}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
+      const status = runGitInDir('.', ['status', '--porcelain', '--', guideDir]);
       if (!status) return false;
 
-      execSync(`git add "${guideDir}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
-      execSync(`git commit -m "${commitMessage}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      runGitInDir('.', ['add', '--', guideDir]);
+      runGitInDir('.', ['commit', '-m', commitMessage]);
       return true;
     } catch {
       return false;
@@ -102,32 +101,158 @@ export function changedSince(inputs: string[], outputs: string[]): boolean {
 
   const byMtime = () =>
     Math.max(...ins.map(p => fs.statSync(p).mtimeMs)) > Math.max(...outs.map(p => fs.statSync(p).mtimeMs));
-  const git = (args: string[]): string =>
-    execFileSync('git', args, { cwd: path.dirname(outs[0]), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const cwd = path.dirname(outs[0]);
 
   try {
-    const isDirty = (p: string) => git(['status', '--porcelain', '--', p]) !== '';
+    const isDirty = (p: string) => runGitInDir(cwd, ['status', '--porcelain', '--', p]) !== '';
     if (outs.some(isDirty)) return byMtime();
     if (ins.some(isDirty)) return true;
-    const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
+    const lastOutputCommit = runGitInDir(cwd, ['log', '-1', '--format=%H', '--', ...outs]);
     if (!lastOutputCommit) return byMtime();
-    return git(['rev-list', '--count', `${lastOutputCommit}..HEAD`, '--', ...ins]) !== '0';
+    return runGitInDir(cwd, ['rev-list', '--count', `${lastOutputCommit}..HEAD`, '--', ...ins]) !== '0';
   } catch {
     return byMtime();
+  }
+}
+
+/**
+ * Batched equivalent of `changedSince([expectationsPath], [targetGraderPath])` across all guides.
+ * Returns normalized repo-relative paths (`guides/<cat>/<name>/targets/<app>/grader.ts`).
+ */
+export function findStaleTargets(repoRootDir: string): Set<string> {
+  const guidesRoot = path.join(repoRootDir, 'guides');
+  const pairs: Array<{ expRel: string; graderRel: string; expAbs: string; graderAbs: string }> = [];
+  for (const graderAbs of findGraderFiles(repoRootDir)) {
+    const relParts = path.relative(guidesRoot, graderAbs).split(path.sep);
+    if (relParts.length !== 5 || relParts[2] !== TARGETS_DIR || relParts.some(p => p.startsWith('.'))) continue;
+    const [cat, guide, , app] = relParts;
+    const expAbs = path.join(guidesRoot, cat, guide, EXPECTATIONS_FILE);
+    if (!fs.existsSync(expAbs)) continue;
+    pairs.push({
+      expRel: `guides/${cat}/${guide}/${EXPECTATIONS_FILE}`,
+      graderRel: `guides/${cat}/${guide}/${TARGETS_DIR}/${app}/${GRADER_FILE}`,
+      expAbs,
+      graderAbs,
+    });
+  }
+  if (pairs.length === 0) return new Set();
+
+  const isNewerMtime = (p: { expAbs: string; graderAbs: string }) =>
+    fs.statSync(p.expAbs).mtimeMs > fs.statSync(p.graderAbs).mtimeMs;
+
+  try {
+    const statusRaw = gitExec(['status', '--porcelain', '-z', '--', 'guides/'], {
+      cwd: repoRootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const dirtyPaths = new Set<string>();
+    const entries = statusRaw.split('\0');
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.length < 4) continue;
+      const xy = entry.slice(0, 2);
+      dirtyPaths.add(entry.slice(3));
+      if (xy.includes('R') || xy.includes('C')) {
+        const orig = entries[++i];
+        if (orig) dirtyPaths.add(orig);
+      }
+    }
+
+    const revLines = gitExec(['rev-list', '--topo-order', '--parents', 'HEAD'], {
+      cwd: repoRootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .reverse();
+
+    const shaToIdx = new Map<string, number>();
+    for (let i = 0; i < revLines.length; i++) {
+      shaToIdx.set(revLines[i].slice(0, 40), i);
+    }
+    const words = Math.ceil(revLines.length / 32);
+    const ancestors: Uint32Array[] = [];
+    for (let i = 0; i < revLines.length; i++) {
+      const bs = new Uint32Array(words);
+      bs[i >>> 5] |= 1 << (i & 31);
+      const line = revLines[i];
+      for (let pos = 41; pos < line.length; pos += 41) {
+        const pIdx = shaToIdx.get(line.slice(pos, pos + 40));
+        if (pIdx !== undefined) {
+          const pBs = ancestors[pIdx];
+          for (let w = 0; w < words; w++) bs[w] |= pBs[w];
+        }
+      }
+      ancestors[i] = bs;
+    }
+
+    const logRaw = gitExec(['log', '--topo-order', '--cc', '--format=COMMIT|%H', '--name-only', '--', 'guides/'], {
+      cwd: repoRootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const latestGraderCommit = new Map<string, number>();
+    const expCommits = new Map<string, number[]>();
+    for (const block of logRaw.split('\nCOMMIT|')) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+      const lines = trimmed.split('\n');
+      const header = lines[0].startsWith('COMMIT|') ? lines[0].slice('COMMIT|'.length) : lines[0];
+      const cIdx = shaToIdx.get(header.slice(0, 40));
+      if (cIdx === undefined) continue;
+      for (let i = 1; i < lines.length; i++) {
+        const file = lines[i].trim();
+        if (!file) continue;
+        if (file.endsWith(`/${GRADER_FILE}`)) {
+          if (!latestGraderCommit.has(file)) latestGraderCommit.set(file, cIdx);
+        } else if (file.endsWith(`/${EXPECTATIONS_FILE}`)) {
+          let list = expCommits.get(file);
+          if (!list) {
+            list = [];
+            expCommits.set(file, list);
+          }
+          list.push(cIdx);
+        }
+      }
+    }
+
+    const stale = new Set<string>();
+    for (const p of pairs) {
+      if (dirtyPaths.has(p.graderRel)) {
+        if (isNewerMtime(p)) stale.add(p.graderRel);
+        continue;
+      }
+      if (dirtyPaths.has(p.expRel)) {
+        stale.add(p.graderRel);
+        continue;
+      }
+      const gIdx = latestGraderCommit.get(p.graderRel);
+      if (gIdx === undefined) {
+        if (isNewerMtime(p)) stale.add(p.graderRel);
+        continue;
+      }
+      const gAnc = ancestors[gIdx];
+      const eList = expCommits.get(p.expRel);
+      if (eList && eList.some(eIdx => (gAnc[eIdx >>> 5] & (1 << (eIdx & 31))) === 0)) {
+        stale.add(p.graderRel);
+      }
+    }
+    return stale;
+  } catch {
+    return new Set(pairs.filter(p => changedSince([p.expAbs], [p.graderAbs])).map(p => p.graderRel));
   }
 }
 
 function descriptionChangedSince(guidePath: string, outputs: string[]): 'changed' | 'unchanged' | 'unknown' {
   const outs = outputs.filter(p => fs.existsSync(p));
   if (outs.length === 0) return 'unknown';
-  const git = (args: string[]): string =>
-    execFileSync('git', args, { cwd: path.dirname(guidePath), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const cwd = path.dirname(guidePath);
 
   try {
-    if (outs.some(p => git(['status', '--porcelain', '--', p]) !== '')) return 'unknown';
-    const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
+    if (outs.some(p => runGitInDir(cwd, ['status', '--porcelain', '--', p]) !== '')) return 'unknown';
+    const lastOutputCommit = runGitInDir(cwd, ['log', '-1', '--format=%H', '--', ...outs]);
     if (!lastOutputCommit) return 'unknown';
-    const prevGuide = git(['show', `${lastOutputCommit}:./${path.basename(guidePath)}`]);
+    const prevGuide = runGitInDir(cwd, ['show', `${lastOutputCommit}:./${path.basename(guidePath)}`]);
     return extractGuideDescription(prevGuide) !== extractGuideDescription(fs.readFileSync(guidePath, 'utf-8'))
       ? 'changed'
       : 'unchanged';

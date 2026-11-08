@@ -107,7 +107,7 @@ export async function generateTargetGrader(
       path.join(workDir, 'linkedom.d.ts')
     );
     fs.copyFileSync(
-      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'index.d.ts'),
       path.join(workDir, 'cssomnom.d.ts')
     );
 

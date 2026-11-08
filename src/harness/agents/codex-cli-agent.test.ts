@@ -8,8 +8,10 @@ import {
   collectCodexGuidesFromTrajectory,
   collectCodexToolsFromTrajectory,
   extractCodexCliModel,
-  extractCodexCliTokenUsage
+  extractCodexCliTokenUsage,
+  writeTrajectorySummary
 } from '../lib/trajectory-normalizer.ts';
+import { hasTrajectoryGuideLeak } from '../lib/guide-usage.ts';
 import {
   ensureFreshHostCodexAuth,
   extractCommandsFromCodexItem,
@@ -778,4 +780,79 @@ test('parseCodexTrajectory preserves tools.web__run calls when batched with exec
     type: 'open_page',
     url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
   });
+
+  // Failed open calls ("Failed to fetch <url>" or "URL <url> is not accessible") keep action.params intact,
+  // record failedOpenUrls, and do not trigger hasTrajectoryGuideLeak end-to-end (including when batched with search_query)
+  const failedOpenCall = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_failed_open',
+      name: 'exec',
+      input: 'text(await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}],response_length:"long"}));'
+    }
+  };
+  const failedOpenOutput = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call_output',
+      call_id: 'call_failed_open',
+      output: [
+        {
+          type: 'input_text',
+          text: 'Internal Error ()\nSource: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems","lineno":null}); \nFailed to fetch https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems: Cache miss'
+        }
+      ]
+    }
+  };
+  const failedOpenSummary = parseCodexTrajectory([failedOpenCall, failedOpenOutput]);
+  assert.strictEqual(failedOpenSummary.steps.length, 1);
+  assert.deepStrictEqual(failedOpenSummary.steps[0].action?.params?.webRuns, [
+    'tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}],response_length:"long"})'
+  ]);
+  assert.deepStrictEqual(failedOpenSummary.steps[0].action?.params?.failedOpenUrls, [
+    'https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems'
+  ]);
+
+  const tempDir = createTempDir();
+  try {
+    writeTrajectorySummary(tempDir, failedOpenSummary);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'support-global-calendar-systems'), false);
+
+    // Batched step combining a search_query with a failed open on the target guide
+    const batchedCall = {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call',
+        call_id: 'call_batched_failed_open',
+        name: 'exec',
+        input: [
+          'const s = await tools.web__run({search_query:[{q:"Intl Temporal calendars"}]});',
+          'const p = await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}]});',
+          'text(s + p);'
+        ].join('\n')
+      }
+    };
+    const batchedOutput = {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call_output',
+        call_id: 'call_batched_failed_open',
+        output: [
+          {
+            type: 'input_text',
+            text: [
+              'Support global calendar systems | Modern Web Guidance (https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems)\n\uE200cite\uE202turn0search0\uE201Snippet text',
+              'Internal Error ()\nSource: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems","lineno":null}); \nURL https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems is not accessible'
+            ].join('\n')
+          }
+        ]
+      }
+    };
+    const batchedSummary = parseCodexTrajectory([batchedCall, batchedOutput]);
+    writeTrajectorySummary(tempDir, batchedSummary);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'support-global-calendar-systems'), false);
+  } finally {
+    removeTempDir(tempDir);
+  }
 });

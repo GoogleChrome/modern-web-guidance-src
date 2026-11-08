@@ -26,6 +26,7 @@ describe("searchUseCases", () => {
     assert.ok(items.length > 0, "Corpus must have vector entries");
 
     for (const item of items) {
+      if (item.vector.length === 0) continue;
       let sumSq = 0;
       for (const val of item.vector) {
         sumSq += val * val;
@@ -40,7 +41,7 @@ describe("searchUseCases", () => {
 
   it("works with a custom mock EmbedderLike", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
@@ -48,7 +49,7 @@ describe("searchUseCases", () => {
 
   it("returns empty array when dense top-1 is below floor AND BM25 has no matches", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // Nonce query with zero BM25 lexical matches in the guide corpus
     const results = await searchUseCases("xyznonexistentunmatchedterm998877", 5, 0.3, mockEmbedder);
@@ -57,7 +58,7 @@ describe("searchUseCases", () => {
 
   it("fuses and returns results when dense is below floor but BM25 matches", async () => {
     const zeroEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form".
     const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
@@ -69,7 +70,7 @@ describe("searchUseCases", () => {
 
   it("excludes sub-floor dense list and returns only BM25 matches when topDenseSim < minSimilarity", async () => {
     const zeroEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // "i18n pluralization" has 1 BM25 match and 0 dense similarity (below floor).
     // When dense is below floor, only BM25 matches are returned without sub-floor dense padding.
@@ -79,13 +80,22 @@ describe("searchUseCases", () => {
     assert.strictEqual(results[0].similarity, 0);
   });
 
+  it("returns results for queries matching uncached BM25-only guide entries", async () => {
+    // Queries against real guide text return results even if simulated with 0 dense vector
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 256 }, () => 0),
+    };
+    const results = await searchUseCases("payment card checkout", 5, 0.3, zeroEmbedder);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
+  });
+
   it("above-floor behavior is unchanged and preserves dense similarities", async () => {
     const results = await searchUseCases("autofill address form", 5, 0.3);
     assert.ok(results.length > 0);
     assert.strictEqual(results[0].id, "autofill-address-form");
     assert.ok(results[0].similarity > 0.3);
   });
-
   it("keeps sibling guides on a cluster query", async () => {
     const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
     assert.ok(
@@ -95,9 +105,16 @@ describe("searchUseCases", () => {
   });
 
   it("surfaces guides matching by web feature ID via enriched chunk content", async () => {
-    // details-name is a web-feature-id on search-hidden-content, enriched in chunk header
+    // details-name is a web-feature-id on accordion and search-hidden-content, enriched in chunk header
     const results = await searchUseCases("details-name", 5);
     assert.ok(results.length > 0, "Should return results for web feature ID query");
-    assert.strictEqual(results[0].id, "search-hidden-content");
+    assert.strictEqual(results[0].id, "accordion");
+  });
+
+  it("returns results for single-token API queries", async () => {
+    for (const q of ["fetchpriority", "startViewTransition", "WebGPU", "LCP", "INP", "webmcp", "content-visibility", "@starting-style", "field-sizing", "bento"]) {
+      const results = await searchUseCases(q, 5);
+      assert.ok(results.length > 0, `Single-token API query "${q}" should return results`);
+    }
   });
 });

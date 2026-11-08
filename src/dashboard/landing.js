@@ -1,6 +1,5 @@
 import {
     initGoogleAuth,
-    authenticatedFetch,
     getAccessToken,
     escapeHtml,
     timeAgo,
@@ -22,6 +21,8 @@ import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { updateHeroFromSuites } from './hero.js';
 import { updateShowcaseFromSuites } from './showcase.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
 
 /**
  * @typedef {import('./insights.js').ManifestSuite & {
@@ -52,6 +53,8 @@ let currentModelFilter = 'all';
 let currentSearchFilter = '';
 /** @type {boolean} */
 let scheduledOnly = true;
+/** @type {'remote' | 'public' | null} */
+let loadedManifestSource = null;
 /** @type {SuiteSortKey} */
 let currentSuiteSort = 'date';
 /** @type {SortDirection} */
@@ -73,10 +76,6 @@ let currentGuideSortDir = 'asc';
 let currentInsightsMode = 'all';
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
-function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-}
-
 /** @param {string} testId */
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
 document.addEventListener('DOMContentLoaded', async () => {
@@ -90,14 +89,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
 
-        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        // A page that read the public copy reloads so every row comes from the bucket;
+        // the dev server merges the bucket into its local results in place.
         initGoogleAuth(async () => {
-            await loadRemoteTests();
+            const source = resolveDataSource();
+            if (source === 'remote' || source === 'public') {
+                reloadAsRemote();
+                return;
+            }
+            await loadManifestTests('remote');
         });
 
-        await loadLocalTests();
-        if (getAccessToken()) {
-            await loadRemoteTests();
+        if (resolveDataSource(params) === 'public') {
+            await loadManifestTests('public');
+        } else {
+            await loadLocalTests();
+            if (getAccessToken()) {
+                await loadManifestTests('remote');
+            }
         }
 
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -301,7 +310,11 @@ function setupInsightsControls() {
             renderPivotInsights();
         });
         limitInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') limitInput.blur();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
+                limitInput.blur();
+            }
         });
     }
 
@@ -414,11 +427,8 @@ function fetchEvalsForHero(testId) {
  * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>} */
 async function fetchEvalsUncached(testId) {
     const match = Object.values(allTestData).find(s => s.testId === testId);
-    if (match?.source === 'remote') {
-        const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testId}/evals.json`)}?alt=media&t=${Date.now()}`;
-        const res = await authenticatedFetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch remote evals for ${testId}`);
-        return res.json();
+    if (match?.source === 'remote' || match?.source === 'public') {
+        return new ApiClient(match.source).getEvals(testId);
     }
     const fetchPath = match?.source === 'static' ? `results/${testId}/evals.json` : `${testId}/evals.json?source=local`;
     const res = await fetch(`${fetchPath}${fetchPath.includes('?') ? '&' : '?'}t=${Date.now()}`);
@@ -426,13 +436,27 @@ async function fetchEvalsUncached(testId) {
     return res.json();
 }
 
+/**
+ * The data source this page actually loaded from, for the hero and for links to
+ * other pages. Usually `resolveDataSource()`, except after a 403 sent a signed-in
+ * visitor to the public copy: links must then say `source=public` or the suite
+ * page would try the bucket again and bounce back here.
+ * @returns {import('./api.js').DataSource}
+ */
+function activeDataSource() {
+    const resolved = resolveDataSource();
+    return resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
+}
+
 function syncHero() {
     const suites = Object.values(allTestData);
-    updateShowcaseFromSuites(suites);
+    const source = activeDataSource();
+    updateShowcaseFromSuites(suites, { source });
     updateHeroFromSuites(suites, {
+        source,
         fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
-            updateShowcaseFromSuites(suites, { hydrated: true });
+            updateShowcaseFromSuites(suites, { hydrated: true, source });
             refreshFilterOptions();
             renderSuites();
             const drawer = document.getElementById('breakdowns');
@@ -442,9 +466,7 @@ function syncHero() {
 }
 
 async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
-    }
+    if (!isLocalServer()) return;
 
     try {
         let response = await fetch(`/api/suites?t=${Date.now()}`);
@@ -497,24 +519,22 @@ async function loadLocalTests() {
     }
 }
 
-async function loadRemoteTests() {
+/** @param {'remote' | 'public'} source */
+async function loadManifestTests(source) {
+    loadedManifestSource = source;
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
+        const manifest = await new ApiClient(source).getSuitesManifest();
+        if (manifest.length > 0) {
             setEmptyState(null);
             for (const item of manifest) {
                 if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote', { refreshFilters: false });
+                    registerSuiteSummary(item, source, { refreshFilters: false });
                 }
             }
             refreshFilterOptions();
         }
 
-        // Re-render UI now that we have remote data
+        // Re-render UI now that we have manifest data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
         if (!initialTests || initialTests.trim() === '') {
@@ -527,7 +547,14 @@ async function loadRemoteTests() {
         syncHero();
 
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error(`Error loading ${source} suites:`, error);
+        // The bucket rejected the token; show the public copy rather than nothing. Not on the
+        // dev server's local view, where the bucket is merely merged in: a stale token there
+        // must not mix out/public-evals/ into local results. (Checked by mode rather than
+        // `=== 'remote'` because a 401 has already cleared the token by this point.)
+        if (source === 'remote' && resolveDataSource() !== 'local' && isAuthRejection(error)) {
+            await loadManifestTests('public');
+        }
     }
 }
 
@@ -598,8 +625,8 @@ function updateRunsFilterDatalist() {
 function updateSourceFilterOptions() {
     const group = document.querySelector('#filter-source optgroup');
     if (!group) return;
-    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static' };
-    const values = /** @type {Array<'local' | 'remote' | 'static'>} */ (
+    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static', public: 'Public' };
+    const values = /** @type {Array<import('./data-source.js').DataSource>} */ (
         [...new Set(Object.values(allTestData).map(t => t.source).filter(Boolean))].sort()
     );
     if (values.length === 0) return;
@@ -918,7 +945,7 @@ function syncOptionalColumns() {
     if (!table) return;
     const all = Object.values(allTestData);
     const sources = new Set(all.map(t => t.source));
-    table.classList.toggle('hide-source', isRemoteDashboard() || (sources.size <= 1 && currentSourceFilter === 'all'));
+    table.classList.toggle('hide-source', !isLocalServer() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
 
 /**
@@ -1097,6 +1124,12 @@ function renderBarbellTooltipContent(cell) {
     } else if (kind === 'suite-a11y') {
         liftLabel = 'Accessibility lift';
         note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+    } else if (kind === 'agent-overall') {
+        liftLabel = 'Pass-rate lift';
+        note = 'Checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+    } else if (kind === 'agent-a11y') {
+        liftLabel = 'Accessibility lift';
+        note = 'Accessibility checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
         note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
     } else if (kind === 'dimension') {
@@ -1387,7 +1420,8 @@ function renderPivotInsights() {
             let displayTitle = key;
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
+                const sourceQuery = `&source=${encodeURIComponent(activeDataSource())}`;
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}${sourceQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
@@ -1455,7 +1489,7 @@ function renderPivotInsights() {
             if (pSort === 'alpha') firstColAriaSort = ' aria-sort="ascending"';
             else secondColAriaSort = ` aria-sort="${pSort === 'uplift-asc' ? 'ascending' : 'descending'}"`;
         }
-        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
+        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="visually-hidden"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
         const isExpanded = Boolean(expandedPanels[filterKey]);
         const scrollCls = `insights-table-scroll${filterKey === 'guide' ? ' pivot-scroll' : ''}${isExpanded ? ' is-expanded' : ''}`;
         const label = filterKey === 'guide' ? 'By guide table (scrolls vertically)' : `By ${captionNoun} table (scrolls vertically)`;
@@ -1482,10 +1516,13 @@ function renderPivotInsights() {
         return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
     };
 
-    /** @param {'model' | 'dimension' | 'guide'} panelKey */
-    const renderExpandRow = (panelKey) => {
+    const COLLAPSED_ROW_THRESHOLD = 6;
+    /** @param {'model' | 'dimension' | 'guide'} panelKey
+     * @param {number} rowCount */
+    const renderExpandRow = (panelKey, rowCount) => {
         const isExpanded = Boolean(expandedPanels[panelKey]);
-        return ` <div class="insights-expand-row"> <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}"> <span>${isExpanded ? 'Collapse' : 'Expand'}</span> <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"> <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/> </svg> </button>
+        if (rowCount <= COLLAPSED_ROW_THRESHOLD && !isExpanded) return '';
+        return ` <div class="insights-expand-row"> <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}"> <span>${isExpanded ? 'Collapse' : `Show all ${rowCount}`}</span> <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"> <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/> </svg> </button>
             </div>
         `;
     };
@@ -1499,43 +1536,46 @@ function renderPivotInsights() {
     const sortOptionsHtml = sortOptions.map(opt => `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('');
     const dirLabel = currentGuideSortDir === 'asc' ? 'ascending' : 'descending';
     const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
-    const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility checks</span>' : '';
+    const dimensionCount = Object.keys(grouped.dimension).length;
+    const modelCount = Object.keys(grouped.model).length;
     const guideCount = Object.keys(grouped.guide).length;
     const runCount = keys.length;
-    const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0 ? `
+    const dimensionPanelHtml = onlyA11y && dimensionCount > 0 ? `
         <div class="insights-panel insights-dimension-panel" data-panel="dimension">
-            ${renderPanelHeader('dimension', `By Accessibility Dimension (${Object.keys(grouped.dimension).length})${modeSuffix}`)}
+            ${renderPanelHeader('dimension', `By accessibility dimension (${dimensionCount})`)}
             ${renderPivotTable(grouped.dimension, 'dimension')}
-            ${renderExpandRow('dimension')}
+            ${renderExpandRow('dimension', dimensionCount)}
         </div>`
         : '';
     container.innerHTML = `
-        <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
+        <div class="insights-scope-bar">
+            <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
+            <div class="guide-legend">
+                <span class="guide-legend-item">
+                    <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
+                    <span class="guide-legend-label-u">Unguided</span>
+                </span>
+                <span class="guide-legend-vs" aria-hidden="true">→</span>
+                <span class="guide-legend-item">
+                    <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
+                    <strong>Guided</strong>
+                </span>
+                <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
+                <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
+            </div>
+        </div>
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
-            ${renderPanelHeader('model', `By Model (${Object.keys(grouped.model).length})${modeSuffix}`)}
+            ${renderPanelHeader('model', `By model (${modelCount})`)}
             ${renderPivotTable(grouped.model, 'model')}
-            ${renderExpandRow('model')}
+            ${renderExpandRow('model', modelCount)}
         </div>
         <div class="insights-panel insights-panel-full insights-guide-drawer" data-panel="guide">
             <div class="insights-guide-body">
-                <div class="insights-panel-header-row">
-                    <h3 class="insights-panel-title" tabindex="-1">By Guide (${guideCount})${modeSuffix}</h3>
-                    <div class="guide-legend">
-                        <span class="guide-legend-item">
-                            <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
-                            <span>Unguided</span>
-                        </span>
-                        <span class="guide-legend-vs">vs.</span>
-                        <span class="guide-legend-item">
-                            <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
-                            <span>Guided</span>
-                        </span>
-                        <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
-                        <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
-                    </div>
+                <div class="insights-panel-header">
+                    <h3 class="insights-panel-title" tabindex="-1">By guide (${guideCount})</h3>
                     <div class="guide-sort-controls">
-                        <label for="guide-sort-select" class="sort-label">Sort by:</label>
+                        <label for="guide-sort-select" class="sort-label">Sort</label>
                         <div class="sort-combined-control">
                             <div class="sort-select-pill">
                                 <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
@@ -1551,7 +1591,7 @@ function renderPivotInsights() {
                     </div>
                 </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
-                ${renderExpandRow('guide')}
+                ${renderExpandRow('guide', guideCount)}
             </div>
         </div>
     `;

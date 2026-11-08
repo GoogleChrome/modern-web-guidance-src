@@ -91,6 +91,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
 * **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences (configurable via `npx modern-web-guidance@latest set-baseline <widely|newly|limited|YYYY>` or `"baseline"` in `.mwgrc`).
 * **Origin Trial Opt-In Gate**: Guides for experimental Origin Trial APIs are discoverable via search, but gated on `retrieve` so agents do not adopt unstable APIs without consent. Run `npx modern-web-guidance@latest set-allow-origin-trials` in your terminal to opt a project in (writes `{"allowOriginTrials": true}` to `.mwgrc`; set to `false` or delete `.mwgrc` to opt out).
+* **Volatile Feature Opt-In Gate**: Guides relying on volatile features (single-engine features shipped within 3 months, plus pinned features) are discoverable via search, but gated on `retrieve` so agents do not adopt unstable APIs without consent. Run `npx modern-web-guidance@latest set-allow-volatile-features` in your terminal to opt a project in (writes `{"allowVolatileFeatures": true}` to `.mwgrc`; set to `false` or delete `.mwgrc` to opt out).
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 

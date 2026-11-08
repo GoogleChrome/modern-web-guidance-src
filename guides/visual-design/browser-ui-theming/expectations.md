@@ -1,3 +1,5 @@
 - The implementation MUST use `:user-invalid` and `:user-valid` rather than `:invalid` and `:valid` for form validation styling so error states appear only after user interaction.
 - The implementation MUST use `field-sizing: content` on auto-growing text inputs or `<textarea>` elements.
 - The implementation MUST NOT apply `user-select: none` to `<p>` elements or their ancestors.
+- The implementation MUST have a text color contrast between the foreground and background colors of at least 4.5:1 for regular size text or at least `3:1` for large-scale text (18 point or 14 point bold font size).
+- The implementation MUST have a contrast between adjacent colors of at least `3:1` for non-text content.

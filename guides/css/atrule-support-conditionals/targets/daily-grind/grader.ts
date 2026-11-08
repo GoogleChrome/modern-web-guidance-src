@@ -2,8 +2,8 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
   CSSRule,
@@ -13,26 +13,11 @@ import {
   CSSContainerRule,
   CSSPropertyRule,
   CSSNestedDeclarations,
-  CSSAtRule,
-  type CSSStyleSheet,
 } from 'cssomnom';
 import { SyntaxKind, type Project } from 'ts-morph';
 
 // @ts-ignore - import.meta.url is used at runtime under ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function collectAllCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
-  const result: CSSRule[] = [];
-  for (const rule of ruleList) {
-    result.push(rule);
-    if (rule instanceof CSSGroupingRule) {
-      result.push(...collectAllCssRules(rule.cssRules));
-    } else if (rule instanceof CSSAtRule && Array.isArray(rule.childRules)) {
-      result.push(...collectAllCssRules(rule.childRules));
-    }
-  }
-  return result;
-}
 
 function getRuleOwnDeclarationCount(rule: CSSRule): number {
   if (rule instanceof CSSStyleRule || rule instanceof CSSNestedDeclarations) {
@@ -170,8 +155,7 @@ function hasJsAtRuleSupportDetection(project: Project, allRules: CSSRule[]): boo
 
 test.describe('atrule-support-conditionals Target Grader', () => {
   test('Stylesheets conditionally apply CSS rules or declarations based on at-rule support using @supports, tautological style @container query, @property fallback, or JS root class check', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
@@ -189,8 +173,7 @@ test.describe('atrule-support-conditionals Target Grader', () => {
   });
 
   test('Any @supports at-rule(...) query passes only a bare @<name> identifier and avoids invalid checks (@supports (container-type: style) or CSS.registerProperty)', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
@@ -229,8 +212,7 @@ test.describe('atrule-support-conditionals Target Grader', () => {
   });
 
   test('At-rule support conditionals gate dependent regular CSS declarations or rules in stylesheets rather than only wrapping the detected at-rule itself or setting inline styles from JS', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);

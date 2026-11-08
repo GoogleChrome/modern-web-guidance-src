@@ -2,7 +2,7 @@ import { promises as fs, readFileSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import type { OriginTrialMetadata } from "../core/guide-validation.ts";
+import type { OriginTrialMetadata, VolatileFeatureMetadata } from "../core/feature-gates.ts";
 
 export interface UseCase {
   id: string;
@@ -11,6 +11,7 @@ export interface UseCase {
   featuresUsed: string[];
   tokenCount: number;
   originTrials?: OriginTrialMetadata[];
+  volatileFeatures?: VolatileFeatureMetadata[];
 }
 
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));

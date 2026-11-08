@@ -2,7 +2,7 @@
 
 This directory contains the evaluation framework used to benchmark retrieval quality, context token cost, out-of-scope rejection, and embedder latency for the `modern-web-guidance` search pipeline (`src/rag/search.ts`).
 
-> **Read the published engineering report on the initial embedding model, quantization, and runtime benchmarks here:** [go/rxolz](http://go/rxolz)
+> **Read the published engineering reports on the embedding pipeline, `wild-v2` corpus construction, and telemetry runbook here:** [go/rxolz](http://go/rxolz) · [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking) · [Search Quality Dashboard (`/search/`)](../../dashboard/search/index.html)
 
 ## Datasets & Relevance Judgments (Qrels)
 
@@ -10,9 +10,9 @@ Retrieval is evaluated against three complementary query sets paired with pooled
 
 | Dataset | Location | Size | Description |
 | :--- | :--- | :---: | :--- |
-| **`wild`** | GCS (`gs://guidance-rag-evals/v2/`, cached at `out/benchmarks/wild/v2/`, gitignored) | 4,000 | Anonymized real-world search queries sampled from post-#1850 CLI telemetry with a fixed 50/50 dev/test split (2,000 dev / 2,000 test, stratified by query word count). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. Historical `v1` (1,000 pre-#1850 queries) remains archived in GCS (`gs://guidance-rag-evals/v1/`) and accessible via `--wild-version v1`. |
+| **`wild`** | GCS (`gs://guidance-rag-evals/v2/`, cached at `out/benchmarks/wild/v2/`, gitignored) | 4,000 | Anonymized real-world search queries sampled from post-#1850 CLI telemetry with a fixed 50/50 dev/test split (2,000 dev / 2,000 test, stratified by query word count; see [go/mwg-search-benchmarking](http://go/mwg-search-benchmarking) for extraction & PII screening details). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. Historical `v1` (1,000 pre-#1850 queries) remains archived in GCS (`gs://guidance-rag-evals/v1/`) and accessible via `--wild-version v1`. |
 | **`agent`** | `data/agent-{queries,qrels}.jsonl` | 1,029 | Real `skill_search` queries mined from nightly evaluation trajectories across Antigravity CLI, Claude Code, Codex CLI, and Jetski CLI, deduplicated by normalized query text, filtered for prompt and trajectory answer leakage, and partitioned by connected components of expected guides into a dev/test split (515 dev / 514 test, no shared guides) evaluated with guide-cluster bootstrap CIs. |
-| **`harness`** | `data/harness-{queries,qrels}.jsonl` | 160 | Historical frozen agent query benchmark (pre-#2056) retained for reproducing legacy evaluation numbers. |
+| **`harness`** | `data/harness-{queries,qrels}.jsonl` | 160 | Earlier frozen 160-query agent benchmark (July–Oct 2026) retained for reproducing historical evaluation numbers; superseded by `agent`. |
 | **`oos`** | `data/oos-{queries,qrels}.jsonl` | 90 | Curated out-of-scope queries (`50` far out-of-domain like Python/Kubernetes/SQL, `40` near-miss web topics outside our corpus like React hooks, Next.js App Router, Tailwind, WebGL) to measure false-positive admission and wasted context tokens. |
 
 ### Grading Scale
@@ -29,7 +29,7 @@ In blind validation against 69 human judgments across wild and harness queries, 
 - **`metrics.ts`**: Computes per-query and aggregate `nDCG@5` (with broad discipline guides capped at `grade = 1` when a `grade = 2` leaf guide exists), `Success@1` ($\text{grade} \ge 1$), `Hit@1` ($\text{grade} = 2$), `LeafRecall@5` ($\text{grade} = 2$ leaf guides), `Disc@1` (broad discipline top-1 rate), `MRR@5`, `Recall@5`, `Expected@1`, average returned tokens per query, answerable empty-return rate, OOS false-positive admission rate (`near` / `far`), unjudged rate, and 2,000-iteration paired bootstrap 95% confidence intervals.
 - **`dataset.ts`** & **`dataset.test.ts`**: JSONL schemas, parsers, boundary validators, and the GCS `wild` dataset loader (`ensureWildDataset`).
 - **`judge-fill.ts`** & **`judge-prompts.ts`**: Multi-retriever candidate pooling and incremental LLM-as-judge grading for any unjudged `(query, guide)` pairs.
-- **`mine-harness.ts`**: Extracts `skill_search` queries from nightly agent evaluation trajectories in GCS. Note that `data/harness-queries.jsonl` is a frozen historical benchmark mined from pre-`#2056` trajectories (before `guided` runs injected `retrieve <guideName>` hints into `task.md`), and remains a static regression suite for agent query phrasings.
+- **`mine-harness.ts`**: Extracts `skill_search` queries from nightly agent evaluation trajectories in GCS. Note that `data/harness-queries.jsonl` is the earlier frozen 160-query snapshot (July–Oct 2026), retained for continuity alongside the expanded 1,029-query `agent` dataset.
 - **`benchmark-latency.ts`**: Measures cold-start and warm median inference latency for `TfjsEmbedder`.
 
 ## Running the Benchmark
@@ -78,3 +78,8 @@ node --env-file=.env src/rag/benchmarks/judge-fill.ts src/rag/benchmarks/data/ha
    - Replaced `@huggingface/transformers` `BertTokenizer` at runtime with a lightweight tokenizer config (`tfjs-embedder.test.ts` verifies 0 token-ID mismatches across all benchmark queries and Unicode edge cases) with identical retrieval scores (`0.000` nDCG@5 delta).
 3. **Hybrid Okapi BM25 + Dense Retrieval via RRF (`#2052`, Oct 2026)**:
    - Fusing per-chunk max-pooled Okapi BM25 with dense `all-MiniLM-L6-v2` cosine ranking via Reciprocal Rank Fusion (`k = 60`, `0.30` query floor) and replacing `#1853`'s two-stage similarity gates improved 1,000-query `wild` nDCG@5 from `0.468` (`#1853`) / `0.554` (pre-`#1853` dense max-pool) to **`0.590`** (`+0.123` vs `#1853`, `MRR@5` `0.638` → **`0.772`**) and `harness` nDCG@5 from `0.833` to **`0.869`** (`MRR@5` `0.958` → **`0.978`**).
+4. **Compact Top-10 Output, BM25 Plural Stemming, and Chunk Metadata (`#3048`, `#3102`, `#3172`, Nov 2026)**:
+   - Returning 10 compact `{ id, description }` results (`~53` tokens/result vs `105` verbose) lifted `wild-v2` held-out test Hit@K from **`86.1%`** (Hit@5) to **`93.5%`** (Hit@10) and Signal-to-Noise from **`71.5%`** to **`78.1%`** within the same `~528`-token stdout budget.
+   - Adding Lucene `EnglishMinimalStemmer` + a BM25-aware `0.30` similarity gate (`#3102`) and prepending guide title, category, and raw + unslugged `web-feature` IDs to every chunk (`#3172`) further lifted `wild-v2` test Hit@10 to **`94.7%`** (`99.6%` on `agent` test) and Leaf nDCG@10 to **`72.3%`**.
+5. **Static 256-d Word Vectors × Build-Time `gemini-embedding-001` Chunks (`#3089`, Nov 2026)**:
+   - Replacing `@tensorflow/tfjs` + `all-MiniLM-L6-v2` at query time with a `29,165`-word 256-d Int8 static lookup table (`src/rag/static-model/`, distilled via ridge regression from `gemini-embedding-001`) scored against build-time 256-d `gemini-embedding-001` chunk embeddings cut cold CLI `search` latency **3.2×** (`770 ms → 240 ms`), peak RSS **−58%** (`346 MB → 145 MB`), and npm tarball size **−64%** (`23.1 MB → 8.3 MB`) while lifting `wild-v2` held-out test Hit@10 to **`95.4%`** and Leaf nDCG@10 to **`75.0%`** (`99.4%` Hit@10 and `91.3%` Leaf nDCG@10 on `agent` test).

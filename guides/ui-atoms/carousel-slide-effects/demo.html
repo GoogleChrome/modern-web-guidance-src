@@ -48,7 +48,7 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
-          @supports ((animation-timeline: view())) {
+          @supports ((animation-timeline: view()) and (animation-range: entry)) {
             .scroller > * {
               animation: animate auto linear both;
               animation-timeline: view(inline);

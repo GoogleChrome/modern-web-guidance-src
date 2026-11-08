@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Opt into OS text scaling; type is rem-based. -->
+  <meta name="text-scale" content="scale">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
+  <title>Search Quality Over Time — Modern Web Guidance Evals</title>
+  <meta name="description" content="How modern-web-guidance search quality, latency, memory footprint, and top-K result horizon evolved across CLI releases and benchmarks.">
+  <link rel="stylesheet" href="../dashboard.css">
+  <link rel="stylesheet" href="../landing.css">
+  <link rel="stylesheet" href="../hero.css">
+  <link rel="stylesheet" href="search.css">
+</head>
+<body>
+  <div class="landing-container">
+    <header class="header-nav">
+      <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
+      <div>
+        <p class="landing-title"><a href="../" class="header-link">Modern Web Guidance Evals</a> <span aria-hidden="true">/</span> Search Quality</p>
+      </div>
+      <div class="header-actions">
+        <nav class="header-links" aria-label="Project links">
+          <a href="../" class="header-link">← Evals</a>
+          <a href="../demos/" class="header-link">Browse Demos</a>
+          <a href="https://developer.chrome.com/docs/modern-web-guidance" class="header-link" rel="noopener">Docs</a>
+          <a href="https://github.com/GoogleChrome/modern-web-guidance-src" class="header-link" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page" id="main-content" tabindex="-1">
+      <header class="masthead">
+        <h1 class="hero-heading">MWG CLI: <span class="hero-accent">Search quality</span> over time</h1>
+        <p class="hero-lede">Agents discover Modern Web Guidance through <code>modern-web-guidance search</code> before retrieving a guide. Quantifying retrieval quality, token efficiency, and cold-start latency across our chunking, BM25 lexical matching, and embedding pipeline keeps the gateway to our guides fast and reliable (<a href="https://github.com/GoogleChrome/modern-web-guidance-src/pull/3106">#3106</a>).</p>
+        <p class="cadence-note">
+          <span class="cadence-badge">Milestone benchmark</span>
+          <span>Unlike the <a href="../">main eval dashboard</a>, which updates nearly every day with new agent runs, this page updates when changes land in the search pipeline—currently few and far between.</span>
+        </p>
+      </header>
+
+    <section class="card hero-card" id="a" aria-labelledby="a-h">
+      <div class="card-head">
+        <div>
+          <h2 id="a-h"><span class="num">1</span>Search quality across milestones</h2>
+          <p class="sub">Each milestone replayed on the 192-guide corpus · held-out test splits (#3106) · 95% CI</p>
+        </div>
+        <div class="controls">
+          <fieldset class="seg" id="a-view">
+            <legend class="vh">Queries</legend>
+            <label><input type="radio" name="a-view" value="all" checked><span>All queries</span></label>
+            <label><input type="radio" name="a-view" value="short"><span>2–5 words</span></label>
+            <label><input type="radio" name="a-view" value="long"><span>6+ words</span></label>
+            <label><input type="radio" name="a-view" value="nightly"><span>Agent queries</span></label>
+          </fieldset>
+          <fieldset class="seg" id="a-x">
+            <legend class="vh">X axis</legend>
+            <label><input type="radio" name="a-x" value="milestone" checked><span>By milestone</span></label>
+            <label><input type="radio" name="a-x" value="time"><span>By date</span></label>
+          </fieldset>
+        </div>
+      </div>
+      <div class="a-meta"><ul class="a-legend" id="a-legend" aria-label="Series"></ul><p class="a-note" id="a-note"></p></div>
+      <svg id="svg-a" class="chart" viewBox="0 0 1000 420" role="img"></svg>
+      <div class="sparks" role="group" aria-label="All three metrics for the selected queries">
+        <button type="button" class="spark" data-metric="hit"><span class="spark-name">Hit@K <small>right guide shown</small></span><svg id="spark-hit" class="spark-svg" viewBox="0 0 300 64" aria-hidden="true"></svg></button>
+        <button type="button" class="spark" data-metric="ndcg"><span class="spark-name">Leaf nDCG <small>rank and siblings</small></span><svg id="spark-ndcg" class="spark-svg" viewBox="0 0 300 64" aria-hidden="true"></svg></button>
+        <button type="button" class="spark" data-metric="snr"><span class="spark-name">Signal-to-noise <small>minus wasted tokens</small></span><svg id="spark-snr" class="spark-svg" viewBox="0 0 300 64" aria-hidden="true"></svg></button>
+      </div>
+      <div class="metric-guide">
+        <h3>How we score search</h3>
+        <dl class="mg-grid">
+          <div><dt>Hit@K <small>Did a right guide show up?</small></dt><dd>Share of searches where at least one right leaf guide appears anywhere in the K results. Rank 1 and rank 10 get the same credit; a missing second guide costs nothing.</dd></div>
+          <div><dt>Recall <small>Did all the right guides show up?</small></dt><dd>Share of a query’s right leaf guides that appear in the K results. A query that needs two guides and gets one scores 100% on Hit@K but 50% on recall.</dd></div>
+          <div><dt>MRR <small>How close to #1 was the first right guide?</small></dt><dd>Mean reciprocal rank: 1 ÷ the rank of the first right guide. #1 = 100%, #2 = 50%, #5 = 20%, #10 = 10%. It appears in PR benchmarks; it isn’t charted here.</dd></div>
+          <div><dt>Leaf nDCG@K <small>Did all the right guides rank near the top?</small></dt><dd>Recall weighted by rank: a right guide at rank r earns 1 ÷ log₂(r + 1), divided by the best possible score. Index pages like <code>css</code> earn nothing.</dd></div>
+          <div><dt>Signal-to-noise <small>Quality minus token waste</small></dt><dd>70% recall + 30% leaf nDCG, minus 1.4 points per 100 tokens spent on wrong guides (4.5 beyond the first 500). An empty result counts as 1,500 wasted tokens: the <code>list</code> fallback.</dd></div>
+        </dl>
+      </div>
+      <p class="takeaway" data-metric-note="hit"><strong>On Wild-v2 test (865 queries), top-10 was the biggest step (+7.4 pp to 93.5%), then BM25 stemming (#3102, 94.5%), chunk metadata (#3172, 94.7%), and #3089 static 256-d query vectors × build-time <code>gemini-embedding-001</code> chunks (95.4% Hit@10, 3.2× faster) climbed monotonically.</strong> On the held-out Agent test split (494 queries), #3089 reaches 99.4% Hit@10.</p>
+      <p class="takeaway" data-metric-note="ndcg" hidden><strong>Leaf nDCG also rewards ranking the right guide first and finding its siblings.</strong> Across the post-#3048 stack, Leaf nDCG climbs from 70.6% (#3048) → 71.0% (#3102) → 72.3% (#3172) → 75.0% (#3089, +2.7 pp over MiniLM + #3172); online <code>gemini-embedding-001</code> reaches 81.3% and online <code>gemini-3.8-flash</code> catalog search reaches 91.6%.</p>
+      <p class="takeaway" data-metric-note="snr" hidden><strong>Signal-to-noise charges for tokens spent on wrong guides and for <code>list</code> fallbacks.</strong> On Wild-v2 test, v0.0.195 drops to 57.0% because empty results force fallbacks; compact top-10 lifts it to 78.1% (#3048) → 78.8% (#3102) → 79.4% (#3172) → 80.6% (#3089); online <code>gemini-embedding-001</code> and <code>gemini-3.8-flash</code> reach 84.8% and 90.4%.</p>
+    </section>
+
+    <section class="card" id="milestones" aria-labelledby="m-h">
+      <div class="card-head">
+        <div>
+          <h2 id="m-h"><span class="num">2</span>Milestones compared</h2>
+          <p class="sub">Every system on this page · scores on Wild-v2 test (865 leaf-answerable of 2,000 held-out queries, #3106)</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="m-table" id="m-table">
+          <thead><tr><th>Milestone</th><th>When</th><th>What changed</th><th>Output</th><th class="n">Hit@K</th><th class="n">Leaf nDCG</th><th class="n">Signal-to-noise</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="a2" aria-labelledby="a2-h">
+      <div class="card-head">
+        <div>
+          <h2 id="a2-h"><span class="num">3</span>Why K=10 is the sweet spot</h2>
+          <p class="sub">Wild-v2 test (865) at K=1..20 (0% unjudged) · signal-to-noise subtracts a tax for tokens spent on wrong guides</p>
+        </div>
+        <fieldset class="seg" id="k-metric">
+          <legend class="vh">Metric</legend>
+          <label><input type="radio" name="k-metric" value="snr" checked><span>Signal-to-noise</span></label>
+          <label><input type="radio" name="k-metric" value="hit"><span>Hit@K</span></label>
+          <label><input type="radio" name="k-metric" value="ndcg"><span>Leaf nDCG</span></label>
+        </fieldset>
+      </div>
+      <ul class="k-legend" id="k-legend" aria-label="Series"></ul>
+      <svg id="svg-k" class="chart" viewBox="0 0 1000 360" role="img"></svg>
+      <p class="takeaway"><strong>Verbose output peaks at K=5 (71.5% SNR) because five results already cost 524 tokens. Compact output spends the same ~529 tokens on ten results, lifting SNR to 78.1% (93.5% hit) on #3048 and 79.0% (93.6% hit) on #3089.</strong> Past K=10, extra results add a little recall and a lot of noise.</p>
+    </section>
+
+    <section class="card" id="b" aria-labelledby="b-h">
+      <div class="card-head">
+        <div>
+          <h2 id="b-h"><span class="num">4</span>Price vs. quality: runtime, memory, and package size</h2>
+          <p class="sub">Cold <code>search</code>, re-measured back to back · bubble area = Peak RSS · up and to the left is better</p>
+        </div>
+        <div class="controls">
+          <fieldset class="seg" id="b-y">
+            <legend class="vh">Quality axis</legend>
+            <label><input type="radio" name="b-y" value="hit" checked><span>Hit@K</span></label>
+            <label><input type="radio" name="b-y" value="snr"><span>Signal-to-noise</span></label>
+          </fieldset>
+        </div>
+      </div>
+      <div class="b-layout">
+        <svg id="svg-b" class="chart" viewBox="0 0 680 420" role="img"></svg>
+        <div class="b-panel">
+          <div class="b-stat">
+            <div class="b-row"><span class="b-name">Cold search</span><span class="b-change good">3.2× faster</span></div>
+            <div class="b-value"><span class="from">770</span><span class="arrow">→</span><span class="good">240</span><small>ms</small></div>
+          </div>
+          <div class="b-stat">
+            <div class="b-row"><span class="b-name">Peak RSS <small>bubble area</small></span><span class="b-change good">−58%</span></div>
+            <div class="b-value"><span class="from">346</span><span class="arrow">→</span><span class="good">145</span><small>MB</small></div>
+          </div>
+          <div class="b-stat">
+            <div class="b-row"><span class="b-name">npm tarball</span><span class="b-change good">−64%</span></div>
+            <div class="b-value"><span class="from">23.1</span><span class="arrow">→</span><span class="good">8.3</span><small>MB</small></div>
+          </div>
+          <p class="b-panel-note">Stdout tokens: 507 → 528 tok for 2× the results (top-5 verbose → top-10 compact).</p>
+        </div>
+      </div>
+      <p class="takeaway"><strong>Every TF.js release ran 0.7–0.8 s cold. Search fixes (#2052 + #3048) added +12.9 pp of Hit@K at that cost, then #3089’s static embedder (stacked on #3102 + #3172) cut cold search 3.2× while lifting Hit@10 to 95.4% and Leaf nDCG to 75.0%.</strong></p>
+    </section>
+
+    <section class="card methodology" id="notes" aria-labelledby="notes-h">
+      <div class="card-head">
+        <div>
+          <h2 id="notes-h"><span class="num">5</span>Methodology and corpus details</h2>
+        </div>
+      </div>
+      <div class="notes-grid">
+        <section>
+          <h3>Who decides “right” on Wild-v2 and Agent (#3106)</h3>
+          <p>Both evaluation datasets ship in PR <a href="https://github.com/GoogleChrome/modern-web-guidance-src/pull/3106">#3106</a> and are graded 0–2 by <code>gemini-3.8-flash</code> (rubric v1, temperature 0) from guide cards (id, title, description, features, headings). A query counts in the primary leaf metrics when at least one non-discipline leaf guide receives grade 2:</p>
+          <dl>
+            <dt>Wild-v2 test</dt><dd>2,000 held-out queries (of 4,000 in <code>wild-v2</code>, qrels SHA <code>8eff50545bdd</code>); <strong>865</strong> are leaf-answerable (702 short 2–5 words, 159 long 6+ words, 4 one-word). Top-10 across all milestones plus ranks 11–20 across the K-curve systems are 100% judged (0% unjudged; +8,131 top-10 and +19,164 rank 11–20 overlay judgments).</dd>
+            <dt>Agent test</dt><dd>514 held-out task queries (of 1,029 leakage-filtered agent searches in <code>agent-v1</code>, qrels SHA <code>d5fb45b5a0b4</code>), partitioned by connected guide components into 70 test clusters so zero guides are shared with dev; <strong>494</strong> are leaf-answerable (0% unjudged @10 across all milestones; +2,418 overlay judgments). CIs resample whole expected-guide clusters.</dd>
+            <dt>Leaf guides &amp; tokens</dt><dd>Only grade-2, non-discipline guides count as right. Tokens: 90/result before #824, 105 verbose after #824, 53 compact from #3048. An empty result costs 1,500 fallback tokens (the <code>list</code> catalog).</dd>
+          </dl>
+        </section>
+        <section>
+          <h3>Method</h3>
+          <dl>
+            <dt>Section 1</dt><dd>Every milestone is replayed in cumulative landing order on the 192-guide corpus (including #2130’s <code>ui-components/dialog</code>; 192/1943/1943/1773 chunks across m1–m4; 1809 enriched chunks from #3172/#3089); top-5 until #3048, top-10 from #3048. #2052 and #3048 apply the 0.30 MiniLM cosine floor (1 empty on scored Wild-v2 test). #3102 consolidates Lucene <code>EnglishMinimalStemmer</code> in <code>tokenizeBm25()</code>, the BM25-aware 0.30 similarity gate, and sub-floor dense exclusion on BM25-only rescues. #3172 (stacked on #3102) prepends guide title, category, and raw + unslugged web-feature IDs to every chunk for MiniLM and BM25 indexing. #3089 (stacked on #3102 + #3172; 93.6% Hit@10 and 73.6% Leaf nDCG when isolated on #3048) pairs 256-d Int8 static query vectors (29,165-word vocabulary) with build-time 256-d Int8 <code>gemini-embedding-001</code> chunk vectors from its committed cache and only returns <code>[]</code> when dense top-1 &lt; 0.30 and BM25 has no matches (0 empty on scored test). Reference columns compare online 768-d <code>gemini-embedding-001</code> and online <code>gemini-3.8-flash</code> LLM catalog search (1 query per call over the 192 <code>{id, description}</code> entries, ~8.1k prompt tokens, <code>temperature: 0</code>, <code>thinkingBudget: 0</code>; note that <code>gemini-3.8-flash</code> also graded the qrels from fuller guide cards with headings, while Agent test queries also carry independent task <code>expectedGuide</code> labels: 93.0% known-answer Hit@10 vs. 96.1% on <code>gemini-embedding-001</code> and 95.5% on #3089).</dd>
+            <dt>Section 3</dt><dd>Scores K=1..20 on the 865 Wild-v2 test queries (0% unjudged through K=20).</dd>
+            <dt>Section 4</dt><dd>Cold <code>search</code>, medians of 6 queries measured back to back.</dd>
+          </dl>
+        </section>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <div id="tip" class="tip" role="tooltip" hidden></div>
+  <script type="module" src="search.js"></script>
+</body>
+</html>

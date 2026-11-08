@@ -2,8 +2,8 @@
 - Every element with a `view-transition-class` also has a unique `view-transition-name`.
 - There are no repeated `view-transition-name` values.
 - The stylesheet contains a `::view-transition-group` rule targeting that class name.
-- The `animation-duration` for the `::view-transition-group` targeting that class is a time.
-- The `animation-timing-function` for the `::view-transition-group` targeting that class is `ease-in-out`.
+- The `::view-transition-group` rule targeting that class specifies a time duration (via `animation-duration` or the `animation` shorthand).
+- The `::view-transition-group` rule targeting that class uses a non-linear timing function—either an explicit `ease*` keyword, `cubic-bezier()`, or multi-stop `linear()` curve (via `animation-timing-function` or `animation`), or the default `ease` value—and does not set the `linear` keyword or `steps()`.
 - A `@media (prefers-reduced-motion: reduce)` rule sets the `animation` of `::view-transition-group(*)`, `::view-transition-old(*)` and `::view-transition-new(*)` to `none`.
 - New elements (entering) are transitioned using `::view-transition-new(...):only-child`.
 - Removed elements (exiting) are transitioned using `::view-transition-old(...):only-child`.

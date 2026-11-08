@@ -38,7 +38,7 @@ export interface StoredPasskeyCredential {
 
 Create an endpoint that generates WebAuthn creation parameters. Rely on a vetted library per category standards instead of hand-rolling cryptography.
 
-1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string.
+1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string in `rp.id` so the client can pass `publicKey.rp.id` directly to Signal API calls.
 2.  **Create a secure Challenge**: Generate a high-entropy, cryptographically secure random buffer on the server, store it securely in the user's session, and encode it as Base64URL for options delivery.
 3.  **Avoid Duplicate Passkeys**: Map the user's existing pre-registered credential IDs to the `excludeCredentials` options array. This prevents the authenticator from registering duplicate credentials on the same passkey provider account.
 4.  **Enforce Discoverable Credentials**: Set `requireResidentKey: true` and `residentKey: "required"` in the `authenticatorSelection` options to request a discoverable credential, which is necessary for discoverable sign-ins.
@@ -102,7 +102,8 @@ const options = {
     - `AbortError`: The operation has been aborted.
     - `SecurityError`: Secure origins (HTTPS) or RP ID mismatch errors (configuration issues).
 4.  **Try/Catch Segregation for Signal API**:
-    - Wrap server verification `fetch()` call in a try/catch block. Call `signalUnknownCredential()` when the server verification fetch fails (any status `response.ok === false` or network throws).
+    - Wrap server verification `fetch()` call in a try/catch block. Call `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rp.id, credentialId: encodedResponse.id })` (gated on `if (PublicKeyCredential.signalUnknownCredential)`) when the server verification fetch fails (any status `response.ok === false` or network throws).
+    - Always read `rpId` from `publicKey.rp.id` in the server's creation options. **DO NOT** derive `rpId` from `window.location.hostname` on the client, as the server's configured RP ID may be a registrable parent domain (such as `example.com` on `accounts.example.com`) or use Related Origin Requests.
 
 ```javascript
 // optionsFetch and registerVerifyFetch are app-defined HTTP methods
@@ -144,22 +145,24 @@ async function registerPasskey(isPromotion = false) {
   }
 
   // Server Verification phase (Segregated Try/Catch)
-  let encodedResponse = credential.toJSON();
+  const encodedResponse = credential.toJSON();
   try {
     const response = await registerVerifyFetch(encodedResponse);
-    if (!response.ok) {
+    if (!response.ok && PublicKeyCredential.signalUnknownCredential) {
       // Server verification failed to verify/authenticate the credential (orphaned)
       await PublicKeyCredential.signalUnknownCredential({
-        rpId, // RP ID must match the one defined on the server
+        rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
         credentialId: encodedResponse.id, // Base64URL-encoded credential ID
       });
     }
   } catch (serverErr) {
     console.error("Server verification network failure:", serverErr);
-    await publickeycredential.signalunknowncredential({
-      rpId, // RP ID must match the one defined on the server
-      credentialid: encodedresponse.id, // base64url-encoded credential id
-    });
+    if (PublicKeyCredential.signalUnknownCredential) {
+      await PublicKeyCredential.signalUnknownCredential({
+        rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
+        credentialId: encodedResponse.id, // Base64URL-encoded credential ID
+      });
+    }
   }
 }
 ```
