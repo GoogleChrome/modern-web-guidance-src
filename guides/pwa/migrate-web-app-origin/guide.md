@@ -60,9 +60,9 @@ File location: `https://old-app.example.com/.well-known/web-app-origin-associati
 }
 ```
 
-### 4. Signal the migration in the old manifest
+### 4. Proactively signal the migration (Optional)
 
-To complete the bilateral migration and transfer existing users when they open the installed app, update the **old** site's `manifest.json` with a `migrate_to` entry pointing to the new app's ID and install URL:
+To let the browser discover the migration from the old installation, without waiting for users to visit the new site, add a `migrate_to` member to the **old** site's `manifest.json`. Set its `id` to the new app's manifest ID:
 
 ```json
 {
