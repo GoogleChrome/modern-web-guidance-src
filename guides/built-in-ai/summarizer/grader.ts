@@ -91,27 +91,32 @@ test.describe(`Summarizer Expectations: ${demoName}`, () => {
     if (await runButton.count() > 0) {
       await runButton.click();
     }
-    // Give it a bit of time to execute scripts
-    await page.waitForTimeout(500);
   });
 
-  test('Summarizer API should be available on window.Summarizer, not window.ai.summarizer', async ({ page }) => {
+  test('The implementation uses `window.Summarizer` and does not use the deprecated `window.ai.summarizer` API surface.', async ({ page }) => {
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => (window as any).__summarizer_calls);
+      return (calls.availability?.length ?? 0) > 0 || (calls.create?.length ?? 0) > 0 || calls.ai_summarizer_called;
+    }).toBe(true);
+
     const calls = await page.evaluate(() => (window as any).__summarizer_calls);
     expect(calls.ai_summarizer_called).toBe(false);
-    // Also check if Summarizer was at least attempted to be used if we are in demo.html
-    // but the main requirement is that ai.summarizer is NOT used.
   });
 
-  test('Summarizer.availability() should be called', async ({ page }) => {
-    const calls = await page.evaluate(() => (window as any).__summarizer_calls);
-    expect(calls.availability.length).toBeGreaterThan(0);
+  test('The implementation calls `Summarizer.availability()` to check model availability before creating the summarizer.', async ({ page }) => {
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => (window as any).__summarizer_calls);
+      return calls?.availability?.length ?? 0;
+    }).toBeGreaterThan(0);
   });
 
-  test('The same options should be passed to both Summarizer.availability() and Summarizer.create()', async ({ page }) => {
-    const calls = await page.evaluate(() => (window as any).__summarizer_calls);
-    expect(calls.availability.length).toBeGreaterThan(0);
-    expect(calls.create.length).toBeGreaterThan(0);
+  test('The same options are passed to both `Summarizer.availability()` and `Summarizer.create()`.', async ({ page }) => {
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => (window as any).__summarizer_calls);
+      return (calls?.availability?.length ?? 0) > 0 && (calls?.create?.length ?? 0) > 0;
+    }).toBe(true);
 
+    const calls = await page.evaluate(() => (window as any).__summarizer_calls);
     const availabilityOptions = calls.availability[0][0];
     const createOptions = { ...calls.create[0] };
     delete createOptions.monitor; // monitor is only for create
@@ -119,14 +124,17 @@ test.describe(`Summarizer Expectations: ${demoName}`, () => {
     expect(availabilityOptions).toEqual(createOptions);
   });
 
-  test('Source code should call summarize() or summarizeStreaming() on the Summarizer instance', async ({ page }) => {
-    const calls = await page.evaluate(() => (window as any).__summarizer_calls);
-    const totalCalls = calls.summarize.length + calls.summarizeStreaming.length;
-    expect(totalCalls).toBeGreaterThan(0);
+  test("The `Summarizer` instance's `summarize()` or `summarizeStreaming()` method is called to generate a summary.", async ({ page }) => {
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => (window as any).__summarizer_calls);
+      return (calls?.summarize?.length ?? 0) + (calls?.summarizeStreaming?.length ?? 0);
+    }).toBeGreaterThan(0);
   });
 
-  test('A monitor for download progress should be implemented using the downloadprogress event', async ({ page }) => {
-    const calls = await page.evaluate(() => (window as any).__summarizer_calls);
-    expect(calls.eventsAdded).toContain('downloadprogress');
+  test('A monitor for download progress is implemented using the `downloadprogress` event.', async ({ page }) => {
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => (window as any).__summarizer_calls);
+      return calls?.eventsAdded ?? [];
+    }).toContain('downloadprogress');
   });
 });
