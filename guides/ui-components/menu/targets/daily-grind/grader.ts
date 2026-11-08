@@ -582,6 +582,23 @@ test.describe('menu Target Grader', () => {
         { isMenubar: info.isMenubar, topTriggerIds: info.topTriggerIds }
       );
       expect(valid).toBe(true);
+
+      if (!info.isMenubar) {
+        const firstId = info.topTriggerIds[0];
+        await page.evaluate((id) => {
+          document.getElementById(id)?.focus();
+        }, firstId);
+        await expectNever(
+          page,
+          (id) => {
+            const h = window.__menuGrader!;
+            const trig = document.getElementById(id);
+            const menu = h.resolveMenu(trig);
+            return !menu || h.isMenuOpen(menu) || trig?.getAttribute('aria-expanded') === 'true';
+          },
+          { forMs: 200, arg: firstId }
+        );
+      }
     });
 
     test('Each trigger is a <button type="button"> with aria-haspopup="menu", commandfor, and command="toggle-popover", and has no popovertarget or popovertargetaction attribute', async ({
