@@ -29,7 +29,7 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
 
     performance.now = () => {
       const real = origPerfNow();
-      if (w.__simActive && !document.getElementById('output') && w.__yieldCount < 8) {
+      if (w.__simActive && w.__yieldCount < 8) {
         virtualOffset += 0.5;
       }
       return real + virtualOffset;
@@ -46,7 +46,7 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
     };
 
     const pauseForInterleaving = () => {
-      if (!document.getElementById('output') && w.__simActive && w.__yieldCount <= 6) {
+      if (w.__simActive && w.__yieldCount <= 6) {
         const pauseStart = origPerfNow();
         return new Promise<void>((resolve) =>
           origSetTimeout(() => {
@@ -74,7 +74,7 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
       if (delay === 0 || delay === undefined) {
         w.setTimeoutFallbackCalled = true;
         recordYield();
-        if (!document.getElementById('output') && w.__simActive && w.__yieldCount <= 6) {
+        if (w.__simActive && w.__yieldCount <= 6) {
           const pauseStart = origPerfNow();
           return origSetTimeout(
             () => {
@@ -136,15 +136,19 @@ async function startSimulation(page: Page) {
     const btn =
       byId ||
       Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-        (b) =>
-          !b.classList.contains('nav-cta') &&
-          !b.classList.contains('btn-primary') &&
-          !b.classList.contains('btn-ghost') &&
-          !b.classList.contains('card-btn') &&
-          !b.closest('dialog') &&
-          /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-            `${b.id} ${b.className} ${b.textContent || ''}`,
-          ),
+        (b) => {
+          if (
+            b.classList.contains('nav-cta') ||
+            b.classList.contains('btn-primary') ||
+            b.classList.contains('btn-ghost') ||
+            b.classList.contains('card-btn') ||
+            b.closest('dialog')
+          ) {
+            return false;
+          }
+          const desc = `${b.id} ${b.className} ${b.textContent || ''}`;
+          return /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(desc);
+        },
       );
     btn?.click();
   });
@@ -193,7 +197,7 @@ test.describe('Scheduler Yield Tests', () => {
     });
   });
 
-  test('should process heavy computation asynchronously', async ({ page }) => {
+  test('The application processes heavy computation asynchronously', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -203,7 +207,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(rafTicksWhileRunning).toBeGreaterThan(0);
   });
 
-  test('should yield control back to the main thread periodically', async ({ page }) => {
+  test('The application yields control back to the main thread periodically during processing', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -213,7 +217,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(ticks).toBeGreaterThan(0);
   });
 
-  test('should use a time-based deadline of around 50ms', async ({ page }) => {
+  test('The application uses a time-based deadline of around 50ms to determine when to yield', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -232,7 +236,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(avgInterval).toBeLessThanOrEqual(110);
   });
 
-  test('should use scheduler.yield if available', async ({ page }) => {
+  test('The application uses scheduler.yield if available', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -242,7 +246,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(schedulerYieldCalled).toBe(true);
   });
 
-  test('should fallback to setTimeout when scheduler.yield is not supported', async ({ page }) => {
+  test('The application falls back to setTimeout when scheduler.yield is not supported', async ({ page }) => {
     await installYieldHarness(page, { deleteScheduler: true });
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -252,7 +256,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(setTimeoutFallbackCalled).toBe(true);
   });
 
-  test('should remain responsive to user interaction while processing', async ({ page }) => {
+  test('The application remains responsive to user interaction while processing', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
