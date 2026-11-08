@@ -1,4 +1,4 @@
-import { getAccessToken, escapeHtml, getAgentBadge, formatSuiteDate } from './utils.js';
+import { getAccessToken, isSignInEnabled, escapeHtml, getAgentBadge, formatSuiteDate } from './utils.js';
 import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { isLocalServer } from './data-source.js';
@@ -116,9 +116,9 @@ function setStatus(kind) {
     if (!el || !text || !btn) return;
     if (!kind) { el.hidden = true; text.textContent = ''; return; }
     el.hidden = false;
-    // The sign-in CTA stays for an empty public copy so Googlers can reach internal runs,
-    // unless a token is already held (clicking it would sign out).
-    btn.hidden = kind === 'empty' || Boolean(getAccessToken());
+    // The sign-in CTA stays for an empty public copy when ?show_login is set so Googlers
+    // can reach internal runs, unless a token is already held (clicking it would sign out).
+    btn.hidden = kind === 'empty' || Boolean(getAccessToken()) || !isSignInEnabled();
     const messages = {
         'auth': 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.',
         'empty': 'No nightly evaluation runs were found for this data source yet.',

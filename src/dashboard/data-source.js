@@ -60,5 +60,6 @@ export function reloadAsRemote() {
     } else {
         url.searchParams.delete('source');
     }
+    url.searchParams.delete('show_login');
     window.location.href = url.toString();
 }

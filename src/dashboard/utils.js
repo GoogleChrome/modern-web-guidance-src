@@ -555,6 +555,20 @@ export function getAccessToken() {
 }
 
 /**
+ * Whether `?show_login` is set in the URL (e.g. `?show_login=true`) to reveal the
+ * "Sign in with Google" button. By default the sign-in button stays hidden on the
+ * public dashboard so anonymous visitors are not prompted to sign in to a private bucket.
+ *
+ * @param {URLSearchParams} [params]
+ * @returns {boolean}
+ */
+export function isSignInEnabled(params = new URLSearchParams(window.location.search)) {
+    if (!params.has('show_login')) return false;
+    const val = params.get('show_login');
+    return val !== 'false' && val !== '0';
+}
+
+/**
  * @param {(() => void) | undefined} [onAuthSuccess]
  */
 export function initGoogleAuth(onAuthSuccess) {
@@ -567,7 +581,6 @@ export function initGoogleAuth(onAuthSuccess) {
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.style.display = 'block';
             renderAuthButton(authBtn);
         }
 
@@ -603,10 +616,12 @@ export function initGoogleAuth(onAuthSuccess) {
 }
 
 /**
- * Shows "Sign in" when there is no token and "Sign out" when there is one.
+ * Shows "Sign out" when there is a token, or "Sign in" when `?show_login` is set in the URL;
+ * otherwise keeps the button hidden.
  * @param {HTMLButtonElement} authBtn
  */
 function renderAuthButton(authBtn) {
+    authBtn.style.display = (accessToken || isSignInEnabled()) ? 'block' : 'none';
     authBtn.innerHTML = accessToken ? 'Sign out' : 'Sign in<span class="auth-btn-long"> with Google</span>';
     authBtn.setAttribute('aria-label', accessToken ? 'Sign out' : 'Sign in with Google');
     authBtn.title = accessToken ? 'Forget the Google token and show the public view' : 'Sign in to read the private bucket';
@@ -645,7 +660,6 @@ export async function authenticatedFetch(url, options = {}) {
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.style.display = 'block';
             renderAuthButton(authBtn);
             authBtn.disabled = false;
             authBtn.style.backgroundColor = '';
