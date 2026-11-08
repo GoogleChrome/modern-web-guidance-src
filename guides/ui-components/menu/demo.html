@@ -121,13 +121,18 @@
         --bridge-side: sign(var(--pointer-x)); /* -1: pointer left of the submenu, 1: right. */
         --bridge-edge: calc(50% + var(--bridge-side) * (50% - 100vw)); /* The submenu's near edge. */
         --bridge-apex: calc(100vw + var(--pointer-x) + var(--bridge-side) * var(--bridge-slack));
-        clip-path: shape(
-          from var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
-          line to var(--bridge-edge) 100vh,
-          line to var(--bridge-edge) calc(100% - 100vh),
-          line to var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack)),
-          close
+        clip-path: polygon(
+          var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
+          var(--bridge-edge) 100vh,
+          var(--bridge-edge) calc(100% - 100vh),
+          var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack))
         );
+
+        /* Fallback for targets without sign(): clamp() with a huge multiplier picks the side. */
+        @supports not (width: calc(sign(1px) * 1px)) {
+          --bridge-edge: clamp(100vw, 50% + var(--pointer-x) * 1e6, 100% - 100vw);
+          --bridge-apex: calc(100vw + var(--pointer-x) + clamp(-1 * var(--bridge-slack), var(--pointer-x) * 1e6, var(--bridge-slack)));
+        }
       }
     }
 

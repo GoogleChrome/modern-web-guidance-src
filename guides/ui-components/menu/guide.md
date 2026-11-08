@@ -7,6 +7,7 @@ web-feature-ids:
   - anchor-positioning
   - focusgroup
   - has
+  - abs-sign
 guides:
   - viewport-aware-dropdowns
 ---
@@ -188,12 +189,11 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
     --bridge-side: sign(var(--pointer-x)); /* -1: pointer left of the submenu, 1: right. */
     --bridge-edge: calc(50% + var(--bridge-side) * (50% - 100vw)); /* The submenu's near edge. */
     --bridge-apex: calc(100vw + var(--pointer-x) + var(--bridge-side) * var(--bridge-slack));
-    clip-path: shape(
-      from var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
-      line to var(--bridge-edge) 100vh,
-      line to var(--bridge-edge) calc(100% - 100vh),
-      line to var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack)),
-      close
+    clip-path: polygon(
+      var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
+      var(--bridge-edge) 100vh,
+      var(--bridge-edge) calc(100% - 100vh),
+      var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack))
     );
   }
 }
@@ -382,3 +382,18 @@ Without invokers, `command="toggle-popover"` does nothing, so script must toggle
 {{ BASELINE_STATUS("has") }}
 
 If targeting browsers without `:has()`, add a class to each menu popover instead of selecting `[popover]:has(> [focusgroup~="menu"])`.
+
+### Fallbacks & browser support for `sign()`
+
+{{ BASELINE_STATUS("abs-sign") }}
+
+If your Baseline target lacks `sign()`, skip `--bridge-side` and pick the edge and the apex nudge with `clamp()`: a large multiplier pushes `--pointer-x` past either bound, so the result is one end or the other.
+
+```css
+@supports not (width: calc(sign(1px) * 1px)) {
+  [data-bridge]::before {
+    --bridge-edge: clamp(100vw, 50% + var(--pointer-x) * 1e6, 100% - 100vw);
+    --bridge-apex: calc(100vw + var(--pointer-x) + clamp(-1 * var(--bridge-slack), var(--pointer-x) * 1e6, var(--bridge-slack)));
+  }
+}
+```
