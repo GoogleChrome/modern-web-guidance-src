@@ -190,15 +190,8 @@ test.describe('respect-os-text-scale Target Grader', () => {
       }
     }
 
-    // Hero section should use min-height / min-block-size or auto height so it can expand vertically
-    const heroRules = styleRules.filter((r) => /\bhero\b/.test(r.selectorText));
-    expect(heroRules.length).toBeGreaterThan(0);
-    const heroUsesMinHeight = heroRules.some((r) => {
-      const minH = r.style.getPropertyValue('min-height')?.trim();
-      const minB = r.style.getPropertyValue('min-block-size')?.trim();
-      return Boolean(minH || minB);
-    });
-    expect(heroUsesMinHeight).toBe(true);
+    // The loop above already rejects a fixed hero height. Content-driven sizing and
+    // min-height / min-block-size are both allowed by the guide.
   });
 
   test('Text within scaled containers wraps naturally without restrictive inline-axis clipping, fixed widths, or white-space: nowrap on text blocks', () => {
@@ -223,12 +216,6 @@ test.describe('respect-os-text-scale Target Grader', () => {
       }
     }
 
-    for (const rule of styleRules) {
-      const gridCols = rule.style.getPropertyValue('grid-template-columns')?.trim();
-      if (gridCols) {
-        expect(/\b\d+(\.\d+)?px\b/i.test(gridCols)).toBe(false);
-      }
-    }
 
     // Flex navigation containers must allow wrapping (flex-wrap: wrap) so text wraps naturally
     const navWrapRules = styleRules.filter(

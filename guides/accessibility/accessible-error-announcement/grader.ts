@@ -115,7 +115,7 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
       const errMsg = errId ? (document.getElementById(errId) || document.querySelector(`#${CSS.escape(errId)}`)) : el.parentElement?.querySelector('.error-message, .error-msg, [role="alert"]');
       if (!errMsg) return true;
       const style = window.getComputedStyle(errMsg);
-      const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0' && (errMsg.textContent ?? '').trim() !== '';
       const attr = el.getAttribute('aria-invalid');
       const ariaInvalid = attr === 'true' || attr === '';
       return ariaInvalid === isVisible;
