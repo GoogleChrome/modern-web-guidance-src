@@ -72,11 +72,11 @@ test.describe('natural-interactions Target Grader', () => {
       await expect(btn).toHaveCount(1);
 
       await btn.hover();
-      await page.waitForTimeout(250);
+      await btn.evaluate((el) => el.getAnimations().forEach((a) => a.finish()));
       const hoverState = await btn.evaluate(getVisualState);
 
       await page.mouse.down();
-      await page.waitForTimeout(250);
+      await btn.evaluate((el) => el.getAnimations().forEach((a) => a.finish()));
       const activeState = await btn.evaluate(getVisualState);
       await page.mouse.up();
 
