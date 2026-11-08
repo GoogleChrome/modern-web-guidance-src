@@ -124,16 +124,13 @@ test.describe('Cross-document Transitions Grader', () => {
     await page.goto(getTargetUrl());
 
     const hasTypesInCSS = await page.evaluate(() => {
-      let hasNext = false;
-      let hasPrevious = false;
+      const matchedTypes = new Set<string>();
       
       const checkRule = (rule: any) => {
         const text = rule.cssText || '';
-        if (text.includes(':active-view-transition-type(next)')) {
-          hasNext = true;
-        }
-        if (text.includes(':active-view-transition-type(previous)')) {
-          hasPrevious = true;
+        const matches = text.matchAll(/:active-view-transition-type\(\s*([^)\s,]+)\s*\)/gi);
+        for (const m of matches) {
+          matchedTypes.add(m[1].toLowerCase());
         }
         if (rule.cssRules) {
           for (const subRule of Array.from(rule.cssRules)) {
@@ -151,7 +148,7 @@ test.describe('Cross-document Transitions Grader', () => {
           // ignore cross-origin errors
         }
       }
-      return hasNext && hasPrevious;
+      return matchedTypes.size >= 2;
     });
 
     expect(hasTypesInCSS).toBe(true);

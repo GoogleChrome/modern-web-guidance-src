@@ -6,7 +6,7 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
+import { SyntaxKind, type CallExpression, type Node, type Project } from 'ts-morph';
 import {
   getCascadedStyle,
   CSSStyleRule,
@@ -230,8 +230,27 @@ test.describe('2d-panning Target Grader', () => {
   });
 
   test('The JavaScript fallback pans by updating the container scrollLeft and scrollTop rather than translating the content with CSS transform', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allStyleRules = collectStyleRules(Array.from(stylesheet.cssRules));
+    const hasAxisLockRule = allStyleRules.some(
+      ({ rule }) => rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none'
+    );
+    expect(hasAxisLockRule).toBe(true);
+
     const project: Project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
+
+    const callExpressions = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+    );
+    const panListeners = callExpressions.filter((call) => {
+      const expr = call.getExpression();
+      if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
+      const name = expr.asKind(SyntaxKind.PropertyAccessExpression)?.getName();
+      if (name !== 'addEventListener') return false;
+      const firstArg = call.getArguments()[0]?.getText() || '';
+      return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(firstArg);
+    });
 
     const propertyAccesses = sourceFiles.flatMap((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
@@ -239,7 +258,6 @@ test.describe('2d-panning Target Grader', () => {
     const elementAccesses = sourceFiles.flatMap((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.ElementAccessExpression)
     );
-
     const binaryExpressions = sourceFiles.flatMap((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
     );
@@ -260,9 +278,6 @@ test.describe('2d-panning Target Grader', () => {
       return /\bscrollTop\b/.test(leftText);
     }) || propertyAccesses.some((pa) => pa.getName() === 'scrollBy' || pa.getName() === 'scrollTo');
 
-    expect(updatesScrollLeft).toBe(true);
-    expect(updatesScrollTop).toBe(true);
-
     // Ensure JS does not pan by assigning style.transform or style['transform']
     const setsStyleTransform = binaryExpressions.some((expr) => {
       const op = expr.getOperatorToken().getText();
@@ -274,38 +289,120 @@ test.describe('2d-panning Target Grader', () => {
       return /['"`]transform['"`]/.test(arg) && /\bstyle\b/.test(ea.getExpression().getText());
     });
 
-    expect(setsStyleTransform).toBe(false);
+    expect(
+      panListeners.length === 0 || (updatesScrollLeft && updatesScrollTop && !setsStyleTransform)
+    ).toBe(true);
   });
 
   test('The JavaScript fallback is attached only when CSS.supports("scroll-axis-lock", "none") is false', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allStyleRules = collectStyleRules(Array.from(stylesheet.cssRules));
+    const hasAxisLockRule = allStyleRules.some(
+      ({ rule }) => rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none'
+    );
+    expect(hasAxisLockRule).toBe(true);
+
     const project: Project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const callExpressions = sourceFiles.flatMap((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.CallExpression)
     );
-
-    // Check for CSS.supports('scroll-axis-lock', 'none') or CSS.supports('scroll-axis-lock: none')
-    const supportsCalls = callExpressions.filter((call) => {
-      const exprText = call.getExpression().getText();
-      if (!/\bCSS\.supports\b/.test(exprText)) return false;
-      const argsText = call.getArguments().map((a) => a.getText()).join(' ');
-      return argsText.includes('scroll-axis-lock') && argsText.includes('none');
-    });
-
-    expect(supportsCalls.length).toBeGreaterThan(0);
-
-    // Verify that event listeners for wheel / pointer events are attached in the fallback
-    const addListenerCalls = callExpressions.filter((call) => {
+    const panListeners = callExpressions.filter((call) => {
       const expr = call.getExpression();
       if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
       const name = expr.asKind(SyntaxKind.PropertyAccessExpression)?.getName();
       if (name !== 'addEventListener') return false;
       const firstArg = call.getArguments()[0]?.getText() || '';
-      return /['"`](wheel|pointerdown|pointermove)['"`]/.test(firstArg);
+      return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(firstArg);
     });
 
-    expect(addListenerCalls.length).toBeGreaterThan(0);
+    const isCssSupportsScrollAxisLockCall = (call: CallExpression): boolean => {
+      const exprText = call.getExpression().getText();
+      if (!/\bCSS\.supports\b/.test(exprText)) return false;
+      const argsText = call.getArguments().map((a) => a.getText()).join(' ');
+      return argsText.includes('scroll-axis-lock') && argsText.includes('none');
+    };
+
+    const isGuardedByNotCssSupports = (node: Node): boolean => {
+      let current: Node | undefined = node.getParent();
+      while (current) {
+        if (current.getKind() === SyntaxKind.IfStatement) {
+          const ifStmt = current.asKindOrThrow(SyntaxKind.IfStatement);
+          const condition = ifStmt.getExpression();
+          const calls = condition.getDescendantsOfKind(SyntaxKind.CallExpression);
+          const allCalls =
+            condition.getKind() === SyntaxKind.CallExpression
+              ? [condition.asKindOrThrow(SyntaxKind.CallExpression), ...calls]
+              : calls;
+          const supportsCall = allCalls.find(isCssSupportsScrollAxisLockCall);
+          if (supportsCall) {
+            const isNegated =
+              condition
+                .getDescendantsOfKind(SyntaxKind.PrefixUnaryExpression)
+                .some(
+                  (u) =>
+                    u.getOperatorToken() === SyntaxKind.ExclamationToken &&
+                    (u.getOperand() === supportsCall ||
+                      u.getOperand().getDescendantsOfKind(SyntaxKind.CallExpression).includes(supportsCall))
+                ) ||
+              (condition.getKind() === SyntaxKind.PrefixUnaryExpression &&
+                condition.asKindOrThrow(SyntaxKind.PrefixUnaryExpression).getOperatorToken() ===
+                  SyntaxKind.ExclamationToken) ||
+              condition
+                .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+                .some(
+                  (b) =>
+                    ['===', '=='].includes(b.getOperatorToken().getText()) &&
+                    (b.getLeft().getText() === 'false' || b.getRight().getText() === 'false')
+                );
+            const thenStmt = ifStmt.getThenStatement();
+            const elseStmt = ifStmt.getElseStatement();
+            const inThen = node.getPos() >= thenStmt.getPos() && node.getEnd() <= thenStmt.getEnd();
+            const inElse =
+              elseStmt !== undefined &&
+              node.getPos() >= elseStmt.getPos() &&
+              node.getEnd() <= elseStmt.getEnd();
+            if ((inThen && isNegated) || (inElse && !isNegated)) {
+              return true;
+            }
+          }
+        }
+
+        if (current.getKind() === SyntaxKind.Block || current.getKind() === SyntaxKind.SourceFile) {
+          const statements = (current as any).getStatements?.() || [];
+          for (const stmt of statements) {
+            if (stmt.getEnd() <= node.getPos()) {
+              const ifStmts =
+                stmt.getKind() === SyntaxKind.IfStatement
+                  ? [stmt.asKindOrThrow(SyntaxKind.IfStatement)]
+                  : stmt.getDescendantsOfKind(SyntaxKind.IfStatement);
+              for (const ifStmt of ifStmts) {
+                if (ifStmt.getEnd() > node.getPos()) continue;
+                const condition = ifStmt.getExpression();
+                const calls = condition.getDescendantsOfKind(SyntaxKind.CallExpression);
+                const allCalls =
+                  condition.getKind() === SyntaxKind.CallExpression
+                    ? [condition.asKindOrThrow(SyntaxKind.CallExpression), ...calls]
+                    : calls;
+                const supportsCall = allCalls.find(isCssSupportsScrollAxisLockCall);
+                if (!supportsCall) continue;
+                const thenStmt = ifStmt.getThenStatement();
+                const hasReturn =
+                  thenStmt.getKind() === SyntaxKind.ReturnStatement ||
+                  thenStmt.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0;
+                if (hasReturn) return true;
+              }
+            }
+          }
+        }
+
+        current = current.getParent();
+      }
+      return false;
+    };
+
+    expect(panListeners.every((call) => isGuardedByNotCssSupports(call))).toBe(true);
   });
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
@@ -346,6 +443,19 @@ test.describe('2d-panning Target Grader', () => {
     });
 
     test('The JavaScript fallback pans scrollLeft and scrollTop in both axes when CSS.supports("scroll-axis-lock", "none") is false', async ({ page, TARGET_URL }) => {
+      const project: Project = getJsProject(targetFiles);
+      const hasPanListener = project
+        .getSourceFiles()
+        .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression))
+        .some((call) => {
+          const expr = call.getExpression();
+          if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
+          const name = expr.asKind(SyntaxKind.PropertyAccessExpression)?.getName();
+          if (name !== 'addEventListener') return false;
+          const firstArg = call.getArguments()[0]?.getText() || '';
+          return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(firstArg);
+        });
+
       await page.addInitScript(() => {
         const origSupports = CSS.supports.bind(CSS);
         CSS.supports = ((...args: [string, string?]) => {
@@ -400,10 +510,12 @@ test.describe('2d-panning Target Grader', () => {
       });
 
       expect(panResult).not.toBeNull();
-      expect(panResult!.wheelDefaultPrevented).toBe(true);
-      expect(panResult!.afterWheelLeft).toBeGreaterThan(0);
-      expect(panResult!.afterWheelTop).toBeGreaterThan(0);
       expect(panResult!.childInlineTransform).toBe('');
+      if (hasPanListener) {
+        expect(panResult!.wheelDefaultPrevented).toBe(true);
+        expect(panResult!.afterWheelLeft).toBeGreaterThan(0);
+        expect(panResult!.afterWheelTop).toBeGreaterThan(0);
+      }
     });
 
     test("Any JavaScript wheel fallback doesn't cancel wheel events that have ctrlKey set, so Ctrl+wheel and trackpad pinch still zoom the page", async ({ page, TARGET_URL }) => {

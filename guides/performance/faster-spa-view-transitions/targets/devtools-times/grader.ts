@@ -82,8 +82,8 @@ async function clickSectionNavControl(page: Page, sectionPattern: RegExp): Promi
 }
 
 function countSpaViewElements(): number {
-  const inactiveSamples = Array.from(
-    document.querySelectorAll<HTMLElement>('[inert]'),
+  const inactiveSamples = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
+    (el) => el.inert || window.getComputedStyle(el).contentVisibility === 'hidden',
   );
   let candidates: HTMLElement[] = [];
   if (inactiveSamples.length > 0 && inactiveSamples[0].parentElement) {

@@ -500,6 +500,7 @@ test.describe('directional-navigation-transitions Target Grader', () => {
       await expect(prevBtn).toBeEnabled({ timeout: 3000 });
 
       const countBefore = await page.evaluate(() => (window as any).__viewTransitions?.length ?? 0);
+      await page.waitForFunction(() => !document.documentElement.matches(':active-view-transition'), null, { timeout: 3000 });
       await prevBtn.click();
 
       await page.waitForFunction(

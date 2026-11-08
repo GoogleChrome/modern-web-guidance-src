@@ -21,6 +21,7 @@ declare global {
     __heldScrollQueue: Array<() => void>;
     __origScrollSettled: boolean;
     __activeNativeScrolls: number;
+    __longTimers: number;
     __resolveNextHeldScroll: () => boolean;
     __navEvents: {
       mutations: number;
@@ -37,7 +38,14 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
   window.__heldScrollQueue = [];
   window.__origScrollSettled = true;
   window.__activeNativeScrolls = 0;
+  window.__longTimers = 0;
   let seq = 0;
+
+  const origSetTimeout = window.setTimeout.bind(window);
+  window.setTimeout = ((handler, delay = 0, ...rest) => {
+    if (window.__holdNextScroll && Number(delay) >= 100) window.__longTimers++;
+    return origSetTimeout(handler, delay, ...rest);
+  }) as typeof window.setTimeout;
 
   window.__resolveNextHeldScroll = () => {
     const resolver = window.__heldScrollQueue.shift();
@@ -151,9 +159,6 @@ async function findNavTargetPairs(page: import('@playwright/test').Page) {
       if (!rawId) continue;
       const target = document.getElementById(rawId);
       if (!target || seenTargets.has(target)) continue;
-      if (target.tagName.toLowerCase() !== 'section' && target.closest('section') === null) {
-        continue;
-      }
 
       const tRect = target.getBoundingClientRect();
       if (tRect.height === 0 || tRect.width === 0) continue;
@@ -270,6 +275,7 @@ test.describe('daily-grind Target Grader', () => {
     await waitForOrigScrollAndFrames(page, 4);
     const whilePending = await captureTargetSnapshot(page, firstPair.targetId);
     expect(getAppliedPostScrollState(before, whilePending).hasAnyEffect).toBe(false);
+    expect(await page.evaluate(() => window.__longTimers)).toBe(0);
 
     const resolved = await page.evaluate(() => window.__resolveNextHeldScroll());
     expect(resolved).toBe(true);

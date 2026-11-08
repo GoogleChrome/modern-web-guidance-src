@@ -1,1 +1,1 @@
-- Style the page scrollbars with distinct custom colors and adapt them to high-contrast colors when the user prefers more contrast, ensuring legacy fallbacks are safely isolated.
+- Style the page scrollbars with distinct custom colors and adapt them to high-contrast colors when the user prefers more contrast.

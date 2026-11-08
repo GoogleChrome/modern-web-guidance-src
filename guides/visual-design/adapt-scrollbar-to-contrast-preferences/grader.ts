@@ -68,15 +68,19 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
 
   // 5. Browser test: Verify variables change under prefers-contrast: more
   test('CSS variables for scrollbar update to high-contrast colors when prefers-contrast: more is emulated', async ({ page }) => {
-    const getThumb = () => page.evaluate(() => {
+    const getScrollbarState = () => page.evaluate(() => {
       const candidates = [
-        document.querySelector('.scroller, .adaptive-contrast, .content-box'),
+        ...Array.from(document.querySelectorAll<HTMLElement>('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"]')),
         document.documentElement,
         document.body,
+        ...Array.from(document.querySelectorAll<HTMLElement>('*')),
       ].filter((el): el is HTMLElement => el !== null);
 
       for (const el of candidates) {
         const style = getComputedStyle(el);
+        if (style.scrollbarColor && style.scrollbarColor !== 'auto') {
+          return style.scrollbarColor.trim();
+        }
         const val = style.getPropertyValue('--scrollbar-thumb').trim() ||
                     style.getPropertyValue('--thumb').trim() ||
                     style.getPropertyValue('--scrollbar-color-thumb').trim();
@@ -85,53 +89,64 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
       return '';
     });
 
-    const initialThumb = await getThumb();
+    const initialState = await getScrollbarState();
     await page.emulateMedia({ contrast: 'more' });
-    const highContrastThumb = await getThumb();
+    const highContrastState = await getScrollbarState();
 
-    expect(highContrastThumb).not.toBe('');
-    expect(highContrastThumb.toLowerCase()).not.toBe(initialThumb.toLowerCase());
+    expect(highContrastState).not.toBe('');
+    expect(highContrastState.toLowerCase()).not.toBe(initialState.toLowerCase());
   });
 
   // 6. Browser test: High contrast colors are actually distinct
   test('High contrast scrollbar colors are highly distinct', async ({ page }) => {
     await page.emulateMedia({ contrast: 'more' });
 
-    const colors = await page.evaluate(() => {
+    const contrastRatio = await page.evaluate(() => {
       const candidates = [
-        document.querySelector('.scroller, .adaptive-contrast, .content-box'),
+        ...Array.from(document.querySelectorAll<HTMLElement>('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"]')),
         document.documentElement,
         document.body,
+        ...Array.from(document.querySelectorAll<HTMLElement>('*')),
       ].filter((el): el is HTMLElement => el !== null);
 
-      let thumb = '';
-      let track = '';
+      const resolveToRgb = (colorStr: string): [number, number, number] | null => {
+        if (!colorStr) return null;
+        const probe = document.createElement('div');
+        probe.style.color = colorStr;
+        document.body.appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        const m = resolved.match(/\d+(\.\d+)?/g);
+        return m ? [Number(m[0]), Number(m[1]), Number(m[2])] : null;
+      };
+
+      const relLuminance = ([r, g, b]: [number, number, number]) => {
+        const chan = (v: number) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b);
+      };
+
       for (const el of candidates) {
         const style = getComputedStyle(el);
-        if (!thumb) {
-          thumb = style.getPropertyValue('--scrollbar-thumb').trim() ||
-                  style.getPropertyValue('--thumb').trim() ||
-                  style.getPropertyValue('--scrollbar-color-thumb').trim();
-        }
-        if (!track) {
-          track = style.getPropertyValue('--scrollbar-track').trim() ||
-                  style.getPropertyValue('--track').trim() ||
-                  style.getPropertyValue('--scrollbar-color-track').trim();
+        const sc = style.scrollbarColor?.trim() || '';
+        if (sc && sc !== 'auto') {
+          const rgbMatches = sc.match(/rgba?\([^)]+\)|#[0-9a-fA-F]{3,8}|\b[a-zA-Z]+\b/g);
+          if (rgbMatches && rgbMatches.length >= 2) {
+            const c1 = resolveToRgb(rgbMatches[0]);
+            const c2 = resolveToRgb(rgbMatches[1]);
+            if (c1 && c2) {
+              const l1 = relLuminance(c1);
+              const l2 = relLuminance(c2);
+              return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+            }
+          }
         }
       }
-      return { thumb: thumb.toLowerCase(), track: track.toLowerCase() };
+      return 1;
     });
 
-    const isHighContrast =
-      colors.thumb === '#000000' ||
-      colors.thumb === '#000' ||
-      colors.thumb === 'black' ||
-      colors.thumb === 'rgb(0, 0, 0)' ||
-      colors.track === '#ffffff' ||
-      colors.track === '#fff' ||
-      colors.track === 'white' ||
-      colors.track === 'rgb(255, 255, 255)';
-
-    expect(isHighContrast).toBe(true);
+    expect(contrastRatio).toBeGreaterThanOrEqual(4.5);
   });
 });

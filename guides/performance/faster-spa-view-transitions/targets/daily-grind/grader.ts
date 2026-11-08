@@ -147,13 +147,10 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
                 window.getComputedStyle(el).display !== 'none' &&
                 !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
                   el.tagName,
-                ),
+                ) &&
+                /\bmenu\b/i.test(el.textContent || ''),
             );
             if (!activeView) return false;
-            const text = activeView.textContent || '';
-            if (!/\bmenu\b/i.test(text)) {
-              return false;
-            }
             activeView.setAttribute('data-grader-view-menu', 'true');
             return true;
           });
@@ -174,23 +171,20 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             const parent = hiddenViews[0].parentElement;
             if (!parent) return null;
             const siblings = Array.from(parent.children);
+            const menuView = document.querySelector(
+              '[data-grader-view-menu="true"]',
+            );
             const activeView = siblings.find(
               (el) =>
+                el !== menuView &&
                 !hiddenViews.includes(el) &&
                 window.getComputedStyle(el).display !== 'none' &&
                 !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
                   el.tagName,
-                ),
+                ) &&
+                /\blocations\b/i.test(el.textContent || ''),
             );
-            const menuView = document.querySelector(
-              '[data-grader-view-menu="true"]',
-            );
-            if (
-              !activeView ||
-              !menuView ||
-              activeView === menuView ||
-              !/\blocations\b/i.test(activeView.textContent || '')
-            ) {
+            if (!activeView || !menuView) {
               return null;
             }
 
@@ -258,13 +252,10 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
                 window.getComputedStyle(el).display !== 'none' &&
                 !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
                   el.tagName,
-                ),
+                ) &&
+                /\bmenu\b/i.test(el.textContent || ''),
             );
             if (!activeView) return false;
-            const text = activeView.textContent || '';
-            if (!/\bmenu\b/i.test(text)) {
-              return false;
-            }
             activeView.setAttribute('data-grader-inert-menu', 'true');
             return true;
           });
@@ -284,23 +275,20 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             const parent = hiddenViews[0].parentElement;
             if (!parent) return null;
             const siblings = Array.from(parent.children);
+            const menuView = document.querySelector(
+              '[data-grader-inert-menu="true"]',
+            );
             const activeView = siblings.find(
               (el) =>
+                el !== menuView &&
                 !hiddenViews.includes(el) &&
                 window.getComputedStyle(el).display !== 'none' &&
                 !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
                   el.tagName,
-                ),
+                ) &&
+                /\blocations\b/i.test(el.textContent || ''),
             );
-            const menuView = document.querySelector(
-              '[data-grader-inert-menu="true"]',
-            );
-            if (
-              !activeView ||
-              !menuView ||
-              activeView === menuView ||
-              !/\blocations\b/i.test(activeView.textContent || '')
-            ) {
+            if (!activeView || !menuView) {
               return null;
             }
 
@@ -396,7 +384,8 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
               (el) =>
                 !hiddenViews.includes(el) &&
                 window.getComputedStyle(el).display !== 'none' &&
-                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName),
+                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
+                /\brewards\b/i.test(el.textContent || ''),
             );
             if (!activeView) return false;
 

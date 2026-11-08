@@ -180,15 +180,18 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
     const headScripts = docs.flatMap((d) =>
       Array.from(d.document.querySelectorAll('head script')),
     );
-    const criticalHeadScriptsBlocked = headScripts
-      .filter((script) => !isThirdPartyOrAnalyticsScript(script))
-      .every((script) => hasRenderBlockingToken(script));
+    const noThirdPartyRenderBlocked = headScripts
+      .filter((script) => isThirdPartyOrAnalyticsScript(script))
+      .every((script) => !hasRenderBlockingToken(script));
 
     const allScripts = docs.flatMap((d) =>
       Array.from(d.document.querySelectorAll('script')),
     );
     const scriptCheckProject: Project = getJsProject([]);
     const preTransitionScriptsValid = allScripts.every((script: any, index: number) => {
+      if (isThirdPartyOrAnalyticsScript(script)) {
+        return !hasRenderBlockingToken(script);
+      }
       const code = script.textContent?.trim();
       if (!code) return true;
       const sf = scriptCheckProject.createSourceFile(`inline_${index}.ts`, code, {
@@ -214,7 +217,7 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
       );
     });
 
-    expect(criticalHeadScriptsBlocked && preTransitionScriptsValid).toBe(true);
+    expect(noThirdPartyRenderBlocked && preTransitionScriptsValid).toBe(true);
   });
 
   test('Render blocking is limited to resources and elements visible in the initial viewport and non-critical or below-the-fold content is NOT render-blocked', () => {

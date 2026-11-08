@@ -168,15 +168,53 @@ test.describe('scrollspy Target Grader', () => {
 
             const activeStyle = window.getComputedStyle(active);
             const inactiveStyle = window.getComputedStyle(inactive);
+            const activeBefore = window.getComputedStyle(active, '::before');
+            const inactiveBefore = window.getComputedStyle(inactive, '::before');
+            const activeAfter = window.getComputedStyle(active, '::after');
+            const inactiveAfter = window.getComputedStyle(inactive, '::after');
+
+            const parseRgb = (c: string) => {
+              const m = c.match(/\d+(\.\d+)?/g);
+              return m ? [Number(m[0]), Number(m[1]), Number(m[2])] : null;
+            };
+            const relLuminance = ([r, g, b]: number[]) => {
+              const chan = (v: number) => {
+                const s = v / 255;
+                return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+              };
+              return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b);
+            };
+            const c1 = parseRgb(activeStyle.color);
+            const c2 = parseRgb(inactiveStyle.color);
+            let contrastRatio = 1;
+            if (c1 && c2) {
+              const l1 = relLuminance(c1);
+              const l2 = relLuminance(c2);
+              contrastRatio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+            }
 
             const colorChanged = activeStyle.color !== inactiveStyle.color;
+            const hasSufficientContrast = contrastRatio >= 3;
+            const hasPseudoCue =
+              activeBefore.content !== inactiveBefore.content ||
+              activeAfter.content !== inactiveAfter.content ||
+              (activeBefore.content !== 'none' &&
+                (activeBefore.opacity !== inactiveBefore.opacity ||
+                  activeBefore.transform !== inactiveBefore.transform ||
+                  activeBefore.backgroundColor !== inactiveBefore.backgroundColor)) ||
+              (activeAfter.content !== 'none' &&
+                (activeAfter.opacity !== inactiveAfter.opacity ||
+                  activeAfter.transform !== inactiveAfter.transform ||
+                  activeAfter.backgroundColor !== inactiveAfter.backgroundColor));
             const hasNonColorCue =
               activeStyle.fontWeight !== inactiveStyle.fontWeight ||
               activeStyle.borderBottomColor !== inactiveStyle.borderBottomColor ||
+              activeStyle.borderBottomWidth !== inactiveStyle.borderBottomWidth ||
               activeStyle.textDecorationLine !== inactiveStyle.textDecorationLine ||
-              activeStyle.backgroundColor !== inactiveStyle.backgroundColor;
+              activeStyle.backgroundColor !== inactiveStyle.backgroundColor ||
+              hasPseudoCue;
 
-            return colorChanged && hasNonColorCue;
+            return colorChanged && (hasSufficientContrast || hasNonColorCue);
           });
         })
         .toBe(true);

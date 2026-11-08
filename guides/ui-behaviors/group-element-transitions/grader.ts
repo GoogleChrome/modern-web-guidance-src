@@ -397,7 +397,7 @@ test('12. The Add button is interactive during the transition', async ({ page })
           if (rule instanceof CSSStyleRule) {
             const selector = rule.selectorText.toLowerCase();
             
-            if (selector === '::view-transition' || selector.includes('::view-transition')) {
+            if (selector === '::view-transition' || /(?:^|,|\s)(?::root|html)?::view-transition(?:\s|,|$)/.test(selector)) {
               const pe = rule.style.pointerEvents || rule.style.getPropertyValue('pointer-events');
               if (pe === 'none') hasPointerEventsNone = true;
             }
@@ -411,26 +411,31 @@ test('12. The Add button is interactive during the transition', async ({ page })
         // ignore
       }
     }
-    if (!hasRootNone) {
-      if (document.documentElement.style.viewTransitionName === 'none' ||
-          window.getComputedStyle(document.documentElement).getPropertyValue('view-transition-name') === 'none' ||
-          Array.from(document.scripts).some(s => s.textContent?.includes("viewTransitionName = 'none'") || s.textContent?.includes('viewTransitionName = "none"') || s.textContent?.includes('view-transition-name') || s.textContent?.includes('viewTransitionScope') || s.textContent?.includes('view-transition-scope')) ||
-          Array.from(document.querySelectorAll('*')).some(el => (el as HTMLElement).style.getPropertyValue('view-transition-scope') || window.getComputedStyle(el).getPropertyValue('view-transition-scope') || window.getComputedStyle(el).getPropertyValue('view-transition-name') === 'none')) {
-        hasRootNone = true;
-      }
-    }
     return hasPointerEventsNone && hasRootNone;
   });
 
-  const exactBtn = page.locator('button:has-text("Add Item")').first();
-  const semanticBtn = page
-    .locator('button:not(.nav-cta):not(.btn-primary):not(.btn-ghost):not(.card-btn):not(dialog button)')
-    .filter({ hasText: /\badd\b|\+/i })
-    .first();
-  const btn = (await exactBtn.count()) > 0 ? exactBtn : semanticBtn;
+  const getTransitionedCount = async () => {
+    return await page.evaluate(() => {
+      const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
+        const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+        return c && c !== 'none';
+      });
+      return withClass.length > 0 ? withClass.length : document.querySelectorAll('.item, .card').length;
+    });
+  };
 
-  await expect(btn).toBeEnabled();
-  await btn.click();
+  const initialCount = await getTransitionedCount();
+  await clickAddButton(page);
+  await clickAddButton(page);
+
+  await page.waitForFunction((expectedMin: number) => {
+    const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return c && c !== 'none';
+    });
+    const count = withClass.length > 0 ? withClass.length : document.querySelectorAll('.item, .card').length;
+    return count >= expectedMin;
+  }, initialCount + 2, { timeout: 3000 });
   expect(hasTransitionStyles).toBe(true);
 });
 
@@ -442,7 +447,7 @@ test('13. The ::view-transition pseudo-element has pointer-events none', async (
         for (const rule of Array.from(sheet.cssRules)) {
           if (rule instanceof CSSStyleRule) {
             const selector = rule.selectorText.toLowerCase();
-            if (selector === '::view-transition' || selector.includes('::view-transition')) {
+            if (selector === '::view-transition' || /(?:^|,|\s)(?::root|html)?::view-transition(?:\s|,|$)/.test(selector)) {
               const pe = rule.style.pointerEvents || rule.style.getPropertyValue('pointer-events');
               if (pe === 'none') return true;
             }

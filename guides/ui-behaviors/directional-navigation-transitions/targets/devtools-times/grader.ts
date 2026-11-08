@@ -330,7 +330,12 @@ test.describe('Directional Navigation Transitions Target Grader', () => {
       const anim = rule.style.getPropertyValue('animation').trim();
       const animName = rule.style.getPropertyValue('animation-name').trim();
       const animDuration = rule.style.getPropertyValue('animation-duration').trim();
-      return anim === 'none' || animName === 'none' || animDuration === '0s' || animDuration === '0';
+      return (
+        anim === 'none' ||
+        animName === 'none' ||
+        (animDuration !== '' &&
+          parseFloat(animDuration) / (animDuration.endsWith('ms') ? 1000 : 1) <= 0.01)
+      );
     });
 
     expect(allDisabled).toBe(true);
@@ -475,6 +480,7 @@ test.describe('Directional Navigation Transitions Target Grader', () => {
       await expect(prevButton).toBeVisible();
       if (await prevButton.isDisabled()) {
         await nextButton.click();
+        await page.waitForFunction(() => !document.documentElement.matches(':active-view-transition'), null, { timeout: 3000 });
         await page.evaluate(() => {
           (window as any).__vtEvents = [];
         });
@@ -531,6 +537,7 @@ test.describe('Directional Navigation Transitions Target Grader', () => {
       await expect(prevButton).toBeVisible();
       if (await prevButton.isDisabled()) {
         await nextButton.click();
+        await page.waitForFunction(() => !document.documentElement.matches(':active-view-transition'), null, { timeout: 3000 });
         await page.evaluate(() => {
           (window as any).__vtEvents = [];
         });

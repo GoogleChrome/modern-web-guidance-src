@@ -69,32 +69,46 @@ async function locatePanelAndHandle(page: Page): Promise<boolean> {
       );
     });
 
-    const panel = fixedCandidates.find(
+    const topLevelFixed = fixedCandidates.filter(
       (el) => !fixedCandidates.some((other) => other !== el && other.contains(el))
     );
-    if (!panel) return false;
-    panel.setAttribute('data-grader-panel', 'true');
 
-    const descendants = Array.from(panel.querySelectorAll<HTMLElement>('*'));
-    const isInteractiveControl = (el: HTMLElement) =>
-      Boolean(el.closest('button, input, select, textarea, a'));
-
-    let handle = descendants.find((el) => {
-      if (isInteractiveControl(el)) return false;
+    const hasDragHandleSignal = (el: HTMLElement) => {
       const style = window.getComputedStyle(el);
+      const idClassAria = `${el.id} ${el.className} ${el.getAttribute('aria-label') || ''}`;
+      const isHandleHook =
+        el.hasAttribute('data-drag-handle') || /handle|drag|grip/i.test(idClassAria);
+      const isOtherControl =
+        Boolean(el.closest('input, select, textarea, a')) ||
+        (Boolean(el.closest('button')) && !isHandleHook);
+      if (isOtherControl) return false;
       return (
+        isHandleHook ||
         style.touchAction === 'none' ||
         el.getAttribute('tabindex') === '0' ||
         style.cursor === 'grab' ||
         style.userSelect === 'none'
       );
-    });
+    };
+
+    const panel =
+      topLevelFixed.find(
+        (el) =>
+          el.hasAttribute('data-draggable') ||
+          /quick-order|order-panel|draggable/i.test(`${el.id} ${el.className}`) ||
+          Array.from(el.querySelectorAll<HTMLElement>('*')).some(hasDragHandleSignal)
+      ) || topLevelFixed[0];
+    if (!panel) return false;
+    panel.setAttribute('data-grader-panel', 'true');
+
+    const descendants = Array.from(panel.querySelectorAll<HTMLElement>('*'));
+    let handle = descendants.find((el) => el.hasAttribute('data-drag-handle') || hasDragHandleSignal(el));
 
     if (!handle) {
       handle = descendants.find(
         (el) =>
-          !isInteractiveControl(el) &&
-          (el.tagName === 'HEADER' || /handle|header/i.test(`${el.id} ${el.className}`))
+          !el.closest('input, select, textarea, a') &&
+          (el.tagName === 'HEADER' || /handle|header|drag|grip/i.test(`${el.id} ${el.className}`))
       );
     }
 

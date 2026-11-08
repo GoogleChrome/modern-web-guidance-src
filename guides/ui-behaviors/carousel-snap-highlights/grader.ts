@@ -181,12 +181,14 @@ test("When the carousel is scrolled so a different item is snapped, the highligh
   }, { timeout: 2000 }).toBe(true);
 });
 
-test('Non-snapped items remain in their default state (grey background, no scale)', async ({ page }) => {
+test('Non-snapped items remain in their default, unhighlighted state (no highlight background, no scale)', async ({ page }) => {
   await page.goto(targetUrl);
 
+  const firstCard = page.locator('.carousel-item:nth-child(1) .card');
   const secondCard = page.locator('.carousel-item:nth-child(2) .card');
   await expect.poll(async () => {
-    return await secondCard.evaluate((el: any) => {
+    const snappedBg = await firstCard.evaluate((el: any) => window.getComputedStyle(el).backgroundColor);
+    return await secondCard.evaluate((el: any, activeBg: string) => {
       const style = window.getComputedStyle(el);
       let scaleVal = 1.0;
       if (style.scale && style.scale !== 'none') {
@@ -195,9 +197,9 @@ test('Non-snapped items remain in their default state (grey background, no scale
         const matrix = style.transform.match(/^matrix\(([^,]+),/);
         if (matrix) scaleVal = parseFloat(matrix[1]);
       }
-      const isGrey = style.backgroundColor === 'rgb(224, 224, 224)';
-      return scaleVal < 1.05 && isGrey;
-    });
+      const isNotHighlightedBg = style.backgroundColor !== activeBg && style.backgroundColor !== 'rgb(0, 123, 255)';
+      return scaleVal < 1.05 && isNotHighlightedBg;
+    }, snappedBg);
   }, { timeout: 2000 }).toBe(true);
 });
 

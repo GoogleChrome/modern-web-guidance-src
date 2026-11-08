@@ -192,14 +192,33 @@ test.describe('scoped-component-transitions Target Grader', () => {
     const styleRules = collectStyleRules(stylesheet.cssRules);
     const docs = getHtmlDocuments(targetFiles);
 
-    // Precondition: at least one rule or element configures view transitions or overflow clipping for scoped transitions
+    // Precondition: at least one rule, inline style, or JS statement configures view transitions for scoped transitions
     const hasViewTransitionCss = styleRules.some(
       (r) =>
         Boolean(r.style.getPropertyValue('view-transition-name').trim()) ||
         Boolean(r.style.getPropertyValue('view-transition-scope').trim()) ||
         Boolean(r.style.getPropertyValue('view-transition-group').trim()),
     );
-    expect(hasViewTransitionCss).toBe(true);
+    const hasInlineVtName = docs.some(({ document }) =>
+      Array.from(document.querySelectorAll('[style]')).some((el: any) => {
+        const styleAttr = el.getAttribute('style') || '';
+        return /view-transition-name\s*:\s*(?!none\b)[a-zA-Z0-9_-]+/.test(styleAttr);
+      }),
+    );
+    const project: Project = getJsProject(targetFiles);
+    const hasJsVtName = project.getSourceFiles().some((sf) =>
+      sf
+        .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+        .some((p) => p.getName() === 'viewTransitionName') ||
+      sf
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .some(
+          (c) =>
+            c.getExpression().getText().endsWith('.setProperty') &&
+            c.getArguments()[0]?.getText().replace(/['"`]/g, '') === 'view-transition-name',
+        ),
+    );
+    expect(hasViewTransitionCss || hasInlineVtName || hasJsVtName).toBe(true);
 
     // Check CSS rules that clip overflow
     const clippingRules = styleRules.filter((rule) => {
