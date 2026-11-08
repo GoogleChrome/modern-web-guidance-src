@@ -1,22 +1,3 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..b947077
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1,2 @@
-+node_modules/
-+dist/
-diff --git a/build.mjs b/build.mjs
-new file mode 100644
-index 0000000..da7d262
---- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,5 @@
-+import { mkdir, copyFile } from 'node:fs/promises';
-+
-+await mkdir('dist', { recursive: true });
-+await Promise.all(['index.html', 'menus.css', 'menus.js'].map(file => copyFile(file, `dist/${file}`)));
-+console.log('Built static site in dist/; JavaScript type checks passed.');
 diff --git a/index.html b/index.html
 index 66c9173..0a22c53 100644
 --- a/index.html
@@ -567,39 +548,3 @@ index 0000000..c2bd748
 +  window.addEventListener('resize', () => states.forEach(position));
 +  document.addEventListener('scroll', () => states.forEach(position), true);
 +})();
-diff --git a/package.json b/package.json
-index 2bd4d77..17eeb40 100644
---- a/package.json
-+++ b/package.json
-@@ -2,9 +2,13 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
-+    "build": "tsc -p tsconfig.json && node build.mjs",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
-   },
-   "pnpm": {
-     "onlyBuiltDependencies": []
-+  },
-+  "devDependencies": {
-+    "typescript": "5.9.3"
-   }
- }
-diff --git a/tsconfig.json b/tsconfig.json
-new file mode 100644
-index 0000000..eba60bc
---- /dev/null
-+++ b/tsconfig.json
-@@ -0,0 +1,12 @@
-+{
-+  "compilerOptions": {
-+    "allowJs": true,
-+    "checkJs": true,
-+    "noEmit": true,
-+    "strict": true,
-+    "target": "ES2022",
-+    "lib": ["ES2022", "DOM"],
-+    "types": []
-+  },
-+  "files": ["menus.js"]
-+}

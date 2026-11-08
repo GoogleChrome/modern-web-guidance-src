@@ -6,7 +6,7 @@ index 66c9173..248d91e 100644
        border-radius: 4px;
      }
  
-+    /* Menu triggers */
++    /* Menu trigger buttons */
 +    .trigger {
 +      font: inherit;
 +      font-size: 0.9rem;
