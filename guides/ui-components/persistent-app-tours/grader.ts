@@ -103,9 +103,17 @@ test.describe(`Persistent App Tours Expectations: ${demoName}`, () => {
     expect(/aria-labelledby/i.test(html)).toBe(true);
   });
 
-  test(`6. Programmatic focus must be shifted into the opened tour step container upon display`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/\.focus\(\)/i.test(html)).toBe(true);
+  test(`6. Programmatic focus must be shifted into the opened tour step container upon display`, async ({ page }) => {
+    const hasFocusInTour = await page.evaluate(() => {
+      const tourStep = document.getElementById('tour-step') || document.querySelector('[role="dialog"], [popover]');
+      if (!tourStep) return false;
+      const active = document.activeElement;
+      if (active && (active === tourStep || tourStep.contains(active))) {
+        return true;
+      }
+      return tourStep.hasAttribute('autofocus') || tourStep.querySelector('[autofocus]') !== null;
+    });
+    expect(hasFocusInTour).toBe(true);
   });
 
 });

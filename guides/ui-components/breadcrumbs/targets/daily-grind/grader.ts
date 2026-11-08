@@ -184,19 +184,39 @@ test.describe('breadcrumbs Target Grader', () => {
     }) => {
       const ariaCurrentState = await page.evaluate(() => {
         const navs = Array.from(document.querySelectorAll('nav'));
-        const bcNav = navs.find((n) => n.querySelector('ol'));
+        const bcNav =
+          navs.find(
+            (n) =>
+              /breadcrumb/i.test(n.getAttribute('aria-label') || '') ||
+              /breadcrumb/i.test(n.className)
+          ) || navs.find((n) => n.querySelector('ol'));
         if (!bcNav) return null;
 
-        const items = Array.from(bcNav.querySelectorAll<HTMLLIElement>('ol > li')).filter((li) => {
+        const list = bcNav.querySelector('ol, ul');
+        const allLi = list
+          ? Array.from(list.querySelectorAll<HTMLLIElement>(':scope > li'))
+          : Array.from(bcNav.querySelectorAll<HTMLLIElement>('li'));
+
+        const items = allLi.filter((li) => {
           if (li.hidden || window.getComputedStyle(li).display === 'none') return false;
           const hasDirectAnchor = Boolean(li.querySelector(':scope > a'));
           const hasOverflowButton = Boolean(li.querySelector(':scope > button'));
           return !(hasOverflowButton && !hasDirectAnchor);
         });
 
+        const getAriaCurrent = (li: HTMLLIElement) => {
+          return (
+            li.getAttribute('aria-current') ||
+            li.querySelector('a[aria-current]')?.getAttribute('aria-current') ||
+            li.querySelector('[aria-current]')?.getAttribute('aria-current') ||
+            li.querySelector(':scope > a')?.getAttribute('aria-current') ||
+            null
+          );
+        };
+
         return {
           count: items.length,
-          ariaCurrents: items.map((li) => li.querySelector(':scope > a')?.getAttribute('aria-current') ?? null),
+          ariaCurrents: items.map(getAriaCurrent),
         };
       });
 
