@@ -131,14 +131,11 @@ function whereMatchesLink(node: unknown, pathname: string, anchorEl?: Element | 
       if (typeof s !== 'string' || !s.trim()) return false;
       if (anchorEl && typeof anchorEl.matches === 'function') {
         try {
-          if (anchorEl.matches(s)) return true;
+          return anchorEl.matches(s);
         } catch {
-          // Ignore unsupported pseudo-selectors in static DOM parser
+          // linkedom can't evaluate this selector; only then assume an exclusion covers the link
+          return insideNot;
         }
-      }
-      // If inside `{ "not": { "selector_matches": ".no-prerender" } }`, a dedicated exclusion class/attribute excludes the link
-      if (insideNot) {
-        return true;
       }
       return false;
     });

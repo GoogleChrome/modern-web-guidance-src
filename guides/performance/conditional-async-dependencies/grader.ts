@@ -115,9 +115,8 @@ test.describe('Conditional Async Dependencies Grader', () => {
 
     const rawScripts = getModuleScriptContents(path.resolve(targetFile));
     const popoverProtoCheck = rawScripts.some(code =>
-      /['"]popover['"]\s+in\s+HTMLElement(?:\.prototype)?/.test(code) ||
-      /(?:Object\.(?:prototype\.)?(?:hasOwnProperty\.call|hasOwn)\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\))/.test(code) ||
-      (code.includes('popover') && code.includes('HTMLElement.prototype'))
+      /['"]popover['"]\s+in\s+HTMLElement\.prototype/.test(code) ||
+      /(?:Object\.(?:prototype\.)?(?:hasOwnProperty\.call|hasOwn)\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\))/.test(code)
     );
     expect(popoverProtoCheck).toBe(true);
   });
@@ -152,6 +151,12 @@ test.describe('Conditional Async Dependencies Grader', () => {
 
     const rawScripts = getModuleScriptContents(path.resolve(targetFile));
     expect(rawScripts.length).toBeGreaterThan(0);
+
+    // Exactly one module in the graph may own the conditional dynamic import
+    const scriptsWithDynamicImport = rawScripts.filter((code) =>
+      /\bimport\s*\(/.test(code.replace(/^\s*import\s+(?:[\s\S]*?\s+from\s+)?['"][^'"]+['"]\s*;?/gm, ''))
+    );
+    expect(scriptsWithDynamicImport.length).toBe(1);
 
     // Ensure no module is simultaneously imported multiple times across the module graph
     const allStaticImports: string[] = [];
