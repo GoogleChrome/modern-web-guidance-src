@@ -32,7 +32,7 @@ test.describe(`Precise Text Alignment Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('At least one UI element (heading, button, or short label) should have text-box-trim applied', async ({ page }) => {
+  test('At least one UI element (heading, button, or short label) has text-box-trim applied', async ({ page }) => {
     const hasTrimmedUIElement = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, button, span, p, label, .button-text, .card-text'));
       return elements.some(el => {
@@ -49,7 +49,7 @@ test.describe(`Precise Text Alignment Expectations: ${demoName}`, () => {
     expect(hasTrimmedUIElement, 'Should have at least one appropriate UI element with text-box-trim').toBe(true);
   });
 
-  test('Trimmed elements should specify font metrics (cap, alphabetic, etc) for text-box-edge', async ({ page }) => {
+  test('Trimmed elements specify font metrics for text-box-edge', async ({ page }) => {
     const trimmedElements = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('*'));
       return elements
@@ -81,7 +81,7 @@ test.describe(`Precise Text Alignment Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Long-form body text should not have text-box-trim applied', async ({ page }) => {
+  test('Long-form body text does not have text-box-trim applied', async ({ page }) => {
     const trimmedLongFormCount = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('*'));
       return elements.filter(el => {
@@ -96,7 +96,7 @@ test.describe(`Precise Text Alignment Expectations: ${demoName}`, () => {
     expect(trimmedLongFormCount, 'Long-form text should not have text-box-trim (better for readability)').toBe(0);
   });
 
-  test('Visual centering or flush alignment should not use magic number margins on candidate elements', async ({ page }) => {
+  test('Visual centering or flush alignment does not use magic number margins on candidate elements', async ({ page }) => {
     const magicMargins = await page.evaluate(() => {
       const candidates = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6, button, span, p, .button-text, .card-text'));
       return candidates
@@ -118,7 +118,7 @@ test.describe(`Precise Text Alignment Expectations: ${demoName}`, () => {
     expect(magicMargins, `Found magic margins: ${JSON.stringify(magicMargins)}`).toEqual([]);
   });
 
-  test('text-box-trim value should be appropriate for the use case', async ({ page }) => {
+  test('text-box-trim value is appropriate for the use case', async ({ page }) => {
     const trimmedData = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('*'));
       return elements

@@ -32,12 +32,12 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
     });
   });
 
-  test('Implementation uses sibling-index() and sibling-count() native functions', async () => {
+  test('The implementation uses `sibling-index()` and `sibling-count()` native functions to calculate visual properties.', async () => {
     expect(fileContent).toMatch(/sibling-index\s*\(/);
     expect(fileContent).toMatch(/sibling-count\s*\(/);
   });
 
-  test('Provides a JavaScript fallback strategy that injects 1-based --sibling-index and --sibling-count', async ({ page }) => {
+  test('A JavaScript fallback strategy injects 1-based custom properties for sibling index and count.', async ({ page }) => {
     await page.addInitScript(() => {
       const originalSupports = CSS.supports;
       CSS.supports = function(condition) {
@@ -67,7 +67,7 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
     await checkFallback('.circle-orb');
   });
 
-  test('JavaScript fallback is conditionally executed using CSS.supports() feature detection', async ({ page }) => {
+  test('The JavaScript fallback is conditionally executed using `CSS.supports()` feature detection.', async ({ page }) => {
     await page.goto(demoUrl);
     
     const properties = await page.evaluate(() => {
@@ -79,7 +79,7 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
     expect(properties[0]).toBe('');
   });
 
-  test('CSS overrides custom properties with native functions inside @supports block', async ({ page }) => {
+  test('The CSS overrides custom properties with native functions inside an `@supports` block.', async ({ page }) => {
     await page.goto(demoUrl);
     const computed = await page.evaluate(() => {
       const item = document.querySelector('.spectrum-card');
@@ -90,7 +90,7 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
     expect(computed).toContain('sibling-index');
   });
 
-  test('Calculates proportions or distributions dynamically', async ({ page }) => {
+  test('The implementation uses `sibling-count()` to calculate proportions or distributions dynamically.', async ({ page }) => {
     await page.goto(demoUrl);
     
     const getStyles = () => page.evaluate(() => {
@@ -114,23 +114,23 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
       }
     });
     
-    await page.waitForTimeout(100);
-    
-    const after = await getStyles();
-    
-    const hasDynamicChange = 
-      before!.width !== after!.width ||
-      before!.backgroundColor !== after!.backgroundColor ||
-      before!.transform !== after!.transform;
-      
-    expect(hasDynamicChange).toBe(true);
+    await expect.poll(async () => {
+      const after = await getStyles();
+      return (
+        before!.width !== after?.width ||
+        before!.backgroundColor !== after?.backgroundColor ||
+        before!.transform !== after?.transform
+      );
+    }).toBe(true);
   });
 
-  test('Implements symmetrical midpoint calculation AND circular trigonometry', async () => {
-    const hasMidpoint = /\+\s*1/.test(fileContent) && /\/\s*2/.test(fileContent);
-    const hasTrig = /sin\s*\(/.test(fileContent) && /cos\s*\(/.test(fileContent);
-    
+  test('The implementation uses the total count to find the midpoint for a symmetrical effect.', async () => {
+    const hasMidpoint = /(?:\+\s*1|1\s*\+)/.test(fileContent) && /\/\s*2/.test(fileContent);
     expect(hasMidpoint).toBe(true);
+  });
+
+  test('The implementation combines sibling functions with CSS trigonometry for circular positioning.', async () => {
+    const hasTrig = /sin\s*\(/.test(fileContent) && /cos\s*\(/.test(fileContent);
     expect(hasTrig).toBe(true);
   });
 });

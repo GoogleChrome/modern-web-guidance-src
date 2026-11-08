@@ -1,26 +1,27 @@
 diff --git a/index.html b/index.html
-index 66c9173..a91322d 100644
+index 66c9173..2235614 100644
 --- a/index.html
 +++ b/index.html
-@@ -135,6 +135,72 @@
-       background: #3e2723;
+@@ -152,6 +152,98 @@
+       text-decoration: none;
+       font-size: 0.85rem;
      }
- 
-+    /* Hovercards */
++
++    /* Hovercard Component */
 +    [popover].hovercard {
 +      position-area: block-end span-inline-end;
 +      position-try-fallbacks: flip-block, flip-inline;
-+      opacity: 0;
-+      transform-origin: top;
++      margin-top: 8px;
++      width: 300px;
 +      background: white;
 +      color: var(--text);
 +      padding: 16px;
-+      border-radius: 8px;
-+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 +      border: 1px solid var(--secondary);
-+      max-width: 320px;
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 +      text-align: left;
-+      margin: 8px 0 0 0;
++      opacity: 0;
++      transform-origin: top;
 +    }
 +
 +    [popover].hovercard:popover-open {
@@ -50,43 +51,68 @@ index 66c9173..a91322d 100644
 +    .hovercard h2 {
 +      font-size: 1.15rem;
 +      color: var(--primary);
-+      margin-bottom: 4px;
++      margin-bottom: 2px;
 +    }
 +
 +    .hovercard .byline {
-+      font-size: 0.85rem;
-+      font-weight: 600;
++      font-size: 0.8rem;
 +      color: #6d4c41;
++      font-weight: 600;
 +      margin-bottom: 10px;
 +    }
 +
 +    .hovercard img {
 +      width: 100%;
-+      height: 140px;
++      height: 130px;
 +      object-fit: cover;
 +      border-radius: 6px;
 +      margin-bottom: 8px;
++      display: block;
 +    }
 +
 +    .hovercard p {
-+      font-size: 0.9rem;
++      font-size: 0.88rem;
++      line-height: 1.45;
 +    }
 +
-     footer {
-       background: var(--secondary);
-       text-align: center;
-@@ -181,17 +247,41 @@
++    /* Cross-document View Transitions */
++    @view-transition {
++      navigation: auto;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: 0s;
++    }
++
++    [popover]:popover-open {
++      view-transition-name: --hovercard;
++      view-transition-class: morph;
++
++      h2 {
++        view-transition-name: --title;
++        view-transition-class: morph;
++      }
++
++      img {
++        view-transition-name: --image;
++        view-transition-class: morph;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -181,17 +273,41 @@
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <a href="/menu/seasonal" class="btn" interestfor="maple-oat-latte-preview">View Details</a>
++          <a href="/menu/seasonal" interestfor="maple-oat-latte-preview" class="btn">View Details</a>
 +          <div id="maple-oat-latte-preview" popover="hint" class="hovercard">
 +            <h2>Maple Oat Latte</h2>
-+            <p class="byline">Seasonal Specialty &bull; $5.75</p>
++            <p class="byline">Seasonal Limited Edition &bull; $5.75</p>
 +            <div>
 +              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="A warm cup of Maple Oat Latte with latte art">
-+              <p>Rich double-shot espresso swirled with steamed barista oat milk, organic Grade-A Vermont maple syrup, and a dash of cinnamon.</p>
++              <p>Handcrafted with two shots of our signature espresso, velvety steamed oat milk, and pure Grade A Vermont amber maple syrup, topped with a dash of cinnamon.</p>
 +            </div>
 +          </div>
          </div>
@@ -94,13 +120,13 @@ index 66c9173..a91322d 100644
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+          <a href="/menu/espresso" class="btn" interestfor="dark-roast-espresso-preview">View Details</a>
++          <a href="/menu/espresso" interestfor="dark-roast-espresso-preview" class="btn">View Details</a>
 +          <div id="dark-roast-espresso-preview" popover="hint" class="hovercard">
 +            <h2>Dark Roast Espresso</h2>
-+            <p class="byline">Signature Roast &bull; $3.50</p>
++            <p class="byline">House Signature Roast &bull; $3.50</p>
 +            <div>
-+              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="A freshly pulled shot of Dark Roast Espresso">
-+              <p>Full-bodied single-origin beans roasted to perfection, featuring deep notes of dark chocolate, caramelized sugar, and toasted walnut.</p>
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="A rich shot of Dark Roast Espresso with golden crema">
++              <p>Full-bodied single-origin beans roasted to perfection, featuring deep notes of dark chocolate, toasted walnut, and a rich velvety crema.</p>
 +            </div>
 +          </div>
          </div>
@@ -108,15 +134,435 @@ index 66c9173..a91322d 100644
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview">View Details</a>
++          <a href="/menu/cold-brew" interestfor="cold-brew-preview" class="btn">View Details</a>
 +          <div id="cold-brew-preview" popover="hint" class="hovercard">
 +            <h2>Cold Brew</h2>
 +            <p class="byline">Slow-Steeped Classic &bull; $4.75</p>
 +            <div>
-+              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="A chilled glass of Cold Brew coffee over ice">
-+              <p>Coarse-ground Ethiopian and Colombian beans steeped in cold filtered water for 18 hours for an ultra-smooth, low-acidity finish.</p>
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Iced glass of smooth Cold Brew coffee">
++              <p>Coarse-ground artisanal beans steeped in filtered cold water for 18 hours, delivering naturally sweet cocoa notes with ultra-low acidity.</p>
 +            </div>
 +          </div>
          </div>
        </div>
      </section>
+diff --git a/menu/cold-brew/index.html b/menu/cold-brew/index.html
+new file mode 100644
+index 0000000..3d3312b
+--- /dev/null
++++ b/menu/cold-brew/index.html
+@@ -0,0 +1,134 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Cold Brew | The Daily Grind</title>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++    }
++
++    main {
++      max-width: 720px;
++      margin: 40px auto;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      view-transition-name: --hovercard;
++      view-transition-class: morph;
++    }
++
++    h1 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      view-transition-name: --title;
++      view-transition-class: morph;
++    }
++
++    .byline {
++      color: #6d4c41;
++      font-weight: 600;
++      margin-bottom: 16px;
++    }
++
++    main img {
++      width: 100%;
++      max-height: 380px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 16px;
++      display: block;
++      view-transition-name: --image;
++      view-transition-class: morph;
++    }
++
++    @view-transition {
++      navigation: auto;
++    }
++
++    /* By default no transition */
++    ::view-transition-group(*) {
++      animation-duration: 0s;
++    }
++
++    /* Short transition for morphing elements */
++    ::view-transition-group(.morph) {
++      animation-duration: 0.4s;
++    }
++
++    /* Disable transition if no `old` view */
++    ::view-transition-new(.morph):only-child {
++      animation-duration: 0s;
++    }
++  </style>
++</head>
++
++<body>
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++    </ul>
++  </nav>
++
++  <main id="main-content">
++    <h1>Cold Brew</h1>
++    <p class="byline">Slow-Steeped Classic &bull; $4.75</p>
++    <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Iced glass of smooth Cold Brew coffee">
++    <p>Coarse-ground artisanal beans steeped in filtered cold water for 18 hours, delivering naturally sweet cocoa notes with ultra-low acidity.</p>
++  </main>
++</body>
++
++</html>
+diff --git a/menu/espresso/index.html b/menu/espresso/index.html
+new file mode 100644
+index 0000000..8d1136e
+--- /dev/null
++++ b/menu/espresso/index.html
+@@ -0,0 +1,134 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Dark Roast Espresso | The Daily Grind</title>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++    }
++
++    main {
++      max-width: 720px;
++      margin: 40px auto;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      view-transition-name: --hovercard;
++      view-transition-class: morph;
++    }
++
++    h1 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      view-transition-name: --title;
++      view-transition-class: morph;
++    }
++
++    .byline {
++      color: #6d4c41;
++      font-weight: 600;
++      margin-bottom: 16px;
++    }
++
++    main img {
++      width: 100%;
++      max-height: 380px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 16px;
++      display: block;
++      view-transition-name: --image;
++      view-transition-class: morph;
++    }
++
++    @view-transition {
++      navigation: auto;
++    }
++
++    /* By default no transition */
++    ::view-transition-group(*) {
++      animation-duration: 0s;
++    }
++
++    /* Short transition for morphing elements */
++    ::view-transition-group(.morph) {
++      animation-duration: 0.4s;
++    }
++
++    /* Disable transition if no `old` view */
++    ::view-transition-new(.morph):only-child {
++      animation-duration: 0s;
++    }
++  </style>
++</head>
++
++<body>
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++    </ul>
++  </nav>
++
++  <main id="main-content">
++    <h1>Dark Roast Espresso</h1>
++    <p class="byline">House Signature Roast &bull; $3.50</p>
++    <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="A rich shot of Dark Roast Espresso with golden crema">
++    <p>Full-bodied single-origin beans roasted to perfection, featuring deep notes of dark chocolate, toasted walnut, and a rich velvety crema.</p>
++  </main>
++</body>
++
++</html>
+diff --git a/menu/seasonal/index.html b/menu/seasonal/index.html
+new file mode 100644
+index 0000000..a1be56e
+--- /dev/null
++++ b/menu/seasonal/index.html
+@@ -0,0 +1,134 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Maple Oat Latte | The Daily Grind</title>
++  <link rel="expect" href="#main-content" blocking="render">
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--text);
++      background-color: var(--light);
++    }
++
++    nav {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .logo {
++      font-size: 1.5rem;
++      font-weight: bold;
++      letter-spacing: 1px;
++    }
++
++    nav ul {
++      display: flex;
++      list-style: none;
++    }
++
++    nav ul li {
++      margin-left: 20px;
++    }
++
++    nav a {
++      color: white;
++      text-decoration: none;
++      font-size: 0.9rem;
++    }
++
++    main {
++      max-width: 720px;
++      margin: 40px auto;
++      padding: 24px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      view-transition-name: --hovercard;
++      view-transition-class: morph;
++    }
++
++    h1 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      view-transition-name: --title;
++      view-transition-class: morph;
++    }
++
++    .byline {
++      color: #6d4c41;
++      font-weight: 600;
++      margin-bottom: 16px;
++    }
++
++    main img {
++      width: 100%;
++      max-height: 380px;
++      object-fit: cover;
++      border-radius: 8px;
++      margin-bottom: 16px;
++      display: block;
++      view-transition-name: --image;
++      view-transition-class: morph;
++    }
++
++    @view-transition {
++      navigation: auto;
++    }
++
++    /* By default no transition */
++    ::view-transition-group(*) {
++      animation-duration: 0s;
++    }
++
++    /* Short transition for morphing elements */
++    ::view-transition-group(.morph) {
++      animation-duration: 0.4s;
++    }
++
++    /* Disable transition if no `old` view */
++    ::view-transition-new(.morph):only-child {
++      animation-duration: 0s;
++    }
++  </style>
++</head>
++
++<body>
++  <nav>
++    <div class="logo">THE DAILY GRIND</div>
++    <ul>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++    </ul>
++  </nav>
++
++  <main id="main-content">
++    <h1>Maple Oat Latte</h1>
++    <p class="byline">Seasonal Limited Edition &bull; $5.75</p>
++    <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="A warm cup of Maple Oat Latte with latte art">
++    <p>Handcrafted with two shots of our signature espresso, velvety steamed oat milk, and pure Grade A Vermont amber maple syrup, topped with a dash of cinnamon.</p>
++  </main>
++</body>
++
++</html>

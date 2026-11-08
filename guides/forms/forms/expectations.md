@@ -9,7 +9,7 @@
 - The implementation MUST NOT use generic `<div>` or `<span>` for form controls.
 - The implementation MUST NOT use `type="button"` for primary submission buttons.
 - The implementation MUST NOT disable textarea resizing without alternate layout provisions.
-- The implementation MUST use `<input type="radio">` when there are 1-5 mutually exclusive options.
+- The implementation MUST use `<input type="radio">` when there are 2-5 mutually exclusive options.
 - The implementation MUST use `<select>` when there are 6 or more mutually exclusive options.
 - The implementation MUST use `<input list="id">` (`<datalist>`) for massive or dynamic sets of options (10+).
 - The implementation MUST use `<input type="checkbox">` for multi-select options.
@@ -27,12 +27,11 @@
 - The implementation MUST use the `autocomplete` attribute to specify expected data (e.g., `email`, `tel`).
 - The implementation MUST use `inputmode` to optimize on-screen keyboards (e.g., `inputmode="numeric"` for PINs).
 - The implementation MUST use `enterkeyhint` to set the Enter key label.
-- The implementation MUST set `autocorrect="off"` (and `autocapitalize="off"`, `spellcheck="false"`) on unstructured identifier fields such as usernames and codes (but NOT on structured fields like emails or URLs).
-- The implementation MUST NOT set `autocorrect="off"` or `autocapitalize="off"` on `type=email` or `type=url` inputs.
+- The implementation MUST set `autocorrect="off"` (and `autocapitalize="none"`, `spellcheck="false"`) on identifier fields such as usernames, emails, URLs, codes, and search inputs.
 - The implementation MUST use single-field inputs for complex numbers (credit cards, phones).
 - The implementation MUST NOT use `type="number"` for credit cards or ZIP codes.
 - The implementation MUST use native constraints: `required`, `minlength`, `maxlength`, `pattern`.
-- The implementation MUST use CSS pseudo-classes like `:invalid:user-invalid` for non-intrusive styling.
+- The implementation MUST use CSS pseudo-classes like `:user-invalid` for non-intrusive styling.
 - The implementation MUST use the ValidityState API (`setCustomValidity`) for custom messaging.
 - The implementation MUST NOT disable submit buttons to block validation.
 - The implementation MUST disable the button *after* a valid submission is clicked.
@@ -41,12 +40,12 @@
 - The implementation MUST block invalid payloads on `submit` and route focus to the error summary or first error field.
 - The implementation MUST use single-column layouts for scanning.
 - The implementation MUST set `font-size` to at least `1rem` (16px) for inputs.
-- The implementation MUST ensure tap targets are at least 40px.
+- The implementation MUST ensure tap targets are at least 48px.
 - The implementation MUST use units relative to root (`rem`) for typography and spacing.
 - The implementation SHOULD use CSS logical properties (e.g., `margin-inline-start`).
 - The implementation MUST use `appearance: none` for custom dropdown arrows without breaking semantics.
 - The implementation MUST ensure inputs are clearly visible with adequate border contrast.
-- The implementation MUST hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
+- The implementation MUST hide inputs visually using the `.visually-hidden` recipe (`clip-path: inset(50%)` with 1px dimensions, NOT `display: none`) to keep them accessible.
 - The implementation MUST prevent default navigation on form submit for AJAX (`e.preventDefault()`).
 - The implementation MUST use `aria-expanded` and `aria-controls` for dynamic UI reveals.
 - The implementation MUST NOT block page submission if JavaScript fails (ensure server-side fallback).

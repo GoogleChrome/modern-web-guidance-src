@@ -1,23 +1,96 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..849ddff
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1 @@
-+dist/
-diff --git a/build.mjs b/build.mjs
-new file mode 100644
-index 0000000..9c617e2
---- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,5 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
+diff --git a/index.html b/dist/index.html
+similarity index 73%
+copy from index.html
+copy to dist/index.html
+index 66c9173..6ea8d67 100644
+--- a/index.html
++++ b/dist/index.html
+@@ -57,12 +57,10 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
+@@ -149,9 +147,59 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
 +
-+const output = new URL('./dist/', import.meta.url);
-+await mkdir(output, { recursive: true });
-+await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', output));
++    /* Native lines follow wrapped text and preserve default Latin ink skipping. */
++    :where(nav a, .footer-links a) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-underline-offset: 0.22em;
++      text-decoration-inset: 0.08em 0.08em;
++    }
++
++    :where(nav a:focus-visible, .footer-links a:focus-visible) {
++      outline: 2px solid currentColor;
++      outline-offset: 4px;
++    }
++
++    /* Overlines distinguish these noninteractive titles from the links. */
++    :where(.seasonal-title, .card h3) {
++      text-decoration: overline solid var(--primary) max(1px, 0.07em);
++      text-decoration-inset: 0.15em 0.15em;
++    }
++
++    .seasonal-title {
++      width: fit-content;
++      margin-inline: auto;
++      text-align: center;
++    }
++
++    .card h3 {
++      width: fit-content;
++      margin-inline: auto;
++      text-decoration-style: double;
++    }
++
++    /* Unsupported inset properties leave the complete native lines visible. */
++    @media (prefers-reduced-motion: no-preference) {
++      :where(nav a, .footer-links a) {
++        text-decoration-inset: 0.08em 100%;
++        transition: text-decoration-inset 0.25s ease-out, color 0.25s ease-out;
++      }
++
++      :where(nav a, .footer-links a):is(:hover, :focus-visible) {
++        text-decoration-inset: 0.08em 0.08em;
++      }
++
++      :where(.seasonal-title, .card h3) {
++        animation: reveal-title 0.6s ease-out both;
++      }
++
++      @keyframes reveal-title {
++        from { text-decoration-inset: 0.15em 100%; }
++        to { text-decoration-inset: 0.15em 0.15em; }
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +224,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="seasonal-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
 diff --git a/index.html b/index.html
-index 66c9173..15b20b0 100644
+index 66c9173..6ea8d67 100644
 --- a/index.html
 +++ b/index.html
 @@ -57,12 +57,10 @@
@@ -34,7 +107,7 @@ index 66c9173..15b20b0 100644
        color: var(--accent);
      }
  
-@@ -149,9 +147,58 @@
+@@ -149,9 +147,59 @@
      .footer-links a {
        margin: 0 10px;
        color: var(--text);
@@ -42,76 +115,77 @@ index 66c9173..15b20b0 100644
        font-size: 0.85rem;
      }
 +
-+    /* Native lines follow wrapping and retain default ink skipping for descenders. */
++    /* Native lines follow wrapped text and preserve default Latin ink skipping. */
 +    :where(nav a, .footer-links a) {
 +      text-decoration: underline solid currentColor max(1px, 0.08em);
 +      text-underline-offset: 0.22em;
 +      text-decoration-inset: 0.08em 0.08em;
 +    }
 +
-+    :where(.footer-links a) {
-+      text-underline-offset: 0.18em;
-+      text-decoration-inset: 0.12em 0.12em;
-+    }
-+
-+    :where(nav a, .footer-links a):focus-visible {
++    :where(nav a:focus-visible, .footer-links a:focus-visible) {
 +      outline: 2px solid currentColor;
-+      outline-offset: 5px;
++      outline-offset: 4px;
 +    }
 +
-+    /* Distinct heading treatments stay visible and do not imply interactivity. */
-+    :where(.seasonal-heading) {
-+      text-align: center;
-+      text-decoration: underline double var(--primary) max(1px, 0.06em);
-+      text-underline-offset: 0.18em;
-+      text-decoration-inset: 0.3em 0.3em;
-+    }
-+
-+    :where(.card h3) {
-+      text-decoration: underline wavy var(--primary) max(1px, 0.06em);
-+      text-underline-offset: 0.25em;
++    /* Overlines distinguish these noninteractive titles from the links. */
++    :where(.seasonal-title, .card h3) {
++      text-decoration: overline solid var(--primary) max(1px, 0.07em);
 +      text-decoration-inset: 0.15em 0.15em;
 +    }
 +
-+    /* Unsupported inset leaves the native underline fully visible.
-+       Reduced motion also keeps the complete line, without a reveal. */
-+    @supports (text-decoration-inset: 0 100%) {
-+      @media (prefers-reduced-motion: no-preference) {
-+        :where(nav a, .footer-links a) {
-+          text-decoration-inset: 0.08em 100%;
-+          transition: text-decoration-inset 0.25s ease-out;
-+        }
++    .seasonal-title {
++      width: fit-content;
++      margin-inline: auto;
++      text-align: center;
++    }
 +
-+        :where(nav a, .footer-links a):is(:hover, :focus-visible) {
-+          text-decoration-inset: 0.08em 0.08em;
-+        }
++    .card h3 {
++      width: fit-content;
++      margin-inline: auto;
++      text-decoration-style: double;
++    }
 +
-+        :where(.footer-links a):is(:hover, :focus-visible) {
-+          text-decoration-inset: 0.12em 0.12em;
-+        }
++    /* Unsupported inset properties leave the complete native lines visible. */
++    @media (prefers-reduced-motion: no-preference) {
++      :where(nav a, .footer-links a) {
++        text-decoration-inset: 0.08em 100%;
++        transition: text-decoration-inset 0.25s ease-out, color 0.25s ease-out;
++      }
++
++      :where(nav a, .footer-links a):is(:hover, :focus-visible) {
++        text-decoration-inset: 0.08em 0.08em;
++      }
++
++      :where(.seasonal-title, .card h3) {
++        animation: reveal-title 0.6s ease-out both;
++      }
++
++      @keyframes reveal-title {
++        from { text-decoration-inset: 0.15em 100%; }
++        to { text-decoration-inset: 0.15em 0.15em; }
 +      }
 +    }
    </style>
  </head>
  
-@@ -176,7 +223,7 @@
+@@ -176,7 +224,7 @@
  
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <h2 class="seasonal-heading">Seasonal Favorites</h2>
++      <h2 class="seasonal-title">Seasonal Favorites</h2>
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
 diff --git a/package.json b/package.json
-index 2bd4d77..5c14ac8 100644
+index 2bd4d77..43e7284 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node build.mjs",
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {

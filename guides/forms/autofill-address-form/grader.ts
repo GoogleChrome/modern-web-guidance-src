@@ -92,6 +92,7 @@ test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
   });
 
   test('Name and address inputs must not restrict to Latin-only characters', async ({ page }) => {
+    expect(await page.locator('form input, form textarea').count()).toBeGreaterThan(0);
     const patterns = await page.evaluate(() => {
       const controls = Array.from(document.querySelectorAll('input[pattern], textarea[pattern]'));
       return controls.map(el => el.getAttribute('pattern')).filter(Boolean) as string[];

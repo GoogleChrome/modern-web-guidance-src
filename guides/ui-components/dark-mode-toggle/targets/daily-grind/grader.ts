@@ -226,16 +226,30 @@ test.describe('dark-mode-toggle Target Grader', () => {
   // --- BROWSER ASSERTIONS (E2E) ---
 
   test.describe('Browser tests', () => {
+    async function discoverStorageKey(page: Page): Promise<string | null> {
+      await applyOppositeSchemeInPage(page, 'dark');
+      return await page.evaluate(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && localStorage.getItem(k) === 'dark') {
+            return k;
+          }
+        }
+        return null;
+      });
+    }
+
     test('Inline <script> in <head> applies stored localStorage scheme override to <meta name="color-scheme"> before render', async ({
       page,
       TARGET_URL,
     }) => {
-      await page.addInitScript(() => {
-        try {
-          localStorage.setItem('color-scheme', 'dark');
-        } catch {}
-      });
+      await page.emulateMedia({ colorScheme: 'light' });
       await page.goto(TARGET_URL);
+
+      const storageKey = await discoverStorageKey(page);
+      expect(storageKey).not.toBeNull();
+
+      await page.reload();
 
       const state = await page.evaluate(() => {
         const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
@@ -370,15 +384,23 @@ test.describe('dark-mode-toggle Target Grader', () => {
       await page.emulateMedia({ colorScheme: 'light' });
       await page.goto(TARGET_URL);
 
-      const syncResults = await page.evaluate(() => {
+      const storageKey = await discoverStorageKey(page);
+      expect(storageKey).not.toBeNull();
+
+      await page.evaluate((key) => {
+        localStorage.removeItem(key);
+      }, storageKey!);
+      await page.reload();
+
+      const syncResults = await page.evaluate((key) => {
         const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
         if (!meta) return null;
 
         // Simulate another tab setting 'dark'
-        localStorage.setItem('color-scheme', 'dark');
+        localStorage.setItem(key, 'dark');
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'color-scheme',
+            key,
             oldValue: null,
             newValue: 'dark',
             storageArea: localStorage,
@@ -387,10 +409,10 @@ test.describe('dark-mode-toggle Target Grader', () => {
         const afterDark = meta.content;
 
         // Simulate another tab setting 'light'
-        localStorage.setItem('color-scheme', 'light');
+        localStorage.setItem(key, 'light');
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'color-scheme',
+            key,
             oldValue: 'dark',
             newValue: 'light',
             storageArea: localStorage,
@@ -399,10 +421,10 @@ test.describe('dark-mode-toggle Target Grader', () => {
         const afterLight = meta.content;
 
         // Simulate another tab removing the key
-        localStorage.removeItem('color-scheme');
+        localStorage.removeItem(key);
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'color-scheme',
+            key,
             oldValue: 'light',
             newValue: null,
             storageArea: localStorage,
@@ -417,7 +439,7 @@ test.describe('dark-mode-toggle Target Grader', () => {
           afterLight,
           afterRemoveIsLightDark,
         };
-      });
+      }, storageKey!);
 
       expect(syncResults).toEqual({
         afterDark: 'dark',
