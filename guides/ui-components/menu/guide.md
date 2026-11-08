@@ -369,3 +369,9 @@ Without invokers, `command="toggle-popover"` does nothing, so script must toggle
 * If the menu is open, close it with `closeAndRestore(menu)`. Otherwise call `menu.showPopover({ source: trigger })`.
 * Mark the menu in `enterOnOpen` unless the click came from the pressed trigger (`pointerTrigger`), so only keyboard opens enter the menu.
 * `Enter` and `Space` still work because they generate a click on buttons.
+
+### Fallbacks & browser support for `:has()`
+
+{{ BASELINE_STATUS("has") }}
+
+If targeting browsers without `:has()`, add a class to each menu popover instead of selecting `[popover]:has(> [focusgroup~="menu"])`.
