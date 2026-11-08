@@ -1,5 +1,31 @@
 [
   {
+    "testId": "nightly-2026-11-08_07-35-35-codex_cli",
+    "timestamp": "2026-11-08T08:30:55.780Z",
+    "agent": "codex_cli",
+    "serving": "skills_cli",
+    "model": "gpt-6.1-sol",
+    "taskCount": 215,
+    "assertionCount": 1795,
+    "unguidedPassRate": 54,
+    "guidedPassRate": 82,
+    "skillVersion": "2026_11_06-909bc374",
+    "cliVersion": "0.0.203"
+  },
+  {
+    "testId": "nightly-2026-11-08_06-48-18-claude_code",
+    "timestamp": "2026-11-08T07:23:56.866Z",
+    "agent": "claude_code",
+    "serving": "skills_cli",
+    "model": "claude-opus-5-5",
+    "taskCount": 215,
+    "assertionCount": 1801,
+    "unguidedPassRate": 57,
+    "guidedPassRate": 88,
+    "skillVersion": "2026_11_06-909bc374",
+    "cliVersion": "0.0.203"
+  },
+  {
     "testId": "nightly-2026-11-06_05-35-34-codex_cli",
     "timestamp": "2026-11-06T06:31:06.396Z",
     "agent": "codex_cli",
@@ -101,32 +127,6 @@
     "unguidedPassRate": 58,
     "guidedPassRate": 90,
     "skillVersion": "2026_10_30-58d055df",
-    "cliVersion": "0.0.196"
-  },
-  {
-    "testId": "nightly-2026-10-31_23-00-02-antigravity_cli",
-    "timestamp": "2026-11-01T02:15:50.694Z",
-    "agent": "antigravity_cli",
-    "serving": "skills_cli",
-    "model": "gemini-4-argon",
-    "taskCount": 205,
-    "assertionCount": 1705,
-    "unguidedPassRate": 61,
-    "guidedPassRate": 96,
-    "skillVersion": "2026_10_30-58d055df",
-    "cliVersion": "0.0.196"
-  },
-  {
-    "testId": "nightly-2026-10-30_03-35-16-codex_cli",
-    "timestamp": "2026-10-30T04:24:34.225Z",
-    "agent": "codex_cli",
-    "serving": "skills_cli",
-    "model": "gpt-6.1-sol",
-    "taskCount": 204,
-    "assertionCount": 1721,
-    "unguidedPassRate": 55,
-    "guidedPassRate": 84,
-    "skillVersion": "2026_10_26-d8866c48",
     "cliVersion": "0.0.196"
   }
 ]
