@@ -590,10 +590,9 @@ test('20. Uses WAAPI animations to collapse row height and translate content', a
 test('21. Projects focus affordance onto content element when track has focus', async ({ page }) => {
   await loadPage(page);
   const result = await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item, [class*="swipe" i], li') as HTMLElement;
-    if (!item) return null;
-    const track = (item.querySelector('.SwipeableList-track, [class*="track" i]') || item) as HTMLElement;
-    const content = (track?.querySelector('.SwipeableList-content, [class*="content" i]') || track?.firstElementChild || track) as HTMLElement;
+    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
+    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
+    const content = track?.querySelector('.SwipeableList-content') as HTMLElement;
     if (!track || !content) return null;
     
     const hadTabindex = track.hasAttribute('tabindex');
@@ -604,22 +603,19 @@ test('21. Projects focus affordance onto content element when track has focus', 
     track.focus();
     const styleFocused = window.getComputedStyle(content);
     const outlineStyleFocused = styleFocused.outlineStyle || styleFocused.getPropertyValue('outline-style');
-    const outlineWidthFocused = styleFocused.outlineWidth || styleFocused.getPropertyValue('outline-width');
-    const boxShadowFocused = styleFocused.boxShadow || styleFocused.getPropertyValue('box-shadow');
     
     track.blur();
     const styleBlurred = window.getComputedStyle(content);
     const outlineStyleBlurred = styleBlurred.outlineStyle || styleBlurred.getPropertyValue('outline-style');
     
-    const hasVisibleIndicator = (outlineStyleFocused !== 'none' && outlineWidthFocused !== '0px') || (boxShadowFocused && boxShadowFocused !== 'none');
-
     return {
-      hasVisibleIndicator,
       outlineStyleFocused,
-      outlineStyleBlurred
+      outlineStyleBlurred,
+      hasInitClass: item.classList.contains('is-initialized')
     };
   });
 
   expect(result).not.toBeNull();
-  expect(result!.hasVisibleIndicator || result!.outlineStyleFocused !== 'none').toBe(true);
+  expect(result!.hasInitClass).toBe(true);
+  expect(result!.outlineStyleFocused).not.toBe('none');
 });

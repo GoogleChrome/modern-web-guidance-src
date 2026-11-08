@@ -77,134 +77,42 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
 
   // 5. Browser test: Verify variables change under prefers-contrast: more
   test('CSS variables for scrollbar update to high-contrast colors when prefers-contrast: more is emulated', async ({ page }) => {
-    const getScrollbarInfo = () => {
-      const candidates = Array.from(
-        document.querySelectorAll<HTMLElement>(
-          '.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"], html, body'
-        )
-      );
-      for (const el of candidates) {
-        const style = window.getComputedStyle(el);
-        const thumb =
-          style.getPropertyValue('--scrollbar-thumb').trim() ||
-          style.getPropertyValue('--thumb').trim() ||
-          style.getPropertyValue('--sb-thumb').trim() ||
-          style.getPropertyValue('--scrollbar-thumb-color').trim();
-        const track =
-          style.getPropertyValue('--scrollbar-track').trim() ||
-          style.getPropertyValue('--track').trim() ||
-          style.getPropertyValue('--sb-track').trim() ||
-          style.getPropertyValue('--scrollbar-track-color').trim();
-        const sbColor = style.scrollbarColor || '';
-        if (thumb || track || (sbColor && sbColor !== 'auto')) {
-          return { thumb, track, sbColor };
-        }
-      }
-      return { thumb: '', track: '', sbColor: '' };
-    };
-
-    const initial = await page.evaluate(getScrollbarInfo);
-
+    // Find the element with scrollbar-color or a scroller class, fallback to html
+    let scroller = page.locator('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"]').first();
+    let initialThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim()).catch(() => '');
+    if (!initialThumb) {
+      scroller = page.locator('html, body').first();
+      initialThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim());
+    }
+    
     // Emulate high contrast
     await page.emulateMedia({ contrast: 'more' });
-
+    
     // Check high contrast state
-    const highContrast = await page.evaluate(getScrollbarInfo);
-
-    const changed =
-      (initial.thumb &&
-        highContrast.thumb &&
-        initial.thumb.toLowerCase() !== highContrast.thumb.toLowerCase()) ||
-      (initial.track &&
-        highContrast.track &&
-        initial.track.toLowerCase() !== highContrast.track.toLowerCase()) ||
-      (initial.sbColor &&
-        highContrast.sbColor &&
-        initial.sbColor.toLowerCase() !== highContrast.sbColor.toLowerCase());
-
-    expect(Boolean(changed)).toBe(true);
+    const highContrastThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim());
+    
+    // The value should change to something very dark/bright
+    expect(highContrastThumb.toLowerCase()).not.toBe(initialThumb.toLowerCase());
   });
 
   // 6. Browser test: High contrast colors are actually distinct (black/white or very dark/light)
   test('High contrast scrollbar colors are highly distinct (e.g., black or white)', async ({ page }) => {
     await page.emulateMedia({ contrast: 'more' });
-
-    const isHighContrast = await page.evaluate(() => {
-      function parseRgb(colorStr: string): [number, number, number] | null {
-        const c = colorStr.trim().toLowerCase();
-        if (c === 'black' || c === 'canvastext' || c === '#000' || c === '#000000') return [0, 0, 0];
-        if (c === 'white' || c === 'canvas' || c === '#fff' || c === '#ffffff') return [255, 255, 255];
-        const hex = c.replace('#', '');
-        if (hex.length === 3) {
-          return [parseInt(hex[0] + hex[0], 16), parseInt(hex[1] + hex[1], 16), parseInt(hex[2] + hex[2], 16)];
-        }
-        if (hex.length === 6) {
-          return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
-        }
-        const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (m) return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
-        return null;
-      }
-
-      function lum([r, g, b]: [number, number, number]): number {
-        const a = [r, g, b].map((v) => {
-          v /= 255;
-          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-        });
-        return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
-      }
-
-      function contrastRatio(c1: [number, number, number], c2: [number, number, number]): number {
-        const l1 = lum(c1);
-        const l2 = lum(c2);
-        return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-      }
-
-      const candidates = Array.from(
-        document.querySelectorAll<HTMLElement>(
-          '.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"], html, body'
-        )
-      );
-
-      for (const el of candidates) {
-        const style = window.getComputedStyle(el);
-        const thumbStr =
-          style.getPropertyValue('--scrollbar-thumb').trim() ||
-          style.getPropertyValue('--thumb').trim() ||
-          style.getPropertyValue('--sb-thumb').trim() ||
-          style.getPropertyValue('--scrollbar-thumb-color').trim();
-        const trackStr =
-          style.getPropertyValue('--scrollbar-track').trim() ||
-          style.getPropertyValue('--track').trim() ||
-          style.getPropertyValue('--sb-track').trim() ||
-          style.getPropertyValue('--scrollbar-track-color').trim();
-        const sbColor = style.scrollbarColor || '';
-
-        const isSystemColor =
-          /canvastext|canvas|buttontext|highlight/i.test(thumbStr) ||
-          /canvastext|canvas|buttontext|highlight/i.test(trackStr) ||
-          /canvastext|canvas|buttontext|highlight/i.test(sbColor);
-        if (isSystemColor) return true;
-
-        const rgbThumb = parseRgb(thumbStr);
-        const rgbTrack = parseRgb(trackStr);
-        if (rgbThumb && rgbTrack && contrastRatio(rgbThumb, rgbTrack) >= 4.5) {
-          return true;
-        }
-
-        const rgbMatches = Array.from(sbColor.matchAll(/rgba?\([^)]+\)/g)).map((m) =>
-          parseRgb(m[0])
-        );
-        if (rgbMatches.length >= 2 && rgbMatches[0] && rgbMatches[1]) {
-          if (contrastRatio(rgbMatches[0], rgbMatches[1]) >= 4.5) return true;
-        }
-
-        if (rgbThumb && lum(rgbThumb) <= 0.1) return true;
-        if (rgbTrack && lum(rgbTrack) >= 0.9) return true;
-      }
-      return false;
-    });
-
+    
+    let scroller = page.locator('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"]').first();
+    let thumbColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim()).catch(() => '');
+    let trackColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-track').trim()).catch(() => '');
+    
+    if (!thumbColor) {
+      scroller = page.locator('html, body').first();
+      thumbColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim());
+      trackColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-track').trim());
+    }
+    
+    // Check if thumb is black or very dark
+    const isHighContrast = (thumbColor.toLowerCase() === '#000000' || thumbColor.toLowerCase() === '#000' || thumbColor.toLowerCase() === 'black') ||
+                           (trackColor.toLowerCase() === '#ffffff' || trackColor.toLowerCase() === '#fff' || trackColor.toLowerCase() === 'white');
+    
     expect(isHighContrast).toBe(true);
   });
 });
