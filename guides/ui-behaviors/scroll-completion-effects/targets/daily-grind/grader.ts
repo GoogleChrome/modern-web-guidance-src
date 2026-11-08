@@ -42,7 +42,7 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
   let seq = 0;
 
   const origSetTimeout = window.setTimeout.bind(window);
-  window.setTimeout = ((handler, delay = 0, ...rest) => {
+  window.setTimeout = ((handler: TimerHandler, delay = 0, ...rest: unknown[]) => {
     if (window.__holdNextScroll && Number(delay) >= 100) window.__longTimers++;
     return origSetTimeout(handler, delay, ...rest);
   }) as typeof window.setTimeout;
