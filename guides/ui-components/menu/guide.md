@@ -167,13 +167,13 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
 
 1. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus. Remember which trigger was pressed. Clicking a closed trigger opens it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
 2. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway. Pointer focus on a submenu trigger runs the same submenu preview as keyboard focus, after a short delay so a pointer crossing the item does not flash its submenu.
-3. **Safe triangle.** A fixed CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Let CSS draw the bridge and use script only to report the pointer:
+3. **Safe triangle.** A static CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Let CSS draw a triangle from where the pointer left the trigger, and use script only to place it:
    * Run this only when `matchMedia('(hover: hover)').matches`; it is irrelevant to touch and keyboard.
-   * Start when the pointer leaves a submenu trigger whose submenu is open. Skip a `--below` submenu, which has no side edge.
-   * Set `--bridge-x` and `--bridge-y` (the pointer, in px relative to the submenu), `--bridge-edge` (the submenu's near-edge x: `0` when the pointer is to its left, its width when it flipped) and `--bridge-height` on the submenu, and `data-bridge` to switch the bridge on.
-   * Stop after about 300 ms, when the pointer reaches an item in the submenu, or when the submenu closes. Remove the listener and the attribute. Nothing runs after that.
-   * CSS gives the submenu a `::before` clipped to a triangle from the pointer to the near-edge corners. It sits over the sibling items on the pointer's path, so they never receive the hover that would close the submenu. `clip-path` also limits hit testing, so the rest of the parent menu stays interactive.
-   * The submenu needs `overflow: visible` (a popover clips by default), and the pseudo-element extends past it, so offset the shape's points by that extent.
+   * Start on `pointerleave` of a submenu trigger whose submenu is open, at the event's position. Skip a `--below` submenu, which has no side edge.
+   * Set `--pointer-x` and `--pointer-y` (the pointer, in px relative to the submenu's box) on the submenu, and `data-bridge` to switch the bridge on. CSS derives the rest: which side the pointer is on from the sign of `--pointer-x`, and the submenu's near-edge corners from percentages of the pseudo-element's own box.
+   * Pointer moves over the bridge target the submenu, so listen there: keep the bridge while the pointer moves toward the submenu, and remove the attribute about 300 ms after it rests, when it moves away from the submenu horizontally, when it reaches an item in the submenu, or when the submenu closes. A fixed 300 ms from the leave is too short for an unhurried diagonal; a bridge that ignores a reversal makes a change of mind wait.
+   * CSS gives the submenu a `::before` clipped to a triangle from that point to the near-edge corners, with a few px of slack around the point (`--bridge-slack` below) so the pointer's own position is inside the shape rather than on its edge. The apex does not follow the pointer: an apex at the pointer turns every move into a direction test, and the first step off a straight line closes the submenu. It sits over the sibling items on the pointer's path, so they never receive the hover that would close the submenu. `clip-path` also limits hit testing, so the rest of the parent menu stays interactive.
+   * The submenu needs `overflow: visible` (a popover clips by default). The pseudo-element extends `100vw`/`100vh` past it on every side, so the shape's points are offset by that, and `100%` of its box is the submenu plus twice that.
    * Follow-up: a curved path (`shape()` curve commands) follows real pointer arcs better than a straight triangle. {# Pointer-driven animations ([CSS Pointer Animations](https://drafts.csswg.org/pointer-animations-1/)) may later remove the script. #}
 
 ```css
@@ -183,11 +183,16 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
   &[data-bridge]::before {
     content: "";
     position: absolute;
-    inset: -100vh -100vw; /* Room for the triangle, which can extend far outside the submenu. */
+    inset: -100vh -100vw; /* Room for the triangle. In this box the submenu runs from 100vw/100vh to 100% - 100vw/100vh. */
+    --bridge-slack: 5px; /* The apex moves away from the submenu by this much and is twice this tall. */
+    --bridge-side: sign(var(--pointer-x)); /* -1: pointer left of the submenu, 1: right. */
+    --bridge-edge: calc(50% + var(--bridge-side) * (50% - 100vw)); /* The submenu's near edge. */
+    --bridge-apex: calc(100vw + var(--pointer-x) + var(--bridge-side) * var(--bridge-slack));
     clip-path: shape(
-      from calc(100vw + var(--bridge-x)) calc(100vh + var(--bridge-y)),
-      line to calc(100vw + var(--bridge-edge)) 100vh,
-      line to calc(100vw + var(--bridge-edge)) calc(100vh + var(--bridge-height)),
+      from var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
+      line to var(--bridge-edge) 100vh,
+      line to var(--bridge-edge) calc(100% - 100vh),
+      line to var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack)),
       close
     );
   }
@@ -197,34 +202,36 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
 ```js
 const canHover = matchMedia('(hover: hover)');
 
-// Call on pointerleave of a submenu trigger, with that trigger's submenu.
+// Call on pointerleave of a submenu trigger, with its submenu.
 function startBridge(submenu, event) {
   if (!canHover.matches || !submenu.matches(':popover-open')) return;
   const rect = submenu.getBoundingClientRect();
-  if (event.clientX >= rect.left && event.clientX <= rect.right) return; // --below: no side edge.
-  const style = submenu.style;
-  style.setProperty('--bridge-edge', `${event.clientX < rect.left ? 0 : rect.width}px`);
-  style.setProperty('--bridge-height', `${rect.height}px`);
-  const update = ({ clientX, clientY, target }) => {
-    if (target !== submenu && submenu.contains(target)) return stop(); // Reached an item.
-    style.setProperty('--bridge-x', `${clientX - rect.left}px`);
-    style.setProperty('--bridge-y', `${clientY - rect.top}px`);
-  };
-  const timer = setTimeout(() => stop(), 300);
+  const left = event.clientX < rect.left;
+  if (!left && event.clientX <= rect.right) return; // --below: no side edge.
+  submenu.style.setProperty('--pointer-x', `${event.clientX - rect.left}px`);
+  submenu.style.setProperty('--pointer-y', `${event.clientY - rect.top}px`);
+  submenu.dataset.bridge = '';
+  let timer;
+  let lastX = event.clientX;
   const stop = () => {
     clearTimeout(timer);
-    document.removeEventListener('pointermove', update);
-    submenu.removeEventListener('toggle', stop);
+    submenu.removeEventListener('pointermove', extend);
     submenu.removeAttribute('data-bridge');
   };
-  update(event);
-  submenu.dataset.bridge = '';
-  document.addEventListener('pointermove', update);
+  const extend = ({ target, clientX }) => {
+    // Reached an item, or turned away from the submenu.
+    if (target !== submenu || (left ? clientX < lastX : clientX > lastX)) return stop();
+    lastX = clientX;
+    clearTimeout(timer);
+    timer = setTimeout(stop, 300);
+  };
+  timer = setTimeout(stop, 300);
+  submenu.addEventListener('pointermove', extend);
   submenu.addEventListener('toggle', stop, { once: true });
 }
 ```
 
-Hover follows focus (item 2) stays a plain `pointermove` handler: it needs no triangle logic.
+Hover follows focus (item 2) needs one guard. The move that leaves the trigger was hit-tested before the bridge existed, so its target is the sibling under the pointer. Skip the focus when `document.elementFromPoint(event.clientX, event.clientY)` is not inside the item; later moves on the path hit the bridge, whose target is the submenu, not an item.
 
 Also:
 

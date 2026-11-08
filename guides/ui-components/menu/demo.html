@@ -101,25 +101,39 @@
       box-shadow: 0 .7rem 1.8rem #0004;
     }
 
-    /* Safe triangle for submenus: an invisible triangle from the pointer to the submenu's near edge
-       catches the pointer, so sibling items under its path do not take hover and close the submenu.
-       Script sets the --bridge-* values (px, relative to the submenu) for a moment after the
-       pointer leaves the trigger. A popover clips overflow by default, so it must be visible. */
+    /* Safe triangle for submenus: an invisible triangle from where the pointer left the trigger to
+       the submenu's near edge catches the pointer, so sibling items under its path do not take
+       hover and close the submenu. Script reports the pointer (--pointer-x/-y, px relative to the
+       submenu) for a moment after it leaves the trigger; CSS owns the shape. A popover clips
+       overflow by default, so it must be visible. */
     [focusgroup~="menu"] > [popover] {
       overflow: visible;
 
       &[data-bridge]::before {
         content: "";
         position: absolute;
+        /* Room for a triangle that can reach far outside the submenu. In this box the submenu runs
+           from 100vw/100vh to 100% - 100vw/100vh, and 50% is its center. */
         inset: -100vh -100vw;
-        /* The pseudo-element extends 100vw/100vh past the submenu, so shift every point by that. */
+        /* Slack around the pointer, so its own position is inside the shape rather than on its
+           edge: the apex moves away from the submenu by this much and is twice this tall. */
+        --bridge-slack: 5px;
+        --bridge-side: sign(var(--pointer-x)); /* -1: pointer left of the submenu, 1: right. */
+        --bridge-edge: calc(50% + var(--bridge-side) * (50% - 100vw)); /* The submenu's near edge. */
+        --bridge-apex: calc(100vw + var(--pointer-x) + var(--bridge-side) * var(--bridge-slack));
         clip-path: shape(
-          from calc(100vw + var(--bridge-x)) calc(100vh + var(--bridge-y)),
-          line to calc(100vw + var(--bridge-edge)) 100vh,
-          line to calc(100vw + var(--bridge-edge)) calc(100vh + var(--bridge-height)),
+          from var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
+          line to var(--bridge-edge) 100vh,
+          line to var(--bridge-edge) calc(100% - 100vh),
+          line to var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack)),
           close
         );
       }
+    }
+
+    /* ?debug paints the bridge (and the script keeps it longer). */
+    [data-debug] [data-bridge]::before {
+      background: rgb(255 0 0 / .3);
     }
 
     /* Open and close: short, opacity plus a small slide, no submenu-specific variant. Keyboard users
@@ -312,7 +326,8 @@
       from the submenu, Escape in the top-level menu to close it, and Tab to leave the menu.</p>
     <h2 id="testing">Testing guidance</h2>
     <p>Test this demo with keyboard-only input, VoiceOver, and NVDA. The visible focus indicator and status message make
-      the result easy to inspect.</p>
+      the result easy to inspect. To watch the safe triangle that keeps a submenu open while the pointer travels to it,
+      <a href="?debug">open the demo with ?debug</a>: the triangle is painted and stays for 5 seconds.</p>
     <p id="status" role="status" aria-live="polite"></p>
   </main>
 
@@ -391,34 +406,43 @@
       menu.hidePopover();
     }
 
-    // Safe triangle: while the pointer leaves a submenu trigger, CSS draws an invisible bridge from
-    // the pointer to the submenu's near edge. Script only reports the pointer, and only for 300 ms
-    // after leaving the trigger, on hover-capable devices.
+    // Safe triangle: when the pointer leaves a submenu trigger, CSS draws an invisible triangle from
+    // that point to the submenu's near edge. Script only reports the pointer and decides how long the
+    // bridge lives, on hover-capable devices. The apex stays where the pointer left: an apex that
+    // followed the pointer would turn every move into a direction test, and the first step off a
+    // straight line would close the submenu.
     const canHover = matchMedia('(hover: hover)');
+    // ?debug paints the bridge and lets it rest 5 s instead of 300 ms, to watch where it is drawn.
+    const debug = new URLSearchParams(location.search).has('debug');
+    document.documentElement.toggleAttribute('data-debug', debug);
+    const bridgeRest = debug ? 5000 : 300;
     function startBridge(submenu, event) {
       if (!canHover.matches || !isOpen(submenu)) return;
       const rect = submenu.getBoundingClientRect();
+      const left = event.clientX < rect.left;
       // A submenu that fell back below its trigger has no side edge, so there is no bridge.
-      if (event.clientX >= rect.left && event.clientX <= rect.right) return;
-      const style = submenu.style;
-      style.setProperty('--bridge-edge', `${event.clientX < rect.left ? 0 : rect.width}px`);
-      style.setProperty('--bridge-height', `${rect.height}px`);
-      const update = ({ clientX, clientY, target }) => {
-        // Reaching an item in the submenu ends the bridge.
-        if (target !== submenu && submenu.contains(target)) return stop();
-        style.setProperty('--bridge-x', `${clientX - rect.left}px`);
-        style.setProperty('--bridge-y', `${clientY - rect.top}px`);
-      };
-      const timer = setTimeout(() => stop(), 300);
+      if (!left && event.clientX <= rect.right) return;
+      submenu.style.setProperty('--pointer-x', `${event.clientX - rect.left}px`);
+      submenu.style.setProperty('--pointer-y', `${event.clientY - rect.top}px`);
+      submenu.dataset.bridge = '';
+      let timer;
+      let lastX = event.clientX;
       const stop = () => {
         clearTimeout(timer);
-        document.removeEventListener('pointermove', update);
-        submenu.removeEventListener('toggle', stop);
+        submenu.removeEventListener('pointermove', extend);
         submenu.removeAttribute('data-bridge');
       };
-      update(event);
-      submenu.dataset.bridge = '';
-      document.addEventListener('pointermove', update);
+      // Moves over the bridge target the submenu. A pointer moving toward the submenu keeps the
+      // bridge; one that rests for 300 ms lets the sibling under it take hover, and one that turns
+      // away horizontally or reaches an item ends it.
+      const extend = ({ target, clientX }) => {
+        if (target !== submenu || (left ? clientX < lastX : clientX > lastX)) return stop();
+        lastX = clientX;
+        clearTimeout(timer);
+        timer = setTimeout(stop, bridgeRest);
+      };
+      timer = setTimeout(stop, bridgeRest);
+      submenu.addEventListener('pointermove', extend);
       submenu.addEventListener('toggle', stop, { once: true });
     }
 
@@ -569,6 +593,9 @@
       menu.addEventListener('pointermove', event => {
         const item = event.target.closest('button');
         if (!item || item.closest('[popover]') !== menu || item === document.activeElement) return;
+        // The target can be stale: the move that leaves a submenu trigger is hit-tested before the
+        // bridge exists, so check what is under the pointer now.
+        if (!item.contains(document.elementFromPoint(event.clientX, event.clientY))) return;
         item.focus({ preventScroll: true, focusVisible: false });
       });
 
