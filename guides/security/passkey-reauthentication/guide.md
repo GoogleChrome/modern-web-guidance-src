@@ -115,12 +115,15 @@ document
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported. Bare module specifiers (`import 'webauthn-polyfills'`) throw in unbundled browser `<script type="module">` tags unless mapped with a bundler or `<script type="importmap">`:
 
-```js 
-import 'webauthn-polyfills';
-``` 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
+// import 'webauthn-polyfills';
+
+// In an unbundled browser <script type="module">:
+import 'https://esm.sh/webauthn-polyfills';
+```
 
 ### Signal API Synchronization Fallback
 
@@ -134,9 +137,12 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseRequestOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.parseRequestOptionsFromJSON()` and `PublicKeyCredential.prototype.toJSON()` are available whenever `PublicKeyCredential` is supported. Bare module specifiers (`import 'webauthn-polyfills'`) throw in unbundled browser `<script type="module">` tags unless mapped with a bundler or `<script type="importmap">`:
 
-```js 
-import 'webauthn-polyfills';
-``` 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
+// import 'webauthn-polyfills';
+
+// In an unbundled browser <script type="module">:
+import 'https://esm.sh/webauthn-polyfills';
+```

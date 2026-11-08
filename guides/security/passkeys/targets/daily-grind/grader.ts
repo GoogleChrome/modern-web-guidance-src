@@ -1,20 +1,14 @@
 /**
  * Expectation Verification Summary:
- * 1. TESTED - Verifies that passkey entry points are gated on a PublicKeyCredential feature detection check and hidden when unsupported.
- * 2. TESTED - Verifies that navigator.credentials calls are wrapped in try/catch handling expected WebAuthn errors (NotAllowedError, AbortError).
- * 3. TESTED - Verifies that client decodes registration options with PublicKeyCredential.parseCreationOptionsFromJSON before navigator.credentials.create().
- * 4. TESTED - Verifies that client decodes authentication options with PublicKeyCredential.parseRequestOptionsFromJSON before navigator.credentials.get().
- * 5. TESTED - Verifies that WebAuthn options are fetched from a server endpoint rather than constructing challenges on the client.
- * 6. SKIPPED - Relying Party ID configuration is generated and validated server-side during option generation.
- * 7. SKIPPED - The base web application does not have an associated Android app.
- * 8. SKIPPED - The base web application does not have an associated iOS/macOS native app.
- * 9. SKIPPED - The web application operates on a single origin and does not share passkeys across distinct eTLD+1 domains.
- * 10. TESTED - Verifies that credentials are serialized with PublicKeyCredential.prototype.toJSON and posted to a verification endpoint.
- * 11. TESTED - Verifies that PublicKeyCredential.signalAllAcceptedCredentials is invoked after credential list changes such as deletion.
- * 12. TESTED - Verifies that PublicKeyCredential.signalCurrentUserDetails is invoked when user details are updated.
- * 13. TESTED - Verifies that PublicKeyCredential.signalUnknownCredential is invoked when an asserted credential is unknown.
- * 14. TESTED - Verifies that AAGUID is used exclusively for rendering provider names or icons in the UI and not for access control.
- * 15. TESTED - Verifies that client-side JavaScript does not hand-roll WebAuthn signature verification or challenge validation.
+ * Expectation 1: TESTED - Verifies that passkey entry points are gated on a PublicKeyCredential feature detection check and hidden when unsupported.
+ * Expectation 2: TESTED - Verifies that navigator.credentials calls are wrapped in try/catch handling expected WebAuthn errors (NotAllowedError, AbortError).
+ * Expectation 3: TESTED - Verifies that client decodes registration options with PublicKeyCredential.parseCreationOptionsFromJSON before navigator.credentials.create().
+ * Expectation 4: TESTED - Verifies that client decodes authentication options with PublicKeyCredential.parseRequestOptionsFromJSON before navigator.credentials.get().
+ * Expectation 5: TESTED - Verifies that WebAuthn options are fetched from a server endpoint rather than constructing challenges on the client.
+ * Expectation 6: TESTED - Verifies that Relying Party ID (rp.id or rpId) is derived from server options or window.location.hostname and never set to an IP address, URL with scheme/port/path, or standalone public suffix.
+ * Expectation 7: TESTED - Verifies that credentials are serialized with PublicKeyCredential.prototype.toJSON and posted to a verification endpoint.
+ * Expectation 8: TESTED - Verifies that AAGUID is used exclusively for rendering provider names or icons in the UI and not for access control.
+ * Expectation 9: TESTED - Verifies that client-side JavaScript does not hand-roll WebAuthn signature verification or challenge validation.
  */
 
 import {
@@ -26,14 +20,8 @@ import {
 } from '../../../../test-fixture.ts';
 import { SyntaxKind } from 'ts-morph';
 
-import { pathToFileURL } from 'node:url';
-import * as path from 'node:path';
-
-const currentFileUrl = typeof __filename !== 'undefined'
-  ? pathToFileURL(__filename).href
-  : pathToFileURL(path.resolve(process.cwd(), 'grader.ts')).href;
-
-const targetFiles: string[] = getTargetFiles(currentFileUrl);
+// @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('Passkeys Target Grader - daily-grind', () => {
 
@@ -155,7 +143,80 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
     expect(hasFetchCall && hasOptionsEndpointArg).toBe(true);
   });
 
-  test('Expectation 10: Client serializes credential using toJSON() and posts to verification endpoint', () => {
+  test('Expectation 6: Relying Party ID (rp.id or rpId) is a bare domain without scheme, port, path, IP address, or standalone public suffix', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const allCalls = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const decodesServerOptions = allCalls.some(c =>
+      /parseCreationOptionsFromJSON|parseRequestOptionsFromJSON/.test(c.getExpression().getText())
+    );
+    const referencesRpIdOrHostname = sourceFiles.some(sf =>
+      /\b(rpId|rpID|hostname)\b/.test(sf.getFullText())
+    );
+    expect(decodesServerOptions || referencesRpIdOrHostname).toBe(true);
+
+    const PUBLIC_SUFFIXES = new Set([
+      'github.io',
+      'pages.dev',
+      'vercel.app',
+      'netlify.app',
+      'run.app',
+      'cloudfunctions.net',
+      'com',
+      'org',
+      'net',
+      'io',
+      'dev',
+      'app',
+    ]);
+
+    const rpLiterals: string[] = [];
+    for (const sf of sourceFiles) {
+      for (const pa of sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment)) {
+        const name = pa.getName();
+        if (name === 'rpId' || name === 'rpID') {
+          const init = pa.getInitializer();
+          if (init && init.isKind(SyntaxKind.StringLiteral)) {
+            rpLiterals.push(init.getLiteralValue());
+          }
+        }
+        if (name === 'rp') {
+          const init = pa.getInitializer();
+          if (init && init.isKind(SyntaxKind.ObjectLiteralExpression)) {
+            for (const subProp of init.getDescendantsOfKind(SyntaxKind.PropertyAssignment)) {
+              if (subProp.getName() === 'id') {
+                const subInit = subProp.getInitializer();
+                if (subInit && subInit.isKind(SyntaxKind.StringLiteral)) {
+                  rpLiterals.push(subInit.getLiteralValue());
+                }
+              }
+            }
+          }
+        }
+      }
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (vd.getName() === 'rpId' || vd.getName() === 'rpID') {
+          for (const lit of vd.getDescendantsOfKind(SyntaxKind.StringLiteral)) {
+            rpLiterals.push(lit.getLiteralValue());
+          }
+        }
+      }
+    }
+
+    const hasInvalidRpIdLiteral = rpLiterals.some(val => {
+      if (!val) return false;
+      const hasSchemePortOrPath = /:\/\/|:\d+|\/|\?/.test(val);
+      const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(val);
+      const isIpv6 = val.includes(':');
+      const isPublicSuffix = PUBLIC_SUFFIXES.has(val.toLowerCase());
+      return hasSchemePortOrPath || isIpv4 || isIpv6 || isPublicSuffix;
+    });
+
+    expect(hasInvalidRpIdLiteral).toBe(false);
+  });
+
+  test('Expectation 7: Client serializes credential using toJSON() and posts to verification endpoint', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -171,43 +232,7 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
     expect(hasToJSONCall && hasFetchCall && hasPostMethod && hasVerifyCall).toBe(true);
   });
 
-  test('Expectation 11: Application invokes signalAllAcceptedCredentials after credential changes', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasSignalAllAccepted = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => c.getText().includes('signalAllAcceptedCredentials'));
-    });
-
-    expect(hasSignalAllAccepted).toBe(true);
-  });
-
-  test('Expectation 12: Application invokes signalCurrentUserDetails after username or display name update', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasSignalCurrentUser = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => c.getText().includes('signalCurrentUserDetails'));
-    });
-
-    expect(hasSignalCurrentUser).toBe(true);
-  });
-
-  test('Expectation 13: Application invokes signalUnknownCredential when asserted credential is unknown', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasSignalUnknown = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => c.getText().includes('signalUnknownCredential'));
-    });
-
-    expect(hasSignalUnknown).toBe(true);
-  });
-
-  test('Expectation 14: Credential AAGUID is used for UI provider names or icons and not for access control', () => {
+  test('Expectation 8: Credential AAGUID is used for UI provider names or icons and not for access control', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -223,7 +248,7 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
     expect(hasAaguidForUI).toBe(true);
   });
 
-  test('Expectation 15: Application delegates WebAuthn verification to server without hand-rolling client crypto', () => {
+  test('Expectation 9: Application delegates WebAuthn verification to server without hand-rolling client crypto', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 

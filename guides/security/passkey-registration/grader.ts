@@ -18,6 +18,12 @@ function getFileContent(): string {
 
 test.describe('Passkey Registration Expectations', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('https://esm.sh/**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: 'export {};'
+    }));
+
     await page.addInitScript(() => {
       (window as any).__createCalled = false;
       (window as any).__createOptions = null;
@@ -62,11 +68,20 @@ test.describe('Passkey Registration Expectations', () => {
 
       const OriginalPKC = (window as any).PublicKeyCredential;
       if (OriginalPKC) {
-        OriginalPKC.getClientCapabilities = async () => ({ passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator, conditionalCreate: true });
+        OriginalPKC.getClientCapabilities = async () => ({
+          passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator,
+          conditionalCreate: true,
+          conditionalGet: true
+        });
         OriginalPKC.parseCreationOptionsFromJSON = (opts: any) => {
           (window as any).__parseCalled = true;
           return { ...opts, __magic: 'parsed' };
         };
+        if (OriginalPKC.prototype) {
+          OriginalPKC.prototype.toJSON = function () {
+            return { id: 'fake-id' };
+          };
+        }
         OriginalPKC.signalUnknownCredential = async (opts: any) => {
           (window as any).__signalCalled = true;
           (window as any).__signalOptions = opts;
@@ -86,60 +101,57 @@ test.describe('Passkey Registration Expectations', () => {
     });
   });
 
-  test('detects support using platform authenticator prior to prompting UI', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
+  test('The implementation detects support using platform authenticator capabilities prior to displaying passkey UI', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const code = getFileContent();
     const hasCapabilitiesCheck = code.includes('getClientCapabilities') || code.includes('isUserVerifyingPlatformAuthenticatorAvailable') || code.includes('PublicKeyCredential');
     expect(hasCapabilitiesCheck).toBe(true);
   });
 
-  test('invokes native browser create biometrics trigger upon register click', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
+  test('The client invokes native browser passkey creation when the registration trigger is clicked', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey"), button').first();
     await button.click({ force: true }).catch(() => button.dispatchEvent('click')).catch(() => {});
-    await page.waitForTimeout(500);
+    const called = await page.waitForFunction(() => (window as any).__createCalled, { timeout: 3000 }).catch(() => false);
     
-    const called = await page.evaluate(() => (window as any).__createCalled).catch(() => false);
     if (called) {
-      expect(called).toBe(true);
+      expect(Boolean(called)).toBe(true);
       return;
     }
     const code = getFileContent();
-    expect(code.includes('navigator.credentials.create') || code.includes('create(')).toBe(true);
+    expect(code.includes('navigator.credentials.create')).toBe(true);
   });
 
-  test('decodes server creation options via parseCreationOptionsFromJSON before invoking the authenticator', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
+  test('The client decodes server creation options using parseCreationOptionsFromJSON before invoking the authenticator', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey"), button').first();
     await button.click({ force: true }).catch(() => button.dispatchEvent('click')).catch(() => {});
-    await page.waitForTimeout(500);
+    const parseCalled = await page.waitForFunction(() => (window as any).__parseCalled, { timeout: 3000 }).catch(() => false);
 
-    const parseCalled = await page.evaluate(() => (window as any).__parseCalled).catch(() => false);
     if (parseCalled) {
-      expect(parseCalled).toBe(true);
+      expect(Boolean(parseCalled)).toBe(true);
       return;
     }
     const code = getFileContent();
     expect(code.includes('parseCreationOptionsFromJSON')).toBe(true);
   });
 
-  test('submits the attestation to the verify endpoint as JSON-encoded credential data', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
+  test('The client submits the attestation to the verify endpoint as JSON-encoded credential data', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="register-button"], button:has-text("Register"), button:has-text("Create Passkey"), button').first();
     await button.click({ force: true }).catch(() => button.dispatchEvent('click')).catch(() => {});
-    await page.waitForTimeout(500);
+    const verifyCalled = await page.waitForFunction(() => (window as any).__verifyCalled, { timeout: 3000 }).catch(() => false);
 
-    const verifyCalled = await page.evaluate(() => (window as any).__verifyCalled).catch(() => false);
     if (verifyCalled) {
-      expect(verifyCalled).toBe(true);
+      expect(Boolean(verifyCalled)).toBe(true);
       return;
     }
     const code = getFileContent();
     expect(code.includes('/api/register/verify') || code.includes('toJSON')).toBe(true);
   });
 
-  test('signals signalUnknownCredential using Base64URL credentialId upon server verification failure', async ({ page, TARGET_URL }) => {
-    await page.goto(TARGET_URL).catch(() => {});
+  test('The client signals signalUnknownCredential using Base64URL credentialId upon server verification failure', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const code = getFileContent();
     expect(code.includes('signalUnknownCredential')).toBe(true);
   });
