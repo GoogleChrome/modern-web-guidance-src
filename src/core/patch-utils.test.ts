@@ -212,6 +212,30 @@ describe('applyPatchSync', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('applies git-style patches to a plain directory nested inside an unrelated git repo', () => {
+    // Suite workspaces live under results/ in the repo checkout. Inside a repo, git apply reads
+    // `diff --git` paths as relative to that repo's root and silently skips ones outside cwd.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-nested-'));
+    try {
+      initGitRepo(tmpDir);
+      const targetDir = path.join(tmpDir, 'results', 'base_app');
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(path.join(targetDir, 'index.html'), '<p>before</p>\n');
+
+      const patchPath = path.join(tmpDir, 'change.patch');
+      fs.writeFileSync(
+        patchPath,
+        'diff --git a/index.html b/index.html\n--- a/index.html\n+++ b/index.html\n@@ -1 +1 @@\n-<p>before</p>\n+<p>after</p>\n'
+      );
+
+      const result = applyPatchSync(targetDir, patchPath);
+      assert.strictEqual(result.success, true, `Expected success, got error: ${result.error}`);
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8'), '<p>after</p>\n');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 function initTestRepo(repoDir: string) {
