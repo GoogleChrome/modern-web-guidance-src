@@ -18,7 +18,8 @@ guides:
 
 # Single-line text overflow
 
-Text that has to stay on one line (tab and chip labels, table cells, sidebar items, file names, media titles) is often longer than its space, especially with user content and translations. Keep the full text in the DOM and only adapt how it renders: the full text is the accessible name, and what find-in-page, copy, and search see.
+Text that has to stay on one line (tab and chip labels, table cells, sidebar items, file names, media titles) is often longer than its space, especially with user content and translations.
+Keep the full text in the DOM and only adapt how it renders: the full text is the accessible name, and what find-in-page, copy, and search see.
 
 First check that one line is really required. If the text may wrap, let it wrap: `overflow-wrap: anywhere` breaks long unbreakable strings such as URLs, and `hyphens: auto` breaks long words.
 
