@@ -48,7 +48,7 @@ index 66c9173..b2f4198 100644
        --primary: #4e342e;
        --secondary: #d7ccc8;
        --accent: #ffab40;
-@@ -27,6 +48,98 @@
+@@ -27,6 +48,124 @@
        background-color: var(--light);
      }
  
@@ -78,6 +78,8 @@ index 66c9173..b2f4198 100644
 +      --icon-end: inherit;
 +      -webkit-mask: var(--icon-end) no-repeat center / contain;
 +      mask: var(--icon-end) no-repeat center / contain;
++    }
++    :where(.icon-end:not(.icon, :empty))::after {
 +      margin-inline-start: var(--icon-style-spacing, 0.3em);
 +    }
 +
@@ -101,13 +103,37 @@ index 66c9173..b2f4198 100644
 +      }
 +    }
 +
++    @container style(--icon-end) {
++      ::after {
++        --icon-end: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        -webkit-mask: var(--icon-end) no-repeat center / contain;
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++      :where(:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
 +    @keyframes webkit-301609 {}
 +    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
 +      @property --icon-start { syntax: "*"; inherits: true; }
++      @property --icon-end { syntax: "*"; inherits: true; }
 +      @layer webkit-icon-fixes {
 +        ::before, ::after { animation: webkit-301609 0s; }
 +        @container style(--icon-start) {
 +          * { --icon-start: initial; }
++        }
++        @container style(--icon-end) {
++          * { --icon-end: initial; }
 +        }
 +      }
 +    }
