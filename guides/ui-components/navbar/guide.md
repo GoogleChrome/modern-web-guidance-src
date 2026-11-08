@@ -263,7 +263,7 @@ For the wide floating submenu, without CSS Anchor Positioning a popover falls ba
 
 {{ BASELINE_STATUS("content-visibility") }}
 
-Gate the optional narrow submenu slide-down rules that override `[hidden]` with `display: grid` behind `@supports (interpolate-size: allow-keywords) and (content-visibility: hidden)` so browsers lacking either feature keep native `[hidden]` behavior. Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover entry or exit transitions fall back to opening or closing immediately.
+Gate the optional narrow submenu slide-down rules that override `[hidden]` with `display: grid` behind `@supports (interpolate-size: allow-keywords)`. Without the gate, browsers lacking keyword interpolation snap the list closed instead of sliding; with it, they keep native `[hidden]` behavior. Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover entry or exit transitions fall back to opening or closing immediately.
 
 Without script nothing adds `is-wide`, so the header stays collapsed: the menu button opens the native popover and the submenu is a nested list. Do not write a separate no-script layout or a `no-js` class.
 

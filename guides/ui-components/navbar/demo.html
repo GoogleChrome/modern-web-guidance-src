@@ -472,20 +472,26 @@
           }
         }
 
-        .dropdown-list {
-          interpolate-size: allow-keywords;
-          clip-path: inset(-6px); /* Clips the slide like overflow: clip, but leaves room for the focus ring; at least the ring's outline width plus offset */
-          transition:
-            block-size 180ms,
-            padding-block 180ms,
-            content-visibility 180ms allow-discrete;
-        }
+        /* Without keyword interpolation the slide would snap, so keep native [hidden] */
+        @supports (interpolate-size: allow-keywords) {
+          .dropdown-list {
+            interpolate-size: allow-keywords;
+            clip-path: inset(-6px); /* Clips the slide like overflow: clip, but leaves room for the focus ring; at least the ring's outline width plus offset */
+            transition:
+              block-size,
+              padding-block,
+              content-visibility;
+            transition-duration: 180ms;
+            /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+            transition-behavior: allow-discrete;
+          }
 
-        .dropdown-list[hidden] {
-          display: grid; /* Stay rendered so block-size can animate */
-          block-size: 0;
-          padding-block: 0;
-          content-visibility: hidden;
+          .dropdown-list[hidden] {
+            display: grid; /* Stay rendered so block-size can animate */
+            block-size: 0;
+            padding-block: 0;
+            content-visibility: hidden;
+          }
         }
       }
     }
