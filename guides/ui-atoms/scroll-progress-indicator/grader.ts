@@ -198,9 +198,31 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasScrollListener).toBe(false);
   });
 
-  test(`Purely decorative scroll progress indicators must define aria-hidden="true"`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/aria-hidden=["']true["']/i.test(html)).toBe(true);
+  test(`Purely decorative scroll progress indicators must define aria-hidden="true"`, async ({ page }) => {
+    const isAccessibleOrHidden = await page.evaluate(() => {
+      const semantic = document.querySelector('progress, [role="progressbar"]');
+      if (semantic) {
+        return Boolean(
+          semantic.getAttribute('aria-label')?.trim() ||
+            semantic.getAttribute('aria-labelledby')?.trim(),
+        );
+      }
+      const decorative = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '#progress, [id*="progress" i], [class*="progress" i], [style*="scroll("]',
+        ),
+      );
+      return (
+        decorative.length > 0 &&
+        decorative.every(
+          (el) =>
+            el.getAttribute('aria-hidden') === 'true' ||
+            el.getAttribute('role') === 'presentation' ||
+            el.getAttribute('role') === 'none',
+        )
+      );
+    });
+    expect(isAccessibleOrHidden).toBe(true);
   });
 
 });

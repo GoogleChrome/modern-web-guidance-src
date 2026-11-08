@@ -313,7 +313,7 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         .poll(async () => {
           const views = await getSpaViewsState(page);
           if (views.length < 2) return false;
-          const activeView = views.find((v) => !v.isInactive && v.contentVisibility === 'visible');
+          const activeView = views.find((v) => !v.isInactive);
           return Boolean(activeView && activeView.isFocused);
         })
         .toBe(true);

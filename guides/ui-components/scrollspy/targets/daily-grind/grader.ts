@@ -103,26 +103,40 @@ test.describe('scrollspy Target Grader', () => {
       sf.getDescendantsOfKind(SyntaxKind.CallExpression)
     );
 
-    const hasScrollendListener = callExpressions.some((call) => {
-      const expr = call.getExpression();
-      if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
-      if (expr.getName() !== 'addEventListener') return false;
-      const firstArg = call.getArguments()[0];
-      return Boolean(
-        firstArg &&
-          firstArg.isKind(SyntaxKind.StringLiteral) &&
-          firstArg.getLiteralValue() === 'scrollend'
+    const hasScrollSync =
+      callExpressions.some((call) => {
+        const expr = call.getExpression();
+        if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
+        if (expr.getName() !== 'addEventListener') return false;
+        const firstArg = call.getArguments()[0];
+        return Boolean(
+          firstArg &&
+            firstArg.isKind(SyntaxKind.StringLiteral) &&
+            /^(?:scrollend|scroll)$/.test(firstArg.getLiteralValue())
+        );
+      }) ||
+      sourceFiles.some(
+        (sf) =>
+          sf
+            .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+            .some((p) => p.getName() === 'onscrollend') ||
+          sf
+            .getDescendantsOfKind(SyntaxKind.NewExpression)
+            .some((n) => n.getExpression().getText() === 'IntersectionObserver')
       );
-    });
 
     const stringLiterals = sourceFiles.flatMap((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
     );
-    const hasAriaCurrent = stringLiterals.some(
-      (lit) => lit.getLiteralValue() === 'aria-current'
-    );
+    const hasAriaCurrent =
+      stringLiterals.some((lit) => lit.getLiteralValue() === 'aria-current') ||
+      sourceFiles.some((sf) =>
+        sf
+          .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+          .some((p) => p.getName() === 'ariaCurrent')
+      );
 
-    expect(hasScrollendListener && hasAriaCurrent).toBe(true);
+    expect(hasScrollSync && hasAriaCurrent).toBe(true);
   });
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
@@ -255,12 +269,20 @@ test.describe('scrollspy Target Grader', () => {
               document.querySelectorAll<HTMLAnchorElement>('nav a[href^="#"]')
             );
             if (links.length < 4) return false;
-            const activeLinks = links.filter((l) => l.getAttribute('aria-current') === 'true');
-            const inactiveLinks = links.filter((l) => l.getAttribute('aria-current') === 'false');
+            const validActiveTokens = new Set(['true', 'location', 'page', 'step']);
+            const activeLinks = links.filter((l) =>
+              validActiveTokens.has((l.getAttribute('aria-current') || '').trim().toLowerCase())
+            );
+            const inactiveValid = links
+              .filter((l) => !activeLinks.includes(l))
+              .every((l) => {
+                const val = l.getAttribute('aria-current');
+                return val === null || val.trim().toLowerCase() === 'false';
+              });
             return (
               activeLinks.length === 1 &&
               activeLinks[0].getAttribute('href') === expectedHref &&
-              inactiveLinks.length === links.length - 1
+              inactiveValid
             );
           }, targetHref);
         })

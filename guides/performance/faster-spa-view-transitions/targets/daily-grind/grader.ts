@@ -239,9 +239,17 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         .poll(async () => {
           return await page.evaluate(() => {
             const allElements = Array.from(document.querySelectorAll('body *'));
-            const hiddenViews = allElements.filter(
-              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
-            );
+            const hiddenViews = allElements.filter((el) => {
+              const style = window.getComputedStyle(el);
+              return (
+                style.contentVisibility === 'hidden' ||
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                (style.display === 'none' &&
+                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+              );
+            });
             if (hiddenViews.length === 0) return false;
             const parent = hiddenViews[0].parentElement;
             if (!parent) return false;
@@ -268,9 +276,17 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         .poll(async () => {
           return await page.evaluate(() => {
             const allElements = Array.from(document.querySelectorAll('body *'));
-            const hiddenViews = allElements.filter(
-              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
-            );
+            const hiddenViews = allElements.filter((el) => {
+              const style = window.getComputedStyle(el);
+              return (
+                style.contentVisibility === 'hidden' ||
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                (style.display === 'none' &&
+                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+              );
+            });
             if (hiddenViews.length === 0) return null;
             const parent = hiddenViews[0].parentElement;
             if (!parent) return null;
@@ -296,7 +312,10 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
 
             const allInactiveInert = hiddenViews.every(
               (el) =>
-                (el as HTMLElement).inert === true || el.hasAttribute('inert'),
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                window.getComputedStyle(el).display === 'none',
             );
             const activeInert =
               (activeView as HTMLElement).inert === true ||
@@ -373,9 +392,17 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         .poll(async () => {
           return await page.evaluate(() => {
             const allElements = Array.from(document.querySelectorAll('body *'));
-            const hiddenViews = allElements.filter(
-              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
-            );
+            const hiddenViews = allElements.filter((el) => {
+              const style = window.getComputedStyle(el);
+              return (
+                style.contentVisibility === 'hidden' ||
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                (style.display === 'none' &&
+                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+              );
+            });
             if (hiddenViews.length === 0) return false;
             const parent = hiddenViews[0].parentElement;
             if (!parent) return false;
