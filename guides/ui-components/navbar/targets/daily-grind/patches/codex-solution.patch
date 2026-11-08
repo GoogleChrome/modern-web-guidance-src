@@ -1,0 +1,363 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9cae3b0
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,12 @@
++import { mkdir, copyFile, readFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++// Check the page's inline JavaScript before emitting the static site.
++const html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
++  new Script(match[1], { filename: 'index.html' });
++}
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
++console.log('Built dist/index.html');
+diff --git a/index.html b/index.html
+index 66c9173..806c708 100644
+--- a/index.html
++++ b/index.html
+@@ -28,48 +28,203 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-header {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding-block: 1rem;
++      padding-inline: 5%;
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1000;
++    }
++
++    .header-inner {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      gap: 1.5rem;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      min-inline-size: 0;
++      overflow-wrap: anywhere;
++      font-size: clamp(1rem, 4dvw, 1.5rem);
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav {
++      flex-shrink: 0;
++    }
++
++    .site-header a {
++      color: inherit;
++      text-decoration: none;
++    }
++
++    .menu-button {
+       display: flex;
+-      list-style: none;
++      align-items: center;
++      gap: 0.5rem;
++      padding-block: 0.5rem;
++      padding-inline: 0.75rem;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      font: inherit;
++      color: inherit;
++      background: transparent;
++      cursor: pointer;
++      anchor-name: --menu-button;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .menu-button svg {
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      flex-shrink: 0;
+     }
+ 
+-    nav a {
++    .site-menu {
++      position: fixed;
++      inset: auto;
++      inset-block-start: 5rem;
++      inset-block-start: anchor(--menu-button bottom);
++      inset-inline-end: 5%;
++      inline-size: min(80dvw, 24rem);
++      max-inline-size: calc(100dvw - 2rem);
++      block-size: fit-content;
++      max-block-size: calc(100dvh - 6rem);
++      margin-block-start: 0.5rem;
++      padding: 0.75rem;
++      overflow: auto;
++      list-style: none;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--primary);
+       color: white;
+-      text-decoration: none;
++      box-shadow: 0 8px 24px #0004;
++    }
++
++    .site-menu a {
++      display: block;
++      padding-block: 0.6rem;
++      padding-inline: 0.75rem;
++      border-radius: 4px;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      overflow-wrap: anywhere;
+     }
+ 
+-    nav a:hover {
++    .site-header a:hover,
++    .menu-button:hover {
+       color: var(--accent);
+     }
+ 
+-    .logout-link {
++    .site-header a[aria-current="page"] {
++      color: var(--accent);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++      text-underline-offset: 0.3em;
++    }
++
++    .site-header :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .site-menu .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    }
++
++    .site-header.is-wide .header-inner > * {
++      flex-shrink: 0;
++      white-space: nowrap;
++    }
++
++    .site-header.is-wide .menu-button {
++      display: none;
++    }
++
++    .site-header.is-wide .site-menu {
++      position: static;
++      display: flex;
++      align-items: center;
++      gap: 0.25rem;
++      inline-size: auto;
++      max-inline-size: none;
++      block-size: auto;
++      max-block-size: none;
++      overflow: visible;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      box-shadow: none;
++    }
++
++    .site-header.is-wide .site-menu::backdrop {
++      display: none;
++    }
++
++    .site-header.is-measuring * {
++      transition: none !important;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .site-header:not(.is-wide) .site-menu {
++        opacity: 0;
++        translate: 0 -0.5rem;
++        transition: opacity 150ms, translate 150ms, display 150ms, overlay 150ms;
++        transition-behavior: allow-discrete;
++      }
++
++      .site-header:not(.is-wide) .site-menu:popover-open {
++        opacity: 1;
++        translate: 0 0;
++      }
++
++      @starting-style {
++        .site-header:not(.is-wide) .site-menu:popover-open {
++          opacity: 0;
++          translate: 0 -0.5rem;
++        }
++      }
++    }
++
++    @media (forced-colors: active) {
++      .site-header a[aria-current="page"] {
++        color: LinkText;
++      }
++
++      .menu-button,
++      .site-menu,
++      .site-menu .logout-link {
++        border-color: ButtonText;
++      }
++
++      .site-header :focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
++    /* Older browsers retain an accessible, in-flow list of links. */
++    @supports not selector(:popover-open) {
++      .menu-button {
++        display: none;
++      }
++
++      .header-inner {
++        flex-wrap: wrap;
++      }
++
++      .site-menu {
++        position: static;
++        margin: 0;
++        box-shadow: none;
++      }
++
++      .site-header:not(.is-wide) .site-menu {
++        opacity: 1;
++        translate: none;
++      }
+     }
+ 
+     /* Hero Section */
+@@ -157,16 +312,28 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <header class="site-header">
++    <div class="header-inner">
++      <a class="logo" href="/" aria-current="page">THE DAILY GRIND</a>
++      <nav class="site-nav" aria-label="Primary">
++        <button class="menu-button" type="button" popovertarget="site-menu"
++          popovertargetaction="toggle" aria-controls="site-menu">
++          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++            aria-hidden="true" focusable="false">
++            <path d="M3 6h18M3 12h18M3 18h18" />
++          </svg>
++          <span>Menu</span>
++        </button>
++        <ul id="site-menu" class="site-menu" popover="auto">
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </header>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -207,6 +374,61 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const header = document.querySelector('.site-header');
++    const inner = header.querySelector('.header-inner');
++    const menu = header.querySelector('.site-menu');
++    const button = header.querySelector('.menu-button');
++    const normalizePath = (path) => path.replace(/\/index\.html$/, '/').replace(/\/+$/, '') || '/';
++    const currentPath = normalizePath(window.location.pathname);
++
++    for (const link of header.querySelectorAll('a[href]')) {
++      const path = normalizePath(new URL(link.href).pathname);
++      if (path === currentPath) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    }
++
++    if ('showPopover' in HTMLElement.prototype && 'ResizeObserver' in window) {
++      let previousWidth = -1;
++      let pending = false;
++
++      const updateLayout = () => {
++        pending = false;
++        const width = inner.clientWidth;
++        const wasWide = header.classList.contains('is-wide');
++        if (!wasWide && width <= previousWidth) return;
++        previousWidth = width;
++
++        const wasOpen = menu.matches(':popover-open');
++        const focusedElement = document.activeElement;
++        header.classList.add('is-measuring', 'is-wide');
++        menu.removeAttribute('popover');
++        const wide = inner.scrollWidth <= inner.clientWidth;
++        header.classList.toggle('is-wide', wide);
++
++        if (!wide) {
++          menu.setAttribute('popover', 'auto');
++          if (wasOpen) menu.showPopover();
++          else if (menu.contains(focusedElement)) button.focus();
++        } else if (focusedElement === button) {
++          (menu.querySelector('[aria-current="page"]') || menu.querySelector('a')).focus();
++        }
++
++        requestAnimationFrame(() => header.classList.remove('is-measuring'));
++      };
++
++      const scheduleLayout = () => {
++        if (pending) return;
++        pending = true;
++        requestAnimationFrame(updateLayout);
++      };
++
++      const observer = new ResizeObserver(scheduleLayout);
++      observer.observe(inner);
++      observer.observe(menu);
++      scheduleLayout();
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

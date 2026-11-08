@@ -1,0 +1,1 @@
+- Update the top navigation bar in index.html for The Daily Grind (containing the Menu, Locations, Rewards, My Account, and Logout links) so it adjusts smoothly to different screen sizes and clearly shows which page the user is currently viewing.
