@@ -14,7 +14,7 @@ guides:
 
 # Build a popup menu
 
-This guide covers one popup menu: a list of commands or links that users move through with arrow keys. What opens it does not matter: a button (an "Actions" or overflow button), an item in another menu (a submenu), or no visible trigger at all (a context menu). The worked example is a document's actions menu, where items change the interface (duplicate, export, delete).
+This guide covers one popup menu: a list of commands or links that users move through with arrow keys. What opens it does not matter: a button (an "Actions" or overflow button), an item in another menu (a submenu), or no visible trigger at all (a context menu).
 
 Several triggers on one page are independent menus: each is its own `Tab` stop, and nothing links them. A row of menus that act as one widget (File, Edit, View: one `Tab` stop, `ArrowLeft`/`ArrowRight` between them, hover switching) is an application menu bar. Build each menu as described here, then see {{ GUIDE_REF("app-menus") }} for the bar.
 
@@ -37,7 +37,7 @@ Make each trigger a command invoker with `commandfor` and `command="toggle-popov
 
 Place each popover immediately after its trigger. Browsers add an implicit `aria-details` relationship only when the popover is not the next sibling, so this placement avoids it without extra attributes.
 
-A menu with no trigger button (a context menu) opens from script with `showPopover({ source })`, where `source` is the element the menu anchors to. Name it with `aria-label` instead of `aria-labelledby`. Everything else below applies unchanged. {# PENDING_GUIDE_REF: For opening a menu from a right-click, see {{ GUIDE_REF("context-menu") }}. #}
+A menu with no trigger button opens from script with `showPopover({ source })`. `source` sets the implicit anchor, so pass the element the menu belongs to: the right-clicked card, or the focused element when a keyboard shortcut opens it. To open at a point instead (the pointer position, or the caret for an `@`-mention picker), anchor positioning still needs an element, so use a placeholder: an empty, zero-size `position: fixed` element kept directly before the menu, moved to the point with `left` and `top` on each open, and passed as `source`. A zero-size anchor puts the menu's corner at the point, as a native context menu does, and the flip fallbacks below still apply. Name the menu with `aria-label` instead of `aria-labelledby`. Everything else in this guide applies unchanged; where it says "trigger" for positioning, read the placeholder. {# PENDING_GUIDE_REF: For opening a menu from a right-click or long-press, see {{ GUIDE_REF("context-menu") }}. #}
 
 ```html
 <!-- Command invoker: the browser toggles the popover on click, Enter, and Space -->
