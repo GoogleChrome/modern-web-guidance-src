@@ -74,7 +74,7 @@ Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative s
 Use CSS anchor positioning, not JavaScript coordinates. Both `command="toggle-popover"` and `showPopover({ source: trigger })` set an implicit anchor, so do not add per-menu `anchor-name` or `position-anchor` rules. Menu behavior must not depend on anchor positioning.
 
 ```css
-/* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
+/* Top-level menus sit below their trigger, flipping when they would overflow. The implicit anchor comes from the invoker or source. */
 [popover]:has(> [focusgroup~="menu"]) {
   position-area: block-end span-inline-end;
   position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
