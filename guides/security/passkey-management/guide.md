@@ -250,11 +250,14 @@ if (aaguid === '00000000-0000-0000-0000-000000000000') {
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Always install `'webauthn-polyfills'` and import it in your client bundle so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
+Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
 
-```javascript
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
 ```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
 
 Before rendering the "Create passkey" button, call `PublicKeyCredential.getClientCapabilities()` to verify platform authenticator support, and hide the button when unsupported:
 

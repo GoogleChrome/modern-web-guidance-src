@@ -185,15 +185,14 @@ window.addEventListener("DOMContentLoaded", initializeConditionalAutofill);
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported. Bare module specifiers (`import 'webauthn-polyfills'`) throw in unbundled browser `<script type="module">` tags unless mapped with a bundler or `<script type="importmap">`:
+Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
 
 ```js
 // With a bundler (`npm install webauthn-polyfills`):
-// import 'webauthn-polyfills';
-
-// In an unbundled browser <script type="module">:
-import 'https://esm.sh/webauthn-polyfills';
+import 'webauthn-polyfills';
 ```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
 
 ### Signal API Synchronization Fallback
 
@@ -207,12 +206,11 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-Load `webauthn-polyfills` so `PublicKeyCredential.parseRequestOptionsFromJSON()` and `PublicKeyCredential.prototype.toJSON()` are available whenever `PublicKeyCredential` is supported. Bare module specifiers (`import 'webauthn-polyfills'`) throw in unbundled browser `<script type="module">` tags unless mapped with a bundler or `<script type="importmap">`:
+Load `webauthn-polyfills` so `PublicKeyCredential.parseRequestOptionsFromJSON()` and `PublicKeyCredential.prototype.toJSON()` are available whenever `PublicKeyCredential` is supported:
 
 ```js
 // With a bundler (`npm install webauthn-polyfills`):
-// import 'webauthn-polyfills';
-
-// In an unbundled browser <script type="module">:
-import 'https://esm.sh/webauthn-polyfills';
+import 'webauthn-polyfills';
 ```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
