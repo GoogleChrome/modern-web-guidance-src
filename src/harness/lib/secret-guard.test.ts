@@ -42,6 +42,25 @@ describe('loadAllowedEnvFile', () => {
       assert.deepStrictEqual(res.ignored, ['GEMINI_API_KEY', 'UNLISTED_TOKEN']);
     });
   });
+
+  test('loads *_MODEL and *_EFFORT keys while ignoring credential-looking and unlisted keys', () => {
+    withTempDir((dir) => {
+      const envFile = path.join(dir, '.env');
+      fs.writeFileSync(
+        envFile,
+        'GEMINI_MODEL=gemini-3.1-pro-preview\nCLAUDE_EFFORT=high\nMODEL_API_KEY=secret-key-12345678\nUNLISTED_KEY=some-value\n',
+        'utf8',
+      );
+      const targetEnv: NodeJS.ProcessEnv = {};
+      const res = loadAllowedEnvFile(envFile, targetEnv);
+      assert.strictEqual(targetEnv.GEMINI_MODEL, 'gemini-3.1-pro-preview');
+      assert.strictEqual(targetEnv.CLAUDE_EFFORT, 'high');
+      assert.strictEqual(targetEnv.MODEL_API_KEY, undefined);
+      assert.strictEqual(targetEnv.UNLISTED_KEY, undefined);
+      assert.deepStrictEqual(res.loaded, ['CLAUDE_EFFORT', 'GEMINI_MODEL']);
+      assert.deepStrictEqual(res.ignored, ['MODEL_API_KEY', 'UNLISTED_KEY']);
+    });
+  });
 });
 
 describe('sanitizeNpmrc & copySanitizedNpmrc', () => {
@@ -125,6 +144,35 @@ describe('collectHostSecrets', () => {
       } finally {
         process.env.HOME = prevHome;
       }
+    });
+  });
+
+  test('does not collect *_MODEL or *_EFFORT values from .env unless they match credential patterns', () => {
+    withTempDir((dir) => {
+      const root = path.join(dir, 'root');
+      fs.mkdirSync(root, { recursive: true });
+
+      const geminiModel = 'gemini-3.1-pro-preview';
+      const effortLevel = 'extended-reasoning-effort';
+      const modelApiKey = 'model-api-key-secret-12345';
+      const unlistedSecret = 'unlisted-secret-config-value';
+
+      fs.writeFileSync(
+        path.join(root, '.env'),
+        [
+          `GEMINI_MODEL=${geminiModel}`,
+          `CLAUDE_EFFORT=${effortLevel}`,
+          `MODEL_API_KEY=${modelApiKey}`,
+          `UNLISTED_CUSTOM_CONFIG=${unlistedSecret}`,
+        ].join('\n'),
+        'utf8',
+      );
+
+      const secrets = collectHostSecrets({ rootDir: root, env: {} });
+      assert.strictEqual(secrets.includes(geminiModel), false, 'GEMINI_MODEL value should not be collected as secret');
+      assert.strictEqual(secrets.includes(effortLevel), false, '*_EFFORT value should not be collected as secret');
+      assert.strictEqual(secrets.includes(modelApiKey), true, 'MODEL_API_KEY value should still be collected as secret');
+      assert.strictEqual(secrets.includes(unlistedSecret), true, 'Unlisted config value should still be collected as secret');
     });
   });
 });

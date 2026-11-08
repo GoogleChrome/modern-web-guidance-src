@@ -115,6 +115,12 @@ export const ALLOWED_DOTENV_KEYS: ReadonlySet<string> = new Set([
   'MODERN_WEB_LOG_DIR', 'DEBUG_MWG_TELEMETRY', 'GD_UNSAFE_NO_SANDBOX',
 ]);
 
+/** Returns true if a `.env` key is allowed non-secret configuration. */
+export function isAllowedDotenvKey(key: string): boolean {
+  if (SECRET_ENV_KEY_RE.test(key)) return false;
+  return ALLOWED_DOTENV_KEYS.has(key) || key.endsWith('_MODEL') || key.endsWith('_EFFORT');
+}
+
 const warnedEnvFiles = new Set<string>();
 
 function readUtf8IfExists(filePath: string): string | null {
@@ -137,7 +143,7 @@ export function loadAllowedEnvFile(
   const loaded: string[] = [];
   const ignored: string[] = [];
   for (const [key, value] of Object.entries(parseEnv(content))) {
-    if (ALLOWED_DOTENV_KEYS.has(key)) {
+    if (isAllowedDotenvKey(key)) {
       if (targetEnv[key] === undefined) targetEnv[key] = value;
       loaded.push(key);
     } else {
@@ -269,7 +275,7 @@ export function collectHostSecrets(options: {
   if (envRaw !== null) {
     try {
       for (const [key, value] of Object.entries(parseEnv(envRaw))) {
-        if (key !== 'GOOGLE_APPLICATION_CREDENTIALS' && (!ALLOWED_DOTENV_KEYS.has(key) || SECRET_ENV_KEY_RE.test(key))) {
+        if (key !== 'GOOGLE_APPLICATION_CREDENTIALS' && !isAllowedDotenvKey(key)) {
           maybeAdd(value);
         }
       }
