@@ -420,7 +420,10 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/dashboard.html?testId=example-result&mode=a11y&sort=a11y-desc');
     await expect(page.locator('.eval-col-sort-btn[data-sort="uplift"]')).toHaveAttribute('aria-sort', 'descending');
+    await expect(page.locator('.eval-col-dumbbell')).toContainText('A11y pass rate');
     await page.goto('/dashboard.html?testId=example-result');
+    await expect(page.locator('.eval-col-dumbbell')).toContainText('Pass rate');
+    await expect(page.locator('.eval-col-dumbbell')).not.toContainText('A11y pass rate');
     const firstCatSection = page.locator('.eval-category-section').first();
     await expect(firstCatSection).toBeVisible();
     await firstCatSection.locator('.eval-category-header').click();
