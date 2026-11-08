@@ -231,6 +231,9 @@ test.describe('content-first-noise-reduction Target Grader', () => {
           { timeout: 3000 }
         )
         .toBe(true);
+      // A shrunk bar stays in view at its smaller height; "fully visible" doesn't mean full height.
+      const scrolledRect = (await getNavRect())!;
+      const visibleBottom = Math.max(1, Math.min(initialRect!.height * 0.9, scrolledRect.height));
 
       // Scroll up using mouse wheel
       await page.mouse.wheel(0, -150);
@@ -238,7 +241,7 @@ test.describe('content-first-noise-reduction Target Grader', () => {
         .poll(
           async () => {
             const r = await getNavRect();
-            return Boolean(r && r.top >= -1 && r.bottom >= initialRect!.height * 0.9);
+            return Boolean(r && r.top >= -1 && r.bottom >= visibleBottom);
           },
           { timeout: 3000 }
         )
@@ -266,7 +269,7 @@ test.describe('content-first-noise-reduction Target Grader', () => {
         .poll(
           async () => {
             const r = await getNavRect();
-            return Boolean(r && r.top >= -1 && r.bottom >= initialRect!.height * 0.9);
+            return Boolean(r && r.top >= -1 && r.bottom >= visibleBottom);
           },
           { timeout: 3000 }
         )
