@@ -1,0 +1,373 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9f49960
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,10 @@
++import { mkdir, readFile, copyFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++const html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++for (const [, script] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
++  new Script(script, { filename: 'index.html' });
++}
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
++console.log('Built dist/index.html; inline JavaScript syntax checked.');
+diff --git a/index.html b/index.html
+index 66c9173..743bfc5 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,138 @@
+       color: var(--primary);
+     }
+ 
++    #coffee-menu {
++      scroll-margin-top: 100px;
++    }
++
++    .menu-heading {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .tab-scroll {
++      position: relative;
++      min-width: 0;
++    }
++
++    .tab-scroll::before,
++    .tab-scroll::after {
++      content: "";
++      position: absolute;
++      inset-block: 0;
++      width: 32px;
++      z-index: 1;
++      pointer-events: none;
++      opacity: 0;
++    }
++
++    .tab-scroll::before {
++      left: 0;
++      background: linear-gradient(to right, var(--light), transparent);
++    }
++
++    .tab-scroll::after {
++      right: 0;
++      background: linear-gradient(to left, var(--light), transparent);
++    }
++
++    .tab-scroll[data-more-left]::before,
++    .tab-scroll[data-more-right]::after {
++      opacity: 1;
++    }
++
++    .menu-tabs {
++      display: flex;
++      overflow-x: auto;
++      scrollbar-width: none;
++      scroll-snap-type: inline proximity;
++      padding: 4px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .menu-tabs::-webkit-scrollbar {
++      display: none;
++    }
++
++    .menu-tabs button {
++      flex: none;
++      position: relative;
++      scroll-snap-align: start;
++      border: 0;
++      background: transparent;
++      color: var(--text);
++      font: inherit;
++      font-weight: 600;
++      padding: 14px 22px;
++      cursor: pointer;
++    }
++
++    .menu-tabs button:hover {
++      background: var(--secondary);
++    }
++
++    .menu-tabs [aria-selected="true"] {
++      color: var(--primary);
++    }
++
++    .menu-tabs [aria-selected="true"]::after {
++      content: "";
++      position: absolute;
++      inset: auto 12px 0;
++      border-block-end: 3px solid currentColor;
++    }
++
++    .menu-tabs button:focus-visible,
++    .menu-panels > :focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: -2px;
++    }
++
++    .menu-panels {
++      display: grid;
++    }
++
++    .menu-panels > [role="tabpanel"] {
++      grid-area: 1 / 1;
++      min-width: 0;
++      align-self: start;
++    }
++
++    .menu-panels .grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .menu-tabs {
++        scrollbar-width: auto;
++      }
++
++      .menu-tabs::-webkit-scrollbar {
++        display: block;
++      }
++
++      .tab-scroll::before,
++      .tab-scroll::after {
++        display: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,7 +292,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#coffee-menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -175,23 +307,90 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section id="coffee-menu" aria-labelledby="coffee-menu-heading">
++      <div class="menu-heading">
++        <h2 id="coffee-menu-heading">Our Coffee Menu</h2>
++        <p>Find your daily favorite, from seasonal sips to classic brews.</p>
++      </div>
++      <div class="tab-scroll">
++        <div class="menu-tabs" role="tablist" focusgroup="tablist nomemory" aria-label="Beverage categories">
++          <button type="button" id="seasonal-tab" role="tab" aria-selected="true" tabindex="0" focusgroupstart>Seasonal Favorites</button>
++          <button type="button" id="espresso-tab" role="tab" aria-selected="false" tabindex="-1">Espresso Classics</button>
++          <button type="button" id="cold-tab" role="tab" aria-selected="false" tabindex="-1">Cold Coffee</button>
++          <button type="button" id="brewed-tab" role="tab" aria-selected="false" tabindex="-1">Brewed Coffee</button>
++          <button type="button" id="tea-tab" role="tab" aria-selected="false" tabindex="-1">Tea &amp; More</button>
++        </div>
++      </div>
++      <div class="menu-panels">
++        <div id="seasonal-panel" role="tabpanel" aria-labelledby="seasonal-tab">
++          <div class="grid">
++            <div class="card">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Spiced Pumpkin Latte</h3>
++              <p>Rich espresso, steamed milk, and warming autumn spices.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++        <div id="espresso-panel" role="tabpanel" aria-labelledby="espresso-tab" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Classic Cappuccino</h3>
++              <p>Our signature espresso with steamed milk and a cloud of foam.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div id="cold-panel" role="tabpanel" aria-labelledby="cold-tab" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Iced Vanilla Latte</h3>
++              <p>Chilled espresso and milk with a smooth vanilla finish.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div id="brewed-panel" role="tabpanel" aria-labelledby="brewed-tab" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <h3>House Blend</h3>
++              <p>A balanced daily brew with notes of chocolate and toasted nuts.</p>
++              <a href="/menu/brewed" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Single Origin Pour Over</h3>
++              <p>Freshly ground and brewed by hand to bring out every bright note.</p>
++              <a href="/menu/brewed" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++        <div id="tea-panel" role="tabpanel" aria-labelledby="tea-tab" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <h3>Chai Latte</h3>
++              <p>Spiced black tea and steamed milk for a cozy, fragrant cup.</p>
++              <a href="/menu/tea" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Matcha Latte</h3>
++              <p>Earthy green tea whisked smooth with your choice of milk.</p>
++              <a href="/menu/tea" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +406,79 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const menu = document.querySelector('#coffee-menu');
++    const tablist = menu.querySelector('[role="tablist"]');
++    const scroller = menu.querySelector('.tab-scroll');
++    const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
++    const panels = tabs.map(tab => document.getElementById(tab.id.replace('-tab', '-panel')));
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    const nativeFocusgroup = 'focusgroup' in HTMLElement.prototype;
++
++    function updateScrollHints() {
++      scroller.toggleAttribute('data-more-left', tablist.scrollLeft > 1);
++      scroller.toggleAttribute('data-more-right',
++        tablist.scrollLeft + tablist.clientWidth < tablist.scrollWidth - 1);
++    }
++
++    function revealTab(tab) {
++      // Scroll only this row, including in browsers without scrollIntoView's
++      // container option. Changing categories must never move the page.
++      const row = tablist.getBoundingClientRect();
++      const item = tab.getBoundingClientRect();
++      const inset = 4;
++      let distance = 0;
++      if (item.left < row.left + inset) distance = item.left - row.left - inset;
++      else if (item.right > row.right - inset) distance = item.right - row.right + inset;
++      if (distance) tablist.scrollBy({ left: distance, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
++    }
++
++    function selectTab(selected) {
++      tabs.forEach((tab, index) => {
++        const active = tab === selected;
++        tab.setAttribute('aria-selected', String(active));
++        tab.toggleAttribute('focusgroupstart', active);
++        tab.tabIndex = active ? 0 : -1;
++        if (active) panels[index].removeAttribute('hidden');
++        else panels[index].setAttribute('hidden', 'until-found');
++      });
++      revealTab(selected);
++      updateScrollHints();
++    }
++
++    tabs.forEach((tab, index) => {
++      tab.addEventListener('click', () => selectTab(tab));
++      tab.addEventListener('focus', () => selectTab(tab));
++      panels[index].addEventListener('beforematch', () => selectTab(tab));
++    });
++
++    // Progressive fallback for browsers that do not yet implement focusgroup.
++    if (!nativeFocusgroup) {
++      tablist.addEventListener('keydown', event => {
++        const index = tabs.indexOf(document.activeElement);
++        if (index < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
++        let next;
++        switch (event.key) {
++          case 'ArrowRight': next = (index + 1) % tabs.length; break;
++          case 'ArrowLeft': next = (index - 1 + tabs.length) % tabs.length; break;
++          case 'Home': next = 0; break;
++          case 'End': next = tabs.length - 1; break;
++          default: return;
++        }
++        event.preventDefault();
++        tabs[next].focus({ preventScroll: true });
++      });
++    }
++
++    tablist.addEventListener('scroll', updateScrollHints, { passive: true });
++    function handleResize() {
++      revealTab(tabs.find(tab => tab.getAttribute('aria-selected') === 'true'));
++      updateScrollHints();
++    }
++    if ('ResizeObserver' in window) new ResizeObserver(handleResize).observe(tablist);
++    else window.addEventListener('resize', handleResize);
++    updateScrollHints();
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

@@ -1,0 +1,484 @@
+diff --git a/index.html b/index.html
+index 66c9173..b2849fd 100644
+--- a/index.html
++++ b/index.html
+@@ -100,19 +100,165 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .section-header p {
++      color: #6d4c41;
++      font-size: 1rem;
++    }
++
++    /* Tabbed Coffee Menu */
++    @property --fade-start {
++      syntax: "<length>";
++      inherits: false;
++      initial-value: 0px;
++    }
++
++    @property --fade-end {
++      syntax: "<length>";
++      inherits: false;
++      initial-value: 0px;
++    }
++
++    .tabs {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr);
++    }
++
++    .tablist {
++      grid-row: 1;
++      grid-column: 1;
++      display: flex;
++      flex-wrap: nowrap;
++      overflow-x: auto;
++      scrollbar-width: none;
++      scroll-snap-type: inline proximity;
++      interpolate-size: allow-keywords;
++      border-block-end: 1px solid var(--secondary);
++      background-color: var(--light);
++    }
++
++    .tablist::-webkit-scrollbar {
++      display: none;
++    }
++
++    @supports (animation-timeline: scroll()) {
++      .tablist {
++        --fade-size: 2.5rem;
++        mask-image: linear-gradient(
++          to right,
++          transparent,
++          black var(--fade-start),
++          black calc(100% - var(--fade-end)),
++          transparent
++        );
++        animation:
++          tablist-fade-start linear both,
++          tablist-fade-end linear both;
++        animation-timeline: scroll(self inline);
++        animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
++      }
++    }
++
++    @keyframes tablist-fade-start {
++      from {
++        --fade-start: 0px;
++      }
++      to {
++        --fade-start: var(--fade-size);
++      }
++    }
++
++    @keyframes tablist-fade-end {
++      from {
++        --fade-end: var(--fade-size);
++      }
++      to {
++        --fade-end: 0px;
++      }
++    }
++
++    .tablist > button,
++    [role="tab"] {
++      position: relative;
++      flex: none;
++      scroll-snap-align: start;
++      appearance: none;
++      background: transparent;
++      border: none;
++      padding: 14px 22px;
++      font-family: inherit;
++      font-size: 1rem;
++      font-weight: 600;
++      line-height: 1.4;
++      color: #6d4c41;
++      cursor: pointer;
++      white-space: nowrap;
++      transition: color 0.2s ease;
++    }
++
++    .tablist > button:hover,
++    [role="tab"]:hover {
++      color: var(--primary);
++    }
++
++    .tablist > button:focus-visible,
++    [role="tab"]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: -2px;
++      border-radius: 4px 4px 0 0;
++    }
++
++    .tablist > button[aria-selected="true"],
++    [role="tab"][aria-selected="true"] {
++      color: var(--primary);
++
++      &::after {
++        content: "";
++        position: absolute;
++        inset: auto 0 0;
++        border-block-end: 3px solid var(--accent);
++      }
++    }
++
++    /* Tab Panels: no padding, border, margin, or background on the panel itself */
++    [role="tabpanel"] {
++      grid-row: 2;
++      grid-column: 1;
++    }
++
++    [role="tabpanel"]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++      border-radius: 8px;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+-      margin-top: 20px;
++      margin-top: 24px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
+     }
+ 
+     .card h3 {
+@@ -120,6 +266,17 @@
+       color: var(--primary);
+     }
+ 
++    .card-meta {
++      display: inline-block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: #6d4c41;
++      background: #efebe9;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-top: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,23 +332,194 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section id="coffee-menu" aria-labelledby="coffee-menu-heading">
++      <div class="section-header">
++        <h2 id="coffee-menu-heading">Handcrafted Coffee Menu</h2>
++        <p>Browse our signature drinks by category, roasted fresh daily.</p>
++      </div>
++
++      <div class="tabs">
++        <div class="tablist" focusgroup="tablist nomemory" aria-label="Beverage categories">
++          <button type="button" id="tab-seasonal" aria-selected="true" focusgroupstart>Seasonal Favorites</button>
++          <button type="button" id="tab-espresso" aria-selected="false">Espresso Classics</button>
++          <button type="button" id="tab-cold-brew" aria-selected="false">Cold Brew &amp; Iced</button>
++          <button type="button" id="tab-pour-over" aria-selected="false">Pour-Over &amp; Drip</button>
++          <button type="button" id="tab-tea-matcha" aria-selected="false">Artisanal Teas &amp; Matcha</button>
++          <button type="button" id="tab-specialty" aria-selected="false">Signature Lattes</button>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++
++        <div role="tabpanel" id="panel-seasonal" aria-labelledby="tab-seasonal" tabindex="0">
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <span class="card-meta">Hot or Iced &bull; $5.75</span>
++              </div>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Spiced Cardamom Cortado</h3>
++                <p>Double-shot espresso balanced with velvety steamed milk and freshly ground green cardamom.</p>
++                <span class="card-meta">Hot &bull; $5.25</span>
++              </div>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Toasted Pecan Cold Foam Brew</h3>
++                <p>Slow-steeped cold brew topped with house-made roasted pecan and brown butter cold foam.</p>
++                <span class="card-meta">Iced &bull; $6.00</span>
++              </div>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++
++        <div role="tabpanel" id="panel-espresso" aria-labelledby="tab-espresso" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <span class="card-meta">Double Shot &bull; $3.75</span>
++              </div>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Velvet Flat White</h3>
++                <p>Ristretto espresso shots poured under silky micro-foamed whole or oat milk.</p>
++                <span class="card-meta">Hot &bull; $4.95</span>
++              </div>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Traditional Cappuccino</h3>
++                <p>Equal parts rich espresso, steamed milk, and airy foam dusted with raw cocoa.</p>
++                <span class="card-meta">Hot &bull; $4.75</span>
++              </div>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++
++        <div role="tabpanel" id="panel-cold-brew" aria-labelledby="tab-cold-brew" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <span class="card-meta">Iced &bull; $4.75</span>
++              </div>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Nitro Draft Cold Brew</h3>
++                <p>Infused with nitrogen on tap for a cascading, stout-like crema and naturally sweet finish.</p>
++                <span class="card-meta">On Tap &bull; $5.50</span>
++              </div>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Shaken Brown Sugar Espresso</h3>
++                <p>Fresh espresso shaken vigorously over ice with raw demerara syrup and a splash of oat milk.</p>
++                <span class="card-meta">Iced &bull; $5.65</span>
++              </div>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++
++        <div role="tabpanel" id="panel-pour-over" aria-labelledby="tab-pour-over" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Ethiopian Yirgacheffe Pour-Over</h3>
++                <p>Hand-poured single-origin filter coffee bursting with jasmine florals and bergamot citrus notes.</p>
++                <span class="card-meta">Single Origin &bull; $5.50</span>
++              </div>
++              <a href="/menu/pour-over" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Colombian Huila Reserve</h3>
++                <p>Medium-light roast brewed to order with balanced caramel sweetness and crisp red apple acidity.</p>
++                <span class="card-meta">Single Origin &bull; $5.25</span>
++              </div>
++              <a href="/menu/pour-over" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>House Morning Batch Brew</h3>
++                <p>Our signature daily blend featuring chocolatey Guatemalan and nutty Brazilian beans.</p>
++                <span class="card-meta">Hot &bull; $3.50</span>
++              </div>
++              <a href="/menu/pour-over" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++
++        <div role="tabpanel" id="panel-tea-matcha" aria-labelledby="tab-tea-matcha" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Ceremonial Uji Matcha Latte</h3>
++                <p>First-harvest stone-ground green tea whisked to order with lightly sweetened almond or oat milk.</p>
++                <span class="card-meta">Hot or Iced &bull; $5.95</span>
++              </div>
++              <a href="/menu/tea" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Masala Chai Latte</h3>
++                <p>Small-batch Assam black tea simmered with fresh ginger root, cinnamon, cloves, and black pepper.</p>
++                <span class="card-meta">Hot or Iced &bull; $5.25</span>
++              </div>
++              <a href="/menu/tea" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>London Fog Earl Grey</h3>
++                <p>Organic bergamot-infused black tea steeped with French lavender buds and vanilla micro-foam.</p>
++                <span class="card-meta">Hot &bull; $5.15</span>
++              </div>
++              <a href="/menu/tea" class="btn">View Details</a>
++            </div>
++          </div>
++        </div>
++
++        <div role="tabpanel" id="panel-specialty" aria-labelledby="tab-specialty" hidden="until-found">
++          <div class="grid">
++            <div class="card">
++              <div>
++                <h3>Honey Lavender Oat Latte</h3>
++                <p>Wildflower honey and culinary lavender syrup paired with smooth espresso and creamy oat milk.</p>
++                <span class="card-meta">Hot or Iced &bull; $5.85</span>
++              </div>
++              <a href="/menu/specialty" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Dark Chocolate Mocha</h3>
++                <p>70% single-origin dark chocolate ganache melted into espresso and topped with cocoa nibs.</p>
++                <span class="card-meta">Hot or Iced &bull; $5.75</span>
++              </div>
++              <a href="/menu/specialty" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <div>
++                <h3>Salted Caramel Macchiato</h3>
++                <p>Madagascar vanilla milk marked with rich espresso and finished with sea-salted caramel drizzle.</p>
++                <span class="card-meta">Hot or Iced &bull; $5.85</span>
++              </div>
++              <a href="/menu/specialty" class="btn">View Details</a>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +535,83 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const menuSection = document.getElementById('coffee-menu');
++      if (!menuSection) return;
++
++      const tablist = menuSection.querySelector('[focusgroup~="tablist"]');
++      const tabs = Array.from(tablist.querySelectorAll('button'));
++      const panels = Array.from(menuSection.querySelectorAll('[role="tabpanel"]'));
++
++      function selectTab(selected) {
++        if (!selected) return;
++
++        for (const tab of tabs) {
++          const isSelected = tab === selected;
++          tab.ariaSelected = String(isSelected);
++          tab.toggleAttribute('focusgroupstart', isSelected);
++        }
++
++        for (const panel of panels) {
++          const isSelected = panel.getAttribute('aria-labelledby') === selected.id;
++          if (isSelected) {
++            panel.hidden = false;
++            panel.setAttribute('tabindex', '0');
++          } else {
++            panel.hidden = 'until-found';
++            panel.removeAttribute('tabindex');
++          }
++        }
++
++        selected.scrollIntoView({
++          block: 'nearest',
++          inline: 'nearest',
++          container: 'nearest',
++        });
++      }
++
++      for (const tab of tabs) {
++        tab.addEventListener('focus', () => selectTab(tab));
++        tab.addEventListener('click', () => selectTab(tab));
++      }
++
++      for (const panel of panels) {
++        panel.addEventListener('beforematch', () => {
++          const tabId = panel.getAttribute('aria-labelledby');
++          const associatedTab = tabs.find((tab) => tab.id === tabId);
++          if (associatedTab) {
++            selectTab(associatedTab);
++          }
++        });
++      }
++
++      // Fallback arrow-key navigation when native focusgroup is not supported
++      if (!('focusgroup' in HTMLElement.prototype)) {
++        tablist.addEventListener('keydown', (event) => {
++          const currentIndex = tabs.indexOf(document.activeElement);
++          if (currentIndex === -1) return;
++
++          let nextIndex = -1;
++          if (event.key === 'ArrowRight') {
++            nextIndex = (currentIndex + 1) % tabs.length;
++          } else if (event.key === 'ArrowLeft') {
++            nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
++          } else if (event.key === 'Home') {
++            nextIndex = 0;
++          } else if (event.key === 'End') {
++            nextIndex = tabs.length - 1;
++          }
++
++          if (nextIndex !== -1) {
++            event.preventDefault();
++            tabs[nextIndex].focus();
++          }
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

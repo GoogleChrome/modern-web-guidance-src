@@ -1,0 +1,196 @@
+diff --git a/index.html b/index.html
+index 66c9173..7f590b1 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,68 @@
+       background: #3e2723;
+     }
+ 
++    /* Tabs */
++    @property --fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
++    @property --fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
++
++    @keyframes scroll-fade {
++      0% { --fade-start: 0px; }
++      5%, 95% { --fade-start: 2.5rem; --fade-end: 2.5rem; }
++      100% { --fade-start: 2.5rem; --fade-end: 0px; }
++    }
++
++    .tablist {
++      display: flex;
++      overflow-x: auto;
++      scrollbar-width: none;
++      scroll-snap-type: inline proximity;
++      border-block-end: 1px solid var(--secondary);
++      margin-top: 20px;
++      --fade-start: 0px;
++      --fade-end: 0px;
++      mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
++      animation: scroll-fade linear both;
++      animation-timeline: scroll(self inline);
++    }
++
++    .tablist::-webkit-scrollbar { display: none; }
++
++    .tablist > [aria-selected] {
++      flex: none;
++      scroll-snap-align: start;
++      position: relative;
++      background: none;
++      border: 0;
++      font: inherit;
++      color: var(--text);
++      padding: 12px 18px;
++      cursor: pointer;
++      white-space: nowrap;
++    }
++
++    .tablist > [aria-selected]:hover { color: var(--primary); }
++
++    .tablist > [aria-selected="true"] {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .tablist > [aria-selected="true"]::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0;
++      border-block-end: 3px solid var(--accent);
++    }
++
++    .tablist > [aria-selected]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    .panels { display: grid; }
++    .panels > [role="tabpanel"] { grid-area: 1 / 1; min-width: 0; }
++    .panels > [role="tabpanel"] > .grid { margin-top: 20px; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,25 +238,107 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      <h2 id="coffee-menu-title" style="text-align: center;">Our Coffee Menu</h2>
++      <div class="tabs" id="coffee-menu">
++        <div class="tablist" focusgroup="tablist nomemory" aria-label="Beverage categories">
++          <button type="button" id="seasonal-tab" aria-selected="true" focusgroupstart>Seasonal Favorites</button>
++          <button type="button" id="espresso-tab" aria-selected="false">Espresso</button>
++          <button type="button" id="cold-tab" aria-selected="false">Cold Drinks</button>
++          <button type="button" id="tea-tab" aria-selected="false">Tea</button>
++          <button type="button" id="specialty-tab" aria-selected="false">Specialty Lattes</button>
++          <button type="button" id="decaf-tab" aria-selected="false">Decaf</button>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="panels">
++          <div role="tabpanel" aria-labelledby="seasonal-tab" tabindex="0">
++            <div class="grid">
++              <div class="card">
++                <h3>Maple Oat Latte</h3>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <a href="/menu/seasonal" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
++          <div role="tabpanel" aria-labelledby="espresso-tab" hidden="until-found">
++            <div class="grid">
++              <div class="card">
++                <h3>Dark Roast Espresso</h3>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <a href="/menu/espresso" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
++          <div role="tabpanel" aria-labelledby="cold-tab" hidden="until-found">
++            <div class="grid">
++              <div class="card">
++                <h3>Cold Brew</h3>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <a href="/menu/cold-brew" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
++          <div role="tabpanel" aria-labelledby="tea-tab" hidden="until-found">
++            <div class="grid">
++              <div class="card">
++                <h3>Jasmine Green Tea</h3>
++                <p>Delicate green tea scented with fresh jasmine blossoms.</p>
++                <a href="/menu/tea" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
++          <div role="tabpanel" aria-labelledby="specialty-tab" hidden="until-found">
++            <div class="grid">
++              <div class="card">
++                <h3>Lavender Honey Latte</h3>
++                <p>Espresso and steamed milk sweetened with lavender honey.</p>
++                <a href="/menu/specialty" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
++          <div role="tabpanel" aria-labelledby="decaf-tab" hidden="until-found">
++            <div class="grid">
++              <div class="card">
++                <h3>Swiss Water Decaf</h3>
++                <p>Full-flavored decaf, naturally processed without chemicals.</p>
++                <a href="/menu/decaf" class="btn">View Details</a>
++              </div>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
++    <script>
++      (() => {
++        const root = document.getElementById('coffee-menu');
++        const tabs = [...root.querySelectorAll('.tablist > button')];
++        const panels = [...root.querySelectorAll('[role="tabpanel"]')];
++
++        function select(tab, { focus = false } = {}) {
++          tabs.forEach((t, i) => {
++            const on = t === tab;
++            t.ariaSelected = String(on);
++            t.toggleAttribute('focusgroupstart', on);
++            const panel = panels[i];
++            if (on) {
++              panel.hidden = false;
++              panel.tabIndex = 0;
++            } else {
++              panel.hidden = 'until-found';
++              panel.removeAttribute('tabindex');
++            }
++          });
++          if (focus) tab.focus();
++          tab.scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' });
++        }
++
++        tabs.forEach((tab, i) => {
++          tab.addEventListener('click', () => select(tab));
++          tab.addEventListener('focus', () => {
++            if (tab.ariaSelected !== 'true') select(tab);
++          });
++          panels[i].addEventListener('beforematch', () => select(tab));
++        });
++      })();
++    </script>
+   </main>
+ 
+   <footer>
