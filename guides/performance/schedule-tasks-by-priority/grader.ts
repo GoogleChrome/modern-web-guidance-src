@@ -113,18 +113,16 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-    const buttons = await page.locator('button').all();
-    for (const btn of buttons) {
-      await btn.click().catch(() => {});
-    }
-    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      document.querySelectorAll('button').forEach(b => b.click());
+    });
 
     const calls = await page.evaluate(() => (window as any).__postTaskCalls || []);
+    const code = getScriptContent();
     if (calls.length > 0) {
       expect(calls.length).toBeGreaterThan(0);
       return;
     }
-    const code = getScriptContent();
     expect(code.includes('postTask') || code.includes('scheduler.postTask')).toBe(true);
   });
 
@@ -132,11 +130,9 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-    const buttons = await page.locator('button').all();
-    for (const btn of buttons) {
-      await btn.click().catch(() => {});
-    }
-    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      document.querySelectorAll('button').forEach(b => b.click());
+    });
 
     const calls = await page.evaluate(() => (window as any).__postTaskCalls || []);
     const priorities = calls.map((c: any) => c.priority);
@@ -167,8 +163,8 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     });
 
     await injectSpy(page);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(300);
+    await page.goto(targetUrl, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
 
     expect(polyfillRequested).toBe(false);
   });
@@ -177,11 +173,9 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-    const buttons = await page.locator('button').all();
-    for (const btn of buttons) {
-      await btn.click().catch(() => {});
-    }
-    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      document.querySelectorAll('button').forEach(b => b.click());
+    });
 
     const order = await page.evaluate(() => (window as any).__executionOrder || []);
     if (order.length >= 2) {

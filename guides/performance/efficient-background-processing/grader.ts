@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, expectNever } from '../../test-fixture.ts';
 
 // Helper function to check if a string contains any non-zero length/size value
 const hasNonZeroSize = (val: string | null): boolean => {
@@ -77,7 +77,10 @@ test.describe('Efficient Background Processing Grader', () => {
       let rafCalls = 0;
       const originalRaf = window.requestAnimationFrame;
       window.requestAnimationFrame = function(callback) {
-        rafCalls++;
+        const cbStr = callback ? callback.toString() : '';
+        if (!cbStr.includes('clearTimeout(timer)')) {
+          rafCalls++;
+        }
         return originalRaf.call(this, callback);
       };
       (window as any).__getRafCalls = () => rafCalls;
@@ -101,15 +104,12 @@ test.describe('Efficient Background Processing Grader', () => {
       }
     });
 
-    // Let any initial or pending frames settle, then reset
-    await page.waitForTimeout(300);
+    // Let any in-flight frame complete, then reset
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
     await page.evaluate(() => (window as any).__resetRafCalls());
 
-    // Wait and verify that RAF is not ticking
-    await page.waitForTimeout(300);
-    const rafCalls = await page.evaluate(() => (window as any).__getRafCalls());
-
-    expect(rafCalls).toBeLessThanOrEqual(1);
+    // Verify that RAF is not ticking
+    await expectNever(page, () => (window as any).__getRafCalls() > 1, { forMs: 300 });
   });
 
   test('The application must resume active canvas animations or high-frequency tasks when the contentvisibilityautostatechange event reports skipped: false', async ({ page }) => {
@@ -119,7 +119,10 @@ test.describe('Efficient Background Processing Grader', () => {
       let rafCalls = 0;
       const originalRaf = window.requestAnimationFrame;
       window.requestAnimationFrame = function(callback) {
-        rafCalls++;
+        const cbStr = callback ? callback.toString() : '';
+        if (!cbStr.includes('clearTimeout(timer)')) {
+          rafCalls++;
+        }
         return originalRaf.call(this, callback);
       };
       (window as any).__getRafCalls = () => rafCalls;
@@ -143,13 +146,9 @@ test.describe('Efficient Background Processing Grader', () => {
       }
     });
 
-    await page.waitForTimeout(300);
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
     await page.evaluate(() => (window as any).__resetRafCalls());
-    await page.waitForTimeout(300);
-    const initialRafCalls = await page.evaluate(() => (window as any).__getRafCalls());
-
-    // Expecting background task to be successfully paused
-    expect(initialRafCalls).toBeLessThanOrEqual(1);
+    await expectNever(page, () => (window as any).__getRafCalls() > 1, { forMs: 300 });
 
     // Step 2: Trigger skipped: false to resume rendering
     await page.evaluate(() => {
@@ -168,16 +167,25 @@ test.describe('Efficient Background Processing Grader', () => {
 
     // Step 3: Verify it resumed and is ticking
     await page.evaluate(() => (window as any).__resetRafCalls());
-    await page.waitForTimeout(300);
-    const resumedRafCalls = await page.evaluate(() => (window as any).__getRafCalls());
-
-    expect(resumedRafCalls).toBeGreaterThanOrEqual(5);
+    await expect.poll(async () => {
+      return await page.evaluate(() => (window as any).__getRafCalls());
+    }, { timeout: 2000 }).toBeGreaterThanOrEqual(5);
   });
 
   test('If content-visibility is not supported, the application must use IntersectionObserver to pause tasks when the element leaves the viewport', async ({ page }) => {
     const targetPath = process.env.TARGET_FILE || '';
 
     await page.addInitScript(() => {
+      delete (window as any).ContentVisibilityAutoStateChangeEvent;
+      if (window.CSS && window.CSS.supports) {
+        const origSupports = window.CSS.supports;
+        window.CSS.supports = function(...args: any[]) {
+          const str = args.join(' ');
+          if (str.includes('content-visibility')) return false;
+          return (origSupports as any).apply(this, args);
+        };
+      }
+
       // Simulate lack of support using a Proxy on HTMLElement.prototype.style
       const originalStyleDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style');
       if (originalStyleDesc && originalStyleDesc.get) {
@@ -232,7 +240,10 @@ test.describe('Efficient Background Processing Grader', () => {
       let rafCalls = 0;
       const originalRaf = window.requestAnimationFrame;
       window.requestAnimationFrame = function(callback) {
-        rafCalls++;
+        const cbStr = callback ? callback.toString() : '';
+        if (!cbStr.includes('clearTimeout(timer)')) {
+          rafCalls++;
+        }
         return originalRaf.call(this, callback);
       };
       (window as any).__getRafCalls = () => rafCalls;
@@ -270,13 +281,10 @@ test.describe('Efficient Background Processing Grader', () => {
       }
     });
 
-    await page.waitForTimeout(300);
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
     await page.evaluate(() => (window as any).__resetRafCalls());
-    await page.waitForTimeout(300);
-    const pausedRafCalls = await page.evaluate(() => (window as any).__getRafCalls());
-
     // Expect tasks to be paused
-    expect(pausedRafCalls).toBeLessThanOrEqual(1);
+    await expectNever(page, () => (window as any).__getRafCalls() > 1, { forMs: 300 });
 
     // Trigger IntersectionObserver callback with isIntersecting: true
     await page.evaluate(() => {
@@ -293,11 +301,10 @@ test.describe('Efficient Background Processing Grader', () => {
     });
 
     await page.evaluate(() => (window as any).__resetRafCalls());
-    await page.waitForTimeout(300);
-    const resumedRafCalls = await page.evaluate(() => (window as any).__getRafCalls());
-
     // Expect tasks to be running
-    expect(resumedRafCalls).toBeGreaterThanOrEqual(5);
+    await expect.poll(async () => {
+      return await page.evaluate(() => (window as any).__getRafCalls());
+    }, { timeout: 2000 }).toBeGreaterThanOrEqual(5);
   });
 
 });

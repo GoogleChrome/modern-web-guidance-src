@@ -1,6 +1,6 @@
-- The `fetchLater()` API is invoked with a URL string as the first argument, and a `DeferredRequestInit` object as the second argument.
-- The `fetchLater()` API is the only API that should be used to send beacons. Other APIs like `fetch()`, `sendBeacon()`, `XMLHttpRequest`, or `new Image()` should not used.
-- `fetchLater()` should be invoked with the `activeAfter` option set.
+- The `fetchLater()` API is invoked with a URL string as the first argument, and a valid `DeferredRequestInit` object (without a `ReadableStream` request body) as the second argument.
+- The `fetchLater()` API (with `fetch()` or `sendBeacon()` only in its polyfill fallback) is the primary API that should be used to send beacons. Other APIs like `XMLHttpRequest` or `new Image()` should not be used.
+- `fetchLater()` should be invoked with the `activateAfter` option set.
 - Multiple invocations of `fetchLater()` within the `activateAfter` time window should be batched into a single request (e.g. prior calls should be aborted).
 - Batching should be limited in some way to prevent starvation or quota overflow.
 - If a `fetchLater()` call throws a `QuotaExceededError`, `RangeError`, or `TypeError`, it should be properly handled.

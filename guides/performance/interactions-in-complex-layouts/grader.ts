@@ -45,7 +45,7 @@ test.afterAll(async () => {
   }
 });
 
-test('Target column elements must have content-visibility: auto in computed styles', async () => {
+test('Target column elements have content-visibility: auto in computed styles', async () => {
   test.setTimeout(30000);
   const contentVisibility = await sharedPage.evaluate(() => {
     const candidates = Array.from(
@@ -79,7 +79,7 @@ test('Target column elements must have content-visibility: auto in computed styl
   expect(contentVisibility).toBe('auto');
 });
 
-test('Target column elements must have a non-zero contain-intrinsic-size specified', async () => {
+test('Target column elements have a non-zero contain-intrinsic-size specified', async () => {
   test.setTimeout(30000);
   const hasNonZeroSize = await sharedPage.evaluate(() => {
     const isValidIntrinsicSize = (size: string) => {
@@ -128,7 +128,7 @@ test('Target column elements must have a non-zero contain-intrinsic-size specifi
   expect(hasNonZeroSize).toBe(true);
 });
 
-test('The implementation must exhibit isolated layout recalculations', async () => {
+test('The implementation exhibits isolated layout recalculations', async () => {
   test.setTimeout(30000);
   const hasIsolatedLayoutRecalc = await sharedPage.evaluate(() => {
     const col = document.querySelector('.list') || document.querySelector('.board-column') || document.querySelector('[class*="column"]');
@@ -147,7 +147,7 @@ test('The implementation must exhibit isolated layout recalculations', async () 
   expect(hasIsolatedLayoutRecalc).toBe(true);
 });
 
-test('The application must not exhibit global reflows when dragging items between columns', async () => {
+test('The application does not exhibit global reflows when dragging items between columns', async () => {
   test.setTimeout(30000);
   const retainsContainmentDuringDrag = await sharedPage.evaluate(() => {
     const list = document.querySelector('.list') || document.querySelector('.board-column') || document.querySelector('[class*="column"]');
@@ -168,7 +168,7 @@ test('The application must not exhibit global reflows when dragging items betwee
   expect(retainsContainmentDuringDrag).toBe(true);
 });
 
-test('Target column elements should have contain fallback style applied for partial layout isolation', async () => {
+test('Target column elements have contain fallback style applied for partial layout isolation', async () => {
   test.setTimeout(30000);
   const hasContainmentFallback = await sharedPage.evaluate(() => {
     let foundFallback = false;
