@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
+import { A11Y_SUBCATEGORIES, classifyAccessibilityCheck } from '../../dashboard/a11y-classifier.js';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
@@ -48,7 +49,7 @@ export const PUBLIC_EVALS_DIR = 'public-evals';
  * preparation, summary extraction) in a way that should rebuild every suite.
  * Field lists and patterns are hashed in automatically below.
  */
-const OUTPUT_REVISION = 1;
+const OUTPUT_REVISION = 2;
 
 /**
  * Identifies the public output contract. Derived from the rules that shape the
@@ -66,6 +67,9 @@ const BUILDER_VERSION = crypto
     leaks: LEAK_PATTERNS.map(pattern => pattern.re.source),
     excludedPaths: EXCLUDED_PATH_RE.source,
     maxPatchBytes: MAX_PATCH_BYTES,
+    a11ySubcategories: A11Y_SUBCATEGORIES,
+    a11yClassifier: classifyAccessibilityCheck.toString(),
+    summaryExtractor: extractSuiteSummary.toString(),
   }))
   .digest('hex')
   .slice(0, 12);

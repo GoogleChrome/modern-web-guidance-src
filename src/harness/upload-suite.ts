@@ -145,7 +145,12 @@ export async function uploadDirectory(
   }
 }
 
-async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string, evalsData: any) {
+async function reconcileAndUploadManifest(
+  bucket: any,
+  uploadedSuiteName: string | null,
+  evalsData: any,
+  options: { reextractAll?: boolean } = {},
+) {
   console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
   
   let remoteManifest: any[] = [];
@@ -174,7 +179,9 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
   } while (pageToken);
 
   const activeSuiteIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
-  activeSuiteIds.add(uploadedSuiteName);
+  if (uploadedSuiteName) {
+    activeSuiteIds.add(uploadedSuiteName);
+  }
 
   const manifestMap = new Map<string, any>();
   for (const entry of remoteManifest) {
@@ -185,15 +192,18 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
   }
 
   // Update the uploaded suite's summary
-  const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
-  if (uploadedSummary) {
-    manifestMap.set(uploadedSuiteName, uploadedSummary);
+  if (uploadedSuiteName && evalsData) {
+    const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
+    if (uploadedSummary) {
+      manifestMap.set(uploadedSuiteName, uploadedSummary);
+    }
   }
 
-  // Backfill missing summaries for any active GCS suites that lack detailed summary
+  // Backfill missing summaries (or re-extract all when --reextract-manifest is passed)
   const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
+    if (options.reextractAll && id !== uploadedSuiteName) return true;
     const existing = manifestMap.get(id);
-    return !existing || !existing.guidedStats;
+    return !existing || !existing.guidedStats || !existing.a11yStats;
   });
 
   if (missingSuiteIds.length > 0) {
@@ -230,6 +240,14 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
 async function main() {
   const args = process.argv.slice(2);
   const summaryOnly = args.includes('--summary-only');
+  const reextractManifest = args.includes('--reextract-manifest');
+
+  if (reextractManifest) {
+    const storage = new Storage({ projectId: PROJECT_ID });
+    const bucket = storage.bucket(BUCKET_NAME);
+    await reconcileAndUploadManifest(bucket, null, null, { reextractAll: true });
+    return;
+  }
   
   // Remove flags to get positional arguments
   const positionalArgs = args.filter(a => !a.startsWith('--'));

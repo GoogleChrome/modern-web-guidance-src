@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subtitleEl = document.querySelector('.guide-subtitle');
     if (subtitleEl) {
         if (isA11yMode) {
-            subtitleEl.innerHTML = 'Guided vs. unguided <strong>accessibility subscore</strong> over time, by agent and model combination <span class="mode-badge-inline">Accessibility checks</span>';
+            subtitleEl.innerHTML = 'Guided vs. unguided <strong>automated accessibility check pass rate</strong> over time, by agent and model combination <span class="mode-badge-inline">Accessibility checks</span>';
         } else { subtitleEl.textContent = 'Guided vs. unguided pass rate over time, by agent and model combination'; }
     }
     setupTimelineFilterControls(guideName);

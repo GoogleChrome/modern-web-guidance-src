@@ -72,6 +72,8 @@ const FALSE_POSITIVE_SUBSTRINGS = [
     'css declares underline transition inside a prefers-reduced-motion: no-preference media query',
     'no tooltip element or its invoker button sets role="tooltip", aria-describedby, or aria-details manually',
     'via elementinternals without a matching aria-* attribute on the host',
+    'without setting a role attribute on the host element',
+    'no aria-* state attribute is added to the host',
     'css keeps the persistent top bar visible when it contains keyboard focus (:focus-within)',
     'persistent top bar visible when it contains keyboard focus',
     'no <dialog> has role="dialog" or aria-modal',
@@ -113,9 +115,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('contrast ratio') ||
         /\b\d+(?:\.\d+)?:1\s+contrast\b/.test(ml) ||
         ml.includes('tap targets must be at least 48px') ||
-        ml.includes('interactive targets meet a minimum size of 24px') ||
-        ((gName === 'fluid-scaling' || gName.endsWith('/fluid-scaling')) &&
-            ml.includes('maximum size in clamp() for font size is at most 2.5 times the minimum size'))
+        ml.includes('interactive targets meet a minimum size of 24px')
     ) {
         return { isAccessibility: true, subCategory: 'motion_contrast_visual' };
     }
@@ -132,7 +132,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('semantic tags like <button type="submit">') ||
         ml.includes('semantic, visible submit button') ||
         ml.includes('explicit <button type="submit"> with actionable text') ||
-        ml.includes('the form must have a submit button') ||
         ((gName === 'stack-drill-down' || gName.endsWith('/stack-drill-down')) &&
             ml.includes('drill-down views have an explicit back button, but root view does not'))
     ) {
@@ -158,9 +157,8 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('<search> element') ||
         ml.includes('content alternative text') ||
         ml.includes('using alternative text') ||
-        (ml.includes('<dialog>') && ml.includes('accessible name')) ||
+        ml.includes('accessible name') ||
         ml.includes('the "lang" attribute must be defined on the <html> element') ||
-        (gName.includes('scroll-snap-state-sync') && ml.includes('only one toc link is highlighted as the active one')) ||
         (gName.includes('slider') &&
             ml.includes('must not use generated content on slider pseudo-elements, exposing values in ordinary dom elements instead'))
     ) {
@@ -199,8 +197,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         gName.endsWith('/accessible-error-announcement') ||
         gName === 'accessible-generated-content' ||
         gName.endsWith('/accessible-generated-content') ||
-        gName === 'accessible-web-components' ||
-        gName.endsWith('/accessible-web-components') ||
         gName === 'accessibility' ||
         gName.endsWith('/accessibility')
     ) {

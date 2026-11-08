@@ -8,7 +8,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
+  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, automated accessibility check pass rates, completion time, and token efficiency across suites.">
   <title>Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
@@ -58,8 +58,9 @@
             <p class="takeaway-qualifier">Loading…</p>
           </li>
           <li class="takeaway takeaway-secondary" data-metric="a11y">
-            <h3 class="takeaway-label">Accessibility</h3>
+            <h3 class="takeaway-label">Automated accessibility checks</h3>
             <p class="takeaway-figure">…</p>
+            <p class="takeaway-statement">lift on testable DOM, keyboard, focus &amp; ARIA mechanics (not a full WCAG audit)</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
         </ul>
@@ -136,7 +137,7 @@
               <fieldset class="metric-mode-toggle">
                 <legend class="visually-hidden">Comparison check scope</legend>
                 <label id="insights-mode-all" class="metric-mode-btn"><input type="radio" name="insights-mode" value="all" checked>All checks</label>
-                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility subscore</label>
+                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility checks</label>
               </fieldset>
             </div>
             <div id="insights-container" class="insights-grid"></div>
@@ -154,12 +155,16 @@
                   <dd>Playwright opens the finished app in a real browser and checks the DOM, styles, and source against each requirement. Pass rate is checks passed divided by checks run (runs that crash or time out before grading are left out, along with their paired run). Lift is shown in <strong>percentage points (pp)</strong>: 25% → 90% is +65 pp.</dd>
                 </div>
                 <div class="method-item">
+                  <dt>Do graders penalize valid alternative code in "Without MWG"?</dt>
+                  <dd>Graders assert rendered browser behavior and spec-compliant accessibility semantics (such as computed roles, focus movement, and keyboard interaction) rather than guide-specific variable names or markup structure. When an audit finds a grader that rejects a valid alternative implementation, we broaden the assertion in the <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">open-source repository</a> and re-score the suite.</dd>
+                </div>
+                <div class="method-item">
                   <dt>Why isn't "With MWG" 100%?</dt>
                   <dd>Task prompts never mention MWG, so the agent has to recognize when a guide applies and follow every detail. Misses come from skipped steps (such as an older-browser fallback), missed guide lookups (see <a href="search/">Search Quality</a>), or strict grader edge cases.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Accessibility subscore</dt>
-                  <dd>Pass rate on accessibility checks across all guides: keyboard support, focus and <code>inert</code>, <code>prefers-reduced-motion</code>, contrast, ARIA, and form labels.</dd>
+                  <dt>Automated accessibility checks</dt>
+                  <dd>Pass rate across automated browser assertions verifying foundational platform mechanics across five dimensions: keyboard support, focus and <code>inert</code>, <code>prefers-reduced-motion</code> and contrast, ARIA roles and states, and form labels. Automated checks catch common AI omissions in code but only cover a subset of accessibility requirements—they do not measure full WCAG compliance or replace manual and assistive-technology testing.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Task duration</dt>
@@ -234,7 +239,7 @@
                   <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
                 </th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y checks</button></th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median duration</button></th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button></th>
                 <th scope="col" id="header-source">

@@ -881,12 +881,12 @@ function renderSuites() {
             const a11yScope = a11yGuideCount > 0
                 ? `${a11yGuideCount} ${a11yGuideCount === 1 ? 'guide' : 'guides'}`
                 : overallScope;
-            const a11ySub = ['Accessibility subscore', modelPart, a11yScope].filter(Boolean).join(' · ');
+            const a11ySub = ['Automated accessibility checks', modelPart, a11yScope].filter(Boolean).join(' · ');
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Accessibility subscore')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
-        } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+        } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median duration: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median duration' })}</div>`
@@ -1385,7 +1385,7 @@ function renderPivotInsights() {
             });
         }
 
-        const metricName = onlyA11y ? 'Accessibility subscore' : 'Pass rate';
+        const metricName = onlyA11y ? 'Accessibility checks' : 'Pass rate';
         const captionNoun = filterKey === 'guide' ? 'guide' : (filterKey === 'dimension' ? 'accessibility dimension' : 'model');
 
         let rowsHtml = '';
@@ -1547,6 +1547,9 @@ function renderPivotInsights() {
             ${renderExpandRow('dimension', dimensionCount)}
         </div>`
         : '';
+    const a11yScopeNoteHtml = onlyA11y ? `
+        <p class="insights-a11y-note">Automated Playwright assertions covering 5 programmable dimensions (keyboard, focus &amp; <code>inert</code>, ARIA &amp; live regions, motion &amp; contrast preferences, form labeling). Does not measure full WCAG compliance or replace manual and assistive-technology testing.</p>`
+        : '';
     container.innerHTML = `
         <div class="insights-scope-bar">
             <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
@@ -1564,6 +1567,7 @@ function renderPivotInsights() {
                 <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
             </div>
         </div>
+        ${a11yScopeNoteHtml}
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
             ${renderPanelHeader('model', `By model (${modelCount})`)}
