@@ -102,7 +102,10 @@ function expressionProducesPromise(arg: Node, scopeNodes: Node[]): boolean {
       calleeText.startsWith('Promise.') ||
       calleeText === 'fetch' ||
       calleeText.endsWith('.then') ||
-      calleeText.endsWith('.catch')
+      calleeText.endsWith('.catch') ||
+      // Method calls and async IIFEs can't be resolved here; assume a Promise
+      // rather than failing a valid handler.
+      !callee.isKind(SyntaxKind.Identifier)
     ) {
       return true;
     }

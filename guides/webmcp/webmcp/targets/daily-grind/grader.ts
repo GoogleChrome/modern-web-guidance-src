@@ -126,24 +126,27 @@ test.describe('webmcp Target Grader', () => {
 
     const sourceFiles = project.getSourceFiles();
     const hasFeatureDetection =
-      registerCalls.some((call) =>
-        call
-          .getExpression()
-          .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-          .some((pa) => pa.hasQuestionDotToken())
-      ) ||
+      registerCalls.some((call) => call.getExpression().getText().includes('?.')) ||
       sourceFiles.some((sf) => {
+        // Only count modelContext/registerTool reads in a guard's condition, not
+        // code that merely sits inside some unrelated if/ternary/assignment.
+        const inside = (outer: Node, inner: Node) =>
+          inner.getStart() >= outer.getStart() && inner.getEnd() <= outer.getEnd();
         const hasPropAccessGuard = sf
           .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
           .some((pa) => {
             if (pa.getName() !== 'modelContext' && pa.getName() !== 'registerTool') {
               return false;
             }
-            return Boolean(
-              pa.getFirstAncestorByKind(SyntaxKind.IfStatement) ||
-                pa.getFirstAncestorByKind(SyntaxKind.ConditionalExpression) ||
-                pa.getFirstAncestorByKind(SyntaxKind.BinaryExpression) ||
-                pa.getFirstAncestorByKind(SyntaxKind.PrefixUnaryExpression)
+            return pa.getAncestors().some(
+              (anc) =>
+                (anc.isKind(SyntaxKind.IfStatement) && inside(anc.getExpression(), pa)) ||
+                (anc.isKind(SyntaxKind.ConditionalExpression) && inside(anc.getCondition(), pa)) ||
+                anc.isKind(SyntaxKind.PrefixUnaryExpression) ||
+                anc.isKind(SyntaxKind.TypeOfExpression) ||
+                (anc.isKind(SyntaxKind.BinaryExpression) &&
+                  anc.getOperatorToken().getKind() !== SyntaxKind.EqualsToken &&
+                  inside(anc.getLeft(), pa))
             );
           });
 
