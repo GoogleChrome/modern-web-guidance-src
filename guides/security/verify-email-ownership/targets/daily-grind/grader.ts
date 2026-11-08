@@ -208,10 +208,11 @@ test.describe('verify-email-ownership Target Grader', () => {
         if (
           exprText.includes('setHeader') ||
           exprText.includes('writeHead') ||
-          exprText.includes('header')
+          exprText.includes('header') ||
+          exprText.endsWith('.set')
         ) {
-          const argTexts = call.getArguments().map((a) => a.getText());
-          if (argTexts.some((a) => a.includes('Cache-Control') && a.includes('no-store'))) {
+          const joinedArgs = call.getArguments().map((a) => a.getText()).join(' ');
+          if (/cache-control/i.test(joinedArgs) && /no-store/i.test(joinedArgs)) {
             servesNoStore = true;
           }
         }
