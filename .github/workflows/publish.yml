@@ -152,7 +152,6 @@ jobs:
         env:
           FULL: 1
           TEST_REPORTER: spec
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node --test src/cli/install-skills.test.ts
 
       - name: Configure Git for Auth and Commit

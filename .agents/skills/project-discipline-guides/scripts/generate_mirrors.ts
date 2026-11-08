@@ -14,9 +14,9 @@ if (typeof process.loadEnvFile === 'function') {
 async function callCli(prompt: string, cliId: string): Promise<string> {
   const clis: Record<string, { env: string; defaultBin: string; buildArgs: (p: string) => string[] }> = {
     gemini: {
-      env: 'GEMINI_CLI_BIN',
-      defaultBin: 'gemini',
-      buildArgs: (p) => ['-p', p, '-o', 'text', '--skip-trust'],
+      env: 'ANTIGRAVITY_CLI_BIN',
+      defaultBin: 'agy',
+      buildArgs: (p) => ['-p', p, '--dangerously-skip-permissions'],
     },
     claude: {
       env: 'CLAUDE_CODE_CLI_BIN',

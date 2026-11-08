@@ -12,19 +12,6 @@ Supported agents are defined in the `Agents` object within [`src/harness/config.
 
 ## Agents
 
-### Gemini CLI
-
-Gemini CLI (`gemini_cli`) is supported for evaluation harness runs.
-
-**Configuration:**
-Set your API key and preferred model in your environment or `.env` file at the repository root:
-```bash
-GEMINI_API_KEY='your_api_key_here'
-GEMINI_MODEL='gemini-3-flash-preview'
-```
-
----
-
 ### Claude Code
 
 The Claude Code agent (`claude_code`) is implemented with [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai).

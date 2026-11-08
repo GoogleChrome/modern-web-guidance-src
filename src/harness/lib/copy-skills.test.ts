@@ -5,8 +5,6 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from './agent-shared.ts';
 import { Agents } from '../config.ts';
-import { parseGeminiStreamOutput } from '../agents/gemini-cli-agent.ts';
-import { rootDir } from '../../core/paths.ts';
 import type { CompactSearchResult } from '../../rag/search.ts';
 
 function assertSearchResults(output: string) {
@@ -56,60 +54,5 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         if (homeDir) {
             cleanupIsolatedHome(homeDir);
         }
-    }
-});
-
-test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip: !process.env.FULL }, async () => {
-    let targetDir = '';
-    let templateDir = '';
-    let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
-    
-    try {
-        const rand = Math.random().toString(36).substring(7);
-        targetDir = path.join(osTmpDir, `test-gemini-target-${rand}`);
-        templateDir = path.join(osTmpDir, `test-gemini-template-${rand}`);
-        
-        fs.mkdirSync(targetDir, { recursive: true });
-        fs.mkdirSync(templateDir, { recursive: true });
-
-        // Set up the suite config
-        const suiteConfig = {
-            agent: 'gemini_cli',
-            name: 'test-run',
-            numRuns: 1,
-            tasks: [],
-            skillsToEnable: ['modern-web-guidance'],
-            negative: false
-        };
-
-        const env = {
-            ...process.env,
-            GD_SUITE_CONFIG: JSON.stringify(suiteConfig),
-        };
-
-        const agentScript = path.join(rootDir, 'src/harness/agents/gemini-cli-agent.ts');
-        const cmd = `node ${agentScript} "use modern-web-guidance to search for address form" guided "${targetDir}" "${templateDir}"`;
-
-        execSync(cmd, { env, stdio: 'inherit' });
-        
-        const logPath = path.join(targetDir, 'chat_log.txt');
-        assert.ok(fs.existsSync(logPath), 'chat_log.txt should exist');
-        
-        const logContent = fs.readFileSync(logPath, 'utf8');
-        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(logContent);
-        
-        console.log(`\n[Validation State]`);
-        console.log(`- Skill Activated: ${skillActivated}`);
-        console.log(`- Search Called: ${searchCalled}`);
-        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
-        
-        // Assert all, but we get the log above first!
-        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
-        assert.ok(searchCalled, 'Modern web search should be called');
-        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
-
-    } finally {
-        if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
-        if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
     }
 });

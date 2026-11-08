@@ -45,7 +45,6 @@ const AGENT_PATTERNS: readonly [pattern: string, agent: Agents][] = [
   // Older nightly suite folders used the `-agy` suffix before standardizing on `jetski_cli`.
   ["jetski", Agents.JETSKI_CLI],
   ["-agy", Agents.JETSKI_CLI],
-  ["gemini", Agents.GEMINI_CLI],
 ];
 
 export function resolveAgentFromSuiteId(suiteId: string): Agents | undefined {

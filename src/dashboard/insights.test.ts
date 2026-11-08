@@ -48,7 +48,7 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
     assert.strictEqual(getAgentFamily('jetski_cli')?.id, 'antigravity_cli');
     assert.strictEqual(getAgentFamily('claude_code')?.id, 'claude_code');
     assert.strictEqual(getAgentFamily('codex_cli')?.id, 'codex_cli');
-    assert.strictEqual(getAgentFamily('gemini_cli'), null);
+    assert.strictEqual(getAgentFamily('unknown_agent'), null);
     assert.strictEqual(AGENT_FAMILIES.length, 3);
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_07-00-02-antigravity_cli' }), '2026-10-09T07:00:02.000Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_18-30-00-codex_cli', timestamp: '2026-10-09' }), '2026-10-09T18:30:00.000Z');

@@ -11,7 +11,6 @@ import { applyPatchSync } from '../core/patch-utils.ts';
  */
 const AGENT_CONFIGS: Record<string, { file: string; agent: string }> = {
   'jetski-cli': { file: 'jetski-cli-agent.ts', agent: Agents.JETSKI_CLI },
-  'gemini-cli': { file: 'gemini-cli-agent.ts', agent: Agents.GEMINI_CLI },
   'claude-code': { file: 'claude-code-agent.ts', agent: Agents.CLAUDE_CODE },
   'codex-cli': { file: 'codex-cli-agent.ts', agent: Agents.CODEX_CLI },
   'pi': { file: 'pi-agent.ts', agent: Agents.PI },

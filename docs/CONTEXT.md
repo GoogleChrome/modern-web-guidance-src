@@ -64,7 +64,7 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `guide.md` | SME (human) | The guidance itself. Read by coding agents via Skills. (`SKILL.md` is reserved for the entrypoint and standalone skills.) Contains YAML frontmatter (name, description, web-feature-ids) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
 | `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader and solution generation. |
-| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`jetski-solution.patch`, `gemini-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
+| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` or `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
 | `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated to pass golden patches 100% and zero-passrate baseline 0%. |
 | `targets/<base_app>/task.md` | Generated (`gd dev`) | Task frontmatter (`base_app`) and developer prompt instructions fed to evaluation agents. |
 | `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
@@ -158,7 +158,7 @@ Scans the guide directory for required human-authored artifacts (`guide.md`, `de
 
 ### Step 2: Target Solution & Task Generation
 In parallel across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`):
-- Generates golden solution patches across three distinct agents (`jetski-solution.patch` or `gemini-solution.patch`, `claude-solution.patch`, and `codex-solution.patch`) in isolated sandboxes to capture model-diverse solutions.
+- Generates golden solution patches across three distinct agents (`antigravity-solution.patch` or `jetski-solution.patch`, `claude-solution.patch`, and `codex-solution.patch`) in isolated sandboxes to capture model-diverse solutions.
 - Generates `zero-passrate.patch` using the default solution agent.
 - Generates `task.md` with simulated developer prompts.
 
@@ -201,7 +201,6 @@ Configured in `src/harness/config.ts` and `.env`:
 
 - **Antigravity CLI** (default for `gd dev`): Antigravity CLI agent (`antigravity_cli`, `agy` binary).
 - **Jetski CLI**: Local/cloud Jetski CLI agent (`jetski_cli`; `GD_DEV_USE_JETSKI=1` in `gd dev`).
-- **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` (`gemini_cli`).
 - **Claude Code**: Vertex AI backed (`claude_code`).
 - **Codex CLI**: OpenAI/Codex backed (`codex_cli`).
 - **Pi**: Additional experimental agent harness.
@@ -322,7 +321,7 @@ The boundary is intentionally drawn so that SMEs/ATLs never need to write or deb
 ## 10. Key Architectural Decisions
 
 ### Why CLI agents for generation?
-Grader, solution, and evaluation artifact generation use CLI coding agents rather than direct API calls because the generation pipeline needs to inspect multiple source files in context and produce file modifications. During `gd dev`, solutions are generated across three distinct agents (the primary solution agent—Jetski CLI or Gemini CLI—plus Claude Code and Codex CLI) to calibrate graders against diverse, model-realistic implementations. Isolated sandboxes prevent accidental modifications to the user environment.
+Grader, solution, and evaluation artifact generation use CLI coding agents rather than direct API calls because the generation pipeline needs to inspect multiple source files in context and produce file modifications. During `gd dev`, solutions are generated across three distinct agents (the primary solution agent—Antigravity CLI or Jetski CLI—plus Claude Code and Codex CLI) to calibrate graders against diverse, model-realistic implementations. Isolated sandboxes prevent accidental modifications to the user environment.
 
 ### Why Playwright for grading?
 Graders are Playwright test files because many expectations require browser rendering to verify (CSS properties, layout, visibility, animation behavior). However, graders can also include non-browser checks (string matching on file contents, DOM structure analysis on raw HTML) for simpler assertions.
@@ -360,7 +359,7 @@ Suite configuration in `src/harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 1-2)
 - `tasks`: Empty array = discover all tasks by scanning guide targets. Set explicitly to run a subset.
 - `skillsToEnable`: Which skills agents can access (`['modern-web-guidance']`, etc.)
-- `agent`: Which agent to use (`Agents.JETSKI_CLI`, `Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`)
+- `agent`: Which agent to use (`Agents.ANTIGRAVITY_CLI`, `Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`)
 
 ---
 
