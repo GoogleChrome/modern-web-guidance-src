@@ -160,7 +160,7 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
 
       // Check if the error message is visibly rendered
       const style = window.getComputedStyle(errMsg);
-      const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0' && (errMsg.textContent ?? '').trim() !== '';
 
       return ariaInvalid === isVisible;
     });
