@@ -18,7 +18,7 @@ export const A11Y_SUBCATEGORIES = [
         id: 'aria_roles_live',
         label: 'ARIA, Roles & Live Regions',
         shortLabel: 'ARIA & Roles',
-        description: 'aria-expanded, aria-current, aria-invalid, aria-describedby, aria-hidden, role, <dialog> name, landmarks, heading hierarchy, CSS alt text, and <html lang>'
+        description: 'aria-expanded, aria-current, aria-invalid, aria-describedby, aria-hidden, role, accessible names, landmarks, heading hierarchy, CSS alt text, and <html lang>'
     },
     {
         id: 'labels_forms',

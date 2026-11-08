@@ -37,6 +37,8 @@ test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-c
         ['forms', 'checkout', 'Input is associated with a visible <label> element', 'labels_forms'],
         ['html', 'accessible-web-components', 'Places interactive control host in tab order', 'focus_inert'],
         ['html', 'accessible-web-components', 'Interactive custom element has a non-empty accessible name and valid same-tree or outward cross-boundary ARIA label references', 'aria_roles_live'],
+        ['ui-components', 'breadcrumbs', 'Visual separators must not add divider characters to link or landmark accessible names', 'aria_roles_live'],
+        ['visual-design', 'color', 'WCAG 1.4.1: Status indicators do not rely on color alone, pairing color with visible text or an icon that has an accessible name', 'aria_roles_live'],
         ['ui-atoms', 'position-aware-tooltips', 'sets role="tooltip" on popover and aria-describedby on trigger pointing to popover ID', 'aria_roles_live'],
     ];
     for (const [disc, guide, msg, expected] of cases) {

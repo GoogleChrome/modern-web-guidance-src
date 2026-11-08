@@ -145,7 +145,7 @@ export async function uploadDirectory(
   }
 }
 
-async function reconcileAndUploadManifest(
+export async function reconcileAndUploadManifest(
   bucket: any,
   uploadedSuiteName: string | null,
   evalsData: any,
@@ -203,7 +203,7 @@ async function reconcileAndUploadManifest(
   const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
     if (options.reextractAll && id !== uploadedSuiteName) return true;
     const existing = manifestMap.get(id);
-    return !existing || !existing.guidedStats || !existing.a11yStats;
+    return !existing || !existing.guidedStats || !existing.a11yStats || !existing.showcase;
   });
 
   if (missingSuiteIds.length > 0) {
@@ -212,7 +212,7 @@ async function reconcileAndUploadManifest(
       const chunk = missingSuiteIds.slice(i, i + concurrency);
       await Promise.all(chunk.map(async (suiteId) => {
         try {
-          console.log(`Extracting summary for missing GCS suite: ${suiteId}...`);
+          console.log(`${options.reextractAll ? 'Re-extracting' : 'Extracting'} summary for GCS suite: ${suiteId}...`);
           const evalsFile = bucket.file(`${suiteId}/evals.json`);
           const [fileContent] = await evalsFile.download();
           const parsed = JSON.parse(fileContent.toString('utf8'));
@@ -242,21 +242,21 @@ async function main() {
   const summaryOnly = args.includes('--summary-only');
   const reextractManifest = args.includes('--reextract-manifest');
 
-  if (reextractManifest) {
+  // Remove flags to get positional arguments
+  const positionalArgs = args.filter(a => !a.startsWith('--'));
+
+  if (reextractManifest && positionalArgs.length === 0) {
     const storage = new Storage({ projectId: PROJECT_ID });
     const bucket = storage.bucket(BUCKET_NAME);
     await reconcileAndUploadManifest(bucket, null, null, { reextractAll: true });
     return;
   }
-  
-  // Remove flags to get positional arguments
-  const positionalArgs = args.filter(a => !a.startsWith('--'));
-  
+
   let suiteName = positionalArgs[0];
   const customResultsDir = positionalArgs[1];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name>');
+    console.error('❌ Please provide a suite name (e.g. pnpm upload <suite-name>) or --reextract-manifest.');
     process.exit(1);
   }
 
@@ -323,7 +323,7 @@ async function main() {
   try {
     await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
     console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
-    await reconcileAndUploadManifest(bucket, suiteName, evalsData);
+    await reconcileAndUploadManifest(bucket, suiteName, evalsData, { reextractAll: reextractManifest });
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);

@@ -368,7 +368,7 @@ function renderGraphs(guideName) {
 
     /**
      * The requested target's stats, or the guide roll-up when no target is requested.
-     * When `?mode=a11y` is active, returns the `.a11y` subscore breakdown.
+     * When `?mode=a11y` is active, returns the `.a11y` check breakdown.
      * @param {GuideSuiteSummary} run
      * @returns {any}
      */
