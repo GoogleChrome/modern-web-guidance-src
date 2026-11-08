@@ -104,8 +104,8 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
 
     // Click trigger button if present to invoke on-demand loading
     const btn = page.locator('button, [id*="load" i]').first();
-    if (await btn.count() > 0) {
-      await btn.click().catch(() => {});
+    if (await btn.count() > 0 && await btn.isEnabled()) {
+      await btn.click({ timeout: 1000 }).catch(() => {});
     }
 
     // Wait for polyfill to be defined or fallback to appear

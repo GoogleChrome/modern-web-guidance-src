@@ -104,8 +104,8 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
   });
 
   test('MUST use Temporal.PlainTime for capturing wall-clock times', async () => {
-    // Require usage of PlainTime (e.g. from() call, constructor, or reference to Temporal.PlainTime.from)
-    const usesPlainTime = /Temporal\.PlainTime(?:\.from|\b)/i.test(fileContent);
+    // Require a PlainTime construction (from() call or reference, or the constructor), not just a mention of the type in prose.
+    const usesPlainTime = /Temporal\.PlainTime\.from\b|new\s+Temporal\.PlainTime\s*\(/.test(fileContent);
     expect(usesPlainTime, "Expected to find Temporal.PlainTime construction for wall-clock times (e.g. reminder/alarm)").toBe(true);
   });
 

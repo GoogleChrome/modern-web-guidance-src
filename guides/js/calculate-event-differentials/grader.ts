@@ -108,8 +108,8 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
 
   // 8. Construct Temporal ZonedDateTime via Temporal methods (chaining or ZonedDateTime.from), not string interpolation
   test('Should combine date and time inputs with PlainDate.toPlainDateTime() instead of string interpolation', () => {
-    const usesInterpolatedIso = /(?:Plain(?:Date)?Time|ZonedDateTime)\.from\(\s*`[^`]*\$\{[^}]+\}T\$\{/.test(scriptContent) ||
-                                /(?:PlainDateTime|ZonedDateTime)\.from\(\s*[\w.]+\s*\+\s*['"]T['"]/.test(scriptContent);
+    const usesInterpolatedIso = /`[^`]*\$\{[^}]+\}T\$\{/.test(scriptContent) ||
+                                /[\w.)\]]\s*\+\s*['"]T['"]\s*\+/.test(scriptContent);
     expect(usesInterpolatedIso, 'Must not build an ISO string from separate date and time inputs; chain Temporal methods instead').toBe(false);
     const usesTemporalConstruction = /\.toPlainDateTime\(|\.toZonedDateTime\(|\bZonedDateTime\.from\(/.test(scriptContent);
     expect(usesTemporalConstruction, 'Must construct Temporal date/time values with Temporal methods (e.g. PlainDate.toPlainDateTime(), toZonedDateTime(), or Temporal.ZonedDateTime.from())').toBe(true);
