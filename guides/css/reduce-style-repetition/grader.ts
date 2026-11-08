@@ -305,7 +305,7 @@ test.describe("CSS Function Grader", () => {
 
     const errorMsg = await page.evaluate((getCssInfoStr) => {
       const getCssInfo = new Function(`return (${getCssInfoStr})()`)();
-      const { functions, elementDecls, rawRules } = getCssInfo;
+      const { functions, elementDecls } = getCssInfo;
       if (functions.length === 0) {
         return 'No CSS @functions defined in the stylesheets.';
       }

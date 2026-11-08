@@ -251,7 +251,7 @@ test.beforeEach(async ({ page }) => {
   // Navigate to target file
   page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
   await page.goto(targetUrl);
-  await page.waitForLoadState('domcontentloaded');
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
   const exportBtn = page.locator('#download_card, #download-card, #download-btn, #export-card-btn, #export-btn, button:has-text("Download"), button:has-text("Export"), button:has-text("Save")').first();
   if (await exportBtn.count() > 0 && await exportBtn.isVisible()) {

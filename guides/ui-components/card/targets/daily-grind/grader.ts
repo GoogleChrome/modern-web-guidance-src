@@ -142,23 +142,45 @@ test.describe('card Target Grader', () => {
     const entries = flattenCssRules(stylesheet.cssRules);
     expect(entries.length).toBeGreaterThan(0);
 
-    const cardIsContainer = entries.some(
-      (e) =>
-        /\b(card|article)\b/i.test(e.selector) &&
-        !/\b(grid|list)\b/i.test(e.selector) &&
-        /\b(inline-size|size)\b/i.test(
-          e.style.getPropertyValue('container-type') || e.style.getPropertyValue('container'),
-        ),
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
+
+    const cardAncestors = new Set<any>();
+    for (const card of cards) {
+      for (let p = card.parentElement; p; p = p.parentElement) cardAncestors.add(p);
+    }
+
+    const matchesAny = (selectorText: string, elements: Iterable<any>) => {
+      const parts = selectorText.split(',').map((s) => s.trim()).filter(Boolean);
+      for (const el of elements) {
+        for (const part of parts) {
+          try {
+            if (el.matches(part)) return true;
+          } catch {
+            const stripped = part.replace(/::?[\w-]+(\([^)]*\))?/g, '').trim();
+            try {
+              if (stripped && el.matches(stripped)) return true;
+            } catch {
+              // ignore selectors the DOM parser cannot evaluate
+            }
+          }
+        }
+      }
+      return false;
+    };
+
+    const sizeContainerRules = entries.filter((e) =>
+      /\b(inline-size|size)\b/i.test(
+        e.style.getPropertyValue('container-type') || e.style.getPropertyValue('container'),
+      ),
     );
+
+    const cardIsContainer = sizeContainerRules.some((e) => matchesAny(e.selector, cards));
     expect(cardIsContainer).toBe(true);
 
-    const gridParentIsContainer = entries.some(
-      (e) =>
-        /^\s*\.(grid|list)\b/i.test(e.selector) &&
-        !/\b(card|article)\b/i.test(e.selector) &&
-        /\b(inline-size|size)\b/i.test(
-          e.style.getPropertyValue('container-type') || e.style.getPropertyValue('container'),
-        ),
+    const gridParentIsContainer = sizeContainerRules.some((e) =>
+      matchesAny(e.selector, cardAncestors),
     );
     expect(gridParentIsContainer).toBe(false);
 
@@ -546,29 +568,109 @@ test.describe('card Target Grader', () => {
       const cards = page.locator('article.card, main article');
       await expect(cards.first()).toBeVisible();
 
-      // Focus the button via keyboard or focus() and check focus indicator
-      const button = cards.first().locator('button').first();
-      await button.focus();
-      await page.keyboard.press('Tab');
-      await button.focus();
+      // Ensure nothing inside the card starts focused, and set keyboard modality for :focus-visible
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur?.());
+      await page.keyboard.press('Shift');
 
-      const buttonFocusInfo = await cards.first().evaluate((card) => {
-        const btn = card.querySelector('button')!;
-        btn.focus();
-        const btnStyle = window.getComputedStyle(btn);
-        const cardStyle = window.getComputedStyle(card);
-        const hasVisibleOutline = (cs: CSSStyleDeclaration) =>
-          cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0;
-        const hasBoxShadow = (cs: CSSStyleDeclaration) => cs.boxShadow !== 'none';
-        return {
-          btnIndicator: hasVisibleOutline(btnStyle) || hasBoxShadow(btnStyle),
-          cardIndicator: hasVisibleOutline(cardStyle) || hasBoxShadow(cardStyle),
-        };
-      });
-      expect(buttonFocusInfo.btnIndicator).toBe(true);
+      const button = cards.first().locator('button').first();
+      const readButtonIndicators = () =>
+        button.evaluate((el) => {
+          const targets: Element[] = [el, ...Array.from((el as HTMLInputElement).labels ?? [])];
+          if (el.nextElementSibling) targets.push(el.nextElementSibling);
+          return targets.map((t) => {
+            t.getAnimations().forEach((a) => {
+              try {
+                a.finish();
+              } catch {
+                // ignore infinite animations
+              }
+            });
+            const s = window.getComputedStyle(t);
+            const r = t.getBoundingClientRect();
+            return {
+              rendered:
+                s.visibility !== 'hidden' &&
+                parseFloat(s.opacity) > 0 &&
+                r.width > 1 &&
+                r.height > 1,
+              outlineStyle: s.outlineStyle,
+              outlineWidth: s.outlineWidth,
+              outlineColor: s.outlineColor,
+              boxShadow: s.boxShadow,
+            };
+          });
+        });
+
+      const btnBefore = await readButtonIndicators();
+      await button.focus();
+      const btnAfter = await readButtonIndicators();
+
+      const hasChangedFocusIndicator = (
+        before: {
+          rendered?: boolean;
+          outlineStyle: string;
+          outlineWidth: string;
+          outlineColor: string;
+          boxShadow: string;
+        },
+        after: {
+          rendered?: boolean;
+          outlineStyle: string;
+          outlineWidth: string;
+          outlineColor: string;
+          boxShadow: string;
+        },
+      ) => {
+        if (after.rendered === false) return false;
+        const outlineVisible =
+          after.outlineStyle !== 'none' && parseFloat(after.outlineWidth) > 0;
+        const shadowVisible = after.boxShadow !== 'none';
+        const outlineChanged =
+          outlineVisible &&
+          (after.outlineStyle !== before.outlineStyle ||
+            after.outlineWidth !== before.outlineWidth ||
+            after.outlineColor !== before.outlineColor);
+        const shadowChanged = shadowVisible && after.boxShadow !== before.boxShadow;
+        return outlineChanged || shadowChanged;
+      };
+
+      const btnIndicator = btnAfter.some((a, i) => hasChangedFocusIndicator(btnBefore[i], a));
+      expect(btnIndicator).toBe(true);
 
       // Check primary link focus: stretched primary link delegates indicator to card; non-stretched link shows indicator on itself
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur?.());
       const primaryLinkFocus = await cards.first().evaluate((card) => {
+        const readStyle = (el: Element) => {
+          el.getAnimations().forEach((a) => {
+            try {
+              a.finish();
+            } catch {
+              // ignore infinite animations
+            }
+          });
+          const s = window.getComputedStyle(el);
+          return {
+            outlineStyle: s.outlineStyle,
+            outlineWidth: s.outlineWidth,
+            outlineColor: s.outlineColor,
+            boxShadow: s.boxShadow,
+          };
+        };
+        const styleChangedToVisibleIndicator = (
+          b: ReturnType<typeof readStyle>,
+          a: ReturnType<typeof readStyle>,
+        ) => {
+          const outlineVisible = a.outlineStyle !== 'none' && parseFloat(a.outlineWidth) > 0;
+          const shadowVisible = a.boxShadow !== 'none';
+          const outlineChanged =
+            outlineVisible &&
+            (a.outlineStyle !== b.outlineStyle ||
+              a.outlineWidth !== b.outlineWidth ||
+              a.outlineColor !== b.outlineColor);
+          const shadowChanged = shadowVisible && a.boxShadow !== b.boxShadow;
+          return outlineChanged || shadowChanged;
+        };
+
         const links = Array.from(card.querySelectorAll('a')) as HTMLElement[];
         if (links.length === 0) return { hasStretchedLink: false, valid: false };
         const stretchedLink = links.find((a) => {
@@ -578,22 +680,22 @@ test.describe('card Target Grader', () => {
         if (!stretchedLink) {
           const primaryLink = (card.querySelector('h1 a, h2 a, h3 a, h4 a, h5 a, h6 a') ||
             links[0]) as HTMLElement;
+          const linkBefore = readStyle(primaryLink);
           primaryLink.focus();
-          const linkStyle = window.getComputedStyle(primaryLink);
-          const linkHasFocusRing =
-            (linkStyle.outlineStyle !== 'none' && parseFloat(linkStyle.outlineWidth) > 0) ||
-            linkStyle.boxShadow !== 'none';
-          return { hasStretchedLink: false, valid: linkHasFocusRing };
+          const linkAfter = readStyle(primaryLink);
+          return {
+            hasStretchedLink: false,
+            valid: styleChangedToVisibleIndicator(linkBefore, linkAfter),
+          };
         }
 
+        const cardBefore = readStyle(card);
         stretchedLink.focus();
-        const linkStyle = window.getComputedStyle(stretchedLink);
-        const cardStyle = window.getComputedStyle(card);
+        const linkAfter = readStyle(stretchedLink);
+        const cardAfter = readStyle(card);
         const linkOutlineRemoved =
-          linkStyle.outlineStyle === 'none' || parseFloat(linkStyle.outlineWidth) === 0;
-        const cardHasFocusRing =
-          (cardStyle.outlineStyle !== 'none' && parseFloat(cardStyle.outlineWidth) > 0) ||
-          cardStyle.boxShadow !== 'none';
+          linkAfter.outlineStyle === 'none' || parseFloat(linkAfter.outlineWidth) === 0;
+        const cardHasFocusRing = styleChangedToVisibleIndicator(cardBefore, cardAfter);
         return {
           hasStretchedLink: true,
           valid: linkOutlineRemoved && cardHasFocusRing,

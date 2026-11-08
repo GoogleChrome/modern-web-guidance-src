@@ -177,7 +177,7 @@ test.describe('contrast-color Target Grader', () => {
           return `rgb(${r}, ${g}, ${b})`;
         };
 
-        const checkSelectors = ['nav', '.btn', 'footer'];
+        const checkSelectors = ['nav', 'nav a', '.btn', 'footer', 'footer a'];
         const testCases = [
           { prop: '--primary', bg: '#ffffff' },
           { prop: '--primary', bg: '#000000' },
@@ -239,9 +239,21 @@ test.describe('contrast-color Target Grader', () => {
           return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
         };
 
+        const getEffectiveBackgroundColor = (el: Element): string => {
+          let curr: Element | null = el;
+          while (curr) {
+            const bg = window.getComputedStyle(curr).backgroundColor;
+            if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+              return bg;
+            }
+            curr = curr.parentElement;
+          }
+          return 'rgb(255, 255, 255)';
+        };
+
         const getContrastRatio = (el: Element): number => {
           const style = window.getComputedStyle(el);
-          const bgRgb = getRgb(style.backgroundColor);
+          const bgRgb = getRgb(getEffectiveBackgroundColor(el));
           const lBg = getLuminance(bgRgb);
           const fgRgb = getRgb(style.color);
 
@@ -262,7 +274,7 @@ test.describe('contrast-color Target Grader', () => {
           document.documentElement.style.setProperty('--primary', theme.primary);
           document.documentElement.style.setProperty('--secondary', theme.secondary);
 
-          for (const sel of ['nav', '.btn', 'footer']) {
+          for (const sel of ['nav', 'nav a', '.btn', 'footer', 'footer a']) {
             const el = document.querySelector(sel);
             if (el) {
               computedRatios.push(getContrastRatio(el));
@@ -329,35 +341,45 @@ test.describe('contrast-color Target Grader', () => {
         };
 
         const nav = document.querySelector('nav')!;
+        const navLink = document.querySelector('nav a')!;
         const btn = document.querySelector('.btn')!;
         const footer = document.querySelector('footer')!;
+        const footerLink = document.querySelector('footer a')!;
 
         document.documentElement.style.setProperty('--primary', '#111111');
         document.documentElement.style.setProperty('--secondary', '#111111');
         const darkBgColors = {
           nav: toRgbString(window.getComputedStyle(nav).color),
+          navLink: toRgbString(window.getComputedStyle(navLink).color),
           btn: toRgbString(window.getComputedStyle(btn).color),
           footer: toRgbString(window.getComputedStyle(footer).color),
+          footerLink: toRgbString(window.getComputedStyle(footerLink).color),
         };
 
         document.documentElement.style.setProperty('--primary', '#fafafa');
         document.documentElement.style.setProperty('--secondary', '#fafafa');
         const lightBgColors = {
           nav: toRgbString(window.getComputedStyle(nav).color),
+          navLink: toRgbString(window.getComputedStyle(navLink).color),
           btn: toRgbString(window.getComputedStyle(btn).color),
           footer: toRgbString(window.getComputedStyle(footer).color),
+          footerLink: toRgbString(window.getComputedStyle(footerLink).color),
         };
 
         return { darkBgColors, lightBgColors };
       });
 
       expect(colorTransitions.darkBgColors.nav).toBe('rgb(255, 255, 255)');
+      expect(colorTransitions.darkBgColors.navLink).toBe('rgb(255, 255, 255)');
       expect(colorTransitions.darkBgColors.btn).toBe('rgb(255, 255, 255)');
       expect(colorTransitions.darkBgColors.footer).toBe('rgb(255, 255, 255)');
+      expect(colorTransitions.darkBgColors.footerLink).toBe('rgb(255, 255, 255)');
 
       expect(colorTransitions.lightBgColors.nav).toBe('rgb(0, 0, 0)');
+      expect(colorTransitions.lightBgColors.navLink).toBe('rgb(0, 0, 0)');
       expect(colorTransitions.lightBgColors.btn).toBe('rgb(0, 0, 0)');
       expect(colorTransitions.lightBgColors.footer).toBe('rgb(0, 0, 0)');
+      expect(colorTransitions.lightBgColors.footerLink).toBe('rgb(0, 0, 0)');
     });
   });
 });

@@ -28,6 +28,13 @@ function getAllRules(stylesheet: CSSStyleSheet): CSSRule[] {
   return allRules;
 }
 
+const isBadgeRule = (r: CSSStyleRule) =>
+  /\bbadge\b/i.test(r.selectorText) || r.selectorText.includes('badge');
+const isButtonRule = (r: CSSStyleRule) =>
+  /\b(button|chip|cta|action)\b/i.test(r.selectorText) ||
+  r.selectorText.includes('button') ||
+  r.selectorText.includes('chip');
+
 test.describe('usage-aware-component-variations Target Grader', () => {
 
   test('The parent containers define semantic context flags using CSS custom properties', () => {
@@ -37,17 +44,33 @@ test.describe('usage-aware-component-variations Target Grader', () => {
 
     expect(rules.length + docs.length).toBeGreaterThan(0);
 
+    const queriedCustomProps = new Set<string>();
+    for (const r of rules) {
+      if (r instanceof CSSContainerRule) {
+        for (const m of r.conditionText.matchAll(/style\(\s*(--[\w-]+)\s*:/gi)) {
+          queriedCustomProps.add(m[1].toLowerCase());
+        }
+      }
+    }
+
     const hasCustomPropertyRule = rules.some((r) => {
-      if (r instanceof CSSStyleRule) {
-        const surface = r.style.getPropertyValue('--surface')?.trim();
-        if (surface && surface.includes('featured')) return true;
-        return /--surface\s*:\s*[^;]+/i.test(r.style.cssText);
+      if (r instanceof CSSStyleRule && queriedCustomProps.size > 0) {
+        for (const prop of queriedCustomProps) {
+          const val = r.style.getPropertyValue(prop)?.trim();
+          if (val && val.length > 0) return true;
+          const escapedProp = prop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          if (new RegExp(`${escapedProp}\\s*:\\s*[^;]+`, 'i').test(r.style.cssText)) {
+            return true;
+          }
+        }
       }
       return false;
     });
 
     const hasInlineContextFlag = docs.some((d) =>
-      Boolean(d.document.querySelector('[style*="--surface"]'))
+      Array.from(queriedCustomProps).some((prop) =>
+        Boolean(d.document.querySelector(`[style*="${prop}"]`))
+      )
     );
 
     expect(hasCustomPropertyRule || hasInlineContextFlag).toBe(true);
@@ -65,7 +88,7 @@ test.describe('usage-aware-component-variations Target Grader', () => {
     expect(styleContainerRules.length).toBeGreaterThan(0);
 
     const queriesSemanticProperty = styleContainerRules.some((r) =>
-      /--surface\b/i.test(r.conditionText)
+      /style\(\s*--[\w-]+\s*:/i.test(r.conditionText)
     );
     expect(queriesSemanticProperty).toBe(true);
 
@@ -104,12 +127,14 @@ test.describe('usage-aware-component-variations Target Grader', () => {
     expect(featuredContextRules.length).toBeGreaterThan(0);
 
     const revealsPromotionalElement = featuredContextRules.some((r) => {
+      if (!isBadgeRule(r)) return false;
       const display = r.style.getPropertyValue('display')?.trim().toLowerCase();
       return Boolean(display && display !== 'none');
     });
     expect(revealsPromotionalElement).toBe(true);
 
     const hasFilledButtonStyle = featuredContextRules.some((r) => {
+      if (!isButtonRule(r)) return false;
       const bg = (
         r.style.getPropertyValue('background') ||
         r.style.getPropertyValue('background-color')
@@ -155,12 +180,14 @@ test.describe('usage-aware-component-variations Target Grader', () => {
     expect(defaultStyleRules.length).toBeGreaterThan(0);
 
     const hidesPromotionalElement = defaultStyleRules.some((r) => {
+      if (!isBadgeRule(r)) return false;
       const display = r.style.getPropertyValue('display')?.trim().toLowerCase();
       return display === 'none';
     });
     expect(hidesPromotionalElement).toBe(true);
 
     const hasOutlinedButtonStyle = defaultStyleRules.some((r) => {
+      if (!isButtonRule(r)) return false;
       const bg = r.style.getPropertyValue('background')?.trim().toLowerCase();
       const bgColor = r.style
         .getPropertyValue('background-color')

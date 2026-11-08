@@ -1,5 +1,4 @@
 * The input element has `field-sizing: content` applied.
-* The input element has an explicit `width` of `auto` or `fit-content` applied.
 * The input element has a minimum inline size (`min-inline-size` or `min-width`) applied.
 * The input element has a maximum inline size (`max-inline-size` or `max-width`) applied.
 * The textarea element has `field-sizing: content` applied.

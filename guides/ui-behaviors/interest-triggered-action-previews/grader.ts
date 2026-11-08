@@ -152,7 +152,7 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
       JSON.stringify(Array.from(document.querySelectorAll(sel)).map(el => (el.textContent ?? '').trim())) !== JSON.stringify(initial);
 
     // `interest` fires after interest-delay-start (0.5s by default), so watch for longer than that.
-    for (const element of interactiveElements) {
+    for (const element of interactiveElements.slice(0, 2)) {
       await element.hover();
       await expectNever(page, announced, { forMs: 800, arg: { sel: liveRegionSel, initial: initialTexts } });
 

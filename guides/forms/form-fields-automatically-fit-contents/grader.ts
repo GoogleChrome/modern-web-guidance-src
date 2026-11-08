@@ -62,12 +62,6 @@ test.describe(`field-sizing Expectations: ${demoName}`, () => {
     expect(styles['field-sizing']).toBe('content');
   });
 
-  // 2. The input element has an explicit `width` of `auto` or `fit-content` applied.
-  test(`The input element has an explicit width of auto or fit-content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
-    expect(['auto', 'fit-content']).toContain(styles['width']);
-  });
-
   // 4. The input element has a minimum inline size (`min-inline-size` or `min-width`) applied.
   test(`The input element has a minimum inline size applied`, async ({ page }) => {
     const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');

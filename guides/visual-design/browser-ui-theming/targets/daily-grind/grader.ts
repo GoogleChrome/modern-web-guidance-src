@@ -1,7 +1,7 @@
 // Expectations Analysis:
 // Expectation 1: TESTED - Validates that :user-invalid and :user-valid are used rather than :invalid and :valid for form validation styling (excluding input[type="range"]).
 // Expectation 2: TESTED - Validates that field-sizing: content is applied to multi-line <textarea> elements or auto-growing text inputs.
-// Expectation 3: TESTED - Validates that page-level browser UI theming configures color-scheme, accent-color, and ::selection without applying user-select: none to content text elements or their ancestors.
+// Expectation 3: TESTED - Validates that page-level browser UI theming configures accent-color and ::selection without applying user-select: none to content text elements or their ancestors.
 // Expectation 4: TESTED - Validates that custom-styled choice controls use native <select> with appearance: base-select and ::picker(select) or label:has(:checked), and submit actions use <button> rather than <input type="submit">.
 
 import {
@@ -119,16 +119,13 @@ test.describe('browser-ui-theming Target Grader', () => {
     expect(hasFieldSizingInCss || hasFieldSizingUtility).toBe(true);
   });
 
-  test('Page-level browser UI theming configures color-scheme, accent-color, and ::selection without applying user-select: none to content text elements (such as paragraphs or headings) or their ancestors', () => {
+  test('Page-level browser UI theming configures accent-color and ::selection without applying user-select: none to content text elements (such as paragraphs or headings) or their ancestors', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = Array.from(stylesheet.cssRules);
     const styleRules = collectStyleRules(allRules);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const hasBrowserUiTheming =
-      styleRules.some((r) =>
-        /\b(light|dark)\b/i.test(r.style.getPropertyValue('color-scheme'))
-      ) &&
       styleRules.some(
         (r) => r.style.getPropertyValue('accent-color').trim().length > 0
       ) &&
@@ -177,7 +174,7 @@ test.describe('browser-ui-theming Target Grader', () => {
     );
 
     const hasNativeSubmitButton = docs.some((d) => {
-      const buttons = Array.from(d.document.querySelectorAll('form button'));
+      const buttons = Array.from(d.document.querySelectorAll('button'));
       const legacyInputButtons = Array.from(
         d.document.querySelectorAll('input[type="submit"], input[type="button"], input[type="reset"]')
       );

@@ -28,7 +28,7 @@ Before re-creating browser UI (form controls, scrollbars, selections, error mess
 1. the browser UI cannot be customized enough for your needs, even with modern CSS,
 2. the desired customization is sufficiently critical to justify the tradeoffs of re-creating built-in UI — most notably losing accessible semantics, keyboard handling, IME, and AT integration that the native UI provides for free.
 
-Core browser UI theming rules:
+Example customizations that are possible:
 - Use `::selection` to customize highlighted text colors.
 - **DON'T** apply `user-select: none` to content text — breaks copy-paste, translation tools, and AT "read from here" gestures. Limit it to chrome (drag handles, toolbars, redundant button labels).
 - Use `accent-color` to apply the page's accent color to any browser-generated UI.
