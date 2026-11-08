@@ -150,7 +150,7 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
-    // Click multiple times to trigger multiple metric dispatches (INP)
+    // Click multiple times to trigger multiple metric dispatches (event timing)
     await page.click('body');
     await page.click('body');
     await page.click('body');
