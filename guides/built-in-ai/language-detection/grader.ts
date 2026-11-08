@@ -97,8 +97,9 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
 
   test('The page displays the detected language result', async ({ page }) => {
     await page.waitForFunction(() => window.__calls.includes('detect'), null, { timeout: 3000 });
-    const resultElement = page.locator(':text-matches("English|en|German|de|confidence|95%", "i")');
-    await expect(resultElement.first()).toBeVisible({ timeout: 3000 });
+    // The mock returns { detectedLanguage: 'en', confidence: 0.95 }; match whole words so
+    // unrelated page text (e.g. the "Detect" button) can't satisfy the check.
+    await expect(page.locator('body')).toContainText(/\bEnglish\b|\ben\b|\b95(?:\.0+)?\s*%|\b0\.95\b/i, { useInnerText: true, timeout: 3000 });
   });
 });
 
