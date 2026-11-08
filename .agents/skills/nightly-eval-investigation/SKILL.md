@@ -43,11 +43,13 @@ Before blaming a guide or editing an eval, check the 8 red lines and authoring r
 ### Suite Result Files (`results/suites/<suite_id>/`)
 
 - **Suite Summary & Check Diagnostics** (`results/suites/<suite_id>/evals.json`):
-  - Contains per-task guided and unguided pass rates, `guidesUsed` (which guides the agent retrieved), and per-check results with inline failure diagnostics (`error`, `errorLocation`, `pageSnapshot`, `browserErrors`).
-- **Agent Trajectory** (`results/suites/<suite_id>/<run_number>/<use-case>/task/guided/session-<timestamp>.json`):
-  - Step-by-step tool calls and reasoning. Always inspect the latest `session-*.json` by timestamp to see what queries the agent ran against the guidance skill, which guides it read, and why it chose its implementation.
-- **Agent Output** (`results/suites/<suite_id>/<run_number>/<use-case>/task/guided/`):
-  - Contains `agent.patch` and the modified target app files (`index.html`, JS/CSS bundles, or stray subresources created by the agent).
+  - Contains per-task guided and unguided pass rates (keyed as `<target> - <guide> - guided|unguided`, where `<target>` is `daily-grind`, `devtools-times`, or `daily-grind-limited` for Gen 2 and `task` for Gen 1), `guidesUsed` (which guides the agent retrieved), and per-check results with inline failure diagnostics (`error`, `errorLocation`, `pageSnapshot`, `browserErrors`).
+- **Agent Trajectory** (`results/suites/<suite_id>/<run_number>/<guide>/<target>/guided/`):
+  - `<target>` is `daily-grind`, `devtools-times`, or `daily-grind-limited` for Gen 2 guides and `task` for Gen 1 guides.
+  - **Normalized trajectory (`trajectory_summary.json`) & server log (`modern-web.log`)**: Inspect `trajectory_summary.json` first for the standardized step-by-step tool calls, reasoning, `retrievedGuides`, and `fileReadGuides`, alongside `modern-web.log` (JSONL entries logged by the guidance tool).
+  - **Raw session logs** (format varies by agent; see `src/harness/lib/trajectory-normalizer.ts`): `{session,subagent}-*.{json,jsonl}` for Claude Code, Codex CLI, and Gemini CLI, `*.db` + `session-*.html` for Jetski/Antigravity CLI, or `trajectory.jsonl`.
+- **Agent Output** (`results/suites/<suite_id>/<run_number>/<guide>/<target>/guided/`):
+  - Contains `agent.patch` (for Gen 2 targets) or modified target files (`index.html`, JS/CSS bundles, or stray subresources created by the agent), plus `<guide>_results.json` from the Playwright grader run.
 
 ### Guide Source Files (`guides/<category>/<slug>/`)
 
@@ -104,24 +106,24 @@ For each task in the Flagged Tasks Table of `nightly_investigation_report.md`, i
 > **BULK REPORT COMPLIANCE RULES:**
 > 1. **Do Not Modify Source Files**: In bulk nightly investigation mode, do NOT edit any files under `guides/`. Write all diagnostic findings and recommendations *only* inside `out/nightly-investigation/nightly_investigation_report.md`.
 > 2. **Complete All Flagged Tasks**: Populate the diagnostic summary for every flagged task without leaving `TODO` placeholders.
-> 3. **Strict Heading Omission**: Under `Diagnostic Details`, include bullets only for the specific flags triggered on that task (plus `*Failed Assertions (Guided Runs)*` if extracted by the script). Under `Actionable Recommendations`, include lines only for components (`Prompt`, `Guide`, `Grader`) that actually need changes; omit unchanged components completely rather than writing "N/A" or "No changes".
+> 3. **Strict Heading Omission**: Under `Diagnostic Details`, include bullets only for the specific flags triggered on that task (plus `*Failed Assertions*` if extracted by the script). Under `Actionable Recommendations`, include lines only for components (`Prompt`, `Guide`, `Grader`) that actually need changes; omit unchanged components completely rather than writing "N/A" or "No changes".
 
-For each flagged task, inspect `targets/<app>/task.md` (or `tasks/task.md`), `guide.md`, `expectations.md`, `targets/<app>/grader.ts`, and `session-*.json`:
+For each flagged task, inspect `targets/<app>/task.md` (or `tasks/task.md`), `guide.md`, `expectations.md`, `targets/<app>/grader.ts`, `trajectory_summary.json`, and `modern-web.log`:
 
 - **`HIGH_UNGUIDED_PASS_RATE`**:
   1. Check `task.md` against Red Line 2 in `project-evals`: does it name the API, CSS property, HTML attribute, fallback mechanism, or guide slug, or copy the guide's `description`?
   2. Check `grader.ts` against Red Line 1 and Red Line 8: are assertions tautological, vacuous, or already satisfied by the starting app?
   3. If both `task.md` and `grader.ts` are clean, report that the task is genuinely baseline-known by current models and no eval change is needed.
 - **`MISSING_EXPECTED_GUIDE`**:
-  1. Inspect `session-*.json` to see whether the agent called the guidance search tool.
+  1. Inspect `trajectory_summary.json` and `modern-web.log` to see whether the agent called the guidance search tool.
   2. **Search Mismatch** (agent searched, but got the wrong guide or weak rankings): propose updates to `guide.md`'s frontmatter `description` so it matches the problem terms agents naturally search for (without stuffing feature/API names into `task.md`). Note that `skills-src/modern-web-guidance/SKILL.md` is global and off-limits for per-guide tuning.
   3. **Tool Skip** (agent did not search): check that `task.md` clearly states the user-facing problem and concrete behavioral outcome in the target app. Do **not** add artificial layout/performance/synchronization constraints that the guide doesn't teach ("constraint forcing" is retired because it causes task/grader drift).
 - **`TOO_MANY_GUIDES_CONSUMED`**:
-  1. Inspect `guidesUsed` in `evals.json` and the trajectory in `session-*.json`.
+  1. Inspect `guidesUsed` in `evals.json` and the trajectory in `trajectory_summary.json`.
   2. Check whether two guides had overlapping descriptions (disambiguate their frontmatter `description` fields) or whether co-retrieved guides gave contradictory rules on the same task (Red Line 7 in `project-evals`, e.g., one guide banning an element or pattern the other teaches).
 - **Common Guided Assertion Failures & Environment Checks**:
   1. **Eval vs. Guide Triage**: Check the agent's modified app (`agent.patch` / `index.html`) against `guide.md`. If the agent followed a pattern the guide allows and the test failed, recommend fixing `grader.ts` (never loosen a check speculatively unless the rejected pattern is allowed by the guide or reproduced). If `grader.ts` checks an expectation the guide does not teach, recommend removing or aligning the expectation and check.
-  2. **Transient API / Rate-Limit Failures**: Check `session-*.json` or logs for `429 Rate Limit Exceeded`, quota exhaustion, or untrusted-folder tool skips (`folderTrust` in Gemini CLI settings) before attributing a 0% run to the guide or grader. When running local `gd eval` batches under quota pressure, batch fewer tasks at a time or switch the active harness agent.
+  2. **Transient API / Rate-Limit Failures**: Check `trajectory_summary.json` or raw logs for `429 Rate Limit Exceeded`, quota exhaustion, or untrusted-folder tool skips (`folderTrust` in Gemini CLI settings) before attributing a 0% run to the guide or grader. When running local `gd eval` batches under quota pressure, batch fewer tasks at a time or switch the active harness agent.
 
 ### Step 3: Present Report & Publisher Command
 
@@ -160,14 +162,13 @@ node .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
 
 | Task / Guide | Flags | Details |
 | :--- | :--- | :--- |
-| [[task_name]](#anchor-id) | `[FLAG_1]`, `[FLAG_2]` | [Detail explanation of flags] |
+| `[target_name - guide_name]` | `[FLAG_1]`, `[FLAG_2]` | [Detail explanation of flags] |
 
----
 
 ## Flagged Tasks Details
 
-<a name="anchor-id"></a>
-### `[task_name]`
+<a name="[slugified-task-key]"></a>
+### `[target_name - guide_name]`
 
 #### Flags:
 - **`[FLAG_1]`**: [Detail explanation]
@@ -183,10 +184,9 @@ node .agents/skills/nightly-eval-investigation/scripts/publish_report.ts
 #### Qualitative Diagnostic Summary:
 
 - **Diagnostic Details**:
-  - *Failed Assertions (Guided Runs)*:
+  - *Failed Assertions*:
     - "[Exact assertion error message string]" (Test ID: `[test_id]`)
-  - **`[FLAG_1]`**: [Concrete root-cause explanation]
-
+  - **[FLAG_1]**: [Concrete root-cause explanation]
 - **Actionable Recommendations**:
   - [ ] **Prompt** (`guides/<category>/<slug>/targets/<app>/task.md`): [Exact prompt change]
   - [ ] **Guide** (`guides/<category>/<slug>/guide.md`): [Exact guide metadata or content change]

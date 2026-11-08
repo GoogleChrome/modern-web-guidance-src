@@ -24,7 +24,7 @@ None of the following are ever seen by real-world coding agents:
 | `expectations.md` | SME-authored natural-language assertions that must hold when `guide.md` is followed |
 | `demo.html` | Standalone reference implementation authored by the SME |
 | `targets/<base_app>/task.md` | Single-bullet developer prompt tailored to `<base_app>`, formatted as one `- ` line with no YAML frontmatter |
-| `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`claude`, `codex`, `jetski` or `antigravity`) generated from `task.md` + `guide.md` that must pass **100%** of `grader.ts` |
+| `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`antigravity-solution.patch` or `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) generated from `task.md` + `guide.md` that must pass **100%** of `grader.ts` |
 | `targets/<base_app>/patches/zero-passrate.patch` | Calibration baseline diff (empty on almost every guide, so calibration runs against the untouched starting app) that must pass **0%** of non-exempt checks |
 | `targets/<base_app>/grader.ts` | Playwright + static AST test suite run against the eval agent's output |
 
@@ -51,15 +51,13 @@ When authoring or reviewing an eval, hold it to these 8 red lines. An eval is wr
 
 ---
 
-## Writing & Reviewing `expectations.md`
+## `expectations.md` Rules & Grader Mapping
 
-See [project-guides](../project-guides/SKILL.md#writing-expectationsmd) for full `expectations.md` authoring rules. Key evaluation invariants:
+All `expectations.md` authoring rules live in [project-guides](../project-guides/SKILL.md#writing-expectationsmd) (cover every required outcome with no bullet cap, omit optional/"prefer" items, never drop hard-to-test requirements, preserve SME wording, and scope discipline bullets to the element/feature they govern).
 
-* **Cover every required outcome, with no bullet cap:** Include every observable outcome `guide.md` requires (including required `DO NOT` rules, accessibility patterns, and fallbacks for features that are not Baseline Widely Available), whether or not `task.md` explicitly prompts for it. There is no cap on bullet count ("roughly 5-10" is only a scope-smell hint that a guide may be too broad, never a limit).
-* **No optional or "prefer" items:** Optional enhancements, "prefer" recommendations, and fallbacks for Baseline Widely Available features are never graded and do not belong in `expectations.md`.
-* **Never drop a requirement just because it is hard to test:** Test it, or keep the bullet in `expectations.md` and note it as untested (or skip it per target with a stated reason).
-* **1:1 mapping for new expectations:** Each bullet states a single requirement and maps to one `test()` block in `grader.ts`. Test titles should clearly describe the expectation, and `src/core/grader-coverage.ts` verifies semantic coverage on non-discipline guides, but test titles do not have to match expectation bullets verbatim.
-* **Separate native and fallback bullets:** Write core expectations assuming native support. When `guide.md` requires a fallback for a feature that is not Baseline Widely Available, write each fallback requirement as a separate bullet naming the unsupported feature (*"When `<feature>` is unsupported, ..."*) so `grader.ts` can scope it with `skipUnless({ unsupported: '<feature>' })`.
+For Stage 3 (`grader.ts` authoring and review):
+* **1:1 mapping for new expectations:** Each bullet states a single requirement and maps to one `test()` block in `grader.ts`. `src/core/grader-coverage.ts` verifies semantic coverage on non-discipline guides, and test titles do not have to match expectation bullets verbatim.
+* **Separate native and fallback tests:** Core bullets assume native support; fallback bullets (*"When `<feature>` is unsupported, ..."*) map to `test()` blocks that start with `skipUnless({ unsupported: '<feature>' })`.
 
 ---
 
@@ -110,14 +108,19 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`/`antigravity`) are ge
 
 ## Calibration & Validation
 
-Calibration (`gd dev <guide> --test-grader`) verifies that:
+For Gen 2 guides (`targets/<app>/`), calibration (`gd dev <guide> --test-grader`) verifies that:
 1. **Every golden solution patch passes 100%** of non-skipped tests.
-2. **The untouched starting app passes 0%**, except for a `MUST NOT` check the starting app already satisfies when paired with a presence check (on `main`, `targets/<app>/patches/zero-passrate.patch` still exists on disk and is empty for almost every guide, so `zero-passrate.patch` is the untouched starting app; Gen1 guides calibrate against `demo.html` and `negative-demo.html`).
+2. **The untouched starting app passes 0%**, except for a `MUST NOT` check the starting app already satisfies when paired with a presence check (on `main`, `targets/<app>/patches/zero-passrate.patch` still exists on disk and is empty for almost every guide, so `zero-passrate.patch` is the untouched starting app).
 3. **Patches are clean:** Golden patches never commit `node_modules/`, `dist/`, or build junk.
 
 ```bash
-# Verify existing grader calibration against golden patches and zero-passrate.patch
+# Verify Gen 2 target grader calibration against golden patches and zero-passrate.patch
 gd dev <path-to-guide-directory> --test-grader
+
+# Legacy Gen 1 root graders (no targets/<app>/ directory; gd dev --test-grader throws on Gen 1):
+# run Playwright manually against demo.html (expect 100%) and negative-demo.html (expect 0%):
+TARGET_FILE=$PWD/guides/<category>/<slug>/demo.html GD_PREBUILT_TARGET_URL=http://localhost/demo.html PLAYWRIGHT_OUTPUT_DIR=/tmp/pw-cal ./node_modules/.bin/playwright test -c src/grading/playwright.config.ts guides/<category>/<slug>/grader.ts
+TARGET_FILE=$PWD/guides/<category>/<slug>/negative-demo.html GD_PREBUILT_TARGET_URL=http://localhost/negative-demo.html PLAYWRIGHT_OUTPUT_DIR=/tmp/pw-cal ./node_modules/.bin/playwright test -c src/grading/playwright.config.ts guides/<category>/<slug>/grader.ts
 
 # Run static grader lint and guide/coverage integrity checks
 node --test src/core/grader-lint.test.ts src/authoring/guides-integrity.test.ts

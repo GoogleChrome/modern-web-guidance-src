@@ -152,14 +152,23 @@ Run commands via the `gd` CLI. See `gd --help` for a list of commands:
 Guide Development
   dev <dir>                    Auto-generate and calibrate guide artifacts
     --grade                    Run/calibrate grader
-    --test-grader              Check grader calibration (demo + negative-demo)
+    --test-grader              Check grader calibration (solution + zero-passrate)
     --gen-grader               Generate a new grader script
-    --gen-negative             Generate negative examples
     --guided                   Skip calibration, run guided agent test only
     --no-test                  Skip agent tests after calibration
     --cross-app                Also check grader on an unmodified base app
-  audit                        Show status of all guides
-    --usecases                 Group by usecases rather than features
+    --targets <apps>           Target base app(s), comma-separated (e.g. daily-grind,devtools-times)
+  pr <dir>                     Push branch and create or update GitHub PR from dev report
+  dev-gap                      Run dev + pr for each guide missing evals or PR labeled for rerun
+    --dry-run                  List what would run without running it
+    --limit <n>                Process at most <n> guides
+    --targets <apps>           Target base app(s), comma-separated (e.g. daily-grind,devtools-times)
+
+Codebase Analysis
+  legacy-scan [path]           Analyze codebase for legacy web platform patterns
+    --json                     Output analyzer findings in structured JSON format
+    --guide <id>               Filter analyzer to a specific guide ID
+    --include-docs-and-tests   Include documentation, example, demo, and test files in analysis
 
 Evaluation & Dashboard
   eval [suite|tasks...]        Run the full evaluation suite, or specific tasks
@@ -171,6 +180,7 @@ Evaluation & Dashboard
   deploy                       Deploy the dashboard to GitHub Pages
   upload                       Upload generated evaluation suite to GCS
   backfill                     Backfill metrics for historical suites
+  compare <runDirA> <runDirB>  Compare two evaluation runs to diagnose performance variance
 
 Utilities & Setup
   baselinestatus <query>       Check browser support and Baseline status
