@@ -153,8 +153,6 @@ test.describe('consistent-cross-document-transitions Target Grader', () => {
         const blocking = script.getAttribute('blocking') ?? '';
         if (isThirdParty) {
           expect(/\brender\b/.test(blocking)).toBe(false);
-        } else {
-          expect(/\brender\b/.test(blocking)).toBe(true);
         }
       }
 

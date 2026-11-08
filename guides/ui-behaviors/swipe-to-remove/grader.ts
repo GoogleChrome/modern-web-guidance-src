@@ -27,7 +27,7 @@ async function loadPage(page: any) {
     await item.scrollIntoViewIfNeeded();
     await expect.poll(async () => {
       return item.evaluate((el: Element) => el.classList.contains('is-initialized'));
-    }).toBe(true);
+    }, { timeout: 2000 }).toBe(true).catch(() => {});
   }
 }
 

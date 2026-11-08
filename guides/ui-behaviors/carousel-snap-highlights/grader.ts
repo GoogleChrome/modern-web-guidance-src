@@ -176,7 +176,7 @@ test("When the carousel is scrolled so a different item is snapped, the highligh
       }
       const hasDistinctShadow = style.boxShadow !== baseShadow && style.boxShadow !== 'none' && style.boxShadow.trim() !== '';
       const isBlue = style.backgroundColor === 'rgb(0, 123, 255)';
-      return scaleVal > 1.1 || isBlue || hasDistinctShadow;
+      return scaleVal > 1.1 && (isBlue || hasDistinctShadow);
     }, initialFirstShadow);
   }, { timeout: 2000 }).toBe(true);
 });

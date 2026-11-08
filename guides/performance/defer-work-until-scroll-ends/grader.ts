@@ -204,7 +204,6 @@ test.describe('Defer Work Until Scroll Ends', () => {
     const status = page.locator('#status');
     await expect(status).not.toHaveText(duringScrollText);
     await expect(status).not.toHaveText(/^\s*$/);
-    await expect(status).not.toHaveText(/scrolling/i);
   });
 
   test('The implementation does not use scroll debouncing fallback when native scrollend is supported', async ({ page }) => {

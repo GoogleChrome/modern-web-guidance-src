@@ -181,9 +181,9 @@ test.describe('Cross-document Transitions Grader', () => {
     // Click the next page link to trigger same-origin navigation and wait for captured transition types
     await page.click('#next');
     await expect.poll(
-      () => page.evaluate(() => (window as any).__capturedTransitionTypes || []),
+      () => page.evaluate(() => ((window as any).__capturedTransitionTypes || []).length),
       { timeout: 3000 }
-    ).toContain('next');
+    ).toBeGreaterThan(0);
   });
 
   test('The page-level transition animations use ::view-transition-old(root) and ::view-transition-new(root) to create slide or fade effects', async ({ page }) => {

@@ -254,11 +254,11 @@ test.describe('directional-navigation-transitions Target Grader', () => {
     }
 
     expect(timingStrings.length).toBeGreaterThan(0);
-    const nonLinearRegex = /\b(ease|ease-in|ease-out|ease-in-out|cubic-bezier\([^)]+\))\b/i;
+    const nonLinearRegex = /\bease(?:-in|-out|-in-out)?\b|\bcubic-bezier\s*\(|\blinear\s*\(/i;
     const hasNonLinear = timingStrings.some((s) => nonLinearRegex.test(s));
     expect(hasNonLinear).toBe(true);
 
-    const hasExplicitLinear = timingStrings.some((s) => /\blinear\b/i.test(s));
+    const hasExplicitLinear = timingStrings.some((s) => /\blinear\b(?!\s*\()/i.test(s));
     expect(hasExplicitLinear).toBe(false);
   });
 
@@ -289,8 +289,8 @@ test.describe('directional-navigation-transitions Target Grader', () => {
       return (
         anim === 'none' ||
         animName === 'none' ||
-        animDuration === '0s' ||
-        animDuration === '0' ||
+        (animDuration.trim() !== '' &&
+          parseFloat(animDuration) / (animDuration.trim().endsWith('ms') ? 1000 : 1) <= 0.01) ||
         /\banimation\s*:\s*none\b/.test(css) ||
         /\banimation-name\s*:\s*none\b/.test(css)
       );
@@ -456,6 +456,7 @@ test.describe('directional-navigation-transitions Target Grader', () => {
       await expect(prevBtn).toBeEnabled({ timeout: 3000 });
 
       const countBefore = await page.evaluate(() => (window as any).__viewTransitions?.length ?? 0);
+      await page.waitForFunction(() => !document.documentElement.matches(':active-view-transition'), null, { timeout: 3000 });
       await prevBtn.click();
 
       await page.waitForFunction(

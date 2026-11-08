@@ -103,7 +103,7 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
 
   test('Implementation includes explicit fallback strategy with feature detection', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    const hasFeatureDetection = html.includes('onbeforematch') || html.includes('beforematch') || html.includes('HTMLElement.prototype');
+    const hasFeatureDetection = /['"`]onbeforematch['"`]\s+in\s+/.test(html) || /typeof\s+[\w.]+\.onbeforematch\s*[!=]==?/.test(html);
     expect(hasFeatureDetection, 'Missing explicit fallback strategy or feature detection for unsupported browsers').toBe(true);
   });
 });

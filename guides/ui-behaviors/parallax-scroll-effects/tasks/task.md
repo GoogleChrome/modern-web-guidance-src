@@ -1,1 +1,1 @@
-- Add a scroll-driven parallax effect below the hero section with layered elements moving at different scroll rates, using CSS scroll-driven animations with feature detection and reduced motion support.
+- Add a parallax effect below the hero section with layered elements moving at different rates as the user scrolls, and make sure it is accessible and performant.

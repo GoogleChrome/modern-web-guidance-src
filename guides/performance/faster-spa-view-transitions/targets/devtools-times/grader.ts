@@ -116,8 +116,8 @@ async function ensureMultipleViewsRendered(page: Page): Promise<void> {
 
 async function getSpaViewsState(page: Page) {
   return page.evaluate(() => {
-    const inactiveSamples = Array.from(
-      document.querySelectorAll<HTMLElement>('[inert]'),
+    const inactiveSamples = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
+      (el) => el.inert || window.getComputedStyle(el).contentVisibility === 'hidden',
     );
     let candidates: HTMLElement[] = [];
     if (inactiveSamples.length > 0 && inactiveSamples[0].parentElement) {

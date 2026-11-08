@@ -140,12 +140,12 @@ test.describe(`Scroll Initial Target Expectations: ${demoName}`, () => {
 
   test('The fallback script executes no later than DOMContentLoaded or at end of body', async ({ page }) => {
     const fallbackCalls = await page.evaluate(() => (window as any).__scrollCalls || []);
-    const loadTime = await page.evaluate(() => (window as any).__loadTime);
+    const dclEnd = await page.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).domContentLoadedEventEnd);
 
     expect(fallbackCalls.length).toBeGreaterThan(0);
     const fallbackTime = fallbackCalls[0].time;
 
-    expect(fallbackTime).toBeLessThanOrEqual(loadTime || Infinity);
+    expect(fallbackTime).toBeLessThanOrEqual(dclEnd);
   });
 
   test('The fallback script uses instant scrolling to bring the target into view', async ({ page }) => {

@@ -285,7 +285,7 @@ test.describe('Directional Navigation Transitions Target Grader', () => {
 
     expect(groupRules.length).toBeGreaterThan(0);
 
-    const NON_LINEAR_RE = /\b(ease|ease-in|ease-out|ease-in-out|cubic-bezier\s*\([^)]+\))\b/i;
+    const NON_LINEAR_RE = /\bease(?:-in|-out|-in-out)?\b|\bcubic-bezier\s*\(|\blinear\s*\(/i;
     let isNonLinear = false;
     let isExplicitLinear = false;
 
@@ -296,7 +296,7 @@ test.describe('Directional Navigation Transitions Target Grader', () => {
       if (NON_LINEAR_RE.test(combined)) {
         isNonLinear = true;
       }
-      if (/\blinear\b/i.test(combined)) {
+      if (/\blinear\b(?!\s*\()/i.test(combined)) {
         isExplicitLinear = true;
       }
     }
