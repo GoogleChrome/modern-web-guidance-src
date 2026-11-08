@@ -24,9 +24,11 @@ import {
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 
 const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
 const MAX_PAYLOAD_PREVIEW_LENGTH = 200;
+const GEN_METADATA_DISPLAY_EFFORT_RE = /^(?:Gemini|Claude|GPT)\b.*\((Low|Medium|High|XHigh|Max)\)$/i;
 
 const PROTO_WIRE_TYPE = {
   VARINT: 0,
@@ -100,7 +102,8 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
   const commandArgs = [
     '-p', prompt,
     '--dangerously-skip-permissions',
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.JETSKI_CLI, model)
   ];
   return { command, commandArgs };
 }
@@ -365,6 +368,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   const seenJsonHashes = new Set<string>();
   let modelName = 'unknown';
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let totalCached = 0;
   let hasTokens = false;
@@ -510,16 +514,35 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         }
       }
 
+      // Note: agy shares this SQLite parser; verify live agy `gen_metadata` display-name formatting
+      // on the nightly host (if agy omits a parenthesized tier for level-less presets like
+      // `gemini-4-argon`, precedence falls back to configured -> model-id -> agent-default).
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
+        let foundModel = false;
         for (const row of genRows) {
           if (!row.data) continue;
           const genDataBuffer = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
           const proto = parseProtobuf(genDataBuffer);
           const strings = getProtoStrings(proto);
-          const modelCandidate = strings.find(s => /^gemini/i.test(s));
-          if (modelCandidate) {
-            modelName = modelCandidate.split('|')[0].trim();
+          if (!foundModel) {
+            const modelCandidate = strings.find(s => /^gemini/i.test(s));
+            if (modelCandidate) {
+              modelName = modelCandidate.split('|')[0].trim();
+              foundModel = true;
+            }
+          }
+          if (!observedEffort) {
+            for (const str of strings) {
+              const candidate = str.split('|')[0].trim();
+              const effortMatch = GEN_METADATA_DISPLAY_EFFORT_RE.exec(candidate);
+              if (effortMatch) {
+                observedEffort = effortMatch[1].toLowerCase();
+                break;
+              }
+            }
+          }
+          if (foundModel && observedEffort) {
             break;
           }
         }
@@ -538,6 +561,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
     fileReadGuides: [...new Set(fileReadGuides)],
     toolsUsed: [...new Set(toolsUsed)],
     model: modelName,
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokens ? { total: totalTokens, cached: totalCached } : undefined
   };
 }

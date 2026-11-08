@@ -4,6 +4,13 @@ import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { Agents } from '../config.ts';
 import { parseJsonlFile } from './agent-shared.ts';
 import { guideIdsFromLog } from './guide-usage.ts';
+import {
+  resolveReasoningEffort,
+  type ReasoningEffort,
+  type ReasoningEffortSource,
+} from './reasoning-effort.ts';
+
+export type { ReasoningEffort, ReasoningEffortSource };
 
 // Colocated agent parsers
 import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
@@ -54,7 +61,7 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 4;
+export const NORMALIZER_VERSION = 5;
 
 const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
@@ -218,6 +225,7 @@ export interface TrajectorySummary {
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
   model?: string;
+  reasoningEffort?: ReasoningEffort;
   retrievedGuides?: string[];
   fileReadGuides?: string[];
   toolsUsed?: string[];
@@ -333,8 +341,17 @@ export function categorizeAction(
   return 'incidental_noise';
 }
 
-export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
+export function finalizeTrajectorySummary(
+  summary: TrajectorySummary,
+  fallbackEffort?: ReasoningEffort,
+): TrajectorySummary {
   summary.normalizerVersion = NORMALIZER_VERSION;
+  summary.reasoningEffort = resolveReasoningEffort({
+    agent: summary.agent,
+    model: summary.model,
+    observed: summary.reasoningEffort?.source === 'observed' ? summary.reasoningEffort : undefined,
+    fallback: fallbackEffort?.level ? fallbackEffort : summary.reasoningEffort,
+  });
   if (Array.isArray(summary.steps)) {
     summary.steps.sort((a, b) => {
       if (a.timestamp && b.timestamp) {
@@ -460,6 +477,7 @@ export function generateNormalizedTrajectorySync(
   initialPrompt?: string
 ): TrajectorySummary | null {
   try {
+    const previousEffort = readTrajectorySummary(targetDir)?.reasoningEffort;
     let summary: TrajectorySummary | null = null;
     const normalizedAgent = normalizeAgentName(agentName) || agentName;
 
@@ -493,7 +511,7 @@ export function generateNormalizedTrajectorySync(
         summary.retrievedGuides = [...new Set([...(summary.retrievedGuides ?? []), ...guideIdsFromLog(logEntries)])];
         summary.toolsUsed = [...new Set([...(summary.toolsUsed ?? []), 'modern-web-guidance'])];
       }
-      finalizeTrajectorySummary(summary);
+      finalizeTrajectorySummary(summary, previousEffort);
       writeTrajectorySummary(targetDir, summary);
       return summary;
     }

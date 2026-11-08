@@ -48,7 +48,7 @@ export const PUBLIC_EVALS_DIR = 'public-evals';
  * preparation, summary extraction) in a way that should rebuild every suite.
  * Field lists and patterns are hashed in automatically below.
  */
-const OUTPUT_REVISION = 1;
+const OUTPUT_REVISION = 2;
 
 /**
  * Identifies the public output contract. Derived from the rules that shape the

@@ -30,13 +30,26 @@ describe('loadAllowedEnvFile', () => {
       const envFile = path.join(dir, '.env');
       fs.writeFileSync(
         envFile,
-        `PI_MODEL=openrouter/test/model\nANTIGRAVITY_MODEL=preset\nGEMINI_API_KEY=AIzaSy${'M'.repeat(33)}\nUNLISTED_TOKEN=secret-1234\n`,
+        [
+          'PI_MODEL=openrouter/test/model',
+          'ANTIGRAVITY_MODEL=preset',
+          'ANTIGRAVITY_EFFORT=high',
+          'CLAUDE_EFFORT=medium',
+          'CODEX_EFFORT=xhigh',
+          'JETSKI_EFFORT=max',
+          `GEMINI_API_KEY=AIzaSy${'M'.repeat(33)}`,
+          'UNLISTED_TOKEN=secret-1234',
+        ].join('\n') + '\n',
         'utf8',
       );
       const targetEnv: NodeJS.ProcessEnv = { ANTIGRAVITY_MODEL: 'caller-override' };
       const res = loadAllowedEnvFile(envFile, targetEnv);
       assert.strictEqual(targetEnv.PI_MODEL, 'openrouter/test/model');
       assert.strictEqual(targetEnv.ANTIGRAVITY_MODEL, 'caller-override');
+      assert.strictEqual(targetEnv.ANTIGRAVITY_EFFORT, 'high');
+      assert.strictEqual(targetEnv.CLAUDE_EFFORT, 'medium');
+      assert.strictEqual(targetEnv.CODEX_EFFORT, 'xhigh');
+      assert.strictEqual(targetEnv.JETSKI_EFFORT, 'max');
       assert.strictEqual(targetEnv.GEMINI_API_KEY, undefined);
       assert.strictEqual(targetEnv.UNLISTED_TOKEN, undefined);
       assert.deepStrictEqual(res.ignored, ['GEMINI_API_KEY', 'UNLISTED_TOKEN']);

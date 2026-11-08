@@ -959,5 +959,102 @@ test('generateNormalizedTrajectory enriches summary with guides and tool usage f
   }
 });
 
+test('parseJetskiCliSession extracts observed reasoning effort from gen_metadata display names without altering model extraction', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const { parseJetskiCliSession } = await import('../agents/jetski-cli-agent.ts');
+
+  const geminiDir = createTempDir();
+  const claudeDir = createTempDir();
+  try {
+    const geminiDb = new DatabaseSync(path.join(geminiDir, 'session-1.db'));
+    geminiDb.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+    geminiDb.exec('CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB)');
+    const geminiDisplayBuf = encodeLengthDelimited(1, Buffer.from('Gemini 4 Argon (High)|extra', 'utf8'));
+    geminiDb.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)').run(1, geminiDisplayBuf);
+    geminiDb.close();
+
+    const geminiSummary = parseJetskiCliSession(geminiDir);
+    assert.strictEqual(geminiSummary.model, 'Gemini 4 Argon (High)');
+    assert.deepStrictEqual(geminiSummary.reasoningEffort, { level: 'high', source: 'observed' });
+
+    const claudeDb = new DatabaseSync(path.join(claudeDir, 'session-1.db'));
+    claudeDb.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+    claudeDb.exec('CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB)');
+    const claudeDisplayBuf = encodeLengthDelimited(1, Buffer.from('Claude Fable 5.1 (Max)', 'utf8'));
+    claudeDb.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)').run(1, claudeDisplayBuf);
+    claudeDb.close();
+
+    const claudeSummary = parseJetskiCliSession(claudeDir);
+    assert.strictEqual(claudeSummary.model, 'unknown');
+    assert.deepStrictEqual(claudeSummary.reasoningEffort, { level: 'max', source: 'observed' });
+  } finally {
+    removeTempDir(geminiDir);
+    removeTempDir(claudeDir);
+  }
+});
+
+test('parsePiTrajectory extracts observed thinking_level_change and offline regeneration preserves configured effort', async () => {
+  const { parsePiTrajectory } = await import('../agents/pi-agent.ts');
+  const { ensureFreshTrajectorySummary, finalizeTrajectorySummary } = await import('./trajectory-normalizer.ts');
+
+  const piSummary = parsePiTrajectory([
+    { type: 'thinking_level_change', thinkingLevel: 'Medium' },
+    {
+      type: 'message',
+      message: {
+        model: 'deepseek/deepseek-v4.1-flash',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Done' }],
+      },
+    },
+  ]);
+  assert.deepStrictEqual(piSummary.reasoningEffort, { level: 'medium', source: 'observed' });
+
+  const finalizedTiered = finalizeTrajectorySummary({
+    agent: Agents.ANTIGRAVITY_CLI,
+    model: 'gemini-3.8-flash-medium',
+    steps: [],
+  });
+  assert.deepStrictEqual(finalizedTiered.reasoningEffort, { level: 'medium', source: 'model-id' });
+
+  const tempDir = createTempDir();
+  const prevClaudeEffort = process.env.CLAUDE_EFFORT;
+  delete process.env.CLAUDE_EFFORT;
+  try {
+    // Simulate a summary originally recorded with CLAUDE_EFFORT=high, then re-normalized offline when env is gone.
+    writeTrajectorySummary(tempDir, {
+      normalizerVersion: 4,
+      agent: Agents.CLAUDE_CODE,
+      model: 'claude-sonnet-5-5',
+      reasoningEffort: { level: 'high', source: 'configured' },
+      steps: [
+        {
+          stepNumber: 1,
+          action: { type: 'run_command', name: 'Bash', params: { command: 'ls' } },
+        },
+      ],
+    });
+    fs.writeFileSync(
+      path.join(tempDir, 'session-1.jsonl'),
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-10T10:00:00.000Z',
+        message: {
+          model: 'claude-sonnet-5-5',
+          content: [{ type: 'tool_use', id: 'c1', name: 'Bash', input: { command: 'ls' } }],
+        },
+      }) + '\n',
+      'utf8',
+    );
+
+    const refreshed = await ensureFreshTrajectorySummary(tempDir);
+    assert.ok(refreshed);
+    assert.deepStrictEqual(refreshed.reasoningEffort, { level: 'high', source: 'configured' });
+  } finally {
+    if (prevClaudeEffort !== undefined) process.env.CLAUDE_EFFORT = prevClaudeEffort;
+    removeTempDir(tempDir);
+  }
+});
+
 
 

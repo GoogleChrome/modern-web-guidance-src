@@ -19,6 +19,7 @@ import {
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
 
 export function setupClaudeCodeCredentials(tempHome: string): void {
@@ -37,7 +38,8 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
     '-p', prompt,
     '--dangerously-skip-permissions',
     ...extraArgs,
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.CLAUDE_CODE, model)
   ];
   return { command, commandArgs };
 }

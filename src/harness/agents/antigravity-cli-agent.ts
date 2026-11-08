@@ -16,6 +16,7 @@ import {
   finalizeTrajectorySummary,
   generateNormalizedTrajectory
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 // agy stores conversations in the same SQLite step schema as Jetski CLI, so the parser is shared.
 // TODO: The shared SQLite parser is lossy (it scrapes JSON fragments from protobuf payloads, so it can
 // drop or invent steps and doesn't attribute subagent steps). agy also writes structured data that
@@ -94,7 +95,8 @@ export function getAntigravityCliCommandAndArgs(prompt: string): { command: stri
   const commandArgs = [
     '-p', prompt,
     '--dangerously-skip-permissions',
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.ANTIGRAVITY_CLI, model)
   ];
   return { command, commandArgs };
 }
