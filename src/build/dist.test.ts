@@ -381,19 +381,27 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
   assert.ok(Array.isArray(parsed.guides), 'legacy-scan.mjs --json should return guides array');
 });
 
-test('packaged dist contains complete 256-d vectors for all chunks', async () => {
+test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage', async () => {
   const zlib = await import('node:zlib');
   const vectorFile = path.join(STAGING_DIR, 'skills/modern-web-guidance/use-cases.vectors.gen.json.gz');
   const compressed = await fs.readFile(vectorFile);
   const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8'));
   assert.ok(items.length > 0, 'Corpus should contain chunks');
+  let teacherCount = 0;
   for (const item of items) {
-    assert.strictEqual(
-      item.vector.length,
-      256,
-      `Chunk "${item.id}" should have 256-d vector, got ${item.vector.length}`
+    assert.ok(
+      item.vector.length === 256 || item.vector.length === 0,
+      `Chunk "${item.id}" should have 256-d teacher vector or 0-d uncached vector, got ${item.vector.length}`
     );
+    if (item.vector.length === 256) {
+      teacherCount++;
+    }
   }
+  const coverage = teacherCount / items.length;
+  assert.ok(
+    coverage >= 0.9,
+    `Expected at least 90% teacher vector coverage in packaged dist, got ${(coverage * 100).toFixed(1)}% (${teacherCount}/${items.length})`
+  );
 });
 
 test('release gate pipeline hash differs between dev and release builds', async () => {

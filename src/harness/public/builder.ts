@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
@@ -45,15 +46,16 @@ export const PUBLIC_EVALS_DIR = 'public-evals';
 
 /**
  * Bump when output-shaping *logic* changes (scrubbing replacements, patch
- * preparation, summary extraction) in a way that should rebuild every suite.
- * Field lists and patterns are hashed in automatically below.
+ * preparation) in a way that should rebuild every suite. Field lists and
+ * patterns are hashed in automatically below.
  */
 const OUTPUT_REVISION = 1;
 
 /**
- * Identifies the public output contract. Derived from the rules that shape the
- * output, so changing any of them rebuilds every suite once without anyone
- * remembering to bump a number.
+ * Identifies the per-suite public output contract. Derived from the rules that
+ * shape `<suiteId>/evals.json`, `agent.patch`, and `modern-web.log`, so
+ * changing any of them rebuilds every suite once without anyone remembering to
+ * bump a number.
  */
 const BUILDER_VERSION = crypto
   .createHash('sha1')
@@ -67,6 +69,30 @@ const BUILDER_VERSION = crypto
     excludedPaths: EXCLUDED_PATH_RE.source,
     maxPatchBytes: MAX_PATCH_BYTES,
   }))
+  .digest('hex')
+  .slice(0, 12);
+
+/**
+ * Modules that shape `suites.gen.json` via `extractSuiteSummary`. Hashed by
+ * full file contents into `MANIFEST_VERSION` so classifier or summary changes
+ * re-extract `suites.gen.json` from local `public-evals/<suiteId>/evals.json`
+ * without re-downloading raw suites from GCS.
+ */
+const MANIFEST_SOURCE_FILES = [
+  '../../dashboard/summary-extractor.js',
+  '../../dashboard/a11y-classifier.js',
+  '../../dashboard/showcase-config.js',
+  '../../dashboard/utils.js',
+] as const;
+
+export const MANIFEST_VERSION = crypto
+  .createHash('sha1')
+  .update(JSON.stringify(
+    MANIFEST_SOURCE_FILES.map(rel => [
+      rel,
+      fs.readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8'),
+    ]),
+  ))
   .digest('hex')
   .slice(0, 12);
 
@@ -117,6 +143,7 @@ export interface SuiteBuildResult {
 /** What each selected suite was last built (or skipped) from. */
 interface BuildState {
   builderVersion: string;
+  manifestVersion?: string;
   forbiddenTokensVersion: number;
   suites: Record<string, SuiteState>;
 }
@@ -218,7 +245,8 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
   }
 
   // Manifest first: if it trips the leak check the state is not advanced, so the run is redone.
-  writeManifest(options.outDir, results, options.forbiddenTokens);
+  const refreshSummaries = Boolean(options.force) || state.manifestVersion !== MANIFEST_VERSION;
+  writeManifest(options.outDir, results, options.forbiddenTokens, { refreshSummaries });
   writeState(options.outDir, results, deferred, refById, identities, options);
   fs.rmSync(path.join(options.outDir, STAGING_DIR), { recursive: true, force: true });
   return results;
@@ -384,16 +412,21 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
 /**
  * Rewrites `<outDir>/public-evals/suites.gen.json` so it lists exactly the
  * complete suite directories present. Entries come from this run's results
- * when available, then from the previous manifest, and only as a last resort
- * from re-reading a suite's `evals.json`. Throws `LeakError` rather than
- * writing a manifest that still identifies someone.
+ * when available, then from the previous manifest (unless `refreshSummaries`
+ * is set), and otherwise from re-reading a suite's `evals.json`. Throws
+ * `LeakError` rather than writing a manifest that still identifies someone.
  */
-export function writeManifest(outDir: string, results: readonly SuiteBuildResult[], forbiddenTokens?: readonly string[]): number {
+export function writeManifest(
+  outDir: string,
+  results: readonly SuiteBuildResult[],
+  forbiddenTokens?: readonly string[],
+  manifestOptions?: { refreshSummaries?: boolean },
+): number {
   const root = path.join(outDir, PUBLIC_EVALS_DIR);
   fs.mkdirSync(root, { recursive: true });
 
   const fresh = new Map(results.filter(r => r.summary).map(r => [r.suiteId, r.summary!]));
-  const previous = readManifest(outDir);
+  const previous = manifestOptions?.refreshSummaries ? new Map<string, SuiteSummary>() : readManifest(outDir);
 
   const entries = presentSuiteDirs(outDir)
     .filter(id => hasEvals(outDir, id))
@@ -460,7 +493,7 @@ function releaseStatusChanged(recorded: SuiteState, releasedModels: readonly str
 }
 
 function emptyState(): BuildState {
-  return { builderVersion: BUILDER_VERSION, forbiddenTokensVersion: 0, suites: {} };
+  return { builderVersion: BUILDER_VERSION, manifestVersion: undefined, forbiddenTokensVersion: 0, suites: {} };
 }
 
 function readStateFile(outDir: string): BuildState {
@@ -469,7 +502,12 @@ function readStateFile(outDir: string): BuildState {
     return emptyState();
   }
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<BuildState>;
-  return { ...emptyState(), ...parsed, suites: parsed.suites ?? {} };
+  return {
+    builderVersion: parsed.builderVersion ?? BUILDER_VERSION,
+    manifestVersion: parsed.manifestVersion,
+    forbiddenTokensVersion: parsed.forbiddenTokensVersion ?? 0,
+    suites: parsed.suites ?? {},
+  };
 }
 
 function writeStateFile(outDir: string, state: BuildState): void {
@@ -498,6 +536,7 @@ function writeState(
 ): void {
   const next: BuildState = {
     builderVersion: BUILDER_VERSION,
+    manifestVersion: MANIFEST_VERSION,
     forbiddenTokensVersion: options.forbiddenTokensVersion ?? 0,
     suites: {},
   };

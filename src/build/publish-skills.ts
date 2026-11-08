@@ -280,13 +280,13 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
       const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
       console.warn(
         `⚠️  [Dry Run] ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors ` +
-          `(using StaticEmbedder fallback; real publish will embed them):\n` +
+          `(indexed for BM25 only, vector: []; real publish will embed them):\n` +
           missingGuides.map((g) => `  - ${g}`).join("\n")
       );
     }
   } else {
     console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
-    const embedResult = await embedChunks();
+    const embedResult = await embedChunks({ prune: true });
     if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
       console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
     }

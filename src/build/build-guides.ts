@@ -444,7 +444,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
       console.warn(`   - ${g}`);
     }
     console.warn(
-      `   These chunks use StaticEmbedder fallback vectors. Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
+      `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
     );
 
     if (failOnMissingVectors) {
@@ -521,7 +521,8 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-function writeBuiltGuide(category: string, id: string, content: string): string {
+function writeBuiltGuide(category: string, id: string, content: string): string | undefined {
+  if (!BUILD_GUIDES_DIR) return undefined;
   const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
   fs.mkdirSync(buildCategoryDir, { recursive: true });
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
@@ -557,7 +558,7 @@ export function formatChunkHeader(
   return `${header}\nFeatures: ${features.join(", ")}`;
 }
 
-async function processSingleGuideFile(
+export async function processSingleGuideFile(
   filePath: string,
   category: string,
   id: string,
@@ -716,8 +717,8 @@ async function processSingleGuideFile(
         vector = Array.from(cached);
       } else {
         missingChunks?.push({ guideId: id, category, chunk });
-        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (using StaticEmbedder fallback): ${chunk.slice(0, 50).trim()}...`);
-        vector = embedder ? await embedder.embed(embeddingText) : [];
+        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (indexed for BM25 only; vector: []): ${chunk.slice(0, 50).trim()}...`);
+        vector = [];
       }
     }
 

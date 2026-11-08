@@ -105,10 +105,10 @@ describe("searchUseCases", () => {
   });
 
   it("surfaces guides matching by web feature ID via enriched chunk content", async () => {
-    // details-name is a web-feature-id on search-hidden-content, enriched in chunk header
+    // details-name is a web-feature-id on accordion and search-hidden-content, enriched in chunk header
     const results = await searchUseCases("details-name", 5);
     assert.ok(results.length > 0, "Should return results for web feature ID query");
-    assert.strictEqual(results[0].id, "search-hidden-content");
+    assert.strictEqual(results[0].id, "accordion");
   });
 
   it("returns results for single-token API queries", async () => {

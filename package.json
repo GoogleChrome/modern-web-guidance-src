@@ -47,33 +47,18 @@
   "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@github/keytar",
       "esbuild",
-      "keytar",
-      "node-pty",
       "onnxruntime-node",
       "protobufjs",
       "sharp",
-      "tree-sitter-bash",
       "@anthropic-ai/claude-code"
     ],
     "overrides": {
-      "@opentelemetry/otlp-transformer>protobufjs": "^8.0.1",
-      "@tootallnate/once": "^3.0.1",
-      "simple-git": "^3.36.0",
-      "ip-address": "^10.1.1"
-    },
-    "packageExtensions": {
-      "@google/gemini-cli": {
-        "dependencies": {
-          "semver": "*"
-        }
-      }
+      "@tootallnate/once": "^3.0.1"
     }
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.1.316",
-    "@google/gemini-cli-core": "0.61.0",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
     "@types/gh-pages": "^6.1.0",
@@ -94,7 +79,6 @@
   "dependencies": {
     "@11ty/gray-matter": "^3.0.0",
     "@google-cloud/storage": "^7.22.0",
-    "@google/gemini-cli": "0.65.0",
     "@huggingface/transformers": "^4.3.1",
     "@mdn/browser-compat-data": "^8.1.7",
     "@openai/codex": "0.166.0",
@@ -107,6 +91,6 @@
     "marked": "^18.0.3",
     "mdn-data": "2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.44.0"
+    "web-features": "^3.45.0"
   }
 }

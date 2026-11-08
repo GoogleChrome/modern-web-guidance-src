@@ -87,7 +87,7 @@ test.describe('Visibility State Detection Grader', () => {
     expect(finalResult).toBe(true);
   });
 
-  test('provides the precise time (in milliseconds) that the page was backgrounded', async ({ page }) => {
+  test('provides the precise time in milliseconds that the page was backgrounded', async ({ page }) => {
     const consoleObjects: any[] = [];
     page.on('console', async (msg) => {
       for (const arg of msg.args()) {

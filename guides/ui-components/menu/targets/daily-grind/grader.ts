@@ -22,6 +22,7 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 interface MenuDiscovery {
   isMenubar: boolean;
   topTriggerIds: string[];
+  triggerToMenuId: Record<string, string>;
   submenuTriggerId: string;
   submenuLeafId: string;
   checkboxTriggerId: string;
@@ -32,15 +33,168 @@ interface MenuDiscovery {
   commandMenuId: string;
 }
 
+interface MenuGraderHelpers {
+  resolveMenu: (btn: Element | null) => HTMLElement | null;
+  getGroup: (menu: HTMLElement) => HTMLElement;
+  getOwnItems: (menu: HTMLElement) => HTMLElement[];
+  isMenuTrigger: (el: Element) => boolean;
+  isMenuOpen: (menu: HTMLElement | null) => boolean;
+  getOpenMenus: () => HTMLElement[];
+  getParentMenu: (el: Element | null) => HTMLElement | null;
+  openMenu: (menu: HTMLElement, trigger?: HTMLElement | null) => void;
+  closeMenu: (menu: HTMLElement, trigger?: HTMLElement | null) => void;
+  settle: () => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    __menuGrader?: MenuGraderHelpers;
+  }
+}
+
+async function installMenuHelpers(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const isMenuTrigger = (el: Element): boolean =>
+      el.matches(
+        'button[commandfor], button[popovertarget], button[aria-haspopup="menu"], button[aria-haspopup="true"], [role="menuitem"][aria-haspopup]'
+      );
+
+    const resolveMenu = (btn: Element | null): HTMLElement | null => {
+      if (!btn) return null;
+      for (const attr of ['commandfor', 'popovertarget', 'aria-controls']) {
+        const id = btn.getAttribute(attr);
+        if (id) {
+          const target = document.getElementById(id);
+          if (target) return target;
+        }
+      }
+      if (btn.id) {
+        const labelled = Array.from(document.querySelectorAll<HTMLElement>('[role="menu"], [popover]')).find(
+          (el) => el !== btn && (el.getAttribute('aria-labelledby') || '').split(/\s+/).includes(btn.id)
+        );
+        if (labelled) return labelled;
+      }
+      const next = btn.nextElementSibling as HTMLElement | null;
+      if (
+        next &&
+        (next.matches('[popover], [role="menu"]') || Boolean(next.querySelector(':scope > [focusgroup~="menu"]')))
+      ) {
+        return next;
+      }
+      return null;
+    };
+
+    const getGroup = (menu: HTMLElement): HTMLElement =>
+      menu.querySelector<HTMLElement>('[focusgroup~="menu"]') ||
+      (menu.matches('[role="menu"]') ? menu : menu.querySelector<HTMLElement>('[role="menu"]')) ||
+      menu;
+
+    const getOwnItems = (menu: HTMLElement): HTMLElement[] => {
+      const group = getGroup(menu);
+      return Array.from(
+        group.querySelectorAll<HTMLElement>(
+          'button, a[href], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'
+        )
+      ).filter((el) => el.closest('[focusgroup], [role="menu"]') === group);
+    };
+
+    const isMenuOpen = (menu: HTMLElement | null): boolean => {
+      if (!menu) return false;
+      if (menu.hasAttribute('popover')) return menu.matches(':popover-open');
+      if (menu.hasAttribute('hidden') || menu.getAttribute('aria-hidden') === 'true') return false;
+      const style = window.getComputedStyle(menu);
+      if (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.pointerEvents === 'none' ||
+        (style.opacity === '0' && style.animationName === 'none')
+      ) {
+        return false;
+      }
+      const rect = menu.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+
+    const getOpenMenus = (): HTMLElement[] =>
+      Array.from(document.querySelectorAll<HTMLElement>('[popover], [role="menu"]')).filter((el) => {
+        if (el.hasAttribute('popover')) return el.matches(':popover-open');
+        if (el.closest('[popover]')) return false;
+        return isMenuOpen(el);
+      });
+
+    const getParentMenu = (el: Element | null): HTMLElement | null => {
+      if (!el) return null;
+      return el.closest<HTMLElement>('[popover]') || el.closest<HTMLElement>('[role="menu"]');
+    };
+
+    const openMenu = (menu: HTMLElement, trigger?: HTMLElement | null): void => {
+      if (menu.hasAttribute('popover')) {
+        if (!menu.matches(':popover-open')) {
+          try {
+            (menu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover(
+              trigger ? { source: trigger } : undefined
+            );
+          } catch {
+            menu.showPopover();
+          }
+        }
+        return;
+      }
+      if (!isMenuOpen(menu) && trigger) {
+        trigger.click();
+      }
+    };
+
+    const closeMenu = (menu: HTMLElement, trigger?: HTMLElement | null): void => {
+      if (menu.hasAttribute('popover')) {
+        if (menu.matches(':popover-open')) menu.hidePopover();
+        return;
+      }
+      if (isMenuOpen(menu) && trigger) {
+        trigger.click();
+      }
+    };
+
+    window.__menuGrader = {
+      resolveMenu,
+      getGroup,
+      getOwnItems,
+      isMenuTrigger,
+      isMenuOpen,
+      getOpenMenus,
+      getParentMenu,
+      openMenu,
+      closeMenu,
+      settle: () =>
+        new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30)))),
+    };
+  });
+}
+
 async function discoverMenus(page: Page): Promise<MenuDiscovery> {
   return await page.evaluate(() => {
-    const allTriggers = Array.from(document.querySelectorAll<HTMLButtonElement>('button[commandfor]'));
-    const topTriggers = allTriggers.filter((btn) => !btn.closest('[popover]'));
-    const subTriggers = allTriggers.filter((btn) => Boolean(btn.closest('[popover]')));
+    const h = window.__menuGrader!;
+    const allTriggers = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'button[commandfor], button[popovertarget], button[aria-haspopup="menu"], button[aria-haspopup="true"], [role="menuitem"][aria-haspopup]'
+      )
+    ).filter((btn) => Boolean(h.resolveMenu(btn)));
 
     allTriggers.forEach((btn, idx) => {
       if (!btn.id) btn.id = `grader-trigger-${idx}`;
     });
+
+    const triggerToMenuId: Record<string, string> = {};
+    allTriggers.forEach((btn, idx) => {
+      const menu = h.resolveMenu(btn);
+      if (menu) {
+        if (!menu.id) menu.id = `grader-menu-${idx}`;
+        triggerToMenuId[btn.id] = menu.id;
+      }
+    });
+
+    const topTriggers = allTriggers.filter((btn) => !h.getParentMenu(btn));
+    const subTriggers = allTriggers.filter((btn) => Boolean(h.getParentMenu(btn)));
 
     const menubar = document.querySelector('[role="menubar"]');
     const isMenubar = Boolean(menubar);
@@ -52,24 +206,15 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
 
     const subWithLeaf =
       subTriggers.find((subBtn) => {
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '');
+        const subMenu = h.resolveMenu(subBtn);
         if (!subMenu) return false;
-        const group = subMenu.querySelector('[focusgroup~="menu"]');
-        if (!group) return false;
-        return Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).some(
-          (item) => item.closest('[focusgroup]') === group && !item.hasAttribute('commandfor')
-        );
+        return h.getOwnItems(subMenu).some((item) => !h.isMenuTrigger(item));
       }) || subTriggers[0];
 
     let submenuLeafId = '';
     if (subWithLeaf) {
-      const subMenu = document.getElementById(subWithLeaf.getAttribute('commandfor') || '');
-      const group = subMenu?.querySelector('[focusgroup~="menu"]');
-      const leaf = group
-        ? Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).find(
-            (item) => item.closest('[focusgroup]') === group && !item.hasAttribute('commandfor')
-          )
-        : null;
+      const subMenu = h.resolveMenu(subWithLeaf);
+      const leaf = subMenu ? h.getOwnItems(subMenu).find((item) => !h.isMenuTrigger(item)) : null;
       if (leaf) {
         if (!leaf.id) leaf.id = 'grader-sub-leaf';
         submenuLeafId = leaf.id;
@@ -84,13 +229,12 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
     let commandMenuId = '';
 
     for (const btn of allTriggers) {
-      const menuId = btn.getAttribute('commandfor') || '';
-      const menu = document.getElementById(menuId);
-      const group = menu?.querySelector('[focusgroup~="menu"]');
-      if (!menu || !group) continue;
+      const menu = h.resolveMenu(btn);
+      if (!menu) continue;
+      const group = h.getGroup(menu);
 
       const ownCheckbox = Array.from(group.querySelectorAll('[role="menuitemcheckbox"]')).find(
-        (el) => el.closest('[focusgroup]') === group
+        (el) => el.closest('[focusgroup], [role="menu"]') === group
       );
       if (ownCheckbox && !checkboxTriggerId) {
         checkboxTriggerId = btn.id;
@@ -98,20 +242,21 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
       }
 
       const ownRadio = Array.from(group.querySelectorAll('[role="menuitemradio"]')).find(
-        (el) => el.closest('[focusgroup]') === group
+        (el) => el.closest('[focusgroup], [role="menu"]') === group
       );
       if (ownRadio && !radioTriggerId) {
         radioTriggerId = btn.id;
         radioMenuId = menu.id;
       }
 
-      const ownCmd = Array.from(group.querySelectorAll<HTMLButtonElement>('button:not([commandfor])')).find(
+      const ownCmd = h.getOwnItems(menu).find(
         (el) =>
-          el.closest('[focusgroup]') === group &&
+          !el.matches('a[href]') &&
+          !h.isMenuTrigger(el) &&
           el.getAttribute('role') !== 'menuitemcheckbox' &&
           el.getAttribute('role') !== 'menuitemradio'
       );
-      if (ownCmd && !commandTriggerId && !btn.closest('[popover]')) {
+      if (ownCmd && !commandTriggerId && !h.getParentMenu(btn)) {
         commandTriggerId = btn.id;
         commandMenuId = menu.id;
       }
@@ -119,12 +264,13 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
 
     if (!commandTriggerId && topTriggers[0]) {
       commandTriggerId = topTriggers[0].id;
-      commandMenuId = topTriggers[0].getAttribute('commandfor') || '';
+      commandMenuId = triggerToMenuId[topTriggers[0].id] || '';
     }
 
     return {
       isMenubar,
       topTriggerIds,
+      triggerToMenuId,
       submenuTriggerId: subWithLeaf?.id || '',
       submenuLeafId,
       checkboxTriggerId,
@@ -139,27 +285,25 @@ async function discoverMenus(page: Page): Promise<MenuDiscovery> {
 
 async function openParentChainForTrigger(page: Page, triggerId: string): Promise<void> {
   await page.evaluate(async (id) => {
+    const h = window.__menuGrader!;
     const btn = document.getElementById(id);
     if (!btn) return;
     const ancestorMenus: HTMLElement[] = [];
-    let current = btn.closest<HTMLElement>('[popover]');
+    let current = h.getParentMenu(btn);
     while (current) {
       ancestorMenus.unshift(current);
-      current = current.parentElement?.closest<HTMLElement>('[popover]') || null;
+      current = h.getParentMenu(current.parentElement);
     }
+    const allTriggers = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'button[commandfor], button[popovertarget], button[aria-haspopup="menu"], button[aria-haspopup="true"], [role="menuitem"][aria-haspopup]'
+      )
+    );
     for (const m of ancestorMenus) {
-      if (!m.matches(':popover-open')) {
-        const t = document.querySelector<HTMLElement>(`button[commandfor="${m.id}"]`);
-        try {
-          (m as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover(
-            t ? { source: t } : undefined
-          );
-        } catch {
-          m.showPopover();
-        }
-      }
+      const t = allTriggers.find((cand) => h.resolveMenu(cand) === m) || null;
+      h.openMenu(m, t);
+      await h.settle();
     }
-    await new Promise((r) => setTimeout(r, 30));
   }, triggerId);
 }
 
@@ -301,6 +445,7 @@ test.describe('menu Target Grader', () => {
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
+      await installMenuHelpers(page);
       await page.goto(TARGET_URL);
     });
 
@@ -362,16 +507,22 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const valid = await page.evaluate(() => {
+        const containers = Array.from(document.querySelectorAll('[focusgroup~="menu"], [role="menu"]'));
+        if (containers.length === 0) return false;
         const fakeSeparators = Array.from(
           document.querySelectorAll(
-            '[focusgroup~="menu"] [role="separator"]:not(hr), [focusgroup~="menu"] .separator:not(hr), [focusgroup~="menu"] .divider:not(hr)'
+            ':is([focusgroup~="menu"], [role="menu"]) :is([role="separator"]:not(hr), .separator:not(hr), .divider:not(hr))'
           )
         );
         const checkboxes = Array.from(
-          document.querySelectorAll<HTMLButtonElement>('[focusgroup~="menu"] [role="menuitemcheckbox"]')
+          document.querySelectorAll<HTMLButtonElement>(
+            ':is([focusgroup~="menu"], [role="menu"]) [role="menuitemcheckbox"]'
+          )
         );
         const radios = Array.from(
-          document.querySelectorAll<HTMLButtonElement>('[focusgroup~="menu"] [role="menuitemradio"]')
+          document.querySelectorAll<HTMLButtonElement>(
+            ':is([focusgroup~="menu"], [role="menu"]) [role="menuitemradio"]'
+          )
         );
         if (fakeSeparators.length > 0 || checkboxes.length === 0 || radios.length === 0) return false;
 
@@ -466,28 +617,28 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
       await page.locator(`#${info.submenuTriggerId}`).hover();
 
       const previewResult = await page.evaluate(async (subTriggerId) => {
+        const h = window.__menuGrader!;
         const subTrigger = document.getElementById(subTriggerId) as HTMLButtonElement | null;
         if (!subTrigger) return false;
-        const subMenu = document.getElementById(subTrigger.getAttribute('commandfor') || '');
+        const subMenu = h.resolveMenu(subTrigger);
         if (!subMenu) return false;
 
         subTrigger.focus();
         await new Promise((r) => setTimeout(r, 220));
         const openedOnFocus =
-          subMenu.matches(':popover-open') &&
+          h.isMenuOpen(subMenu) &&
           subTrigger.getAttribute('aria-expanded') === 'true' &&
           document.activeElement === subTrigger;
 
-        const parentGroup = subTrigger.closest('[focusgroup~="menu"]');
-        const siblingItem = parentGroup
-          ? Array.from(parentGroup.querySelectorAll<HTMLElement>('button, a[href]')).find(
-              (el) => el.closest('[focusgroup]') === parentGroup && el !== subTrigger
-            )
+        const parentMenu = h.getParentMenu(subTrigger);
+        const siblingItem = parentMenu
+          ? h.getOwnItems(parentMenu).find((el) => el !== subTrigger)
           : null;
         if (siblingItem) {
           siblingItem.focus();
@@ -496,7 +647,7 @@ test.describe('menu Target Grader', () => {
         }
         await new Promise((r) => setTimeout(r, 50));
         const closedOnBlur =
-          !subMenu.matches(':popover-open') && subTrigger.getAttribute('aria-expanded') === 'false';
+          !h.isMenuOpen(subMenu) && subTrigger.getAttribute('aria-expanded') === 'false';
 
         return openedOnFocus && closedOnBlur;
       }, info.submenuTriggerId);
@@ -508,24 +659,24 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const firstTopId = info.topTriggerIds[0];
 
       const stayedClosed = await page.evaluate(async (triggerId) => {
+        const h = window.__menuGrader!;
         const trigger = document.getElementById(triggerId) as HTMLButtonElement | null;
         if (!trigger) return false;
-        const menu = document.getElementById(trigger.getAttribute('commandfor') || '');
+        const menu = h.resolveMenu(trigger);
         if (!menu) return false;
 
         trigger.focus();
-        if (menu.matches(':popover-open')) {
-          menu.hidePopover();
-        }
+        h.closeMenu(menu, trigger);
         window.dispatchEvent(new Event('blur'));
         trigger.blur();
         window.dispatchEvent(new Event('focus'));
         trigger.focus();
         await new Promise((r) => setTimeout(r, 50));
-        return !menu.matches(':popover-open') && trigger.getAttribute('aria-expanded') === 'false';
+        return !h.isMenuOpen(menu) && trigger.getAttribute('aria-expanded') === 'false';
       }, firstTopId);
 
       expect(stayedClosed).toBe(true);
@@ -535,32 +686,29 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
       await page.evaluate(async (subTriggerId) => {
+        const h = window.__menuGrader!;
         const subTrigger = document.getElementById(subTriggerId) as HTMLButtonElement;
-        const subMenu = document.getElementById(subTrigger.getAttribute('commandfor') || '')!;
-        if (!subMenu.matches(':popover-open')) {
-          try {
-            (subMenu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover({
-              source: subTrigger,
-            });
-          } catch {
-            subMenu.showPopover();
-          }
-        }
+        const subMenu = h.resolveMenu(subTrigger);
+        if (!subMenu) return;
+        h.openMenu(subMenu, subTrigger);
+        await h.settle();
         subTrigger.focus();
-        await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
 
       await page.keyboard.press('Enter');
       await page.waitForTimeout(30);
 
       const result = await page.evaluate((subTriggerId) => {
+        const h = window.__menuGrader!;
         const subTrigger = document.getElementById(subTriggerId)!;
-        const subMenu = document.getElementById(subTrigger.getAttribute('commandfor') || '')!;
+        const subMenu = h.resolveMenu(subTrigger);
         return (
-          !subMenu.matches(':popover-open') &&
+          Boolean(subMenu) &&
+          !h.isMenuOpen(subMenu) &&
           subTrigger.getAttribute('aria-expanded') === 'false' &&
           document.activeElement === subTrigger
         );
@@ -573,13 +721,15 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const triggerId = info.topTriggerIds[0];
 
       await page.evaluate(async (id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
+        const menu = h.resolveMenu(btn);
         btn.focus();
-        if (menu.matches(':popover-open')) menu.hidePopover();
+        if (menu) h.closeMenu(menu, btn);
         await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
@@ -587,14 +737,13 @@ test.describe('menu Target Grader', () => {
       await page.waitForTimeout(30);
 
       const enteredFirst = await page.evaluate((id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
-        const group = menu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group && !(el as HTMLButtonElement).disabled
-        );
+        const menu = h.resolveMenu(btn);
+        if (!menu) return false;
+        const items = h.getOwnItems(menu).filter((el) => !(el as HTMLButtonElement).disabled);
         return (
-          menu.matches(':popover-open') &&
+          h.isMenuOpen(menu) &&
           btn.getAttribute('aria-expanded') === 'true' &&
           items.length > 0 &&
           document.activeElement === items[0]
@@ -608,35 +757,29 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const triggerId = info.topTriggerIds[0];
 
       await page.evaluate(async (id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
-        if (!menu.matches(':popover-open')) {
-          try {
-            (menu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover({
-              source: btn,
-            });
-          } catch {
-            menu.showPopover();
-          }
-        }
+        const menu = h.resolveMenu(btn);
+        if (!menu) return;
+        h.openMenu(menu, btn);
+        await h.settle();
         btn.focus();
-        await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
       await page.keyboard.press('ArrowDown');
       await page.waitForTimeout(30);
 
       const focusedFirst = await page.evaluate((id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
-        const group = menu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group && !(el as HTMLButtonElement).disabled
-        );
-        return menu.matches(':popover-open') && document.activeElement === items[0];
+        const menu = h.resolveMenu(btn);
+        if (!menu) return false;
+        const items = h.getOwnItems(menu).filter((el) => !(el as HTMLButtonElement).disabled);
+        return h.isMenuOpen(menu) && items.length > 0 && document.activeElement === items[0];
       }, triggerId);
 
       expect(focusedFirst).toBe(true);
@@ -646,13 +789,15 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const triggerId = info.topTriggerIds[0];
 
       await page.evaluate(async (id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
+        const menu = h.resolveMenu(btn);
         btn.focus();
-        if (menu.matches(':popover-open')) menu.hidePopover();
+        if (menu) h.closeMenu(menu, btn);
         await new Promise((r) => setTimeout(r, 30));
       }, triggerId);
 
@@ -660,32 +805,29 @@ test.describe('menu Target Grader', () => {
       await page.waitForTimeout(30);
       await page.keyboard.press('ArrowDown');
       const atSecond = await page.evaluate((id) => {
-        const menu = document.getElementById(document.getElementById(id)!.getAttribute('commandfor') || '')!;
-        const group = menu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group && !(el as HTMLButtonElement).disabled
-        );
-        return document.activeElement === items[1];
+        const h = window.__menuGrader!;
+        const menu = h.resolveMenu(document.getElementById(id));
+        if (!menu) return false;
+        const items = h.getOwnItems(menu).filter((el) => !(el as HTMLButtonElement).disabled);
+        return items.length > 1 && document.activeElement === items[1];
       }, triggerId);
 
       await page.keyboard.press('End');
       const atLast = await page.evaluate((id) => {
-        const menu = document.getElementById(document.getElementById(id)!.getAttribute('commandfor') || '')!;
-        const group = menu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group && !(el as HTMLButtonElement).disabled
-        );
-        return document.activeElement === items[items.length - 1];
+        const h = window.__menuGrader!;
+        const menu = h.resolveMenu(document.getElementById(id));
+        if (!menu) return false;
+        const items = h.getOwnItems(menu).filter((el) => !(el as HTMLButtonElement).disabled);
+        return items.length > 0 && document.activeElement === items[items.length - 1];
       }, triggerId);
 
       await page.keyboard.press('Home');
       const atFirst = await page.evaluate((id) => {
-        const menu = document.getElementById(document.getElementById(id)!.getAttribute('commandfor') || '')!;
-        const group = menu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group && !(el as HTMLButtonElement).disabled
-        );
-        return document.activeElement === items[0];
+        const h = window.__menuGrader!;
+        const menu = h.resolveMenu(document.getElementById(id));
+        if (!menu) return false;
+        const items = h.getOwnItems(menu).filter((el) => !(el as HTMLButtonElement).disabled);
+        return items.length > 0 && document.activeElement === items[0];
       }, triggerId);
 
       expect(atSecond && atLast && atFirst).toBe(true);
@@ -695,12 +837,14 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
       await page.evaluate(async (subId) => {
+        const h = window.__menuGrader!;
         const subBtn = document.getElementById(subId)!;
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
-        if (subMenu.matches(':popover-open')) subMenu.hidePopover();
+        const subMenu = h.resolveMenu(subBtn);
+        if (subMenu) h.closeMenu(subMenu, subBtn);
         subBtn.focus();
         await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
@@ -709,25 +853,26 @@ test.describe('menu Target Grader', () => {
       await page.waitForTimeout(30);
 
       const openedAndFocusedFirst = await page.evaluate((subId) => {
+        const h = window.__menuGrader!;
         const subBtn = document.getElementById(subId)!;
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
-        const group = subMenu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group && !(el as HTMLButtonElement).disabled
-        );
-        return subMenu.matches(':popover-open') && document.activeElement === items[0];
+        const subMenu = h.resolveMenu(subBtn);
+        if (!subMenu) return false;
+        const items = h.getOwnItems(subMenu).filter((el) => !(el as HTMLButtonElement).disabled);
+        return h.isMenuOpen(subMenu) && items.length > 0 && document.activeElement === items[0];
       }, info.submenuTriggerId);
 
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(30);
 
       const closedSubOnlyAndRestored = await page.evaluate((subId) => {
+        const h = window.__menuGrader!;
         const subBtn = document.getElementById(subId)!;
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
-        const parentMenu = subBtn.closest<HTMLElement>('[popover]')!;
+        const subMenu = h.resolveMenu(subBtn);
+        const parentMenu = h.getParentMenu(subBtn);
         return (
-          !subMenu.matches(':popover-open') &&
-          parentMenu.matches(':popover-open') &&
+          Boolean(subMenu) &&
+          !h.isMenuOpen(subMenu) &&
+          h.isMenuOpen(parentMenu) &&
           document.activeElement === subBtn
         );
       }, info.submenuTriggerId);
@@ -739,6 +884,7 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const firstId = info.topTriggerIds[0];
 
       await page.evaluate((id) => {
@@ -749,11 +895,12 @@ test.describe('menu Target Grader', () => {
 
       const result = await page.evaluate(
         ({ isMenubar, topTriggerIds }) => {
+          const h = window.__menuGrader!;
           const firstTrigger = document.getElementById(topTriggerIds[0])!;
           if (isMenubar && topTriggerIds.length > 1) {
             const secondTrigger = document.getElementById(topTriggerIds[1])!;
-            const secondMenu = document.getElementById(secondTrigger.getAttribute('commandfor') || '')!;
-            return document.activeElement === secondTrigger && secondMenu.matches(':popover-open');
+            const secondMenu = h.resolveMenu(secondTrigger);
+            return document.activeElement === secondTrigger && h.isMenuOpen(secondMenu);
           } else {
             return document.activeElement === firstTrigger;
           }
@@ -768,12 +915,14 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
       await page.evaluate(async (subId) => {
+        const h = window.__menuGrader!;
         const subBtn = document.getElementById(subId)!;
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
-        if (subMenu.matches(':popover-open')) subMenu.hidePopover();
+        const subMenu = h.resolveMenu(subBtn);
+        if (subMenu) h.closeMenu(subMenu, subBtn);
         subBtn.focus();
         await new Promise((r) => setTimeout(r, 30));
       }, info.submenuTriggerId);
@@ -784,13 +933,15 @@ test.describe('menu Target Grader', () => {
       await page.waitForTimeout(30);
 
       const valid = await page.evaluate((subId) => {
+        const h = window.__menuGrader!;
         const subBtn = document.getElementById(subId)!;
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
-        const parentMenu = subBtn.closest<HTMLElement>('[popover]')!;
+        const subMenu = h.resolveMenu(subBtn);
+        const parentMenu = h.getParentMenu(subBtn);
         return (
-          !subMenu.matches(':popover-open') &&
+          Boolean(subMenu) &&
+          !h.isMenuOpen(subMenu) &&
           subBtn.getAttribute('aria-expanded') === 'false' &&
-          parentMenu.matches(':popover-open') &&
+          h.isMenuOpen(parentMenu) &&
           document.activeElement === subBtn
         );
       }, info.submenuTriggerId);
@@ -802,6 +953,7 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
       await page.evaluate(async (subId) => {
@@ -816,14 +968,17 @@ test.describe('menu Target Grader', () => {
       for (let i = 0; i < 15; i++) {
         await page.keyboard.press('Tab');
         await page.waitForTimeout(30);
-        const stillInside = await page.evaluate(() => Boolean(document.activeElement?.closest('[popover]')));
+        const stillInside = await page.evaluate(() =>
+          Boolean(window.__menuGrader!.getParentMenu(document.activeElement))
+        );
         if (!stillInside) break;
       }
 
       const valid = await page.evaluate(() => {
-        const openPopovers = document.querySelectorAll('[popover]:popover-open');
-        const activeInPopover = document.activeElement?.closest('[popover]');
-        return openPopovers.length === 0 && !activeInPopover;
+        const h = window.__menuGrader!;
+        const openMenus = h.getOpenMenus();
+        const activeInMenu = h.getParentMenu(document.activeElement);
+        return openMenus.length === 0 && !activeInMenu;
       });
 
       expect(valid).toBe(true);
@@ -833,18 +988,21 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const triggerId = info.topTriggerIds[0];
 
       await page.locator(`#${triggerId}`).click();
       await page.waitForTimeout(30);
 
       const afterFirstClick = await page.evaluate((id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
+        const menu = h.resolveMenu(btn);
         return (
-          menu.matches(':popover-open') &&
+          Boolean(menu) &&
+          h.isMenuOpen(menu) &&
           document.activeElement === btn &&
-          !menu.contains(document.activeElement)
+          !menu!.contains(document.activeElement)
         );
       }, triggerId);
 
@@ -852,9 +1010,10 @@ test.describe('menu Target Grader', () => {
       await page.waitForTimeout(30);
 
       const afterSecondClick = await page.evaluate((id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
-        return !menu.matches(':popover-open') && btn.getAttribute('aria-expanded') === 'false';
+        const menu = h.resolveMenu(btn);
+        return Boolean(menu) && !h.isMenuOpen(menu) && btn.getAttribute('aria-expanded') === 'false';
       }, triggerId);
 
       await page.locator(`#${triggerId}`).click();
@@ -863,7 +1022,7 @@ test.describe('menu Target Grader', () => {
       await page.waitForTimeout(30);
 
       const afterOutsideClick = await page.evaluate(() => {
-        return document.querySelectorAll('[popover]:popover-open').length === 0;
+        return window.__menuGrader!.getOpenMenus().length === 0;
       });
 
       expect(afterFirstClick && afterSecondClick && afterOutsideClick).toBe(true);
@@ -873,21 +1032,23 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const triggerId = info.topTriggerIds[0];
 
       await page.locator(`#${triggerId}`).click();
 
       const itemSelector = await page.evaluate((id) => {
+        const h = window.__menuGrader!;
         const btn = document.getElementById(id)!;
-        const menu = document.getElementById(btn.getAttribute('commandfor') || '')!;
-        const group = menu.querySelector('[focusgroup~="menu"]')!;
-        const items = Array.from(group.querySelectorAll<HTMLElement>('button, a[href]')).filter(
-          (el) => el.closest('[focusgroup]') === group
-        );
+        const menu = h.resolveMenu(btn);
+        if (!menu) return '';
+        const items = h.getOwnItems(menu);
         const target = items[0];
+        if (!target) return '';
         if (!target.id) target.id = 'grader-hover-item';
         return `#${target.id}`;
       }, triggerId);
+      expect(itemSelector).not.toBe('');
 
       await page.locator(itemSelector).hover();
       await page.waitForTimeout(30);
@@ -904,11 +1065,12 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.topTriggerIds.length).toBeGreaterThan(0);
       const firstId = info.topTriggerIds[0];
 
       await page.locator(`#${firstId}`).hover();
       const closedOnIdleHover = await page.evaluate(() => {
-        return document.querySelectorAll('[popover]:popover-open').length === 0;
+        return window.__menuGrader!.getOpenMenus().length === 0;
       });
 
       let openHoverValid = true;
@@ -918,12 +1080,13 @@ test.describe('menu Target Grader', () => {
         await page.locator(`#${secondId}`).hover();
         openHoverValid = await page.evaluate(
           ({ fId, sId }) => {
-            const firstMenu = document.getElementById(document.getElementById(fId)!.getAttribute('commandfor') || '')!;
+            const h = window.__menuGrader!;
+            const firstMenu = h.resolveMenu(document.getElementById(fId));
             const secondTrigger = document.getElementById(sId)!;
-            const secondMenu = document.getElementById(secondTrigger.getAttribute('commandfor') || '')!;
+            const secondMenu = h.resolveMenu(secondTrigger);
             return (
-              !firstMenu.matches(':popover-open') &&
-              secondMenu.matches(':popover-open') &&
+              !h.isMenuOpen(firstMenu) &&
+              h.isMenuOpen(secondMenu) &&
               document.activeElement === secondTrigger
             );
           },
@@ -938,39 +1101,38 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.checkboxTriggerId).not.toBe('');
+      expect(info.checkboxMenuId).not.toBe('');
       await openParentChainForTrigger(page, info.checkboxTriggerId);
 
       const initialChecked = await page.evaluate(
         async ({ trigId, menuId }) => {
+          const h = window.__menuGrader!;
           const trig = document.getElementById(trigId)!;
           const menu = document.getElementById(menuId)!;
-          if (!menu.matches(':popover-open')) {
-            try {
-              (menu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover({
-                source: trig,
-              });
-            } catch {
-              menu.showPopover();
-            }
-          }
-          await new Promise((r) => setTimeout(r, 30));
-          const cb = menu.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!;
+          h.openMenu(menu, trig);
+          await h.settle();
+          const cb = menu.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]');
+          if (!cb) return null;
           if (!cb.id) cb.id = 'grader-cb-item';
           cb.focus();
           return cb.getAttribute('aria-checked');
         },
         { trigId: info.checkboxTriggerId, menuId: info.checkboxMenuId }
       );
+      expect(initialChecked).not.toBeNull();
 
       await page.keyboard.press(' ');
       await page.waitForTimeout(30);
 
       const afterSpace = await page.evaluate((menuId) => {
+        const h = window.__menuGrader!;
         const menu = document.getElementById(menuId)!;
-        const cb = document.getElementById('grader-cb-item')!;
+        const cb = document.getElementById('grader-cb-item');
+        if (!cb) return { checked: null, isOpen: false };
         return {
           checked: cb.getAttribute('aria-checked'),
-          isOpen: menu.matches(':popover-open'),
+          isOpen: h.isMenuOpen(menu),
         };
       }, info.checkboxMenuId);
 
@@ -981,39 +1143,39 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.radioTriggerId).not.toBe('');
+      expect(info.radioMenuId).not.toBe('');
       await openParentChainForTrigger(page, info.radioTriggerId);
 
-      await page.evaluate(
+      const prepared = await page.evaluate(
         async ({ trigId, menuId }) => {
+          const h = window.__menuGrader!;
           const trig = document.getElementById(trigId)!;
           const menu = document.getElementById(menuId)!;
-          if (!menu.matches(':popover-open')) {
-            try {
-              (menu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover({
-                source: trig,
-              });
-            } catch {
-              menu.showPopover();
-            }
-          }
-          await new Promise((r) => setTimeout(r, 30));
+          h.openMenu(menu, trig);
+          await h.settle();
           const uncheckedRadio =
             menu.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="false"]') ||
-            menu.querySelector<HTMLButtonElement>('[role="menuitemradio"]')!;
+            menu.querySelector<HTMLButtonElement>('[role="menuitemradio"]');
+          if (!uncheckedRadio) return false;
           uncheckedRadio.id = 'grader-radio-target';
           uncheckedRadio.focus();
+          return true;
         },
         { trigId: info.radioTriggerId, menuId: info.radioMenuId }
       );
+      expect(prepared).toBe(true);
 
       await page.keyboard.press('Enter');
       await page.waitForTimeout(380);
 
       const radioResult = await page.evaluate(() => {
-        const target = document.getElementById('grader-radio-target')!;
-        const group = target.closest('[role="group"]')!;
+        const h = window.__menuGrader!;
+        const target = document.getElementById('grader-radio-target');
+        const group = target?.closest('[role="group"], [focusgroup~="menu"], [role="menu"]');
+        if (!target || !group) return false;
         const checkedInGroup = group.querySelectorAll('[role="menuitemradio"][aria-checked="true"]');
-        const openMenus = document.querySelectorAll('[popover]:popover-open');
+        const openMenus = h.getOpenMenus();
         return (
           target.getAttribute('aria-checked') === 'true' &&
           checkedInGroup.length === 1 &&
@@ -1028,6 +1190,8 @@ test.describe('menu Target Grader', () => {
       page,
     }) => {
       const info = await discoverMenus(page);
+      expect(info.commandTriggerId).not.toBe('');
+      expect(info.commandMenuId).not.toBe('');
 
       await page.locator(`#${info.commandTriggerId}`).scrollIntoViewIfNeeded();
       await page.locator(`#${info.commandTriggerId}`).click();
@@ -1035,26 +1199,30 @@ test.describe('menu Target Grader', () => {
 
       const cmdSelector = await page.evaluate(
         ({ menuId }) => {
+          const h = window.__menuGrader!;
           const menu = document.getElementById(menuId)!;
-          const group = menu.querySelector('[focusgroup~="menu"]')!;
-          const cmd = Array.from(group.querySelectorAll<HTMLButtonElement>('button:not([commandfor])')).find(
+          const cmd = h.getOwnItems(menu).find(
             (b) =>
-              b.closest('[focusgroup]') === group &&
+              !b.matches('a[href]') &&
+              !h.isMenuTrigger(b) &&
               b.getAttribute('role') !== 'menuitemcheckbox' &&
               b.getAttribute('role') !== 'menuitemradio'
-          )!;
+          );
+          if (!cmd) return '';
           if (!cmd.id) cmd.id = 'grader-cmd-btn';
           return `#${cmd.id}`;
         },
         { menuId: info.commandMenuId }
       );
+      expect(cmdSelector).not.toBe('');
 
       await page.locator(cmdSelector).click();
       await page.waitForTimeout(30);
 
       const afterCommandClick = await page.evaluate((trigId) => {
+        const h = window.__menuGrader!;
         const trig = document.getElementById(trigId)!;
-        const openMenus = document.querySelectorAll('[popover]:popover-open');
+        const openMenus = h.getOpenMenus();
         return openMenus.length === 0 && document.activeElement === trig;
       }, info.commandTriggerId);
 
@@ -1066,20 +1234,15 @@ test.describe('menu Target Grader', () => {
     }) => {
       await page.setViewportSize({ width: 375, height: 800 });
       const info = await discoverMenus(page);
+      expect(info.submenuTriggerId).not.toBe('');
       await openParentChainForTrigger(page, info.submenuTriggerId);
 
       const geometry = await page.evaluate((subId) => {
+        const h = window.__menuGrader!;
         const subBtn = document.getElementById(subId)!;
-        const subMenu = document.getElementById(subBtn.getAttribute('commandfor') || '')!;
-        if (!subMenu.matches(':popover-open')) {
-          try {
-            (subMenu as HTMLElement & { showPopover: (opts?: { source?: HTMLElement }) => void }).showPopover({
-              source: subBtn,
-            });
-          } catch {
-            subMenu.showPopover();
-          }
-        }
+        const subMenu = h.resolveMenu(subBtn);
+        if (!subMenu) return { intersectsTrigger: true, sitsBelowTrigger: false };
+        h.openMenu(subMenu, subBtn);
         const tRect = subBtn.getBoundingClientRect();
         const mRect = subMenu.getBoundingClientRect();
         const horizontallyOverlaps = mRect.left < tRect.right && mRect.right > tRect.left;
@@ -1097,10 +1260,10 @@ test.describe('menu Target Grader', () => {
     }) => {
       const valid = await page.evaluate(() => {
         const checked = document.querySelector<HTMLElement>(
-          '[focusgroup~="menu"] button[aria-checked="true"]'
+          ':is([focusgroup~="menu"], [role="menu"]) :is(button, [role="menuitemcheckbox"], [role="menuitemradio"])[aria-checked="true"]'
         );
         const unchecked = document.querySelector<HTMLElement>(
-          '[focusgroup~="menu"] button[aria-checked="false"]'
+          ':is([focusgroup~="menu"], [role="menu"]) :is(button, [role="menuitemcheckbox"], [role="menuitemradio"])[aria-checked="false"]'
         );
         if (!checked || !unchecked) return false;
         const checkedContent = window

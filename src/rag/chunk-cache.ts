@@ -159,12 +159,13 @@ export function saveChunkCache(
   const i8Path = path.join(cacheDir, "chunks.i8");
   const scalePath = path.join(cacheDir, "chunks.scale.f32");
 
-  fs.writeFileSync(jsonPath, JSON.stringify(sortedHashes) + "\n");
+  const jsonContent = JSON.stringify(sortedHashes, null, 2) + "\n";
+  fs.writeFileSync(jsonPath, jsonContent);
   fs.writeFileSync(i8Path, Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength));
   fs.writeFileSync(scalePath, Buffer.from(scales.buffer, scales.byteOffset, scales.byteLength));
 
   const totalBytes =
-    Buffer.byteLength(JSON.stringify(sortedHashes)) + qTable.byteLength + scales.byteLength;
+    Buffer.byteLength(jsonContent) + qTable.byteLength + scales.byteLength;
   return { count: N, bytes: totalBytes };
 }
 

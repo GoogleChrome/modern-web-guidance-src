@@ -789,11 +789,11 @@ function renderSummary(data) {
             </div>
         </article>
 
-        <!-- Card 2: Cross-Cutting Accessibility Subscore -->
+        <!-- Card 2: Automated Accessibility Checks -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Accessibility subscore</span>
-                ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
+                <span class="meta-label">Automated accessibility checks</span>
+                ${ratePill(a11yUpliftPp, 'accessibility check pass rate change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
@@ -1174,7 +1174,7 @@ function buildEvalsTableHeader() {
         ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
         <div class="eval-col-time">${sortBtn('time', 'Duration', 'Unguided / Guided')}</div>
         <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
-        <div class="eval-col-dumbbell"><span>Pass rate</span><span class="eval-col-sub">Unguided → Guided</span></div>
+        <div class="eval-col-dumbbell"><span>${isA11yMode ? 'A11y pass rate' : 'Pass rate'}</span><span class="eval-col-sub">Unguided → Guided</span></div>
         <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
     `;
     header.querySelectorAll('.eval-col-sort-btn').forEach(btn => {

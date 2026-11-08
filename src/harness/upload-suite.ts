@@ -145,7 +145,12 @@ export async function uploadDirectory(
   }
 }
 
-async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string, evalsData: any) {
+export async function reconcileAndUploadManifest(
+  bucket: any,
+  uploadedSuiteName: string | null,
+  evalsData: any,
+  options: { reextractAll?: boolean } = {},
+) {
   console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
   
   let remoteManifest: any[] = [];
@@ -174,7 +179,9 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
   } while (pageToken);
 
   const activeSuiteIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
-  activeSuiteIds.add(uploadedSuiteName);
+  if (uploadedSuiteName) {
+    activeSuiteIds.add(uploadedSuiteName);
+  }
 
   const manifestMap = new Map<string, any>();
   for (const entry of remoteManifest) {
@@ -185,15 +192,18 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
   }
 
   // Update the uploaded suite's summary
-  const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
-  if (uploadedSummary) {
-    manifestMap.set(uploadedSuiteName, uploadedSummary);
+  if (uploadedSuiteName && evalsData) {
+    const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
+    if (uploadedSummary) {
+      manifestMap.set(uploadedSuiteName, uploadedSummary);
+    }
   }
 
-  // Backfill missing summaries for any active GCS suites that lack detailed summary
+  // Backfill missing summaries (or re-extract all when --reextract-manifest is passed)
   const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
+    if (options.reextractAll && id !== uploadedSuiteName) return true;
     const existing = manifestMap.get(id);
-    return !existing || !existing.guidedStats;
+    return !existing || !existing.guidedStats || !existing.a11yStats || !existing.showcase;
   });
 
   if (missingSuiteIds.length > 0) {
@@ -202,7 +212,7 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
       const chunk = missingSuiteIds.slice(i, i + concurrency);
       await Promise.all(chunk.map(async (suiteId) => {
         try {
-          console.log(`Extracting summary for missing GCS suite: ${suiteId}...`);
+          console.log(`${options.reextractAll ? 'Re-extracting' : 'Extracting'} summary for GCS suite: ${suiteId}...`);
           const evalsFile = bucket.file(`${suiteId}/evals.json`);
           const [fileContent] = await evalsFile.download();
           const parsed = JSON.parse(fileContent.toString('utf8'));
@@ -230,15 +240,23 @@ async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string
 async function main() {
   const args = process.argv.slice(2);
   const summaryOnly = args.includes('--summary-only');
-  
+  const reextractManifest = args.includes('--reextract-manifest');
+
   // Remove flags to get positional arguments
   const positionalArgs = args.filter(a => !a.startsWith('--'));
-  
+
+  if (reextractManifest && positionalArgs.length === 0) {
+    const storage = new Storage({ projectId: PROJECT_ID });
+    const bucket = storage.bucket(BUCKET_NAME);
+    await reconcileAndUploadManifest(bucket, null, null, { reextractAll: true });
+    return;
+  }
+
   let suiteName = positionalArgs[0];
   const customResultsDir = positionalArgs[1];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name>');
+    console.error('❌ Please provide a suite name (e.g. pnpm upload <suite-name>) or --reextract-manifest.');
     process.exit(1);
   }
 
@@ -305,7 +323,7 @@ async function main() {
   try {
     await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
     console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
-    await reconcileAndUploadManifest(bucket, suiteName, evalsData);
+    await reconcileAndUploadManifest(bucket, suiteName, evalsData, { reextractAll: reextractManifest });
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);

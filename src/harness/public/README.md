@@ -142,7 +142,11 @@ So nothing needs UI for it:
   changes, its override changes, its own model is released or un-released, the
   builder's field lists or scrub patterns change, or
   `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. Releasing an additional
-  model only builds the suites that were waiting on it. `--force` rebuilds
+  model only builds the suites that were waiting on it. Changes to summary
+  extraction or accessibility classification (`summary-extractor.js`,
+  `a11y-classifier.js`, `showcase-config.js`, `utils.js`) re-extract
+  `suites.gen.json` directly from the local `public-evals/<suiteId>/evals.json`
+  copies without re-downloading raw suites. `--force` rebuilds
   everything. A suite whose build hit a transient error keeps its previously
   published copy and is retried next run.
 
