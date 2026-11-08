@@ -199,7 +199,7 @@
               <input type="checkbox" id="scheduled-only-check" checked>
               Scheduled only
             </label>
-            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter by ID, model, or agent…" autocomplete="off" aria-label="Filter runs by ID, model, or agent">
+            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter by ID, model, agent, or effort:high…" autocomplete="off" aria-label="Filter runs by ID, model, agent, or effort">
             <datalist id="runs-filter-datalist"></datalist>
           </div>
         </div>
@@ -256,6 +256,7 @@
   </div>
 
   <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
 
   <script type="module">
     // Conditional polyfills for popover (#filter-menu, #barbell-tooltip, hint popovers), CSS anchor
