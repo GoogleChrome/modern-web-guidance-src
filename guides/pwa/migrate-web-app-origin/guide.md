@@ -54,7 +54,7 @@ File location: `https://old-app.example.com/.well-known/web-app-origin-associati
 
 ```json
 {
-  "https://new-app.example.com": {
+  "https://new-app.example.com/demo.html": {
     "allow_migration": true
   }
 }
@@ -66,12 +66,10 @@ To let the browser discover the migration from the old installation, without wai
 
 ```json
 {
-  "migrate_to": [
-    {
-      "id": "https://new-app.example.com/",
-      "install_url": "https://new-app.example.com/demo.html"
-    }
-  ]
+  "migrate_to": {
+    "id": "https://new-app.example.com/demo.html",
+    "install_url": "https://new-app.example.com/demo.html"
+  }
 }
 ```
 
