@@ -30,14 +30,22 @@ function findGuideDirs(dir: string, result: Record<string, string> = {}): Record
   return result;
 }
 
-function extractTaskPrompt(taskPath: string): string {
-  if (!fs.existsSync(taskPath)) return '';
-  const content = fs.readFileSync(taskPath, 'utf8');
-  const parts = content.split('---');
-  if (parts.length >= 3) {
-    return parts.slice(2).join('---').trim();
+function extractTaskPrompt(guideDir: string): string {
+  const candidates = [
+    path.join(guideDir, 'targets', 'daily-grind', 'task.md'),
+    path.join(guideDir, 'targets', 'devtools-times', 'task.md'),
+    path.join(guideDir, 'tasks', 'task.md'),
+  ];
+  for (const taskPath of candidates) {
+    if (!fs.existsSync(taskPath)) continue;
+    const content = fs.readFileSync(taskPath, 'utf8');
+    const parts = content.split('---');
+    if (parts.length >= 3) {
+      return parts.slice(2).join('---').trim();
+    }
+    return content.trim();
   }
-  return content.trim();
+  return '';
 }
 
 function extractGuideDescription(guidePath: string): string {
@@ -54,20 +62,28 @@ function extractGuideDescription(guidePath: string): string {
   return '';
 }
 
-function extractGraderTests(graderPath: string): string[] {
-  if (!fs.existsSync(graderPath)) return [];
-  const content = fs.readFileSync(graderPath, 'utf8');
-  const lines = content.split('\n');
-  const tests: string[] = [];
-  const testRegex = /^(?:test|it|test\.only)\s*\(\s*(['"`])((?:[^\\]|\\.)*?)\1/;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const match = trimmed.match(testRegex);
-    if (match) {
-      tests.push(match[2]);
+function extractGraderTests(guideDir: string): string[] {
+  const candidates = [
+    path.join(guideDir, 'targets', 'daily-grind', 'grader.ts'),
+    path.join(guideDir, 'targets', 'devtools-times', 'grader.ts'),
+    path.join(guideDir, 'grader.ts'),
+  ];
+  for (const graderPath of candidates) {
+    if (!fs.existsSync(graderPath)) continue;
+    const content = fs.readFileSync(graderPath, 'utf8');
+    const lines = content.split('\n');
+    const tests: string[] = [];
+    const testRegex = /^(?:test|it|test\.only)\s*\(\s*(['"`])((?:[^\\]|\\.)*?)\1/;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const match = trimmed.match(testRegex);
+      if (match) {
+        tests.push(match[2]);
+      }
     }
+    if (tests.length > 0) return tests;
   }
-  return tests;
+  return [];
 }
 
 interface TaskDetails {
@@ -357,20 +373,12 @@ async function main() {
       flagDetailsList.push(`Consumed 3 or more guides in ${details.tooManyGuidesCount} out of ${activeAgents.length} agent runs.`);
     }
 
-    // 3. Low guided percentage rate: Guided pass rate under 75% in all runs
-    const allGuidedUnder75 = activeAgents.every(agent => details.guidedPassRates[agent] < 75);
-    if (allGuidedUnder75) {
-      flags.push('LOW_GUIDED_PASS_RATE');
-      const rateStrings = activeAgents.map(agent => `${agent}: ${details.guidedPassRates[agent]}%`).join(', ');
-      flagDetailsList.push(`Guided pass rate was under 75% in all nightly runs (${rateStrings}).`);
-    }
-
-    // 4. High unguided percentage rate: Unguided pass rate 90% or higher in all runs
-    const allUnguidedOver90 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 90);
-    if (allUnguidedOver90) {
+    // 3. High unguided pass rate (80% or higher in all runs). Low guided pass rate is never flagged.
+    const allUnguidedOver80 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 80);
+    if (allUnguidedOver80) {
       flags.push('HIGH_UNGUIDED_PASS_RATE');
       const rateStrings = activeAgents.map(agent => `${agent}: ${details.unguidedPassRates[agent]}%`).join(', ');
-      flagDetailsList.push(`Unguided pass rate was 90% or higher in all nightly runs (${rateStrings}).`);
+      flagDetailsList.push(`Unguided pass rate was 80% or higher in all nightly runs (${rateStrings}).`);
     }
 
     if (flags.length > 0) {
@@ -435,9 +443,7 @@ async function main() {
         md += `| **${agent}** | ${guidedRate} | ${unguidedRate} | ${consumed} |\n`;
       }
       
-      const commonGuided = item.flags.includes('LOW_GUIDED_PASS_RATE')
-        ? getCommonFailures(item.taskName, 'guided', parsedDataByAgent, activeAgents)
-        : [];
+      const commonGuided = getCommonFailures(item.taskName, 'guided', parsedDataByAgent, activeAgents);
       
       md += `\n#### Qualitative Diagnostic Summary:\n\n`;
       md += `- **Diagnostic Details**:\n`;
@@ -457,9 +463,9 @@ async function main() {
       const relativePath = folderPath ? path.relative(repoRoot, folderPath) : `guides/.../${item.taskName}`;
 
       md += `- **Actionable Recommendations**:\n`;
-      md += `  - [ ] **Prompt** (\`${relativePath}/tasks/task.md\`): TODO\n`;
+      md += `  - [ ] **Prompt** (\`${relativePath}/targets/<app>/task.md\`): TODO\n`;
       md += `  - [ ] **Guide** (\`${relativePath}/guide.md\`): TODO\n`;
-      md += `  - [ ] **Grader** (\`${relativePath}/grader.ts\`): TODO\n\n`;
+      md += `  - [ ] **Grader** (\`${relativePath}/targets/<app>/grader.ts\`): TODO\n\n`;
       md += `---\n\n`;
     }
   }
@@ -486,16 +492,14 @@ async function main() {
       }
       
       const relativeGuidePath = path.relative(repoRoot, folderPath);
-      const taskPath = path.join(folderPath, 'tasks', 'task.md');
       const guidePath = path.join(folderPath, 'guide.md');
-      const graderPath = path.join(folderPath, 'grader.ts');
 
       contextMap[item.taskName] = {
         flags: item.flags,
         guidePath: relativeGuidePath,
-        prompt: extractTaskPrompt(taskPath),
+        prompt: extractTaskPrompt(folderPath),
         guideDescription: extractGuideDescription(guidePath),
-        testHeaders: extractGraderTests(graderPath),
+        testHeaders: extractGraderTests(folderPath),
       };
     }
 

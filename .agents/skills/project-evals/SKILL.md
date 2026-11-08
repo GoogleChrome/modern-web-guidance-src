@@ -13,96 +13,116 @@ This is the third of three stages in creating guidance:
 
 ## What the eval agent sees vs real-world agents
 
-**Real-world coding agents see only `guide.md`** — retrieved via the Skills CLI when a developer asks for help. Every other file in a guide directory is eval infrastructure.
+**Real-world coding agents see only `guide.md`**, retrieved via the Skills CLI when a developer asks for help. Every other file in a guide directory is eval infrastructure.
 
-**The eval harness** runs a coding agent in an isolated workspace initialized with a target base application (`daily-grind` or `devtools-times`). The agent receives the prompt from `targets/<base_app>/task.md` and (in guided mode) access to `guide.md` via the Skills CLI. The harness then runs `targets/<base_app>/grader.ts` against the agent's modified application.
+**The eval harness** runs a coding agent in an isolated workspace initialized with a target base application (`daily-grind` or `devtools-times`). The agent receives the prompt from `targets/<base_app>/task.md` (or legacy Gen1 `tasks/task.md`) and, in guided mode, access to `guide.md` via the Skills CLI. The harness then runs `targets/<base_app>/grader.ts` (or Gen1 `grader.ts`) against the agent's modified application.
 
 None of the following are ever seen by real-world coding agents:
 
 | File | Role in eval pipeline |
 |---|---|
-| `expectations.md` | Natural-language spec of assertions that must hold when `guide.md` is followed |
+| `expectations.md` | SME-authored natural-language assertions that must hold when `guide.md` is followed |
 | `demo.html` | Standalone reference implementation authored by the SME |
-| `targets/<base_app>/task.md` | A concrete, single-bullet user prompt tailored to `<base_app>`, formatted as a single `- ` line with no YAML frontmatter |
-| `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`claude`, `codex`, `jetski`) that must score **100%** on `grader.ts` |
-| `targets/<base_app>/patches/zero-passrate.patch` | Baseline anti-pattern diff that must score **0%** on `grader.ts` |
+| `targets/<base_app>/task.md` | Single-bullet developer prompt tailored to `<base_app>`, formatted as one `- ` line with no YAML frontmatter |
+| `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`claude`, `codex`, `jetski` or `antigravity`) generated from `task.md` + `guide.md` that must pass **100%** of `grader.ts` |
+| `targets/<base_app>/patches/zero-passrate.patch` | Calibration baseline diff (empty on almost every guide, so calibration runs against the untouched starting app) that must pass **0%** of non-exempt checks |
 | `targets/<base_app>/grader.ts` | Playwright + static AST test suite run against the eval agent's output |
 
-## Writing `expectations.md`
+---
 
-Write a natural-language, bulleted list of assertions that must be true if an agent implements `guide.md` correctly.
+## Eval Review Bar: The 8 Red Lines
 
-* **1:1 with grader tests** — Each bullet becomes one `test()` block in `grader.ts` (for use-case guides). Write one bullet per assertion; do not combine multiple checks into a single bullet.
-* **Plain declarative phrasing** — Write each bullet as a plain statement of what is true of a correct implementation (e.g., "The dialog closes when the Escape key is pressed"). Omit `The implementation MUST…` boilerplate; imperative directives belong in `guide.md`.
-* **Concrete, testable criteria** — Every expectation must be verifiable via static AST analysis (Linkedom, CSSOMNom, ts-morph) or Playwright browser execution.
-* **Scoped to this use case** — Only include expectations that apply to the specific use case being graded and are documented in `guide.md`.
-* **Avoid untestable conditional expectations** — Avoid `"If the implementation uses X, then Y"` expectations when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
-* **No external links** — The grader generator cannot resolve them.
-* **Avoid over-constraining** — Describe required outcomes, API contracts, or structural invariants rather than prescribing incidental implementation details (specific variable names, helper names, or file paths).
-* **Separate native and fallback expectations** — Write core expectations assuming all features in `guide.md` are natively supported. When `guide.md` includes `## Fallback strategies`, write each fallback requirement as a separate plain-English bullet that names the unsupported feature (e.g., *"When `<feature>` is unsupported, ..."*) rather than combining native and fallback checks in the same bullet, so `gd dev` can scope fallback tests with `skipUnless({ unsupported: '<feature>' })` automatically.
+When authoring or reviewing an eval, hold it to these 8 red lines. An eval is wrong if any of the following is true:
+
+1. **A check gives the wrong verdict.** It fails a solution that follows the guide, or passes a broken or missing one. Common causes: vacuous or tautological assertions; checks that only find elements via classes or IDs the task never establishes or that only the golden solutions use; reading a single file when a solution can span several; using source regex or AST for behavior the browser should check; fixed `waitForTimeout` waits instead of polling; or a required expectation with no test.
+   * *Guard:* Only treat an over-strict check as wrong when the rejected pattern is one the guide allows, or when a failure is reproduced on a real run or valid solution. Never loosen a check speculatively for hypothetical code no agent would write.
+2. **The task hands the unguided run the answer.** It names the target API, CSS property, HTML attribute, fallback mechanism, or expectation checklist, names the guide, or copies `guide.md`'s frontmatter `description` verbatim.
+   * *Guard:* Naming the user-visible component being built ("a modal dialog", "custom elements") and neutral `id`/`data-*` hooks is fine.
+3. **An expectation grades something the guide doesn't require, or contradicts it.** It invents an untaught rule, turns an "(Optional)" or one-of-several pattern into a mandatory requirement, hardcodes snippet identifiers or magic numbers, requires a fallback for a Baseline Widely Available feature the guide says needs none, or contradicts the guide's own code or prose.
+4. **An expectation can't be tested objectively on the target app.** It requires subjective judgment, grades the guide, the browser, or code comments instead of the app, or assumes something the starting app and task never include (such as live HTTP response headers on a static client-only app, or media/iframes/forms that aren't there).
+5. **The guide teaches broken code or wrong spec/browser behavior.** A code snippet throws or fails in a real browser (including code in the fallback section), or the prose misstates web specs or browser support.
+6. **The task and grader disagree on what to build.** The task contradicts an expectation, or the grader checks a feature, selector, or endpoint that the task never asks for *and* the guide doesn't require. This often happens after `task.md` is edited to remove a leak while `grader.ts` keeps the old check: whenever you edit a task, re-check the grader.
+7. **Two guides an agent retrieves together contradict each other on the task**, so following one causes the other's grader to fail.
+8. **Calibration breaks.** A golden solution fails a check, the untouched starting app (or Gen1 `negative-demo.html`) passes a non-exempt check, or a patch commits build or dependency artifacts (`node_modules`, `dist`).
+
+**Ownership & fixes:**
+- **Never change a guide to fit its grader.** If a grader needs the guide to say something new, fix the grader (or raise the gap with the guide's owner).
+- **Preserve SME wording in `expectations.md`.** SMEs own `guide.md`, `demo.html`, and `expectations.md`. Keep existing `expectations.md` wording; edit a bullet only when its meaning must change (the guide doesn't teach it, the task doesn't ask for it, or it rejects an alternative the guide allows), and state the reason. Never reword existing expectations just to line up with test titles.
+
+---
+
+## Writing & Reviewing `expectations.md`
+
+See [project-guides](../project-guides/SKILL.md#writing-expectationsmd) for full `expectations.md` authoring rules. Key evaluation invariants:
+
+* **Cover every required outcome, with no bullet cap:** Include every observable outcome `guide.md` requires (including required `DO NOT` rules, accessibility patterns, and fallbacks for features that are not Baseline Widely Available), whether or not `task.md` explicitly prompts for it. There is no cap on bullet count ("roughly 5-10" is only a scope-smell hint that a guide may be too broad, never a limit).
+* **No optional or "prefer" items:** Optional enhancements, "prefer" recommendations, and fallbacks for Baseline Widely Available features are never graded and do not belong in `expectations.md`.
+* **Never drop a requirement just because it is hard to test:** Test it, or keep the bullet in `expectations.md` and note it as untested (or skip it per target with a stated reason).
+* **1:1 mapping for new expectations:** Each bullet states a single requirement and maps to one `test()` block in `grader.ts`. Test titles should clearly describe the expectation, and `src/core/grader-coverage.ts` verifies semantic coverage on non-discipline guides, but test titles do not have to match expectation bullets verbatim.
+* **Separate native and fallback bullets:** Write core expectations assuming native support. When `guide.md` requires a fallback for a feature that is not Baseline Widely Available, write each fallback requirement as a separate bullet naming the unsupported feature (*"When `<feature>` is unsupported, ..."*) so `grader.ts` can scope it with `skipUnless({ unsupported: '<feature>' })`.
 
 ---
 
 ## Writing & Reviewing `targets/<base_app>/task.md`
 
-`targets/<base_app>/task.md` contains a single realistic developer prompt formatted as a single `- ` line with no YAML frontmatter:
+`targets/<base_app>/task.md` contains a single developer prompt formatted as one `- ` line with no YAML frontmatter and no internal line breaks (the harness only reads the first `- ` bullet):
 
 ```md
 - Add a passkey management section to the account settings where signed-in readers can view their registered passkeys, rename them, or remove keys they no longer use, keeping their authenticator in sync.
 ```
 
 ### Rules for `task.md`
-1. **Grounded in the Application**: Assume the developer is working on the existing app and reference its real pages, components, and content where relevant. If the feature modifies or enhances an existing layout, component, or behavior already in the app, ask the assistant to upgrade, refactor, or modify those existing parts rather than building an isolated demo from scratch.
-2. **Never Copy Description Verbatim**: Do not copy the frontmatter `description` string verbatim into `task.md`. Adapt the desired user outcome into a natural developer request situated in the target app.
-3. **Derived Strictly from `guide.md` Frontmatter Description**: `task.md` is generated with structural context isolation: only the frontmatter `description` string and the base app codebase are provided. Neither `guide.md` nor `expectations.md` are present, physically preventing spoiler leakage.
-4. **Preserve High-Level Capability Boundary**: Keep the execution context and functional boundary from the frontmatter `description` clear (e.g., distinguishing on-device / built-in browser capabilities from external cloud APIs) so the implementing agent knows what problem domain it is solving.
-5. **No Technical or API Dictation (Neutral Hooks Allowed)**: NEVER name specific web platform APIs, CSS properties/at-rules, or method names (e.g., do not say `"use @view-transition"`, `"use window.Translator"`, or `"call signalAllAcceptedCredentials"`). Describe the desired user outcome instead. `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs to locate, named after the app content it shows or manages rather than an HTML element, attribute, CSS feature, or API (e.g. `id="passkey-list"`, never `id="share-dialog"` or `data-popover`). Routes or endpoints that do not exist in the base app are never invented.
-6. **Single-line bullet format**: Must be formatted strictly as a single line prefixed with `- `, with no YAML frontmatter and no internal line breaks.
-7. **Imperative Action Request & Natural Tone**: Phrase as a direct developer request to an AI coding assistant (`"Add..."`, `"Update..."`, `"Implement..."`), casual and natural, never as an advisory question (`"How can I...?"`).
-8. **No Internal References**: Never mention `guide.md`, guidance skills, or the guidance project.
+1. **Single `- ` line:** Format strictly as one line starting with `- `, with no YAML frontmatter and no line breaks. Additional bullets are ignored by the runner.
+2. **Describe the outcome, never the mechanism:** Never name web platform APIs, CSS properties/at-rules, HTML attributes, fallback mechanisms, or expectation checklists (e.g., do not say `"use @view-transition"`, `"use window.Translator"`, or `"call signalAllAcceptedCredentials"`). Never add artificial constraints designed to force a specific modern API ("constraint forcing" is retired). Naming the user-visible component being built ("a modal dialog", "custom elements") and preserving the high-level capability boundary (such as on-device vs. cloud processing, or a discipline guide's topic) is fine.
+3. **Never name the guide or copy `description` verbatim:** Never mention `guide.md`, the guidance skill, or the guide's slug, and do not paste `guide.md`'s frontmatter `description` verbatim. Adapt the goal into a natural imperative request (`"Add..."`, `"Update..."`, `"Implement..."`, never `"How can I...?"`) grounded in the target app's real pages and components.
+4. **Neutral hooks allowed; no invented routes:** `task.md` may point at elements already in the starting app or name a neutral `id` or `data-*` hook for new elements the grader needs to locate, named after the app content it shows or manages rather than an HTML element, attribute, CSS feature, or API (e.g., `id="passkey-list"`, never `id="share-dialog"` or `data-popover`). Never invent routes or REST endpoints that do not exist in the base app.
+5. **Agree with the grader and expectations:** Unprompted requirements are fair to grade when `guide.md` requires them, but `task.md` must never contradict `expectations.md`. Whenever you edit `task.md` (for example, to scrub a prompt leak), check `grader.ts` in the same pass so the grader is not left asserting a removed prompt detail, selector, or sub-feature that `guide.md` doesn't require.
 
 ---
 
 ## Writing & Reviewing `targets/<base_app>/grader.ts`
 
-Graders are generated from [`src/grading/template.grader.ts`](../../../src/grading/template.grader.ts) and calibrated against the 3 golden solution patches (`100%`) and `zero-passrate.patch` (`0%`).
+Graders are built from [`src/grading/template.grader.ts`](../../../src/grading/template.grader.ts) and checked by [`src/core/grader-lint.ts`](../../../src/core/grader-lint.ts).
 
-### 1. Right Instrument for the Claim: Parsers vs. Browser
-Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtools-times`) never invent URL routes or mock REST API endpoints in `task.md`, though `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs.
-- **Structure and API usage → Parsers**: Check structure and API usage with parsers, never regex on source:
-  - **Linkedom** (`getHtmlDocuments`) for HTML structure and DOM querying.
-  - **CSSOMNom** (`getRules`, `getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`, `@position-try`), and declarations.
-  - **ts-morph** (`getJsProject`) for JS/TS syntax, API calls, and state wiring.
-  - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax.
-- **Runtime behavior → Browser**: Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright:
-  - Browser tests locate elements through base-app markup, hooks that `task.md` names, or platform semantics (element types, ARIA roles, standard attributes).
-  - **Never** use invented routes, custom REST API endpoints/payloads, or IDs or classes that exist only in the 3 golden solution patches.
+### 1. Right Instrument: Browser for Behavior, Static Parsers for Source Claims
+- **Runtime behavior -> Playwright browser checks:** Verify interaction, state changes, computed styles, layout, accessibility tree state, and runtime API execution in a real browser over HTTP (`page.goto(TARGET_URL)` from `test-fixture.ts`, never `file://` in Gen2 graders).
+  - Locate elements through starting-app markup, neutral hooks established in `task.md`, or platform semantics (element types, ARIA roles, standard attributes).
+  - Poll for asynchronous state (`expect.poll`, `waitForFunction`, Playwright web-first assertions); never use fixed `waitForTimeout` waits.
+- **Source-level claims -> Static AST/DOM/CSSOM parsers:** Use static parsers only when the expectation is genuinely about source structure or static syntax across all project files (`getTargetFiles(import.meta.url)`), never reading only a single file when a solution can span several, and never running regex on raw source to test behavior:
+  - **Linkedom** (`getHtmlDocuments`) for static HTML templates.
+  - **CSSOMNom** (`getRules`, `getCssStyleSheet`) for stylesheet rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`, `@position-try`), and declarations.
+  - **ts-morph** (`getJsProject`) for JS/TS AST inspection when runtime browser verification isn't applicable.
 
-### 2. Anti-Overfitting to Golden Solution Patches
-The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `task.md` + `guide.md` (without seeing `expectations.md`) and are **locked** during calibration. They represent valid implementations, **not** an exhaustive specification.
-- **Never hardcode golden-patch identifiers**: Do not match allowlists of helper function names (e.g., `syncAcceptedCredentials`, `loadCredentials`), React state variable names, or newly created filenames from the calibration patches. Match conceptual roles (e.g., any function calling a WebAuthn method or registered in an event listener).
-- **Unwrap TypeScript expressions**: Always unwrap `AsExpression`, `TypeAssertionExpression`, `SatisfiesExpression`, and `ParenthesizedExpression` before inspecting call arguments or object literals.
-- **Follow variable indirection**: Resolve local `VariableDeclaration`, `BindingElement`, or parameter references when an identifier is passed as an argument instead of assuming inline object literals.
-- **Trace helper & wrapper functions**: Do not assume a platform API is called directly inside a component or event handler. Trace calls and forwarded arguments through helper/wrapper functions across modules.
-- **Flexible error handling**: Accept both `try/catch` (`TryStatement`) and promise `.catch()` handlers.
-- **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getRules` / `getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
+### 2. Accept Every Pattern the Guide Allows (No Golden Overfitting)
+The 3 golden solution patches (`claude`, `codex`, `jetski`/`antigravity`) are generated from `task.md` + `guide.md` without seeing `expectations.md`. They are sample valid solutions, not an exhaustive spec.
+- **Never hardcode golden-only selectors or identifiers:** Do not require class names, IDs, helper function names, state variable names, or file names that only appear in the golden patches and were neither established in `task.md`/base-app nor required by `guide.md`.
+- **Handle normal code variations:** In AST checks, unwrap TypeScript type assertions (`AsExpression`, `SatisfiesExpression`, `ParenthesizedExpression`), follow local variable/parameter indirection, trace calls through helper functions across modules, and accept both `try/catch` and `.catch()`. In Tailwind/utility-CSS apps, accept either standard CSS declarations or equivalent utility classes.
 
-### 3. No Vacuous Checks or Swallowed Errors
-- **One expectation per `test()` block**: Each `test('...', ...)` block checks a single expectation for clear failure diagnostics, with a precondition assertion (e.g., asserting the list isn't empty) allowed before the main assertion.
-- **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
-- **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
-- **Fallback-scoped tests (`skipUnless`)**: For expectations that only apply when a feature is unsupported (corresponding to `## Fallback strategies` in `guide.md`), call `skipUnless({ unsupported: '<feature>' })` (imported from `test-fixture.ts`) as the first line of the test body, where `<feature>` is a `web-features` ID from `guide.md` frontmatter or a BCD key. The harness automatically detects `skipUnless({ unsupported: '<feature>' })` calls in `grader.ts` and runs additional evaluation variants (`newly`, `limited`) for any Newly or Limited availability features. Do not call `skipUnless` for universal expectations.
+### 3. One Expectation Per Test, Precondition Assertions, & Non-Vacuous Checks
+- **One expectation per `test()` block:** Each `test('...', ...)` block verifies one expectation for clear diagnostics, with a precondition/presence assertion (e.g., `expect(items.length).toBeGreaterThan(0)`) allowed before the main assertion.
+- **No vacuous guards or tautologies:** Never write `if (items.length > 0) { expect(...); }`, `expect(true).toBe(true)`, `cond || true`, or wrap assertions in `try/catch` that swallow failures. Always assert element/rule presence before calling `.every(...)`.
+- **Pair `MUST NOT` checks with a positive presence check:** An untouched starting app trivially satisfies "does not use X" if the feature isn't built yet. Pair every negative check with a positive check that the target component or feature exists, so an unimplemented app fails the test.
+- **Never use `test.skip()`:** Enforced by `grader-lint.ts`.
+  - **Fallback tests (`skipUnless`):** For fallback expectations (`## Fallback strategies` in `guide.md`), call `skipUnless({ unsupported: '<feature>' })` as the first line of the test body using a valid `web-features` ID or BCD key.
+  - **Discipline guides & inapplicable expectations:** Discipline guides (`DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`) only test the expectations that apply to the target app. If an expectation's precondition is absent from both the starting app and `task.md` (e.g., server response headers on a static client-only app), omit/skip it for that target with a stated reason in the grader header rather than writing a vacuous pass. Runtime states a grader can simulate in Playwright (viewport sizes, permission states, network errors) are not missing preconditions and must be tested.
 
 ---
 
-## Generating & Validating Evals
+## Calibration & Validation
+
+Calibration (`gd dev <guide> --test-grader`) verifies that:
+1. **Every golden solution patch passes 100%** of non-skipped tests.
+2. **The untouched starting app passes 0%**, except for a `MUST NOT` check the starting app already satisfies when paired with a presence check (on `main`, `targets/<app>/patches/zero-passrate.patch` still exists on disk and is empty for almost every guide, so `zero-passrate.patch` is the untouched starting app; Gen1 guides calibrate against `demo.html` and `negative-demo.html`).
+3. **Patches are clean:** Golden patches never commit `node_modules/`, `dist/`, or build junk.
 
 ```bash
-# Generate missing target patches, task.md, and grader.ts, calibrate, and run evals
-gd dev <path-to-guide-directory>
-
-# Verify existing grader calibration against golden (100%) and zero-passrate (0%) patches
+# Verify existing grader calibration against golden patches and zero-passrate.patch
 gd dev <path-to-guide-directory> --test-grader
+
+# Run static grader lint and guide/coverage integrity checks
+node --test src/core/grader-lint.test.ts src/authoring/guides-integrity.test.ts
 ```
 
-If you modify the underlying `gd dev` prompts (`src/authoring/dev-prompts.ts`, `src/authoring/dev.ts`, `src/grading/generate-grader.ts`), use the [`dev-prompt-canary`](../dev-prompt-canary/SKILL.md) skill to empirically validate the prompt changes against the canary suite.
+* When modifying existing graders or shared grading helpers, use [`grader-replay`](../grader-replay/SKILL.md) to replay saved nightly solutions and verify check flips.
+* When modifying `gd dev` prompts (`src/authoring/dev-prompts.ts`, `src/authoring/dev.ts`, `src/grading/generate-grader.ts`), use [`dev-prompt-canary`](../dev-prompt-canary/SKILL.md).
+* For triaging pass rates and retrieval flags across nightly runs, use [`nightly-eval-investigation`](../nightly-eval-investigation/SKILL.md).

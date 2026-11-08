@@ -64,9 +64,9 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `guide.md` | SME (human) | The guidance itself. Read by coding agents via Skills. (`SKILL.md` is reserved for the entrypoint and standalone skills.) Contains YAML frontmatter (name, description, web-feature-ids) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
 | `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader and solution generation. |
-| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`jetski-solution.patch`, `gemini-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
-| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated to pass golden patches 100% and zero-passrate baseline 0%. |
-| `targets/<base_app>/task.md` | Generated (`gd dev`) | Task frontmatter (`base_app`) and developer prompt instructions fed to evaluation agents. |
+| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`jetski-solution.patch`, `gemini-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`, empty for almost every guide so calibration runs against the untouched starting app). Used for grader calibration. |
+| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated so every golden patch passes every test and the untouched starting app (`zero-passrate.patch`) passes none, except a `MUST NOT` check it already satisfies (paired with a positive presence check). |
+| `targets/<base_app>/task.md` | Generated (`gd dev`) | Single `- ` bullet developer prompt fed to evaluation agents (no YAML frontmatter). |
 | `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
 ### Discipline guides
@@ -277,16 +277,16 @@ To prevent SMEs from investing time writing full guides for use cases that might
 - After use cases are approved, SME fleshes out `guide.md` with full content (DO/DO NOT directives, code snippets, fallback strategies)
 - Writes `expectations.md` with testable assertions
 - Completes `demo.html` as a gold-standard implementation
-- Runs `gd dev <dir>` to auto-generate negative-demo, grader, calibrate, and run agent tests
+- Runs `gd dev <dir>` to auto-generate target patches, `task.md`, and `grader.ts`, calibrate, and run agent tests
 - Opens a follow-up PR with all artifacts
 
 ### Writing guide.md
 
 Guides are read by AI coding agents, not humans directly. Key requirements:
 - YAML frontmatter with `name`, `description`, and `web-feature-ids`
-- Imperative directives: use `MANDATORY:`, `DO`, `DO NOT` — agents respond to rigid constraints
+- Imperative directives: use `DO` and `DO NOT`, with `MANDATORY:` reserved for selective emphasis on critical constraints (not as a required tag on every graded instruction)
 - Self-contained: all necessary information must be in the document, no reliance on external links
-- Short, commented code snippets with directives in code comments
+- Short, commented, copy-paste valid code snippets (including fallback code) with directives in code comments
 - Fallback strategies section if the feature is not Baseline Widely Available
 - Use `{{ BASELINE_STATUS("feature-id") }}` macro for browser support display
 - Use `{{ INCLUDE("path[#section]") }}` to transclude a whole markdown file or one section. Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file
@@ -297,9 +297,9 @@ Guides are read by AI coding agents, not humans directly. Key requirements:
 ### Writing expectations.md
 
 Natural-language bulleted list of assertions. These are the input for automated grader generation. Requirements:
-- Each assertion should be independently testable
-- Be specific enough that a Playwright test can verify it (e.g., "The input has a red border after blur" rather than "The form looks good")
-- Cover both positive requirements (what should be present) and negative requirements (what should not be present)
+- Cover every observable outcome `guide.md` requires (including required fallbacks when the feature is not Widely Available), with no arbitrary cap on bullet count; omit optional or "prefer" advice since it is never graded
+- Each assertion maps to one `test()` in new graders and must be specific enough for a Playwright test or structured AST/DOM/CSSOM check to verify
+- Cover both positive requirements (`MUST`) and negative bans (`MUST NOT`, paired with a positive presence check in the grader)
 
 ---
 
@@ -325,7 +325,7 @@ The boundary is intentionally drawn so that SMEs/ATLs never need to write or deb
 Grader, solution, and evaluation artifact generation use CLI coding agents rather than direct API calls because the generation pipeline needs to inspect multiple source files in context and produce file modifications. During `gd dev`, solutions are generated across three distinct agents (the primary solution agent—Jetski CLI or Gemini CLI—plus Claude Code and Codex CLI) to calibrate graders against diverse, model-realistic implementations. Isolated sandboxes prevent accidental modifications to the user environment.
 
 ### Why Playwright for grading?
-Graders are Playwright test files because many expectations require browser rendering to verify (CSS properties, layout, visibility, animation behavior). However, graders can also include non-browser checks (string matching on file contents, DOM structure analysis on raw HTML) for simpler assertions.
+Graders are Playwright test files because runtime behavior (computed styles, layout, visibility, focus, and interaction) must be verified in a real browser. For source-level claims (such as `@supports` blocks, keyframes, or specific AST constructs), graders use structured parsers (`Linkedom`, `CSSOMNom`, `ts-morph`) across all relevant app files rather than raw string or regex matching.
 
 ### Why Skills CLI serving?
 Serving guidance via Agent Skills and the standalone Skills CLI (`dist/skills-cli`) provides deterministic, portable, file-based tool and context access across all supported coding agents without reliance on external server protocols.
