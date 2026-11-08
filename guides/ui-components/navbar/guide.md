@@ -217,7 +217,7 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 ## Transitions and Accessibility
 
-If the navigation is animated (optional; add it when the abrupt open and close feels out of place), use `@starting-style`, include `display` and `overlay` in `transition`, and declare `transition-behavior: allow-discrete` as a separate property after `transition` (DO NOT put `allow-discrete` in the `transition` shorthand, which makes older browsers ignore the entire `transition` declaration) for both the mobile menu and the wide floating submenu. Animate only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
+If the navigation is animated (optional; add it when the abrupt open and close feels out of place), use `@starting-style`, include `display` and `overlay` in `transition`, and declare `transition-behavior: allow-discrete` as a separate property after `transition` (DO NOT put `allow-discrete` in the `transition` shorthand, which makes older browsers ignore the entire `transition` declaration) for both the mobile menu and the wide floating submenu. Animate only `opacity` and `translate`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}.
 
 ### Optional: Narrow submenu slide-down
 

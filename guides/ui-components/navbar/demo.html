@@ -210,11 +210,10 @@
       content: "";
       mask: var(--icon-chevron-down) no-repeat center / contain;
       -webkit-mask: var(--icon-chevron-down) no-repeat center / contain;
-      transition: transform 180ms ease;
     }
 
     .dropdown-trigger[aria-expanded="true"]::after {
-      transform: rotate(180deg);
+      rotate: 180deg;
     }
 
     .dropdown-list {
@@ -412,19 +411,23 @@
     }
 
     @media (prefers-reduced-motion: no-preference) {
+      .dropdown-trigger::after {
+        transition: rotate 180ms;
+      }
+
       .site-header.is-wide {
         .site-menu {
           opacity: 1;
-          transform: none;
+          translate: none;
           transition: none;
         }
 
         .dropdown-list[popover] {
           opacity: 0;
-          transform: translateY(-0.25rem);
+          translate: 0 -0.25rem;
           transition:
             opacity,
-            transform,
+            translate,
             display,
             overlay;
           transition-duration: 150ms;
@@ -434,11 +437,11 @@
 
         .dropdown-list[popover]:is(:popover-open, .\:popover-open) {
           opacity: 1;
-          transform: none;
+          translate: none;
 
           @starting-style {
             opacity: 0;
-            transform: translateY(-0.25rem);
+            translate: 0 -0.25rem;
           }
         }
       }
@@ -448,24 +451,24 @@
           transition:
             display,
             overlay,
-            opacity ease,
-            transform ease;
+            opacity,
+            translate;
           transition-duration: 180ms;
           /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
           transition-behavior: allow-discrete;
           opacity: 0;
-          transform: translateY(-0.5rem);
+          translate: 0 -0.5rem;
         }
 
         .site-menu:is(:popover-open, .\:popover-open) {
           opacity: 1;
-          transform: translateY(0);
+          translate: none;
         }
 
         @starting-style {
           .site-menu:is(:popover-open, .\:popover-open) {
             opacity: 0;
-            transform: translateY(-0.5rem);
+            translate: 0 -0.5rem;
           }
         }
 
@@ -473,8 +476,8 @@
           interpolate-size: allow-keywords;
           clip-path: inset(-6px); /* Clips the slide like overflow: clip, but leaves room for the focus ring; at least the ring's outline width plus offset */
           transition:
-            block-size 180ms ease,
-            padding-block 180ms ease,
+            block-size 180ms,
+            padding-block 180ms,
             content-visibility 180ms allow-discrete;
         }
 
@@ -508,12 +511,6 @@
       .dropdown-trigger::after {
         forced-color-adjust: none; /* Otherwise the masked background is dropped */
         background-color: CanvasText; /* currentColor would keep the page's gray */
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .site-menu {
-        transition: none;
       }
     }
   </style>
