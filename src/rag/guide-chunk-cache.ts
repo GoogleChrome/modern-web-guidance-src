@@ -1,14 +1,35 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { rootDir } from "../core/paths.ts";
+import { fileURLToPath } from "node:url";
+import {
+  STATIC_DIMS,
+  STATIC_EMBEDDING_DIMS,
+  l2Normalize,
+  toAlignedFloat32Array,
+  toInt8Array,
+  dequantizeVectorRow,
+  quantizeVectors,
+  truncateAndNormalize256,
+} from "./quantize.ts";
+
+export {
+  STATIC_DIMS,
+  STATIC_EMBEDDING_DIMS,
+  l2Normalize,
+  toAlignedFloat32Array,
+  toInt8Array,
+  dequantizeVectorRow,
+  quantizeVectors,
+  truncateAndNormalize256,
+};
 
 export const TEACHER_MODEL = "gemini-embedding-001";
 export const TASK_TYPE = "RETRIEVAL_DOCUMENT";
 export const TEACHER_DIM = 768;
-export const STATIC_DIMS = 256;
 
-export const DEFAULT_CACHE_DIR = path.join(rootDir, "src/rag/gen");
+const RAG_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const DEFAULT_CACHE_DIR = path.join(RAG_DIR, "gen");
 
 /**
  * Computes a deterministic sha256 hash identifying the embedded chunk:
@@ -25,90 +46,6 @@ export function computeChunkHash(
     .createHash("sha256")
     .update(`${model}\n${taskType}\n${dims}\n${embeddedText}`)
     .digest("hex");
-}
-
-/**
- * Normalizes an array-like vector to unit L2 norm.
- */
-export function l2Normalize(v: Float32Array): Float32Array {
-  let sumSq = 0;
-  for (let i = 0; i < v.length; i++) sumSq += v[i] * v[i];
-  const norm = Math.sqrt(sumSq) || 1;
-  for (let i = 0; i < v.length; i++) v[i] /= norm;
-  return v;
-}
-
-/**
- * Truncates a 768-d vector to 256-d (MRL) and L2-normalizes it.
- */
-export function truncateAndNormalize256(v768: ArrayLike<number>): Float32Array {
-  const t = new Float32Array(STATIC_DIMS);
-  for (let i = 0; i < STATIC_DIMS; i++) t[i] = v768[i];
-  return l2Normalize(t);
-}
-
-/**
- * Quantizes an array of vector rows (`number[] | Float32Array`, or empty for uncached chunks)
- * into a flat `Int8Array(N * dims)` and `Float32Array(N)` scales (`0` for empty vectors).
- */
-export function quantizeVectors(
-  vectors: ReadonlyArray<ArrayLike<number>>,
-  dims = STATIC_DIMS
-): { qTable: Int8Array; scales: Float32Array } {
-  const N = vectors.length;
-  const qTable = new Int8Array(N * dims);
-  const scales = new Float32Array(N);
-
-  for (let i = 0; i < N; i++) {
-    const vec = vectors[i];
-    if (!vec || vec.length === 0) {
-      scales[i] = 0;
-      continue;
-    }
-    if (vec.length !== dims) {
-      throw new Error(`Invalid vector dimension at index ${i}: expected ${dims}, got ${vec.length}`);
-    }
-
-    let maxAbs = 0;
-    for (let k = 0; k < dims; k++) {
-      const abs = Math.abs(vec[k]);
-      if (abs > maxAbs) maxAbs = abs;
-    }
-
-    const scale = maxAbs > 0 ? maxAbs / 127 : 0;
-    scales[i] = scale;
-    if (scale === 0) continue;
-
-    const offset = i * dims;
-    for (let k = 0; k < dims; k++) {
-      const q = Math.round(vec[k] / scale);
-      qTable[offset + k] = Math.max(-127, Math.min(127, q));
-    }
-  }
-
-  return { qTable, scales };
-}
-
-/**
- * Dequantizes a single row from `(qTable, scales)` at index `i` and L2-normalizes it.
- * Returns an empty `Float32Array(0)` when `scales[i] === 0` (uncached BM25-only chunk).
- */
-export function dequantizeVectorRow(
-  qTable: Int8Array,
-  scales: Float32Array,
-  index: number,
-  dims = STATIC_DIMS
-): Float32Array {
-  const scale = scales[index];
-  if (!scale) {
-    return new Float32Array(0);
-  }
-  const offset = index * dims;
-  const vec = new Float32Array(dims);
-  for (let k = 0; k < dims; k++) {
-    vec[k] = qTable[offset + k] * scale;
-  }
-  return l2Normalize(vec);
 }
 
 /**
@@ -140,13 +77,8 @@ export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float3
     );
   }
 
-  const qTable = new Int8Array(i8Buf.buffer, i8Buf.byteOffset, i8Buf.byteLength);
-  // Slice to a fresh ArrayBuffer so Float32Array is guaranteed 4-byte aligned regardless of Buffer slab pooling.
-  const alignedScaleBuf = scaleBuf.buffer.slice(
-    scaleBuf.byteOffset,
-    scaleBuf.byteOffset + scaleBuf.byteLength
-  );
-  const scales = new Float32Array(alignedScaleBuf);
+  const qTable = toInt8Array(i8Buf);
+  const scales = toAlignedFloat32Array(scaleBuf);
 
   const cache = new Map<string, Float32Array>();
   for (let i = 0; i < N; i++) {

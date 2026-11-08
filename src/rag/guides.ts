@@ -1,8 +1,9 @@
 import { promises as fs, readFileSync, existsSync } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
 import type { OriginTrialMetadata, VolatileFeatureMetadata } from "../core/feature-gates.ts";
+import { resolveSkillsCliDataDir } from "./data-dir.ts";
+
+export { resolveSkillsCliDataDir };
 
 export interface UseCase {
   id: string;
@@ -12,24 +13,6 @@ export interface UseCase {
   tokenCount: number;
   originTrials?: OriginTrialMetadata[];
   volatileFeatures?: VolatileFeatureMetadata[];
-}
-
-const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
-
-function resolveSkillsCliDataDir(): string {
-  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), gen/guides.json and gen/guide-chunks.* sit next to modern-web.mjs / search.mjs
-  if (existsSync(path.join(BUNDLE_DIR, 'gen/guides.json')) || existsSync(path.join(BUNDLE_DIR, 'gen/guide-chunks.json.gz'))) {
-    return BUNDLE_DIR;
-  }
-  // In repo source mode (src/rag/), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli
-  let dir = BUNDLE_DIR;
-  while (dir !== path.dirname(dir)) {
-    if (existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
-      return path.join(dir, 'out/build/skills-cli');
-    }
-    dir = path.dirname(dir);
-  }
-  return BUNDLE_DIR;
 }
 
 function loadUseCases(): UseCase[] {

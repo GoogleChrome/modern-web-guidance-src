@@ -6,7 +6,8 @@ import path from 'node:path';
 import {
   generateGuidesIndex,
   generateGuidesTocYaml,
-  processSingleGuideFile,
+  processSkillsCliGuide,
+  processDevsiteGuide,
   type DevsiteGuideMetadata,
   type StoreUseCase,
 } from './build-guides.ts';
@@ -180,7 +181,7 @@ describe('formatChunkHeader', () => {
   });
 });
 
-describe('processSingleGuideFile cache miss regression', () => {
+describe('processSkillsCliGuide cache miss regression', () => {
   it('assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-cache-miss-test-'));
     try {
@@ -193,7 +194,7 @@ describe('processSingleGuideFile cache miss regression', () => {
       const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
       const emptyCache = new Map<string, Float32Array>();
 
-      await processSingleGuideFile({
+      await processSkillsCliGuide({
         filePath: guideFile,
         category: 'css',
         id: 'test-guide',
@@ -208,6 +209,35 @@ describe('processSingleGuideFile cache miss regression', () => {
       for (const item of storeUseCases) {
         assert.deepStrictEqual(item.vector, [], 'Uncached chunk vector must be empty array, not StaticEmbedder vector');
       }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('processes guide for devsite output and extracts metadata', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-guide-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: DevSite Test Guide\ndescription: Guide for devsite\nweb-feature-ids:\n  - subgrid\n---\n# DevSite Test Guide\nSome markdown content.`
+      );
+      const devsiteGuides: DevsiteGuideMetadata[] = [];
+      const outGuidesDir = path.join(tmpDir, 'built');
+
+      await processDevsiteGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        buildGuidesDir: outGuidesDir,
+        devsiteGuides,
+      });
+
+      assert.strictEqual(devsiteGuides.length, 1);
+      assert.strictEqual(devsiteGuides[0].id, 'test-guide');
+      assert.strictEqual(devsiteGuides[0].title, 'DevSite Test Guide');
+      assert.deepStrictEqual(devsiteGuides[0].webFeatureIds, ['subgrid']);
+      assert.ok(fs.existsSync(path.join(outGuidesDir, 'css/test-guide.md')));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

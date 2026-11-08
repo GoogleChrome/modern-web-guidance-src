@@ -61,9 +61,7 @@ export interface CorpusForPooling {
 }
 
 export function loadCorpusForPooling(buildDir = path.join(outDir, "build/skills-cli")): CorpusForPooling {
-  const guidesJsonPath = fs.existsSync(path.join(buildDir, "gen/guides.json"))
-    ? path.join(buildDir, "gen/guides.json")
-    : path.join(buildDir, "guides.json");
+  const guidesJsonPath = path.join(buildDir, "gen/guides.json");
   const guidesDir = path.join(buildDir, "guides");
 
   const metaRaw: unknown = JSON.parse(fs.readFileSync(guidesJsonPath, "utf8"));

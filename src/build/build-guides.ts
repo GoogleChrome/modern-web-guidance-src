@@ -21,6 +21,12 @@ import { rootDir, outDir } from "../core/paths.ts";
 import { CATEGORIES } from "../core/categories.ts";
 import { toDevsiteMarkdown } from "./devsite-markdown.ts";
 import type { UseCase } from "../rag/guides.ts";
+import type { EmbedderLike } from "../rag/search.ts";
+import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
+import {
+  parseGuideFile,
+  extractGuideChunks,
+} from "../core/guide-chunks.ts";
 
 const WORKSPACE_ROOT = rootDir;
 
@@ -32,7 +38,6 @@ export interface StoreUseCase {
   tokenCount?: number;
   chunkContent?: string;
   vector?: number[];
-  distance?: number;
 }
 
 export interface DevsiteGuideMetadata {
@@ -44,13 +49,6 @@ export interface DevsiteGuideMetadata {
   refreshDate: string;
   path: string;
 }
-
-import type { EmbedderLike } from "../rag/search.ts";
-import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
-import {
-  parseGuideFile,
-  extractGuideChunks,
-} from "../core/guide-chunks.ts";
 
 export interface BuildOptions {
   outputDir: string;
@@ -101,11 +99,8 @@ export async function computePipelineHash(
   const deps = [
     import.meta.filename,
     path.join(rootDir, "src/core/macros.ts"),
-    path.join(rootDir, "src/rag/static-embedder.ts"),
-    path.join(rootDir, "src/rag/gen/query-words.json"),
-    path.join(rootDir, "src/rag/gen/query-words.i8"),
-    path.join(rootDir, "src/rag/gen/query-words.scale.f32"),
     path.join(rootDir, "src/rag/guide-chunk-cache.ts"),
+    path.join(rootDir, "src/rag/quantize.ts"),
     path.join(rootDir, "src/core/guide-chunks.ts"),
     path.join(rootDir, "src/rag/gen/guide-chunk-cache.json"),
     path.join(rootDir, "src/rag/gen/guide-chunk-cache.i8"),
@@ -424,22 +419,30 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   console.log(target === 'devsite' ? "Exporting DevSite guides…" : "Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile({
-      filePath: guidePath,
-      category: inv.category,
-      id: inv.name,
-      useCases,
-      storeUseCases,
-      target,
-      noChunking: isNoChunking,
-      buildGuidesDir,
-      embedder,
-      devsiteGuides,
-      gitInfo,
-      modelName,
-      chunkCache,
-      missingChunks,
-    });
+    if (target === 'devsite') {
+      await processDevsiteGuide({
+        filePath: guidePath,
+        category: inv.category,
+        id: inv.name,
+        buildGuidesDir,
+        devsiteGuides,
+        gitInfo,
+      });
+    } else {
+      await processSkillsCliGuide({
+        filePath: guidePath,
+        category: inv.category,
+        id: inv.name,
+        useCases,
+        storeUseCases,
+        noChunking: isNoChunking,
+        buildGuidesDir,
+        embedder,
+        modelName,
+        chunkCache,
+        missingChunks,
+      });
+    }
   }
 
   if (missingChunks.length > 0) {
@@ -533,25 +536,127 @@ function approxTokens(text: string): number {
   return (text.match(/\w+|[^\w\s]/g) || []).length;
 }
 
-export interface ProcessSingleGuideFileOptions {
+export interface ProcessDevsiteGuideOptions {
+  filePath: string;
+  category: string;
+  id: string;
+  buildGuidesDir?: string;
+  devsiteGuides?: DevsiteGuideMetadata[];
+  gitInfo?: GitInfo;
+}
+
+export async function processDevsiteGuide(
+  options: ProcessDevsiteGuideOptions
+): Promise<void> {
+  const { filePath, category, id, buildGuidesDir, devsiteGuides, gitInfo } = options;
+  const includedFiles = new Set<string>();
+  const parsed = parseGuideFile({ filePath, target: 'devsite', includedFiles });
+  if (!parsed) {
+    // Just a stub guide. No content to index.
+    return;
+  }
+
+  const { title, description, featureIds: rawFeatureIds, processedMarkdown } = parsed;
+  const featureIds = rawFeatureIds.filter((fid: string) => !isTmpFeature(fid));
+
+  // Compute refresh_date: max date of guide file and any included files
+  const relGuidePath = path.relative(WORKSPACE_ROOT, filePath);
+  let refreshDate = gitInfo?.fileDates.get(relGuidePath);
+  for (const inc of includedFiles) {
+    const relInc = path.relative(WORKSPACE_ROOT, inc);
+    const incDate = gitInfo?.fileDates.get(relInc);
+    if (incDate && (!refreshDate || incDate > refreshDate)) {
+      refreshDate = incDate;
+    }
+  }
+  if (!refreshDate) {
+    refreshDate = new Date().toISOString().slice(0, 10);
+  }
+
+  const cleanDesc = String(description || "").replace(/\r\n/g, " ").replace(/\n/g, " ").trim();
+
+  const devsiteFrontmatter = [
+    'project_path: /docs/modern-web-guidance/_project.yaml',
+    'book_path: /docs/modern-web-guidance/_book.yaml',
+    `description: ${JSON.stringify(cleanDesc)}`,
+    'author: Chrome DevRel',
+    `refresh_date: ${refreshDate}`,
+  ].join('\n');
+
+  const resumedSteps: number[] = [];
+  const devsiteResult = toDevsiteMarkdown(processedMarkdown, {
+    filePath,
+    currentGuideId: id,
+    onListMerge: (stepNumber) => resumedSteps.push(stepNumber),
+  });
+  if (resumedSteps.length > 0) {
+    console.warn(`⚠️  ${path.relative(WORKSPACE_ROOT, filePath)}: folded unindented blocks into ordered lists (resumed at steps ${resumedSteps.join(", ")}).`);
+  }
+
+  const headerParts = [
+    '<link rel="stylesheet" href="/docs/modern-web-guidance/landing.css">',
+  ];
+  if (devsiteResult.hasBaselineMacro) {
+    headerParts.push('{% import "/_macros.html" as macros %}');
+  }
+  headerParts.push(`# ${title}`);
+
+  if (featureIds.length > 0) {
+    const chipsHtml = [
+      '<div class="guidance-chips">',
+      '  <span class="guidance-chips-label">Web features:</span>',
+    ];
+    for (const feat of featureIds) {
+      const featEsc = escapeHtml(feat);
+      const labelEsc = escapeHtml(getFeatureName(feat));
+      chipsHtml.push(`  <a class="guidance-chip" href="https://webstatus.dev/features/${featEsc}">${labelEsc}</a>`);
+    }
+    chipsHtml.push('</div>');
+    headerParts.push(chipsHtml.join('\n'));
+  }
+
+  headerParts.push('{% include "/docs/modern-web-guidance/_guide-promo.html" %}');
+
+  const sourceFooter = [
+    '<footer class="guidance-source nocontent" data-nosnippet>',
+    `  Source: <a href="https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/guides/${category}/${id}/guide.md">${id} guide on GitHub</a>`,
+    '</footer>',
+  ].join('\n');
+
+  const bodyWithoutH1 = stripLeadingH1(devsiteResult.markdown);
+  const finalContent = `${devsiteFrontmatter}\n\n${headerParts.join('\n\n')}\n\n${bodyWithoutH1.trim()}\n\n${sourceFooter}\n`;
+
+  writeBuiltGuide(buildGuidesDir, category, id, finalContent);
+
+  if (devsiteGuides) {
+    devsiteGuides.push({
+      id,
+      title,
+      description: cleanDesc,
+      category,
+      webFeatureIds: featureIds,
+      refreshDate,
+      path: `guides/${category}/${id}.md`,
+    });
+  }
+}
+
+export interface ProcessSkillsCliGuideOptions {
   filePath: string;
   category: string;
   id: string;
   useCases: UseCase[];
   storeUseCases: StoreUseCase[];
-  target?: BuildTarget;
   noChunking?: boolean;
   buildGuidesDir?: string;
   embedder?: EmbedderLike;
-  devsiteGuides?: DevsiteGuideMetadata[];
-  gitInfo?: GitInfo;
   modelName?: string;
   chunkCache?: Map<string, Float32Array> | null;
   missingChunks?: Array<{ guideId: string; category: string; chunk: string }>;
 }
 
-export async function processSingleGuideFile(
-  options: ProcessSingleGuideFileOptions
+export async function processSkillsCliGuide(
+  options: ProcessSkillsCliGuideOptions
 ): Promise<void> {
   const {
     filePath,
@@ -559,116 +664,19 @@ export async function processSingleGuideFile(
     id,
     useCases,
     storeUseCases,
-    target = 'skills-cli',
     noChunking = false,
     buildGuidesDir,
     embedder,
-    devsiteGuides,
-    gitInfo,
     modelName,
     chunkCache,
     missingChunks,
   } = options;
 
-  if (target === 'devsite') {
-    const includedFiles = new Set<string>();
-    const parsed = parseGuideFile({ filePath, target, includedFiles });
-    if (!parsed) {
-      // Just a stub guide. No content to index.
-      return;
-    }
-
-    const { title, description, featureIds: rawFeatureIds, processedMarkdown } = parsed;
-    const featureIds = rawFeatureIds.filter((fid: string) => !isTmpFeature(fid));
-
-    // Compute refresh_date: max date of guide file and any included files
-    const relGuidePath = path.relative(WORKSPACE_ROOT, filePath);
-    let refreshDate = gitInfo?.fileDates.get(relGuidePath);
-    for (const inc of includedFiles) {
-      const relInc = path.relative(WORKSPACE_ROOT, inc);
-      const incDate = gitInfo?.fileDates.get(relInc);
-      if (incDate && (!refreshDate || incDate > refreshDate)) {
-        refreshDate = incDate;
-      }
-    }
-    if (!refreshDate) {
-      refreshDate = new Date().toISOString().slice(0, 10);
-    }
-
-    const cleanDesc = String(description || "").replace(/\r\n/g, " ").replace(/\n/g, " ").trim();
-
-    const devsiteFrontmatter = [
-      'project_path: /docs/modern-web-guidance/_project.yaml',
-      'book_path: /docs/modern-web-guidance/_book.yaml',
-      `description: ${JSON.stringify(cleanDesc)}`,
-      'author: Chrome DevRel',
-      `refresh_date: ${refreshDate}`,
-    ].join('\n');
-
-    const resumedSteps: number[] = [];
-    const devsiteResult = toDevsiteMarkdown(processedMarkdown, {
-      filePath,
-      currentGuideId: id,
-      onListMerge: stepNumber => resumedSteps.push(stepNumber),
-    });
-    if (resumedSteps.length > 0) {
-      console.warn(`⚠️  ${path.relative(WORKSPACE_ROOT, filePath)}: folded unindented blocks into ordered lists (resumed at steps ${resumedSteps.join(", ")}).`);
-    }
-
-    const headerParts = [
-      '<link rel="stylesheet" href="/docs/modern-web-guidance/landing.css">',
-    ];
-    if (devsiteResult.hasBaselineMacro) {
-      headerParts.push('{% import "/_macros.html" as macros %}');
-    }
-    headerParts.push(`# ${title}`);
-
-    if (featureIds.length > 0) {
-      const chipsHtml = [
-        '<div class="guidance-chips">',
-        '  <span class="guidance-chips-label">Web features:</span>',
-      ];
-      for (const feat of featureIds) {
-        const featEsc = escapeHtml(feat);
-        const labelEsc = escapeHtml(getFeatureName(feat));
-        chipsHtml.push(`  <a class="guidance-chip" href="https://webstatus.dev/features/${featEsc}">${labelEsc}</a>`);
-      }
-      chipsHtml.push('</div>');
-      headerParts.push(chipsHtml.join('\n'));
-    }
-
-    headerParts.push('{% include "/docs/modern-web-guidance/_guide-promo.html" %}');
-
-    const sourceFooter = [
-      '<footer class="guidance-source nocontent" data-nosnippet>',
-      `  Source: <a href="https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/guides/${category}/${id}/guide.md">${id} guide on GitHub</a>`,
-      '</footer>',
-    ].join('\n');
-
-    const bodyWithoutH1 = stripLeadingH1(devsiteResult.markdown);
-    const finalContent = `${devsiteFrontmatter}\n\n${headerParts.join('\n\n')}\n\n${bodyWithoutH1.trim()}\n\n${sourceFooter}\n`;
-
-    writeBuiltGuide(buildGuidesDir, category, id, finalContent);
-
-    if (devsiteGuides) {
-      devsiteGuides.push({
-        id,
-        title,
-        description: cleanDesc,
-        category,
-        webFeatureIds: featureIds,
-        refreshDate,
-        path: `guides/${category}/${id}.md`,
-      });
-    }
-    return;
-  }
-
   const extracted = extractGuideChunks({
     filePath,
     category,
     id,
-    target,
+    target: 'skills-cli',
     noChunking,
   });
   if (!extracted) {
@@ -676,7 +684,7 @@ export async function processSingleGuideFile(
   }
 
   if (modelName && !embedder) {
-    throw new Error(`Embedder is required when modelName "${modelName}" is provided for target ${target}`);
+    throw new Error(`Embedder is required when modelName "${modelName}" is provided for skills-cli target`);
   }
   const { description, featureIds, featuresUsed, processedMarkdown } = extracted;
   const originTrials = getGuideOriginTrials(featureIds);
@@ -716,11 +724,46 @@ export async function processSingleGuideFile(
       featuresUsed,
       tokenCount,
       chunkContent: ec.embeddedText,
-      vector
+      vector,
     });
   }
 
   writeBuiltGuide(buildGuidesDir, category, id, processedMarkdown.trimStart());
+}
+
+export interface ProcessSingleGuideFileOptions extends Partial<ProcessDevsiteGuideOptions>, Partial<ProcessSkillsCliGuideOptions> {
+  filePath: string;
+  category: string;
+  id: string;
+  target?: BuildTarget;
+}
+
+export async function processSingleGuideFile(
+  options: ProcessSingleGuideFileOptions
+): Promise<void> {
+  if (options.target === 'devsite') {
+    return processDevsiteGuide({
+      filePath: options.filePath,
+      category: options.category,
+      id: options.id,
+      buildGuidesDir: options.buildGuidesDir,
+      devsiteGuides: options.devsiteGuides,
+      gitInfo: options.gitInfo,
+    });
+  }
+  return processSkillsCliGuide({
+    filePath: options.filePath,
+    category: options.category,
+    id: options.id,
+    useCases: options.useCases || [],
+    storeUseCases: options.storeUseCases || [],
+    noChunking: options.noChunking,
+    buildGuidesDir: options.buildGuidesDir,
+    embedder: options.embedder,
+    modelName: options.modelName,
+    chunkCache: options.chunkCache,
+    missingChunks: options.missingChunks,
+  });
 }
 
 // Only run automatically if executed directly

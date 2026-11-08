@@ -3,8 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { tokenize } from "./bm25.ts";
 import type { EmbedderLike } from "./search.ts";
+import {
+  STATIC_DIMS,
+  STATIC_EMBEDDING_DIMS,
+  toAlignedFloat32Array,
+  toInt8Array,
+} from "./quantize.ts";
 
-export const STATIC_EMBEDDING_DIMS = 256;
+export { STATIC_DIMS, STATIC_EMBEDDING_DIMS };
 
 interface StaticModelData {
   words: string[];
@@ -121,7 +127,7 @@ export class StaticEmbedder implements EmbedderLike {
         `Corrupt query-words.i8: size ${tableBuf.byteLength} != expected ${words.length * STATIC_EMBEDDING_DIMS}`
       );
     }
-    const table = new Int8Array(tableBuf.buffer, tableBuf.byteOffset, tableBuf.byteLength);
+    const table = toInt8Array(tableBuf);
 
     const scaleBuf = fs.readFileSync(scalesPath);
     if (scaleBuf.byteLength !== words.length * 4) {
@@ -129,9 +135,7 @@ export class StaticEmbedder implements EmbedderLike {
         `Corrupt query-words.scale.f32: size ${scaleBuf.byteLength} != expected ${words.length * 4}`
       );
     }
-    // Slice to a fresh ArrayBuffer so Float32Array is guaranteed 4-byte aligned regardless of Buffer slab pooling.
-    const alignedScaleBuf = scaleBuf.buffer.slice(scaleBuf.byteOffset, scaleBuf.byteOffset + scaleBuf.byteLength);
-    const scales = new Float32Array(alignedScaleBuf);
+    const scales = toAlignedFloat32Array(scaleBuf);
 
     this.model = { words, wordIndex, table, scales };
     return this.model;

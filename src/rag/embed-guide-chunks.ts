@@ -27,46 +27,10 @@ import {
   scanCorpusChunks,
   type GuideChunk,
 } from "../core/guide-chunks.ts";
-
-interface BatchEmbeddingResponse {
-  embeddings: Array<{ values: number[] }>;
-}
-
-function isBatchEmbeddingResponse(val: unknown): val is BatchEmbeddingResponse {
-  if (typeof val !== "object" || val === null || !("embeddings" in val)) return false;
-  const emb = (val as { embeddings: unknown }).embeddings;
-  return (
-    Array.isArray(emb) &&
-    emb.every(
-      (item) =>
-        typeof item === "object" &&
-        item !== null &&
-        "values" in item &&
-        Array.isArray((item as { values: unknown }).values)
-    )
-  );
-}
-
-async function postWithRetry(url: string, body: unknown): Promise<unknown> {
-  for (let attempt = 1; ; attempt++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch((e: unknown) => (e instanceof Error ? e : new Error(String(e))));
-
-    if (!(res instanceof Error) && res.ok) {
-      return res.json();
-    }
-    const is429 = !(res instanceof Error) && res.status === 429;
-    const status =
-      res instanceof Error ? res.message : `${res.status} ${(await res.text()).slice(0, 300)}`;
-    if (attempt >= 20) {
-      throw new Error(`Gemini embedding HTTP failed after ${attempt} attempts: ${status}`);
-    }
-    await new Promise((r) => setTimeout(r, is429 ? 15_000 : 1_500 * attempt));
-  }
-}
+import {
+  postWithRetry,
+  isBatchEmbeddingResponse,
+} from "./gemini-api.ts";
 
 export interface EmbedChunksOptions {
   check?: boolean;
@@ -147,13 +111,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
 
       res.embeddings.forEach((e, i) => {
         const chunk = batch[i];
-        const v768 = Float32Array.from(e.values);
-        let sumSq = 0;
-        for (let k = 0; k < TEACHER_DIM; k++) sumSq += v768[k] * v768[k];
-        const norm = Math.sqrt(sumSq) || 1;
-        for (let k = 0; k < TEACHER_DIM; k++) v768[k] /= norm;
-
-        const v256 = truncateAndNormalize256(v768);
+        const v256 = truncateAndNormalize256(e.values);
         workingCache.set(chunk.hash, v256);
         newEmbeds++;
       });

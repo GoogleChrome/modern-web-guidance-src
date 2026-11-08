@@ -1,10 +1,16 @@
-import fs, { existsSync } from "fs";
+import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import zlib from "zlib";
 import { StaticEmbedder } from "./static-embedder.ts";
 import { logToolResult } from "./logger.ts";
 import { buildBm25Index, rankBm25, reciprocalRankFusion, type Bm25Index } from "./bm25.ts";
+import { resolveSkillsCliDataDir } from "./data-dir.ts";
+import {
+  STATIC_DIMS,
+  dequantizeVectorRow,
+  toAlignedFloat32Array,
+  toInt8Array,
+} from "./quantize.ts";
 
 export interface UseCaseResult {
   id: string;
@@ -44,24 +50,6 @@ export const DEFAULT_MIN_SIMILARITY = 0.3;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
-const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
-
-function resolveSkillsCliDataDir(): string {
-  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), gen/guides.json and gen/guide-chunks.* sit next to modern-web.mjs / search.mjs
-  if (existsSync(path.join(BUNDLE_DIR, 'gen/guides.json')) || existsSync(path.join(BUNDLE_DIR, 'gen/guide-chunks.json.gz'))) {
-    return path.join(BUNDLE_DIR, 'gen');
-  }
-  // In repo source mode (src/rag/), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli/gen
-  let dir = BUNDLE_DIR;
-  while (dir !== path.dirname(dir)) {
-    if (existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
-      return path.join(dir, 'out/build/skills-cli/gen');
-    }
-    dir = path.dirname(dir);
-  }
-  return path.join(BUNDLE_DIR, 'gen');
-}
-
 export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
   if (a.length !== b.length) {
     throw new Error(`Vector dimension mismatch in dotProduct: ${a.length} !== ${b.length}`);
@@ -74,9 +62,9 @@ export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
 }
 
 export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[] {
-  const genDir = fs.existsSync(path.join(dataDir, "gen", "guide-chunks.json.gz"))
-    ? path.join(dataDir, "gen")
-    : dataDir;
+  const genDir = fs.existsSync(path.join(dataDir, "guide-chunks.json.gz"))
+    ? dataDir
+    : path.join(dataDir, "gen");
   const VECTORS_FILE = path.join(genDir, "guide-chunks.json.gz");
   const I8_FILE = path.join(genDir, "guide-chunks.i8");
   const SCALE_FILE = path.join(genDir, "guide-chunks.scale.f32");
@@ -94,17 +82,13 @@ export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[
   if (scaleBuf.byteLength !== N * 4) {
     throw new Error(`Corrupt vector scale file ${SCALE_FILE}: byteLength ${scaleBuf.byteLength} !== ${N} * 4`);
   }
-  const dims = N > 0 ? i8Buf.byteLength / N : 256;
+  const dims = N > 0 ? i8Buf.byteLength / N : STATIC_DIMS;
   if (!Number.isInteger(dims) || dims <= 0) {
     throw new Error(`Corrupt vector i8 file ${I8_FILE}: byteLength ${i8Buf.byteLength} not divisible by ${N}`);
   }
 
-  const qTable = new Int8Array(i8Buf.buffer, i8Buf.byteOffset, i8Buf.byteLength);
-  const alignedScaleBuf = scaleBuf.buffer.slice(
-    scaleBuf.byteOffset,
-    scaleBuf.byteOffset + scaleBuf.byteLength
-  );
-  const scales = new Float32Array(alignedScaleBuf);
+  const qTable = toInt8Array(i8Buf);
+  const scales = toAlignedFloat32Array(scaleBuf);
 
   const out: UseCaseVector[] = [];
   for (let i = 0; i < N; i++) {
@@ -112,24 +96,7 @@ export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[
     if (!item.id || typeof item.chunkContent !== "string") {
       throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id or chunkContent`);
     }
-    const scale = scales[i];
-    let vector: Float32Array;
-    if (!scale) {
-      vector = new Float32Array(0);
-    } else {
-      vector = new Float32Array(dims);
-      const offset = i * dims;
-      let sumSq = 0;
-      for (let k = 0; k < dims; k++) {
-        const val = qTable[offset + k] * scale;
-        vector[k] = val;
-        sumSq += val * val;
-      }
-      const norm = Math.sqrt(sumSq) || 1;
-      for (let k = 0; k < dims; k++) {
-        vector[k] /= norm;
-      }
-    }
+    const vector = dequantizeVectorRow(qTable, scales, i, dims);
     out.push({ ...item, vector });
   }
   return out;

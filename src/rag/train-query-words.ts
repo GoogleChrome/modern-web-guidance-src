@@ -39,8 +39,15 @@ import { dotProduct } from "./search.ts";
 import {
   accumulateNormalizedVector,
   encodeTokens,
-  STATIC_EMBEDDING_DIMS,
 } from "./static-embedder.ts";
+import {
+  STATIC_DIMS,
+  truncateAndNormalize256,
+} from "./quantize.ts";
+import {
+  postWithRetry,
+  isBatchEmbeddingResponse,
+} from "./gemini-api.ts";
 
 const TEACHER_DIM = 768;
 const DEFAULT_TEACHER_MODEL = "gemini-embedding-001";
@@ -65,7 +72,7 @@ export function quantizeAndExportStaticModel(
   targetDir = DEFAULT_OUT_DIR
 ): QuantizeExportResult {
   const V = words.length;
-  const D = STATIC_EMBEDDING_DIMS;
+  const D = STATIC_DIMS;
   if (E.length !== V * D) {
     throw new Error(`Expected E of length ${V * D}, got ${E.length}`);
   }
@@ -237,44 +244,6 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
   return { chunkTexts, syntheticQueries };
 }
 
-function isBatchEmbeddingResponse(
-  val: unknown
-): val is { embeddings: Array<{ values: number[] }> } {
-  if (typeof val !== "object" || val === null || !("embeddings" in val)) return false;
-  const emb = (val as { embeddings: unknown }).embeddings;
-  return (
-    Array.isArray(emb) &&
-    emb.every(
-      (item) =>
-        typeof item === "object" &&
-        item !== null &&
-        "values" in item &&
-        Array.isArray((item as { values: unknown }).values)
-    )
-  );
-}
-
-async function postWithRetry(url: string, body: unknown): Promise<unknown> {
-  for (let attempt = 1; ; attempt++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch((e: unknown) => (e instanceof Error ? e : new Error(String(e))));
-
-    if (!(res instanceof Error) && res.ok) {
-      return res.json();
-    }
-    const is429 = !(res instanceof Error) && res.status === 429;
-    const status =
-      res instanceof Error ? res.message : `${res.status} ${(await res.text()).slice(0, 300)}`;
-    if (attempt >= 20) {
-      throw new Error(`Gemini embedding HTTP failed after ${attempt} attempts: ${status}`);
-    }
-    await new Promise((r) => setTimeout(r, is429 ? 15_000 : 1_500 * attempt));
-  }
-}
-
 async function embedWithTeacher(
   texts: string[],
   cacheName: string,
@@ -360,13 +329,6 @@ async function embedWithTeacher(
 
   save();
   return out;
-}
-
-function truncateAndNormalize256(v: Float32Array): Float32Array {
-  const t = v.slice(0, STATIC_EMBEDDING_DIMS);
-  const n = Math.hypot(...t) || 1;
-  for (let k = 0; k < STATIC_EMBEDDING_DIMS; k++) t[k] /= n;
-  return t;
 }
 
 async function main(): Promise<void> {
@@ -463,7 +425,7 @@ async function main(): Promise<void> {
   console.log(`Embedding vocabulary with teacher (${teacherModel})...`);
   const wordVecs = await embedWithTeacher(words, "teacher-words-q", apiKey, teacherModel, cacheDir);
 
-  const D = STATIC_EMBEDDING_DIMS;
+  const D = STATIC_DIMS;
   const E0 = new Float32Array(V * D);
   for (let i = 0; i < V; i++) {
     const full = wordVecs.get(words[i]);
