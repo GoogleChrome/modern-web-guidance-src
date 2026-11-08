@@ -138,7 +138,7 @@
       }
     }
 
-    /* ?debug paints the bridge (and the script keeps it longer). */
+    /* ?debug paints the bridge. */
     [data-debug] [data-bridge]::before {
       background: rgb(255 0 0 / .3);
     }
@@ -364,7 +364,7 @@
     <h2 id="testing">Testing guidance</h2>
     <p>Test this demo with keyboard-only input, VoiceOver, and NVDA. The visible focus indicator and status message make
       the result easy to inspect. To watch the safe triangle that keeps a submenu open while the pointer travels to it,
-      <a href="?debug">open the demo with ?debug</a>: the triangle is painted and stays for 5 seconds.</p>
+      <a href="?debug">open the demo with ?debug</a>, which paints it.</p>
     <p id="status" role="status" aria-live="polite"></p>
   </main>
 
@@ -449,10 +449,8 @@
     // followed the pointer would turn every move into a direction test, and the first step off a
     // straight line would close the submenu.
     const canHover = matchMedia('(hover: hover)');
-    // ?debug paints the bridge and lets it rest 5 s instead of 300 ms, to watch where it is drawn.
-    const debug = new URLSearchParams(location.search).has('debug');
-    document.documentElement.toggleAttribute('data-debug', debug);
-    const bridgeRest = debug ? 5000 : 300;
+    // ?debug paints the bridge, to watch where and for how long it is drawn.
+    document.documentElement.toggleAttribute('data-debug', new URLSearchParams(location.search).has('debug'));
     function startBridge(submenu, event) {
       if (!canHover.matches || !isOpen(submenu)) return;
       const rect = submenu.getBoundingClientRect();
@@ -476,9 +474,9 @@
         if (target !== submenu || (left ? clientX < lastX : clientX > lastX)) return stop();
         lastX = clientX;
         clearTimeout(timer);
-        timer = setTimeout(stop, bridgeRest);
+        timer = setTimeout(stop, 300);
       };
-      timer = setTimeout(stop, bridgeRest);
+      timer = setTimeout(stop, 300);
       submenu.addEventListener('pointermove', extend);
       submenu.addEventListener('toggle', stop, { once: true });
     }
