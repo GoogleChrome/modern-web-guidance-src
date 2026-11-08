@@ -273,11 +273,19 @@ No property reports truncation. Derive it from overflow: the element is truncate
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}
 
-Without scroll-driven animations the fade never shows, and the text is clipped with no indication. If your Baseline target does not support them, use the script detection above to toggle a class that applies the mask, or use an ellipsis instead.
+Without scroll-driven animations the fade never shows, and the text is clipped with no indication. If your Baseline target does not support them, use an ellipsis instead, or toggle the fade from script: a `ResizeObserver` compares `scrollWidth` to `clientWidth` and sets a class, which turns the fade on the same way the keyframes do. Run the check again when the text changes: `ResizeObserver` reacts only to size changes.
 
 ```js
 if (!CSS.supports('animation-timeline', 'scroll()')) {
-  // Observe the labels with the ResizeObserver above
+  const observer = new ResizeObserver(entries => {
+    for (const { target } of entries) {
+      target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
+    }
+  });
+
+  for (const label of document.querySelectorAll('.label')) {
+    observer.observe(label);
+  }
 }
 ```
 
@@ -292,7 +300,28 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
 
-Hints on descendants are an enhancement: without them the text still truncates. Where the hint matters, toggle a class with the script detection instead.
+Hints on descendants are an enhancement: without them the text still truncates. Where the hint matters, set a class from script instead, and style the descendant from that class.
+
+```js
+if (!CSS.supports('container-type', 'scroll-state')) {
+  const observer = new ResizeObserver(entries => {
+    for (const { target } of entries) {
+      target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
+    }
+  });
+
+  for (const label of document.querySelectorAll('.label')) {
+    observer.observe(label);
+  }
+}
+```
+
+```css
+/* Same as the scroll-state query */
+.label.truncated > span {
+  text-decoration: underline dotted;
+}
+```
 
 ### Fallbacks & browser support for `interpolate-size`
 
