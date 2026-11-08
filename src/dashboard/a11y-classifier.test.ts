@@ -55,11 +55,7 @@ test('classifyAccessibilityCheck excludes known false-positive keyword collision
         ['ui-components', 'scrollspy', 'aria-current state synchronizes with visible section when scrolling stops'],
         ['ui-components', 'stack-drill-down', 'Calls to focus inside the stack pass preventScroll: true'],
         ['css', 'content-based-styling', 'Standalone component examples must document or assume a complete heading hierarchy outline'],
-        ['forms', 'animated-select-picker', 'Continuous keyframe animations must be wrapped inside a reduced-motion media query'],
-        ['ui-components', 'menu', 'Each menu list has focusgroup="menu nomemory" inside its popover (not on the popover) and is labeled by its trigger via aria-labelledby'],
-        ['ui-components', 'ui-components/menu', 'Pressing Escape inside a nested submenu closes only that submenu level, sets its trigger aria-expanded to "false", and restores focus to its trigger'],
-        ['ui-components', 'menu', 'Inside an open menu, ArrowDown, ArrowUp, End, and Home move focus across enabled items'],
-        ['ui-components', 'menu', 'Static CSS: Open and close animations are gated by prefers-reduced-motion: no-preference, under 150ms, and use opacity and translate']
+        ['forms', 'animated-select-picker', 'Continuous keyframe animations must be wrapped inside a reduced-motion media query']
     ];
     for (const [disc, guide, msg] of fpCases) {
         const res = classifyAccessibilityCheck(disc, guide, msg);

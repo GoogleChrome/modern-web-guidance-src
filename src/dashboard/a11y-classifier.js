@@ -68,12 +68,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     const disc = (discipline || '').toLowerCase();
     const msg = normalizeCheckMessage(message);
     if (!msg) return { isAccessibility: false, subCategory: null };
-    // The menu grader gates nearly every check on button[commandfor] -> [popover] -> [focusgroup~="menu"]
-    // (and static animation checks on @starting-style + opacity/translate), so unguided failures reflect
-    // missing those specific APIs rather than accessibility defects.
-    if (gName === 'menu' || gName.endsWith('/menu')) {
-        return { isAccessibility: false, subCategory: null };
-    }
     const ml = msg.toLowerCase();
     for (const fp of FALSE_POSITIVE_SUBSTRINGS) {
         if (ml.includes(fp)) return { isAccessibility: false, subCategory: null };
