@@ -11,7 +11,7 @@ import {
 import { replaceMacros, type BuildTarget } from "./macros.ts";
 import { getFeatureName } from "./baseline.ts";
 import { config } from "./skills-config.ts";
-import { computeChunkHash } from "../rag/chunk-cache.ts";
+import { computeChunkHash } from "../rag/guide-chunk-cache.ts";
 
 export interface GuideChunk {
   guideId: string;

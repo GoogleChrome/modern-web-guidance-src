@@ -300,16 +300,16 @@ test('packaged dist contains static-model files and no .cache', async () => {
 
   // Must have static model files
   assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/words.json')),
-    'Pack must contain static-model/words.json'
+    paths.some((p: string) => p.endsWith('static-model/query-words.json')),
+    'Pack must contain static-model/query-words.json'
   );
   assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/words.i8')),
-    'Pack must contain static-model/words.i8'
+    paths.some((p: string) => p.endsWith('static-model/query-words.i8')),
+    'Pack must contain static-model/query-words.i8'
   );
   assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/words.scale.f32')),
-    'Pack must contain static-model/words.scale.f32'
+    paths.some((p: string) => p.endsWith('static-model/query-words.scale.f32')),
+    'Pack must contain static-model/query-words.scale.f32'
   );
 });
 
@@ -384,7 +384,7 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
 test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage', async () => {
   const zlib = await import('node:zlib');
   const distSkillDir = path.join(STAGING_DIR, 'skills/modern-web-guidance');
-  const vectorFile = path.join(distSkillDir, 'use-cases.vectors.gen.json.gz');
+  const vectorFile = path.join(distSkillDir, 'guide-chunks.json.gz');
   const compressed = await fs.readFile(vectorFile);
   const rawItems = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8')) as Array<Record<string, unknown>>;
   assert.ok(rawItems.length > 0, 'Corpus should contain chunks');
@@ -392,7 +392,7 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
     assert.strictEqual(
       'vector' in raw,
       false,
-      'use-cases.vectors.gen.json.gz must not contain serialized ASCII vector arrays'
+      'guide-chunks.json.gz must not contain serialized ASCII vector arrays'
     );
   }
 

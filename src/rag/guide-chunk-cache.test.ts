@@ -13,11 +13,11 @@ import {
   TEACHER_MODEL,
   TASK_TYPE,
   STATIC_DIMS,
-} from "./chunk-cache.ts";
+} from "./guide-chunk-cache.ts";
 import { scanCorpusChunks } from "../core/guide-chunks.ts";
-import { embedGuideChunks } from "./embed-chunks.ts";
+import { embedGuideChunks } from "./embed-guide-chunks.ts";
 
-describe("chunk-cache", () => {
+describe("guide-chunk-cache", () => {
   it("computeChunkHash produces deterministic hashes sensitive to text and metadata", () => {
     const textA = "guide-a: description\n\nchunk content";
     const textB = "guide-a: description\n\nchunk content modified";
@@ -132,9 +132,9 @@ describe("chunk-cache", () => {
   it("loadChunkCache detects corrupted binary files", () => {
     const corruptDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-cache-test-"));
     try {
-      fs.writeFileSync(path.join(corruptDir, "chunks.json"), JSON.stringify(["hash1", "hash2"]));
-      fs.writeFileSync(path.join(corruptDir, "chunks.i8"), Buffer.alloc(100)); // wrong length
-      fs.writeFileSync(path.join(corruptDir, "chunks.scale.f32"), Buffer.alloc(8));
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.json"), JSON.stringify(["hash1", "hash2"]));
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.i8"), Buffer.alloc(100)); // wrong length
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.scale.f32"), Buffer.alloc(8));
 
       assert.throws(() => loadChunkCache(corruptDir), /Chunk cache corrupted/);
     } finally {

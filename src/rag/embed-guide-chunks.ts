@@ -6,7 +6,7 @@
  * Results are stored in an Int8 + scale cache in `src/rag/static-model/`.
  *
  * Usage:
- *   node src/rag/embed-chunks.ts [--check] [--force] [--seed-from path/to/gemini-emb.json]
+ *   node src/rag/embed-guide-chunks.ts [--check] [--force] [--prune]
  */
 
 import path from "node:path";
@@ -22,7 +22,7 @@ import {
   DEFAULT_CACHE_DIR,
   loadChunkCache,
   saveChunkCache,
-} from "./chunk-cache.ts";
+} from "./guide-chunk-cache.ts";
 import {
   scanCorpusChunks,
   type GuideChunk,
@@ -223,7 +223,7 @@ async function main(): Promise<void> {
       for (const g of missingGuides) {
         console.error(`   - ${g}`);
       }
-      console.error(`\nRun 'node src/rag/embed-chunks.ts' to embed them before publishing.`);
+      console.error(`\nRun 'node src/rag/embed-guide-chunks.ts' to embed them before publishing.`);
       process.exit(1);
     } else {
       console.log(
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   main().catch((err) => {
-    console.error("Error in embed-chunks:", err);
+    console.error("Error in embed-guide-chunks:", err);
     process.exit(1);
   });
 }

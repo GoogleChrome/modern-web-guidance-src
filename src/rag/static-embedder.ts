@@ -97,17 +97,17 @@ export class StaticEmbedder implements EmbedderLike {
     if (this.model) return this.model;
 
     const modelDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "static-model");
-    const wordsPath = path.join(modelDir, "words.json");
-    const tablePath = path.join(modelDir, "words.i8");
-    const scalesPath = path.join(modelDir, "words.scale.f32");
+    const wordsPath = path.join(modelDir, "query-words.json");
+    const tablePath = path.join(modelDir, "query-words.i8");
+    const scalesPath = path.join(modelDir, "query-words.scale.f32");
 
     if (!fs.existsSync(wordsPath) || !fs.existsSync(tablePath) || !fs.existsSync(scalesPath)) {
-      throw new Error(`Static model files missing in ${modelDir}. Expected words.json, words.i8, words.scale.f32`);
+      throw new Error(`Static model files missing in ${modelDir}. Expected query-words.json, query-words.i8, query-words.scale.f32`);
     }
 
     const rawWords: unknown = JSON.parse(fs.readFileSync(wordsPath, "utf8"));
     if (!Array.isArray(rawWords)) {
-      throw new Error(`Corrupt words.json in ${modelDir}: expected JSON array`);
+      throw new Error(`Corrupt query-words.json in ${modelDir}: expected JSON array`);
     }
     const words = rawWords.map(String);
     const wordIndex = new Map<string, number>();
@@ -118,7 +118,7 @@ export class StaticEmbedder implements EmbedderLike {
     const tableBuf = fs.readFileSync(tablePath);
     if (tableBuf.byteLength !== words.length * STATIC_EMBEDDING_DIMS) {
       throw new Error(
-        `Corrupt words.i8: size ${tableBuf.byteLength} != expected ${words.length * STATIC_EMBEDDING_DIMS}`
+        `Corrupt query-words.i8: size ${tableBuf.byteLength} != expected ${words.length * STATIC_EMBEDDING_DIMS}`
       );
     }
     const table = new Int8Array(tableBuf.buffer, tableBuf.byteOffset, tableBuf.byteLength);
@@ -126,7 +126,7 @@ export class StaticEmbedder implements EmbedderLike {
     const scaleBuf = fs.readFileSync(scalesPath);
     if (scaleBuf.byteLength !== words.length * 4) {
       throw new Error(
-        `Corrupt words.scale.f32: size ${scaleBuf.byteLength} != expected ${words.length * 4}`
+        `Corrupt query-words.scale.f32: size ${scaleBuf.byteLength} != expected ${words.length * 4}`
       );
     }
     // Slice to a fresh ArrayBuffer so Float32Array is guaranteed 4-byte aligned regardless of Buffer slab pooling.

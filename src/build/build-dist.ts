@@ -228,7 +228,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
     const destStaticModelDir = path.join(DIST_DIR, "static-model");
     if (fs.existsSync(staticModelDir)) {
       fs.mkdirSync(destStaticModelDir, { recursive: true });
-      for (const file of ["words.json", "words.i8", "words.scale.f32"]) {
+      for (const file of ["query-words.json", "query-words.i8", "query-words.scale.f32"]) {
         fs.copyFileSync(path.join(staticModelDir, file), path.join(destStaticModelDir, file));
       }
     }

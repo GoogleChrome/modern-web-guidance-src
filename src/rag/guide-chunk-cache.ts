@@ -116,9 +116,9 @@ export function dequantizeVectorRow(
  * Returns a map of hash -> 256-d unit Float32Array.
  */
 export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float32Array> {
-  const jsonPath = path.join(cacheDir, "chunks.json");
-  const i8Path = path.join(cacheDir, "chunks.i8");
-  const scalePath = path.join(cacheDir, "chunks.scale.f32");
+  const jsonPath = path.join(cacheDir, "guide-chunk-cache.json");
+  const i8Path = path.join(cacheDir, "guide-chunk-cache.i8");
+  const scalePath = path.join(cacheDir, "guide-chunk-cache.scale.f32");
 
   if (!fs.existsSync(jsonPath) || !fs.existsSync(i8Path) || !fs.existsSync(scalePath)) {
     return new Map();
@@ -157,7 +157,7 @@ export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float3
 }
 
 /**
- * Quantizes and saves the chunk cache into chunks.json, chunks.i8, and chunks.scale.f32.
+ * Quantizes and saves the chunk cache into guide-chunk-cache.json, guide-chunk-cache.i8, and guide-chunk-cache.scale.f32.
  * Entries are sorted by hash for deterministic output.
  * Any entry not present in `cache` is omitted (pruned).
  */
@@ -182,9 +182,9 @@ export function saveChunkCache(
 
   const { qTable, scales } = quantizeVectors(vectors, STATIC_DIMS);
 
-  const jsonPath = path.join(cacheDir, "chunks.json");
-  const i8Path = path.join(cacheDir, "chunks.i8");
-  const scalePath = path.join(cacheDir, "chunks.scale.f32");
+  const jsonPath = path.join(cacheDir, "guide-chunk-cache.json");
+  const i8Path = path.join(cacheDir, "guide-chunk-cache.i8");
+  const scalePath = path.join(cacheDir, "guide-chunk-cache.scale.f32");
 
   const jsonContent = JSON.stringify(sortedHashes, null, 2) + "\n";
   fs.writeFileSync(jsonPath, jsonContent);

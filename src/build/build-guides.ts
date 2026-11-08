@@ -46,7 +46,7 @@ export interface DevsiteGuideMetadata {
 }
 
 import type { EmbedderLike } from "../rag/search.ts";
-import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/chunk-cache.ts";
+import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
 import {
   parseGuideFile,
   extractGuideChunks,
@@ -76,9 +76,9 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   const cacheDir = path.join(outDir, 'build', target);
   return {
     cacheDir,
-    cachedVectors: path.join(cacheDir, "use-cases.vectors.gen.json.gz"),
-    cachedVectorsI8: path.join(cacheDir, "use-cases.vectors.gen.i8"),
-    cachedVectorsScale: path.join(cacheDir, "use-cases.vectors.gen.scale.f32"),
+    cachedVectors: path.join(cacheDir, "guide-chunks.json.gz"),
+    cachedVectorsI8: path.join(cacheDir, "guide-chunks.i8"),
+    cachedVectorsScale: path.join(cacheDir, "guide-chunks.scale.f32"),
     cachedGuidesJson: path.join(cacheDir, "guides.json"),
     cachedManifest: path.join(cacheDir, "manifest.json"),
     cachedGuides: path.join(cacheDir, "guides"),
@@ -99,14 +99,14 @@ export async function computePipelineHash(
     import.meta.filename,
     path.join(rootDir, "src/core/macros.ts"),
     path.join(rootDir, "src/rag/static-embedder.ts"),
-    path.join(rootDir, "src/rag/static-model/words.json"),
-    path.join(rootDir, "src/rag/static-model/words.i8"),
-    path.join(rootDir, "src/rag/static-model/words.scale.f32"),
-    path.join(rootDir, "src/rag/chunk-cache.ts"),
+    path.join(rootDir, "src/rag/static-model/query-words.json"),
+    path.join(rootDir, "src/rag/static-model/query-words.i8"),
+    path.join(rootDir, "src/rag/static-model/query-words.scale.f32"),
+    path.join(rootDir, "src/rag/guide-chunk-cache.ts"),
     path.join(rootDir, "src/core/guide-chunks.ts"),
-    path.join(rootDir, "src/rag/static-model/chunks.json"),
-    path.join(rootDir, "src/rag/static-model/chunks.i8"),
-    path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
+    path.join(rootDir, "src/rag/static-model/guide-chunk-cache.json"),
+    path.join(rootDir, "src/rag/static-model/guide-chunk-cache.i8"),
+    path.join(rootDir, "src/rag/static-model/guide-chunk-cache.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
@@ -189,9 +189,9 @@ function restoreFromCache(paths: CachePaths, outputDir: string, target: BuildTar
   }
   if (target === 'skills-cli') {
     fs.mkdirSync(outputDir, { recursive: true });
-    fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
-    fs.copyFileSync(paths.cachedVectorsI8, path.join(outputDir, "use-cases.vectors.gen.i8"));
-    fs.copyFileSync(paths.cachedVectorsScale, path.join(outputDir, "use-cases.vectors.gen.scale.f32"));
+    fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "guide-chunks.json.gz"));
+    fs.copyFileSync(paths.cachedVectorsI8, path.join(outputDir, "guide-chunks.i8"));
+    fs.copyFileSync(paths.cachedVectorsScale, path.join(outputDir, "guide-chunks.scale.f32"));
     fs.copyFileSync(paths.cachedGuidesJson, path.join(outputDir, "guides.json"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
   } else if (target === 'devsite') {
@@ -446,12 +446,12 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
       console.warn(`   - ${g}`);
     }
     console.warn(
-      `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
+      `   These chunks are indexed for BM25 only (vector: []). Run 'node src/rag/embed-guide-chunks.ts' to embed them with the teacher model.\n`
     );
 
     if (failOnMissingVectors) {
       throw new Error(
-        `Release check failed: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors. Run 'node src/rag/embed-chunks.ts' before release.`
+        `Release check failed: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors. Run 'node src/rag/embed-guide-chunks.ts' before release.`
       );
     }
   }

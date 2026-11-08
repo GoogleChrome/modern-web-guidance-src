@@ -35,7 +35,7 @@ export interface EmbedderLike {
 
 /**
  * Query-level cosine floor: if dense top-1 is below this similarity AND BM25 has no matches, `[]` is returned.
- * Across all non-stopword entries in `words.json`, single-word top-1 cosine starts at 0.475 ("chips", "bento" 0.532),
+ * Across all non-stopword entries in `query-words.json`, single-word top-1 cosine starts at 0.475 ("chips", "bento" 0.532),
  * and in-domain `wild-v2-dev` queries span 0.636..0.899 (median 0.821).
  * Keeping 0.30 acts as a non-zero dense floor so 100% of in-vocab queries use their dense vector while zero-vector / unknown queries
  * with no BM25 matches return `[]`.
@@ -47,8 +47,8 @@ let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function resolveSkillsCliDataDir(): string {
-  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), guides.json and vectors sit next to modern-web.mjs / search.mjs
-  if (existsSync(path.join(BUNDLE_DIR, 'guides.json')) || existsSync(path.join(BUNDLE_DIR, 'use-cases.vectors.gen.json.gz'))) {
+  // In the shipped bundle (dist/skills-cli/skills/modern-web-guidance/), guides.json and guide-chunks.* sit next to modern-web.mjs / search.mjs
+  if (existsSync(path.join(BUNDLE_DIR, 'guides.json')) || existsSync(path.join(BUNDLE_DIR, 'guide-chunks.json.gz'))) {
     return BUNDLE_DIR;
   }
   // In repo source mode (src/rag/), walk up to repo root (where pnpm-lock.yaml lives) and use out/build/skills-cli
@@ -74,9 +74,9 @@ export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
 }
 
 export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[] {
-  const VECTORS_FILE = path.join(dataDir, "use-cases.vectors.gen.json.gz");
-  const I8_FILE = path.join(dataDir, "use-cases.vectors.gen.i8");
-  const SCALE_FILE = path.join(dataDir, "use-cases.vectors.gen.scale.f32");
+  const VECTORS_FILE = path.join(dataDir, "guide-chunks.json.gz");
+  const I8_FILE = path.join(dataDir, "guide-chunks.i8");
+  const SCALE_FILE = path.join(dataDir, "guide-chunks.scale.f32");
 
   if (!fs.existsSync(VECTORS_FILE) || !fs.existsSync(I8_FILE) || !fs.existsSync(SCALE_FILE)) {
     throw new Error(`Vectors files not found in ${dataDir}. Run 'pnpm build' first.`);

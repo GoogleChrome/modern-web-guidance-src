@@ -2,7 +2,7 @@
  * Distills and trains the 256-d static word-embedding model (`src/rag/static-model/`)
  * from `gemini-embedding-001` using a Model2Vec + Tokenlearn recipe:
  *
- * 1. Vocabulary construction: unions existing `src/rag/static-model/words.json` (which
+ * 1. Vocabulary construction: unions existing `src/rag/static-model/query-words.json` (which
  *    includes general-English whole words and domain aliases) with all tokens found across
  *    current `guides/` markdown chunks.
  * 2. Teacher word distillation: embeds each vocabulary word with `gemini-embedding-001`
@@ -15,11 +15,11 @@
  *    `gemini-embedding-001` embeddings of training queries (guide titles/headings/descriptions
  *    plus optional `--extra-queries <jsonl>`), with L2 regularization (`MU = 0.05`) pulling
  *    toward `(E0, W0)`. All evaluation queries (`harness`, `oos`, `wild`) are strictly excluded.
- * 5. Quantization: symmetric per-row `Int8` quantization of `E` (`words.i8`) with row scales
- *    folded into `W` (`words.scale.f32`).
+ * 5. Quantization: symmetric per-row `Int8` quantization of `E` (`query-words.i8`) with row scales
+ *    folded into `W` (`query-words.scale.f32`).
  *
  * Usage:
- *   node src/rag/train-static-model.ts [--extra-queries path/to/train-queries.jsonl] [--skip-tokenlearn]
+ *   node src/rag/train-query-words.ts [--extra-queries path/to/train-queries.jsonl] [--skip-tokenlearn]
  */
 
 import fs from "node:fs";
@@ -55,8 +55,8 @@ export interface QuantizeExportResult {
 }
 
 /**
- * Quantizes Float32 word vectors `E` (V × 256) to symmetric per-row `Int8` (`words.i8`)
- * and folds each row's `maxAbs / 127` scale factor into the per-word weight `W` (`words.scale.f32`).
+ * Quantizes Float32 word vectors `E` (V × 256) to symmetric per-row `Int8` (`query-words.i8`)
+ * and folds each row's `maxAbs / 127` scale factor into the per-word weight `W` (`query-words.scale.f32`).
  */
 export function quantizeAndExportStaticModel(
   words: string[],
@@ -93,13 +93,13 @@ export function quantizeAndExportStaticModel(
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
-  fs.writeFileSync(path.join(targetDir, "words.json"), JSON.stringify(words));
+  fs.writeFileSync(path.join(targetDir, "query-words.json"), JSON.stringify(words));
   fs.writeFileSync(
-    path.join(targetDir, "words.i8"),
+    path.join(targetDir, "query-words.i8"),
     Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength)
   );
   fs.writeFileSync(
-    path.join(targetDir, "words.scale.f32"),
+    path.join(targetDir, "query-words.scale.f32"),
     Buffer.from(foldedScales.buffer, foldedScales.byteOffset, foldedScales.byteLength)
   );
 
@@ -397,7 +397,7 @@ async function main(): Promise<void> {
   console.log("Scanning guides corpus and existing vocabulary...");
   const { chunkTexts, syntheticQueries } = scanCorpusAndSyntheticQueries();
 
-  const existingWordsPath = path.join(targetDir, "words.json");
+  const existingWordsPath = path.join(targetDir, "query-words.json");
   const existingWords: string[] = fs.existsSync(existingWordsPath)
     ? (JSON.parse(fs.readFileSync(existingWordsPath, "utf8")) as string[])
     : [];

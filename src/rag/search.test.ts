@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { outDir } from "../core/paths.ts";
 import { loadVectors, searchUseCases, type EmbedderLike } from "./search.ts";
 
@@ -32,6 +35,27 @@ describe("searchUseCases", () => {
         Math.abs(norm - 1.0) < 0.001,
         `Corpus vector for "${item.id}" must be unit length, got norm ${norm}`
       );
+    }
+  });
+
+  it("loadVectors throws an informative error when binary vector files are corrupted", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-guide-chunks-"));
+    try {
+      const dummyChunks = [
+        { id: "g1", description: "d1", category: "css", featuresUsed: [], tokenCount: 10, chunkContent: "c1" },
+        { id: "g2", description: "d2", category: "css", featuresUsed: [], tokenCount: 10, chunkContent: "c2" },
+      ];
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.json.gz"), zlib.gzipSync(JSON.stringify(dummyChunks)));
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.i8"), Buffer.alloc(100)); // not divisible by 2 * 256
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.scale.f32"), Buffer.alloc(4)); // wrong scale byteLength (4 !== 2 * 4)
+
+      assert.throws(() => loadVectors(tmpDir), /Corrupt vector scale file/);
+
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.scale.f32"), Buffer.alloc(8));
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.i8"), Buffer.alloc(3)); // not divisible by 2
+      assert.throws(() => loadVectors(tmpDir), /Corrupt vector i8 file/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
