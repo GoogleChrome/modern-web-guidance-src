@@ -147,6 +147,32 @@ Set the shape on `--bars` and read it with `clip-path: var(--bars)`. Do not call
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
+Set `--lines` to the bar count (default `1`). `line-clamp` limits the real text to that many lines, and the `lh`-based `min-block-size` reserves their height, because `line-clamp` alone does not reserve height. A `min-block-size` does not stop surplus text from growing the box, so where `line-clamp` is unsupported, use the fallback below.
+
+For more than one bar, call `--skeleton-bar()` once per bar with its index and end position. `shape()` cannot repeat a path from a count, so each call is written out. Bars are offset by `n × 1lh`, and `--lines` is the bar count so `min-block-size` reserves the total height.
+
+Bars reused across elements can be memoized once in the shared rule, named by index and end position, so each element only lists them. They resolve against each element's own `--bar-*` values.
+
+```css
+.skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+  --skeleton-bar-0: --skeleton-bar(0);
+  --skeleton-bar-1-92p: --skeleton-bar(1, 92%);
+}
+
+.skeleton[aria-busy="true"] p {
+  --bars: shape(from 0 0, var(--skeleton-bar-0), var(--skeleton-bar-1-92p), --skeleton-bar(2, 68%));
+}
+```
+
+| Element | Treatment |
+|---|---|
+| `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--skeleton-bar()` and set `--lines: 2` |
+| `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
+| `li` | 1 bar each, native marker hidden and replaced by a `li::before` dot; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
+| `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
+
+## 4. Lists
+
 Items are one line tall like the text, not tall blocks: hide the native marker and draw the bullet with `li::before`, because a `::marker` cannot be sized reliably. Set `list-style: none` and make the item `position: relative`, clear its own fill, and draw the bar with `li::after` using the shared `--bar-height` and `--bar-radius`, so list items match the other bars. Place the dot in `em` units so it scales with the item's text, in the flat `--skeleton-tone` color. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes, and zero only the item's start margin. Set `clip-path: none` and `overflow: visible` so the dot, which sits outside the item, is not clipped. This applies to numbered lists too.
 
 ```css
@@ -184,31 +210,7 @@ Items are one line tall like the text, not tall blocks: hide the native marker a
 }
 ```
 
-Set `--lines` to the bar count (default `1`). `line-clamp` limits the real text to that many lines, and the `lh`-based `min-block-size` reserves their height, because `line-clamp` alone does not reserve height. A `min-block-size` does not stop surplus text from growing the box, so where `line-clamp` is unsupported, use the fallback below.
-
-For more than one bar, call `--skeleton-bar()` once per bar with its index and end position. `shape()` cannot repeat a path from a count, so each call is written out. Bars are offset by `n × 1lh`, and `--lines` is the bar count so `min-block-size` reserves the total height.
-
-Bars reused across elements can be memoized once in the shared rule, named by index and end position, so each element only lists them. They resolve against each element's own `--bar-*` values.
-
-```css
-.skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-  --skeleton-bar-0: --skeleton-bar(0);
-  --skeleton-bar-1-92p: --skeleton-bar(1, 92%);
-}
-
-.skeleton[aria-busy="true"] p {
-  --bars: shape(from 0 0, var(--skeleton-bar-0), var(--skeleton-bar-1-92p), --skeleton-bar(2, 68%));
-}
-```
-
-| Element | Treatment |
-|---|---|
-| `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--skeleton-bar()` and set `--lines: 2` |
-| `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
-| `li` | 1 bar each, native marker hidden and replaced by a `li::before` dot; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
-| `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
-
-## 4. Media and avatars
+## 5. Media and avatars
 
 Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a placeholder `<div>`. Push the picture out of the box so the tone shows through, and reserve space with `aspect-ratio`. This needs definite dimensions, so set `inline-size` (or `block-size`) as well.
 
@@ -230,7 +232,7 @@ Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a place
 - Neither technique works on an inline `<svg>`.
 - Remove the `controls` attribute from a skeleton `<video>`, since the browser's controls still draw over the placeholder.
 
-## 5. Controls and chips
+## 6. Controls and chips
 
 Elements that are themselves the visible shape and have no children with their own skeleton treatment (buttons, inputs, badges and chips) already have a shape: keep their own size, padding, border width and `border-radius`, and only hide the content and apply the skeleton fill. DO NOT replace them with text bars or give them a fixed block size, which would shift the layout when the real control arrives.
 
@@ -263,7 +265,7 @@ Put a representative label in the skeleton markup (as in the example above) so t
 | `input` | Own size, padding, border and radius, with the tone as its fill; value and placeholder hidden |
 | Badge, chip | Own padding and radius, with the tone as its fill and the text hidden |
 
-## 6. Simplify
+## 7. Simplify
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
@@ -272,7 +274,7 @@ A skeleton is a simplification, not a copy. Keep what defines the silhouette (me
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.
 
-## 7. Shimmer
+## 8. Shimmer
 
 Add a shimmer so users can tell the placeholders are actively loading and not broken.
 
