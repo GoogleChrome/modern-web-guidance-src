@@ -177,36 +177,6 @@ select.addEventListener('focusout', () => requestAnimationFrame(() => {
 
 Position the panel under the trigger with anchor positioning (`anchor-name` on the trigger; `position-anchor`, `position-area: block-end`, `position-try-fallbacks: flip-block`, and `inline-size: anchor-size(width)` on the panel) so the platform flips it when space runs out.
 
-Style the checkboxes with `appearance: none` and a CSS mask for the check icon, so the check follows the theme colors, animates, and stays visible in forced colors. Hide the check with `scale: 0` and show it with `:checked::before { scale: 1 }`, keep the `<label>` at about 44px tall as the hit target, size the box in relative units, and keep a `:focus-visible` outline. Add a mask chevron to the trigger that flips while the panel is open (`#toppings-trigger:has(+ ...:popover-open)`), matching the single select's picker icon. Disable the scale and rotate transitions under `prefers-reduced-motion: reduce`.
-
-```css
-:root {
-  /* The mask uses only the alpha of the SVG, so its stroke color is irrelevant */
-  --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");
-}
-#toppings-panel input[type="checkbox"] {
-  appearance: none;
-  display: inline-grid;
-  place-content: center;
-  inline-size: 1.25em;
-  aspect-ratio: 1;
-  border: 2px solid currentColor;
-
-  &::before {
-    content: "";
-    inline-size: 0.8em;
-    aspect-ratio: 1;
-    scale: 0;
-    background-color: currentColor;
-    mask: var(--icon-check) no-repeat center / contain;
-    @media (prefers-reduced-motion: no-preference) { transition: scale 150ms ease; }
-    @media (forced-colors: active) { background-color: CanvasText; }
-  }
-  &:checked::before { scale: 1; }
-  &:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-}
-```
-
 Filter the checkbox labels the same way as step 3 (hide non-matching labels with `hidden`; checked boxes stay checked and keep submitting while hidden), prevent `Enter` in the filter from submitting the form, and update the `role="status"` count. Add ArrowDown/ArrowUp to move focus between the filter and the visible checkboxes so the list behaves like the single select; Tab and Space keep working natively. List the checked labels in the muted `<p>` after every `change` (it is read through `aria-describedby`, not a live region, because the filter's `role="status"` already announces). Clear the filter and unhide all labels on the popover's `toggle` event when `newState` is `closed`.
 
 ```js
