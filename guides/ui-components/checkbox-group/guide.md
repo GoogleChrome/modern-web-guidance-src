@@ -44,13 +44,11 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
     <label for="robot-1">
       <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
       <span>Clockwork Courier</span>
-      <span class="model">CW-01</span>
     </label>
     <!-- A disabled option is excluded from select-all -->
     <label for="robot-2">
       <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="rustbucket" disabled />
       <span>Rust Bucket (offline)</span>
-      <span class="model">RB-0</span>
     </label>
   </div>
 
