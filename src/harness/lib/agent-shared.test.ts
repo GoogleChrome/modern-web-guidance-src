@@ -430,6 +430,19 @@ describe('sanitizeAgentChildEnv', () => {
     assert.strictEqual(sanitized.IS_SANDBOX, '1');
     assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
   });
+
+  test('preserves AGY_ADC_AUTH and GOOGLE_CLOUD_PROJECT for container environments', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      AGY_ADC_AUTH: 'true',
+      GOOGLE_CLOUD_PROJECT: 'my-eval-project',
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+    assert.strictEqual(sanitized.AGY_ADC_AUTH, 'true');
+    assert.strictEqual(sanitized.GOOGLE_CLOUD_PROJECT, 'my-eval-project');
+    assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
+  });
 });
 
 
