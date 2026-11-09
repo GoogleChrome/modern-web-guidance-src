@@ -16,3 +16,4 @@
 - Under `forced-colors: active`, the skeleton placeholders (not the container) set `forced-color-adjust: none` and are filled with a system color.
 - The skeleton container has `inert` and `aria-hidden="true"` while loading.
 - The loading message is set, by script, into a `role="status"` element that was already on the page and empty when the skeleton appears.
+- If the Baseline target does not support `@function`, the CSS defines no `@function` or `--skeleton-bar()` calls and writes each bar out as a literal `shape()` subpath in `--bars`.
