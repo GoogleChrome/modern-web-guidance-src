@@ -606,8 +606,8 @@ You can customize which skill packs are installed using the `--choose` flag:
 npx modern-web-guidance@latest install --choose
 ```
 
-* **`modern-web-guidance`** (~230 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
-* **`chrome-extensions`** (~230 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
+* **`modern-web-guidance`** (~205 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
+* **`chrome-extensions`** (~175 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
