@@ -12,8 +12,7 @@
 - Clicking the dimmed backdrop area outside the navigation sheet closes the drawer.
 - Clicking the Close button while the drawer is open closes the drawer.
 - Pressing the Escape key while the drawer is open closes the drawer.
-- While the drawer is open, content outside it cannot be focused or interacted with.
-- If the drawer is not a `<dialog>` element, the main page content has the `inert` attribute while the drawer is open, and no longer has it after the drawer is closed.
+- While the drawer is open, content outside it cannot be focused or interacted with, and it becomes focusable and interactive again after the drawer closes.
 - The drawer's close button has an `autofocus` attribute so that it receives focus when the drawer is opened.
 - After the drawer is closed, the menu trigger button's `aria-expanded` attribute returns to `false`.
 - After the drawer is closed, focus moves back to the menu trigger button.
