@@ -2,13 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import zlib from "node:zlib";
 import { marked, type Tokens } from "marked";
 import { extractH1Heading } from "../../core/guide-validation.ts";
 import { outDir, rootDir } from "../../core/paths.ts";
 import { isEnoent } from "../../harness/lib/agent-shared.ts";
 import { buildBm25Index, rankBm25 } from "../bm25.ts";
-import { dotProduct, type EmbedderLike, type UseCaseVector } from "../search.ts";
+import { dotProduct, loadVectors, type EmbedderLike, type UseCaseVector } from "../search.ts";
 import { StaticEmbedder } from "../static-embedder.ts";
 import { computeEmbedderHash } from "./bench-rag.ts";
 import {
@@ -62,9 +61,8 @@ export interface CorpusForPooling {
 }
 
 export function loadCorpusForPooling(buildDir = path.join(outDir, "build/skills-cli")): CorpusForPooling {
-  const guidesJsonPath = path.join(buildDir, "guides.json");
+  const guidesJsonPath = path.join(buildDir, "gen/guides.json");
   const guidesDir = path.join(buildDir, "guides");
-  const vectorsPath = path.join(buildDir, "use-cases.vectors.gen.json.gz");
 
   const metaRaw: unknown = JSON.parse(fs.readFileSync(guidesJsonPath, "utf8"));
   if (!Array.isArray(metaRaw)) {
@@ -96,27 +94,12 @@ export function loadCorpusForPooling(buildDir = path.join(outDir, "build/skills-
     });
   }
 
-  const vectorsRaw: unknown = JSON.parse(zlib.gunzipSync(fs.readFileSync(vectorsPath)).toString("utf8"));
-  if (!Array.isArray(vectorsRaw)) {
-    throw new Error(`Invalid vectors file at ${vectorsPath}`);
-  }
-  const vectors: UseCaseVector[] = vectorsRaw.map((v: unknown) => {
-    if (!isRecord(v) || typeof v.id !== "string" || !Array.isArray(v.vector)) {
-      throw new Error(`Invalid vector entry in ${vectorsPath}`);
-    }
+  const vectors = loadVectors(buildDir);
+  for (const v of vectors) {
     if (!cards.has(v.id)) {
       throw new Error(`Vector entry "${v.id}" does not match any guide in ${guidesJsonPath}`);
     }
-    return {
-      id: v.id,
-      description: typeof v.description === "string" ? v.description : "",
-      category: typeof v.category === "string" ? v.category : "",
-      featuresUsed: Array.isArray(v.featuresUsed) ? v.featuresUsed.filter((x): x is string => typeof x === "string") : [],
-      tokenCount: typeof v.tokenCount === "number" ? v.tokenCount : 0,
-      vector: v.vector.map((n) => Number(n)),
-      chunkContent: typeof v.chunkContent === "string" ? v.chunkContent : "",
-    };
-  });
+  }
 
   return { cards, vectors, bm25: buildBm25Index(bm25Docs) };
 }
@@ -138,6 +121,7 @@ export function poolQueryCandidates(
   const perGuideScores = new Map<string, number[]>();
 
   for (const item of corpus.vectors) {
+    if (item.vector.length === 0) continue;
     const sim = dotProduct(queryVector, item.vector);
     const list = perGuideScores.get(item.id);
     if (list) list.push(sim);

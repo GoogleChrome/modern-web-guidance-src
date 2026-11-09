@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 
 import config, { Agents } from '../config.ts';
 import { parseBooleanEnv } from '../../core/env.ts';
+import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
@@ -93,7 +94,7 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
     const destName = isSubagent
       ? (baseName.startsWith('subagent-') ? `${baseName}.jsonl` : `subagent-${baseName}.jsonl`)
       : (baseName.startsWith('session-') ? `${baseName}.jsonl` : `session-${baseName}.jsonl`);
-    fs.copyFileSync(src, path.join(targetDir, destName));
+    fs.writeFileSync(path.join(targetDir, destName), sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
   }
 }
 

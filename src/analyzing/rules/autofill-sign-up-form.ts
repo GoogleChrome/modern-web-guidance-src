@@ -9,7 +9,7 @@ import {
   isExcludedFromSignUpForm,
 } from './helpers/password-credential.ts';
 
-export const AUTOFILL_SIGN_UP_FORM_GUIDE_HASH = '4e9ee5c2a3a0';
+export const AUTOFILL_SIGN_UP_FORM_GUIDE_HASH = 'fe88779a64c2';
 
 const SIGN_UP_SUB_PATTERN =
   '<input type="password"> in sign-up forms missing autocomplete="new-password"';

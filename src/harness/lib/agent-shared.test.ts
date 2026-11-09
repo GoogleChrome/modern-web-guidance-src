@@ -270,7 +270,6 @@ describe('runCliAgentCommand', () => {
       PI_CODING_AGENT: 'true',
       PI_CODING_AGENT_DIR: '/tmp/host/.pi/agent',
       CLAUDE_CODE_USE_VERTEX: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       ANTIGRAVITY_GCP_PROJECT: 'eval-gcp-project',
       GPG_AGENT_INFO: '/tmp/gpg-agent',
       PATH: [
@@ -310,7 +309,6 @@ describe('runCliAgentCommand', () => {
         assert.strictEqual(childEnv[stripped], undefined, `Expected ${stripped} to be stripped`);
       }
       assert.strictEqual(childEnv.CLAUDE_CODE_USE_VERTEX, '1');
-      assert.strictEqual(childEnv.GEMINI_CLI_TRUST_WORKSPACE, 'true');
       assert.strictEqual(childEnv.ANTIGRAVITY_GCP_PROJECT, 'eval-gcp-project');
       assert.strictEqual(childEnv.GPG_AGENT_INFO, '/tmp/gpg-agent');
 
@@ -356,7 +354,6 @@ describe('sanitizeAgentChildEnv', () => {
       GROK_PLUGIN_ROOT: '/tmp/grok',
       AMP_CURRENT_THREAD_ID: 't-1',
       GEMINI_CLI: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       CLINE_ACTIVE: 'true',
       CODEX_SANDBOX_NETWORK_DISABLED: '1',
       ANTIGRAVITY_CLI_ALIAS: 'agy',
@@ -381,7 +378,6 @@ describe('sanitizeAgentChildEnv', () => {
       agent: undefined,
     });
     assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
-    assert.strictEqual(sanitized.GEMINI_CLI_TRUST_WORKSPACE, 'true');
     assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
     assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
     assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');
@@ -399,6 +395,53 @@ describe('sanitizeAgentChildEnv', () => {
 
     const allDetected = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map(key => [key, '1']));
     assert.deepStrictEqual(sanitizeAgentChildEnv(allDetected), {});
+  });
+
+  test('strips host credentials and arbitrary unknown env vars via allowlist', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      HTTP_PROXY: 'http://proxy.example:8080',
+      ANTHROPIC_MODEL: 'claude-sonnet-4-6',
+      PLAYWRIGHT_BROWSERS_PATH: '/cache/ms-playwright',
+      GEMINI_API_KEY: `AIzaSy${'X'.repeat(33)}`,
+      GITHUB_TOKEN: `ghp_${'A'.repeat(36)}`,
+      GOOGLE_APPLICATION_CREDENTIALS: '/home/user/.config/gcloud/adc.json',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+
+    assert.strictEqual(sanitized.PATH, '/usr/bin');
+    assert.strictEqual(sanitized.HOME, '/tmp/isolated');
+    assert.strictEqual(sanitized.HTTP_PROXY, 'http://proxy.example:8080');
+    assert.strictEqual(sanitized.ANTHROPIC_MODEL, 'claude-sonnet-4-6');
+    assert.strictEqual(sanitized.PLAYWRIGHT_BROWSERS_PATH, '/cache/ms-playwright');
+    for (const dropped of ['GEMINI_API_KEY', 'GITHUB_TOKEN', 'GOOGLE_APPLICATION_CREDENTIALS', 'CUSTOM_ARBITRARY_SECRET']) {
+      assert.strictEqual(sanitized[dropped], undefined);
+    }
+  });
+
+  test('preserves IS_SANDBOX for container environments', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      IS_SANDBOX: '1',
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+    assert.strictEqual(sanitized.IS_SANDBOX, '1');
+    assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
+  });
+
+  test('preserves AGY_ADC_AUTH and GOOGLE_CLOUD_PROJECT for container environments', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      AGY_ADC_AUTH: 'true',
+      GOOGLE_CLOUD_PROJECT: 'my-eval-project',
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+    assert.strictEqual(sanitized.AGY_ADC_AUTH, 'true');
+    assert.strictEqual(sanitized.GOOGLE_CLOUD_PROJECT, 'my-eval-project');
+    assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
   });
 });
 

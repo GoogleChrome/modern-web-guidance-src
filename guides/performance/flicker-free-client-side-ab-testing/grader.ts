@@ -103,6 +103,25 @@ test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
         await route.continue();
       }
     });
+
+    await page.route('**/*experiment-sdk.js*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: `
+          document.documentElement.dataset.variant = 'b';
+          document.querySelectorAll('.cta, .cta-button, button').forEach(el => el.classList.add('variant-b'));
+        `
+      });
+    });
+
+    await page.route('**/api/experiment*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ variant: 'b' })
+      });
+    });
   });
 
   test(`The variant styling is applied correctly and quickly`, async ({ page }) => {

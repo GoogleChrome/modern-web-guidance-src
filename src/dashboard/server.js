@@ -485,6 +485,9 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
     filePath = path.join(guidesDir, decodedPath.substring(8));
+  } else if (decodedPath.startsWith('/public-evals/')) {
+    // Built by `pnpm public:build` into out/; never read from the dashboard dir, which is deployed.
+    filePath = path.join(outDir, decodedPath.substring(1));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join(dashboardDir, relativePath);

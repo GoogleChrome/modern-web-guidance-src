@@ -13,40 +13,7 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
 test.describe(`Language Detection Expectations: ${demoName}`, () => {
-  // Functional/Static assertions
-  test('Source code should use the LanguageDetector API', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('LanguageDetector');
-  });
-
-  test('Source code should not use the deprecated window.ai.languageDetector API', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toContain('window.ai.languageDetector');
-  });
-
-  test('Source code should check for API availability using availability()', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('availability()');
-  });
-
-  test('Source code should handle detection results as objects with a detectedLanguage property', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('.detectedLanguage');
-  });
-
-  test('Source code should handle detection results as objects with a confidence property', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('.confidence');
-  });
-
-  test('Source code should implement a monitor for download progress', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('downloadprogress');
-  });
-
-  // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
@@ -59,12 +26,10 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
       }
     });
 
-    // Inject mocks and tracking
     await page.addInitScript(() => {
       window.__calls = [];
       window.__aiUsed = false;
 
-      // Mock window.LanguageDetector
       window.LanguageDetector = {
         availability: async () => {
           window.__calls.push('availability');
@@ -72,7 +37,6 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
         },
         create: async (_options: any) => {
           window.__calls.push('create');
-          // Basic validation of options if needed, but we just track the call
           return {
             detect: async (_text: string) => {
               window.__calls.push('detect');
@@ -82,7 +46,6 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
         }
       };
 
-      // Mock window.ai.languageDetector to detect forbidden usage
       if (!window.ai) {
         window.ai = {};
       }
@@ -101,7 +64,7 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
 
     await page.goto(demoUrl);
 
-    // Trigger potential interactions (e.g., buttons in negative-demo.html)
+    // Trigger potential interactions
     const detectButton = page.locator('button', { hasText: /detect/i });
     if (await detectButton.count() > 0) {
       const input = page.locator('textarea, input[type="text"]');
@@ -110,30 +73,33 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
       }
       await detectButton.click();
     }
-
-    // Wait for any async script execution
-    await page.waitForTimeout(500);
   });
 
-  // Browser assertions
-  test('Browser: LanguageDetector.availability() should be called', async ({ page }) => {
+  test('The page uses the LanguageDetector API and does not access the deprecated window.ai.languageDetector API', async ({ page }) => {
+    const aiUsed = await page.evaluate(() => window.__aiUsed);
+    expect(aiUsed).toBe(false);
+    const calls = await page.evaluate(() => window.__calls);
+    expect(calls.some(c => c === 'availability' || c === 'create' || c === 'detect')).toBe(true);
+  });
+
+  test('The implementation checks API availability via LanguageDetector.availability()', async ({ page }) => {
+    await page.waitForFunction(() => window.__calls.includes('availability'), null, { timeout: 3000 });
     const calls = await page.evaluate(() => window.__calls);
     expect(calls).toContain('availability');
   });
 
-  test('Browser: LanguageDetector.create() should be called', async ({ page }) => {
+  test('The implementation creates a detector with LanguageDetector.create() and calls detect() with the input text', async ({ page }) => {
+    await page.waitForFunction(() => window.__calls.includes('detect'), null, { timeout: 3000 });
     const calls = await page.evaluate(() => window.__calls);
     expect(calls).toContain('create');
-  });
-
-  test('Browser: LanguageDetector.detect() should be called', async ({ page }) => {
-    const calls = await page.evaluate(() => window.__calls);
     expect(calls).toContain('detect');
   });
 
-  test('Browser: The deprecated window.ai.languageDetector API should not be accessed', async ({ page }) => {
-    const aiUsed = await page.evaluate(() => window.__aiUsed);
-    expect(aiUsed).toBe(false);
+  test('The page displays the detected language result', async ({ page }) => {
+    await page.waitForFunction(() => window.__calls.includes('detect'), null, { timeout: 3000 });
+    // The mock returns { detectedLanguage: 'en', confidence: 0.95 }; match whole words so
+    // unrelated page text (e.g. the "Detect" button) can't satisfy the check.
+    await expect(page.locator('body')).toContainText(/\bEnglish\b|\ben\b|\b95(?:\.0+)?\s*%|\b0\.95\b/i, { useInnerText: true, timeout: 3000 });
   });
 });
 

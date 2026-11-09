@@ -215,8 +215,8 @@ test('generateJsonReport includes skillVersion and cliVersion when provided', ()
     {},
     '2026-06-26T14:00:00Z',
     1,
-    'gemini-cli',
-    'gemini-pro',
+    'claude_code',
+    'claude-sonnet-4-6',
     1234,
     '2026_05_16-c5e78707',
     '0.0.174'
@@ -224,7 +224,7 @@ test('generateJsonReport includes skillVersion and cliVersion when provided', ()
 
   assert.strictEqual(report.skillVersion, '2026_05_16-c5e78707');
   assert.strictEqual(report.cliVersion, '0.0.174');
-  assert.strictEqual(report.agent, 'gemini-cli');
+  assert.strictEqual(report.agent, 'claude_code');
   assert.strictEqual(report.serving, 'skills_cli');
 });
 

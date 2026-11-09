@@ -17,7 +17,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const SANITIZE_UNTRUSTED_HTML_GUIDE_HASH = '5ce9f1fd24c2';
+export const SANITIZE_UNTRUSTED_HTML_GUIDE_HASH = '71685c1e9820';
 
 const SANITIZER_FEATURE_TOKENS = [
   'setHTML',

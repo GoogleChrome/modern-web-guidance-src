@@ -555,6 +555,20 @@ export function getAccessToken() {
 }
 
 /**
+ * Whether `?show_login` is set in the URL (e.g. `?show_login=true`) to reveal the
+ * "Sign in with Google" button. By default the sign-in button stays hidden on the
+ * public dashboard so anonymous visitors are not prompted to sign in to a private bucket.
+ *
+ * @param {URLSearchParams} [params]
+ * @returns {boolean}
+ */
+export function isSignInEnabled(params = new URLSearchParams(window.location.search)) {
+    if (!params.has('show_login')) return false;
+    const val = params.get('show_login');
+    return val !== 'false' && val !== '0';
+}
+
+/**
  * @param {(() => void) | undefined} [onAuthSuccess]
  */
 export function initGoogleAuth(onAuthSuccess) {
@@ -567,10 +581,7 @@ export function initGoogleAuth(onAuthSuccess) {
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.style.display = 'block';
-            if (accessToken) {
-                authBtn.style.display = 'none';
-            }
+            renderAuthButton(authBtn);
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -585,17 +596,46 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken || '');
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
-                    authBtn.style.display = 'none';
+                    renderAuthButton(authBtn);
                 }
                 if (onAuthSuccess) onAuthSuccess();
             },
         });
 
         if (authBtn) {
-            authBtn.addEventListener('click', () => tokenClient.requestAccessToken());
+            authBtn.addEventListener('click', () => {
+                if (accessToken) {
+                    signOut();
+                } else {
+                    tokenClient.requestAccessToken();
+                }
+            });
         }
     };
     init();
+}
+
+/**
+ * Shows "Sign out" when there is a token, or "Sign in" when `?show_login` is set in the URL;
+ * otherwise keeps the button hidden.
+ * @param {HTMLButtonElement} authBtn
+ */
+function renderAuthButton(authBtn) {
+    authBtn.style.display = (accessToken || isSignInEnabled()) ? 'block' : 'none';
+    authBtn.innerHTML = accessToken ? 'Sign out' : 'Sign in<span class="auth-btn-long"> with Google</span>';
+    authBtn.setAttribute('aria-label', accessToken ? 'Sign out' : 'Sign in with Google');
+    authBtn.title = accessToken ? 'Forget the Google token and show the public view' : 'Sign in to read the private bucket';
+}
+
+/**
+ * Drops the stored token and goes to the landing page as an unauthenticated visitor.
+ * Navigating (rather than re-rendering) is deliberate: it clears any private data already on
+ * the page, and the suite or guide being viewed may not exist in the public copy at all.
+ */
+export function signOut() {
+    accessToken = null;
+    localStorage.removeItem('gcs_access_token');
+    window.location.href = './';
 }
 
 /**
@@ -611,16 +651,16 @@ export async function authenticatedFetch(url, options = {}) {
         options.headers = headers;
     }
     const res = await fetch(url, options);
+    // 401 means the token itself is dead, so forget it. A 403 (an account without access to
+    // this bucket or object) leaves the token alone; callers decide what to do by status.
     if (res.status === 401) {
-        console.warn('Google Access Token expired or invalid. Clearing token.');
+        console.warn('Google access token expired; clearing it.');
         localStorage.removeItem('gcs_access_token');
         accessToken = null;
-        
-        // Reset button UI if available
+
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.style.display = 'block';
-            authBtn.textContent = 'Sign in with Google';
+            renderAuthButton(authBtn);
             authBtn.disabled = false;
             authBtn.style.backgroundColor = '';
             authBtn.style.color = '';

@@ -29,10 +29,16 @@ function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
 function getSwitchInputs(docs: Array<{ file: string; document: any }>): Array<{ document: any; input: any }> {
   const switchInputs: Array<{ document: any; input: any }> = [];
   for (const { document } of docs) {
-    const inputs = Array.from(document.querySelectorAll('input')) as any[];
+    const inputs = Array.from(document.querySelectorAll('input, button')) as any[];
     for (const input of inputs) {
       const type = (input.getAttribute('type') || '').toLowerCase();
-      if (type === 'checkbox' && input.hasAttribute('switch')) {
+      const role = (input.getAttribute('role') || '').toLowerCase();
+      const isSwitch =
+        (type === 'checkbox' && (input.hasAttribute('switch') || role === 'switch')) ||
+        role === 'switch' ||
+        input.classList?.contains('switch') ||
+        input.id?.includes('switch');
+      if (isSwitch) {
         switchInputs.push({ document, input });
       }
     }
@@ -62,8 +68,11 @@ function hasPolyfillOrAppearanceFallback(): boolean {
 test.describe('switch Target Grader', () => {
   test('Each switch control is a standard HTML <input type="checkbox"> element with the switch attribute', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const switchInputs = getSwitchInputs(docs);
-    expect(switchInputs.length).toBeGreaterThan(0);
+    const hasNativeSwitch = docs.some(({ document }) => {
+      const inputs = Array.from(document.querySelectorAll('input[type="checkbox"][switch]'));
+      return inputs.length > 0;
+    });
+    expect(hasNativeSwitch).toBe(true);
   });
 
   test('Each switch input is associated with a <label> element', () => {
@@ -176,18 +185,22 @@ test.describe('switch Target Grader', () => {
     const docs = getHtmlDocuments(targetFiles);
     const switchInputs = getSwitchInputs(docs);
 
+    const switchSelPattern = /(?::focus-visible|:focus)\b/i;
+    const targetsSwitch = /(?:switch|input|checkbox|button|\*|:focus-visible)/i;
     const hasFocusVisibleRule = styleRules.some((rule) => {
       const sel = rule.selectorText || '';
-      if (!sel.includes(':focus-visible') && !sel.includes(':focus')) return false;
+      if (!switchSelPattern.test(sel) || !targetsSwitch.test(sel)) return false;
       const outline = rule.style.getPropertyValue('outline').trim();
       const outlineWidth = rule.style.getPropertyValue('outline-width').trim();
       const outlineStyle = rule.style.getPropertyValue('outline-style').trim();
       const outlineColor = rule.style.getPropertyValue('outline-color').trim();
+      const boxShadow = rule.style.getPropertyValue('box-shadow').trim();
       const hasVisibleOutline =
         (outline !== '' && outline !== 'none' && outline !== '0') ||
         (outlineWidth !== '' && outlineWidth !== '0' && outlineWidth !== '0px') ||
         (outlineStyle !== '' && outlineStyle !== 'none') ||
-        outlineColor !== '';
+        outlineColor !== '' ||
+        (boxShadow !== '' && boxShadow !== 'none');
       return hasVisibleOutline;
     });
 

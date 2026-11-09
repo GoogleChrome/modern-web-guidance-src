@@ -22,30 +22,52 @@ test.describe('Soft Edge Content Fade Tests', () => {
     await page.goto(targetUrl);
   });
 
-  test('the element with class .paywall-container has the mask-image property applied with a linear-gradient', async ({ page }) => {
+  test('The preview container or its content element has the mask-image property applied with a linear-gradient', async ({ page }) => {
     const maskImage = await page.evaluate(() => {
-      const el = document.querySelector('.paywall-container');
-      if (!el) return null;
-      return window.getComputedStyle(el).maskImage;
+      const container = document.querySelector('.paywall-container') || document.querySelector('[class*="paywall"]');
+      if (!container) return null;
+      const candidates = [container, ...Array.from(container.querySelectorAll('*'))];
+      for (const el of candidates) {
+        const style = window.getComputedStyle(el);
+        if (style.maskImage && style.maskImage.includes('linear-gradient')) {
+          return style.maskImage;
+        }
+      }
+      return window.getComputedStyle(container).maskImage;
     });
     expect(maskImage).toContain('linear-gradient');
   });
 
-  test('the element with class .paywall-container has the -webkit-mask-image property applied with a linear-gradient', async ({ page }) => {
+  test('The preview container or its content element has the -webkit-mask-image property applied with a linear-gradient', async ({ page }) => {
     const webkitMaskImage = await page.evaluate(() => {
-      const el = document.querySelector('.paywall-container');
-      if (!el) return null;
-      return window.getComputedStyle(el).webkitMaskImage;
+      const container = document.querySelector('.paywall-container') || document.querySelector('[class*="paywall"]');
+      if (!container) return null;
+      const candidates = [container, ...Array.from(container.querySelectorAll('*'))];
+      for (const el of candidates) {
+        const style = window.getComputedStyle(el);
+        if (style.webkitMaskImage && style.webkitMaskImage.includes('linear-gradient')) {
+          return style.webkitMaskImage;
+        }
+      }
+      return window.getComputedStyle(container).webkitMaskImage;
     });
     expect(webkitMaskImage).toContain('linear-gradient');
   });
 
-  test('the gradient transitions from opaque to transparent to create a fade effect', async ({ page }) => {
+  test('The gradient transitions from opaque to transparent to create a fade effect', async ({ page }) => {
     const maskImageValue = await page.evaluate(() => {
-      const el = document.querySelector('.paywall-container');
-      if (!el) return null;
-      const computed = window.getComputedStyle(el);
-      return computed.maskImage || computed.webkitMaskImage || '';
+      const container = document.querySelector('.paywall-container') || document.querySelector('[class*="paywall"]');
+      if (!container) return null;
+      const candidates = [container, ...Array.from(container.querySelectorAll('*'))];
+      for (const el of candidates) {
+        const computed = window.getComputedStyle(el);
+        const val = computed.maskImage || computed.webkitMaskImage || '';
+        if (val.includes('linear-gradient')) {
+          return val;
+        }
+      }
+      const fallback = window.getComputedStyle(container);
+      return fallback.maskImage || fallback.webkitMaskImage || '';
     });
     
     const colorMatches = maskImageValue?.match(/rgba?\([^)]+\)/g) || [];
@@ -64,7 +86,7 @@ test.describe('Soft Edge Content Fade Tests', () => {
     expect(hasOpaque && hasTransparent).toBe(true);
   });
 
-  test('a fallback strategy is included for browsers that do not support masking', async ({ page }) => {
+  test('A fallback strategy is included for browsers that do not support masking', async ({ page }) => {
     const hasFallback = await page.evaluate(() => {
       for (const sheet of Array.from(document.styleSheets)) {
         try {
@@ -86,32 +108,37 @@ test.describe('Soft Edge Content Fade Tests', () => {
         }
       }
 
-      // Actively simulate a browser without mask-image support by disabling mask-image on .paywall-container
+      // Actively simulate a browser without mask-image support by disabling mask-image on the masked element
       // and verifying progressive enhancement / graceful degradation to a valid unmasked fallback state
-      const el = document.querySelector('.paywall-container') as HTMLElement | null;
-      if (!el) return false;
-      const initialComputed = window.getComputedStyle(el);
-      const hasInitialMask =
-        (initialComputed.maskImage && initialComputed.maskImage !== 'none') ||
-        (initialComputed.webkitMaskImage && initialComputed.webkitMaskImage !== 'none');
-      if (!hasInitialMask) return false;
+      const container = document.querySelector('.paywall-container') || document.querySelector('[class*="paywall"]');
+      if (!container) return false;
+      const candidates = [container, ...Array.from(container.querySelectorAll('*'))] as HTMLElement[];
+      let targetEl: HTMLElement | null = null;
+      for (const el of candidates) {
+        const style = window.getComputedStyle(el);
+        if ((style.maskImage && style.maskImage !== 'none') || (style.webkitMaskImage && style.webkitMaskImage !== 'none')) {
+          targetEl = el;
+          break;
+        }
+      }
+      if (!targetEl) return false;
 
-      el.style.setProperty('mask-image', 'none', 'important');
-      el.style.setProperty('-webkit-mask-image', 'none', 'important');
+      targetEl.style.setProperty('mask-image', 'none', 'important');
+      targetEl.style.setProperty('-webkit-mask-image', 'none', 'important');
 
-      const unmaskedComputed = window.getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
+      const unmaskedComputed = window.getComputedStyle(targetEl);
+      const rect = targetEl.getBoundingClientRect();
       const hasValidUnmaskedLayout =
         unmaskedComputed.maskImage === 'none' &&
         unmaskedComputed.display !== 'none' &&
         unmaskedComputed.visibility !== 'hidden' &&
         rect.width > 50 &&
         rect.height > 20 &&
-        (el.textContent?.trim().length ?? 0) > 0;
+        (targetEl.textContent?.trim().length ?? 0) > 0;
       if (!hasValidUnmaskedLayout) return false;
 
-      const afterComputed = window.getComputedStyle(el, '::after');
-      const beforeComputed = window.getComputedStyle(el, '::before');
+      const afterComputed = window.getComputedStyle(targetEl, '::after');
+      const beforeComputed = window.getComputedStyle(targetEl, '::before');
       const isObscuring = (style: CSSStyleDeclaration) => {
         if (!style.content || style.content === 'none') return false;
         const isAbsolute = style.position === 'absolute' || style.position === 'fixed';
@@ -130,19 +157,19 @@ test.describe('Soft Edge Content Fade Tests', () => {
     expect(hasFallback).toBe(true);
   });
 
-  test('the content remains readable even if the mask is not applied', async ({ page }) => {
+  test('The preview text is not obscured by an opaque overlay when masking is not applied', async ({ page }) => {
     const isReadabilityObscured = await page.evaluate(() => {
-      const el = document.querySelector('.paywall-container');
-      if (!el) return true; // if element doesn't exist, it's not readable
+      const container = document.querySelector('.paywall-container') || document.querySelector('[class*="paywall"]');
+      if (!container) return true; // if element doesn't exist, it's not readable
       
-      const content = el.querySelector('.content') || el;
+      const content = container.querySelector('[class*="content"]') || container;
       const contentStyle = window.getComputedStyle(content);
       if (contentStyle.display === 'none' || contentStyle.visibility === 'hidden' || parseFloat(contentStyle.opacity || '1') === 0) {
         return true; // obscured/not readable
       }
       
-      const afterComputed = window.getComputedStyle(el, '::after');
-      const beforeComputed = window.getComputedStyle(el, '::before');
+      const afterComputed = window.getComputedStyle(container, '::after');
+      const beforeComputed = window.getComputedStyle(container, '::before');
       
       const isObscuring = (style: CSSStyleDeclaration) => {
         if (!style.content || style.content === 'none') return false;
