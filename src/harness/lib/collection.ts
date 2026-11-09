@@ -52,8 +52,11 @@ export function extractReasoningEffortFromResults(resultsDir: string): Reasoning
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
 
+  if (existingEffort && parsedVersion === NORMALIZER_VERSION) {
+    return existingEffort;
+  }
   const rawLogsPresent = hasRawSessionLogs(resultsDir);
-  if (existingEffort && (parsedVersion === NORMALIZER_VERSION || !rawLogsPresent)) {
+  if (existingEffort && !rawLogsPresent) {
     return existingEffort;
   }
   if (rawLogsPresent) {
