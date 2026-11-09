@@ -128,6 +128,14 @@ function reorderWithTransition(rows) {
 
 Wrap the table in a horizontally scrollable container (`overflow-x: auto`) with `role="region"`, an accessible name from the caption via `aria-labelledby`, and `tabindex="0"` so keyboard users can scroll it. Give the table a `min-inline-size` so columns do not collapse.
 
+## Common mistakes
+
+* **DO NOT** re-render the `<tbody>` or `<table>` on sort; it discards focus and state and breaks view transitions.
+* **DO NOT** put `aria-live` on the table, or announce each row.
+* **DO NOT** leave `aria-sort` on more than one header.
+* **DO NOT** change the button's label to describe the action ("Sort ascending"). Keep the column name; `aria-sort` conveys state.
+* **DO NOT** sort formatted strings when the underlying values are numbers or dates.
+
 ## Fallbacks
 
 {{ BASELINE_STATUS("invoker-commands") }}
@@ -139,12 +147,4 @@ If your Baseline target does not support invoker commands, add a `click` listene
 {{ BASELINE_STATUS("move-before") }}
 
 If your Baseline target does not support `moveBefore()` or element-scoped view transitions, follow the fallbacks in {{ GUIDE_REF("dynamic-sort") }}; the table still sorts and the announcement is unchanged.
-
-## Common mistakes
-
-* **DO NOT** re-render the `<tbody>` or `<table>` on sort; it discards focus and state and breaks view transitions.
-* **DO NOT** put `aria-live` on the table, or announce each row.
-* **DO NOT** leave `aria-sort` on more than one header.
-* **DO NOT** change the button's label to describe the action ("Sort ascending"). Keep the column name; `aria-sort` conveys state.
-* **DO NOT** sort formatted strings when the underlying values are numbers or dates.
 
