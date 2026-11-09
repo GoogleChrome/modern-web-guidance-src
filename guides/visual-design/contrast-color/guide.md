@@ -68,7 +68,7 @@ To support browsers without `contrast-color()`, you must provide a fallback. If 
 
 ### Recommended: Calculate contrast with `color(xyz)`
 
-In order to adhere to WCAG's 1.4.3 Contrast (Minimum) guideline, use `color(xyz)`, which can take relative luminance into account. When using this, ensure that white is not considered as `color(xyz 1 1 1)`, but rather `color(xyz 0.9505 1 1.089)`, as this is the D65 white point.
+In order to adhere to WCAG's 1.4.3 Contrast (Minimum) guideline, calculate the contrasting color using Relative Color Syntax in the CIE XYZ D65 color space, which uses relative luminance as the `y` value. Note that `white` is `color(xyz 0.9505 1 1.089)`, as this is the D65 white point.
 
 {{ BASELINE_STATUS("relative-color") }}
 
