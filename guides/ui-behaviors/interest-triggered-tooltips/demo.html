@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
     <script type="module">
-      // Explicit ARIA for screen readers until browsers and the polyfill expose interestfor semantics consistently.
+      // Explicit ARIA until browsers and the polyfill expose interestfor semantics consistently. Runs before the
+      // polyfill loads: the polyfill wires ARIA only on `load`, too late for some screen readers, and adds no
+      // `role="tooltip"` to plain hints.
       const native = "interestForElement" in HTMLButtonElement.prototype;
 
       // Same split the browser and polyfill use: anything beyond text, images, and inline formatting is rich.
@@ -61,6 +63,7 @@
           }
         }, true);
       } else {
+        // The polyfill keeps aria-expanded in sync itself.
         await import("https://unpkg.com/interestfor@latest");
       }
     </script>
