@@ -211,7 +211,7 @@
       @media (prefers-reduced-motion: no-preference) {
         .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media),
         .skeleton[aria-busy="true"] li::after {
-          background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
+          background-image: linear-gradient(110deg in oklab, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
           background-repeat: no-repeat;
           background-attachment: fixed;
           background-size: 200% 100%;
@@ -293,38 +293,38 @@
         position: relative;
         background: none;
         --line-one: 72%;
-      }
 
-      .skeleton[aria-busy="true"] li::before,
-      .skeleton[aria-busy="true"] li::after {
-        content: "";
-        position: absolute;
-        background-color: var(--skeleton-tone);
-      }
+        &::before,
+        &::after {
+          content: "";
+          position: absolute;
+          background-color: var(--skeleton-tone);
+        }
 
-      .skeleton[aria-busy="true"] li::before {
-        inset-inline-start: -1.25em;
-        inset-block-start: .5lh;
-        translate: 0 -50%;
-        inline-size: .6em;
-        block-size: .6em;
-        border-radius: 50%;
-      }
+        &::before {
+          inset-inline-start: -1.25em;
+          inset-block-start: .5lh;
+          translate: 0 -50%;
+          inline-size: .6em;
+          block-size: .6em;
+          border-radius: 50%;
+        }
 
-      .skeleton[aria-busy="true"] li::after {
-        inset-inline-start: 0;
-        inset-block-start: calc(var(--bar-gap) / 2);
-        inline-size: var(--line-one);
-        block-size: var(--bar-height);
-        border-radius: var(--bar-radius);
-      }
+        &::after {
+          inset-inline-start: 0;
+          inset-block-start: calc(var(--bar-gap) / 2);
+          inline-size: var(--line-one);
+          block-size: var(--bar-height);
+          border-radius: var(--bar-radius);
+        }
 
-      .skeleton[aria-busy="true"] li:nth-child(2) {
-        --line-one: 56%;
-      }
+        &:nth-child(2) {
+          --line-one: 56%;
+        }
 
-      .skeleton[aria-busy="true"] li:nth-child(3) {
-        --line-one: 64%;
+        &:nth-child(3) {
+          --line-one: 64%;
+        }
       }
 
       /* Controls keep their real box (size, padding, border width and radius)

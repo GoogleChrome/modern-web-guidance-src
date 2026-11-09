@@ -182,30 +182,30 @@ Items are one line tall like the text, not tall blocks: hide the native marker a
   background: none;      /* The bar is drawn by ::after */
   clip-path: none;       /* Would clip the dot outside the item */
   overflow: visible;     /* Lets the dot show */
-}
 
-.skeleton[aria-busy="true"] li::before,
-.skeleton[aria-busy="true"] li::after {
-  content: "";
-  position: absolute;
-  background-color: var(--skeleton-tone);
-}
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    background-color: var(--skeleton-tone);
+  }
 
-.skeleton[aria-busy="true"] li::before {
-  inset-inline-start: -1.25em;
-  inset-block-start: .5lh;
-  translate: 0 -50%;
-  inline-size: .6em;     /* Scales with the item's text size */
-  block-size: .6em;
-  border-radius: 50%;
-}
+  &::before {
+    inset-inline-start: -1.25em;
+    inset-block-start: .5lh;
+    translate: 0 -50%;
+    inline-size: .6em;   /* Scales with the item's text size */
+    block-size: .6em;
+    border-radius: 50%;
+  }
 
-.skeleton[aria-busy="true"] li::after {
-  inset-inline-start: 0;
-  inset-block-start: calc(var(--bar-gap) / 2);
-  inline-size: var(--line-one, 100%); /* Set per item to vary widths */
-  block-size: var(--bar-height);
-  border-radius: var(--bar-radius);
+  &::after {
+    inset-inline-start: 0;
+    inset-block-start: calc(var(--bar-gap) / 2);
+    inline-size: var(--line-one, 100%); /* Set per item to vary widths */
+    block-size: var(--bar-height);
+    border-radius: var(--bar-radius);
+  }
 }
 ```
 
