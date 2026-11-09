@@ -754,9 +754,11 @@
         }
         if (before !== dropBefore) {
           dropBefore = before;
-          showDropMarker(before, siblings);
+          // Dropping back into the item's own slot moves nothing, so no marker.
+          if (before === pointerItem.nextElementSibling) clearDropMarker();
+          else showDropMarker(before, siblings);
         }
-        placeDropMarker();
+        if (dropMarker) placeDropMarker();
       }
 
       function autoScroll(now) {
