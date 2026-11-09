@@ -19,7 +19,7 @@ Toast notifications must be used to provide non-critical, supplemental informati
 
 ## Implementation guidelines
 
-Prefer persistent toast notifications that remain present until they are dismissed, except for frequent, low importance events, where the friction persistence creates outweighs the value of the information provided. In those cases, do evaluate whether toasts actually add to the user experience in general — in some cases it may be preferable to not have them at all.
+Prefer persistent toast notifications that remain present until they are dismissed, except for frequent, low importance events, where the friction persistence creates outweighs the value of the information provided. In those cases, do evaluate whether toasts actually add to the user experience in general — in some cases it may be preferable to not have them at all. If using a pattern that does dismiss toasts after a short period of time, check whether focus is on a control in the toast before dismissal. If the user is focused on a control inside the toast, pause dismissal until focus has left the toast.
 
 * **MANDATORY:** Use popover="manual" so the notification stays visible until explicitly closed or timed out by a script.
 * **MANDATORY:** Ensure that the information in the toast can be identified by other means, so that if it is part of a pattern that disappears after a short period of time, people can still identify the information without the toast being present.
