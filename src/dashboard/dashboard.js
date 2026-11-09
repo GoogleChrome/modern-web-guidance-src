@@ -1,7 +1,8 @@
 import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
-import { ApiClient } from './api.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote } from './data-source.js';
 import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
 
 /**
@@ -224,10 +225,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.history.replaceState({}, '', url);
         if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
     });
-    // Auth Button Handling (only for remote)
-    if (api.source === 'remote') {
+    // Auth Button Handling (remote reloads data in place; public reloads the page as remote)
+    if (api.source === 'remote' || api.source === 'public') {
         initGoogleAuth(async () => {
-            // Reload on auth success
+            if (api.source === 'public') {
+                reloadAsRemote();
+                return;
+            }
             const params = new URLSearchParams(window.location.search);
             const testId = params.get('testId');
             if (testId) {
@@ -332,7 +336,11 @@ async function loadDashboardData(testId) {
                         await showDetails(testName, runData, testStats, testId);
 
                         const paths = await getResultPaths(testId, run, testName);
-                        if (paths) {
+                        if (paths && api.source === 'public') {
+                            if ((/** @type {DashboardRunResult} */ (run).files || []).includes('agent.patch')) {
+                                await viewContent(paths.resultPath, paths.resultPath);
+                            }
+                        } else if (paths) {
                             const { setupPath, resultPath } = paths;
                             await viewDiff(setupPath, resultPath, testName, run.runNumber);
                         }
@@ -389,6 +397,14 @@ async function loadDashboardData(testId) {
         console.error('Error:', error);
         dashboardLoaded = false;
         endLoadingReservations();
+
+        // The bucket rejected the request: leave for the landing page, which falls back to the
+        // public copy. A 401 has already cleared the dead token; a 403 keeps it (valid account,
+        // no access) so the landing page still offers Sign out.
+        if (api.source === 'remote' && isAuthRejection(error)) {
+            window.location.href = './';
+            return;
+        }
 
         const message = (error instanceof Error) ? error.message : String(error);
 
@@ -462,10 +478,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // View GCS Artifacts
     const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
     if (gcsBtn) {
-        const params = new URLSearchParams(window.location.search);
-        const source = params.get('source');
-        const testId = params.get('testId');
-        if (source === 'remote' && testId) {
+        const testId = new URLSearchParams(window.location.search).get('testId');
+        if (api.source === 'remote' && testId) {
             gcsBtn.hidden = false;
             gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${encodeURIComponent(testId)}?project=chrome-kiwi-air-force-dev`, '_blank');
         }
@@ -775,11 +789,11 @@ function renderSummary(data) {
             </div>
         </article>
 
-        <!-- Card 2: Cross-Cutting Accessibility Subscore -->
+        <!-- Card 2: Automated Accessibility Checks -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Accessibility subscore</span>
-                ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
+                <span class="meta-label">Automated accessibility checks</span>
+                ${ratePill(a11yUpliftPp, 'accessibility check pass rate change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
@@ -1160,7 +1174,7 @@ function buildEvalsTableHeader() {
         ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
         <div class="eval-col-time">${sortBtn('time', 'Duration', 'Unguided / Guided')}</div>
         <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
-        <div class="eval-col-dumbbell"><span>Pass rate</span><span class="eval-col-sub">Unguided → Guided</span></div>
+        <div class="eval-col-dumbbell"><span>${isA11yMode ? 'A11y pass rate' : 'Pass rate'}</span><span class="eval-col-sub">Unguided → Guided</span></div>
         <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
     `;
     header.querySelectorAll('.eval-col-sort-btn').forEach(btn => {
@@ -1552,18 +1566,20 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         let promptHtml = '<div style="color: var(--text-secondary); margin-bottom: 20px;">Prompt fetch deferred or failed.</div>';
         let baseApp = 'n/a';
 
-        // Fetch prompt from the first run (unguided or guided)
+        // The prompt recorded on the first run (unguided or guided) is authoritative; older
+        // results without one are reconstructed from run.mjs, then from the task file at HEAD.
         const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
         if (sampleRun && sampleRun.taskName) {
             try {
                 const typeLabel = (unguidedRuns && unguidedRuns[0]) ? 'unguided' : 'guided';
-                const paths = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
-                if (!paths) return;
-                const { usedBasePath } = paths;
+                let promptText = typeof sampleRun.prompt === 'string' ? sampleRun.prompt.trim() : '';
+                if (promptText) {
+                    baseApp = sampleRun.baseApp || baseApp;
+                } else {
+                    const paths = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
+                    if (!paths) return;
+                    const { usedBasePath } = paths;
 
-                let promptText = sampleRun.prompt || '';
-                if (sampleRun.baseApp) baseApp = sampleRun.baseApp;
-                if (!promptText) {
                     try {
                         const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
                         const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
@@ -1672,8 +1688,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
                  const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
-                 const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                 const appUrl = (api.source === 'remote' && !isLocalServer)
+                 // A run with a built app can be opened and diffed against its base app; see getResultInfo.
+                 const hasApp = setupPath !== '';
+                 const appUrl = !hasApp ? ''
+                     : (api.source === 'remote' && !isLocalServer())
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
 
@@ -1692,8 +1710,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)}<span class="visually-hidden"> uncached tokens, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
                              ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
-                             <button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : !hasApp ? '' : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
+                             ${!appUrl ? '' : `<button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>`}
                              ${jsonFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${jsonFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${jsonFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
                              ${runtimeFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${logFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${logFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
@@ -1997,7 +2015,9 @@ async function viewContent(fileName, filePath) {
     try {
         const text = await api.getFileText(filePath);
 
-        if (fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) {
+        // A capped patch is a one-line `# diff omitted: ...` placeholder with no `diff --git`
+        // header, so it is shown as plain text rather than as an empty per-file diff.
+        if ((fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) && /^diff --git /m.test(text)) {
             body.innerHTML = '';
             body.appendChild(renderBackButton());
 

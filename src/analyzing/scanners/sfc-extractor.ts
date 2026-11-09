@@ -296,41 +296,11 @@ function findTagRanges(content: string, regex: RegExp): { start: number; end: nu
   return ranges;
 }
 
-/**
- * Finds opening and closing tag ranges for the top-level <template> block in a Vue SFC.
- */
-function findTopLevelVueTemplateTagRanges(content: string): { start: number; end: number }[] {
-  const match = /<template\b[^>]*>/i.exec(content);
-  if (!match) {
-    return [];
-  }
-
-  const openStart = match.index;
-  const openEnd = match.index + match[0].length;
-  const ranges = [{ start: openStart, end: openEnd }];
-
-  let depth = 1;
-  const tagRegex = /<\/?template\b[^>]*>/gi;
-  tagRegex.lastIndex = openEnd;
-
-  for (let tagMatch = tagRegex.exec(content); tagMatch !== null; tagMatch = tagRegex.exec(content)) {
-    if (tagMatch[0].startsWith('</')) {
-      depth--;
-      if (depth === 0) {
-        ranges.push({ start: tagMatch.index, end: tagMatch.index + tagMatch[0].length });
-        break;
-      }
-    } else if (!tagMatch[0].endsWith('/>')) {
-      depth++;
-    }
-  }
-
-  return ranges;
-}
+const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
 
 /**
  * Prepares HTML content for DOM scanning by blanking out non-DOM blocks (scripts, styles)
- * and unwrapping the top-level <template> in Vue SFCs so DOM elements can be traversed by linkedom.
+ * and blanking all <template> tags in Vue SFCs so inner DOM elements remain attached in linkedom.
  */
 export function prepareHtmlForDomScan(relPath: string, content: string): string {
   const lowerPath = relPath.toLowerCase();
@@ -348,7 +318,7 @@ export function prepareHtmlForDomScan(relPath: string, content: string): string 
   ];
 
   if (lowerPath.endsWith('.vue')) {
-    rangesToBlank.push(...findTopLevelVueTemplateTagRanges(content));
+    rangesToBlank.push(...findTagRanges(content, VUE_TEMPLATE_TAG_REGEX));
   } else if (lowerPath.endsWith('.astro')) {
     const fmMatch = ASTRO_FRONTMATTER_REGEX.exec(content);
     if (fmMatch) {

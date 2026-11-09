@@ -71,7 +71,7 @@ Graders are generated from [`src/grading/template.grader.ts`](../../../src/gradi
 Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtools-times`) never invent URL routes or mock REST API endpoints in `task.md`, though `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs.
 - **Structure and API usage → Parsers**: Check structure and API usage with parsers, never regex on source:
   - **Linkedom** (`getHtmlDocuments`) for HTML structure and DOM querying.
-  - **CSSOMNom** (`getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`), and declarations.
+  - **CSSOMNom** (`getRules`, `getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`, `@position-try`), and declarations.
   - **ts-morph** (`getJsProject`) for JS/TS syntax, API calls, and state wiring.
   - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax.
 - **Runtime behavior → Browser**: Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright:
@@ -85,7 +85,7 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `
 - **Follow variable indirection**: Resolve local `VariableDeclaration`, `BindingElement`, or parameter references when an identifier is passed as an argument instead of assuming inline object literals.
 - **Trace helper & wrapper functions**: Do not assume a platform API is called directly inside a component or event handler. Trace calls and forwarded arguments through helper/wrapper functions across modules.
 - **Flexible error handling**: Accept both `try/catch` (`TryStatement`) and promise `.catch()` handlers.
-- **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
+- **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getRules` / `getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
 
 ### 3. No Vacuous Checks or Swallowed Errors
 - **One expectation per `test()` block**: Each `test('...', ...)` block checks a single expectation for clear failure diagnostics, with a precondition assertion (e.g., asserting the list isn't empty) allowed before the main assertion.

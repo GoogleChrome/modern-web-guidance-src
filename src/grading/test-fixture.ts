@@ -4,7 +4,12 @@ import * as fs from 'fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'url';
 import type { Project } from 'ts-morph';
-import type { CSSStyleSheet } from 'cssomnom';
+import type {
+  CSSStyleSheet,
+  CSSRule,
+  RuleRoot,
+  AnyRuleConstructor,
+} from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 import {
   startTargetServer,
@@ -490,6 +495,47 @@ function parseHtmlDocument(file: string, content: string): any {
   return document;
 }
 
+
+const cssStyleSheetCache = new Map<string, CSSStyleSheet>();
+
+function computeFilesCacheKey(files: string[]): string {
+  return files
+    .map((f) => {
+      try {
+        const stat = fs.statSync(f);
+        return `${f}:${stat.mtimeMs}:${stat.size}`;
+      } catch {
+        return `${f}:missing`;
+      }
+    })
+    .join('\0');
+}
+
+/**
+ * Recursively collects rules matching the given RuleClass in depth-first pre-order.
+ * When passed an array of file paths (string[]), automatically parses and caches
+ * the consolidated CSSStyleSheet via getCssStyleSheet(files).
+ */
+export function getRules(root: RuleRoot | string[]): CSSRule[];
+export function getRules<T extends CSSRule>(root: RuleRoot | string[], ruleType: AnyRuleConstructor<T>): T[];
+export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructor<any>): any[] {
+  if (Array.isArray(root) && root.length === 0) {
+    return [];
+  }
+  let actualRoot: RuleRoot;
+  if (Array.isArray(root)) {
+    if (typeof root[0] === 'string') {
+      actualRoot = getCssStyleSheet(root as string[]);
+    } else {
+      actualRoot = root as unknown as CSSRule[];
+    }
+  } else {
+    actualRoot = root;
+  }
+  const { getRules: cssomGetRules } = require('cssomnom') as typeof import('cssomnom');
+  return ruleType ? cssomGetRules(actualRoot, ruleType) : cssomGetRules(actualRoot);
+}
+
 function unwrapGlobalPseudo(css: string): string {
   let result = css;
   const token = ':global(';
@@ -516,8 +562,14 @@ function unwrapGlobalPseudo(css: string): string {
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
+ * Results are memoized by file path, mtime, and file size.
  */
 export function getCssStyleSheet(files: string[]): CSSStyleSheet {
+  const cacheKey = computeFilesCacheKey(files);
+  const cached = cssStyleSheetCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
   const { parse, CSSStyleDeclaration } = require('cssomnom') as typeof import('cssomnom');
   const cssBlocks: string[] = [];
   for (const file of files) {
@@ -575,10 +627,17 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
   }
   // Parse each block in isolation so CSS EOF error recovery closes any unterminated
   // block, string, url(, or comment at its own boundary instead of swallowing later blocks.
-  const isolatedRules = cssBlocks.flatMap((block) =>
-    Array.from(parse(unwrapGlobalPseudo(block)).cssRules, (rule) => rule.cssText)
-  );
-  return parse(isolatedRules.join('\n'));
+  // Preserves full AST instances (including duplicate/fallback declarations) without re-serializing.
+  const sheet = parse('', { allowUnknownPseudos: true });
+  for (const block of cssBlocks) {
+    const parsedBlock = parse(unwrapGlobalPseudo(block), { allowUnknownPseudos: true });
+    for (const rule of Array.from(parsedBlock.cssRules)) {
+      (rule as any)._parentStyleSheet = sheet;
+      (sheet as any)._rules.push(rule);
+    }
+  }
+  cssStyleSheetCache.set(cacheKey, sheet);
+  return sheet;
 }
 
 export function populateJsProject(project: Project, files: string[]): void {

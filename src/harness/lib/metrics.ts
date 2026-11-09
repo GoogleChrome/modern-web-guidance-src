@@ -22,13 +22,18 @@ export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
   guidesUsed?: string[];
+  retrievedGuides?: string[];
+  fileReadGuides?: string[];
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
   taskName?: string;
+  /** Guide category (e.g. `security`); per-guide views group charts by it. */
+  discipline?: string;
   baseApp?: string;
   prompt?: string;
   targetFile?: string;
+  runtime?: { agentRuntime?: number; graderRuntime?: number } | null;
   tokenUsage?: { total: number; cached: number };
   pageLoad?: PageLoadResult;
 }

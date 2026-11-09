@@ -1,6 +1,5 @@
 import {
     initGoogleAuth,
-    authenticatedFetch,
     getAccessToken,
     escapeHtml,
     timeAgo,
@@ -22,6 +21,8 @@ import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { updateHeroFromSuites } from './hero.js';
 import { updateShowcaseFromSuites } from './showcase.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
 
 /**
  * @typedef {import('./insights.js').ManifestSuite & {
@@ -52,6 +53,8 @@ let currentModelFilter = 'all';
 let currentSearchFilter = '';
 /** @type {boolean} */
 let scheduledOnly = true;
+/** @type {'remote' | 'public' | null} */
+let loadedManifestSource = null;
 /** @type {SuiteSortKey} */
 let currentSuiteSort = 'date';
 /** @type {SortDirection} */
@@ -73,10 +76,6 @@ let currentGuideSortDir = 'asc';
 let currentInsightsMode = 'all';
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
-function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-}
-
 /** @param {string} testId */
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
 document.addEventListener('DOMContentLoaded', async () => {
@@ -90,14 +89,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
 
-        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        // A page that read the public copy reloads so every row comes from the bucket;
+        // the dev server merges the bucket into its local results in place.
         initGoogleAuth(async () => {
-            await loadRemoteTests();
+            const source = resolveDataSource();
+            if (source === 'remote' || source === 'public') {
+                reloadAsRemote();
+                return;
+            }
+            await loadManifestTests('remote');
         });
 
-        await loadLocalTests();
-        if (getAccessToken()) {
-            await loadRemoteTests();
+        if (resolveDataSource(params) === 'public') {
+            await loadManifestTests('public');
+        } else {
+            await loadLocalTests();
+            if (getAccessToken()) {
+                await loadManifestTests('remote');
+            }
         }
 
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -418,11 +427,8 @@ function fetchEvalsForHero(testId) {
  * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>} */
 async function fetchEvalsUncached(testId) {
     const match = Object.values(allTestData).find(s => s.testId === testId);
-    if (match?.source === 'remote') {
-        const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testId}/evals.json`)}?alt=media&t=${Date.now()}`;
-        const res = await authenticatedFetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch remote evals for ${testId}`);
-        return res.json();
+    if (match?.source === 'remote' || match?.source === 'public') {
+        return new ApiClient(match.source).getEvals(testId);
     }
     const fetchPath = match?.source === 'static' ? `results/${testId}/evals.json` : `${testId}/evals.json?source=local`;
     const res = await fetch(`${fetchPath}${fetchPath.includes('?') ? '&' : '?'}t=${Date.now()}`);
@@ -430,13 +436,27 @@ async function fetchEvalsUncached(testId) {
     return res.json();
 }
 
+/**
+ * The data source this page actually loaded from, for the hero and for links to
+ * other pages. Usually `resolveDataSource()`, except after a 403 sent a signed-in
+ * visitor to the public copy: links must then say `source=public` or the suite
+ * page would try the bucket again and bounce back here.
+ * @returns {import('./api.js').DataSource}
+ */
+function activeDataSource() {
+    const resolved = resolveDataSource();
+    return resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
+}
+
 function syncHero() {
     const suites = Object.values(allTestData);
-    updateShowcaseFromSuites(suites);
+    const source = activeDataSource();
+    updateShowcaseFromSuites(suites, { source });
     updateHeroFromSuites(suites, {
+        source,
         fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
-            updateShowcaseFromSuites(suites, { hydrated: true });
+            updateShowcaseFromSuites(suites, { hydrated: true, source });
             refreshFilterOptions();
             renderSuites();
             const drawer = document.getElementById('breakdowns');
@@ -446,9 +466,7 @@ function syncHero() {
 }
 
 async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
-    }
+    if (!isLocalServer()) return;
 
     try {
         let response = await fetch(`/api/suites?t=${Date.now()}`);
@@ -501,24 +519,22 @@ async function loadLocalTests() {
     }
 }
 
-async function loadRemoteTests() {
+/** @param {'remote' | 'public'} source */
+async function loadManifestTests(source) {
+    loadedManifestSource = source;
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
+        const manifest = await new ApiClient(source).getSuitesManifest();
+        if (manifest.length > 0) {
             setEmptyState(null);
             for (const item of manifest) {
                 if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote', { refreshFilters: false });
+                    registerSuiteSummary(item, source, { refreshFilters: false });
                 }
             }
             refreshFilterOptions();
         }
 
-        // Re-render UI now that we have remote data
+        // Re-render UI now that we have manifest data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
         if (!initialTests || initialTests.trim() === '') {
@@ -531,7 +547,14 @@ async function loadRemoteTests() {
         syncHero();
 
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error(`Error loading ${source} suites:`, error);
+        // The bucket rejected the token; show the public copy rather than nothing. Not on the
+        // dev server's local view, where the bucket is merely merged in: a stale token there
+        // must not mix out/public-evals/ into local results. (Checked by mode rather than
+        // `=== 'remote'` because a 401 has already cleared the token by this point.)
+        if (source === 'remote' && resolveDataSource() !== 'local' && isAuthRejection(error)) {
+            await loadManifestTests('public');
+        }
     }
 }
 
@@ -602,8 +625,8 @@ function updateRunsFilterDatalist() {
 function updateSourceFilterOptions() {
     const group = document.querySelector('#filter-source optgroup');
     if (!group) return;
-    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static' };
-    const values = /** @type {Array<'local' | 'remote' | 'static'>} */ (
+    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static', public: 'Public' };
+    const values = /** @type {Array<import('./data-source.js').DataSource>} */ (
         [...new Set(Object.values(allTestData).map(t => t.source).filter(Boolean))].sort()
     );
     if (values.length === 0) return;
@@ -858,12 +881,12 @@ function renderSuites() {
             const a11yScope = a11yGuideCount > 0
                 ? `${a11yGuideCount} ${a11yGuideCount === 1 ? 'guide' : 'guides'}`
                 : overallScope;
-            const a11ySub = ['Accessibility subscore', modelPart, a11yScope].filter(Boolean).join(' · ');
+            const a11ySub = ['Automated accessibility checks', modelPart, a11yScope].filter(Boolean).join(' · ');
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Accessibility subscore')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
-        } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+        } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median duration: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median duration' })}</div>`
@@ -922,7 +945,7 @@ function syncOptionalColumns() {
     if (!table) return;
     const all = Object.values(allTestData);
     const sources = new Set(all.map(t => t.source));
-    table.classList.toggle('hide-source', isRemoteDashboard() || (sources.size <= 1 && currentSourceFilter === 'all'));
+    table.classList.toggle('hide-source', !isLocalServer() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
 
 /**
@@ -1101,6 +1124,12 @@ function renderBarbellTooltipContent(cell) {
     } else if (kind === 'suite-a11y') {
         liftLabel = 'Accessibility lift';
         note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+    } else if (kind === 'agent-overall') {
+        liftLabel = 'Pass-rate lift';
+        note = 'Checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+    } else if (kind === 'agent-a11y') {
+        liftLabel = 'Accessibility lift';
+        note = 'Accessibility checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
         note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
     } else if (kind === 'dimension') {
@@ -1356,7 +1385,7 @@ function renderPivotInsights() {
             });
         }
 
-        const metricName = onlyA11y ? 'Accessibility subscore' : 'Pass rate';
+        const metricName = onlyA11y ? 'Accessibility checks' : 'Pass rate';
         const captionNoun = filterKey === 'guide' ? 'guide' : (filterKey === 'dimension' ? 'accessibility dimension' : 'model');
 
         let rowsHtml = '';
@@ -1391,7 +1420,8 @@ function renderPivotInsights() {
             let displayTitle = key;
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
+                const sourceQuery = `&source=${encodeURIComponent(activeDataSource())}`;
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}${sourceQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
@@ -1517,6 +1547,9 @@ function renderPivotInsights() {
             ${renderExpandRow('dimension', dimensionCount)}
         </div>`
         : '';
+    const a11yScopeNoteHtml = onlyA11y ? `
+        <p class="insights-a11y-note">Automated Playwright assertions covering 5 programmable dimensions (keyboard, focus &amp; <code>inert</code>, ARIA &amp; live regions, motion &amp; contrast preferences, form labeling). Does not measure full WCAG compliance or replace manual and assistive-technology testing.</p>`
+        : '';
     container.innerHTML = `
         <div class="insights-scope-bar">
             <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
@@ -1534,6 +1567,7 @@ function renderPivotInsights() {
                 <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
             </div>
         </div>
+        ${a11yScopeNoteHtml}
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
             ${renderPanelHeader('model', `By model (${modelCount})`)}

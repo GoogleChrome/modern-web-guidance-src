@@ -1,22 +1,49 @@
 import { authenticatedFetch, parseResultKey } from './utils.js';
+import { PUBLIC_EVALS_BASE, isLocalServer, resolveDataSource } from './data-source.js';
+
+/** @typedef {import('./data-source.js').DataSource} DataSource */
+
+/** A non-2xx response, so callers can branch on the status. */
+export class HttpError extends Error {
+    /**
+     * @param {string} message
+     * @param {number} status
+     */
+    constructor(message, status) {
+        super(message);
+        this.name = 'HttpError';
+        this.status = status;
+    }
+}
 
 /**
- * @typedef {'local' | 'remote' | 'static'} DataSource
+ * True when the bucket rejected the request's credentials: an expired token
+ * (401) or an account without access (403). Pages fall back to the public copy
+ * on either.
+ * @param {unknown} error
+ * @returns {boolean}
  */
+export function isAuthRejection(error) {
+    return error instanceof HttpError && (error.status === 401 || error.status === 403);
+}
+
+/**
+ * `?t=` value for files that must not be served stale. The public copy sits
+ * behind the Pages CDN (~10 min cache), so its buster is bucketed to match;
+ * everything else is read fresh.
+ * @param {DataSource} source
+ * @returns {number}
+ */
+function cacheBuster(source) {
+    return source === 'public' ? Math.floor(Date.now() / 600_000) : Date.now();
+}
 
 export class ApiClient {
-    constructor() {
-        const params = new URLSearchParams(window.location.search);
-        const sourceParam = params.get('source');
+    /**
+     * @param {DataSource} [source] Defaults to `resolveDataSource()` for this page.
+     */
+    constructor(source = resolveDataSource()) {
         /** @type {DataSource} */
-        let source;
-        if (sourceParam === 'remote' || sourceParam === 'local' || sourceParam === 'static') {
-            source = sourceParam;
-        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            source = 'remote';
-        } else {
-            source = 'local';
-        }
         this.source = source;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
     }
@@ -31,15 +58,20 @@ export class ApiClient {
         if (this.source === 'remote') {
             if (path.startsWith('http')) return path;
 
-            // Clean local prefixes from logical GCS path
-            let fixedPath = path.split('?')[0];
+            // Clean local prefixes from logical GCS path, keeping only the cache-buster
+            const [fixedPath, query = ''] = path.split('?');
+            const buster = new URLSearchParams(query).get('t');
 
             // Build the GCS JSON API endpoint
             let url = `${this.gcsPrefix}${encodeURIComponent(fixedPath)}`;
             if (!isMetadataOnly) {
                 url += '?alt=media';
+                if (buster) url += `&t=${encodeURIComponent(buster)}`;
             }
             return url;
+        } else if (this.source === 'public') {
+            // Same-origin static files published by the builder; no server to pass ?source= to.
+            return `${PUBLIC_EVALS_BASE}/${path.replace(/^\/+/, '')}`;
         } else {
             let fullPath = path;
             // Prepend results/ for local results in static mode
@@ -104,6 +136,20 @@ export class ApiClient {
         return false;
     }
 
+    /**
+     * Whether an optional file exists for the current source. The public copy
+     * has no listing API and every optional file it carries is named in
+     * `run.files`, so nothing is probed there.
+     * @private
+     * @param {string} path
+     * @returns {Promise<boolean>}
+     */
+    async _fileExists(path) {
+        if (this.source === 'remote') return this._checkRemoteFileExists(path);
+        if (this.source === 'public') return false;
+        return this._checkLocalFileExists(path);
+    }
+
     // --- High-level API Methods ---
 
     /** 
@@ -124,6 +170,9 @@ export class ApiClient {
                 .filter(name => name !== 'single_task')
                 .map(id => ({ id, source: 'remote' }));
             return { suites };
+        } else if (this.source === 'public') {
+            const manifest = await this.getSuitesManifest();
+            return { suites: manifest.map(entry => ({ id: entry.testId, source: 'public' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
@@ -132,16 +181,32 @@ export class ApiClient {
         }
     }
 
+    /**
+     * Fetches the precomputed `suites.gen.json` manifest (one summary per suite).
+     * Only the bucket and the public copy have one; the dev server builds it on the fly.
+     * @returns {Promise<import('./summary-extractor.js').SuiteSummary[]>}
+     */
+    async getSuitesManifest() {
+        if (this.source !== 'remote' && this.source !== 'public') {
+            throw new Error(`No suites manifest for source "${this.source}"`);
+        }
+        const res = await this._fetch(`suites.gen.json?t=${cacheBuster(this.source)}`);
+        if (res.status === 404 && this.source === 'public') return [];
+        if (!res.ok) throw new HttpError(`Failed to fetch ${this.source} suites manifest (${res.status})`, res.status);
+        const manifest = await res.json();
+        if (!Array.isArray(manifest)) throw new Error(`Malformed ${this.source} suites manifest`);
+        return manifest;
+    }
+
     /** 
      * Fetches the evals.json payload for a specific root test ID.
      * @param {string} testId
      * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>}
      */
     async getEvals(testId) {
-        // Appending timestamp to defeat strict local browser cache on eval data
-        const path = `${testId}/evals.json?t=${Date.now()}`;
+        const path = `${testId}/evals.json?t=${cacheBuster(this.source)}`;
         const res = await this._fetch(path);
-        if (!res.ok) throw new Error(`Failed to load data from ${this._formatUrl(path)}`);
+        if (!res.ok) throw new HttpError(`Failed to load data from ${this._formatUrl(path)}`, res.status);
         return await res.json();
     }
 
@@ -152,15 +217,7 @@ export class ApiClient {
      */
     async getJetskiInfo(testId) {
         const path = `${testId}/jetski_info.json`;
-        let exists = false;
-        
-        if (this.source === 'remote') {
-            exists = await this._checkRemoteFileExists(path);
-        } else {
-            exists = await this._checkLocalFileExists(path);
-        }
-
-        if (!exists) return null;
+        if (!(await this._fileExists(path))) return null;
 
         try {
             const res = await this._fetch(path);
@@ -181,13 +238,7 @@ export class ApiClient {
      */
     async checkLogExists(testId) {
         try {
-            const path = `${testId}/test_suite.log`;
-            
-            if (this.source === 'remote') {
-                return await this._checkRemoteFileExists(path);
-            } else {
-                return await this._checkLocalFileExists(path);
-            }
+            return await this._fileExists(`${testId}/test_suite.log`);
         } catch {
             return false;
         }
@@ -206,6 +257,13 @@ export class ApiClient {
         const { task: taskName, guide: guideName, runType } = parsed;
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
+
+        // The public copy carries a pre-built agent.patch and nothing to diff against, so there is
+        // nothing to probe. An empty setupPath tells the UI there is no built app for this run.
+        if (this.source === 'public') {
+            return { setupPath: '', resultPath: `${logicalBasePath}/agent.patch`, usedBasePath: logicalBasePath };
+        }
+
         let entryPointPath = run.targetFile ? `${logicalBasePath}/${run.targetFile}` : await this._findBestEntryPoint(logicalBasePath);
 
         // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
@@ -225,13 +283,7 @@ export class ApiClient {
 
         // Try run-local base_app first (at the appName level, not inside guided/unguided), fallback to centralized base_apps for older runs
         const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
-        let exists = false;
-
-        if (this.source === 'remote') {
-            exists = await this._checkRemoteFileExists(localBaseAppPath);
-        } else {
-            exists = await this._checkLocalFileExists(localBaseAppPath);
-        }
+        const exists = await this._fileExists(localBaseAppPath);
 
         const setupPath = exists ? localBaseAppPath : `base_apps/${actualBaseApp}/${relativePath}`;
 
@@ -301,6 +353,9 @@ export class ApiClient {
     async getRunFiles(basePath) {
         let files = [];
         try {
+            if (this.source === 'public' || this.source === 'static') {
+                return [];
+            }
             if (this.source === 'local') {
                 const res = await fetch(`/api/run-files?dir=${encodeURIComponent(basePath)}&source=local`);
                 if (res.ok) {
@@ -385,8 +440,7 @@ export class ApiClient {
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];
-            const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            if (isLocalServer) {
+            if (isLocalServer()) {
                 return `/gcs-proxy/${fixedPath}`;
             }
             return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;

@@ -45,36 +45,16 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import {
-  CSSStyleRule,
-  CSSContainerRule,
-  type CSSRule,
-} from 'cssomnom';
+import { getPropertyValues, CSSStyleRule, CSSContainerRule } from 'cssomnom';
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright/Node ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
-  const result: CSSRule[] = [];
-  for (const rule of rules) {
-    result.push(rule);
-    if ('cssRules' in rule && rule.cssRules) {
-      result.push(...collectAllRules(Array.from(rule.cssRules as Iterable<CSSRule>)));
-    }
-  }
-  return result;
-}
-
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  return collectAllRules(rules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-}
-
 test.describe('css-layout Target Grader', () => {
   test('Expectation 2: Uses gap on flex navigation containers instead of child margins', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const navListRuleHasGap = styleRules.some(
       (r) =>
@@ -93,8 +73,7 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 4: Applies flex-wrap on flex containers whose items can overflow', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasFlexWrap = styleRules.some((r) => {
       const wrapVal = r.style.getPropertyValue('flex-wrap');
@@ -106,8 +85,7 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 6: Uses safe alignment (e.g. safe center) on flex containers', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasSafeAlignment = styleRules.some((r) => {
       const alignItems = r.style.getPropertyValue('align-items');
@@ -126,8 +104,7 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 15: Uses subgrid on card elements to align internal elements across sibling cards', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasSubgrid = styleRules.some(
       (r) =>
@@ -139,27 +116,19 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 16: Declares an explicit grid-template-rows fallback for card layout alongside subgrid', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
-    // CSSOMNom keeps the last declaration in `style` when duplicate properties exist in the same rule,
-    // so we check either `cssText` of the rule for both fallback and `subgrid`, or an explicit fallback rule on `.card`.
-    const hasExplicitFallback = allRules.some((r) => {
-      if (!(r instanceof CSSStyleRule) || !/\bcard\b/.test(r.selectorText)) return false;
-      const cssText = r.cssText || '';
-      const hasNonSubgridRows =
-        /grid-template-rows\s*:\s*(?!subgrid\b)[^;]+/i.test(cssText) ||
-        (Boolean(r.style.getPropertyValue('grid-template-rows')) &&
-          !/\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-rows')));
-      return hasNonSubgridRows;
+    const hasExplicitFallback = styleRules.some((r) => {
+      if (!/\bcard\b/.test(r.selectorText)) return false;
+      const values = getPropertyValues(r, 'grid-template-rows');
+      return values.some((val) => !/\bsubgrid\b/.test(val));
     });
 
     expect(hasExplicitFallback).toBe(true);
   });
 
   test('Expectation 17: Applies subgrid to one axis only on cards when sizing the other axis', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const subgridRules = styleRules.filter(
       (r) =>
@@ -176,8 +145,7 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 19: Establishes a containment context with container-type: inline-size (or container shorthand)', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasContainerContext = styleRules.some((r) => {
       const containerType = r.style.getPropertyValue('container-type');
@@ -192,17 +160,13 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 21: Uses @container queries for component-level responsive behavior', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllRules(stylesheet.cssRules);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
 
-    const hasContainerRule = allRules.some((r) => r instanceof CSSContainerRule);
-
-    expect(hasContainerRule).toBe(true);
+    expect(containerRules.length > 0).toBe(true);
   });
 
   test('Expectation 22: Uses container query units inside clamp() for fluid typography or spacing', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasFluidContainerClamp = styleRules.some((r) => {
       const cssText = r.cssText || '';
@@ -215,8 +179,7 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 38: Uses CSS logical properties for layout dimensions and spacing', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasLogicalProperties = styleRules.some(
       (r) =>
@@ -234,8 +197,7 @@ test.describe('css-layout Target Grader', () => {
   });
 
   test('Expectation 39: Uses dynamic or modern viewport units (dvh, dvb, svh) instead of fixed height: 60vh on hero', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasModernViewportUnit = styleRules.some((r) => {
       const minBlockSize = r.style.getPropertyValue('min-block-size');

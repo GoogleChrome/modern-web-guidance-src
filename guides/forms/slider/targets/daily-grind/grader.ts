@@ -6,333 +6,374 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, type CSSRule } from 'cssomnom';
+import {
+  CSSStyleRule,
+  CSSGroupingRule,
+  type CSSRule,
+  type CSSStyleSheet,
+} from 'cssomnom';
+import { SyntaxKind, type Project } from 'ts-morph';
+import type { Document } from 'linkedom';
 
-const targetFiles: string[] = getTargetFiles(
-  // @ts-ignore
-  import.meta.url
-);
+// @ts-ignore - import.meta.url is supported at runtime by Playwright's ESM loader
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
-  const all: CSSRule[] = [];
-  for (const rule of ruleList) {
-    all.push(rule);
-    if ('cssRules' in rule && (rule as { cssRules?: Iterable<CSSRule> }).cssRules) {
-      all.push(...getAllCssRules((rule as { cssRules: Iterable<CSSRule> }).cssRules!));
+function getPrimaryHtmlDocuments(files: string[]): Array<{ file: string; document: Document }> {
+  const allDocs = getHtmlDocuments(files);
+  const nonDistDocs = allDocs.filter((d) => !/[/\\]dist[/\\]/i.test(d.file));
+  return nonDistDocs.length > 0 ? nonDistDocs : allDocs;
+}
+
+function getPrimaryTargetFiles(files: string[]): string[] {
+  const nonDist = files.filter((f) => !/[/\\]dist[/\\]/i.test(f));
+  return nonDist.length > 0 ? nonDist : files;
+}
+
+function collectAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
+  const collected: CSSStyleRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      collected.push(rule);
+    }
+    if (rule instanceof CSSGroupingRule && rule.cssRules) {
+      collected.push(...collectAllStyleRules(Array.from(rule.cssRules)));
     }
   }
-  return all;
+  return collected;
 }
 
-function getRangeInputs(docs: Array<{ file: string; document: any }>): any[] {
-  return docs.flatMap((d) => Array.from(d.document.querySelectorAll('input[type="range"]') as any[]));
+function getAllPropertyValues(rule: CSSStyleRule, propName: string): string[] {
+  const values: string[] = [];
+  const val = rule.style.getPropertyValue(propName);
+  if (val) values.push(val);
+  for (let i = 0; i < rule.style.length; i++) {
+    const key = rule.style[i];
+    if (key === propName) {
+      const v = rule.style.getPropertyValue(key);
+      if (v && !values.includes(v)) values.push(v);
+    }
+  }
+  return values;
 }
 
-test.describe('slider Target Grader (daily-grind)', () => {
-  test('The implementation MUST use a native <input type="range"> element rather than recreating the slider with generic elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const rangeInputs = getRangeInputs(docs);
-    const customRoleSliders = docs.flatMap((d) => Array.from(d.document.querySelectorAll('[role="slider"]:not(input)') as any[]));
+function collectCustomProperties(rules: CSSStyleRule[]): Array<{ selector: string; name: string; value: string }> {
+  const props: Array<{ selector: string; name: string; value: string }> = [];
+  for (const rule of rules) {
+    for (let i = 0; i < rule.style.length; i++) {
+      const propName = rule.style[i];
+      if (propName && propName.startsWith('--')) {
+        props.push({
+          selector: rule.selectorText,
+          name: propName,
+          value: rule.style.getPropertyValue(propName),
+        });
+      }
+    }
+  }
+  return props;
+}
 
-    const hasNativeSlider = rangeInputs.length > 0 && customRoleSliders.length === 0;
-    expect(hasNativeSlider).toBe(true);
+test.describe('slider Target Grader', () => {
+  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+
+  test('Uses a native <input type="range"> element without custom pointer handlers or duplicate controls', () => {
+    const docs = getPrimaryHtmlDocuments(targetFiles);
+    const rangeInputs = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('input[type="range"]')),
+    );
+    expect(rangeInputs.length).toBeGreaterThan(0);
+
+    const ariaSliders = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('[role="slider"]:not(input[type="range"])')),
+    );
+    expect(ariaSliders.length).toBe(0);
+
+    const project: Project = getJsProject(getPrimaryTargetFiles(targetFiles));
+    const callExpressions = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasCustomDragListeners = callExpressions.some((call) => {
+      const exprText = call.getExpression().getText();
+      if (!exprText.endsWith('.addEventListener')) return false;
+      const firstArg = call.getArguments()[0]?.getText().replace(/^['"`]|['"`]$/g, '');
+      return Boolean(
+        firstArg && /^(pointerdown|pointermove|mousedown|mousemove|touchstart|touchmove)$/.test(firstArg),
+      );
+    });
+    expect(hasCustomDragListeners).toBe(false);
   });
 
-  test('The range input MUST have an accessible name via a programmatically associated label or aria attribute', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const rangeInputs = getRangeInputs(docs);
+  test('Provides an accessible name for the range input via <label> or aria-labelledby', () => {
+    const docs = getPrimaryHtmlDocuments(targetFiles);
+    const rangeEntries = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('input[type="range"]')).map((input: any) => ({
+        document: d.document,
+        input,
+      })),
+    );
+    expect(rangeEntries.length).toBeGreaterThan(0);
 
-    const hasAccessibleName = rangeInputs.some((input: any) => {
-      const doc = input.ownerDocument;
+    const hasAccessibleName = rangeEntries.some(({ document, input }) => {
       const id = input.getAttribute('id');
       if (id) {
-        const label = doc.querySelector(`label[for="${id}"]`);
-        if (label && (label.textContent || '').trim().length > 0) return true;
+        const matchingLabel = document.querySelector(`label[for="${id}"]`);
+        if (matchingLabel && matchingLabel.textContent?.trim()) {
+          return true;
+        }
       }
       const parentLabel = input.closest('label');
-      if (parentLabel && (parentLabel.textContent || '').trim().length > 0) return true;
-
+      if (parentLabel && parentLabel.textContent?.trim()) {
+        return true;
+      }
       const ariaLabelledBy = input.getAttribute('aria-labelledby');
       if (ariaLabelledBy) {
         const ids = ariaLabelledBy.trim().split(/\s+/);
-        const hasValidRef = ids.some((refId: string) => {
-          const el = doc.getElementById(refId);
-          return el && (el.textContent || '').trim().length > 0;
-        });
-        if (hasValidRef) return true;
+        if (
+          ids.some((refId: string) => {
+            const el = document.getElementById(refId);
+            return Boolean(el && el.textContent?.trim());
+          })
+        ) {
+          return true;
+        }
       }
-
       const ariaLabel = input.getAttribute('aria-label');
-      return Boolean(ariaLabel && ariaLabel.trim().length > 0);
+      return Boolean(ariaLabel && ariaLabel.trim());
     });
-
     expect(hasAccessibleName).toBe(true);
   });
 
-  test('The implementation MUST configure an initial value and appropriate min, max, and step attributes', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const rangeInputs = getRangeInputs(docs);
+  test('Configures initial value, min, max, and step attributes on the range input', () => {
+    const docs = getPrimaryHtmlDocuments(targetFiles);
+    const rangeInputs = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('input[type="range"]')),
+    );
+    expect(rangeInputs.length).toBeGreaterThan(0);
 
-    const hasConfiguredAttributes = rangeInputs.some((input: any) => {
-      const hasValue = input.hasAttribute('value') && input.getAttribute('value')!.trim() !== '';
-      const hasMin = input.hasAttribute('min') && input.getAttribute('min')!.trim() !== '';
-      const hasMax = input.hasAttribute('max') && input.getAttribute('max')!.trim() !== '';
-      const hasStep = input.hasAttribute('step') && input.getAttribute('step')!.trim() !== '';
-      return hasValue && hasMin && hasMax && hasStep;
+    const configuredProperly = rangeInputs.some((input: any) => {
+      const valAttr = input.getAttribute('value');
+      const minAttr = input.getAttribute('min');
+      const maxAttr = input.getAttribute('max');
+      const stepAttr = input.getAttribute('step');
+
+      if (valAttr === null || valAttr.trim() === '' || Number.isNaN(Number(valAttr))) {
+        return false;
+      }
+      const val = Number(valAttr);
+      const min = minAttr !== null && minAttr.trim() !== '' ? Number(minAttr) : 0;
+      const max = maxAttr !== null && maxAttr.trim() !== '' ? Number(maxAttr) : 100;
+      const step = stepAttr !== null && stepAttr.trim() !== '' ? Number(stepAttr) : 1;
+
+      if (Number.isNaN(min) || Number.isNaN(max) || Number.isNaN(step)) {
+        return false;
+      }
+      return min < max && step > 0 && val >= min && val <= max;
     });
-
-    expect(hasConfiguredAttributes).toBe(true);
+    expect(configuredProperly).toBe(true);
   });
 
-  test('The implementation MUST preserve a usable interaction area for the range slider', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const docs = getHtmlDocuments(targetFiles);
+  test('Uses appearance: none and browser-specific slider track, thumb, and progress pseudo-elements', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(getPrimaryTargetFiles(targetFiles));
+    const styleRules = collectAllStyleRules(Array.from(stylesheet.cssRules));
+    expect(styleRules.length).toBeGreaterThan(0);
 
-    const hasUsableArea =
-      allRules.some((r) => {
-        if (r instanceof CSSStyleRule) {
-          const sel = r.selectorText.toLowerCase();
-          if (
-            sel.includes('input') ||
-            sel.includes('range') ||
-            sel.includes('slider') ||
-            sel.includes('strength')
-          ) {
-            const blockSize =
-              r.style.getPropertyValue('block-size') ||
-              r.style.getPropertyValue('height') ||
-              r.style.getPropertyValue('min-block-size') ||
-              r.style.getPropertyValue('min-height');
-            const padding =
-              r.style.getPropertyValue('padding') ||
-              r.style.getPropertyValue('padding-block');
-            if (blockSize && !/^0(?:px|rem|em)?$/.test(blockSize.trim())) return true;
-            if (padding && !/^0(?:px|rem|em)?$/.test(padding.trim())) return true;
-          }
-        }
-        return false;
-      }) ||
-      docs.some((d) =>
-        Boolean(
-          d.document.querySelector(
-            'input[type="range"][class*="h-"], input[type="range"][class*="py-"], input[type="range"][class*="p-"]'
-          )
-        )
-      );
-
-    expect(hasUsableArea).toBe(true);
-  });
-
-  test('The implementation MUST provide a visible :focus-visible indicator with sufficient contrast after changing native appearance', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const docs = getHtmlDocuments(targetFiles);
-
-    const hasFocusVisibleStyle =
-      allRules.some((r) => {
-        if (r instanceof CSSStyleRule) {
-          const sel = r.selectorText.toLowerCase();
-          if (sel.includes(':focus-visible')) {
-            const outline =
-              r.style.getPropertyValue('outline') ||
-              r.style.getPropertyValue('outline-color') ||
-              r.style.getPropertyValue('outline-width');
-            const boxShadow = r.style.getPropertyValue('box-shadow');
-            const border = r.style.getPropertyValue('border');
-            return Boolean(outline || boxShadow || border);
-          }
-        }
-        return false;
-      }) ||
-      docs.some((d) =>
-        Boolean(
-          d.document.querySelector('input[type="range"][class*="focus-visible:"]')
-        )
-      );
-
-    expect(hasFocusVisibleStyle).toBe(true);
-  });
-
-  test('For custom visual styling, the implementation MUST use appearance: none on the slider control', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const docs = getHtmlDocuments(targetFiles);
-
-    const hasAppearanceNone =
-      allRules.some((r) => {
-        if (r instanceof CSSStyleRule) {
-          const sel = r.selectorText.toLowerCase();
-          if (
-            sel.includes('input') ||
-            sel.includes('range') ||
-            sel.includes('slider') ||
-            sel.includes('strength')
-          ) {
-            const app =
-              r.style.getPropertyValue('appearance') ||
-              r.style.getPropertyValue('-webkit-appearance');
-            return app.toLowerCase().includes('none');
-          }
-        }
-        return false;
-      }) ||
-      docs.some((d) =>
-        Boolean(
-          d.document.querySelector('input[type="range"][class*="appearance-none"]')
-        )
-      );
-
+    const hasAppearanceNone = styleRules.some((r) => {
+      const appearance = r.style.getPropertyValue('appearance') || r.style.getPropertyValue('-webkit-appearance');
+      return appearance.trim() === 'none';
+    });
     expect(hasAppearanceNone).toBe(true);
-  });
 
-  test('The implementation MUST use established browser-specific slider pseudo-elements for track and thumb styling', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const selectors = allRules
-      .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
-      .map((r) => r.selectorText.toLowerCase());
-
+    const selectors = styleRules.map((r) => r.selectorText);
     const hasWebkitTrack = selectors.some((s) => s.includes('::-webkit-slider-runnable-track'));
     const hasWebkitThumb = selectors.some((s) => s.includes('::-webkit-slider-thumb'));
     const hasMozTrack = selectors.some((s) => s.includes('::-moz-range-track'));
     const hasMozThumb = selectors.some((s) => s.includes('::-moz-range-thumb'));
+    const hasMozProgress = selectors.some((s) => s.includes('::-moz-range-progress'));
 
-    const hasSliderPseudoElements =
-      hasWebkitTrack && hasWebkitThumb && hasMozTrack && hasMozThumb;
-    expect(hasSliderPseudoElements).toBe(true);
+    expect(hasWebkitTrack).toBe(true);
+    expect(hasWebkitThumb).toBe(true);
+    expect(hasMozTrack).toBe(true);
+    expect(hasMozThumb).toBe(true);
+    expect(hasMozProgress).toBe(true);
   });
 
-  test('Each of the ::-moz- or ::-webkit- prefixed pseudo-elements must only be used once, with variations going through custom properties', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+  test('Uses each ::-webkit- or ::-moz- slider pseudo-element only once with custom properties for styling', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(getPrimaryTargetFiles(targetFiles));
+    const styleRules = collectAllStyleRules(Array.from(stylesheet.cssRules));
+    expect(styleRules.length).toBeGreaterThan(0);
 
-    const pseudos = [
+    const pseudoNames = [
       '::-webkit-slider-runnable-track',
       '::-webkit-slider-thumb',
       '::-moz-range-track',
       '::-moz-range-thumb',
+      '::-moz-range-progress',
     ];
 
-    const counts = pseudos.map(
-      (p) => styleRules.filter((r) => r.selectorText.toLowerCase().includes(p)).length
+    for (const pseudo of pseudoNames) {
+      const matchingRules = styleRules.filter((r) => r.selectorText.includes(pseudo));
+      expect(matchingRules.length).toBe(1);
+      // Verify vendor pseudo-elements are not combined into comma-separated cross-vendor rules
+      const ruleSelector = matchingRules[0].selectorText;
+      const combinesVendors =
+        ruleSelector.includes('::-webkit-') && ruleSelector.includes('::-moz-');
+      expect(combinesVendors).toBe(false);
+      // Verify custom properties (var(--...)) are used inside the pseudo-element rule
+      expect(matchingRules[0].style.cssText).toContain('var(--');
+    }
+  });
+
+  test('Derives custom track-fill progress from actual min, max, and value rather than assuming 0-100', () => {
+    const primaryFiles = getPrimaryTargetFiles(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(primaryFiles);
+    const styleRules = collectAllStyleRules(Array.from(stylesheet.cssRules));
+    const customProps = collectCustomProperties(styleRules);
+    expect(customProps.length).toBeGreaterThan(0);
+
+    // Check CSS custom property calculation uses progress(...) or (value - min) / (max - min) formula
+    const hasDynamicCssProgress = customProps.some((p) => {
+      const v = p.value;
+      const usesProgressFn = /progress\s*\([^)]*var\(--/i.test(v);
+      const usesCalcRatio =
+        /calc\s*\(/i.test(v) &&
+        v.includes('-') &&
+        v.includes('/') &&
+        (v.match(/var\(--/g) || []).length >= 3;
+      return usesProgressFn || usesCalcRatio;
+    });
+
+    // Also check JS AST for dynamic calculation or syncing of min/max/value custom properties
+    const project: Project = getJsProject(primaryFiles);
+    const callExpressions = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const setsCustomProperty = callExpressions.some((call) => {
+      const text = call.getExpression().getText();
+      return text.endsWith('.setProperty') && call.getArguments()[0]?.getText().includes('--');
+    });
+
+    expect(hasDynamicCssProgress && setsCustomProperty).toBe(true);
+  });
+
+  test('Does not use generated content on slider pseudo-elements', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(getPrimaryTargetFiles(targetFiles));
+    const styleRules = collectAllStyleRules(Array.from(stylesheet.cssRules));
+    expect(styleRules.length).toBeGreaterThan(0);
+
+    const sliderRules = styleRules.filter((r) =>
+      /::-(webkit-slider|moz-range)|input\[type=["']?range["']?\]/i.test(r.selectorText),
     );
-    const eachUsedOnce = counts.every((c) => c === 1);
+    expect(sliderRules.length).toBeGreaterThan(0);
 
-    const usesCustomProps = pseudos.every((p) => {
-      const rule = styleRules.find((r) => r.selectorText.toLowerCase().includes(p));
-      return Boolean(rule && rule.cssText.includes('var(--'));
+    const hasGeneratedContent = styleRules.some((r) => {
+      const sel = r.selectorText;
+      const targetsSliderWithBeforeAfter =
+        (/::-(webkit-slider|moz-range)/i.test(sel) || /input\[type=["']?range["']?\]/i.test(sel)) &&
+        /::?(before|after)\b/i.test(sel);
+      const setsContentOnSliderPseudo =
+        /::-(webkit-slider|moz-range)/i.test(sel) &&
+        getAllPropertyValues(r, 'content').some((v) => v.trim() !== '' && v.trim() !== 'none' && v.trim() !== 'normal');
+      return targetsSliderWithBeforeAfter || setsContentOnSliderPseudo;
     });
-
-    expect(eachUsedOnce && usesCustomProps).toBe(true);
+    expect(hasGeneratedContent).toBe(false);
   });
 
-  test('Custom track-fill progress calculation MUST derive from the actual min, max, and value rather than assuming 0-100', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const project = getJsProject(targetFiles);
+  test('Accounts for right-to-left layouts with an explicit RTL strategy for track direction', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(getPrimaryTargetFiles(targetFiles));
+    const styleRules = collectAllStyleRules(Array.from(stylesheet.cssRules));
+    expect(styleRules.length).toBeGreaterThan(0);
 
-    const hasCssProgressDerivation = allRules.some((r) => {
-      const text = r.cssText.toLowerCase();
-      const hasProgressProp = text.includes('--slider-progress') || text.includes('background');
-      const hasMinMaxVars =
-        (text.includes('--attr-min') || text.includes('attr(min')) &&
-        (text.includes('--attr-max') || text.includes('attr(max'));
-      return hasProgressProp && hasMinMaxVars;
+    const hasRtlRule = styleRules.some((r) => {
+      const sel = r.selectorText;
+      const isRtlSelector = /:dir\(\s*rtl\s*\)|\[dir=["']?rtl["']?\]/i.test(sel);
+      if (!isRtlSelector) return false;
+      const cssText = r.style.cssText.toLowerCase();
+      return cssText.includes('to left') || cssText.includes('--');
     });
 
-    const hasJsProgressDerivation = project.getSourceFiles().some((sf) => {
-      const text = sf.getText();
-      const referencesBounds =
-        text.includes('min') && text.includes('max') && text.includes('value');
-      const calculatesRange =
-        text.includes('max - min') ||
-        text.includes('max-min') ||
-        text.includes('--attr-min') ||
-        text.includes('--slider-progress');
-      return referencesBounds && calculatesRange;
+    const usesLogicalGradient = styleRules.some((r) => {
+      const bg =
+        r.style.getPropertyValue('background') || r.style.getPropertyValue('background-image');
+      return /to\s+inline-end/i.test(bg);
     });
 
-    expect(hasCssProgressDerivation || hasJsProgressDerivation).toBe(true);
+    expect(hasRtlRule || usesLogicalGradient).toBe(true);
   });
 
-  test('The implementation MUST NOT use generated content on slider pseudo-elements, exposing values in ordinary DOM elements instead', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
-    const hasRangeInput = docs.some((d) =>
-      Boolean(d.document.querySelector('input[type="range"]'))
-    );
-    const hasOutputOrValueEl = docs.some((d) =>
-      Boolean(
-        d.document.querySelector(
-          'output, [for*="slider"], [for*="strength"], [id*="strength"], [id*="output"]'
-        )
-      )
-    );
-
-    const hasGeneratedContentOnPseudo = allRules.some((r) => {
-      if (r instanceof CSSStyleRule) {
-        const sel = r.selectorText.toLowerCase();
-        const isSliderPseudo = sel.includes('-slider-') || sel.includes('-range-');
-        const isGenerated = sel.includes('::before') || sel.includes('::after');
-        const hasContent = r.style.getPropertyValue('content') !== '';
-        return isSliderPseudo && (isGenerated || hasContent);
-      }
-      return false;
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
     });
 
-    expect(hasRangeInput && hasOutputOrValueEl && !hasGeneratedContentOnPseudo).toBe(true);
-  });
+    test('Preserves a usable interaction area and provides a visible :focus-visible indicator', async ({
+      page,
+    }) => {
+      const slider = page.getByRole('slider').first();
+      await expect(slider).toBeVisible();
 
-  test('The implementation MUST account for right-to-left layouts and MUST NOT hard-code a left-to-right active-track direction without an explicit RTL strategy', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+      const box = await slider.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThanOrEqual(120);
+      expect(box!.height).toBeGreaterThanOrEqual(24);
 
-    const hasRtlStrategy = styleRules.some((r) => {
-      const sel = r.selectorText.toLowerCase();
-      const isRtl =
-        sel.includes(':dir(rtl)') ||
-        sel.includes('[dir="rtl"]') ||
-        sel.includes('[dir=\'rtl\']');
-      const setsLeftDirection =
-        r.style.getPropertyValue('--slider-direction').toLowerCase().includes('to left') ||
-        r.style.getPropertyValue('background').toLowerCase().includes('to left') ||
-        r.cssText.toLowerCase().includes('to left');
-      return isRtl && setsLeftDirection;
-    });
-
-    expect(hasRtlStrategy).toBe(true);
-  });
-
-  test('When aria-valuetext is provided, it MUST differ from the slider plain numeric value', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const project = getJsProject(targetFiles);
-    const rangeInputs = getRangeInputs(docs);
-
-    const hasFormattedValueText = rangeInputs.some((input: any) => {
-      const ariaValueText = input.getAttribute('aria-valuetext')?.trim();
-      const numericValue = input.getAttribute('value')?.trim();
-      const htmlDiffers = Boolean(
-        ariaValueText &&
-          ariaValueText !== numericValue &&
-          /[^\d\s.,]/.test(ariaValueText)
-      );
-
-      const jsUpdatesAriaValueText = project.getSourceFiles().some((sf) => {
-        const text = sf.getText();
-        return (
-          text.includes('aria-valuetext') &&
-          (text.includes('labels') || text.includes('strengths') || text.includes('of'))
-        );
+      await slider.focus();
+      const focusStyles = await slider.evaluate((el) => {
+        const s = window.getComputedStyle(el);
+        return {
+          appearance: s.appearance,
+          outlineStyle: s.outlineStyle,
+          outlineWidth: parseFloat(s.outlineWidth) || 0,
+          outlineColor: s.outlineColor,
+          boxShadow: s.boxShadow,
+        };
       });
 
-      return htmlDiffers || jsUpdatesAriaValueText;
+      expect(focusStyles.appearance).toBe('none');
+      // The built-in focus ring (`outline-style: auto`) survives `appearance: none`; require an author-defined indicator.
+      const hasVisibleOutline =
+        focusStyles.outlineStyle !== 'none' &&
+        focusStyles.outlineStyle !== 'auto' &&
+        focusStyles.outlineWidth > 0 &&
+        focusStyles.outlineColor !== 'rgba(0, 0, 0, 0)' &&
+        focusStyles.outlineColor !== 'transparent';
+      const hasVisibleBoxShadow =
+        focusStyles.boxShadow !== 'none' && focusStyles.boxShadow !== '';
+      expect(hasVisibleOutline || hasVisibleBoxShadow).toBe(true);
     });
 
-    expect(hasFormattedValueText).toBe(true);
+    test('Exposes a descriptive aria-valuetext that differs from the plain numeric value and updates on input', async ({
+      page,
+    }) => {
+      const slider = page.getByRole('slider').first();
+      await expect(slider).toBeVisible();
+
+      const initialState = await slider.evaluate((el: HTMLInputElement) => ({
+        value: el.value,
+        min: el.min || '0',
+        max: el.max || '100',
+        valueText: el.getAttribute('aria-valuetext') || '',
+      }));
+
+      expect(initialState.valueText.trim().length).toBeGreaterThan(0);
+      expect(initialState.valueText.trim()).not.toBe(initialState.value.trim());
+      expect(/[a-zA-Z]/.test(initialState.valueText)).toBe(true);
+
+      // Change slider value and verify aria-valuetext and custom properties update dynamically
+      const nextValue =
+        initialState.value === initialState.max ? initialState.min : initialState.max;
+      await slider.fill(nextValue);
+
+      const updatedState = await slider.evaluate((el: HTMLInputElement) => ({
+        value: el.value,
+        valueText: el.getAttribute('aria-valuetext') || '',
+      }));
+
+      expect(updatedState.value).toBe(nextValue);
+      expect(updatedState.valueText.trim().length).toBeGreaterThan(0);
+      expect(updatedState.valueText.trim()).not.toBe(updatedState.value.trim());
+      expect(updatedState.valueText).not.toBe(initialState.valueText);
+    });
   });
 });

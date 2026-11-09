@@ -10,6 +10,7 @@ import {
   getCssStyleSheet,
   getHtmlDocuments,
   getJsProject,
+  getRules,
   getTargetFiles,
   expectNever,
   checkPageLoad,
@@ -21,7 +22,18 @@ import {
 } from './test-fixture.ts';
 import { runPlaywright } from './run-grader.ts';
 import { chromium, type Browser } from 'playwright';
-import { CSSContainerRule, CSSPropertyRule, CSSStyleRule } from 'cssomnom';
+import {
+  closestRule,
+  resolveSelector,
+  parseSelectorAST,
+  getDeclaredProperties,
+  getPropertyValues,
+  CSSContainerRule,
+  CSSPropertyRule,
+  CSSStyleRule,
+  CSSMediaRule,
+  CSSPositionTryRule,
+} from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -409,6 +421,114 @@ const isComplete = value < 100;
       assert.ok(funcNames.includes('setSecurityHeaders'));
       assert.ok(funcNames.includes('inlineHelper'));
       assert.ok(!funcNames.includes('testHarnessOnly'));
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+  test('operates on stylesheets with nesting, cssomnom helpers, and @position-try', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-helpers-test-'));
+    try {
+      const cssFile = path.join(tempDir, 'sample.css');
+      fs.writeFileSync(
+        cssFile,
+        `
+        @media (min-width: 768px) {
+          .card {
+            grid-template-rows: auto;
+            grid-template-rows: subgrid;
+            width: 250px;
+            & > .title {
+              color: blue;
+            }
+          }
+        }
+        @position-try --below {
+          inset-area: block-end;
+        }
+        `,
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([cssFile]);
+      const allRules = getRules(stylesheet);
+      assert.ok(allRules.length >= 3);
+
+      const styleRules = getRules(stylesheet, CSSStyleRule);
+      assert.strictEqual(styleRules.length, 2);
+
+      const cardRule = styleRules.find(r => r.selectorText === '.card');
+      assert.ok(cardRule);
+
+      // closestRule
+      const enclosingMedia = closestRule(cardRule, CSSMediaRule);
+      assert.ok(enclosingMedia);
+      assert.strictEqual(enclosingMedia.conditionText, '(min-width: 768px)');
+
+      // resolveSelector & parseSelectorAST
+      const titleRule = styleRules.find(r => r.selectorText === '& > .title');
+      assert.ok(titleRule);
+      assert.strictEqual(resolveSelector(titleRule), ':is(.card) > .title');
+      const ast = parseSelectorAST(titleRule);
+      assert.strictEqual(ast?.type, 'selector-list');
+
+      // getPropertyValues with multiple declarations and logical/physical mapping
+      const rowValues = getPropertyValues(cardRule, 'grid-template-rows');
+      assert.deepStrictEqual(rowValues, ['auto', 'subgrid']);
+      const inlineSizeValues = getPropertyValues(cardRule, 'inline-size');
+      assert.deepStrictEqual(inlineSizeValues, ['250px']);
+
+      // getDeclaredProperties
+      const declProps = getDeclaredProperties(stylesheet);
+      assert.ok(declProps.has('grid-template-rows'));
+      assert.ok(declProps.has('width'));
+      assert.ok(declProps.has('color'));
+
+      // CSSPositionTryRule
+      const tryRules = getRules(stylesheet, CSSPositionTryRule);
+      assert.strictEqual(tryRules.length, 1);
+      assert.strictEqual(tryRules[0].name, '--below');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getRules accepts string[] file paths directly and getCssStyleSheet is memoized', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-getrules-memoize-test-'));
+    try {
+      const cssFile = path.join(tempDir, 'sample.css');
+      fs.writeFileSync(
+        cssFile,
+        `
+        .header { color: red; font-size: 16px; }
+        .footer { color: blue; }
+        `,
+        'utf8'
+      );
+
+      const files = [cssFile];
+
+      // 1. getCssStyleSheet is memoized for same array reference
+      const sheet1 = getCssStyleSheet(files);
+      const sheet2 = getCssStyleSheet(files);
+      assert.strictEqual(sheet1, sheet2, 'Should return identical memoized CSSStyleSheet instance for same files array');
+
+      // 2. getCssStyleSheet is memoized for distinct array with same unmodified files
+      const sheet3 = getCssStyleSheet([cssFile]);
+      assert.strictEqual(sheet1, sheet3, 'Should return identical memoized CSSStyleSheet instance for identical file stats');
+
+      // 3. getRules works directly with string[] file paths
+      const styleRules = getRules(files, CSSStyleRule);
+      assert.strictEqual(styleRules.length, 2);
+      assert.strictEqual(styleRules[0].selectorText, '.header');
+      assert.strictEqual(styleRules[1].selectorText, '.footer');
+
+      // 4. getRules without rule constructor flattens all rules from string[]
+      const allRules = getRules(files);
+      assert.strictEqual(allRules.length, 2);
+      assert.strictEqual(allRules[0], styleRules[0]);
+
+      // 5. getRules returns empty array directly for empty input
+      assert.deepStrictEqual(getRules([]), []);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
