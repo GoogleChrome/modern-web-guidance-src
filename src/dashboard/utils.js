@@ -343,14 +343,12 @@ const boundEffortTooltips = new WeakSet();
 /**
  * Renders a compact reasoning-effort pill alongside a model label.
  *
- * - Pass `{ hintId }` on `dashboard.html` to emit a `.hint-trigger` `<button>` paired with an
- *   inline `<div id="${hintId}" popover="hint" class="hint-popover">`.
- * - Pass `{ sharedTooltipId: 'effort-tooltip' }` on `index.html` / `guide.html` to emit a
- *   `<button>` wired to the shared `#effort-tooltip` hint popover (no idle inline `anchor-name`).
+ * - Default interactive mode emits a `<button>` wired to the shared `#effort-tooltip` hint popover
+ *   (no idle inline `anchor-name`).
  * - Pass `{ interactive: false }` when nested inside another `<button>` or `<a>`, emitting a `<span>`.
  *
  * @param {unknown} raw
- * @param {{ hintId?: string, sharedTooltipId?: string, interactive?: boolean, separator?: boolean }} [options={}]
+ * @param {{ interactive?: boolean, separator?: boolean }} [options={}]
  * @returns {string}
  */
 export function renderEffortChip(raw, options = {}) {
@@ -368,25 +366,28 @@ export function renderEffortChip(raw, options = {}) {
         return `${sepHtml}<span class="effort-chip ${variantCls}" data-effort-level="${safeLevel}" data-effort-source="${safeSource}" data-effort-tooltip="${safeTooltip}">${safeLevel}</span>`;
     }
 
-    if (options.hintId) {
-        const safeHintId = escapeHtml(options.hintId);
-        return `${sepHtml}<button type="button" class="effort-chip ${variantCls} hint-trigger" data-effort-level="${safeLevel}" data-effort-source="${safeSource}" data-effort-tooltip="${safeTooltip}" interestfor="${safeHintId}" style="anchor-name: --${safeHintId};" aria-label="${safeTooltip}">${safeLevel}</button><div id="${safeHintId}" popover="hint" class="hint-popover" style="position-anchor: --${safeHintId};">${safeTooltip}</div>`;
-    }
-
-    const sharedId = escapeHtml(options.sharedTooltipId || 'effort-tooltip');
-    return `${sepHtml}<button type="button" class="effort-chip ${variantCls}" data-effort-level="${safeLevel}" data-effort-source="${safeSource}" data-effort-tooltip="${safeTooltip}" interestfor="${sharedId}" aria-label="${safeTooltip}">${safeLevel}</button>`;
+    return `${sepHtml}<button type="button" class="effort-chip ${variantCls}" data-effort-level="${safeLevel}" data-effort-source="${safeSource}" data-effort-tooltip="${safeTooltip}" interestfor="effort-tooltip" aria-label="${safeTooltip}">${safeLevel}</button>`;
 }
 
 /**
  * Wires a shared `<div id="effort-tooltip" class="hint-popover" popover="hint">` element
  * to all `[interestfor="effort-tooltip"][data-effort-tooltip]` chips on the page.
- * Dynamically sets `anchor-name: --effort-anchor` only while open.
+ * Lazily creates and appends the element to `document.body` if absent, and dynamically
+ * sets `anchor-name: --effort-anchor` only while open.
  * @param {string} [tooltipId='effort-tooltip']
  */
 export function setupEffortTooltip(tooltipId = 'effort-tooltip') {
     if (typeof document === 'undefined') return;
-    const tooltip = document.getElementById(tooltipId);
-    if (!(tooltip instanceof HTMLElement) || boundEffortTooltips.has(tooltip)) return;
+    let tooltip = document.getElementById(tooltipId);
+    if (!(tooltip instanceof HTMLElement)) {
+        tooltip = document.createElement('div');
+        tooltip.id = tooltipId;
+        tooltip.className = 'hint-popover';
+        tooltip.setAttribute('popover', 'hint');
+        tooltip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tooltip);
+    }
+    if (boundEffortTooltips.has(tooltip)) return;
     boundEffortTooltips.add(tooltip);
 
     /** @type {HTMLElement | null} */

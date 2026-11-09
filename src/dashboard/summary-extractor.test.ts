@@ -360,11 +360,8 @@ test('reasoningEffort helpers format provenance tooltips, order levels, and reje
     assert.ok(!rejectedMarkup.includes('<img'), 'must reject HTML injection in effort level');
     assert.ok(rejectedMarkup.includes('data-effort-level="default"'));
 
-    const escapedHint = renderEffortChip({ level: 'high', source: 'observed' }, { hintId: 'hint"><img src=x>' });
-    assert.ok(!escapedHint.includes('<img'), 'must escape HTML in hintId');
-    assert.ok(escapedHint.includes('interestfor="hint&quot;&gt;&lt;img src=x&gt;"'));
-
-    const hintBtn = renderEffortChip({ level: 'high', source: 'observed' }, { hintId: 'suite-header-effort-hint' });
-    assert.ok(hintBtn.includes('interestfor="suite-header-effort-hint"'));
-    assert.ok(hintBtn.includes('id="suite-header-effort-hint"'));
+    const interactiveBtn = renderEffortChip({ level: 'high', source: 'observed' });
+    assert.ok(interactiveBtn.includes('interestfor="effort-tooltip"'));
+    assert.ok(interactiveBtn.includes('data-effort-level="high"'));
+    assert.ok(interactiveBtn.includes('data-effort-source="observed"'));
 });

@@ -55,10 +55,10 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 /** @type {string} */
 let currentModelFilter = 'all';
-/** @type {string} */
-let currentEffortFilter = 'all';
 /** @type {boolean} */
 let splitModelByEffort = false;
+/** @type {boolean} */
+let splitRowEffortActive = false;
 /** @type {string} */
 let currentSearchFilter = '';
 /** @type {boolean} */
@@ -164,11 +164,37 @@ function applySearchParam(qParam) {
     }
 }
 
+/**
+ * Sets or removes the `effort:<level>` token in `#filter-search`, preserving any
+ * free-text search terms and syncing `?q=` in the URL.
+ * @param {string | null} effortLevel
+ */
+function setSearchEffortToken(effortLevel) {
+    const searchInput = document.getElementById('filter-search');
+    const raw = searchInput instanceof HTMLInputElement ? searchInput.value : currentSearchFilter;
+    const kept = raw
+        .trim()
+        .split(/\s+/)
+        .filter(tok => tok && !/^effort:/i.test(tok));
+    if (effortLevel && effortLevel !== 'all') {
+        kept.push(`effort:${effortLevel}`);
+    }
+    const nextValue = kept.join(' ');
+    currentSearchFilter = nextValue.toLowerCase();
+    if (searchInput instanceof HTMLInputElement) {
+        searchInput.value = nextValue;
+    }
+    updateUrlParams();
+}
+
 function setupTestFilters() {
     const searchInput = document.getElementById('filter-search');
     if (!(searchInput instanceof HTMLInputElement)) return;
     searchInput.addEventListener('input', () => {
         currentSearchFilter = searchInput.value.trim().toLowerCase();
+        if (parseSearchQuery(currentSearchFilter).effortLevels.length === 0) {
+            splitRowEffortActive = false;
+        }
         showAllStacked = false;
         updateUrlParams();
         renderSuites();
@@ -186,7 +212,10 @@ function setupTableFilters() {
         },
         'filter-model': (val) => {
             currentModelFilter = val;
-            currentEffortFilter = 'all';
+            if (splitRowEffortActive) {
+                splitRowEffortActive = false;
+                setSearchEffortToken(null);
+            }
         }
     };
 
@@ -751,11 +780,10 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
-        if (!ignoreModelFilter) {
-            if (currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
-            if (currentEffortFilter !== 'all' && getEffortLevel(t.reasoningEffort) !== currentEffortFilter) return false;
+        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) {
+            return false;
         }
-        if (effortLevels.length > 0) {
+        if (!(ignoreModelFilter && splitModelByEffort && splitRowEffortActive) && effortLevels.length > 0) {
             const suiteEffort = getEffortLevel(t.reasoningEffort);
             if (!effortLevels.includes(suiteEffort)) return false;
         }
@@ -971,7 +999,7 @@ function renderSuites() {
                     </a>
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td class="model-cell"><span class="model-cell-inner">${escapeHtml(testInfo.model || '')}${testInfo.model ? renderEffortChip(testInfo.reasoningEffort, { sharedTooltipId: 'effort-tooltip' }) : ''}</span></td>
+                <td class="model-cell"><span class="model-cell-inner">${escapeHtml(testInfo.model || '')}${testInfo.model ? renderEffortChip(testInfo.reasoningEffort) : ''}</span></td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
@@ -1242,14 +1270,18 @@ function getModelInsightKeys() {
     const candidates = getFilteredKeys({ ignoreModelFilter: true })
         .filter(k => Boolean(allTestData[k]?.model && allTestData[k].model !== 'unknown'));
     const { showAll, limit } = getInsightWindowOptions();
-    const byModel = Map.groupBy(candidates, k => allTestData[k].model);
+    const ignoreSplitEffortSearch = splitModelByEffort && splitRowEffortActive && !parseSearchQuery(currentSearchFilter).textQuery;
+    const byBucket = Map.groupBy(candidates, k => {
+        const t = allTestData[k];
+        return splitModelByEffort ? `${t.model}|||${getEffortLevel(t.reasoningEffort)}` : t.model;
+    });
     /** @type {string[]} */
     const result = [];
-    for (const modelKeys of byModel.values()) {
-        const anyScheduled = modelKeys.some(k => isScheduledSuite(allTestData[k].testId));
-        let scoped = (scheduledOnly && !currentSearchFilter && anyScheduled)
-            ? modelKeys.filter(k => isScheduledSuite(allTestData[k].testId))
-            : modelKeys;
+    for (const bucketKeys of byBucket.values()) {
+        const anyScheduled = bucketKeys.some(k => isScheduledSuite(allTestData[k].testId));
+        let scoped = (scheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
+            ? bucketKeys.filter(k => isScheduledSuite(allTestData[k].testId))
+            : bucketKeys;
         if (!showAll && scoped.length > 0) {
             scoped = filterRecentDays(scoped, limit);
         }
@@ -1496,10 +1528,11 @@ function renderPivotInsights() {
                 if (avgGErr > 0) gBandHtml = `<span class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></span>`;
             }
 
+            const activeEffortFilter = parseSearchQuery(currentSearchFilter).effortLevels[0] || 'all';
             const splitMeta = (filterKey === 'model' && splitModelByEffort) ? modelSplitMeta[key] : undefined;
             const modelValue = splitMeta ? splitMeta.model : key;
             const isActive = filterKey === 'model' && currentModelFilter === modelValue && (
-                splitMeta ? currentEffortFilter === splitMeta.effortLevel : currentEffortFilter === 'all'
+                splitMeta ? activeEffortFilter === splitMeta.effortLevel : activeEffortFilter === 'all'
             );
             let nameHtml = '';
             let effSummary = '';
@@ -1755,8 +1788,9 @@ function renderPivotInsights() {
     const effortSplitBtn = container.querySelector('button[data-model-effort-split]');
     effortSplitBtn?.addEventListener('click', () => {
         splitModelByEffort = !splitModelByEffort;
-        if (!splitModelByEffort && currentEffortFilter !== 'all') {
-            currentEffortFilter = 'all';
+        if (!splitModelByEffort && splitRowEffortActive) {
+            splitRowEffortActive = false;
+            setSearchEffortToken(null);
             renderSuites();
         } else {
             renderPivotInsights();
@@ -1776,12 +1810,14 @@ function setInsightFilter(filterKey, value, effort) {
     const select = document.getElementById(`filter-${filterKey}`);
     if (!(select instanceof HTMLSelectElement)) return;
     if (filterKey === 'model' && effort !== undefined) {
-        const isSame = currentModelFilter === value && currentEffortFilter === effort;
+        const activeEffortFilter = parseSearchQuery(currentSearchFilter).effortLevels[0] || 'all';
+        const isSame = currentModelFilter === value && activeEffortFilter === effort;
         const nextModel = isSame ? 'all' : value;
-        const nextEffort = isSame ? 'all' : effort;
+        const nextEffort = isSame ? null : effort;
         select.value = nextModel;
         currentModelFilter = nextModel;
-        currentEffortFilter = nextEffort;
+        splitRowEffortActive = Boolean(nextEffort);
+        setSearchEffortToken(nextEffort);
         syncSelectStyles(select);
         renderSuites();
         return;

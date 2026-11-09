@@ -172,10 +172,25 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     expect(errors).toEqual([]);
   });
 
-  test('toggles By effort in the Model insights panel to compare gemini-4-argon medium vs high side-by-side', async ({ page }) => {
+  test('toggles By effort in the Model insights panel to compare gemini-4-argon efforts side-by-side and syncs effort:<level> filter', async ({ page }) => {
     const errors = collectErrors(page);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
+    const suitesWithAdhocArgonLow = {
+      suites: [
+        ...SHOWCASE_SUITES_FIXTURE.suites,
+        {
+          ...SHOWCASE_SUITES_FIXTURE.suites[0],
+          testId: 'adhoc-2026-10-20_10-00-00-antigravity_cli',
+          timestamp: '2026-10-20T10:00:00.000Z',
+          agent: 'antigravity_cli',
+          model: 'gemini-4-argon',
+          reasoningEffort: { level: 'low', source: 'configured' },
+          guidedStats: { passed: 1200, total: 1646 },
+          unguidedStats: { passed: 800, total: 1646 },
+        },
+      ],
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: suitesWithAdhocArgonLow }));
     await page.goto('/');
 
     await page.locator('#breakdowns > summary').click();
@@ -186,43 +201,51 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await expect(splitBtn).toBeVisible();
     await expect(splitBtn).toHaveAttribute('aria-pressed', 'false');
 
-    // Default un-split view preserves 1 row per model (5 models in SHOWCASE_SUITES_FIXTURE)
+    // Default un-split view preserves 1 row per model (5 models in fixture)
     await expect(modelPanel.locator('.pivot-row')).toHaveCount(5);
     const unsplitArgon = modelPanel.locator('.pivot-filter-btn[data-filter-value="gemini-4-argon"]');
     await expect(unsplitArgon).toHaveCount(1);
     await expect(unsplitArgon.locator('.effort-chip')).toHaveCount(0);
 
-    // Toggle By effort ON -> splits gemini-4-argon into medium and high rows
+    // Toggle By effort ON -> groups per (model, effort) bucket in getModelInsightKeys() so
+    // ad-hoc gemini-4-argon (low) is not erased by scheduled gemini-4-argon (high/medium) runs
     await splitBtn.click();
     await expect(splitBtn).toHaveAttribute('aria-pressed', 'true');
-    await expect(modelPanel.locator('.pivot-row')).toHaveCount(6);
+    await expect(modelPanel.locator('.pivot-row')).toHaveCount(7);
 
     const splitArgonBtns = modelPanel.locator('.pivot-filter-btn[data-filter-value="gemini-4-argon"]');
-    await expect(splitArgonBtns).toHaveCount(2);
-    // Pure model ID is preserved on data-filter-value; canonical effort ordering puts medium before high
-    await expect(splitArgonBtns.nth(0)).toHaveAttribute('data-filter-effort', 'medium');
-    await expect(splitArgonBtns.nth(0).locator('.effort-chip')).toHaveText('medium');
-    await expect(splitArgonBtns.nth(1)).toHaveAttribute('data-filter-effort', 'high');
-    await expect(splitArgonBtns.nth(1).locator('.effort-chip')).toHaveText('high');
+    await expect(splitArgonBtns).toHaveCount(3);
+    // Pure model ID is preserved on data-filter-value; canonical effort ordering puts low -> medium -> high
+    await expect(splitArgonBtns.nth(0)).toHaveAttribute('data-filter-effort', 'low');
+    await expect(splitArgonBtns.nth(0).locator('.effort-chip')).toHaveText('low');
+    await expect(splitArgonBtns.nth(1)).toHaveAttribute('data-filter-effort', 'medium');
+    await expect(splitArgonBtns.nth(1).locator('.effort-chip')).toHaveText('medium');
+    await expect(splitArgonBtns.nth(2)).toHaveAttribute('data-filter-effort', 'high');
+    await expect(splitArgonBtns.nth(2).locator('.effort-chip')).toHaveText('high');
 
-    // Sorting by uplift (high to low) places gemini-4-argon [high] (+35 pp) above gemini-4-argon [medium] (+31 pp)
+    // Sorting by uplift (high to low) places gemini-4-argon [high] (+35 pp) above [medium] (+31 pp) above [low] (+24 pp)
     await modelPanel.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]').click();
     const sortedArgonEfforts = await modelPanel
       .locator('.pivot-filter-btn[data-filter-value="gemini-4-argon"]')
       .evaluateAll(btns => btns.map(b => b.getAttribute('data-filter-effort')));
-    expect(sortedArgonEfforts).toEqual(['high', 'medium']);
+    expect(sortedArgonEfforts).toEqual(['high', 'medium', 'low']);
 
-    // Clicking the medium split row filters #suites-list to the medium gemini-4-argon suite only
+    // Clicking the medium split row filters #suites-list and reflects effort:medium in #filter-search and URL ?q=
     const mediumBtn = modelPanel.locator('.pivot-filter-btn[data-filter-value="gemini-4-argon"][data-filter-effort="medium"]');
     await mediumBtn.click();
     await expect(mediumBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#filter-model')).toHaveValue('gemini-4-argon');
+    await expect(page.locator('#filter-search')).toHaveValue('effort:medium');
+    expect(new URL(page.url()).searchParams.get('q')).toBe('effort:medium');
     const visibleSuites = page.locator('#suites-list .suite-table-row');
     await expect(visibleSuites).toHaveCount(1);
     await expect(visibleSuites.first()).toHaveAttribute('data-test-id', 'weekly-2026-10-27_18-00-00-antigravity_cli');
 
-    // Turning By effort OFF resets the split effort filter while keeping model rows intact
+    // Turning By effort OFF resets the split effort filter in #filter-search and URL while keeping model filter
     await modelPanel.locator('.insights-effort-split-btn[data-model-effort-split]').click();
     await expect(modelPanel.locator('.insights-effort-split-btn[data-model-effort-split]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#filter-search')).toHaveValue('');
+    expect(new URL(page.url()).searchParams.get('q')).toBeNull();
     await expect(visibleSuites).toHaveCount(2);
 
     expect(errors).toEqual([]);
@@ -233,15 +256,17 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/dashboard.html?testId=example-result');
 
+    const effortTooltip = page.locator('#effort-tooltip');
+    await expect(effortTooltip).toHaveAttribute('popover', 'hint');
+
     const headerChip = page.locator('#test-header .meta-value-model button.effort-chip');
     await expect(headerChip).toBeVisible();
     await expect(headerChip).toHaveText('high');
-    const headerHint = page.locator('#suite-header-effort-hint');
     await headerChip.focus();
-    await expect(headerHint).toBeVisible();
-    await expect(headerHint).toHaveText('Reasoning effort: high (observed from agent logs)');
+    await expect(effortTooltip).toBeVisible();
+    await expect(effortTooltip).toHaveText('Reasoning effort: high (observed from agent logs)');
     await page.keyboard.press('Escape');
-    await expect(headerHint).toBeHidden();
+    await expect(effortTooltip).toBeHidden();
 
     // Open content-vis task accordion and launch the guided Trajectory modal
     const contentVisAccordion = page.locator('.task-accordion[data-guide="content-vis"]');
@@ -255,12 +280,11 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await expect(modalPill.locator('.trajectory-meta-model')).toHaveText('gemini-4-argon');
     const trajChip = modalPill.locator('button.effort-chip');
     await expect(trajChip).toHaveText('high');
-    const trajHint = page.locator('#trajectory-modal-effort-hint');
     await trajChip.focus();
-    await expect(trajHint).toBeVisible();
-    await expect(trajHint).toHaveText('Reasoning effort: high (observed from agent logs)');
+    await expect(effortTooltip).toBeVisible();
+    await expect(effortTooltip).toHaveText('Reasoning effort: high (observed from agent logs)');
     await page.keyboard.press('Escape');
-    await expect(trajHint).toBeHidden();
+    await expect(effortTooltip).toBeHidden();
     await page.keyboard.press('Escape');
     await expect(page.locator('#modal')).toBeHidden();
 
@@ -275,29 +299,66 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await expect(fallbackChip).toHaveText('default');
     await expect(fallbackChip).toHaveClass(/effort-chip--default/);
     await fallbackChip.focus();
-    await expect(headerHint).toHaveText(
+    await expect(effortTooltip).toHaveText(
       'Reasoning effort: default (CLI built-in default; not explicitly configured or logged)'
     );
 
     expect(errors).toEqual([]);
   });
 
-  test('groups guide timeline cards by (agent, model, effort) and shows effort in card headers and timeline tooltips', async ({ page }) => {
+  test('splits guide timeline cards by effort only when (agent, model) has >= 2 distinct explicit effort levels', async ({ page }) => {
     const errors = collectErrors(page);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.route('**/api/suites*', route => route.fulfill({ json: SUITES_WITH_LEGACY }));
+    const suitesForGuideView = {
+      suites: [
+        ...SUITES_WITH_LEGACY.suites,
+        // New run of gemini_cli on gemini-3.8-flash with explicit 'high' effort alongside
+        // the legacy 'default' run of gemini_cli on gemini-3.8-flash in SUITES_WITH_LEGACY:
+        // because (gemini_cli, gemini-3.8-flash) has only 1 explicit effort level ('high'),
+        // both runs must remain unified on a single 2-trial timeline card!
+        {
+          testId: 'nightly-2026-10-28_09-00-00-gemini_cli',
+          timestamp: '2026-10-28T09:30:00.000Z',
+          agent: 'gemini_cli',
+          serving: 'skills_cli',
+          model: 'gemini-3.8-flash',
+          reasoningEffort: { level: 'high', source: 'observed' },
+          taskCount: 20,
+          maxRuns: 1,
+          guidedStats: { passed: 18, total: 20 },
+          unguidedStats: { passed: 10, total: 20 },
+          earlyFailureRate: 0,
+          guides: {
+            'content-vis': {
+              guidedPassed: 7,
+              guidedTotal: 7,
+              guidedRate: 100,
+              unguidedPassed: 3,
+              unguidedTotal: 7,
+              unguidedRate: 43,
+              uplift: 57,
+              taskName: 'content-vis-task',
+            },
+          },
+        },
+      ],
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: suitesForGuideView }));
     await page.goto('/guide.html?guide=content-vis');
 
     const cards = page.locator('#graphs-grid .guide-stat-card');
     await expect(cards).toHaveCount(4);
 
-    // gemini-4-argon has separate cards for high and medium while keeping pure data-model="gemini-4-argon"
+    // gemini-4-argon has 2 explicit efforts (high + medium) -> splits into 2 separate cards
     const highCard = page.locator('.guide-stat-card[data-model="gemini-4-argon"][data-effort="high"]');
     const mediumCard = page.locator('.guide-stat-card[data-model="gemini-4-argon"][data-effort="medium"]');
-    const legacyCard = page.locator('.guide-stat-card[data-model="gemini-3.8-flash"][data-effort="default"]');
+    // gemini-3.8-flash has 1 explicit effort ('high') + 1 legacy ('default') run -> stays unified in 1 card with 2 trials
+    const unifiedFlashCard = page.locator('.guide-stat-card[data-model="gemini-3.8-flash"]');
     await expect(highCard).toBeVisible();
     await expect(mediumCard).toBeVisible();
-    await expect(legacyCard).toBeVisible();
+    await expect(unifiedFlashCard).toHaveCount(1);
+    await expect(unifiedFlashCard).toHaveAttribute('data-effort', 'high');
+    await expect(unifiedFlashCard.locator('.guide-card-subtitle')).toContainText('2 chronological trials');
 
     const effortTooltip = page.locator('#effort-tooltip');
     const highChip = highCard.locator('.guide-card-title button.effort-chip');

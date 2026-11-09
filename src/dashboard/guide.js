@@ -1,4 +1,4 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip, getEffortLevel, compareEffortLevels } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip, getEffortLevel, isDefaultEffort, compareEffortLevels, pickHigherPrecedenceEffort } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient, isAuthRejection } from './api.js';
 import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
@@ -401,12 +401,30 @@ function renderGraphs(guideName) {
     }
     $('#empty-state').hidden = true;
 
+    /** @type {Map<string, Set<string>>} */
+    const explicitEffortsByPair = new Map();
+    filteredKeys.forEach(compoundKey => {
+        const run = allTestData[compoundKey];
+        if (!isDefaultEffort(run.reasoningEffort)) {
+            const pairKey = `${run.agent}|||${run.model}`;
+            let set = explicitEffortsByPair.get(pairKey);
+            if (!set) {
+                set = new Set();
+                explicitEffortsByPair.set(pairKey, set);
+            }
+            set.add(getEffortLevel(run.reasoningEffort));
+        }
+    });
+
     /** @type {Record<string, GuideSuiteSummary[]>} */
     const combinations = {};
     filteredKeys.forEach(compoundKey => {
         const run = allTestData[compoundKey];
-        const effortLevel = getEffortLevel(run.reasoningEffort);
-        const combKey = `${run.agent}|||${run.model}|||${effortLevel}`;
+        const pairKey = `${run.agent}|||${run.model}`;
+        const splitByEffort = (explicitEffortsByPair.get(pairKey)?.size || 0) >= 2;
+        const combKey = splitByEffort
+            ? `${pairKey}|||${getEffortLevel(run.reasoningEffort)}`
+            : pairKey;
         if (!combinations[combKey]) {
             combinations[combKey] = [];
         }
@@ -496,9 +514,13 @@ function renderGraphs(guideName) {
     $('#empty-state').hidden = true;
 
     activeCombKeys.forEach(combKey => {
-        const [agent, model, effortLevel = 'default'] = combKey.split('|||');
+        const [agent, model, splitEffortLevel] = combKey.split('|||');
         const runs = combinations[combKey];
-        const latestRun = runs[runs.length - 1];
+        let cardReasoningEffort = runs[runs.length - 1]?.reasoningEffort;
+        for (const r of runs) {
+            cardReasoningEffort = pickHigherPrecedenceEffort(cardReasoningEffort, r.reasoningEffort);
+        }
+        const effortLevel = splitEffortLevel || getEffortLevel(cardReasoningEffort);
 
         const card = document.createElement('div');
         card.className = 'stat-card guide-stat-card';
@@ -509,7 +531,7 @@ function renderGraphs(guideName) {
         const header = document.createElement('div');
         header.innerHTML = `
             <h2 class="guide-card-title">
-                ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> <span class="guide-card-model-row">${escapeHtml(model)}${renderEffortChip(latestRun?.reasoningEffort, { sharedTooltipId: 'effort-tooltip' })}</span>
+                ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> <span class="guide-card-model-row">${escapeHtml(model)}${renderEffortChip(cardReasoningEffort)}</span>
             </h2>
             <div class="guide-card-subtitle">
                 ${runs.length} chronological trials${isA11yMode ? ' · Accessibility checks' : ''}

@@ -67,6 +67,13 @@ export function getAgentBadge(agentName) {
     return kind ? `<span class="agent-badge ${kind}" aria-hidden="true">${BADGE_GLYPHS[kind]}</span>` : '';
 }
 
+export const REASONING_EFFORT_SOURCES = /** @type {const} */ ([
+    'observed',
+    'configured',
+    'model-id',
+    'agent-default',
+]);
+
 const VALID_EFFORT_TOKEN_RE = /^[a-z0-9_-]+$/;
 
 /** @type {Record<import('./evals.d.ts').ReasoningEffortSource, number>} */
@@ -177,17 +184,20 @@ export function compareEffortLevels(a, b) {
 }
 
 /**
- * Picks whichever `ReasoningEffort` has strictly higher source precedence.
+ * Picks whichever `ReasoningEffort` has strictly higher source precedence
+ * (`observed > configured > model-id > agent-default`), keeping `current` on ties.
  * @param {import('./evals.d.ts').ReasoningEffort | undefined} current
  * @param {import('./evals.d.ts').ReasoningEffort | undefined} candidate
  * @returns {import('./evals.d.ts').ReasoningEffort | undefined}
  */
 export function pickHigherPrecedenceEffort(current, candidate) {
-    const validCandidate = sanitizeReasoningEffort(candidate);
-    const validCurrent = sanitizeReasoningEffort(current);
-    if (!validCandidate) return validCurrent;
-    if (!validCurrent) return validCandidate;
-    return EFFORT_SOURCE_PRECEDENCE[validCandidate.source] > EFFORT_SOURCE_PRECEDENCE[validCurrent.source]
-        ? validCandidate
-        : validCurrent;
+    if (!candidate) return current;
+    if (!current) return candidate;
+    const rankCandidate = candidate.source !== 'agent-default' && !candidate.level
+        ? 0
+        : (EFFORT_SOURCE_PRECEDENCE[candidate.source] ?? 0);
+    const rankCurrent = current.source !== 'agent-default' && !current.level
+        ? 0
+        : (EFFORT_SOURCE_PRECEDENCE[current.source] ?? 0);
+    return rankCandidate > rankCurrent ? candidate : current;
 }

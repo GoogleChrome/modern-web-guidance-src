@@ -304,7 +304,7 @@ function renderPromptBar(task, pair) {
         }).join(', ');
         const guidePrefix = cleanGuides.length > 1 ? 'Guides:' : 'Guide:';
         const effortChipHtml = pair.model
-            ? renderEffortChip(pair.reasoningEffort, { sharedTooltipId: 'effort-tooltip' })
+            ? renderEffortChip(pair.reasoningEffort)
             : '';
         metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
