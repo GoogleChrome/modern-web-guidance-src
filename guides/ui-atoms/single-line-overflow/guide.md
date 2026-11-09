@@ -97,15 +97,21 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
   overflow: hidden;
   /* Example value: how much of the text fades */
   --fade-size: 2rem;
-  /* Gradient directions are physical, so flip it for right-to-left text */
+  /* Gradient directions and positions are physical, so flip them for right-to-left text */
   --fade-dir: right;
-  mask-image: linear-gradient(to var(--fade-dir), black calc(100% - var(--fade)), transparent);
+  --fade-pos: 100%;
+  /* An opaque layer that is not clipped to the box, minus a band at the end.
+     Masking only the band keeps everything else visible, including a focus outline outside the box. */
+  mask:
+    linear-gradient(black, black) no-clip subtract,
+    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-pos) 0 / var(--fade) 100% no-repeat no-clip;
   /* Applies only when the text overflows: with no overflow the timeline is inactive and the animation has no effect */
   animation: fade-end linear both;
   animation-timeline: scroll(self inline);
 
   &:dir(rtl) {
     --fade-dir: left;
+    --fade-pos: 0;
   }
 }
 
@@ -117,6 +123,8 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
 ```
 
 Keep the two properties separate. The reveal below transitions `--fade-size`, and a keyframe that set the mask directly would not follow that transition.
+
+DO NOT use a single gradient as the mask. A mask is clipped to the border box by default, so it also hides the element's focus outline, which is outside the box.
 
 ### 3. Replace with a predefined shorter version
 
@@ -154,15 +162,15 @@ Reveal on `:hover` and `:focus-visible` of the interactive element, never on hov
 
 Hover and focus reveal nothing on touch. Give the full text another route: the selected item shows it untruncated (a selected tab is never shrunk), a row opens a detail view, or the text is also shown in full elsewhere.
 
-Choose by how the element is sized:
+Choose by whether the element may grow:
 
-1. **Scroll the text inside its box** when the element's width comes from its container: a grid track, a fixed-layout table column, a block in a sidebar, a `flex: 1` item. Nothing else moves, so it works in dense layouts.
-2. **Expand the element** when its width comes from its content, such as tabs or chips with a `min-inline-size` and `max-inline-size`. Siblings shift to make room, so do not use it in grids or tables, where it breaks alignment.
+1. **Scroll the text inside its box** when nothing else may move: grids, tables, tab strips, dense lists. The element keeps its size.
+2. **Expand the element** when it may grow to its text, such as a chip or a tag with a `min-inline-size` and `max-inline-size`. Siblings shift to make room, so do not use it in grids or tables, where it breaks alignment.
 3. **Use a tooltip** when it would add information beyond the label, or when the full text can be exceedingly long (methods 1 and 2 are less tolerant of extreme variance)
 
 ### 1. Scroll the text inside its box
 
-The element is a size container, so its child can compute "container width minus my width" with container query units. The inner `span` is the only extra markup: it becomes the box that moves. The same class works on non-interactive elements such as list items, where hover still reveals.
+Move the text by the difference between the element's width and its own: a percentage margin resolves against the element, a percentage translate against the text itself. A scroll-state query limits this to truncated text, so text that fits stays put. The inner `span` is the only extra markup: it becomes the box that moves. The same class works on non-interactive elements such as list items, where hover still reveals.
 
 ```html
 <a class="label" href="…"><span>Meeting notes from Tuesday afternoon</span></a>
@@ -174,29 +182,31 @@ The element is a size container, so its child can compute "container width minus
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Lets the inner span measure the available width as 100cqi.
-     Inline-size containment removes the element's content from its intrinsic size,
-     which is why this only suits elements sized by their container. */
-  container-type: inline-size;
+  /* Lets descendants query whether the text overflows. Unlike size containment, this does not affect the element's size. */
+  container-type: scroll-state;
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* Outside the query: a container cannot query itself */
   .label:is(:hover, :focus-visible) {
     text-overflow: clip;
+  }
 
-    & > span {
-      /* Needs its own box to be translated. It stays inline otherwise, so the ellipsis renders. */
+  @container scroll-state(scrollable: inline-end) {
+    .label:is(:hover, :focus-visible) > span {
+      /* Needs its own box to be moved. It stays inline otherwise, so the ellipsis renders. */
       display: inline-block;
-      inline-size: max-content;
-      /* Container width minus text width: negative when truncated, clamped to 0 when the text fits */
-      translate: min(0px, 100cqi - 100%);
+      /* Forward by the element's width, then back by the text's own width */
+      margin-inline-start: 100%;
+      /* 1px short, so the text still counts as overflowing and the query keeps matching */
+      translate: calc(1px - 100%);
       /* Example value. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
-      transition: translate 2s linear;
+      transition: margin-inline-start 2s linear, translate 2s linear;
     }
 
     /* The overflow is on the left, so the text moves right */
-    &:dir(rtl) > span {
-      translate: max(0px, 100% - 100cqi);
+    .label:is(:hover, :focus-visible):dir(rtl) > span {
+      translate: calc(100% - 1px);
     }
   }
 }
@@ -309,7 +319,7 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
 
-Hints on descendants are an enhancement: without them the text still truncates. Where the hint matters, set a class from script instead, and style the descendant from that class.
+Without scroll-state queries the text still truncates, but the hint never shows and the scroll reveal never starts. Set a class from script instead and gate both on it.
 
 ```js
 if (!CSS.supports('container-type', 'scroll-state')) {
@@ -326,9 +336,18 @@ if (!CSS.supports('container-type', 'scroll-state')) {
 ```
 
 ```css
-/* Same as the scroll-state query */
+/* Same as the scroll-state queries */
 .label.truncated > span {
   text-decoration: underline dotted;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .label.truncated:is(:hover, :focus-visible) > span {
+    display: inline-block;
+    margin-inline-start: 100%;
+    translate: calc(1px - 100%);
+    transition: margin-inline-start 2s linear, translate 2s linear;
+  }
 }
 ```
 
@@ -354,4 +373,4 @@ Container queries and their units are widely available. No fallback is needed.
 
 {{ BASELINE_STATUS("masks") }}
 
-`mask-image` is widely available. No fallback is needed.
+Masks, including `mask-composite` and `mask-clip: no-clip`, are widely available. No fallback is needed.

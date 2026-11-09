@@ -62,8 +62,8 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Lets the inner span measure the available width as 100cqi */
-    container-type: inline-size scroll-state;
+    /* Lets descendants query whether the text overflows, without affecting the element's size */
+    container-type: scroll-state;
   }
 
   /* Hint that hovering reveals more, only when the text is truncated */
@@ -76,22 +76,27 @@
 
   /* Reveal on hover and focus: scroll the text inside its box */
   @media (prefers-reduced-motion: no-preference) {
+    /* Outside the query: a container cannot query itself */
     .label:is(:hover, :focus-visible) {
       text-overflow: clip;
+    }
 
-      & > span {
-        /* Needs its own box to be translated. Inline otherwise, so the ellipsis renders. */
+    /* Only truncated text moves: text that fits stays put */
+    @container scroll-state(scrollable: inline-end) {
+      .label:is(:hover, :focus-visible) > span {
+        /* Needs its own box to be moved. Inline otherwise, so the ellipsis renders. */
         display: inline-block;
-        inline-size: max-content;
-        /* Container width minus text width: negative when truncated, 0 when the text fits */
-        translate: min(0px, 100cqi - 100%);
+        /* Forward by the element's width, then back by the text's own width */
+        margin-inline-start: 100%;
+        /* 1px short, so the text still counts as overflowing and the query keeps matching */
+        translate: calc(1px - 100%);
         /* Example value. Set only here: the text snaps back when the pointer leaves */
-        transition: translate 2s linear;
+        transition: margin-inline-start 2s linear, translate 2s linear;
       }
 
       /* The overflow is on the left, so the text moves right */
-      &:dir(rtl) > span {
-        translate: max(0px, 100% - 100cqi);
+      .label:is(:hover, :focus-visible):dir(rtl) > span {
+        translate: calc(100% - 1px);
       }
     }
   }
@@ -114,14 +119,20 @@
     text-overflow: clip;
     /* Example value: how much of the text fades */
     --fade-size: 2rem;
-    /* Gradient directions are physical, so flip it for right-to-left text */
+    /* Gradient directions and positions are physical, so flip them for right-to-left text */
     --fade-dir: right;
-    mask-image: linear-gradient(to var(--fade-dir), black calc(100% - var(--fade)), transparent);
+    --fade-pos: 100%;
+    /* An opaque layer that is not clipped to the box, minus a band at the end.
+       Masking only the band keeps the focus outline outside the box visible. */
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      linear-gradient(to var(--fade-dir), transparent, black) var(--fade-pos) 0 / var(--fade) 100% no-repeat no-clip;
     animation: fade-end linear both;
     animation-timeline: scroll(self inline);
 
     &:dir(rtl) {
       --fade-dir: left;
+      --fade-pos: 0;
     }
 
     /* Fallback without scroll-driven animations: script toggles the class */

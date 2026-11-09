@@ -1,6 +1,6 @@
 - The full text of a truncated element remains in the DOM; it is not shortened by string manipulation such as `slice` or a character limit.
 - Text that must stay on one line is kept from wrapping with `white-space: nowrap` (or `text-wrap: nowrap`) and clipped with `overflow: hidden` on the element that directly contains the text.
-- Clipped text is marked with `text-overflow: ellipsis` or an end fade drawn with `mask-image`.
+- Clipped text is marked with `text-overflow: ellipsis` or an end fade drawn with a mask.
 - When an end fade is used, it is visible only when the text actually overflows.
 - Flex and grid items that contain truncated text can shrink below their content size, through `min-inline-size: 0` (or `min-width: 0`) on the item or an `overflow` other than `visible` on the item itself.
 - Focus outlines of focusable elements that contain truncated text are not clipped.

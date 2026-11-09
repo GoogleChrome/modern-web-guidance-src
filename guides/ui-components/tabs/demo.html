@@ -79,11 +79,32 @@
       transition: min-inline-size .3s;
     }
 
-    /* On a child, so overflow: hidden doesn't clip the focus ring */
+    /* On a child, so overflow: hidden applies to the text only and an icon beside it is never clipped */
     & .label {
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
+      /* Lets the label's span query whether it is truncated */
+      container-type: scroll-state;
+    }
+  }
+
+  /* Reveal a truncated label by scrolling it inside the tab.
+     Hover only: activation is automatic, so a focused tab is selected and already full width. */
+  @media (prefers-reduced-motion: no-preference) {
+    .tablist.shrink button:hover .label {
+      text-overflow: clip;
+    }
+
+    @container scroll-state(scrollable: inline-end) {
+      .tablist.shrink button:hover .label > span {
+        display: inline-block;
+        /* Forward by the label's width, then back by the text's own width */
+        margin-inline-start: 100%;
+        /* 1px short, so the text still counts as overflowing and the query keeps matching */
+        translate: calc(1px - 100%);
+        transition: margin-inline-start 2s linear, translate 2s linear;
+      }
     }
   }
 
@@ -391,12 +412,12 @@
 <h2>Shrinking inactive tabs</h2>
 <div class="tabs">
   <div class="tablist shrink" data-overflow="scroll" focusgroup="tablist nomemory" aria-label="Open documents">
-    <button type="button" aria-selected="true" focusgroupstart><span class="label">Quarterly planning</span></button>
-    <button type="button"><span class="label">Meeting notes from Tuesday</span></button>
-    <button type="button"><span class="label">Design review feedback</span></button>
-    <button type="button"><span class="label">Budget spreadsheet</span></button>
-    <button type="button"><span class="label">Hiring plan draft</span></button>
-    <button type="button"><span class="label">Launch checklist</span></button>
+    <button type="button" aria-selected="true" focusgroupstart><span class="label"><span>Quarterly planning</span></span></button>
+    <button type="button"><span class="label"><span>Meeting notes from Tuesday</span></span></button>
+    <button type="button"><span class="label"><span>Design review feedback</span></span></button>
+    <button type="button"><span class="label"><span>Budget spreadsheet</span></span></button>
+    <button type="button"><span class="label"><span>Hiring plan draft</span></span></button>
+    <button type="button"><span class="label"><span>Launch checklist</span></span></button>
   </div>
   <div role="tabpanel" tabindex="0"><p>Goals and milestones for next quarter.</p></div>
   <div role="tabpanel" hidden="until-found"><p>Action items from Tuesday’s sync.</p></div>
