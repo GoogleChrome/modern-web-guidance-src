@@ -197,8 +197,10 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
   }
 
   // Copy sanitized npm config so isolated runs don't inherit host auth tokens or broken private registries
+  const userConfig = process.env.NPM_CONFIG_USERCONFIG;
   const originalHome = process.env.HOME || process.cwd();
-  copySanitizedNpmrc(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
+  const npmrcSource = userConfig && fs.existsSync(userConfig) ? userConfig : path.join(originalHome, '.npmrc');
+  copySanitizedNpmrc(npmrcSource, path.join(tempHome, '.npmrc'));
 
   // Configure default timeouts for curl to prevent hanging on unreachable or stalled sockets
   try {

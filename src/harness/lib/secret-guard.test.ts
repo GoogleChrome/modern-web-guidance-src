@@ -112,6 +112,35 @@ describe('sanitizeNpmrc & copySanitizedNpmrc', () => {
       }
     });
   });
+
+  test('uses NPM_CONFIG_USERCONFIG as the source for sanitized .npmrc in isolated HOME when set', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = `npm_${'K'.repeat(36)}`;
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\nfetch-retries=5\n`,
+        'utf8',
+      );
+
+      const prevUserConfig = process.env.NPM_CONFIG_USERCONFIG;
+      process.env.NPM_CONFIG_USERCONFIG = customNpmrc;
+      let isolated = '';
+      try {
+        isolated = createIsolatedHome('custom-npmrc-test');
+        const isolatedNpmrc = fs.readFileSync(path.join(isolated, '.npmrc'), 'utf8');
+        assert.ok(isolatedNpmrc.includes('registry=http://localhost:4873/'), 'Registry should be preserved');
+        assert.ok(!isolatedNpmrc.includes(token), '_authToken should be stripped');
+        assert.ok(isolatedNpmrc.includes('fetch-retries=5'), 'Safe config should be preserved');
+      } finally {
+        if (prevUserConfig === undefined) delete process.env.NPM_CONFIG_USERCONFIG;
+        else process.env.NPM_CONFIG_USERCONFIG = prevUserConfig;
+        if (isolated) fs.rmSync(isolated, { recursive: true, force: true });
+      }
+    });
+  });
 });
 
 describe('collectHostSecrets', () => {
@@ -177,6 +206,27 @@ describe('collectHostSecrets', () => {
       assert.strictEqual(secrets.includes(effortLevel), false, '*_EFFORT value should not be collected as secret');
       assert.strictEqual(secrets.includes(modelApiKey), true, 'MODEL_API_KEY value should still be collected as secret');
       assert.strictEqual(secrets.includes(unlistedSecret), true, 'Unlisted config value should still be collected as secret');
+    });
+  });
+
+  test('collects auth tokens from NPM_CONFIG_USERCONFIG as secret needles', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = ['ya29', 'custom', 'C'.repeat(36)].join('.');
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\n`,
+        'utf8',
+      );
+
+      const secrets = collectHostSecrets({
+        rootDir: dir,
+        homeDir: dir,
+        env: { NPM_CONFIG_USERCONFIG: customNpmrc },
+      });
+      assert.strictEqual(secrets.includes(token), true, 'Token from NPM_CONFIG_USERCONFIG should be collected as secret needle');
     });
   });
 });

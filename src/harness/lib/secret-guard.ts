@@ -296,6 +296,14 @@ export function collectHostSecrets(options: {
     for (const secret of processNpmrc(npmrcRaw).secrets) secrets.add(secret);
   }
 
+  const userConfig = (options.env ?? process.env).NPM_CONFIG_USERCONFIG;
+  if (userConfig) {
+    const userConfigRaw = readUtf8IfExists(userConfig);
+    if (userConfigRaw !== null) {
+      for (const secret of processNpmrc(userConfigRaw).secrets) secrets.add(secret);
+    }
+  }
+
   return [...secrets].sort((a, b) => b.length - a.length);
 }
 
