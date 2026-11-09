@@ -8,4 +8,4 @@
 - Focus remains on the activated header button after sorting.
 - The sort icon inside each header button has `aria-hidden="true"`.
 - The sort buttons use `commandfor` referencing the table's `id` with a `command` value starting with `--`, and a `command` event listener handles sorting.
-- When `moveBefore()` is unsupported, rows are reordered with `append()` and the sorted order is unchanged.
+- Sorting reorders the existing `<tr>` nodes in the `<tbody>`; rows are not recreated or cloned.
