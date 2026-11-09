@@ -252,7 +252,7 @@ Let the element grow to its text, and transition the growth. Set `interpolate-si
 
 A tooltip is exposed as the element's description, while the label stays its name.
 If the tooltip only repeats the label, hide it from assistive technology (`aria-hidden="true"`), or screen readers announce the text twice.
-If it adds information, leave it exposed: name and description are announced as different things.
+If it adds information, leave it exposed: name and description are announced as different things. If it also repeats the label, hide that part of the tooltip (`aria-hidden="true"` on it), so the description holds only the addition.
 DO NOT rely on `title` alone: it is unreachable from the keyboard and on touch.
 See {{ GUIDE_REF("interest-triggered-tooltips") }} for tooltips.
 
