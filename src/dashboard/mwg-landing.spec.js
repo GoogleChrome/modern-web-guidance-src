@@ -546,11 +546,14 @@ test.describe('Search quality page MWG compliance', () => {
       await acceptBtn.focus();
       const styles = await acceptBtn.evaluate(el => {
         const cs = getComputedStyle(el);
-        const barCs = getComputedStyle(document.querySelector('.glue-cookie-notification-bar'));
+        const barEl = document.querySelector('.glue-cookie-notification-bar');
+        if (!barEl) throw new Error('Missing cookie notification bar');
+        const barCs = getComputedStyle(barEl);
         const cv = document.createElement('canvas');
         cv.width = 1;
         cv.height = 1;
         const ctx = cv.getContext('2d');
+        if (!ctx) throw new Error('Missing 2d canvas context');
         ctx.fillStyle = barCs.backgroundColor;
         ctx.fillRect(0, 0, 1, 1);
         const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
