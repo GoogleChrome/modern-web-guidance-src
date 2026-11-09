@@ -1,7 +1,5 @@
 - Dragging an item with a pointer, either from a dedicated drag handle or from the item itself, changes the item's DOM and visible position within the collection.
 - During a pointer drag, sibling items stay in place and a drop marker indicates where the dragged item will land without shifting layout, committing the DOM move once on release.
-- In a horizontal row, dragging an item with a pointer along the row's axis changes its DOM position by its horizontal position, and the visible order of the items matches their DOM order.
-- In a horizontal row, the arrow keys follow the visual direction: in a right-to-left row the arrow key pointing left moves a grabbed item later in the DOM and the one pointing right moves it earlier.
 - Pressing `Escape` during a pointer drag cancels it, removes the marker, and leaves the item in its original position.
 - Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.
 - Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports the arrow keys for its axis (`ArrowUp` and `ArrowDown` in a vertical list, `ArrowLeft` and `ArrowRight` in a horizontal row), or separate movement buttons (or an options menu containing them).
