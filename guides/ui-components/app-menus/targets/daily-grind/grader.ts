@@ -221,11 +221,11 @@ test.describe('Application Menu Bar Grader', () => {
         const items = Array.from(root.querySelectorAll('button, a[href]'))
           .filter((el) => {
             const item = el as HTMLElement;
-            return item.getAttribute('aria-disabled') !== 'true' && !(item as any).disabled;
+            return item.closest('[popover]') === m && item.getAttribute('aria-disabled') !== 'true' && !(item as any).disabled;
           });
         const isFirst = items.length > 0 && items[0] === document.activeElement;
         return { inMenu, isFirst };
-      }, commandFor);
+      }, commandFor!);
 
       expect(focusCheck.inMenu).toBe(true);
       expect(focusCheck.isFirst).toBe(true);
@@ -250,18 +250,16 @@ test.describe('Application Menu Bar Grader', () => {
         const items = Array.from(root.querySelectorAll('button, a[href]'))
           .filter((el) => {
             const item = el as HTMLElement;
-            return item.getAttribute('aria-disabled') !== 'true' && !(item as any).disabled;
+            return item.closest('[popover]') === m && item.getAttribute('aria-disabled') !== 'true' && !(item as any).disabled;
           });
         return items.length > 0 && items[0] === document.activeElement;
-      }, commandFor);
+      }, commandFor!);
       expect(homeCheck).toBe(true);
 
-      await page.evaluate(() => {
-        (document.activeElement as HTMLElement)?.blur();
-      });
+      await page.keyboard.press('Escape');
       await expect(menu).toBeHidden();
+      await expect(trigger).toBeFocused();
 
-      await trigger.focus();
       await page.keyboard.press('End');
       await expect(menu).toBeVisible();
 
@@ -273,10 +271,10 @@ test.describe('Application Menu Bar Grader', () => {
         const items = Array.from(root.querySelectorAll('button, a[href]'))
           .filter((el) => {
             const item = el as HTMLElement;
-            return item.getAttribute('aria-disabled') !== 'true' && !(item as any).disabled;
+            return item.closest('[popover]') === m && item.getAttribute('aria-disabled') !== 'true' && !(item as any).disabled;
           });
         return items.length > 0 && items[items.length - 1] === document.activeElement;
-      }, commandFor);
+      }, commandFor!);
       expect(endCheck).toBe(true);
     });
 
@@ -357,6 +355,10 @@ test.describe('Application Menu Bar Grader', () => {
       await firstTrigger.focus();
       await page.keyboard.press('ArrowDown');
       await expect(firstMenu).toBeVisible();
+
+      // ArrowRight on a submenu trigger opens the submenu (per menu guide); focus a top-level leaf item to test menubar switching
+      const leaf = firstMenu.locator('button:not([aria-haspopup]), a[href]').filter({ visible: true }).first();
+      await leaf.focus();
 
       await page.keyboard.press('ArrowRight');
       await expect(firstMenu).toBeHidden();
@@ -446,7 +448,7 @@ test.describe('Application Menu Bar Grader', () => {
             sub.showPopover();
           } catch {}
           item.focus();
-        }, firstCmdFor);
+        }, firstCmdFor!);
 
         const dynamicItem = page.locator('#test-dynamic-sub-item');
         await expect(dynamicItem).toBeAttached();
@@ -481,7 +483,7 @@ test.describe('Application Menu Bar Grader', () => {
       await expect(secondMenu).toBeHidden();
 
       await secondTrigger.hover();
-      await page.waitForTimeout(50);
+      await page.waitForTimeout(500);
       await expect(secondMenu).toBeHidden();
       await expect(secondTrigger).toHaveAttribute('aria-expanded', 'false');
 
@@ -525,7 +527,7 @@ test.describe('Application Menu Bar Grader', () => {
       const isInside = await page.evaluate((cmdFor) => {
         const m = document.getElementById(cmdFor);
         return Boolean(m && m.contains(document.activeElement));
-      }, commandFor);
+      }, commandFor!);
       expect(isInside).toBe(true);
 
       await page.keyboard.press('Tab');
