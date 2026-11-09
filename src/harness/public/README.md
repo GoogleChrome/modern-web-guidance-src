@@ -65,6 +65,7 @@ present. Types match `src/harness/lib/metrics.ts`.
 | field | notes |
 |---|---|
 | `timestamp`, `agent`, `model`, `totalRuntime` | copied |
+| `reasoningEffort` | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; copied when valid (omitted on older suites without it) |
 | `summary` | recomputed by `calculateMetrics` over the published runs only |
 | `stats` | per-result-key `{ medianPassRate, runPassRates, passedChecks, totalChecks, ... }`, recomputed |
 | `results` | `Record<resultKey, PublicRun[]>` |

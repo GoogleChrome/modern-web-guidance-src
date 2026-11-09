@@ -358,6 +358,10 @@ describe('sanitizeAgentChildEnv', () => {
       CODEX_SANDBOX_NETWORK_DISABLED: '1',
       ANTIGRAVITY_CLI_ALIAS: 'agy',
       ANTIGRAVITY_MODEL: 'gemini-3.8-flash-medium',
+      ANTIGRAVITY_EFFORT: 'high',
+      CLAUDE_EFFORT: 'medium',
+      CODEX_EFFORT: 'xhigh',
+      JETSKI_EFFORT: 'max',
       AUGMENT_AGENT: '1',
       OPENCODE: '1',
       GOOSE_TERMINAL: '1',
@@ -379,6 +383,10 @@ describe('sanitizeAgentChildEnv', () => {
     });
     assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
     assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
+    assert.strictEqual(sanitized.ANTIGRAVITY_EFFORT, undefined);
+    assert.strictEqual(sanitized.CLAUDE_EFFORT, undefined);
+    assert.strictEqual(sanitized.CODEX_EFFORT, undefined);
+    assert.strictEqual(sanitized.JETSKI_EFFORT, undefined);
     assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
     assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');
     assert.strictEqual(sanitized.NODE_TEST_CONTEXT, 'child');
@@ -442,6 +450,90 @@ describe('sanitizeAgentChildEnv', () => {
     assert.strictEqual(sanitized.AGY_ADC_AUTH, 'true');
     assert.strictEqual(sanitized.GOOGLE_CLOUD_PROJECT, 'my-eval-project');
     assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
+  });
+});
+
+describe('getAgentCommandAndArgs reasoning effort flags', () => {
+  const EFFORT_TEST_KEYS = [
+    'ANTIGRAVITY_MODEL',
+    'ANTIGRAVITY_EFFORT',
+    'ANTHROPIC_MODEL',
+    'CLAUDE_EFFORT',
+    'CODEX_MODEL',
+    'CODEX_EFFORT',
+    'JETSKI_MODEL',
+    'JETSKI_EFFORT',
+    'PI_MODEL',
+  ] as const;
+
+  test('injects adapter effort CLI args and enforces conflict checks on tiered model IDs', () => {
+    const saved: Record<string, string | undefined> = {};
+    for (const k of EFFORT_TEST_KEYS) {
+      saved[k] = process.env[k];
+      delete process.env[k];
+    }
+
+    try {
+      process.env.ANTIGRAVITY_MODEL = 'gemini-4-argon';
+      process.env.ANTIGRAVITY_EFFORT = 'High';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.ANTIGRAVITY_CLI, 'build app').commandArgs, [
+        '-p',
+        'build app',
+        '--dangerously-skip-permissions',
+        '--model',
+        'gemini-4-argon',
+        '--effort',
+        'high',
+      ]);
+
+      process.env.ANTHROPIC_MODEL = 'claude-sonnet-5-5';
+      process.env.CLAUDE_EFFORT = 'medium';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.CLAUDE_CODE, 'build app').commandArgs, [
+        '-p',
+        'build app',
+        '--dangerously-skip-permissions',
+        '--model',
+        'claude-sonnet-5-5',
+        '--effort',
+        'medium',
+      ]);
+
+      process.env.CODEX_MODEL = 'gpt-6.1-sol';
+      process.env.CODEX_EFFORT = 'xhigh';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.CODEX_CLI, 'build app').commandArgs, [
+        'exec',
+        'build app',
+        '--yolo',
+        '--model',
+        'gpt-6.1-sol',
+        '-c',
+        'model_reasoning_effort=xhigh',
+      ]);
+
+      process.env.JETSKI_MODEL = 'gemini-4-argon';
+      process.env.JETSKI_EFFORT = 'max';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.JETSKI_CLI, 'build app').commandArgs, [
+        '-p',
+        'build app',
+        '--dangerously-skip-permissions',
+        '--model',
+        'gemini-4-argon',
+        '--effort',
+        'max',
+      ]);
+
+      process.env.ANTIGRAVITY_MODEL = 'gemini-3.8-flash-medium';
+      process.env.ANTIGRAVITY_EFFORT = 'high';
+      assert.throws(
+        () => getAgentCommandAndArgs(Agents.ANTIGRAVITY_CLI, 'build app'),
+        /ANTIGRAVITY_EFFORT=high conflicts with model 'gemini-3\.8-flash-medium'/,
+      );
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
   });
 });
 

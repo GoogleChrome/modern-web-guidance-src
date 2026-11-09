@@ -73,12 +73,15 @@ The harness does **not** centrally configure which model each agent uses. Instea
 
 ### Environment Variables by Agent
 
-| Agent | Environment Variable | Example Value | Notes |
-|-------|---------------------|---------------|-------|
-| **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `anthropic/claude-sonnet` | `PROMPT_MODEL` is fallback |
-| **Codex CLI** | `CODEX_MODEL` | `gpt-5` | Read directly by Codex CLI |
-| **Jetski CLI** | `JETSKI_MODEL` | `Gemini 2.5 Flash` | Read directly by Jetski CLI |
-| **Claude Code** | `ANTHROPIC_MODEL` | `claude-sonnet-4-5-20250929` | Via Vertex AI config |
+| Agent | Model Env Var | Effort Env Var / Knob | CLI Effort Flag | Default Effort When Unset |
+|-------|---------------|-----------------------|-----------------|---------------------------|
+| **Antigravity CLI** | `ANTIGRAVITY_MODEL` | `ANTIGRAVITY_EFFORT` | `--effort <level>` | agy's built-in default (`agent-default`, or `model-id` if the model ends in `-<level>`) |
+| **Claude Code** | `ANTHROPIC_MODEL` | `CLAUDE_EFFORT` | `--effort <level>` | Claude Code's built-in default (captured as `observed` when `api-request` logs `params.output_config.effort`, else `agent-default`) |
+| **Codex CLI** | `CODEX_MODEL` | `CODEX_EFFORT` | `-c model_reasoning_effort=<level>` | `~/.codex/config.toml` / CLI default (captured as `observed` from rollout `turn_context`) |
+| **Jetski CLI** | `JETSKI_MODEL` | `JETSKI_EFFORT` | `--effort <level>` | Jetski CLI's built-in default (captured as `observed` from `gen_metadata` fields `1.21` / `3.28` / `1.19`) |
+| **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `:<thinking>` suffix on `PI_MODEL` (e.g. `...:low`, `...:off`) | Passed via `--model <id>:<thinking>` | `~/.pi/agent/settings.json` / CLI default (`model-id` when `:suffix` is set, `observed` on `thinking_level_change`) |
+
+> **Conflict rule:** Setting `<AGENT>_EFFORT` alongside a model ID that already bakes in a trailing `-<level>` or `:<level>` tier suffix (such as `ANTIGRAVITY_MODEL=gemini-3.8-flash-medium` + `ANTIGRAVITY_EFFORT=high`) throws a startup error in `resolveEffortCliArgs()` (`src/harness/lib/reasoning-effort.ts`). Use either a base model ID with `<AGENT>_EFFORT` or a tiered model ID without `<AGENT>_EFFORT`.
 
 ### Usage Examples
 
