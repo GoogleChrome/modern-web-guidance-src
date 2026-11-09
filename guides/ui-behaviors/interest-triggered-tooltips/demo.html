@@ -9,10 +9,6 @@
       // `role="tooltip"` to plain hints.
       const native = "interestForElement" in HTMLButtonElement.prototype;
 
-      // Same split the browser and polyfill use: anything beyond text, images, and inline formatting is rich.
-      const FOCUSABLE = "a[href], area[href], button, input, select, textarea, iframe, [contenteditable], [tabindex]:not([tabindex='-1'])";
-      const STRUCTURE = "h1, h2, h3, h4, h5, h6, ul, ol, dl, table, details, blockquote, form, nav, section, article, aside, header, footer, main";
-      const RICH = `:is(${FOCUSABLE}, ${STRUCTURE}, [role]:not([role=presentation], [role=none], [role=generic], [role=image]))`;
       const managed = new WeakSet();
       const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
 
@@ -29,24 +25,29 @@
           if (hint?.getAttribute("popover") !== "hint") {
             continue;
           }
-          if (hint.querySelector(RICH)) {
-            // Rich hint: expose open/closed state. Skip triggers whose aria-expanded belongs to something else.
+          // Nothing to add when the hint just repeats the trigger's name.
+          const name = accessibleName(trigger);
+          if (text(hint.textContent) === name) {
+            continue;
+          }
+          hint.role ??= "tooltip";
+          const id = CSS.escape(hint.id);
+          if (!name) {
+            // The hint names an unnamed trigger (icon-only button).
+            if (!trigger.hasAttribute("aria-labelledby")) {
+              trigger.setAttribute("aria-labelledby", hint.id);
+            }
+          } else if (trigger.matches(`[popovertarget="${id}"], [commandfor="${id}"]`)) {
+            // Activating the trigger opens the hint, so open/closed state is honest.
+            // Skip triggers whose aria-expanded belongs to something else.
             if (!trigger.hasAttribute("aria-expanded")) {
               trigger.ariaExpanded = hint.matches(":popover-open");
               managed.add(trigger);
             }
-          } else {
-            // Plain hint: nothing to add when it just repeats the trigger's name. Otherwise it labels
-            // an unnamed trigger (icon-only button) or describes a named one, unless author ARIA already does.
-            const name = accessibleName(trigger);
-            if (text(hint.textContent) === name) {
-              continue;
-            }
-            hint.role ??= "tooltip";
-            const relation = name ? "aria-describedby" : "aria-labelledby";
-            if (!trigger.hasAttribute(relation)) {
-              trigger.setAttribute(relation, hint.id);
-            }
+          } else if (!trigger.hasAttribute("aria-describedby")) {
+            // Activation does something else (a link, an action button): "collapsed" would promise what
+            // Enter does not deliver, so describe instead.
+            trigger.setAttribute("aria-describedby", hint.id);
           }
         }
       }
@@ -160,21 +161,23 @@
   <body>
     <h1>Interest-Triggered Tooltips</h1>
     <p>
-      The document <button interestfor="tooltip-dom">DOM</button> is a tree
-      structure that represents the content of a web page. Each node in the tree
-      corresponds to an element, and nodes can have
-      <button interestfor="tooltip-attrs">attributes</button> that provide
-      additional information about the element.
+      The document
+      <!-- The button only reveals the hint, so it also opens on click, tap, and Enter. -->
+      <button type="button" interestfor="tooltip-dom" popovertarget="tooltip-dom" popovertargetaction="show">DOM</button>
+      <!-- Right after the trigger, so it reads in sequence. -->
+      <span id="tooltip-dom" popover="hint">
+        Document Object Model — the browser's in-memory representation of a web
+        page's structure.
+      </span>
+      is a tree structure that represents the content of a web page. Each node
+      in the tree corresponds to an element, and nodes can have
+      <button type="button" interestfor="tooltip-attrs" popovertarget="tooltip-attrs" popovertargetaction="show">attributes</button>
+      <span id="tooltip-attrs" popover="hint">
+        Key-value pairs on HTML elements that configure behavior or provide
+        metadata, such as class or id.
+      </span>
+      that provide additional information about the element.
     </p>
-
-    <div id="tooltip-dom" popover="hint">
-      Document Object Model — the browser's in-memory representation of a web
-      page's structure.
-    </div>
-    <div id="tooltip-attrs" popover="hint">
-      Key-value pairs on HTML elements that configure behavior or provide
-      metadata, such as class or id.
-    </div>
 
     <p>
       <label>Shipping <input name="shipping" value="Standard"></label>

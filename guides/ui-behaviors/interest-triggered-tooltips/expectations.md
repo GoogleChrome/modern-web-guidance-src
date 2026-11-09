@@ -10,5 +10,5 @@
 * Tooltip content is rendered inside the popover element in the DOM rather than via CSS pseudo-element `content`.
 * Trigger elements do not duplicate or store tooltip text in `title` or tooltip-specific `data-*` attributes (such as `data-tooltip`).
 * Hovering a trigger opens its tooltip, moving the pointer onto the tooltip keeps it open (hoverable and persistent), and pressing `Escape` dismisses it.
-* Every plain-text tooltip whose text differs from its trigger's accessible name has `role="tooltip"`, and its trigger references the tooltip's `id` via `aria-labelledby` (when the trigger has no other accessible name) or `aria-describedby` (otherwise).
-* When a plain-text tooltip's text matches its trigger's accessible name, the trigger does not reference it in `aria-describedby`.
+* Every tooltip whose text differs from its trigger's accessible name has `role="tooltip"`, and its trigger references the tooltip's `id` via `aria-labelledby` (when the trigger has no other accessible name), or has `aria-expanded` that follows the tooltip's open state (when the trigger also opens the tooltip via `popovertarget`), or references the tooltip's `id` via `aria-describedby` (otherwise).
+* When a tooltip's text matches its trigger's accessible name, the trigger does not reference it in `aria-describedby` and does not carry `aria-expanded` for it.
