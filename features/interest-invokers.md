@@ -9,7 +9,7 @@ The Interest Invokers API provides a declarative way to establish a relationship
 Browsers and screen readers do not yet expose this consistently, so add the equivalent explicit ARIA as well. It is additive: where the browser already exposes the same semantics, screen readers announce them once, and hover, focus, and touch behavior is unchanged.
 
 - **Plain hint that repeats the trigger's accessible name** (e.g. an icon-only button with `aria-label="Bold"` and a "Bold" tooltip): add nothing. A description identical to the name would be read twice.
-- **Plain hint on a trigger with no accessible name of its own** (an icon-only button without `aria-label`): `aria-labelledby` on the trigger pointing at the hint, so the hint becomes the name.
+- **Plain hint on a trigger with no visible label of its own** (e.g. an icon-only button without `aria-label`): `aria-labelledby` on the trigger pointing at the hint, so the hint becomes the name.
 - **Any other plain hint:** `role="tooltip"` on the hint and `aria-describedby` on the trigger, so the text is read with the trigger, including when reading through the page rather than tabbing.
 - **Rich hints:** `aria-expanded` on the trigger, kept in sync with the popover's `toggle` event, so a screen reader user hears that the trigger has collapsible content and whether it is open.
 - **DO NOT** attach a rich hint to a control that already uses `aria-expanded` for something else (for example, a button that opens a menu). Its hint would go unannounced; give that hint its own trigger instead.
