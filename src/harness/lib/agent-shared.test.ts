@@ -419,6 +419,17 @@ describe('sanitizeAgentChildEnv', () => {
       assert.strictEqual(sanitized[dropped], undefined);
     }
   });
+
+  test('preserves IS_SANDBOX for container environments', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      IS_SANDBOX: '1',
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+    assert.strictEqual(sanitized.IS_SANDBOX, '1');
+    assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
+  });
 });
 
 

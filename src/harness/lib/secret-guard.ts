@@ -84,6 +84,7 @@ export const ALLOWED_ENV_PREFIXES: readonly string[] = ['LC_', 'PLAYWRIGHT_', 'P
 
 export const ALLOWED_CHILD_ENV_KEYS: ReadonlySet<string> = new Set([
   ...CORE_OS_ENV_KEYS,
+  'IS_SANDBOX',
   'CLAUDE_CODE_USE_VERTEX', 'ANTHROPIC_VERTEX_PROJECT_ID', 'CLOUD_ML_REGION', 'ANTHROPIC_MODEL',
   'ANTIGRAVITY_GCP_PROJECT', 'ANTIGRAVITY_MODEL', 'JETSKI_MODEL', 'JETSKI_DIR', 'CODEX_MODEL',
   'PI_MODEL', 'PROMPT_MODEL', 'GD_UNSAFE_NO_SANDBOX', 'PWTEST_CACHE_DIR',
@@ -126,6 +127,12 @@ function readUtf8IfExists(filePath: string): string | null {
   }
 }
 
+/** Returns true if a `.env` key is allowed non-secret configuration. */
+export function isAllowedDotenvKey(key: string): boolean {
+  if (SECRET_ENV_KEY_RE.test(key)) return false;
+  return ALLOWED_DOTENV_KEYS.has(key) || /_(?:MODEL|EFFORT)$/i.test(key);
+}
+
 export function loadAllowedEnvFile(
   envPath: string,
   targetEnv: NodeJS.ProcessEnv = process.env,
@@ -137,7 +144,7 @@ export function loadAllowedEnvFile(
   const loaded: string[] = [];
   const ignored: string[] = [];
   for (const [key, value] of Object.entries(parseEnv(content))) {
-    if (ALLOWED_DOTENV_KEYS.has(key)) {
+    if (isAllowedDotenvKey(key)) {
       if (targetEnv[key] === undefined) targetEnv[key] = value;
       loaded.push(key);
     } else {
@@ -269,7 +276,7 @@ export function collectHostSecrets(options: {
   if (envRaw !== null) {
     try {
       for (const [key, value] of Object.entries(parseEnv(envRaw))) {
-        if (key !== 'GOOGLE_APPLICATION_CREDENTIALS' && (!ALLOWED_DOTENV_KEYS.has(key) || SECRET_ENV_KEY_RE.test(key))) {
+        if (key !== 'GOOGLE_APPLICATION_CREDENTIALS' && !isAllowedDotenvKey(key)) {
           maybeAdd(value);
         }
       }
@@ -287,6 +294,14 @@ export function collectHostSecrets(options: {
   const npmrcRaw = readUtf8IfExists(path.join(options.homeDir ?? defaultHome, '.npmrc'));
   if (npmrcRaw !== null) {
     for (const secret of processNpmrc(npmrcRaw).secrets) secrets.add(secret);
+  }
+
+  const userConfig = (options.env ?? process.env).NPM_CONFIG_USERCONFIG;
+  if (userConfig) {
+    const userConfigRaw = readUtf8IfExists(userConfig);
+    if (userConfigRaw !== null) {
+      for (const secret of processNpmrc(userConfigRaw).secrets) secrets.add(secret);
+    }
   }
 
   return [...secrets].sort((a, b) => b.length - a.length);
