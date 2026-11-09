@@ -54,16 +54,28 @@ test.describe('Passkey Conditional Create', () => {
       }
       (window as any).__mockVerifyFail = sessionStorage.getItem('__mockVerifyFail') === 'true';
 
-      (window as any).PublicKeyCredential = class {
+      (window as any).PublicKeyCredential = class PublicKeyCredential {
+        static async isUserVerifyingPlatformAuthenticatorAvailable() {
+          return true;
+        }
+        static async isConditionalMediationAvailable() {
+          return true;
+        }
         static async getClientCapabilities() {
           (window as any).__capabilitiesCalled = true;
           sessionStorage.setItem('__capabilitiesCalled', 'true');
           return { 
             conditionalCreate: (window as any).__mockConditionalCreate,
-            conditionalGet: true 
+            conditionalGet: true,
+            passkeyPlatformAuthenticator: true,
+            userVerifyingPlatformAuthenticator: true,
+            hybridTransport: true,
+            relatedOrigins: true,
+            signals: true,
           };
         }
         static parseCreationOptionsFromJSON(json: any) { return json; }
+        static parseRequestOptionsFromJSON(json: any) { return json; }
         static async signalUnknownCredential(opts: any) {
           (window as any).__signalUnknownCredentialCalled = true;
           sessionStorage.setItem('__signalUnknownCredentialCalled', 'true');
@@ -71,6 +83,25 @@ test.describe('Passkey Conditional Create', () => {
           try {
             sessionStorage.setItem('__signalOptions', JSON.stringify(opts));
           } catch {}
+        }
+        static async signalAllAcceptedCredentials(_opts?: any) {}
+        static async signalCurrentUserDetails(_opts?: any) {}
+
+        getClientExtensionResults() {
+          return {};
+        }
+
+        toJSON() {
+          return {
+            id: (this as any).id || 'mock-id',
+            type: (this as any).type || 'public-key',
+            authenticatorAttachment: (this as any).authenticatorAttachment || 'platform',
+            clientExtensionResults: {},
+            response: {
+              clientDataJSON: 'mock-clientDataJSON',
+              attestationObject: 'mock-attestationObject',
+            },
+          };
         }
       };
 
@@ -87,7 +118,19 @@ test.describe('Passkey Conditional Create', () => {
               err.name = (window as any).__mockCreateError.name;
               throw err;
             }
-            return { toJSON: () => ({ id: 'mock-id' }) };
+            const cred = Object.assign(Object.create((window as any).PublicKeyCredential.prototype), {
+              id: 'mock-id',
+              rawId: new Uint8Array([1, 2, 3]).buffer,
+              type: 'public-key',
+              authenticatorAttachment: 'platform',
+              response: {
+                clientDataJSON: new Uint8Array([1]).buffer,
+                attestationObject: new Uint8Array([2]).buffer,
+              },
+              getClientExtensionResults: () => ({}),
+              toJSON: () => ({ id: 'mock-id', type: 'public-key' }),
+            });
+            return cred;
           }
         },
         writable: true,
