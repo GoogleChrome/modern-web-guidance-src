@@ -98,7 +98,7 @@ function reorder(container, orderedRows) {
 
 ## Optionally animate the reorder
 
-Animation is an enhancement; the sort works without it. Add it when the table is small (up to a few hundred rows), since every named row is captured as an image. Skip it for larger tables.
+Animation is an enhancement; the sort works without it. For when to animate, reduced-motion handling and rapid-click behavior, see {{ GUIDE_REF("dynamic-sort") }}. Skip it for large tables.
 
 ```css
 tbody tr {
@@ -122,7 +122,6 @@ function reorderWithTransition(rows) {
 }
 ```
 
-* A new transition skips the one in flight, so rapid clicks are safe as long as the callback always applies the final order.
 * **DO NOT** put `aria-live` on the table: it would announce every moved row. Use the single `role="status"` element instead, hidden visually (not with `display: none`) using `clip-path: inset(50%)` and a 1px size.
 
 ## Narrow screens
@@ -137,11 +136,9 @@ If your Baseline target does not support invoker commands, add a `click` listene
 
 {{ BASELINE_STATUS("view-transitions-element-scoped") }}
 
-If your Baseline target does not support `element.startViewTransition()`, call `document.startViewTransition()`, which blocks pointer events on the whole page while it runs, so keep it brief. If that is unsupported too, call `reorder()` directly. The table still sorts and the announcement is unchanged; the animation is graceful degradation.
-
 {{ BASELINE_STATUS("move-before") }}
 
-If your Baseline target does not support `moveBefore()`, use `container.append(row)` in the same loop. DOM order is identical; rows lose focus, iframe or animation state inside them, which only matters when rows contain such state.
+If your Baseline target does not support `moveBefore()` or element-scoped view transitions, follow the fallbacks in {{ GUIDE_REF("dynamic-sort") }}; the table still sorts and the announcement is unchanged.
 
 ## Common mistakes
 
