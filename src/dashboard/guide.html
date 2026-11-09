@@ -67,7 +67,7 @@
     .guide-chart-wrapper { position: relative; overflow-x: auto; width: 100%; }
     /* HTML stand-in anchor for the active SVG point (guide.js): SVG elements can't be CSS anchors. */
     .timeline-anchor { position: absolute; pointer-events: none; anchor-name: --timeline-point; }
-    /* MWG interest-triggered-tooltips: beside the point's marker (anchor() insets, not position-area,
+    /* MWG tooltip: beside the point's marker (anchor() insets, not position-area,
        which the anchor polyfill can't handle), vertically centered on it; flipping to the other
        side, then below/above, when it would overflow. Gated so that, without native anchor
        positioning, the measured fallback in guide.js is the only thing placing it. */

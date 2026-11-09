@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  interestTriggeredTooltipsJsMatcher
-} from './interest-triggered-tooltips.ts';
-void test('interest-triggered-tooltips JS matcher', async (t) => {
+  tooltipJsMatcher
+} from './tooltip.ts';
+void test('tooltip JS matcher', async (t) => {
   await t.test('flags global and imported tippy() hover tooltips', () => {
     const code = `
       import tippy from 'tippy.js';
       tippy('#help-btn', { content: 'Helpful info', placement: 'top' });
       window.tippy('[data-tippy-content]');
     `;
-    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'tooltips.js', code);
+    const matches = matchJsRule(tooltipJsMatcher, 'tooltips.js', code);
     assert.equal(matches.length, 2);
   });
 
@@ -24,7 +24,7 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         trigger: 'click',
       });
     `;
-    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'menu.js', code);
+    const matches = matchJsRule(tooltipJsMatcher, 'menu.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -40,7 +40,7 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         content: (ref) => ref.getAttribute('data-label'),
       });
     `;
-    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'advanced-tippy.js', code);
+    const matches = matchJsRule(tooltipJsMatcher, 'advanced-tippy.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -54,7 +54,7 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         tippy('#other', { content: 'Local' });
       }
     `;
-    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'guarded.js', code);
+    const matches = matchJsRule(tooltipJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -72,7 +72,7 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         },
       });
     `;
-    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'plugins.js', code);
+    const matches = matchJsRule(tooltipJsMatcher, 'plugins.js', code);
     assert.equal(matches.length, 0);
   });
 });

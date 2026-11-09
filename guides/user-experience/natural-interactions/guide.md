@@ -117,7 +117,7 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
 }
 ```
 
-For tooltips and previews triggered on hover, focus, or long-press, see {{ GUIDE_REF("interest-triggered-tooltips") }} and {{ GUIDE_REF("interest-triggered-action-previews") }}.
+For tooltips and previews triggered on hover, focus, or long-press, see {{ GUIDE_REF("tooltip") }} and {{ GUIDE_REF("interest-triggered-action-previews") }}.
 
 ## Fallback strategies
 

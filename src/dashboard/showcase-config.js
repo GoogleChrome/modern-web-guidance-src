@@ -9,7 +9,7 @@ export const SHOWCASE_TASKS = [
     { id: 'flicker-free-client-side-ab-testing', label: 'Flicker-free A/B' },
     { id: 'faster-spa-view-transitions', label: 'SPA view cache' },
     { id: 'scrollspy', label: 'CSS scrollspy' },
-    { id: 'interest-triggered-tooltips', label: 'Interest tooltips' }
+    { id: 'tooltip', label: 'Tooltip' }
 ];
 
 export const SHOWCASE_GUIDE_IDS = new Set(SHOWCASE_TASKS.map(t => t.id));

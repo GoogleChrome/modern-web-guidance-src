@@ -16,7 +16,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = 'c28b54e4a72e';
+export const TOOLTIP_GUIDE_HASH = 'c28b54e4a72e';
 
 const INTEREST_GUARD_TOKENS = [
   'interestfor',
@@ -149,19 +149,19 @@ function isGuardedByInterestCheck(node: Node): boolean {
   return false;
 }
 
-export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher = createJsCallMatcher({
+export const tooltipJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['tippy'],
   isGuarded: isGuardedByInterestCheck,
   matchCall: matchTippyCall,
 });
 
-export const interestTriggeredTooltipsJsRule: AnalyzerRule = {
-  id: 'interest-triggered-tooltips/js-tooltip',
-  guideId: 'interest-triggered-tooltips',
-  guideHash: INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
+export const tooltipJsRule: AnalyzerRule = {
+  id: 'tooltip/js-tooltip',
+  guideId: 'tooltip',
+  guideHash: TOOLTIP_GUIDE_HASH,
   summary:
     'JavaScript tippy() hover tooltip calls should be modernized with declarative HTML interestfor, popover="hint", and CSS Anchor Positioning.',
-  matcher: interestTriggeredTooltipsJsMatcher,
+  matcher: tooltipJsMatcher,
   verifierRubric: {
     keepWhen: [
       'JavaScript calls tippy(target, options) to attach hover/focus tooltips without interactive click menus.',
@@ -175,5 +175,5 @@ export const interestTriggeredTooltipsJsRule: AnalyzerRule = {
 };
 
 export default [
-  interestTriggeredTooltipsJsRule,
+  tooltipJsRule,
 ] satisfies readonly AnalyzerRule[];

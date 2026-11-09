@@ -22,7 +22,6 @@ import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-
 import icons from './icons.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
-import interestTriggeredTooltips from './interest-triggered-tooltips.ts';
 import progress from './progress.ts';
 import sanitizeUntrustedHtml from './sanitize-untrusted-html.ts';
 import scrollEntryExitEffects from './scroll-entry-exit-effects.ts';
@@ -32,6 +31,7 @@ import selectMenuInteraction from './select-menu-interaction.ts';
 import slider from './slider.ts';
 import softEdgeContentFade from './soft-edge-content-fade.ts';
 import stylingWebComponents from './styling-web-components.ts';
+import tooltip from './tooltip.ts';
 import validateInputAfterInteraction from './validate-input-after-interaction.ts';
 
 export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
@@ -57,7 +57,6 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   icons,
   imeSafeEnterSubmit,
   improveTextLayoutAndLegibility,
-  interestTriggeredTooltips,
   progress,
   sanitizeUntrustedHtml,
   scrollEntryExitEffects,
@@ -67,6 +66,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   slider,
   softEdgeContentFade,
   stylingWebComponents,
+  tooltip,
   validateInputAfterInteraction,
 ];
 
