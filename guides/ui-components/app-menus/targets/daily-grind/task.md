@@ -1,0 +1,1 @@
+- Refactor the top navigation bar into an application menu bar where top-level menus like Menu, Locations, and Rewards act as a single keyboard stop and switch between each other on hover or arrow keys.
