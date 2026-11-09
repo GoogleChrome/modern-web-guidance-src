@@ -3,8 +3,6 @@ name: single-line-overflow
 description: "Show text that must stay on one line, such as a tab label, table cell, navigation item, or file name, in a space it may not fit, without breaking the layout or losing the text."
 web-feature-ids:
   - text-overflow
-  - overflow-wrap
-  - hyphens
   - container-queries
   - scroll-driven-animations
   - container-scroll-state-queries
