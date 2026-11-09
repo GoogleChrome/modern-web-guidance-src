@@ -240,13 +240,14 @@ describe('applyPatchSync', () => {
   test('applies git-style patches when target directory is reached through a symlink parent', () => {
     // Note: Passes with or without realpathSync on current git; realpath is defensive for platforms/git builds that compare against unresolved ceiling paths (e.g. macOS /var -> /private/var).
     const realTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-symlink-real-'));
+    const symlinkParentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-symlink-parent-'));
     try {
       initGitRepo(realTmpDir);
       const realTargetDir = path.join(realTmpDir, 'results', 'base_app');
       fs.mkdirSync(realTargetDir, { recursive: true });
       fs.writeFileSync(path.join(realTargetDir, 'index.html'), '<p>before</p>\n');
 
-      const symlinkParent = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'patch-symlink-parent-')), 'linked');
+      const symlinkParent = path.join(symlinkParentDir, 'linked');
       fs.symlinkSync(realTmpDir, symlinkParent);
       const targetDir = path.join(symlinkParent, 'results', 'base_app');
 
@@ -261,6 +262,7 @@ describe('applyPatchSync', () => {
       assert.strictEqual(fs.readFileSync(path.join(realTargetDir, 'index.html'), 'utf8'), '<p>after</p>\n');
     } finally {
       fs.rmSync(realTmpDir, { recursive: true, force: true });
+      fs.rmSync(symlinkParentDir, { recursive: true, force: true });
     }
   });
 });
