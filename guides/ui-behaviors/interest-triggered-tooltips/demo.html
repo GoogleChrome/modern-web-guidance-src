@@ -7,7 +7,7 @@
       // Explicit ARIA until browsers and the polyfill expose interestfor semantics consistently. Runs before the
       // polyfill loads: the polyfill wires ARIA only on `load`, too late for some screen readers, and adds no
       // `role="tooltip"` to plain hints.
-      const native = Object.hasOwn(HTMLButtonElement.prototype, "interestForElement");
+      const native = "interestForElement" in HTMLButtonElement.prototype;
 
       // Same split the browser and polyfill use: anything beyond text, images, and inline formatting is rich.
       const FOCUSABLE = "a[href], area[href], button, input, select, textarea, iframe, [contenteditable], [tabindex]:not([tabindex='-1'])";
