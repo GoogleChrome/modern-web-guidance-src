@@ -135,16 +135,14 @@ To display rich content for the selected value, use `<selectedcontent>` inside a
 
 A native `<select>` only handles linear Up/Down arrow navigation, so Left/Right do nothing in the open picker and Up/Down still navigate items sequentially, regardless of rows and columns.
 
-To implement spatial navigation that follows the grid, you can intercept `keydown` and route focus to the nearest option in the pressed direction (e.g. using `getBoundingClientRect()`) when arrow keys are used.
+To add horizontal navigation that follows the grid, you can intercept `keydown` for the `Left` and `Right` arrow keys and route focus to the nearest option in the pressed direction (e.g. using `getBoundingClientRect()`).
 To determine the appropriate next/previous item, use DOM methods that operate on actual geometry (e.g. `getBoundingClientRect()`) rather than parsing CSS strings like `grid-template-columns` or `grid-column`, which can be brittle and error-prone for complex grids, subgrid, RTL, and other layout scenarios.
 That said, do not unnecessarily overengineer; use what invariants you know are true about the layout to simplify this logic.
 
 **Note:** This _only_ addresses keyboard navigation. The `<select>` and its `::picker()` still have their default roles (`menu` or `listbox`), and these cannot be overridden, nor are they allowed to contain an element with `role="grid"`.
-It is not valid to apply grid semantics in a ::picker() pseudo-element as it's against its content model.
-In some cases, using `<optgroup>` to group options may produce a good screen reader UX without `role="grid"`.
+It is not valid to apply grid semantics in a `::picker()` pseudo-element as it's against its content model.
+Because grid roles will not be conveyed to screen reader users, ensure that the `Down` and `Up` arrow keys still move focus sequentially to the next and previous item respectively (for example, by flowing the grid in columns or grouping columns with `<optgroup>`), even when `Left` and `Right` have been scripted, so screen reader users visit all options in the list.
 Otherwise, it may be ultimately necessary to switch to a custom solution using the popover API, anchor positioning, and `role="grid"` to achieve the desired UX for screen reader users.
-
-As the grid roles will not be conveyed to screen reader users, ensure that the `down` and `up` arrow keys move focus to the next and previous item respectively, even if the `left` and `right` arrow keys have been scripted to move through items, so screen reader users visit all options in the list.
 
 Ensure that the focus indicator when moving through the options has a contrast of at least 3:1 with the background color or adjacent color.
 
