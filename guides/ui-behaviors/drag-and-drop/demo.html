@@ -627,7 +627,9 @@
           pointerItem.classList.remove('pointer-dragging');
           pointerItem.style.translate = '';
         }
-        if (!cancelled && dropBefore !== undefined && dropBefore !== pointerItem.nextElementSibling) {
+        if (cancelled) {
+          pointerItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        } else if (dropBefore !== undefined && dropBefore !== pointerItem.nextElementSibling) {
           moveItem(pointerItem, dropBefore, true);
         }
         dropBefore = undefined;
