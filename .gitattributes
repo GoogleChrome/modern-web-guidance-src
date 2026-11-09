@@ -7,3 +7,4 @@ guides/**/prompts.md          linguist-generated
 guides/**/demo.html           linguist-generated
 guides/**/*.patch            linguist-generated
 src/ci/feature-to-groups.gen.json linguist-generated
+src/rag/gen/**                linguist-generated

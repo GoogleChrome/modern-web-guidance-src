@@ -153,12 +153,32 @@ function hasJsAtRuleSupportDetection(project: Project, allRules: CSSRule[]): boo
   return checksCssRuleOrReplaceSync && togglesRootClass && allRules.length > 0;
 }
 
+function isAtRuleAssociatedSupportsCondition(conditionText: string): boolean {
+  const lower = conditionText.toLowerCase();
+  if (extractAtRuleQueries(conditionText).length > 0) return true;
+  if (lower.includes('selector(')) return true;
+  // Custom function --foo() or at-rule-associated properties
+  if (/--[a-z0-9_-]+\s*\(/.test(lower)) return true;
+  if (
+    /\b(container-(?:type|name)|view-transition-(?:name|class)|animation-(?:timeline|range(?:-start|-end)?)|(?:view|scroll)-timeline(?:-name|-axis|-inset)?|timeline-scope|position-(?:anchor|area|try(?:-fallbacks|-order)?)|anchor-(?:name|scope)|font-palette|transition-behavior)\s*:|\bfont-(?:tech|format)\s*\(/.test(
+      lower
+    ) &&
+    !lower.replace(/\s+/g, '').includes('container-type:style')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 test.describe('atrule-support-conditionals Target Grader', () => {
-  test('Stylesheets conditionally apply CSS rules or declarations based on at-rule support using @supports, tautological style @container query, @property fallback, or JS root class check', () => {
+  test('Stylesheets conditionally apply CSS rules or declarations based on at-rule support using @supports at-rule(@<name>) or a fallback detection pattern (@supports property, value, function, or selector() query, a tautological @container style(...) query, a registered @property custom property fallback, or a JavaScript CSSOM check that toggles a root class)', () => {
     const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
-    const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
+    const supportsRules = allRules.filter(
+      (r): r is CSSSupportsRule =>
+        r instanceof CSSSupportsRule && isAtRuleAssociatedSupportsCondition(r.conditionText)
+    );
     const containerRules = allRules.filter(
       (r): r is CSSContainerRule => r instanceof CSSContainerRule && isTautologicalStyleContainerRule(r)
     );
@@ -172,7 +192,7 @@ test.describe('atrule-support-conditionals Target Grader', () => {
     expect(hasConditionalDetection).toBe(true);
   });
 
-  test('Any @supports at-rule(...) query passes only a bare @<name> identifier and avoids invalid checks (@supports (container-type: style) or CSS.registerProperty)', () => {
+  test('At-rule support detection either passes a bare @<name> identifier to @supports at-rule(...) (without descriptors, preludes, or rule bodies) or uses a fallback detection pattern, and does not use @supports (container-type: style) or CSS.registerProperty', () => {
     const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
@@ -181,14 +201,21 @@ test.describe('atrule-support-conditionals Target Grader', () => {
       (r): r is CSSContainerRule => r instanceof CSSContainerRule && isTautologicalStyleContainerRule(r)
     );
 
-    const hasAnyDetection =
-      supportsRules.length > 0 ||
-      containerRules.length > 0 ||
-      hasRegisteredPropertyFallbackPattern(allRules) ||
-      hasJsAtRuleSupportDetection(project, allRules);
-
     const atRuleArgs = supportsRules.flatMap((r) => extractAtRuleQueries(r.conditionText));
-    const allAtRuleArgsAreBare = atRuleArgs.every((arg) => isBareAtRuleIdentifier(arg));
+    const usesBareAtRuleQuery =
+      atRuleArgs.length > 0 && atRuleArgs.every((arg) => isBareAtRuleIdentifier(arg));
+
+    const fallbackSupportsRules = supportsRules.filter(
+      (r) =>
+        extractAtRuleQueries(r.conditionText).length === 0 &&
+        isAtRuleAssociatedSupportsCondition(r.conditionText)
+    );
+    const usesFallbackDetection =
+      atRuleArgs.length === 0 &&
+      (fallbackSupportsRules.length > 0 ||
+        containerRules.length > 0 ||
+        hasRegisteredPropertyFallbackPattern(allRules) ||
+        hasJsAtRuleSupportDetection(project, allRules));
 
     const hasInvalidContainerTypeStyle = supportsRules.some((r) => {
       const norm = r.conditionText.toLowerCase().replace(/\s+/g, '');
@@ -204,14 +231,13 @@ test.describe('atrule-support-conditionals Target Grader', () => {
       );
 
     expect(
-      hasAnyDetection &&
-        allAtRuleArgsAreBare &&
+      (usesBareAtRuleQuery || usesFallbackDetection) &&
         !hasInvalidContainerTypeStyle &&
         !hasInvalidRegisterPropertyCheck
     ).toBe(true);
   });
 
-  test('At-rule support conditionals gate dependent regular CSS declarations or rules in stylesheets rather than only wrapping the detected at-rule itself or setting inline styles from JS', () => {
+  test('At-rule support conditionals gate dependent regular CSS declarations or rules in stylesheets rather than wrapping only the detected at-rule itself or applying visual inline styles directly from JavaScript', () => {
     const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 

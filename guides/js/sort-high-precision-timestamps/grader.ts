@@ -102,20 +102,25 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
     });
     await page.reload();
 
-    // Wait a short time for any dynamic polyfill imports to complete
-    await page.waitForTimeout(1000);
+    // Click trigger button if present to invoke on-demand loading
+    const btn = page.locator('button, [id*="load" i]').first();
+    if (await btn.count() > 0 && await btn.isEnabled()) {
+      await btn.click({ timeout: 1000 }).catch(() => {});
+    }
 
-    const isHandled = await page.evaluate(() => {
-      const hasPolyfill = typeof (window as any).Temporal !== 'undefined';
-      if (hasPolyfill) return true;
+    // Wait for polyfill to be defined or fallback to appear
+    await expect.poll(async () => {
+      return await page.evaluate(() => {
+        const hasPolyfill = typeof (window as any).Temporal !== 'undefined';
+        if (hasPolyfill) return true;
 
-      const bodyText = document.body.innerText.toLowerCase();
-      const hasWarning = bodyText.includes('temporal') || bodyText.includes('polyfill') || bodyText.includes('support') || bodyText.includes('available') || bodyText.includes('failed');
-      const btn = document.querySelector('button');
-      const isBtnDisabled = btn && (btn as HTMLButtonElement).disabled;
-      return !!(hasWarning || isBtnDisabled);
-    });
-    expect(isHandled).toBe(true);
+        const bodyText = document.body.innerText.toLowerCase();
+        const hasWarning = /not supported|unsupported|unavailable|failed to load/.test(bodyText);
+        const button = document.querySelector('button');
+        const isBtnDisabled = button && (button as HTMLButtonElement).disabled;
+        return !!(hasWarning || isBtnDisabled);
+      });
+    }, { timeout: 4000 }).toBe(true);
   });
 
   test('Browser: Application should parse timestamps with Temporal.Instant.from() and sort with Temporal.Instant.compare()', async ({ page }) => {
@@ -142,17 +147,17 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
       });
     });
     await page.reload();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Click every button in case the implementation loads/sorts on demand.
     for (const btn of await page.$$('button')) {
       try { await btn.click({ timeout: 1000 }); } catch { /* disabled or hidden buttons are fine */ }
     }
-    await page.waitForTimeout(300);
 
-    const calls = await page.evaluate(() => (window as any).__temporalCalls);
-    expect(calls.from, 'Must call Temporal.Instant.from() when loading events').toBeGreaterThan(0);
-    expect(calls.compare, 'Must call Temporal.Instant.compare() when sorting events').toBeGreaterThan(0);
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => (window as any).__temporalCalls);
+      return calls?.from > 0 && calls?.compare > 0;
+    }, { timeout: 4000 }).toBe(true);
   });
 
 });

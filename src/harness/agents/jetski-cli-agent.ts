@@ -7,7 +7,6 @@ import {
   cleanupIsolatedHome,
   parseAgentArgs,
   runCliAgentCommand,
-  createTrustedFolders,
   copyFileIfExists,
   setupIsolatedWorkDir,
   isEnoent,
@@ -25,9 +24,11 @@ import {
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { defaultLevelFromModelId, resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 
 const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
 const MAX_PAYLOAD_PREVIEW_LENGTH = 200;
+const GEN_METADATA_DISPLAY_EFFORT_RE = /^(?:Gemini|Claude|GPT)\b.*\((Low|Medium|High|XHigh|Max)\)$/i;
 
 const PROTO_WIRE_TYPE = {
   VARINT: 0,
@@ -42,6 +43,24 @@ const USAGE_TAG_OUTPUT = 3;
 const USAGE_TAG_CACHED = 5;
 
 const TRAJECTORY_GLOB = '*.db';
+
+function createTrustedFolders(contentsDir: string, folders: string[]): void {
+  const trustedFolders: Record<string, string> = {};
+  for (const folder of folders) {
+    trustedFolders[folder] = 'TRUST_FOLDER';
+  }
+
+  try {
+    fs.mkdirSync(contentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(contentsDir, 'trustedFolders.json'),
+      JSON.stringify(trustedFolders, null, 2)
+    );
+    console.log(`Created trustedFolders.json in ${contentsDir}`);
+  } catch (e) {
+    console.error('Failed to create trustedFolders.json:', e);
+  }
+}
 
 export function setupJetskiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
@@ -83,7 +102,8 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
   const commandArgs = [
     '-p', prompt,
     '--dangerously-skip-permissions',
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.JETSKI_CLI, model)
   ];
   return { command, commandArgs };
 }
@@ -348,6 +368,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   const seenJsonHashes = new Set<string>();
   let modelName = 'unknown';
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let totalCached = 0;
   let hasTokens = false;
@@ -493,16 +514,51 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         }
       }
 
+      // Check CortexStepGeneratorMetadata model fields (`1.21` model_display_name, `3.28` planner_config.model_name,
+      // `1.19` chat_model.response_model) before walking generic proto strings so `1.1` / `1.2` prompts cannot shadow
+      // `1.19`, and fall back to `defaultLevelFromModelId` when `1.21` is omitted (e.g. `3.28` = `gemini-3.8-flash-high`).
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
+        let foundModel = false;
         for (const row of genRows) {
           if (!row.data) continue;
           const genDataBuffer = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
           const proto = parseProtobuf(genDataBuffer);
           const strings = getProtoStrings(proto);
-          const modelCandidate = strings.find(s => /^gemini/i.test(s));
-          if (modelCandidate) {
-            modelName = modelCandidate.split('|')[0].trim();
+          const chatModel = typeof proto[1]?.[0] === 'object' ? proto[1][0] : undefined;
+          const plannerConfig = typeof proto[3]?.[0] === 'object' ? proto[3][0] : undefined;
+          if (!foundModel) {
+            const modelCandidates = [
+              chatModel?.[19]?.[0], // chat_model.response_model
+              chatModel?.[21]?.[0], // chat_model.model_display_name
+              plannerConfig?.[28]?.[0], // planner_config.model_name
+              ...strings,
+            ].filter((s): s is string => typeof s === 'string');
+            const modelCandidate = modelCandidates.find(s => /^gemini/i.test(s));
+            if (modelCandidate) {
+              modelName = modelCandidate.split('|')[0].trim();
+              foundModel = true;
+            }
+          }
+          if (!observedEffort) {
+            const metaCandidates = [
+              chatModel?.[21]?.[0], // chat_model.model_display_name
+              plannerConfig?.[28]?.[0], // planner_config.model_name
+              chatModel?.[19]?.[0], // chat_model.response_model
+              ...strings,
+            ].filter((s): s is string => typeof s === 'string');
+
+            for (const str of metaCandidates) {
+              const candidate = str.split('|')[0].trim();
+              const effortMatch = GEN_METADATA_DISPLAY_EFFORT_RE.exec(candidate);
+              const tier = effortMatch?.[1]?.toLowerCase() ?? defaultLevelFromModelId(candidate);
+              if (tier) {
+                observedEffort = tier;
+                break;
+              }
+            }
+          }
+          if (foundModel && observedEffort) {
             break;
           }
         }
@@ -521,6 +577,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
     fileReadGuides: [...new Set(fileReadGuides)],
     toolsUsed: [...new Set(toolsUsed)],
     model: modelName,
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokens ? { total: totalTokens, cached: totalCached } : undefined
   };
 }

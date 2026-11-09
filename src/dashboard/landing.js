@@ -16,6 +16,12 @@ import {
     SUPPORTS_ANCHOR_POSITIONING,
     placePopoverFallback,
     median,
+    renderEffortChip,
+    setupEffortTooltip,
+    getEffortLevel,
+    getEffortTooltip,
+    compareEffortLevels,
+    pickHigherPrecedenceEffort,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
@@ -49,6 +55,10 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 /** @type {string} */
 let currentModelFilter = 'all';
+/** @type {boolean} */
+let splitModelByEffort = false;
+/** @type {boolean} */
+let splitRowEffortActive = false;
 /** @type {string} */
 let currentSearchFilter = '';
 /** @type {boolean} */
@@ -154,11 +164,37 @@ function applySearchParam(qParam) {
     }
 }
 
+/**
+ * Sets or removes the `effort:<level>` token in `#filter-search`, preserving any
+ * free-text search terms and syncing `?q=` in the URL.
+ * @param {string | null} effortLevel
+ */
+function setSearchEffortToken(effortLevel) {
+    const searchInput = document.getElementById('filter-search');
+    const raw = searchInput instanceof HTMLInputElement ? searchInput.value : currentSearchFilter;
+    const kept = raw
+        .trim()
+        .split(/\s+/)
+        .filter(tok => tok && !/^effort:/i.test(tok));
+    if (effortLevel && effortLevel !== 'all') {
+        kept.push(`effort:${effortLevel}`);
+    }
+    const nextValue = kept.join(' ');
+    currentSearchFilter = nextValue.toLowerCase();
+    if (searchInput instanceof HTMLInputElement) {
+        searchInput.value = nextValue;
+    }
+    updateUrlParams();
+}
+
 function setupTestFilters() {
     const searchInput = document.getElementById('filter-search');
     if (!(searchInput instanceof HTMLInputElement)) return;
     searchInput.addEventListener('input', () => {
         currentSearchFilter = searchInput.value.trim().toLowerCase();
+        if (parseSearchQuery(currentSearchFilter).effortLevels.length === 0) {
+            splitRowEffortActive = false;
+        }
         showAllStacked = false;
         updateUrlParams();
         renderSuites();
@@ -174,7 +210,13 @@ function setupTableFilters() {
             const mobileAgent = document.getElementById('mobile-filter-agent');
             if (mobileAgent instanceof HTMLSelectElement) { mobileAgent.value = val; syncSelectStyles(mobileAgent); }
         },
-        'filter-model': (val) => currentModelFilter = val
+        'filter-model': (val) => {
+            currentModelFilter = val;
+            if (splitRowEffortActive) {
+                splitRowEffortActive = false;
+                setSearchEffortToken(null);
+            }
+        }
     };
 
     Object.entries(filters).forEach(([id, updateFn]) => {
@@ -358,7 +400,8 @@ function setupInsightsControls() {
         if (btn instanceof HTMLButtonElement) {
             const key = btn.dataset.filterKey;
             const value = btn.dataset.filterValue;
-            if ((key === 'agent' || key === 'model') && value !== undefined) { setInsightFilter(key, value); }
+            const effort = btn.dataset.filterEffort;
+            if ((key === 'agent' || key === 'model') && value !== undefined) { setInsightFilter(key, value, effort); }
             return;
         }
         if (!target.closest('a, button')) {
@@ -368,6 +411,7 @@ function setupInsightsControls() {
         }
     });
     setupBarbellTooltip();
+    setupEffortTooltip();
     setupAnchorPositioningFallback();
 }
 
@@ -601,6 +645,8 @@ function updateRunsFilterDatalist() {
     if (!datalist) return;
     /** @type {Map<string, { count: number, label: string }>} */
     const suggestions = new Map();
+    /** @type {Map<string, number>} */
+    const effortCounts = new Map();
     for (const t of Object.values(allTestData)) {
         if (t.model && t.model !== 'unknown') {
             const prev = suggestions.get(t.model);
@@ -611,6 +657,14 @@ function updateRunsFilterDatalist() {
             const display = agentDisplayNames[t.agent] || t.agent;
             suggestions.set(t.agent, { count: (prev?.count || 0) + 1, label: display !== t.agent ? display : '' });
         }
+        const effortLevel = getEffortLevel(t.reasoningEffort);
+        effortCounts.set(effortLevel, (effortCounts.get(effortLevel) || 0) + 1);
+    }
+    for (const [level, count] of effortCounts.entries()) {
+        const desc = level === 'default'
+            ? 'Reasoning effort: default (CLI built-in default)'
+            : `Reasoning effort: ${level}`;
+        suggestions.set(`effort:${level}`, { count, label: desc });
     }
     datalist.innerHTML = Array.from(suggestions.entries())
         .sort(([a], [b]) => a.localeCompare(b))
@@ -692,21 +746,52 @@ function a11yPair(a11y) {
 }
 
 /**
+ * Extracts `effort:<level>` filter tokens (case-insensitive) and remaining free-text query.
+ * @param {string} query
+ * @returns {{ effortLevels: string[], textQuery: string }}
+ */
+function parseSearchQuery(query) {
+    if (!query) return { effortLevels: [], textQuery: '' };
+    /** @type {string[]} */
+    const effortLevels = [];
+    /** @type {string[]} */
+    const textParts = [];
+    for (const token of query.trim().split(/\s+/)) {
+        if (!token) continue;
+        const m = token.match(/^effort:(.*)$/i);
+        if (m) {
+            const lvl = m[1].trim().toLowerCase();
+            if (lvl) effortLevels.push(lvl);
+        } else {
+            textParts.push(token.toLowerCase());
+        }
+    }
+    return { effortLevels, textQuery: textParts.join(' ') };
+}
+
+/**
  * @param {{ ignoreModelFilter?: boolean }} [options]
  * @returns {string[]}
  */
 function getFilteredKeys({ ignoreModelFilter = false } = {}) {
+    const { effortLevels, textQuery } = parseSearchQuery(currentSearchFilter);
     return Array.from(selectedTestIds).filter(compoundKey => {
         const t = allTestData[compoundKey];
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
-        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
-        if (currentSearchFilter) {
+        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) {
+            return false;
+        }
+        if (!(ignoreModelFilter && splitModelByEffort && splitRowEffortActive) && effortLevels.length > 0) {
+            const suiteEffort = getEffortLevel(t.reasoningEffort);
+            if (!effortLevels.includes(suiteEffort)) return false;
+        }
+        if (textQuery) {
             const { label, ldap } = formatSuiteLabel(t);
             const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
             const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap}`.toLowerCase();
-            if (!haystack.includes(currentSearchFilter)) return false;
+            if (!haystack.includes(textQuery)) return false;
         }
         return true;
     });
@@ -881,12 +966,12 @@ function renderSuites() {
             const a11yScope = a11yGuideCount > 0
                 ? `${a11yGuideCount} ${a11yGuideCount === 1 ? 'guide' : 'guides'}`
                 : overallScope;
-            const a11ySub = ['Accessibility subscore', modelPart, a11yScope].filter(Boolean).join(' · ');
+            const a11ySub = ['Automated accessibility checks', modelPart, a11yScope].filter(Boolean).join(' · ');
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Accessibility subscore')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
-        } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+        } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median duration: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median duration' })}</div>`
@@ -914,7 +999,7 @@ function renderSuites() {
                     </a>
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
+                <td class="model-cell"><span class="model-cell-inner">${escapeHtml(testInfo.model || '')}${testInfo.model ? renderEffortChip(testInfo.reasoningEffort) : ''}</span></td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
@@ -1056,10 +1141,10 @@ function setupAnchorPositioningFallback() {
     if (SUPPORTS_ANCHOR_POSITIONING) return;
     document.addEventListener('toggle', (e) => {
         const hint = e.target;
-        if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover')) return;
+        if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover') || hint.id === 'effort-tooltip') return;
         if (/** @type {ToggleEvent} */ (e).newState !== 'open') return;
         const trigger = document.querySelector(`[interestfor="${CSS.escape(hint.id)}"]`);
-        if (trigger) placePopoverFallback(hint, trigger, { align: hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start', fallbackHeight: 175 });
+        if (trigger) placePopoverFallback(hint, trigger, { align: (hint.id.startsWith('hint-sort-uplift-') || hint.id === 'hint-split-effort-model') ? 'end' : 'start', fallbackHeight: 175 });
     }, true);
     document.addEventListener('scroll', () => {
         document.querySelectorAll('#barbell-tooltip, .hint-popover').forEach(el => { if (el instanceof HTMLElement) setPopoverOpen(el, false); });
@@ -1110,6 +1195,8 @@ function renderBarbellTooltipContent(cell) {
     const liftText = uplift === null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`;
     const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
     const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
+    const effortNote = cell.dataset.barbellEffort || '';
+    const effortHtml = effortNote ? ` <div class="barbell-tooltip-effort">${escapeHtml(effortNote)}</div>` : '';
     const uExtraHtml = uDetail !== ''
         ? ` <span class="barbell-tooltip-sd">(${escapeHtml(uDetail)})</span>`
         : (uSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(uSd)} pp SD)</span>` : '');
@@ -1138,7 +1225,7 @@ function renderBarbellTooltipContent(cell) {
         note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
     }
 
-    return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div> <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
+    return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>${effortHtml} <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
 }
 
 function hideBarbellTooltip() {
@@ -1183,14 +1270,18 @@ function getModelInsightKeys() {
     const candidates = getFilteredKeys({ ignoreModelFilter: true })
         .filter(k => Boolean(allTestData[k]?.model && allTestData[k].model !== 'unknown'));
     const { showAll, limit } = getInsightWindowOptions();
-    const byModel = Map.groupBy(candidates, k => allTestData[k].model);
+    const ignoreSplitEffortSearch = splitModelByEffort && splitRowEffortActive && !parseSearchQuery(currentSearchFilter).textQuery;
+    const byBucket = Map.groupBy(candidates, k => {
+        const t = allTestData[k];
+        return splitModelByEffort ? `${t.model}|||${getEffortLevel(t.reasoningEffort)}` : t.model;
+    });
     /** @type {string[]} */
     const result = [];
-    for (const modelKeys of byModel.values()) {
-        const anyScheduled = modelKeys.some(k => isScheduledSuite(allTestData[k].testId));
-        let scoped = (scheduledOnly && !currentSearchFilter && anyScheduled)
-            ? modelKeys.filter(k => isScheduledSuite(allTestData[k].testId))
-            : modelKeys;
+    for (const bucketKeys of byBucket.values()) {
+        const anyScheduled = bucketKeys.some(k => isScheduledSuite(allTestData[k].testId));
+        let scoped = (scheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
+            ? bucketKeys.filter(k => isScheduledSuite(allTestData[k].testId))
+            : bucketKeys;
         if (!showAll && scoped.length > 0) {
             scoped = filterRecentDays(scoped, limit);
         }
@@ -1254,12 +1345,26 @@ function renderPivotInsights() {
     const onlyA11y = currentInsightsMode === 'a11y';
     /** @type {{ model: Record<string, PivotItem[]>, guide: Record<string, PivotItem[]>, dimension: Record<string, PivotItem[]> }} */
     const grouped = { model: {}, guide: {}, dimension: {} };
+    /** @type {Record<string, { model: string, effortLevel: string, effort?: import('./evals.d.ts').ReasoningEffort }>} */
+    const modelSplitMeta = {};
     modelKeys.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
         if (!testInfo || !testInfo.model) return;
         const item = buildModelPivotItem(testInfo, onlyA11y);
         if (item) {
-            (grouped.model[testInfo.model] ||= []).push(item);
+            if (splitModelByEffort) {
+                const effortLevel = getEffortLevel(testInfo.reasoningEffort);
+                const bucketKey = `${testInfo.model}|||${effortLevel}`;
+                const prevMeta = modelSplitMeta[bucketKey];
+                modelSplitMeta[bucketKey] = {
+                    model: testInfo.model,
+                    effortLevel,
+                    effort: pickHigherPrecedenceEffort(prevMeta?.effort, testInfo.reasoningEffort),
+                };
+                (grouped.model[bucketKey] ||= []).push(item);
+            } else {
+                (grouped.model[testInfo.model] ||= []).push(item);
+            }
         }
     });
     keys.forEach(compoundKey => {
@@ -1381,11 +1486,20 @@ function renderPivotInsights() {
                     const upliftB = statsByKey[b].medianItem.uplift;
                     if (upliftA !== upliftB) { return sortMode === 'uplift-desc' ? upliftB - upliftA : upliftA - upliftB; }
                 }
+                if (filterKey === 'model' && splitModelByEffort) {
+                    const metaA = modelSplitMeta[a];
+                    const metaB = modelSplitMeta[b];
+                    if (metaA && metaB) {
+                        const cmpModel = metaA.model.toLowerCase().localeCompare(metaB.model.toLowerCase());
+                        if (cmpModel !== 0) return cmpModel;
+                        return compareEffortLevels(metaA.effortLevel, metaB.effortLevel);
+                    }
+                }
                 return a.toLowerCase().localeCompare(b.toLowerCase());
             });
         }
 
-        const metricName = onlyA11y ? 'Accessibility subscore' : 'Pass rate';
+        const metricName = onlyA11y ? 'Accessibility checks' : 'Pass rate';
         const captionNoun = filterKey === 'guide' ? 'guide' : (filterKey === 'dimension' ? 'accessibility dimension' : 'model');
 
         let rowsHtml = '';
@@ -1414,10 +1528,16 @@ function renderPivotInsights() {
                 if (avgGErr > 0) gBandHtml = `<span class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></span>`;
             }
 
-            const isActive = filterKey === 'model' && currentModelFilter === key;
+            const activeEffortFilter = parseSearchQuery(currentSearchFilter).effortLevels[0] || 'all';
+            const splitMeta = (filterKey === 'model' && splitModelByEffort) ? modelSplitMeta[key] : undefined;
+            const modelValue = splitMeta ? splitMeta.model : key;
+            const isActive = filterKey === 'model' && currentModelFilter === modelValue && (
+                splitMeta ? activeEffortFilter === splitMeta.effortLevel : activeEffortFilter === 'all'
+            );
             let nameHtml = '';
             let effSummary = '';
             let displayTitle = key;
+            let barbellEffortAttr = '';
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
                 const sourceQuery = `&source=${encodeURIComponent(activeDataSource())}`;
@@ -1431,7 +1551,14 @@ function renderPivotInsights() {
                 nameHtml = `<span class="pivot-static-name">${escapeHtml(label)}</span>`;
                 effSummary = desc ? `<span class="pivot-trials">${escapeHtml(desc)}</span>` : '';
             } else {
-                nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}" interestfor="barbell-tooltip">${escapeHtml(key)}</button>`;
+                if (splitMeta) {
+                    displayTitle = `${splitMeta.model} (${splitMeta.effortLevel})`;
+                    barbellEffortAttr = ` data-barbell-effort="${escapeHtml(getEffortTooltip(splitMeta.effort))}"`;
+                    const chipHtml = renderEffortChip(splitMeta.effort, { interactive: false });
+                    nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(splitMeta.model)}" data-filter-effort="${escapeHtml(splitMeta.effortLevel)}" aria-pressed="${isActive}" interestfor="barbell-tooltip"><span class="pivot-model-label">${escapeHtml(splitMeta.model)}${chipHtml}</span></button>`;
+                } else {
+                    nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}" interestfor="barbell-tooltip">${escapeHtml(key)}</button>`;
+                }
                 const rtMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.rtDeltaPct).filter(v => typeof v === 'number')));
                 const tokMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.tokDeltaPct).filter(v => typeof v === 'number')));
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
@@ -1470,7 +1597,7 @@ function renderPivotInsights() {
                         data-barbell-uplift="${medUplift}"
                         data-barbell-u-sd="${uSdAttr}"
                         data-barbell-g-sd="${gSdAttr}"
-                        data-barbell-err="${errAttr}">
+                        data-barbell-err="${errAttr}"${barbellEffortAttr}>
                         ${barbellCellHtml}
                     </td>
                 </tr>
@@ -1513,7 +1640,13 @@ function renderPivotInsights() {
                 : `Sorted by uplift (low to high) — click to reset to alphabetical sort`);
         const alphaHintId = `hint-sort-alpha-${panelKey}`;
         const upliftHintId = `hint-sort-uplift-${panelKey}`;
-        return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
+        const effortSplitBtnHtml = panelKey === 'model'
+            ? `<button type="button" class="insights-effort-split-btn anchor-hint-split-effort-model${splitModelByEffort ? ' is-active' : ''}" data-model-effort-split aria-pressed="${splitModelByEffort}" interestfor="hint-split-effort-model">By effort</button>`
+            : '';
+        const effortSplitHintHtml = panelKey === 'model'
+            ? `<div id="hint-split-effort-model" popover="hint" class="hint-popover">${splitModelByEffort ? 'Showing models split by reasoning effort — click to combine' : 'Split model rows by reasoning effort level'}</div>`
+            : '';
+        return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <div class="insights-panel-actions"> ${effortSplitBtnHtml} <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> </div> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> ${effortSplitHintHtml} <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
     };
 
     const COLLAPSED_ROW_THRESHOLD = 6;
@@ -1547,6 +1680,9 @@ function renderPivotInsights() {
             ${renderExpandRow('dimension', dimensionCount)}
         </div>`
         : '';
+    const a11yScopeNoteHtml = onlyA11y ? `
+        <p class="insights-a11y-note">Automated Playwright assertions covering 5 programmable dimensions (keyboard, focus &amp; <code>inert</code>, ARIA &amp; live regions, motion &amp; contrast preferences, form labeling). Does not measure full WCAG compliance or replace manual and assistive-technology testing.</p>`
+        : '';
     container.innerHTML = `
         <div class="insights-scope-bar">
             <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
@@ -1564,6 +1700,7 @@ function renderPivotInsights() {
                 <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
             </div>
         </div>
+        ${a11yScopeNoteHtml}
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
             ${renderPanelHeader('model', `By model (${modelCount})`)}
@@ -1652,17 +1789,43 @@ function renderPivotInsights() {
         renderPivotInsights();
         document.getElementById('guide-sort-dir-btn')?.focus();
     });
+    const effortSplitBtn = container.querySelector('button[data-model-effort-split]');
+    effortSplitBtn?.addEventListener('click', () => {
+        splitModelByEffort = !splitModelByEffort;
+        if (!splitModelByEffort && splitRowEffortActive) {
+            splitRowEffortActive = false;
+            setSearchEffortToken(null);
+            renderSuites();
+        } else {
+            renderPivotInsights();
+        }
+        /** @type {HTMLElement | null} */
+        (container.querySelector('button[data-model-effort-split]'))?.focus();
+    });
 }
 
 /**
  * Toggles one of the header filters from a pivot row (click again to clear).
  * @param {'agent' | 'model'} filterKey
  * @param {string} value
+ * @param {string} [effort]
  */
-function setInsightFilter(filterKey, value) {
+function setInsightFilter(filterKey, value, effort) {
     const select = document.getElementById(`filter-${filterKey}`);
-    if (select instanceof HTMLSelectElement) {
-        select.value = select.value === value ? 'all' : value;
-        select.dispatchEvent(new Event('change'));
+    if (!(select instanceof HTMLSelectElement)) return;
+    if (filterKey === 'model' && effort !== undefined) {
+        const activeEffortFilter = parseSearchQuery(currentSearchFilter).effortLevels[0] || 'all';
+        const isSame = currentModelFilter === value && activeEffortFilter === effort;
+        const nextModel = isSame ? 'all' : value;
+        const nextEffort = isSame ? null : effort;
+        select.value = nextModel;
+        currentModelFilter = nextModel;
+        splitRowEffortActive = Boolean(nextEffort);
+        setSearchEffortToken(nextEffort);
+        syncSelectStyles(select);
+        renderSuites();
+        return;
     }
+    select.value = select.value === value ? 'all' : value;
+    select.dispatchEvent(new Event('change'));
 }

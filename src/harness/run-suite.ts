@@ -632,7 +632,6 @@ const AGENT_SCRIPTS: Record<string, string> = {
   [Agents.JETSKI_CLI]: 'jetski-cli-agent.ts',
   [Agents.PI]: 'pi-agent.ts',
   [Agents.ANTIGRAVITY_CLI]: 'antigravity-cli-agent.ts',
-  [Agents.GEMINI_CLI]: 'gemini-cli-agent.ts',
 };
 
 function getAgentScript(agent: string): string {

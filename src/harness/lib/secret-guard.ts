@@ -84,17 +84,21 @@ export const ALLOWED_ENV_PREFIXES: readonly string[] = ['LC_', 'PLAYWRIGHT_', 'P
 
 export const ALLOWED_CHILD_ENV_KEYS: ReadonlySet<string> = new Set([
   ...CORE_OS_ENV_KEYS,
+  'IS_SANDBOX', 'AGY_ADC_AUTH', 'GOOGLE_CLOUD_PROJECT',
   'CLAUDE_CODE_USE_VERTEX', 'ANTHROPIC_VERTEX_PROJECT_ID', 'CLOUD_ML_REGION', 'ANTHROPIC_MODEL',
-  'GEMINI_CLI_TRUST_WORKSPACE', 'ANTIGRAVITY_GCP_PROJECT', 'ANTIGRAVITY_MODEL', 'CODEX_MODEL',
+  'ANTIGRAVITY_GCP_PROJECT', 'ANTIGRAVITY_MODEL',
+  'JETSKI_MODEL', 'JETSKI_DIR', 'CODEX_MODEL',
   'PI_MODEL', 'PROMPT_MODEL', 'GD_UNSAFE_NO_SANDBOX', 'PWTEST_CACHE_DIR',
 ]);
 
 export const ALLOWED_WRAPPER_ENV_KEYS: ReadonlySet<string> = new Set([
   ...ALLOWED_CHILD_ENV_KEYS,
+  'CLAUDE_EFFORT', 'ANTIGRAVITY_EFFORT', 'JETSKI_EFFORT', 'CODEX_EFFORT',
   'GD_SUITE_CONFIG', 'GD_ISOLATED_HOME', 'BASELINE_TARGET', 'PI_NO_SESSION', 'PI_BIN',
-  'PI_WORKERS', 'PI_SUITE_NAME', 'CODEX_CLI_BIN', 'CLAUDE_CODE_CLI_BIN', 'GEMINI_CLI_BIN',
-  'GEMINI_DIR', 'ANTIGRAVITY_CLI_BIN', 'GOOGLE_APPLICATION_CREDENTIALS',
+  'PI_WORKERS', 'PI_SUITE_NAME', 'CODEX_CLI_BIN', 'CLAUDE_CODE_CLI_BIN',
+  'ANTIGRAVITY_CLI_BIN', 'JETSKI_CLI_BIN', 'GOOGLE_APPLICATION_CREDENTIALS',
   'ENABLE_FILE_LOGGING', 'MODERN_WEB_LOG_DIR', 'SMOKE_AGENT', 'FULL',
+  'NPM_CONFIG_USERCONFIG', 'npm_config_userconfig',
 ]);
 
 export const ALLOWED_GRADER_ENV_KEYS: ReadonlySet<string> = new Set([
@@ -107,10 +111,12 @@ export const ALLOWED_GRADER_ENV_KEYS: ReadonlySet<string> = new Set([
 /** Non-secret config keys accepted from `.env` so `.env` never injects credentials into `process.env`. */
 export const ALLOWED_DOTENV_KEYS: ReadonlySet<string> = new Set([
   'PI_MODEL', 'PROMPT_MODEL', 'PI_WORKERS', 'PI_SUITE_NAME', 'PI_BIN', 'PI_NO_SESSION',
-  'GEMINI_CLI_BIN', 'GEMINI_DIR', 'CLAUDE_CODE_CLI_BIN', 'ANTHROPIC_MODEL',
+  'CLAUDE_CODE_CLI_BIN', 'ANTHROPIC_MODEL', 'CLAUDE_EFFORT',
   'CLAUDE_CODE_USE_VERTEX', 'ANTHROPIC_VERTEX_PROJECT_ID', 'CLOUD_ML_REGION',
-  'CODEX_CLI_BIN', 'CODEX_MODEL', 'ANTIGRAVITY_CLI_BIN', 'ANTIGRAVITY_GCP_PROJECT',
-  'ANTIGRAVITY_MODEL', 'SMOKE_AGENT', 'DISABLE_TELEMETRY', 'ENABLE_FILE_LOGGING',
+  'CODEX_CLI_BIN', 'CODEX_MODEL', 'CODEX_EFFORT',
+  'ANTIGRAVITY_CLI_BIN', 'ANTIGRAVITY_GCP_PROJECT', 'ANTIGRAVITY_MODEL', 'ANTIGRAVITY_EFFORT',
+  'JETSKI_CLI_BIN', 'JETSKI_MODEL', 'JETSKI_EFFORT',
+  'SMOKE_AGENT', 'DISABLE_TELEMETRY', 'ENABLE_FILE_LOGGING',
   'MODERN_WEB_LOG_DIR', 'DEBUG_MWG_TELEMETRY', 'GD_UNSAFE_NO_SANDBOX',
 ]);
 
@@ -125,6 +131,12 @@ function readUtf8IfExists(filePath: string): string | null {
   }
 }
 
+/** Returns true if a `.env` key is allowed non-secret configuration. */
+export function isAllowedDotenvKey(key: string): boolean {
+  if (SECRET_ENV_KEY_RE.test(key)) return false;
+  return ALLOWED_DOTENV_KEYS.has(key) || /_(?:MODEL|EFFORT)$/i.test(key);
+}
+
 export function loadAllowedEnvFile(
   envPath: string,
   targetEnv: NodeJS.ProcessEnv = process.env,
@@ -136,7 +148,7 @@ export function loadAllowedEnvFile(
   const loaded: string[] = [];
   const ignored: string[] = [];
   for (const [key, value] of Object.entries(parseEnv(content))) {
-    if (ALLOWED_DOTENV_KEYS.has(key)) {
+    if (isAllowedDotenvKey(key)) {
       if (targetEnv[key] === undefined) targetEnv[key] = value;
       loaded.push(key);
     } else {
@@ -268,7 +280,7 @@ export function collectHostSecrets(options: {
   if (envRaw !== null) {
     try {
       for (const [key, value] of Object.entries(parseEnv(envRaw))) {
-        if (key !== 'GOOGLE_APPLICATION_CREDENTIALS' && (!ALLOWED_DOTENV_KEYS.has(key) || SECRET_ENV_KEY_RE.test(key))) {
+        if (key !== 'GOOGLE_APPLICATION_CREDENTIALS' && !isAllowedDotenvKey(key)) {
           maybeAdd(value);
         }
       }
@@ -286,6 +298,15 @@ export function collectHostSecrets(options: {
   const npmrcRaw = readUtf8IfExists(path.join(options.homeDir ?? defaultHome, '.npmrc'));
   if (npmrcRaw !== null) {
     for (const secret of processNpmrc(npmrcRaw).secrets) secrets.add(secret);
+  }
+
+  const envSource = options.env ?? process.env;
+  const userConfig = envSource.NPM_CONFIG_USERCONFIG || envSource.npm_config_userconfig;
+  if (userConfig) {
+    const userConfigRaw = readUtf8IfExists(userConfig);
+    if (userConfigRaw !== null) {
+      for (const secret of processNpmrc(userConfigRaw).secrets) secrets.add(secret);
+    }
   }
 
   return [...secrets].sort((a, b) => b.length - a.length);
