@@ -1,4 +1,4 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip, getEffortLevel, isDefaultEffort, compareEffortLevels, pickHigherPrecedenceEffort } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient, isAuthRejection } from './api.js';
 import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             subtitleEl.innerHTML = 'Guided vs. unguided <strong>automated accessibility check pass rate</strong> over time, by agent and model combination <span class="mode-badge-inline">Accessibility checks</span>';
         } else { subtitleEl.textContent = 'Guided vs. unguided pass rate over time, by agent and model combination'; }
     }
+    setupEffortTooltip();
     setupTimelineFilterControls(guideName);
 
     try {
@@ -61,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @property {string} source
  * @property {string} agent
  * @property {string} model
+ * @property {import('./evals.d.ts').ReasoningEffort} [reasoningEffort]
  * @property {Record<string, any>} guides
  */
 
@@ -81,6 +83,7 @@ function registerSuiteSummary(summary, source) {
         source: source,
         agent: summary.agent || 'unknown',
         model: summary.model || 'unknown',
+        ...(summary.reasoningEffort ? { reasoningEffort: summary.reasoningEffort } : {}),
         guides: summary.guides || {}
     };
 }
@@ -398,11 +401,30 @@ function renderGraphs(guideName) {
     }
     $('#empty-state').hidden = true;
 
+    /** @type {Map<string, Set<string>>} */
+    const explicitEffortsByPair = new Map();
+    filteredKeys.forEach(compoundKey => {
+        const run = allTestData[compoundKey];
+        if (!isDefaultEffort(run.reasoningEffort)) {
+            const pairKey = `${run.agent}|||${run.model}`;
+            let set = explicitEffortsByPair.get(pairKey);
+            if (!set) {
+                set = new Set();
+                explicitEffortsByPair.set(pairKey, set);
+            }
+            set.add(getEffortLevel(run.reasoningEffort));
+        }
+    });
+
     /** @type {Record<string, GuideSuiteSummary[]>} */
     const combinations = {};
     filteredKeys.forEach(compoundKey => {
         const run = allTestData[compoundKey];
-        const combKey = `${run.agent}|||${run.model}`;
+        const pairKey = `${run.agent}|||${run.model}`;
+        const splitByEffort = (explicitEffortsByPair.get(pairKey)?.size || 0) >= 2;
+        const combKey = splitByEffort
+            ? `${pairKey}|||${getEffortLevel(run.reasoningEffort)}`
+            : pairKey;
         if (!combinations[combKey]) {
             combinations[combKey] = [];
         }
@@ -470,7 +492,10 @@ function renderGraphs(guideName) {
         const runsB = combinations[keyB];
         const newestA = new Date(runsA[runsA.length - 1].timestamp).getTime();
         const newestB = new Date(runsB[runsB.length - 1].timestamp).getTime();
-        return newestB - newestA;
+        if (newestB !== newestA) return newestB - newestA;
+        const [, , effortA = 'default'] = keyA.split('|||');
+        const [, , effortB = 'default'] = keyB.split('|||');
+        return compareEffortLevels(effortA, effortB);
     });
 
     // Filter out combinations that have no data points in the filtered timeline
@@ -489,16 +514,24 @@ function renderGraphs(guideName) {
     $('#empty-state').hidden = true;
 
     activeCombKeys.forEach(combKey => {
-        const [agent, model] = combKey.split('|||');
+        const [agent, model, splitEffortLevel] = combKey.split('|||');
         const runs = combinations[combKey];
+        let cardReasoningEffort = runs[runs.length - 1]?.reasoningEffort;
+        for (const r of runs) {
+            cardReasoningEffort = pickHigherPrecedenceEffort(cardReasoningEffort, r.reasoningEffort);
+        }
+        const effortLevel = splitEffortLevel || getEffortLevel(cardReasoningEffort);
 
         const card = document.createElement('div');
         card.className = 'stat-card guide-stat-card';
+        card.dataset.agent = agent;
+        card.dataset.model = model;
+        card.dataset.effort = effortLevel;
         
         const header = document.createElement('div');
         header.innerHTML = `
             <h2 class="guide-card-title">
-                ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> ${escapeHtml(model)}
+                ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> <span class="guide-card-model-row">${escapeHtml(model)}${renderEffortChip(cardReasoningEffort)}</span>
             </h2>
             <div class="guide-card-subtitle">
                 ${runs.length} chronological trials${isA11yMode ? ' · Accessibility checks' : ''}
@@ -510,7 +543,7 @@ function renderGraphs(guideName) {
         chartWrapper.className = 'guide-chart-wrapper';
         chartWrapper.setAttribute('tabindex', '0');
         chartWrapper.setAttribute('role', 'region');
-        chartWrapper.setAttribute('aria-label', `${agent} on ${model} pass rate timeline`);
+        chartWrapper.setAttribute('aria-label', `${agent} on ${model} (${effortLevel} effort) pass rate timeline`);
 
         const height = 230;
         const paddingX = 46;
@@ -645,7 +678,7 @@ function renderGraphs(guideName) {
         const gTotal = stats.guidedTotal || 0;
         const uPassed = stats.unguidedPassed || 0;
         const uTotal = stats.unguidedTotal || 0;
-        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${stats.uplift == null ? '' : (stats.uplift >= 0 ? 'positive' : 'negative')}"> ${stats.uplift == null ? '—' : `${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp`} </span> </div> </div>`;
+        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>Reasoning Effort:</span> ${renderEffortChip(runData.reasoningEffort, { interactive: false, separator: false })} </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${stats.uplift == null ? '' : (stats.uplift >= 0 ? 'positive' : 'negative')}"> ${stats.uplift == null ? '—' : `${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp`} </span> </div> </div>`;
         return true;
     };
 }
@@ -679,7 +712,7 @@ function moveTimelineAnchor(point) {
 function placeGuideTooltipFallback(tooltip, point) {
     const marker = getTimelineMarker(point);
     if (!isElementFullyVisible(marker)) { hideGuideTooltip(); return; }
-    placePopoverFallback(tooltip, marker, { placement: 'inline', gap: 10, fallbackWidth: 300, fallbackHeight: 150 });
+    placePopoverFallback(tooltip, marker, { placement: 'inline', gap: 10, fallbackWidth: 300, fallbackHeight: 175 });
 }
 /** @type {Element | null} */
 let activeTimelinePoint = null;

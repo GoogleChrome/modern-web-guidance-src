@@ -183,10 +183,11 @@ base_app: test-app
             steps: []
         }));
 
-        const { allResults, numRuns, model } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
+        const { allResults, numRuns, model, reasoningEffort } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
 
         assert.strictEqual(numRuns, 1);
         assert.strictEqual(model, 'claude-3-7-sonnet-20250219');
+        assert.deepStrictEqual(reasoningEffort, { source: 'agent-default' });
         assert.ok(allResults[`task - ${guideName} - guided`]);
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });

@@ -101,7 +101,9 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
   fs.cpSync(source, published, { recursive: true, filter: src => !path.basename(src).startsWith('.') });
   fs.writeFileSync(path.join(clone, '.nojekyll'), '');
 
-  git(clone, ['add', '-A', '--', PUBLIC_EVALS_DIR, '.nojekyll']);
+  // `--force`: a stale `.gitignore` (`*.log`) left on the branch by an earlier deploy would otherwise
+  // silently drop every `modern-web.log`; the dot-prefix filter above is the only junk guard this tree needs.
+  git(clone, ['add', '-A', '--force', '--', PUBLIC_EVALS_DIR, '.nojekyll']);
   if (!indexDiffersFromHead(clone, head)) {
     return;
   }
