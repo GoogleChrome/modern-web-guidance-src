@@ -1,11 +1,11 @@
 import { Agents } from '../config.ts';
+import {
+  pickHigherPrecedenceEffort,
+  REASONING_EFFORT_SOURCES,
+  sanitizeReasoningEffort,
+} from '../../dashboard/agents.js';
 
-export const REASONING_EFFORT_SOURCES = [
-  'observed',
-  'configured',
-  'model-id',
-  'agent-default',
-] as const;
+export { pickHigherPrecedenceEffort, REASONING_EFFORT_SOURCES, sanitizeReasoningEffort };
 
 export type ReasoningEffortSource = (typeof REASONING_EFFORT_SOURCES)[number];
 
@@ -27,15 +27,6 @@ export interface EffortAdapter {
 
 const MODEL_ID_LEVEL_SUFFIX_RE =
   /(?:[-:](low|medium|high|xhigh|max|minimal|none|off)|\s+\((low|medium|high|xhigh|max|minimal|none|off)\))$/i;
-const VALID_EFFORT_TOKEN_RE = /^[a-z0-9_-]+$/;
-const VALID_SOURCES_SET: ReadonlySet<string> = new Set<string>(REASONING_EFFORT_SOURCES);
-
-const SOURCE_PRECEDENCE: Record<ReasoningEffortSource, number> = {
-  observed: 4,
-  configured: 3,
-  'model-id': 2,
-  'agent-default': 1,
-};
 
 /**
  * Extracts a trailing `-<level>`, `:<level>`, or balanced ` (<level>)` reasoning/thinking
@@ -205,47 +196,4 @@ export function resolveReasoningEffort(options: ResolveReasoningEffortOptions): 
       : options.fallback,
   );
   return pickHigherPrecedenceEffort(liveResolved, normalizedFallback) ?? liveResolved;
-}
-
-/**
- * Validates an untrusted `reasoningEffort` value (e.g. from JSON on disk) and returns
- * a clean `ReasoningEffort` copy with only allowlisted keys, or `undefined` if invalid.
- */
-export function sanitizeReasoningEffort(raw: unknown): ReasoningEffort | undefined {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return undefined;
-  }
-  const record = raw as Record<string, unknown>;
-  const { source, level } = record;
-  if (typeof source !== 'string' || !VALID_SOURCES_SET.has(source)) {
-    return undefined;
-  }
-  const typedSource = source as ReasoningEffortSource;
-  if (level === undefined || level === null) {
-    return typedSource === 'agent-default' ? { source: typedSource } : undefined;
-  }
-  if (typeof level !== 'string' || !VALID_EFFORT_TOKEN_RE.test(level)) {
-    return undefined;
-  }
-  return { level, source: typedSource };
-}
-
-function effortRank(effort: ReasoningEffort): number {
-  if (effort.source !== 'agent-default' && !effort.level) {
-    return 0;
-  }
-  return SOURCE_PRECEDENCE[effort.source] ?? 0;
-}
-
-/**
- * Picks whichever `ReasoningEffort` has strictly higher source precedence
- * (`observed > configured > model-id > agent-default`), keeping `current` on ties.
- */
-export function pickHigherPrecedenceEffort(
-  current: ReasoningEffort | undefined,
-  candidate: ReasoningEffort | undefined,
-): ReasoningEffort | undefined {
-  if (!candidate) return current;
-  if (!current) return candidate;
-  return effortRank(candidate) > effortRank(current) ? candidate : current;
 }

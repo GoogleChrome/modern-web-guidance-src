@@ -48,6 +48,7 @@ shape the private bucket's manifest has. Fields the landing page uses:
 | `timestamp` | ISO string | when the suite ran |
 | `agent` | string | `claude_code`, `codex_cli`, `antigravity_cli` only |
 | `model` | string | only values on the allowlist's `releasedModels` |
+| `reasoningEffort` | object | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; omitted on legacy suites without it |
 | `serving` | string | always `unknown` publicly; the field is not published in `evals.json` |
 | `taskCount`, `maxRuns` | number | |
 | `guidedStats`, `unguidedStats` | `{ passed, total }` | assertion counts |

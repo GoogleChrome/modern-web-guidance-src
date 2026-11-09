@@ -1,6 +1,25 @@
 /// <reference path="./evals.d.ts" />
 import { classifyScenarioCheck } from './a11y-classifier.js';
-export { AGENT_DISPLAY_NAMES, getAgentBadge } from './agents.js';
+import {
+    sanitizeReasoningEffort,
+    normalizeReasoningEffort,
+    getEffortLevel,
+    isDefaultEffort,
+    getEffortTooltip,
+    compareEffortLevels,
+    pickHigherPrecedenceEffort,
+} from './agents.js';
+export {
+    AGENT_DISPLAY_NAMES,
+    getAgentBadge,
+    sanitizeReasoningEffort,
+    normalizeReasoningEffort,
+    getEffortLevel,
+    isDefaultEffort,
+    getEffortTooltip,
+    compareEffortLevels,
+    pickHigherPrecedenceEffort,
+} from './agents.js';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ZONELESS_RE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/;
@@ -315,6 +334,129 @@ export function escapeHtml(text) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+const EFFORT_ANCHOR = '--effort-anchor';
+/** @type {WeakSet<HTMLElement>} */
+const boundEffortTooltips = new WeakSet();
+
+/**
+ * Renders a compact reasoning-effort pill alongside a model label.
+ *
+ * - Default interactive mode emits a `<button>` wired to the shared `#effort-tooltip` hint popover
+ *   (no idle inline `anchor-name`).
+ * - Pass `{ interactive: false }` when nested inside another `<button>` or `<a>`, emitting a `<span>`.
+ *
+ * @param {unknown} raw
+ * @param {{ interactive?: boolean, separator?: boolean }} [options={}]
+ * @returns {string}
+ */
+export function renderEffortChip(raw, options = {}) {
+    const norm = normalizeReasoningEffort(raw);
+    const level = norm.level || 'default';
+    const isDefault = isDefaultEffort(norm);
+    const tooltip = getEffortTooltip(norm);
+    const variantCls = isDefault ? 'effort-chip--default' : 'effort-chip--explicit';
+    const safeLevel = escapeHtml(level);
+    const safeSource = escapeHtml(norm.source);
+    const safeTooltip = escapeHtml(tooltip);
+    const sepHtml = options.separator === false ? '' : '<span class="effort-sep" aria-hidden="true">·</span>';
+
+    if (options.interactive === false) {
+        return `${sepHtml}<span class="effort-chip ${variantCls}" data-effort-level="${safeLevel}" data-effort-source="${safeSource}" data-effort-tooltip="${safeTooltip}">${safeLevel}</span>`;
+    }
+
+    return `${sepHtml}<button type="button" class="effort-chip ${variantCls}" data-effort-level="${safeLevel}" data-effort-source="${safeSource}" data-effort-tooltip="${safeTooltip}" interestfor="effort-tooltip" aria-label="${safeTooltip}">${safeLevel}</button>`;
+}
+
+/**
+ * Wires a shared `<div id="effort-tooltip" class="hint-popover" popover="hint">` element
+ * to all `[interestfor="effort-tooltip"][data-effort-tooltip]` chips on the page.
+ * Lazily creates and appends the element to `document.body` if absent, and dynamically
+ * sets `anchor-name: --effort-anchor` only while open.
+ * @param {string} [tooltipId='effort-tooltip']
+ */
+export function setupEffortTooltip(tooltipId = 'effort-tooltip') {
+    if (typeof document === 'undefined') return;
+    let tooltip = document.getElementById(tooltipId);
+    if (!(tooltip instanceof HTMLElement)) {
+        tooltip = document.createElement('div');
+        tooltip.id = tooltipId;
+        tooltip.className = 'hint-popover';
+        tooltip.setAttribute('popover', 'hint');
+        tooltip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tooltip);
+    }
+    if (boundEffortTooltips.has(tooltip)) return;
+    boundEffortTooltips.add(tooltip);
+
+    /** @type {HTMLElement | null} */
+    let activeAnchor = null;
+    /** @type {HTMLElement | null} */
+    let closingAnchor = null;
+    let shownManually = false;
+
+    /** @param {HTMLElement | null} next */
+    const setAnchor = (next) => {
+        if (activeAnchor && activeAnchor !== next) {
+            activeAnchor.style.removeProperty('anchor-name');
+            if (!activeAnchor.getAttribute('style')) activeAnchor.removeAttribute('style');
+        }
+        activeAnchor = next;
+        if (next) next.style.setProperty('anchor-name', EFFORT_ANCHOR);
+    };
+
+    tooltip.addEventListener('interest', (e) => {
+        const source = /** @type {Event & { source?: Element | null }} */ (e).source;
+        if (!(source instanceof HTMLElement)) return;
+        const text = source.dataset.effortTooltip || '';
+        if (!text) return;
+        tooltip.textContent = text;
+        setAnchor(source);
+        if (!SUPPORTS_ANCHOR_POSITIONING && isPopoverOpen(tooltip)) {
+            placePopoverFallback(tooltip, source);
+        }
+        window.setTimeout(() => {
+            if (activeAnchor === source && !isPopoverOpen(tooltip) && source.matches(':focus, :hover')) {
+                shownManually = true;
+                setPopoverOpen(tooltip, true);
+                if (!SUPPORTS_ANCHOR_POSITIONING) placePopoverFallback(tooltip, source);
+            }
+        });
+    });
+
+    tooltip.addEventListener('loseinterest', (e) => {
+        const source = /** @type {Event & { source?: Element | null }} */ (e).source;
+        if (shownManually && (!source || source === activeAnchor)) {
+            shownManually = false;
+            setPopoverOpen(tooltip, false);
+        }
+    });
+
+    tooltip.addEventListener('beforetoggle', (e) => {
+        if (/** @type {ToggleEvent} */ (e).newState === 'closed') {
+            closingAnchor = activeAnchor;
+        }
+    });
+
+    tooltip.addEventListener('toggle', (e) => {
+        if (/** @type {ToggleEvent} */ (e).newState === 'open') {
+            if (!SUPPORTS_ANCHOR_POSITIONING && activeAnchor) {
+                placePopoverFallback(tooltip, activeAnchor);
+            }
+        } else {
+            shownManually = false;
+            if (!isPopoverOpen(tooltip) && activeAnchor && activeAnchor === closingAnchor) {
+                setAnchor(null);
+            }
+        }
+    });
+
+    if (!SUPPORTS_ANCHOR_POSITIONING) {
+        document.addEventListener('scroll', () => {
+            if (isPopoverOpen(tooltip)) setPopoverOpen(tooltip, false);
+        }, { capture: true, passive: true });
+    }
 }
 
 /**

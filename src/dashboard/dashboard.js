@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient, isAuthRejection } from './api.js';
@@ -601,6 +601,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
         }
 
         container.removeAttribute('aria-busy');
+        setupEffortTooltip();
         container.innerHTML = `
             <h1 class="suite-page-title">${escapeHtml(testId)}</h1>
             <div class="header-meta-grid">
@@ -614,7 +615,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(model)}</span>
+                    <span class="meta-value meta-value-model">${escapeHtml(model)}${renderEffortChip(data?.reasoningEffort)}</span>
                     <span class="meta-value">${escapeHtml(agent)}</span>
                     <span class="meta-label">Model &times; Agent</span>
                 </div>
@@ -1892,7 +1893,10 @@ async function openTrajectory(usedBasePath, sessionFile) {
     const placeholder = body.lastElementChild;
     const modal = $('dialog#modal');
     try {
-        const html = await api.getFileText(`${usedBasePath}/${sessionFile}`);
+        const [html, trajSummary] = await Promise.all([
+            api.getFileText(`${usedBasePath}/${sessionFile}`),
+            api.getTrajectorySummary(usedBasePath),
+        ]);
         if (!modal.open || !placeholder || !body.contains(placeholder)) return;
         const frame = createSandboxedFrame({
             srcdoc: withEscBridge(html),
@@ -1900,7 +1904,21 @@ async function openTrajectory(usedBasePath, sessionFile) {
             sandbox: 'allow-scripts',
         });
         frame.dataset.escBridge = '';
-        body.replaceChildren(renderBackButton(), frame);
+        if (trajSummary && (trajSummary.model || trajSummary.reasoningEffort)) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'trajectory-modal-toolbar';
+            toolbar.appendChild(renderBackButton());
+            const meta = document.createElement('div');
+            meta.className = 'trajectory-meta-pill';
+            const modelLabel = trajSummary.model || allTestData?.model || 'unknown';
+            const effortSource = trajSummary.reasoningEffort ?? allTestData?.reasoningEffort;
+            setupEffortTooltip();
+            meta.innerHTML = `<span class="trajectory-meta-model">${escapeHtml(modelLabel)}</span>${renderEffortChip(effortSource)}`;
+            toolbar.appendChild(meta);
+            body.replaceChildren(toolbar, frame);
+        } else {
+            body.replaceChildren(renderBackButton(), frame);
+        }
     } catch (e) {
         if (!modal.open || !placeholder || !body.contains(placeholder)) return;
         console.error('Error loading trajectory:', e);
