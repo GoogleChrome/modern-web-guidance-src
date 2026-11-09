@@ -32,7 +32,7 @@ None of the following are ever seen by real-world coding agents:
 
 When authoring or reviewing an eval, hold it to these 8 red lines. An eval is wrong if any of the following is true:
 
-1. **A check gives the wrong verdict.** It fails a solution that follows the guide, or passes a broken or missing one. Common causes: vacuous or tautological assertions; checks that only find elements via classes or IDs the task never establishes or that only the golden solutions use; reading a single file when a solution can span several; using source regex or AST for behavior the browser should check; fixed `waitForTimeout` waits instead of polling; or a required expectation with no test.
+1. **A check gives the wrong verdict.** It fails a solution that follows the guide, or passes a broken or missing one. Common causes: vacuous or tautological assertions; checks that only find elements via classes or IDs the task never establishes or that only the golden solutions use; reading a single file when a solution can span several; using source regex or AST for behavior the browser should check; fixed `waitForTimeout` waits instead of polling; mocked browser APIs that don't match the real API (a credential mock without `toJSON()` breaks correct code); or a required expectation with no test.
    * *Guard:* Only treat an over-strict check as wrong when the rejected pattern is one the guide allows, or when a failure is reproduced on a real run or valid solution. Never loosen a check speculatively for hypothetical code no agent would write.
 2. **The task hands the unguided run the answer.** It names the target API, CSS property, HTML attribute, fallback mechanism, or expectation checklist, names the guide, or copies `guide.md`'s frontmatter `description` verbatim.
    * *Guard:* Naming the user-visible component being built ("a modal dialog", "custom elements") and neutral `id`/`data-*` hooks is fine.
@@ -42,6 +42,8 @@ When authoring or reviewing an eval, hold it to these 8 red lines. An eval is wr
 6. **The task and grader disagree on what to build.** The task contradicts an expectation, or the grader checks a feature, selector, or endpoint that the task never asks for *and* the guide doesn't require. This often happens after `task.md` is edited to remove a leak while `grader.ts` keeps the old check: whenever you edit a task, re-check the grader.
 7. **Two guides an agent retrieves together contradict each other on the task**, so following one causes the other's grader to fail.
 8. **Calibration breaks.** A golden solution fails a check, the untouched starting app (or Gen1 `negative-demo.html`) passes a non-exempt check, or a patch commits build or dependency artifacts (`node_modules`, `dist`).
+
+**When reviewing**, flag only these 8 and skip style nits. For each finding, give the file and line, the red line it breaks, the evidence, and the fix. New lessons go in as an example under an existing red line, not as a new rule.
 
 **Ownership & fixes:**
 - **Never change a guide to fit its grader.** If a grader needs the guide to say something new, fix the grader (or raise the gap with the guide's owner).
