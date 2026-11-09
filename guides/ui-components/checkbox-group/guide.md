@@ -116,6 +116,7 @@ Style the checkboxes (including the master) with `accent-color` for brand-consis
 
 ```css
 .checkbox {
+  font-size: 1rem; /* Keeps the em-based sizes below predictable */
   accent-color: #1a73e8;
   inline-size: 1.25em;
   aspect-ratio: 1;
