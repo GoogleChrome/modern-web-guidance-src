@@ -38,7 +38,6 @@ Use `commandfor` pointing at the table and a custom `--sort` command (custom com
 <th scope="col" data-type="number">
   <button type="button" commandfor="planets" command="--sort">
     Moons
-    <svg class="sort-icon" viewBox="0 0 16 16" aria-hidden="true">…</svg>
   </button>
 </th>
 ```
