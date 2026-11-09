@@ -246,12 +246,11 @@ Let the element grow to its text, and transition the growth. Set `interpolate-si
   interpolate-size: allow-keywords;
 
   &:is(:hover, :focus-visible) {
-    /* min-inline-size overrides max-inline-size, so the full label always fits */
-    min-inline-size: max-content;
+    max-inline-size: var(--expanded-max-inline-size, max-content);
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    transition: min-inline-size .3s;
+    transition: max-inline-size .3s;
   }
 }
 ```
@@ -363,7 +362,15 @@ if (!CSS.supports('container-type', 'scroll-state')) {
 
 {{ BASELINE_STATUS("interpolate-size") }}
 
-Without it, the element expands instantly instead of transitioning. No fallback is needed.
+Without it, `max-content` cannot be interpolated and the element expands instantly. Transition to a length instead: one a little wider than the longest text. The growth stops as soon as the text fits, so a value far above it cuts the visible transition short.
+
+```css
+.chip {
+  @supports not (interpolate-size: allow-keywords) {
+    --expanded-max-inline-size: 20rem;
+  }
+}
+```
 
 ### Fallbacks & browser support for `text-fit`
 

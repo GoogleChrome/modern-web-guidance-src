@@ -195,12 +195,16 @@
     }
 
     &:is(:hover, :focus-visible) {
-      /* min-inline-size overrides max-inline-size, so the full label always fits */
-      min-inline-size: max-content;
+      max-inline-size: var(--expanded-max-inline-size, max-content);
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      transition: min-inline-size .3s;
+      transition: max-inline-size .3s;
+    }
+
+    /* Fallback: a length a little wider than the longest label */
+    @supports not (interpolate-size: allow-keywords) {
+      --expanded-max-inline-size: 15rem;
     }
   }
 
