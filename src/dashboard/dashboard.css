@@ -1731,7 +1731,7 @@ button.effort-chip::after { inline-size: max(100%, 44px); block-size: max(100%, 
 input, select, textarea, .sort-select { font-size: max(1rem, 1em); }
 }
 
-/* Legal footer & Category 2B Glue Cookie Notification Bar theme overrides */
+/* Legal footer & cookie notification bar theme overrides */
 .site-legal-footer {
   margin-block-start: var(--space-8);
   padding-block: var(--space-4);

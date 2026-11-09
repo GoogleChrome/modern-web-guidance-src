@@ -501,7 +501,7 @@ test.describe('Search quality page MWG compliance', () => {
     expect(errors).toEqual([]);
   });
 
-  test('analytics bootstrap scrubs non-allowlisted query params/hashes and renders the themed Category 2B cookie bar when required', async ({ page }) => {
+  test('analytics bootstrap scrubs non-allowlisted query params/hashes and renders the themed cookie notification bar when required', async ({ page }) => {
     const errors = collectErrors(page);
 
     for (const path of ['/', '/dashboard.html?testId=example-result', '/guide.html?guide=content-vis', '/search/', '/demos/']) {

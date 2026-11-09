@@ -1,5 +1,5 @@
 /**
- * Google Analytics 4 and Category 2B Cookie Notification Bar bootstrap for the
+ * Google Analytics 4 and cookie notification bar bootstrap for the
  * Modern Web Guidance Eval Dashboard.
  *
  * External scripts (`googletagmanager.com` and `gstatic.com`) are only injected
@@ -65,7 +65,7 @@ export function shouldLoadAnalytics(hostname = typeof location !== 'undefined' ?
 /**
  * Returns true when `?previewCookieBar=1` (or `true`) is present in the URL,
  * allowing developers on non-EEA/UK IPs or local dev servers to preview the
- * live Glue Category 2B Cookie Notification Bar without emitting GA4 hits.
+ * live cookie notification bar without emitting GA4 hits.
  *
  * @param {string} [search]
  * @returns {boolean}
@@ -81,9 +81,9 @@ export function isPreviewCookieBar(search = typeof location !== 'undefined' ? lo
 }
 
 /**
- * Installs a lightweight fetch interceptor for `gstatic.com`'s `2b.json`
- * endpoint when `?previewCookieBar=1` is active so the Glue Cookie Notification
- * Bar renders even when browsing from a non-EEA/UK IP address.
+ * Installs a lightweight fetch interceptor for `gstatic.com`'s cookie bar
+ * config endpoint when `?previewCookieBar=1` is active so the cookie
+ * notification bar renders even when browsing from a non-EEA/UK IP address.
  */
 function enableCookieBarPreviewMode() {
   try {
@@ -123,7 +123,7 @@ function enableCookieBarPreviewMode() {
 /**
  * Initializes `window.dataLayer`, `window.gtag`, and (when on the production
  * host, enabled in tests, or previewing via `?previewCookieBar=1`) injects
- * `gtag.js` and the Glue Cookie Notification Bar.
+ * `gtag.js` and the cookie notification bar.
  */
 export function initAnalytics() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -156,7 +156,7 @@ export function initAnalytics() {
     enableCookieBarPreviewMode();
   }
 
-  // 1. Load Glue Cookie Notification Bar stylesheet (prepended so dashboard.css
+  // 1. Load cookie notification bar stylesheet (prepended so dashboard.css
   //    theme overrides take precedence without needing !important).
   if (!document.querySelector(`link[href="${COOKIE_BAR_CSS_URL}"]`)) {
     const cnbCss = document.createElement('link');
@@ -178,8 +178,7 @@ export function initAnalytics() {
     }
   }
 
-  // 3. Load Glue Cookie Notification Bar (Category 2B) asynchronously with low
-  //    fetch priority.
+  // 3. Load cookie notification bar asynchronously with low fetch priority.
   if (!document.querySelector(`script[src="${COOKIE_BAR_JS_URL}"]`)) {
     const cnbScript = document.createElement('script');
     cnbScript.src = COOKIE_BAR_JS_URL;
