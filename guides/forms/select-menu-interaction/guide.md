@@ -8,7 +8,7 @@ web-feature-ids:
 # Select Menu Interaction
 
 ## The Problem
-For mandatory dropdowns (e.g., "Choose a Country"), standard validation flags the field as invalid immediately if the default option has an empty value. This can create visual noise. We want to show the error only if the user chooses the empty option (if it can be chosen) and leaves the field, or attempts to submit the form without choosing an option.
+For mandatory dropdowns (e.g., "Choose a Country"), standard validation flags the field as invalid immediately if the default option has an empty value. This can create visual noise. We want to show the error only after the user has interacted with the menu and left it without choosing an option, or attempts to submit the form without choosing one.
 
 ## The Solution
 The `:user-invalid` pseudo-class works seamlessly with `<select>` elements. It respects the user's interaction flow: simply loading the page or focusing/blurring without making a change doesn't count as an interaction, so the field stays neutral until they actively attempt a selection.
@@ -17,7 +17,7 @@ The `:user-invalid` pseudo-class works seamlessly with `<select>` elements. It r
 
 1.  **HTML Constraint**: Use a `<select>` with `required`. The first option should have `value=""` and ideally be disabled/hidden to force a valid choice.
 2.  **Visual Feedback**: Use `:user-invalid` to style the select box border.
-3.  **Timing**: The browser considers the field "interacted" if the user changes the value (even back to the default invalid state) before they blur the control, or upon form submission.
+3.  **Timing**: The browser considers the field "interacted" if the user changes the value (even back to the default invalid state) before they blur the control, or upon form submission. Some browsers also count opening and closing the menu without choosing an option.
 4.  **Error Link**: List the error message in the select's `aria-describedby` only while the select is invalid, so screen readers read it with the select. A reference in the markup would read the hidden message from page load. The script in "Accessibility" under Other Considerations does this for each field whose `data-error` attribute is set to its error message's `id`.
 
 ## Implementation Guide

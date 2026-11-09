@@ -95,6 +95,19 @@
       margin-bottom: 1rem;
       border-radius: 4px;
     }
+
+    /* Hides content visually but keeps it in the accessibility tree */
+    .visually-hidden:where(:not(:focus-within, :active)) {
+      position: absolute !important;
+      clip-path: inset(50%) !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      white-space: nowrap !important;
+    }
   </style>
 </head>
 
@@ -299,7 +312,7 @@
     // leaves or changes a field. Run this once the form is in the page.
     const announcer = document.createElement('div');
     announcer.setAttribute('aria-live', 'polite');
-    announcer.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;';
+    announcer.classList.add('visually-hidden');
     document.body.append(announcer);
     let announceTimer;
     let announcedField;
@@ -338,9 +351,11 @@
           announced.add(el);
         }
         el.setAttribute('aria-invalid', 'true');
+        linkError(el, true);
         flagged.add(el);
       } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
         el.setAttribute('aria-invalid', 'false');
+        linkError(el, false);
         flagged.delete(el);
         announced.delete(el);
         // Clear a fixed field's announcement so it isn't found later when reading the page.
@@ -349,7 +364,6 @@
           announcer.textContent = '';
         }
       }
-      linkError(el, invalid);
     };
 
     // Update on blur (to show and announce an error) and input (to clear it)

@@ -6,7 +6,7 @@ Native `:user-invalid` does not automatically sync with ARIA attributes. Add the
 
 * Set `aria-invalid="false"` until `:user-invalid` matches, rather than leaving it unset. Firefox and Safari expose an empty `required` field as invalid from page load, and Chromium doesn't expose an empty `required` field as invalid after interaction unless `aria-invalid="true"` is set.
 * Link each field to its error message by setting the field's `data-error` attribute to the error message's `id` (`data-error="email-error"` for `<div id="email-error">`), and let the script list that `id` in `aria-describedby` only while the field is invalid. Don't reference the error from `aria-describedby` in the markup: the error element is always in the page, and text that `aria-describedby` references is announced even when it's hidden.
-* Announce an error that appears when the user leaves or changes a field through one polite live region for the page, a moment later so it doesn't talk over the next field. Don't make each error message a live region: a live region that is shown, rather than changed, isn't announced reliably. After a failed submit, moving focus to the first invalid field announces its error instead.
+* Announce an error that appears when the user leaves or changes a field through one polite live region for the page, a moment later so it doesn't talk over the next field. Don't make each error message a live region: a live region that is shown, rather than changed, isn't announced reliably. After a failed submit, move focus to the first invalid field so that its error is announced instead.
 
 ```javascript
 // List the field's error message (the id in data-error) in aria-describedby only while
@@ -24,7 +24,7 @@ const linkError = (el, shown) => {
 // leaves or changes a field. Run this once the form is in the page.
 const announcer = document.createElement('div');
 announcer.setAttribute('aria-live', 'polite');
-announcer.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;';
+announcer.classList.add('visually-hidden');
 document.body.append(announcer);
 let announceTimer;
 let announcedField;
@@ -63,9 +63,11 @@ const syncAria = (el, announce = false) => {
       announced.add(el);
     }
     el.setAttribute('aria-invalid', 'true');
+    linkError(el, true);
     flagged.add(el);
   } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
     el.setAttribute('aria-invalid', 'false');
+    linkError(el, false);
     flagged.delete(el);
     announced.delete(el);
     // Clear a fixed field's announcement so it isn't found later when reading the page.
@@ -74,7 +76,6 @@ const syncAria = (el, announce = false) => {
       announcer.textContent = '';
     }
   }
-  linkError(el, invalid);
 };
 
 // Start every field at aria-invalid="false".
@@ -102,6 +103,23 @@ document.addEventListener('invalid', (e) => {
 document.addEventListener('reset', (e) => {
   setTimeout(() => [...e.target.elements].forEach((el) => syncAria(el)));
 }, true);
+```
+
+Hide the live region with the `.visually-hidden` utility:
+
+```css
+/* Hides content visually but keeps it in the accessibility tree */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
 ```
 
 
