@@ -47,6 +47,7 @@ Note that `text-fit` does not change the computed `font-size` and does not grow 
 }
 ```
 
+- Use `overflow: hidden`, not `clip`. Both render the ellipsis, but only `hidden` makes the element a scroll container, which the fade, the scroll reveal, and the CSS detection of truncation below depend on.
 - In flex/grid: Let the containing flex or grid item shrink. Items refuse to shrink below their content by default (`min-inline-size: auto`). When the truncated element is the item itself, `overflow: hidden` already allows it; when it is a descendant (such as a label inside a button), set `min-inline-size: 0` on the item.
 - In tables, set `table-layout: fixed` and an inline size on the table. With automatic layout, cells grow to fit their text instead of truncating it.
 - An element's own `overflow: hidden` does not clip its own focus outline, so buttons and links can truncate their text directly. Outlines are clipped by an ancestor that clips overflow, such as a scrolling row of items; give those items an inset outline (`outline-offset: -2px`).
