@@ -193,12 +193,8 @@
       </div>
     </main>
     <script type="module">
-      // Native interestfor does not yet expose hint semantics to assistive tech, while the polyfill adds this
-      // ARIA itself, so the wiring below runs only with native support.
+      // Explicit ARIA for screen readers until browsers and the polyfill expose interestfor semantics consistently.
       const native = "interestForElement" in HTMLAnchorElement.prototype;
-      if (!native) {
-        await import("https://unpkg.com/interestfor@latest");
-      }
 
       // Same split the browser and polyfill use: anything beyond text, images, and inline formatting is rich.
       const FOCUSABLE = "a[href], area[href], button, input, select, textarea, iframe, [contenteditable], [tabindex]:not([tabindex='-1'])";
@@ -242,6 +238,8 @@
         }
       }
 
+      wireInterestHints();
+
       if (native) {
         // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
         document.addEventListener("toggle", ({ target, newState }) => {
@@ -251,7 +249,8 @@
             }
           }
         }, true);
-        wireInterestHints();
+      } else {
+        await import("https://unpkg.com/interestfor@latest");
       }
     </script>
   </body>
