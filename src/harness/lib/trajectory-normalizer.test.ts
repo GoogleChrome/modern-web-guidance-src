@@ -987,10 +987,80 @@ test('parseJetskiCliSession extracts observed reasoning effort from gen_metadata
     const claudeSummary = parseJetskiCliSession(claudeDir);
     assert.strictEqual(claudeSummary.model, 'unknown');
     assert.deepStrictEqual(claudeSummary.reasoningEffort, { level: 'max', source: 'observed' });
+
+    // Live agy / jetski gen_metadata where 1.21 (model_display_name) is omitted,
+    // 1.19 (chat_model.response_model) = "gemini-3.8-flash", and 3.28 (planner_config.model_name) = "gemini-3.8-flash-high"
+    const nestedDir = createTempDir();
+    try {
+      const nestedDb = new DatabaseSync(path.join(nestedDir, 'session-1.db'));
+      nestedDb.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+      nestedDb.exec('CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB)');
+      const chatModelMsg = Buffer.concat([
+        encodeLengthDelimited(1, Buffer.from('Gemini system prompt hint that should not shadow 1.19', 'utf8')),
+        encodeLengthDelimited(19, Buffer.from('gemini-3.8-flash', 'utf8')),
+      ]);
+      const plannerConfigMsg = encodeLengthDelimited(28, Buffer.from('gemini-3.8-flash-high', 'utf8'));
+      const genMetaBuf = Buffer.concat([
+        encodeLengthDelimited(1, chatModelMsg),
+        encodeLengthDelimited(3, plannerConfigMsg),
+      ]);
+      nestedDb.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)').run(1, genMetaBuf);
+      nestedDb.close();
+
+      const nestedSummary = parseJetskiCliSession(nestedDir);
+      assert.strictEqual(nestedSummary.model, 'gemini-3.8-flash');
+      assert.deepStrictEqual(nestedSummary.reasoningEffort, { level: 'high', source: 'observed' });
+    } finally {
+      removeTempDir(nestedDir);
+    }
   } finally {
     removeTempDir(geminiDir);
     removeTempDir(claudeDir);
   }
+});
+
+test('parseClaudeTrajectory extracts observed reasoning effort from main-session api-request output_config', async () => {
+  const { parseClaudeTrajectory } = await import('../agents/claude-code-agent.ts');
+
+  const summary = parseClaudeTrajectory(
+    [
+      {
+        type: 'api-request',
+        params: {
+          model: 'claude-opus-5-5',
+          output_config: { effort: 'Medium' },
+        },
+      },
+      {
+        type: 'api-request',
+        isSidechain: true,
+        params: {
+          model: 'claude-haiku-4-5',
+          output_config: { effort: 'low' },
+        },
+      },
+      {
+        role: 'assistant',
+        message: {
+          model: 'claude-opus-5-5',
+          content: [{ type: 'text', text: 'Done' }],
+        },
+      },
+    ],
+    {
+      sub1: [
+        {
+          type: 'api-request',
+          params: {
+            model: 'claude-haiku-4-5',
+            output_config: { effort: 'low' },
+          },
+        },
+      ],
+    },
+  );
+  assert.strictEqual(summary.model, 'claude-opus-5-5');
+  assert.deepStrictEqual(summary.reasoningEffort, { level: 'medium', source: 'observed' });
 });
 
 test('parsePiTrajectory extracts observed thinking_level_change and offline regeneration preserves configured effort', async () => {
@@ -1050,8 +1120,27 @@ test('parsePiTrajectory extracts observed thinking_level_change and offline rege
     const refreshed = await ensureFreshTrajectorySummary(tempDir);
     assert.ok(refreshed);
     assert.deepStrictEqual(refreshed.reasoningEffort, { level: 'high', source: 'configured' });
+
+    // Also verify that an ambient process.env.CLAUDE_EFFORT = 'low' does NOT leak into offline
+    // v4 -> v5 re-normalization of a historical summary without observed effort.
+    process.env.CLAUDE_EFFORT = 'low';
+    writeTrajectorySummary(tempDir, {
+      normalizerVersion: 4,
+      agent: Agents.CLAUDE_CODE,
+      model: 'claude-sonnet-5-5',
+      steps: [
+        {
+          stepNumber: 1,
+          action: { type: 'run_command', name: 'Bash', params: { command: 'ls' } },
+        },
+      ],
+    });
+    const refreshedWithAmbientEnv = await ensureFreshTrajectorySummary(tempDir);
+    assert.ok(refreshedWithAmbientEnv);
+    assert.deepStrictEqual(refreshedWithAmbientEnv.reasoningEffort, { source: 'agent-default' });
   } finally {
-    if (prevClaudeEffort !== undefined) process.env.CLAUDE_EFFORT = prevClaudeEffort;
+    if (prevClaudeEffort === undefined) delete process.env.CLAUDE_EFFORT;
+    else process.env.CLAUDE_EFFORT = prevClaudeEffort;
     removeTempDir(tempDir);
   }
 });

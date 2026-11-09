@@ -25,7 +25,8 @@ export interface EffortAdapter {
   levelFromModelId?(modelId: string): string | undefined;
 }
 
-const MODEL_ID_LEVEL_SUFFIX_RE = /[-:](low|medium|high|xhigh|max|minimal|none|off)$/i;
+const MODEL_ID_LEVEL_SUFFIX_RE =
+  /(?:[-:](low|medium|high|xhigh|max|minimal|none|off)|\s+\((low|medium|high|xhigh|max|minimal|none|off)\))$/i;
 const VALID_EFFORT_TOKEN_RE = /^[a-z0-9_-]+$/;
 const VALID_SOURCES_SET: ReadonlySet<string> = new Set<string>(REASONING_EFFORT_SOURCES);
 
@@ -37,8 +38,8 @@ const SOURCE_PRECEDENCE: Record<ReasoningEffortSource, number> = {
 };
 
 /**
- * Extracts a trailing `-<level>` or `:<level>` reasoning/thinking tier suffix
- * from a model identifier (case-insensitively), returning the normalized lowercase
+ * Extracts a trailing `-<level>`, `:<level>`, or balanced ` (<level>)` reasoning/thinking
+ * tier suffix from a model identifier (case-insensitively), returning the normalized lowercase
  * token or `undefined` when the model ID does not end in a known effort tier.
  */
 export function defaultLevelFromModelId(modelId: string): string | undefined {
@@ -50,7 +51,7 @@ export function defaultLevelFromModelId(modelId: string): string | undefined {
   if (!match || match.index === 0) {
     return undefined;
   }
-  return match[1].toLowerCase();
+  return (match[1] ?? match[2]).toLowerCase();
 }
 
 export const EFFORT_ADAPTERS: Record<Agents, EffortAdapter> = {
@@ -137,13 +138,7 @@ function normalizeToken(raw?: string): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-/**
- * Resolves a run or suite's `ReasoningEffort` using strict precedence:
- * `observed > configured > model-id > agent-default`.
- *
- * When both `observed` and `configured` exist and disagree, `observed` wins silently.
- */
-export function resolveReasoningEffort(options: ResolveReasoningEffortOptions): ReasoningEffort {
+function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): ReasoningEffort {
   const env = options.env ?? process.env;
   const knownAgent = resolveKnownAgent(options.agent);
   const adapter = knownAgent ? EFFORT_ADAPTERS[knownAgent] : undefined;
@@ -159,28 +154,16 @@ export function resolveReasoningEffort(options: ResolveReasoningEffortOptions): 
   if (observedToken) {
     return { level: observedToken, source: 'observed' };
   }
-  if (options.fallback?.source === 'observed') {
-    const fallbackObserved = normalizeToken(options.fallback.level);
-    if (fallbackObserved) {
-      return { level: fallbackObserved, source: 'observed' };
-    }
-  }
 
-  // 2. Configured via `<AGENT>_EFFORT` env var (or preserved offline fallback).
+  // 2. Configured via `<AGENT>_EFFORT` env var.
   if (adapter?.envVar) {
     const configuredToken = normalizeToken(env[adapter.envVar]);
     if (configuredToken) {
       return { level: configuredToken, source: 'configured' };
     }
   }
-  if (options.fallback?.source === 'configured') {
-    const fallbackConfigured = normalizeToken(options.fallback.level);
-    if (fallbackConfigured) {
-      return { level: fallbackConfigured, source: 'configured' };
-    }
-  }
 
-  // 3. Baked into the model ID (`-<level>` or `:<level>`).
+  // 3. Baked into the model ID (`-<level>`, `:<level>`, or ` (<level>)`).
   if (options.model) {
     const modelLevel = extractLevel(options.model);
     if (modelLevel) {
@@ -204,15 +187,24 @@ export function resolveReasoningEffort(options: ResolveReasoningEffortOptions): 
     }
   }
 
-  if (options.fallback?.source === 'model-id') {
-    const fallbackModelLevel = normalizeToken(options.fallback.level);
-    if (fallbackModelLevel) {
-      return { level: fallbackModelLevel, source: 'model-id' };
-    }
-  }
-
   // 4. Unknown / CLI built-in default.
   return { source: 'agent-default' };
+}
+
+/**
+ * Resolves a run or suite's `ReasoningEffort` using strict precedence:
+ * `observed > configured > model-id > agent-default`.
+ *
+ * When both `observed` and `configured` exist and disagree, `observed` wins silently.
+ */
+export function resolveReasoningEffort(options: ResolveReasoningEffortOptions): ReasoningEffort {
+  const liveResolved = resolveLiveReasoningEffort(options);
+  const normalizedFallback = sanitizeReasoningEffort(
+    options.fallback?.level !== undefined
+      ? { ...options.fallback, level: normalizeToken(options.fallback.level) }
+      : options.fallback,
+  );
+  return pickHigherPrecedenceEffort(liveResolved, normalizedFallback) ?? liveResolved;
 }
 
 /**

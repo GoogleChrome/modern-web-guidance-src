@@ -383,10 +383,10 @@ describe('sanitizeAgentChildEnv', () => {
     });
     assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
     assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
-    assert.strictEqual(sanitized.ANTIGRAVITY_EFFORT, 'high');
-    assert.strictEqual(sanitized.CLAUDE_EFFORT, 'medium');
-    assert.strictEqual(sanitized.CODEX_EFFORT, 'xhigh');
-    assert.strictEqual(sanitized.JETSKI_EFFORT, 'max');
+    assert.strictEqual(sanitized.ANTIGRAVITY_EFFORT, undefined);
+    assert.strictEqual(sanitized.CLAUDE_EFFORT, undefined);
+    assert.strictEqual(sanitized.CODEX_EFFORT, undefined);
+    assert.strictEqual(sanitized.JETSKI_EFFORT, undefined);
     assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
     assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');
     assert.strictEqual(sanitized.NODE_TEST_CONTEXT, 'child');

@@ -4,9 +4,12 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
+  ALLOWED_CHILD_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
   collectHostSecrets,
   copySanitizedNpmrc,
   extractBase64TrajectoryPayloads,
+  filterAllowedEnv,
   findSecretLeaks,
   loadAllowedEnvFile,
   sanitizeNpmrc,
@@ -53,6 +56,18 @@ describe('loadAllowedEnvFile', () => {
       assert.strictEqual(targetEnv.GEMINI_API_KEY, undefined);
       assert.strictEqual(targetEnv.UNLISTED_TOKEN, undefined);
       assert.deepStrictEqual(res.ignored, ['GEMINI_API_KEY', 'UNLISTED_TOKEN']);
+
+      const wrapperFiltered = filterAllowedEnv(targetEnv, ALLOWED_WRAPPER_ENV_KEYS);
+      assert.strictEqual(wrapperFiltered.ANTIGRAVITY_EFFORT, 'high');
+      assert.strictEqual(wrapperFiltered.CLAUDE_EFFORT, 'medium');
+      assert.strictEqual(wrapperFiltered.CODEX_EFFORT, 'xhigh');
+      assert.strictEqual(wrapperFiltered.JETSKI_EFFORT, 'max');
+
+      const childFiltered = filterAllowedEnv(targetEnv, ALLOWED_CHILD_ENV_KEYS);
+      assert.strictEqual(childFiltered.ANTIGRAVITY_EFFORT, undefined);
+      assert.strictEqual(childFiltered.CLAUDE_EFFORT, undefined);
+      assert.strictEqual(childFiltered.CODEX_EFFORT, undefined);
+      assert.strictEqual(childFiltered.JETSKI_EFFORT, undefined);
     });
   });
 });

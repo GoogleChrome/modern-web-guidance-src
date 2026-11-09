@@ -11,7 +11,7 @@ import {
 } from './reasoning-effort.ts';
 
 describe('defaultLevelFromModelId', () => {
-  test('extracts trailing -<level> and :<level> tier suffixes case-insensitively', () => {
+  test('extracts trailing -<level>, :<level>, and balanced (<level>) tier suffixes case-insensitively', () => {
     assert.strictEqual(defaultLevelFromModelId('gemini-3.8-flash-medium'), 'medium');
     assert.strictEqual(defaultLevelFromModelId('openrouter/deepseek/deepseek-v4.1-flash:low'), 'low');
     assert.strictEqual(defaultLevelFromModelId('openrouter/qwen/qwen3.8-flash:off'), 'off');
@@ -20,15 +20,20 @@ describe('defaultLevelFromModelId', () => {
     assert.strictEqual(defaultLevelFromModelId('gpt-6-XHIGH'), 'xhigh');
     assert.strictEqual(defaultLevelFromModelId('o4-mini-minimal'), 'minimal');
     assert.strictEqual(defaultLevelFromModelId('qwen/qwen3:none'), 'none');
+    assert.strictEqual(defaultLevelFromModelId('Gemini 3.8 Flash (Medium)'), 'medium');
+    assert.strictEqual(defaultLevelFromModelId('Claude Opus 5.5 (Max)'), 'max');
   });
 
-  test('ignores mid-string size tokens, non-effort suffixes, and level-less models', () => {
+  test('ignores mid-string size tokens, non-effort suffixes, unbalanced parens, and level-less models', () => {
     assert.strictEqual(defaultLevelFromModelId('openrouter/mistralai/mistral-medium-3.1'), undefined);
     assert.strictEqual(defaultLevelFromModelId('gemini-3.5-flash-lite'), undefined);
     assert.strictEqual(defaultLevelFromModelId('gemini-3.8-flash-tiered'), undefined);
     assert.strictEqual(defaultLevelFromModelId('gemini-4-argon'), undefined);
     assert.strictEqual(defaultLevelFromModelId('claude-sonnet-5-5'), undefined);
     assert.strictEqual(defaultLevelFromModelId('gpt-6.1-sol'), undefined);
+    assert.strictEqual(defaultLevelFromModelId('Gemini (Medium'), undefined);
+    assert.strictEqual(defaultLevelFromModelId('Gemini Medium)'), undefined);
+    assert.strictEqual(defaultLevelFromModelId('(Medium)'), undefined);
     assert.strictEqual(defaultLevelFromModelId('unknown'), undefined);
     assert.strictEqual(defaultLevelFromModelId(''), undefined);
     assert.strictEqual(defaultLevelFromModelId('-high'), undefined);
@@ -91,6 +96,13 @@ describe('EFFORT_ADAPTERS & resolveEffortCliArgs', () => {
     assert.throws(
       () => resolveEffortCliArgs(Agents.JETSKI_CLI, 'fable-5.1-max', { JETSKI_EFFORT: 'medium' }),
       /JETSKI_EFFORT=medium conflicts with model 'fable-5\.1-max'.*'max'/,
+    );
+    assert.throws(
+      () =>
+        resolveEffortCliArgs(Agents.JETSKI_CLI, 'Gemini 3.8 Flash (Medium)', {
+          JETSKI_EFFORT: 'high',
+        }),
+      /JETSKI_EFFORT=high conflicts with model 'Gemini 3\.8 Flash \(Medium\)'.*'medium'/,
     );
   });
 });
