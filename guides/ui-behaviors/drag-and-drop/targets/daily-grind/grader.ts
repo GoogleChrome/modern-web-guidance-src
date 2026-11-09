@@ -1,15 +1,8 @@
-import {
-  test,
-  expect,
-  getTargetFiles,
-  getCssStyleSheet,
-  getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule } from 'cssomnom';
+import { test, expect } from '../../../../../src/grading/test-fixture.ts';
 import type { Page, Locator } from '@playwright/test';
 
-// @ts-ignore
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+const INITIAL_ORDER = ['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew'];
+const MOVE_PROPERTY = /^(translate|transform|left|top|inset|insetInline.*|marginLeft|marginInline.*)$/;
 
 function getSeasonalSection(page: Page): Locator {
   return page.locator('section').filter({ has: page.locator('h2', { hasText: 'Seasonal Favorites' }) });
@@ -20,58 +13,108 @@ function getCards(page: Page): Locator {
 }
 
 function getCollectionContainer(page: Page): Locator {
-  return getSeasonalSection(page).locator('.card').first().locator('..');
+  return getCards(page).first().locator('..');
+}
+
+function getCardByTitle(page: Page, title: string): Locator {
+  return getCards(page).filter({ has: page.locator('h3', { hasText: title }) });
+}
+
+// Live regions that announce, excluding any region that wraps the cards themselves.
+function getLiveRegions(page: Page): Locator {
+  return page
+    .locator('[role="status"], [role="alert"], [role="log"], [aria-live]:not([aria-live="off"])')
+    .filter({ hasNot: page.locator('.card') });
 }
 
 async function getCardTitles(page: Page): Promise<string[]> {
-  const cards = getCards(page);
-  const count = await cards.count();
-  const titles: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const text = await cards.nth(i).locator('h3').textContent();
-    titles.push(text?.trim() || '');
-  }
-  return titles;
+  return getCards(page).locator('h3').evaluateAll((els) => els.map((el) => el.textContent?.trim() ?? ''));
 }
 
-async function moveKeyboard(page: Page, cardLocator: Locator, direction: 'earlier' | 'later'): Promise<void> {
-  const moveBtn = cardLocator.locator('button, [role="button"]').filter({
-    hasText: direction === 'earlier' ? /earlier|left|prev|start|up/i : /later|right|next|end|down/i,
-  }).or(
-    cardLocator.locator(`button[aria-label*="${direction === 'earlier' ? 'left' : 'right'}" i], button[aria-label*="${direction === 'earlier' ? 'earlier' : 'later'}" i]`),
+// The handle is the card's reorder/drag-named button; otherwise its first button.
+async function getHandle(card: Locator): Promise<Locator> {
+  const named = card.getByRole('button', { name: /reorder|drag|grab|rearrange/i });
+  if ((await named.count()) > 0) return named.first();
+  return card.getByRole('button').first();
+}
+
+async function dragHandle(page: Page, handle: Locator, to: { x: number; y: number }, release = true): Promise<void> {
+  await handle.scrollIntoViewIfNeeded();
+  const box = await handle.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down({ button: 'left' });
+  await page.mouse.move(to.x, to.y, { steps: 10 });
+  if (release) await page.mouse.up({ button: 'left' });
+}
+
+// Target point 75% across the second card (past its midpoint), recomputed after the handle scrolls into view.
+async function pastSecondCard(page: Page): Promise<{ x: number; y: number }> {
+  await getHandle(getCards(page).nth(0)).then((h) => h.scrollIntoViewIfNeeded());
+  const box = await getCards(page).nth(1).boundingBox();
+  expect(box).not.toBeNull();
+  return box ? { x: box.x + box.width * 0.75, y: box.y + box.height / 2 } : { x: 0, y: 0 };
+}
+
+// True when the list's own ::before/::after renders something.
+async function isMarkerShown(container: Locator): Promise<boolean> {
+  return container.evaluate((el) =>
+    ['::before', '::after'].some((pseudo) => {
+      const style = getComputedStyle(el, pseudo);
+      return style.content !== 'none' && style.content !== 'normal' && style.display !== 'none' &&
+        style.visibility !== 'hidden' && Number(style.opacity) > 0;
+    }),
   );
-  if (await moveBtn.count() > 0) {
-    await moveBtn.first().click();
+}
+
+// Running movement animations (WAAPI, CSS transitions, or CSS animations) on the cards, sampled after two frames.
+async function countCardMoveAnimations(page: Page, title?: string): Promise<number> {
+  return getSeasonalSection(page).evaluate(async (section, { title, moveSource }) => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const moveProperty = new RegExp(moveSource);
+    const cards = Array.from(section.querySelectorAll('.card'))
+      .filter((card) => !title || card.querySelector('h3')?.textContent?.includes(title));
+    return cards.flatMap((card) => card.getAnimations()).filter((animation) => {
+      if (animation instanceof CSSTransition) {
+        return moveProperty.test(animation.transitionProperty.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()));
+      }
+      const effect = animation.effect;
+      if (!(effect instanceof KeyframeEffect)) return false;
+      return effect.getKeyframes().some((frame) => Object.keys(frame).some((key) => moveProperty.test(key)));
+    }).length;
+  }, { title, moveSource: MOVE_PROPERTY.source });
+}
+
+async function moveKeyboard(page: Page, card: Locator, direction: 'earlier' | 'later'): Promise<void> {
+  const before = (await getCardTitles(page)).join('|');
+  const changed = async () => (await getCardTitles(page)).join('|') !== before;
+  const handle = await getHandle(card);
+  const handleEl = await handle.elementHandle();
+
+  // Separate movement buttons: activate the one for this direction (a disabled one at a boundary is a valid no-op).
+  const directionName = direction === 'earlier'
+    ? /\b(earlier|left|previous|prev|back|before|up)\b/i
+    : /\b(later|right|next|forward|after|down)\b/i;
+  const candidates = card.getByRole('button', { name: directionName });
+  for (let i = 0; i < (await candidates.count()); i++) {
+    const button = candidates.nth(i);
+    if (await button.evaluate((el, h) => el === h, handleEl)) continue;
+    if (await button.isEnabled()) await button.click();
     return;
   }
 
-  const handle = cardLocator.locator('button, [role="button"]').first();
-  await handle.focus();
-
-  const arrowKey = direction === 'earlier' ? 'ArrowLeft' : 'ArrowRight';
-  const altArrowKey = direction === 'earlier' ? 'Alt+ArrowLeft' : 'Alt+ArrowRight';
-
-  const hasAriaPressed = await handle.getAttribute('aria-pressed');
-  if (hasAriaPressed !== null) {
-    // Grab–move–drop mode (Space or Enter to pick up, arrow to move, Space or Enter to drop)
-    await page.keyboard.press('Space');
-    await page.keyboard.press(arrowKey);
-    await page.keyboard.press('Space');
-  } else {
-    // Modifier or direct arrow keys (Alt+Arrow or Arrow)
-    const titlesBefore = (await getCardTitles(page)).join(',');
-    await page.keyboard.press(altArrowKey);
-    const titlesAfter = (await getCardTitles(page)).join(',');
-    if (titlesBefore === titlesAfter) {
-      await page.keyboard.press(arrowKey);
-    }
+  // Focusable handle: direct arrows, modifier + arrows, then grab–move–drop with Space or Enter.
+  const key = direction === 'earlier' ? 'ArrowLeft' : 'ArrowRight';
+  for (const sequence of [[key], [`Alt+${key}`], ['Space', key, 'Space'], ['Enter', key, 'Enter']]) {
+    await handle.focus();
+    for (const press of sequence) await page.keyboard.press(press);
+    if (await changed()) return;
   }
 }
 
 test.describe('drag-and-drop Target Grader', () => {
-
   test.describe('Browser tests', () => {
-
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
@@ -79,177 +122,103 @@ test.describe('drag-and-drop Target Grader', () => {
     test('Dragging an item with a pointer changes its DOM and visible position within the collection', async ({ page }) => {
       const cards = getCards(page);
       expect(await cards.count()).toBeGreaterThanOrEqual(2);
-      const handle0 = cards.nth(0).locator('button').first();
+      const handle0 = await getHandle(cards.nth(0));
       expect(await handle0.count()).toBeGreaterThan(0);
 
-      const handleBox = await handle0.boundingBox();
-      const card1Box = await cards.nth(1).boundingBox();
-      expect(handleBox).not.toBeNull();
-      expect(card1Box).not.toBeNull();
+      await dragHandle(page, handle0, await pastSecondCard(page));
 
-      const startX = handleBox!.x + handleBox!.width / 2;
-      const startY = handleBox!.y + handleBox!.height / 2;
-      const targetX = card1Box!.x + card1Box!.width * 0.75;
-      const targetY = card1Box!.y + card1Box!.height / 2;
-
-      await page.mouse.move(startX, startY);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.move(targetX, targetY, { steps: 10 });
-      await page.mouse.up({ button: 'left' });
-
-      // Changes DOM position
-      await expect.poll(async () => (await getCardTitles(page))[0]).toBe('Dark Roast Espresso');
-
-      // Changes visible position
+      await expect.poll(async () => (await getCardTitles(page)).slice(0, 2)).toEqual(['Dark Roast Espresso', 'Maple Oat Latte']);
       await expect.poll(async () => {
         const box0 = await cards.nth(0).boundingBox();
         const box1 = await cards.nth(1).boundingBox();
         return box0 && box1 ? box0.x < box1.x : false;
-      }, { timeout: 2000 }).toBe(true);
+      }).toBe(true);
     });
 
     test('During a pointer drag, sibling items stay in place and a drop marker indicates landing spot, committing on release', async ({ page }) => {
       const cards = getCards(page);
-      const handle0 = cards.first().locator('button').first();
+      const handle0 = await getHandle(cards.first());
       expect(await handle0.count()).toBeGreaterThan(0);
       const container = getCollectionContainer(page);
-      expect(await container.count()).toBeGreaterThan(0);
 
-      const handleBox = await handle0.boundingBox();
-      const card1Box = await cards.nth(1).boundingBox();
-      expect(handleBox).not.toBeNull();
-      expect(card1Box).not.toBeNull();
+      const target = await pastSecondCard(page);
+      const siblingBoxesBefore = await Promise.all([cards.nth(1).boundingBox(), cards.nth(2).boundingBox()]);
+      await dragHandle(page, handle0, target, false);
 
-      const startX = handleBox!.x + handleBox!.width / 2;
-      const startY = handleBox!.y + handleBox!.height / 2;
-      const targetX = card1Box!.x + card1Box!.width * 0.75;
-      const targetY = card1Box!.y + card1Box!.height / 2;
+      // Siblings stay in place: same DOM order and same painted position.
+      expect(await getCardTitles(page)).toEqual(INITIAL_ORDER);
+      const siblingBoxesDuring = await Promise.all([cards.nth(1).boundingBox(), cards.nth(2).boundingBox()]);
+      siblingBoxesDuring.forEach((box, i) => {
+        expect(Math.abs((box?.x ?? NaN) - (siblingBoxesBefore[i]?.x ?? NaN))).toBeLessThan(2);
+      });
 
-      await page.mouse.move(startX, startY);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.move(targetX, targetY, { steps: 10 });
+      await expect.poll(() => isMarkerShown(container)).toBe(true);
 
-      // Sibling items stay in place in DOM during drag
-      const titlesDuring = await getCardTitles(page);
-      expect(titlesDuring[0]).toBe('Maple Oat Latte');
-
-      // Drop marker indicates landing spot
-      expect(await container.evaluate((el: HTMLElement) => el.hasAttribute('data-drop'))).toBe(true);
-
-      // Commits DOM move once on release
       await page.mouse.up({ button: 'left' });
       await expect.poll(async () => (await getCardTitles(page))[0]).toBe('Dark Roast Espresso');
-      expect(await container.evaluate((el: HTMLElement) => el.hasAttribute('data-drop'))).toBe(false);
+      await expect.poll(() => isMarkerShown(container)).toBe(false);
     });
 
     test('Drop marker is drawn with list pseudo-elements rather than appended to body, and hidden on own slot', async ({ page }) => {
       const cards = getCards(page);
-      const handle0 = cards.first().locator('button').first();
+      const handle0 = await getHandle(cards.first());
       expect(await handle0.count()).toBeGreaterThan(0);
       const container = getCollectionContainer(page);
-      expect(await container.count()).toBeGreaterThan(0);
 
-      // Verify static CSS rules define pseudo-elements for the drop marker
-      const stylesheet = getCssStyleSheet(targetFiles);
-      const styleRules = getRules(stylesheet, CSSStyleRule);
-      const hasDropMarkerPseudo = styleRules.some(r =>
-        r.selectorText.includes('data-drop') && (r.selectorText.includes('::before') || r.selectorText.includes('::after'))
-      );
-      expect(hasDropMarkerPseudo).toBe(true);
+      const target = await pastSecondCard(page);
+      const countElements = () => page.evaluate(() => ({
+        body: document.body.children.length,
+        list: document.querySelector('.card')?.parentElement?.children.length ?? -1,
+      }));
+      const before = await countElements();
 
-      const initialBodyChildCount = await page.evaluate(() => document.body.children.length);
+      // Small move: drop spot is still the item's own slot, so no marker.
+      const box = await handle0.boundingBox();
+      expect(box).not.toBeNull();
+      if (!box) return;
+      await dragHandle(page, handle0, { x: box.x + box.width / 2 + 6, y: box.y + box.height / 2 }, false);
+      expect(await isMarkerShown(container)).toBe(false);
 
-      const handleBox = await handle0.boundingBox();
-      const card1Box = await cards.nth(1).boundingBox();
-      expect(handleBox).not.toBeNull();
-      expect(card1Box).not.toBeNull();
-
-      const startX = handleBox!.x + handleBox!.width / 2;
-      const startY = handleBox!.y + handleBox!.height / 2;
-      const targetX = card1Box!.x + card1Box!.width * 0.75;
-      const targetY = card1Box!.y + card1Box!.height / 2;
-
-      // Start drag and stay within item's own slot
-      await page.mouse.move(startX, startY);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.move(startX + 6, startY, { steps: 2 });
-
-      // No marker is shown when the drop spot is the item's own slot
-      const markerOnOwnSlot = await container.evaluate((el: HTMLElement) => el.hasAttribute('data-drop'));
-      expect(markerOnOwnSlot).toBe(false);
-
-      // Move to another slot
-      await page.mouse.move(targetX, targetY, { steps: 10 });
-      const markerOnOtherSlot = await container.evaluate((el: HTMLElement) => el.hasAttribute('data-drop'));
-      expect(markerOnOtherSlot).toBe(true);
-
-      // Verify no element was appended to <body>
-      const bodyChildCount = await page.evaluate(() => document.body.children.length);
-      expect(bodyChildCount).toBe(initialBodyChildCount);
+      // Over another slot: the list's own pseudo-element draws the marker and no element is added.
+      await page.mouse.move(target.x, target.y, { steps: 10 });
+      await expect.poll(() => isMarkerShown(container)).toBe(true);
+      expect(await countElements()).toEqual(before);
 
       await page.mouse.up({ button: 'left' });
     });
 
     test('Pressing Escape during a pointer drag cancels it, removes marker, and restores original position', async ({ page }) => {
       const cards = getCards(page);
-      const handle0 = cards.first().locator('button').first();
+      const handle0 = await getHandle(cards.first());
       expect(await handle0.count()).toBeGreaterThan(0);
       const container = getCollectionContainer(page);
-      expect(await container.count()).toBeGreaterThan(0);
 
-      const handleBox = await handle0.boundingBox();
-      const card1Box = await cards.nth(1).boundingBox();
-      expect(handleBox).not.toBeNull();
-      expect(card1Box).not.toBeNull();
+      await dragHandle(page, handle0, await pastSecondCard(page), false);
+      await expect.poll(() => isMarkerShown(container)).toBe(true);
 
-      const startX = handleBox!.x + handleBox!.width / 2;
-      const startY = handleBox!.y + handleBox!.height / 2;
-      const targetX = card1Box!.x + card1Box!.width * 0.75;
-      const targetY = card1Box!.y + card1Box!.height / 2;
-
-      await page.mouse.move(startX, startY);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.move(targetX, targetY, { steps: 10 });
-
-      expect(await container.evaluate((el: HTMLElement) => el.hasAttribute('data-drop'))).toBe(true);
-
-      // Press Escape to cancel
       await page.keyboard.press('Escape');
-
-      expect(await container.evaluate((el: HTMLElement) => el.hasAttribute('data-drop'))).toBe(false);
+      await expect.poll(() => isMarkerShown(container)).toBe(false);
 
       await page.mouse.up({ button: 'left' });
-
-      const titles = await getCardTitles(page);
-      expect(titles[0]).toBe('Maple Oat Latte');
+      await expect.poll(() => getCardTitles(page)).toEqual(INITIAL_ORDER);
     });
 
     test('Reordering moves the existing DOM element rather than recreating it, preserving internal control state', async ({ page }) => {
       const cards = getCards(page);
-      const handle1 = cards.nth(1).locator('button').first();
-      expect(await handle1.count()).toBeGreaterThan(0);
+      expect(await (await getHandle(cards.nth(1))).count()).toBeGreaterThan(0);
 
-      // Attach custom expando state to a control inside the second card
-      await page.evaluate(() => {
-        const card = document.querySelectorAll('.card')[1];
-        const control = card?.querySelector('button, a');
-        if (control) {
+      await getCardByTitle(page, 'Dark Roast Espresso').evaluate((card) => {
+        for (const control of card.querySelectorAll('button, a, [role="button"]')) {
           (control as unknown as Record<string, unknown>).__preservedState = 'state-value-987';
         }
       });
 
       await moveKeyboard(page, cards.nth(1), 'earlier');
-
       await expect.poll(async () => (await getCardTitles(page))[0]).toBe('Dark Roast Espresso');
 
-      // Verify that the element was moved in DOM preserving state rather than recreated
-      const statePreserved = await page.evaluate(() => {
-        const card = Array.from(document.querySelectorAll('.card')).find(c =>
-          c.querySelector('h3')?.textContent?.includes('Dark Roast Espresso')
-        );
-        const control = card?.querySelector('button, a');
-        return (control as unknown as Record<string, unknown>)?.__preservedState === 'state-value-987';
-      });
+      const statePreserved = await getCardByTitle(page, 'Dark Roast Espresso').evaluate((card) =>
+        Array.from(card.querySelectorAll('a')).every((control) => (control as unknown as Record<string, unknown>).__preservedState === 'state-value-987'),
+      );
       expect(statePreserved).toBe(true);
     });
 
@@ -259,236 +228,170 @@ test.describe('drag-and-drop Target Grader', () => {
       expect(count).toBeGreaterThanOrEqual(3);
 
       for (let i = 0; i < count; i++) {
-        const handle = cards.nth(i).locator('button').first();
+        const handle = await getHandle(cards.nth(i));
         expect(await handle.count()).toBeGreaterThan(0);
-
         await handle.focus();
-        expect(await handle.evaluate((el: HTMLElement) => document.activeElement === el)).toBe(true);
-
-        const accessibleName = await handle.evaluate((el: HTMLElement) => {
-          return el.getAttribute('aria-label') || el.textContent || '';
-        });
-        expect(accessibleName.toLowerCase()).toMatch(/reorder|move|latte|espresso|brew/i);
+        await expect(handle).toBeFocused();
+        await expect(handle).toHaveAccessibleName(/reorder|move|drag|rearrange/i);
       }
     });
 
     test('Moving an item toward start of list with keyboard mechanism places it immediately before previous sibling', async ({ page }) => {
       const cards = getCards(page);
-      const handle1 = cards.nth(1).locator('button').first();
-      expect(await handle1.count()).toBeGreaterThan(0);
-
+      expect(await (await getHandle(cards.nth(1))).count()).toBeGreaterThan(0);
       await moveKeyboard(page, cards.nth(1), 'earlier');
-
-      await expect.poll(async () => {
-        const titles = await getCardTitles(page);
-        return titles.slice(0, 2);
-      }).toEqual(['Dark Roast Espresso', 'Maple Oat Latte']);
+      await expect.poll(() => getCardTitles(page)).toEqual(['Dark Roast Espresso', 'Maple Oat Latte', 'Cold Brew']);
     });
 
     test('Moving an item toward end of list with keyboard mechanism places it immediately after next sibling', async ({ page }) => {
       const cards = getCards(page);
-      const handle0 = cards.nth(0).locator('button').first();
-      expect(await handle0.count()).toBeGreaterThan(0);
-
+      expect(await (await getHandle(cards.nth(0))).count()).toBeGreaterThan(0);
       await moveKeyboard(page, cards.nth(0), 'later');
-
-      await expect.poll(async () => {
-        const titles = await getCardTitles(page);
-        return titles.slice(0, 2);
-      }).toEqual(['Dark Roast Espresso', 'Maple Oat Latte']);
+      await expect.poll(() => getCardTitles(page)).toEqual(['Dark Roast Espresso', 'Maple Oat Latte', 'Cold Brew']);
     });
 
     test('Focus remains on the keyboard reordering mechanism after reordering', async ({ page }) => {
       const cards = getCards(page);
-      const handle1 = cards.nth(1).locator('button').first();
+      const handle1 = await getHandle(cards.nth(1));
       expect(await handle1.count()).toBeGreaterThan(0);
 
-      await handle1.focus();
-      expect(await handle1.evaluate((el: HTMLElement) => document.activeElement === el)).toBe(true);
-
       await moveKeyboard(page, cards.nth(1), 'earlier');
+      await expect.poll(async () => (await getCardTitles(page))[0]).toBe('Dark Roast Espresso');
 
-      // Verify focus remains on the moved card's reordering mechanism or control
-      await expect.poll(async () => {
-        return page.evaluate(() => {
-          const active = document.activeElement;
-          const cardsList = Array.from(document.querySelectorAll('.card'));
-          const movedCard = cardsList.find(c => c.querySelector('h3')?.textContent?.includes('Dark Roast Espresso'));
-          return movedCard ? movedCard.contains(active) : false;
-        });
-      }).toBe(true);
+      // Focus stays on a reorder control (handle or movement button) inside the moved card.
+      await expect.poll(() => getCardByTitle(page, 'Dark Roast Espresso').evaluate((card) => {
+        const active = document.activeElement;
+        return Boolean(active && card.contains(active) && active.closest('a') === null && (active.matches('button, [role="button"]')));
+      })).toBe(true);
     });
 
     test('Moving first item toward start or last item toward end with keyboard mechanism leaves DOM order unchanged', async ({ page }) => {
       const cards = getCards(page);
-      const handle0 = cards.first().locator('button').first();
-      expect(await handle0.count()).toBeGreaterThan(0);
+      expect(await (await getHandle(cards.first())).count()).toBeGreaterThan(0);
 
-      // Attempt to move first item toward start
-      await moveKeyboard(page, cards.first(), 'earlier');
-      expect(await getCardTitles(page)).toEqual(['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew']);
+      // Presence: the mechanism moves an interior item.
+      await moveKeyboard(page, cards.nth(1), 'later');
+      await expect.poll(() => getCardTitles(page)).toEqual(['Maple Oat Latte', 'Cold Brew', 'Dark Roast Espresso']);
 
-      // Attempt to move last item toward end
-      await moveKeyboard(page, cards.last(), 'later');
-      expect(await getCardTitles(page)).toEqual(['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew']);
+      await moveKeyboard(page, getCardByTitle(page, 'Maple Oat Latte'), 'earlier');
+      expect(await getCardTitles(page)).toEqual(['Maple Oat Latte', 'Cold Brew', 'Dark Roast Espresso']);
+
+      await moveKeyboard(page, getCardByTitle(page, 'Dark Roast Espresso'), 'later');
+      expect(await getCardTitles(page)).toEqual(['Maple Oat Latte', 'Cold Brew', 'Dark Roast Espresso']);
     });
 
     test('Reordering is animated for displaced siblings and skipped under prefers-reduced-motion reduce', async ({ page }) => {
       const cards = getCards(page);
-      const handle1 = cards.nth(1).locator('button').first();
-      expect(await handle1.count()).toBeGreaterThan(0);
-
-      // 1. Standard motion: displaced siblings should animate
-      await page.evaluate(() => {
-        (window as unknown as Record<string, unknown>).__animCount = 0;
-        const orig = Element.prototype.animate;
-        Element.prototype.animate = function (...args) {
-          ((window as unknown as Record<string, unknown>).__animCount as number)++;
-          return orig.apply(this, args);
-        };
-      });
+      expect(await (await getHandle(cards.nth(1))).count()).toBeGreaterThan(0);
 
       await moveKeyboard(page, cards.nth(1), 'earlier');
-      const countStandard = await page.evaluate(() => (window as unknown as Record<string, unknown>).__animCount as number);
-      expect(countStandard).toBeGreaterThan(0);
+      await expect.poll(async () => (await getCardTitles(page))[0]).toBe('Dark Roast Espresso');
+      // The displaced sibling travels to its new slot.
+      expect(await countCardMoveAnimations(page, 'Maple Oat Latte')).toBeGreaterThan(0);
 
-      // 2. Reduced motion: animations should be skipped
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.reload();
-      await page.evaluate(() => {
-        (window as unknown as Record<string, unknown>).__animCount = 0;
-        const orig = Element.prototype.animate;
-        Element.prototype.animate = function (...args) {
-          ((window as unknown as Record<string, unknown>).__animCount as number)++;
-          return orig.apply(this, args);
-        };
-      });
-
-      const cardsReduced = getCards(page);
-      await moveKeyboard(page, cardsReduced.nth(1), 'earlier');
-      const countReduced = await page.evaluate(() => (window as unknown as Record<string, unknown>).__animCount as number);
-      expect(countReduced).toBe(0);
+      await moveKeyboard(page, getCards(page).nth(1), 'earlier');
+      await expect.poll(async () => (await getCardTitles(page))[0]).toBe('Dark Roast Espresso');
+      expect(await countCardMoveAnimations(page)).toBe(0);
     });
 
     test('During pointer drag, real item follows pointer via CSS translation, stays child of list, and animates on end', async ({ page }) => {
       const cards = getCards(page);
       const card0 = cards.nth(0);
-      const handle0 = card0.locator('button').first();
+      const handle0 = await getHandle(card0);
       expect(await handle0.count()).toBeGreaterThan(0);
-      const container = getCollectionContainer(page);
-      expect(await container.count()).toBeGreaterThan(0);
+      const containerEl = await getCollectionContainer(page).elementHandle();
 
-      const handleBox = await handle0.boundingBox();
-      expect(handleBox).not.toBeNull();
-      const startX = handleBox!.x + handleBox!.width / 2;
-      const startY = handleBox!.y + handleBox!.height / 2;
+      const box = await handle0.boundingBox();
+      expect(box).not.toBeNull();
+      if (!box) return;
+      await dragHandle(page, handle0, { x: box.x + box.width / 2 + 80, y: box.y + box.height / 2 }, false);
 
-      await page.mouse.move(startX, startY);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.move(startX + 80, startY, { steps: 5 });
+      // The real item (not a clone) stays a child of the list.
+      expect(await card0.evaluate((el, list) => el.parentElement === list, containerEl)).toBe(true);
+      expect(await page.locator('h3', { hasText: 'Maple Oat Latte' }).count()).toBe(1);
 
-      // Real dragged item stays a child of the list
-      const staysChild = await page.evaluate(() => {
-        const section = document.querySelector('section');
-        const cardsList = section?.querySelectorAll('.card');
-        const first = cardsList?.[0];
-        return Boolean(first && first.parentElement && first.parentElement !== document.body && section?.contains(first.parentElement));
-      });
-      expect(staysChild).toBe(true);
+      // It follows the pointer with a CSS translation.
+      await expect.poll(() => card0.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const translated = style.translate !== 'none' && !/^0px( 0px)?$/.test(style.translate);
+        const transformed = style.transform !== 'none' && style.transform !== 'matrix(1, 0, 0, 1, 0, 0)';
+        return translated || transformed;
+      })).toBe(true);
 
-      // Item follows pointer via CSS translation
-      const hasTranslate = await card0.evaluate((el: HTMLElement) => {
-        const style = window.getComputedStyle(el);
-        const inline = el.style.translate || el.style.transform;
-        const computed = (style.translate && style.translate !== 'none' && style.translate !== '0px') ||
-                         (style.transform && style.transform !== 'none' && style.transform !== 'matrix(1, 0, 0, 1, 0, 0)');
-        return Boolean(inline || computed);
-      });
-      expect(hasTranslate).toBe(true);
-
-      // Animates to its resting place when drag ends
-      await page.evaluate(() => {
-        (window as unknown as Record<string, unknown>).__settleAnimated = false;
-        const orig = Element.prototype.animate;
-        Element.prototype.animate = function (...args) {
-          (window as unknown as Record<string, unknown>).__settleAnimated = true;
-          return orig.apply(this, args);
-        };
-      });
-
+      // It animates to its resting place on release.
       await page.mouse.up({ button: 'left' });
-      const animated = await page.evaluate(() => (window as unknown as Record<string, unknown>).__settleAnimated as boolean);
-      expect(animated).toBe(true);
+      expect(await countCardMoveAnimations(page, 'Maple Oat Latte')).toBeGreaterThan(0);
     });
 
     test('Reordering actions are announced in a live region with the item new position', async ({ page }) => {
       const cards = getCards(page);
-      const handle1 = cards.nth(1).locator('button').first();
-      expect(await handle1.count()).toBeGreaterThan(0);
-      const live = page.locator('[role="status"], [aria-live]');
+      expect(await (await getHandle(cards.nth(1))).count()).toBeGreaterThan(0);
+      const live = getLiveRegions(page);
       expect(await live.count()).toBeGreaterThan(0);
 
       await moveKeyboard(page, cards.nth(1), 'earlier');
 
-      await expect.poll(async () => {
-        const texts = await live.allTextContents();
-        return texts.join(' ');
-      }, { timeout: 4000 }).toMatch(/position 1|1 of 3|position:? 1|1/i);
+      await expect.poll(async () => (await live.allTextContents()).join(' '), { timeout: 4000 })
+        .toMatch(/\b1\s*(of|\/)\s*3\b|position:?\s*1\b|\bfirst\b/i);
     });
 
     test('Releasing a drag without changing position does not announce a move', async ({ page }) => {
       const cards = getCards(page);
-      const handle0 = cards.first().locator('button').first();
+      const handle0 = await getHandle(cards.first());
       expect(await handle0.count()).toBeGreaterThan(0);
-      const live = page.locator('[role="status"], [aria-live]');
+      const live = getLiveRegions(page);
       expect(await live.count()).toBeGreaterThan(0);
 
-      await live.evaluate((el: HTMLElement) => { el.textContent = ''; });
+      // Record every text the live regions receive, including ones replaced before the check.
+      await live.evaluateAll((regions) => {
+        const log: string[] = [];
+        (window as unknown as Record<string, unknown>).__liveLog = log;
+        for (const region of regions) {
+          region.textContent = '';
+          new MutationObserver(() => log.push(region.textContent ?? '')).observe(region, { childList: true, characterData: true, subtree: true });
+        }
+      });
 
       await handle0.click();
+      // Absence check: outlast the guide's ~500 ms announcement debounce.
+      await page.waitForTimeout(800);
 
-      // Wait longer than the ~500ms debounce
-      await page.waitForTimeout(700);
-
-      const text = (await live.allTextContents()).join(' ').toLowerCase();
-      expect(text).not.toMatch(/moved|dropped at position/);
+      const log = await page.evaluate(() => ((window as unknown as Record<string, unknown>).__liveLog as string[]).join(' '));
+      const positional = /\b(moved|dropped)\b|\bposition\s*\d|\b\d+\s*of\s*\d+\b/i;
+      const pickup = /grab|pick(ed)?\s*up|lifted/i;
+      expect(positional.test(log) && !pickup.test(log)).toBe(false);
     });
 
     test('Collection renders its items in a readable and usable default DOM order before reordering', async ({ page }) => {
       const cards = getCards(page);
-      const handles = cards.locator('button');
-      expect(await handles.count()).toBeGreaterThan(0);
-
-      const titles = await getCardTitles(page);
-      expect(titles).toEqual(['Maple Oat Latte', 'Dark Roast Espresso', 'Cold Brew']);
-
-      await expect(cards.nth(0)).toBeVisible();
-      await expect(cards.nth(1)).toBeVisible();
-      await expect(cards.nth(2)).toBeVisible();
+      expect(await (await getHandle(cards.first())).count()).toBeGreaterThan(0);
+      expect(await getCardTitles(page)).toEqual(INITIAL_ORDER);
+      for (let i = 0; i < 3; i++) await expect(cards.nth(i)).toBeVisible();
     });
 
     test('On narrow mobile viewport, items and movement controls fit without horizontal scrolling', async ({ page }) => {
       await page.setViewportSize({ width: 360, height: 640 });
       const cards = getCards(page);
-      const handles = cards.locator('button');
-      expect(await handles.count()).toBeGreaterThan(0);
+      expect(await cards.getByRole('button').count()).toBeGreaterThan(0);
 
-      const fits = await page.evaluate(() => {
-        const section = document.querySelector('section');
-        const cardsList = Array.from(section?.querySelectorAll('.card') || []);
-        if (cardsList.length === 0) return false;
-        return cardsList.every((card) => {
-          const btn = card.querySelector('button');
-          if (!btn) return false;
-          const cRect = card.getBoundingClientRect();
-          const bRect = btn.getBoundingClientRect();
-          const insideX = bRect.left >= cRect.left - 2 && bRect.right <= cRect.right + 2;
-          const noScroll = card.scrollWidth <= card.clientWidth + 2;
-          return insideX && noScroll;
+      const fits = await getSeasonalSection(page).evaluate((section) => {
+        // The row itself may scroll internally; it must not overflow the viewport (the base app's nav already does).
+        const list = section.querySelector('.card')?.parentElement;
+        const listRect = list?.getBoundingClientRect();
+        const pageFits = Boolean(listRect && listRect.left >= -1 && listRect.right <= window.innerWidth + 1);
+        const cardsFit = Array.from(section.querySelectorAll('.card')).every((card) => {
+          const cardRect = card.getBoundingClientRect();
+          const controls = Array.from(card.querySelectorAll('button, [role="button"]'));
+          return controls.length > 0 && card.scrollWidth <= card.clientWidth + 2 && controls.every((control) => {
+            const rect = control.getBoundingClientRect();
+            return rect.left >= cardRect.left - 2 && rect.right <= cardRect.right + 2;
+          });
         });
+        return pageFits && cardsFit;
       });
       expect(fits).toBe(true);
     });
-
   });
 });

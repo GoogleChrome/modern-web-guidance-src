@@ -1,1 +1,1 @@
-- Update the Seasonal Favorites section so users can drag to rearrange the cards horizontally, keeping their state and accessible order intact.
+- Let users rearrange the Seasonal Favorites cards by dragging them left or right within their row.
