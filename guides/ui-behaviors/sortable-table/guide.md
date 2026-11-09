@@ -19,7 +19,7 @@ Use this pattern to let users sort a data table by clicking its column headers. 
 
 This guide covers the header controls, sort state, sorting logic, and applying the new order to the DOM. For keeping state inside rows while they move, see {{ GUIDE_REF("move-dom-element-without-losing-state") }}. For other narrow-screen table patterns, see {{ GUIDE_REF("responsive-table") }}.
 
-{# PENDING_GUIDE_REF: For sorting lists and card grids that are not tables, see {{ GUIDE_REF("dynamic-sort") }}. #}
+For sorting lists and card grids that are not tables, see {{ GUIDE_REF("dynamic-sort") }}.
 
 ## Header markup
 
