@@ -41,8 +41,8 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
   /* Break rules at every T and cross so they don't form a lattice. */
   rule-break: intersection;
-  /* Pulls segment ends back from the intersection (negative extends into it); only visible when rules
-     break. 0.5rem is an example value. */
+  /* Pulls segment ends back from container edges and broken intersections (negative extends into
+     padding or junctions). 0.5rem is an example value. */
   rule-inset: 0.5rem;
 
   transition: rule-color 0.2s; /* 0.2s is an example value */
