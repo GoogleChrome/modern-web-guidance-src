@@ -110,7 +110,6 @@ if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("positio
     b.setAttribute("interestfor", tip.id);
     b.removeAttribute("title"); // avoid a second, native tooltip
     document.body.append(tip); // keep open hint nodes out of role="group" / role="toolbar"
-    tip.setAttribute("aria-hidden", "true"); // hide popovers from screen readers
   });
 }
 ```
