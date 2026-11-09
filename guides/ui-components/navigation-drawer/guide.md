@@ -314,11 +314,12 @@ drawer.addEventListener('click', (event) => {
 // Escape key. A modal dialog fires `cancel` on Escape; prevent the
 // instant close and slide the drawer out instead.
 // NOTE: Browsers may make `cancel` non-cancelable on repeated Escape
-// presses without user activation in between, in which case the dialog
-// closes instantly and `aria-expanded` is not reset.
+// presses without user activation in between, closing the dialog instantly.
 drawer.addEventListener('cancel', (event) => {
-  event.preventDefault();
-  closeDrawer();
+  if (event.cancelable) {
+    event.preventDefault();
+    closeDrawer();
+  }
 });
 ```
 
@@ -339,24 +340,23 @@ Follow the [`<dialog>` implementation](#implementation-with-dialog), with these 
 ```js
 const main = document.querySelector('main');
 
-function onDrawerOpened() {
-  // Mark the rest of the page inert so keyboard and screen-reader
-  // users cannot tab into content hidden behind the drawer.
+function openDrawer() {
+  drawer.showPopover();
+  // Mark everything outside the drawer inert immediately on open (include
+  // sibling <header>/<footer> landmarks if they live outside <main>).
   main.inert = true;
   drawer.setAttribute('aria-modal', 'true');
-  openBtn.setAttribute('aria-expanded', 'true');
+  scroller.scrollTo({left: 0, behavior: 'auto'});
 }
 
 function onDrawerClosed() {
+  // The observer also reports "closed" on page load; ignore it unless open.
+  if (!drawer.hasAttribute('aria-modal')) return;
   drawer.hidePopover();
   main.inert = false;
+  drawer.removeAttribute('aria-modal');
   openBtn.setAttribute('aria-expanded', 'false');
-  // The observer also reports "closed" on page load, so only restore
-  // focus if the drawer was actually open.
-  if (drawer.hasAttribute('aria-modal')) {
-    drawer.removeAttribute('aria-modal');
-    openBtn.focus();
-  }
+  openBtn.focus();
 }
 
 // Escape key. Listen on document because focus may be inside the
@@ -399,7 +399,7 @@ Detect with `CSS.supports('scroll-initial-target', 'nearest')` and inside `openD
 
 ```js
 async function openDrawer() {
-  drawer.showModal(); // or drawer.showPopover() for the sidebar variant
+  drawer.showModal(); // sidebar variant: showPopover(), main.inert = true, and aria-modal="true"
 
   if (!CSS.supports('scroll-initial-target', 'nearest')) {
     // Jump-scroll to the closed stop so the scroll below
@@ -430,6 +430,6 @@ async function openDrawer() {
 
 {{ BASELINE_STATUS("inert") }}
 
-When the drawer [also acts as a sidebar](#implementation-for-a-drawer-that-also-acts-as-a-sidebar), it uses `popover="manual"` and implements dismissal entirely from JavaScript, so it does not depend on the popover API's defining behaviors — light-dismiss, the `popovertarget` attribute, top-layer-managed Escape handling, or focus management. The only popover features it actually uses are top-layer promotion (via `showPopover()`) and the `::backdrop` pseudo-element.
+When the drawer [also acts as a sidebar](#implementation-for-a-drawer-that-also-acts-as-a-sidebar), it uses `popover="manual"` and implements dismissal entirely from JavaScript, so it does not depend on light-dismiss, the `popovertarget` attribute, or top-layer-managed Escape handling. Aside from top-layer promotion (`showPopover()`) and `::backdrop`, the only popover behavior it relies on is processing `autofocus` when shown.
 
-If wider browser support is needed, do not branch on feature detection — simply do not use popover at all. Drop the `popover="manual"` attribute, replace top-layer promotion with `position: fixed` and a high `z-index`, replace `::backdrop` with a sibling element styled identically (using the same `--drawer-backdrop` custom property), and toggle visibility from a class instead of `showPopover()`/`hidePopover()`. The rest of the component (scroll snap, the scroll-driven backdrop animation, the `IntersectionObserver`, and the dismissal handlers) is unchanged.
+If wider browser support is needed, do not branch on feature detection — simply do not use popover at all. Drop the `popover="manual"` attribute, replace top-layer promotion with `position: fixed` and a high `z-index`, replace `::backdrop` with a sibling element styled identically (using the same `--drawer-backdrop` custom property), toggle visibility from a class instead of `showPopover()`/`hidePopover()`, and call `closeBtn.focus({preventScroll: true})` in `openDrawer()` after making the drawer visible (`preventScroll` avoids scrolling the container early). The rest of the component (scroll snap, the scroll-driven backdrop animation, the `IntersectionObserver`, and the dismissal handlers) is unchanged.
