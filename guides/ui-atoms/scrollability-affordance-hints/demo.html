@@ -173,8 +173,12 @@
     --fade-size: 3rem;
     /* Keeps focused chips out of the fades */
     scroll-padding-inline: var(--fade-size);
-    mask-image: linear-gradient(to right, transparent, black var(--fade-start),
-      black calc(100% - var(--fade-end)), transparent);
+    /* An opaque layer that is not clipped to the box, minus a band at each end,
+       so a focus outline on the scroller stays visible */
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      linear-gradient(to right, black, transparent) 0 0 / var(--fade-start) 100% no-repeat no-clip,
+      linear-gradient(to right, transparent, black) 100% 0 / var(--fade-end) 100% no-repeat no-clip;
     animation: reveal-fade-start linear both, hide-fade-end linear both;
     animation-timeline: scroll(self inline);
     animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
