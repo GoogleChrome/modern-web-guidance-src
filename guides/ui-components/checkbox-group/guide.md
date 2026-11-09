@@ -238,6 +238,7 @@ Without subgrid, give each label the same fixed column widths so rows still alig
 
 ```css
 @supports not (grid-template-columns: subgrid) {
+  .options,
   .options label {
     grid-template-columns: 1.25rem 1fr 6rem; /* checkbox, name, secondary column */
     column-gap: 0.75rem;
