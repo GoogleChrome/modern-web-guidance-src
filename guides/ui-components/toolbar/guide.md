@@ -95,11 +95,7 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 
 Give each icon-only button a `title` as the baseline tooltip. Only where both interest invokers and anchor positioning are supported, upgrade it to an interest invoker with `popover="hint"`, which shows the tooltip without closing an open menu popover. Elsewhere the native `title` tooltip stays.
 
-Be mindful that the native `title` attribute is not keyboard focusable in any browser. If a button triggers a non-standard feature, where the icon may not be understood by users, do not give the button a `title`. Instead, use a text label or a combined text and icon label on the button.
-
 MANDATORY: Position the hint on the axis the toolbar does not stack along: `position-area: block-end` (fallback `flip-block`) for a horizontal toolbar, `position-area: inline-end` (fallback `flip-inline`) for a vertical one. A hint placed along the stacking axis covers the next control and swallows its click, because the hint stays open while the pointer is over it.
-
-As popovers are added to the end of the DOM, hide them using `aria-hidden="true"` so that they are not exposed to screen readers out of context. The tooltip text duplicates the accessible name for each of their related toolbar buttons, so screen reader users will not miss out on anything.
 
 ```html
 <button type="button" aria-label="Bold" title="Bold">…</button>
