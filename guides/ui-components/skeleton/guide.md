@@ -173,13 +173,12 @@ Bars reused across elements can be memoized once in the shared rule, named by in
 
 ## 4. Lists
 
-Items are one line tall like the text, not tall blocks: hide the native marker and draw the bullet with `li::before`, because a `::marker` cannot be sized reliably. Set `list-style: none` and make the item `position: relative`, clear its own fill, and draw the bar with `li::after` using the shared `--bar-height` and `--bar-radius`, so list items match the other bars. Place the dot in `em` units so it scales with the item's text, in the flat `--skeleton-tone` color. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes, and zero only the item's start margin. Set `clip-path: none` and `overflow: visible` so the dot, which sits outside the item, is not clipped. This applies to numbered lists too.
+Items are one line tall like the text, not tall blocks: hide the native marker and draw the bullet with `li::before`, because a `::marker` cannot be sized reliably. Set `list-style: none` and make the item `position: relative`, clear its own fill, and draw the bar with `li::after` using the shared `--bar-height` and `--bar-radius`, so list items match the other bars. Place the dot in `em` units so it scales with the item's text, in the flat `--skeleton-tone` color. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes. Set `clip-path: none` and `overflow: visible` so the dot, which sits outside the item, is not clipped. This applies to numbered lists too.
 
 ```css
 .skeleton[aria-busy="true"] li {
   list-style: none;      /* Hides the native marker */
   position: relative;
-  margin-inline-start: 0;
   background: none;      /* The bar is drawn by ::after */
   clip-path: none;       /* Would clip the dot outside the item */
   overflow: visible;     /* Lets the dot show */
