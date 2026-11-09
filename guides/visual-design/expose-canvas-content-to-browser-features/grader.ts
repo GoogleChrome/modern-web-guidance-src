@@ -19,7 +19,7 @@ function mockCanvasContent() {
 
 test.describe('HTML-in-Canvas Grader Tests', () => {
 
-  test('Feature detection for HTML-in-Canvas MUST be conducted before using the HTML-in-Canvas API', async ({ page }) => {
+  test('Feature detection for HTML-in-Canvas is conducted before using the HTML-in-Canvas API', async ({ page }) => {
     await page.addInitScript(mockCanvasContent);
     const pageErrors: Error[] = [];
     page.on('pageerror', (err) => {
@@ -35,13 +35,14 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForTimeout(500);
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     const drawElementImageErrors = pageErrors.filter(err => err.message.includes('drawElementImage'));
     expect(drawElementImageErrors.length).toBe(0);
   });
 
-  test('The <canvas> element MUST include the content="drawable" attribute', async ({ page }) => {
+  test('The <canvas> element has content="drawable" attribute applied', async ({ page }) => {
     await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
@@ -58,24 +59,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     expect(hasDrawableContent).toBe(true);
   });
 
-  test('Every direct child of the <canvas> element MUST include the drawable attribute', async ({ page }) => {
-    await page.addInitScript(mockCanvasContent);
-    await page.addInitScript(() => {
-      if (!('requestPaint' in HTMLCanvasElement.prototype)) {
-        (HTMLCanvasElement.prototype as any).requestPaint = function() {};
-      }
-    });
-
-    const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
-    await page.goto(filePath);
-
-    const canvas = page.locator('canvas#canvas');
-    await expect(canvas).toBeVisible();
-    const hasDrawableChildren = await canvas.evaluate(el => el.children.length > 0 && Array.from(el.children).every(child => child.hasAttribute('drawable')));
-    expect(hasDrawableChildren).toBe(true);
-  });
-
-  test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
+  test('Every direct child of the <canvas> element has the drawable attribute applied', async ({ page }) => {
     await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
@@ -90,15 +74,40 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForTimeout(500);
+
+    const canvas = page.locator('canvas#canvas');
+    await expect(canvas).toBeVisible();
+    const hasDrawableChildren = await canvas.evaluate(el => el.children.length > 0 && Array.from(el.children).every(child => child.hasAttribute('drawable')));
+    expect(hasDrawableChildren).toBe(true);
+  });
+
+  test('Canvas rendering is executed inside an onpaint event handler', async ({ page }) => {
+    await page.addInitScript(mockCanvasContent);
+    await page.addInitScript(() => {
+      if (!('requestPaint' in HTMLCanvasElement.prototype)) {
+        (HTMLCanvasElement.prototype as any).requestPaint = function() {};
+      }
+      if (!('drawElementImage' in CanvasRenderingContext2D.prototype)) {
+        (CanvasRenderingContext2D.prototype as any).drawElementImage = function() {
+          return undefined;
+        };
+      }
+    });
+
+    const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
+    await page.goto(filePath);
     
     const canvas = page.locator('canvas#canvas');
     await expect(canvas).toBeVisible();
+    await page.waitForFunction(() => {
+      const el = document.querySelector('canvas#canvas') as any;
+      return el && typeof el.onpaint === 'function';
+    });
     const hasOnPaint = await canvas.evaluate(el => typeof (el as any).onpaint === 'function');
     expect(hasOnPaint).toBe(true);
   });
 
-  test('The rendering logic MUST use drawElementImage, texElementSubImage2D, or drawElementImageToTexture inside onpaint', async ({ page }) => {
+  test('The rendering logic uses drawElementImage, texElementSubImage2D, or drawElementImageToTexture inside onpaint', async ({ page }) => {
     await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       (window as any).renderingApiCalled = null;
@@ -143,13 +152,13 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => (window as any).renderingApiCalled !== null);
 
     const calledApi = await page.evaluate(() => (window as any).renderingApiCalled);
     expect(['drawElementImage', 'texElementSubImage2D', 'drawElementImageToTexture']).toContain(calledApi);
   });
 
-  test('The DOM position of each drawn HTML element MUST match where it is drawn', async ({ page }) => {
+  test('The DOM position of each drawn HTML element matches where it is drawn', async ({ page }) => {
     await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       (window as any).paintErrors = [];
@@ -182,7 +191,11 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+      if ((window as any).__lastDrawElementImageParams !== undefined) return true;
+      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
+      return scripts.includes('updateElementGeometry') && scripts.includes('canvasTransform');
+    });
 
     // In 2D, drawElementImage() syncs the DOM position, so its return value isn't applied to the
     // style.transform of any descendant of the canvas. In WebGL and WebGPU, updateElementGeometry() syncs it.
@@ -210,7 +223,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     expect(isPositionSynced).toBe(true);
   });
 
-  test('A ResizeObserver MUST be used to update canvas dimensions to prevent blurriness', async ({ page }) => {
+  test('A ResizeObserver is used to update canvas dimensions to prevent blurriness', async ({ page }) => {
     await page.addInitScript(mockCanvasContent);
     await page.addInitScript(() => {
       if (!('requestPaint' in HTMLCanvasElement.prototype)) {
@@ -228,7 +241,12 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
 
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
-    await page.waitForTimeout(500);
+    await expect.poll(() => page.evaluate(() => {
+      const c = document.querySelector('canvas#canvas') as HTMLCanvasElement | null;
+      if (!c) return false;
+      const dpr = window.devicePixelRatio;
+      return Math.abs(c.width - Math.round(c.clientWidth * dpr)) <= 1 && Math.abs(c.height - Math.round(c.clientHeight * dpr)) <= 1;
+    })).toBe(true);
 
     const canvas = page.locator('canvas#canvas');
     await expect(canvas).toBeVisible();
@@ -245,7 +263,7 @@ test.describe('HTML-in-Canvas Grader Tests', () => {
     expect(isScaled).toBe(true);
   });
 
-  test('A fallback UI strategy MUST be implemented for browsers that do not support HTML-in-Canvas', async ({ page }) => {
+  test('A fallback UI strategy is implemented for browsers that do not support HTML-in-Canvas', async ({ page }) => {
     const filePath = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
     await page.goto(filePath);
     
