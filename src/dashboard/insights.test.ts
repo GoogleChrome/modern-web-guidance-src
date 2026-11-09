@@ -48,7 +48,7 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
     assert.strictEqual(getAgentFamily('jetski_cli')?.id, 'antigravity_cli');
     assert.strictEqual(getAgentFamily('claude_code')?.id, 'claude_code');
     assert.strictEqual(getAgentFamily('codex_cli')?.id, 'codex_cli');
-    assert.strictEqual(getAgentFamily('gemini_cli'), null);
+    assert.strictEqual(getAgentFamily('unknown_agent'), null);
     assert.strictEqual(AGENT_FAMILIES.length, 3);
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_07-00-02-antigravity_cli' }), '2026-10-09T07:00:02.000Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_18-30-00-codex_cli', timestamp: '2026-10-09' }), '2026-10-09T18:30:00.000Z');
@@ -80,6 +80,15 @@ test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', 
     const gemini = insights.families.find(f => f.id === 'antigravity_cli');
     assert.ok(gemini);
     assert.strictEqual(gemini.suiteCount, 3);
+    assert.strictEqual(insights.maxSuitesPerFamily, 4);
+    assert.strictEqual(gemini.sample.attemptedTasks, 6);
+    assert.strictEqual(gemini.sample.pairedTasks, 6);
+    assert.strictEqual(gemini.sample.excludedTasks, 0);
+    assert.strictEqual(gemini.sample.minMaxRuns, 1);
+    assert.strictEqual(gemini.sample.maxMaxRuns, 1);
+    assert.strictEqual(gemini.sample.earlyFailureCount, 0);
+    assert.strictEqual(gemini.sample.earlyFailureRate, 0);
+    assert.strictEqual(gemini.sample.pageLoadFailed, 0);
     assert.strictEqual(gemini.overall.unguidedPassed, 10);
     assert.strictEqual(gemini.overall.unguidedTotal, 24);
     assert.strictEqual(gemini.overall.guidedPassed, 23);
@@ -128,4 +137,47 @@ test('computeHeadlineInsights returns null a11y when suites have zero accessibil
     const sB = suite('nightly-2026-10-10_07-00-00-codex_cli', 'codex_cli', 'gpt-x', '2026-10-10T07:00:00Z', [{ name: 'dialog', passed: [1, 4] }]);
     const unionInsights = computeHeadlineInsights([sA, sB], { perAgentRecentN: 2 });
     assert.strictEqual(unionInsights.families[0].a11y?.guideCount, 2);
+});
+test('computeHeadlineInsights summarizes excluded pairs, early failures, page-load failures, and legacy fallback', () => {
+    const insights = computeHeadlineInsights([
+        {
+            testId: 'nightly-2026-10-28_00-00-00-claude_code',
+            timestamp: '2026-10-28T00:00:00Z',
+            agent: 'claude_code',
+            model: 'claude-5',
+            taskCount: 200,
+            pairedTaskCount: 197,
+            maxRuns: 3,
+            earlyFailureRate: 2,
+            earlyFailureCount: 4,
+            unguidedLeakRate: 3,
+            pageLoadStats: { guidedFailed: 1, unguidedFailed: 2 },
+            guidedStats: { passed: 90, total: 100 },
+            unguidedStats: { passed: 50, total: 100 },
+        },
+        {
+            testId: 'nightly-2026-10-27_00-00-00-claude_code',
+            timestamp: '2026-10-27T00:00:00Z',
+            agent: 'claude_code',
+            model: 'claude-5',
+            taskCount: 198,
+            maxRuns: 1,
+            earlyFailureRate: 1,
+            guidedStats: { passed: 80, total: 100 },
+            unguidedStats: { passed: 40, total: 100 },
+        },
+    ], { perAgentRecentN: 5 });
+    assert.strictEqual(insights.maxSuitesPerFamily, 2);
+    const claude = insights.families[0];
+    assert.strictEqual(claude.suiteCount, 2);
+    assert.strictEqual(claude.sample.attemptedTasks, 398);
+    assert.strictEqual(claude.sample.pairedTasks, 395);
+    assert.strictEqual(claude.sample.excludedTasks, 3);
+    assert.strictEqual(claude.sample.minMaxRuns, 1);
+    assert.strictEqual(claude.sample.maxMaxRuns, 3);
+    // Mixed legacy + new manifest drops exact count to null and averages rate
+    assert.strictEqual(claude.sample.earlyFailureCount, null);
+    assert.strictEqual(claude.sample.earlyFailureRate, 2);
+    assert.strictEqual(claude.sample.unguidedLeakRate, 2);
+    assert.strictEqual(claude.sample.pageLoadFailed, 3);
 });

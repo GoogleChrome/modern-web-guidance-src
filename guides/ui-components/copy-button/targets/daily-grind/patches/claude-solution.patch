@@ -1,0 +1,287 @@
+diff --git a/index.html b/index.html
+index 66c9173..b6f2b74 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,149 @@
+       background: #3e2723;
+     }
+ 
++    /* Copy buttons */
++    .copy {
++      position: relative; /* positioning context for the bubble */
++      display: inline-flex;
++    }
++
++    .copy-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-inline-size: 32px;
++      min-block-size: 32px;
++      padding: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--primary);
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .copy-button:hover {
++      background: var(--secondary);
++    }
++
++    .copy-button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .copy-button .icon-check {
++      display: none;
++    }
++
++    .copy-button[data-copied] .icon-copy {
++      display: none;
++    }
++
++    .copy-button[data-copied] .icon-check {
++      display: block;
++      animation: copy-pop 0.3s ease-out;
++    }
++
++    .copy-button[data-failed] {
++      border-color: #b71c1c;
++    }
++
++    .tip {
++      position: absolute;
++      inset-block-end: calc(100% + 6px);
++      inset-inline-end: 0;
++      padding: 2px 8px;
++      border-radius: 4px;
++      background: var(--text);
++      color: white;
++      font-size: 0.75rem;
++      line-height: 1.4;
++      white-space: nowrap;
++      pointer-events: none;
++      opacity: 0; /* hidden with opacity so it stays in the accessibility tree */
++      transition: opacity 0.15s;
++    }
++
++    .copy-button[data-copied]+.tip,
++    .copy-button[data-failed]+.tip {
++      opacity: 1;
++      animation: tip-rise 0.2s ease-out;
++    }
++
++    .copy-button[data-failed]+.tip {
++      background: #b71c1c;
++    }
++
++    @keyframes copy-pop {
++      from { transform: scale(0.5); }
++      to { transform: scale(1); }
++    }
++
++    @keyframes tip-rise {
++      from { opacity: 0; translate: 0 4px; }
++      to { opacity: 1; translate: 0 0; }
++    }
++
++    @keyframes fade-in {
++      from { opacity: 0; }
++      to { opacity: 1; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .copy-button[data-copied] .icon-check,
++      .copy-button[data-copied]+.tip,
++      .copy-button[data-failed]+.tip {
++        animation: fade-in 0.2s ease-out;
++      }
++    }
++
++    /* Touch devices (no hover): the button stays visible, in flow beside the text */
++    .copyable {
++      display: flex;
++      align-items: start;
++      gap: 0.5rem;
++    }
++
++    .copyable p {
++      flex: 1;
++    }
++
++    .copyable .copy {
++      flex: none;
++      order: 1;
++    }
++
++    /* Only hide where hover exists; revealed on hover and keyboard focus */
++    @media (hover: hover) {
++      .copyable {
++        display: block;
++        position: relative;
++      }
++
++      .copyable p {
++        padding-inline: 40px; /* clears the button at rest while keeping the text centered */
++      }
++
++      .copyable .copy {
++        position: absolute;
++        inset-block-start: 0;
++        inset-inline-end: 0;
++      }
++
++      .copyable .copy-button {
++        opacity: 0;
++        transition: opacity 0.15s, background 0.2s, border-color 0.2s;
++      }
++
++      .card:hover .copy-button,
++      .copyable:focus-within .copy-button,
++      .copyable .copy-button:focus-visible,
++      .copyable .copy-button[data-copied],
++      .copyable .copy-button[data-failed] {
++        opacity: 1;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -180,17 +323,68 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="copyable">
++            <p id="desc-maple-oat-latte">Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <span class="copy">
++              <button type="button" class="copy-button" command="--copy" commandfor="desc-maple-oat-latte"
++                aria-label="Copy Maple Oat Latte description">
++                <svg class="icon icon-copy" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16"
++                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                  <rect x="9" y="9" width="13" height="13" rx="2" />
++                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
++                </svg>
++                <svg class="icon icon-check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16"
++                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                  <path d="M20 6 9 17l-5-5" />
++                </svg>
++              </button>
++              <span class="tip" role="status"></span>
++            </span>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="copyable">
++            <p id="desc-dark-roast-espresso">Bold, smokey, and perfect for a morning boost.</p>
++            <span class="copy">
++              <button type="button" class="copy-button" command="--copy" commandfor="desc-dark-roast-espresso"
++                aria-label="Copy Dark Roast Espresso description">
++                <svg class="icon icon-copy" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16"
++                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                  <rect x="9" y="9" width="13" height="13" rx="2" />
++                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
++                </svg>
++                <svg class="icon icon-check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16"
++                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                  <path d="M20 6 9 17l-5-5" />
++                </svg>
++              </button>
++              <span class="tip" role="status"></span>
++            </span>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="copyable">
++            <p id="desc-cold-brew">Steeped for 18 hours for maximum smoothness.</p>
++            <span class="copy">
++              <button type="button" class="copy-button" command="--copy" commandfor="desc-cold-brew"
++                aria-label="Copy Cold Brew description">
++                <svg class="icon icon-copy" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16"
++                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                  <rect x="9" y="9" width="13" height="13" rx="2" />
++                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
++                </svg>
++                <svg class="icon icon-check" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="16" height="16"
++                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++                  <path d="M20 6 9 17l-5-5" />
++                </svg>
++              </button>
++              <span class="tip" role="status"></span>
++            </span>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +401,60 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const timers = new WeakMap();
++      let lastMessage = '';
++
++      function report(button, ok) {
++        const tip = button.nextElementSibling; // the role="status" bubble
++        if (!tip) return;
++        clearTimeout(timers.get(button));
++        button.removeAttribute('data-copied');
++        button.removeAttribute('data-failed');
++        let message = ok ? 'Copied' : 'Copy failed';
++        if (message === lastMessage) message += '\u00A0'; // VoiceOver skips identical repeats
++        lastMessage = message;
++        tip.textContent = '';
++        void button.offsetWidth; // restart the CSS animation
++        button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
++        requestAnimationFrame(() => (tip.textContent = message));
++        timers.set(button, setTimeout(() => {
++          button.removeAttribute('data-copied');
++          button.removeAttribute('data-failed');
++          tip.textContent = '';
++        }, 2000));
++      }
++
++      async function copy(button, target) {
++        // Form controls expose text via .value; innerText keeps rendered line breaks
++        const text = target.matches('input, textarea') ? target.value : target.innerText.trim();
++        if (!text) return;
++        try {
++          await navigator.clipboard.writeText(text);
++          report(button, true);
++        } catch {
++          report(button, false);
++        }
++      }
++
++      if ('CommandEvent' in window) {
++        // command events do not bubble: listen in the capture phase.
++        // event.source is the clicked button; event.target is the commandfor element.
++        document.addEventListener('command', (event) => {
++          if (event.command === '--copy' && event.source) copy(event.source, event.target);
++        }, true);
++      } else {
++        document.addEventListener('click', (event) => {
++          const button = event.target instanceof Element && event.target.closest('button[command="--copy"]');
++          if (!button) return;
++          const target = document.getElementById(button.getAttribute('commandfor'));
++          if (target) copy(button, target);
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

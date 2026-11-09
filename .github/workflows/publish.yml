@@ -2,9 +2,23 @@ name: Publish Skills
 
 on:
   schedule:
-    # 14:50 UTC is 6:50 AM PST / 7:50 AM PDT
-    - cron: '50 14 * * 1'
-  workflow_dispatch: {}
+    # Every 12 hours: 14:50 UTC (6:50 AM PST) and 02:50 UTC (6:50 PM PST)
+    - cron: '50 2,14 * * *'
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: 'npm dist-tag and GitHub branch target (next or latest)'
+        required: false
+        default: 'next'
+        type: choice
+        options:
+          - next
+          - latest
+      version:
+        description: 'Optional explicit version override (e.g. 1.0.0; leave blank to auto-increment)'
+        required: false
+        default: ''
+        type: string
 
 permissions: {}
 
@@ -13,9 +27,70 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  check:
     runs-on: ubuntu-latest
     if: github.repository == 'GoogleChrome/modern-web-guidance-src'
+    permissions:
+      contents: read
+    outputs:
+      should_publish: ${{ steps.preflight.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Preflight release check
+        id: preflight
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIST_TAG: ${{ inputs.dist_tag || 'next' }}
+          RELEASE_VERSION: ${{ inputs.version || '' }}
+        run: |
+          if [ -n "${RELEASE_VERSION}" ]; then
+            CLEAN_VER="${RELEASE_VERSION#v}"
+            if ! [[ "${CLEAN_VER}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Invalid explicit version '${RELEASE_VERSION}'. Expected X.Y.Z semver."
+              exit 1
+            fi
+            if git rev-parse "v${CLEAN_VER}" >/dev/null 2>&1; then
+              echo "::error::Tag v${CLEAN_VER} already exists."
+              exit 1
+            fi
+            echo "Explicit version v${CLEAN_VER} requested (${DIST_TAG}). Proceeding."
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ALREADY_RELEASED=""
+          if [ "${DIST_TAG}" = "next" ]; then
+            ALREADY_RELEASED=$(git tag --points-at HEAD "v*.*.*" --sort=-v:refname | head -n 1)
+          else
+            LATEST_DIST_TAG=$(gh release view -R GoogleChrome/modern-web-guidance --json tagName -q .tagName 2>/dev/null || true)
+            if [ -n "${LATEST_DIST_TAG}" ] && [ "$(git rev-parse -q --verify "refs/tags/${LATEST_DIST_TAG}^{commit}" 2>/dev/null)" = "$(git rev-parse HEAD)" ]; then
+              ALREADY_RELEASED="${LATEST_DIST_TAG}"
+            fi
+          fi
+
+          if [ -n "${ALREADY_RELEASED}" ]; then
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "HEAD is already tagged (${ALREADY_RELEASED}). Skipping scheduled @${DIST_TAG} publish."
+              echo "should_publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::The latest commit already has a ${DIST_TAG} release tag (${ALREADY_RELEASED}). No new changes to publish."
+            exit 1
+          fi
+
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: check
+    if: needs.check.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DIST_TAG: ${{ inputs.dist_tag || 'next' }}
+      RELEASE_VERSION: ${{ inputs.version || '' }}
     permissions:
       contents: write
       issues: write
@@ -38,14 +113,6 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
-
-      - name: Check for changes since last release
-        id: check-changes
-        run: |
-          if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
-            echo "Error: The latest commit already has a version tag. No new changes to publish."
-            exit 1
-          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -85,10 +152,7 @@ jobs:
         env:
           FULL: 1
           TEST_REPORTER: spec
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node --test src/cli/install-skills.test.ts
-
-
 
       - name: Configure Git for Auth and Commit
         env:
@@ -108,10 +172,14 @@ jobs:
       - name: Publish to npm via OIDC Provenance
         run: |
           cd dist/skills-cli
-          npm publish --provenance --access public --registry https://registry.npmjs.org/
+          npm publish --provenance --access public --tag "${DIST_TAG}" --registry https://registry.npmjs.org/
+          if [ "${DIST_TAG}" = "latest" ]; then
+            PUBLISHED_VERSION=$(node -p "require('./package.json').version")
+            npm dist-tag add "modern-web-guidance@${PUBLISHED_VERSION}" next --registry https://registry.npmjs.org/ || true
+          fi
 
       - name: Notify on failure
-        if: failure() && steps.check-changes.outcome != 'failure'
+        if: failure()
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         run: |

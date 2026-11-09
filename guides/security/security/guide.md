@@ -83,7 +83,7 @@ Trusted Types can enforce this pattern at runtime by blocking string assignments
 Ensure session and application cookies are configured securely by default, whether set via `Set-Cookie` headers or framework session configuration (such as Astro or Express session middleware).
 - **DO**: Name first-party session cookies with the `__Host-` prefix (`name: '__Host-session'`) when used by a single domain. This requires `Secure` (`secure: true`), `Path=/` (`path: '/'`), and omitting the `Domain` attribute, protecting against same-site and network attackers.
 - **DO**: Prefer naming cookies with the `__Secure-` prefix when `__Host-` isn't appropriate. This requires the `Secure` attribute, and protects against network attackers.
-- **DO**: Set `HttpOnly` (`httpOnly: true`) on session and authentication cookies unless the cookie must be read by client-side script, and explicitly set `SameSite=Lax` (`sameSite: 'lax'`) for standard first-party cookies.
+- **DO**: Set `HttpOnly` (`httpOnly: true`) on session and authentication cookies so they cannot be read by injected client-side scripts, and explicitly set `SameSite=Lax` (`sameSite: 'lax'`) for standard first-party cookies.
 - **DO**: If your application will be embedded as an iframe in third-party contexts, use `SameSite=None; Secure; Partitioned`.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
 
@@ -290,7 +290,7 @@ Lowest-risk of the three. Deploy if the app is **not** an OAuth provider, paymen
 
 Set CORP explicitly on each response based on whether it should be embeddable in other contexts. Two core benefits: it protects resources from malicious cross-origin reads, and ensures compatibility when pages request stronger client-side isolation.
 
-- **DO**: Default to `Cross-Origin-Resource-Policy: same-origin` for app-internal resources (authenticated data, user session JSON, restricted internal scripts).
+- **DO**: Default to `Cross-Origin-Resource-Policy: same-origin` for app-internal responses (such as HTML documents, internal endpoints, authenticated data, user session JSON, and restricted internal scripts).
 - **DO**: Use `same-site` for endpoints utilized across subdomains of the same eTLD+1.
 - **DO**: Provide `cross-origin` exclusively for resources created for generic embedding or widely cached delivery (e.g., static shared assets or public CDNs).
 
@@ -388,7 +388,7 @@ Access-Control-Allow-Credentials: true
 ```
 
 #### Clear-Site-Data (Logout)
-- **DO**: Use `Clear-Site-Data` on logout endpoints to ensure complete session termination.
+- **DO**: Send `Clear-Site-Data: "cookies", "storage", "cache"` on logout endpoints to ensure complete session termination; omitting any of these directives leaves active session cookies, Web Storage state, or cached authenticated pages behind.
 
 ```http
 Clear-Site-Data: "cookies", "storage", "cache"

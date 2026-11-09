@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 
 import config, { Agents } from '../config.ts';
 import { parseBooleanEnv } from '../../core/env.ts';
+import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
@@ -29,6 +30,7 @@ import {
   getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -51,8 +53,13 @@ export function setupPiCredentials(tempHome: string): void {
     const src = path.join(piSource, 'agent', file);
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
+}
 
-  process.env.PI_CODING_AGENT_DIR = piDestAgent;
+export function getPiEnvOverrides(homeDir?: string): NodeJS.ProcessEnv {
+  return {
+    PI_CODING_AGENT: 'true',
+    ...(homeDir ? { PI_CODING_AGENT_DIR: path.join(homeDir, '.pi', 'agent') } : {}),
+  };
 }
 
 export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
@@ -70,6 +77,7 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
     ...sessionArgs, // ephemeral mode: only if explicitly requested
     '--offline', // disable network operations for update checks
     ...modelArg,
+    ...resolveEffortCliArgs(Agents.PI, piModel),
     ...extraArgs,
     prompt
   ];
@@ -88,7 +96,7 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
     const destName = isSubagent
       ? (baseName.startsWith('subagent-') ? `${baseName}.jsonl` : `subagent-${baseName}.jsonl`)
       : (baseName.startsWith('session-') ? `${baseName}.jsonl` : `session-${baseName}.jsonl`);
-    fs.copyFileSync(src, path.join(targetDir, destName));
+    fs.writeFileSync(path.join(targetDir, destName), sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
   }
 }
 
@@ -110,8 +118,6 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.PI_CODING_AGENT = 'true';
-
     try {
       await runCliAgentCommand(
         command,
@@ -119,7 +125,8 @@ async function run() {
         workDir,
         targetDir,
         'Pi',
-        runType
+        runType,
+        getPiEnvOverrides(path.dirname(workDir)),
       );
     } finally {
       exportPiTrajectories(workDir, targetDir);
@@ -140,6 +147,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
   const toolUseToStepMap = new Map<string, number>();
 
   const modelCounts: Record<string, number> = {};
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let cachedTokens = 0;
   let hasTokenData = false;
@@ -150,6 +158,14 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
 
   const processEntries = (entries: any[], subagentId?: string) => {
     for (const entry of entries) {
+      if (
+        !subagentId &&
+        (entry.type === 'thinking_level_change' || entry.type === 'session') &&
+        typeof entry.thinkingLevel === 'string' &&
+        entry.thinkingLevel.trim()
+      ) {
+        observedEffort = entry.thinkingLevel.trim().toLowerCase();
+      }
       let model: string | undefined;
       if (entry.type === 'message' && entry.message?.model) {
         model = entry.message.model;
@@ -305,6 +321,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
     model: topModel ? topModel[0] : 'unknown',
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),

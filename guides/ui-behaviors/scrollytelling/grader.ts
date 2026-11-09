@@ -29,7 +29,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('MANDATORY: The agent has defined named `view-timeline`s on the tracked elements.', async ({ page }) => {
+  test('Named view-timelines are defined on tracked elements.', async ({ page }) => {
     const hasViewTimeline = await page.evaluate(() => {
       const sections = document.querySelectorAll('#tracked section');
       if (sections.length === 0) return false;
@@ -41,7 +41,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
     expect(hasViewTimeline).toBe(true);
   });
 
-  test('MANDATORY: The agent has used `timeline-scope` on a common ancestor (e.g., `html` or `:root`) to make the named timelines accessible.', async ({ page }) => {
+  test('timeline-scope is used on a common ancestor to make named timelines accessible.', async ({ page }) => {
     const hasTimelineScope = await page.evaluate(() => {
       const elements = document.querySelectorAll('*');
       return Array.from(elements).some(el => {
@@ -54,7 +54,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
     expect(hasTimelineScope).toBe(true);
   });
 
-  test('MANDATORY: The agent has applied animations to the target elements using `animation-timeline` linked to the named timelines.', async ({ page }) => {
+  test('Target elements use animation-timeline linked to the named timelines.', async ({ page }) => {
     const hasAnimationTimeline = await page.evaluate(() => {
       const sections = document.querySelectorAll('#animated section');
       if (sections.length === 0) return false;
@@ -67,7 +67,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
     expect(hasAnimationTimeline).toBe(true);
   });
 
-  test('MANDATORY: The agent has used `animation-range` to control the animation timing relative to the tracked elements.', async ({ page }) => {
+  test('animation-range controls animation timing relative to the tracked elements.', async ({ page }) => {
     const hasAnimationRange = await page.evaluate(() => {
       const sections = document.querySelectorAll('#animated section');
       if (sections.length === 0) return false;
@@ -79,7 +79,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
     expect(hasAnimationRange).toBe(true);
   });
 
-  test('MANDATORY: The implementation includes feature detection using `@supports` for scroll-driven animations.', async ({ page }) => {
+  test('The implementation includes feature detection using @supports for scroll-driven animations.', async ({ page }) => {
     const isCompliant = await page.evaluate(() => {
       let hasSupports = false;
       for (let i = 0; i < document.styleSheets.length; i++) {
@@ -88,8 +88,17 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
           const checkRules = (rulesList: CSSRuleList) => {
             for (let j = 0; j < rulesList.length; j++) {
               const rule = rulesList[j];
-              if (rule instanceof CSSSupportsRule && (rule.conditionText.includes('animation-timeline') || rule.conditionText.includes('scroll-driven'))) {
-                hasSupports = true;
+              if (rule instanceof CSSSupportsRule) {
+                const cond = rule.conditionText.toLowerCase();
+                if (
+                  cond.includes('animation-timeline') ||
+                  cond.includes('view-timeline') ||
+                  cond.includes('animation-range') ||
+                  cond.includes('scroll-driven')
+                ) {
+                  hasSupports = true;
+                }
+                checkRules(rule.cssRules);
               } else if (rule instanceof CSSLayerBlockRule || rule instanceof CSSMediaRule) {
                 checkRules(rule.cssRules);
               }
@@ -104,13 +113,12 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
             }
         }
       }
-      const hasJsFallback = document.querySelectorAll('script').length > 0;
-      return hasSupports || !hasJsFallback;
+      return hasSupports;
     });
     expect(isCompliant).toBe(true);
   });
 
-  test('MANDATORY: The implementation respects user preferences for reduced motion using `@media (prefers-reduced-motion: no-preference)`.', async ({ page }) => {
+  test('The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion: no-preference).', async ({ page }) => {
     const isCompliant = await page.evaluate(() => {
       let hasMedia = false;
       for (let i = 0; i < document.styleSheets.length; i++) {
@@ -119,8 +127,11 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
           const checkRules = (rulesList: CSSRuleList) => {
             for (let j = 0; j < rulesList.length; j++) {
               const rule = rulesList[j];
-              if (rule instanceof CSSMediaRule && rule.conditionText.includes('prefers-reduced-motion')) {
-                hasMedia = true;
+              if (rule instanceof CSSMediaRule) {
+                if (rule.conditionText.toLowerCase().includes('prefers-reduced-motion')) {
+                  hasMedia = true;
+                }
+                checkRules(rule.cssRules);
               } else if (rule instanceof CSSLayerBlockRule || rule instanceof CSSSupportsRule) {
                 checkRules(rule.cssRules);
               }
@@ -135,8 +146,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
             }
         }
       }
-      const hasJsFallback = document.querySelectorAll('script').length > 0;
-      return hasMedia || !hasJsFallback;
+      return hasMedia;
     });
     expect(isCompliant).toBe(true);
   });

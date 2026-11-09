@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
     <script type="module">
-      if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
+      if (!("interestForElement" in HTMLButtonElement.prototype)) {
         await import("https://unpkg.com/interestfor@latest");
       }
     </script>
     <script type="module">
-      if(!HTMLElement.prototype.hasOwnProperty("popover")){
+      if (!("popover" in HTMLElement.prototype)) {
         await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
       }
     </script>
@@ -41,6 +41,7 @@
       }
 
       [popover] {
+        inset: auto;
         margin: 0;
         padding: 0.5rem 0.75rem;
         border: 1px solid #ccc;
@@ -49,11 +50,10 @@
         color: #fff;
         font-size: 0.875rem;
         max-width: 20rem;
-        /* Use `anchor()` functions rather than `position-area`, as the anchor positioning polyfill doesn't support `position-area` on popovers. */
+        /* Use `anchor()` functions rather than `position-area`, as the anchor positioning polyfill doesn't support `position-area` with `position-try-fallbacks`. */
         inset-block-start: anchor(end);
         inset-inline-start: anchor(end);
-        position-try: flip-inline;
-        margin: unset;
+        position-try-fallbacks: flip-inline;
       }
       /* These tooltips adds an explicit anchor-name, as the anchor positioning polyfill does not support implicit anchors. */
       button[interestfor="tooltip-dom"] {

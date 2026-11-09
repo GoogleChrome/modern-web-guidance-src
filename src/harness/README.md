@@ -4,14 +4,14 @@ This document covers the internal architecture of the evaluation harness agent r
 
 ## Overview
 
-Each agent harness (e.g., `gemini-cli-agent.ts`, `pi-agent.ts`) is a wrapper that executes a coding agent CLI in an isolated environment, captures its trajectory, and exports results for grading.
+Each agent harness (e.g., `antigravity-cli-agent.ts`, `pi-agent.ts`) is a wrapper that executes a coding agent CLI in an isolated environment, captures its trajectory, and exports results for grading.
 
 ## Directory Structure
 
 ```
 src/harness/
   agents/                    # Agent-specific runners
-    gemini-cli-agent.ts
+    antigravity-cli-agent.ts
     claude-code-agent.ts
     codex-cli-agent.ts
     jetski-cli-agent.ts
@@ -54,7 +54,7 @@ src/harness/
          │ executes
          ▼
 ┌─────────────────┐
-│ pi/gemini/      │
+│ pi/agy/         │
 │ claude binary   │
 └────────┬────────┘
          │ writes
@@ -73,22 +73,21 @@ The harness does **not** centrally configure which model each agent uses. Instea
 
 ### Environment Variables by Agent
 
-| Agent | Environment Variable | Example Value | Notes |
-|-------|---------------------|---------------|-------|
-| **Gemini CLI** | `GEMINI_MODEL` | `gemini-2.5-flash` | Read directly by Gemini CLI |
-| **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `anthropic/claude-sonnet` | `PROMPT_MODEL` is fallback |
-| **Codex CLI** | `CODEX_MODEL` | `gpt-5` | Read directly by Codex CLI |
-| **Jetski CLI** | `JETSKI_MODEL` | `Gemini 2.5 Flash` | Read directly by Jetski CLI |
-| **Claude Code** | `ANTHROPIC_MODEL` | `claude-sonnet-4-5-20250929` | Via Vertex AI config |
+| Agent | Model Env Var | Effort Env Var / Knob | CLI Effort Flag | Default Effort When Unset |
+|-------|---------------|-----------------------|-----------------|---------------------------|
+| **Antigravity CLI** | `ANTIGRAVITY_MODEL` | `ANTIGRAVITY_EFFORT` | `--effort <level>` | agy's built-in default (`agent-default`, or `model-id` if the model ends in `-<level>`) |
+| **Claude Code** | `ANTHROPIC_MODEL` | `CLAUDE_EFFORT` | `--effort <level>` | Claude Code's built-in default (captured as `observed` when `api-request` logs `params.output_config.effort`, else `agent-default`) |
+| **Codex CLI** | `CODEX_MODEL` | `CODEX_EFFORT` | `-c model_reasoning_effort=<level>` | `~/.codex/config.toml` / CLI default (captured as `observed` from rollout `turn_context`) |
+| **Jetski CLI** | `JETSKI_MODEL` | `JETSKI_EFFORT` | `--effort <level>` | Jetski CLI's built-in default (captured as `observed` from `gen_metadata` fields `1.21` / `3.28` / `1.19`) |
+| **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `:<thinking>` suffix on `PI_MODEL` (e.g. `...:low`, `...:off`) | Passed via `--model <id>:<thinking>` | `~/.pi/agent/settings.json` / CLI default (`model-id` when `:suffix` is set, `observed` on `thinking_level_change`) |
+
+> **Conflict rule:** Setting `<AGENT>_EFFORT` alongside a model ID that already bakes in a trailing `-<level>` or `:<level>` tier suffix (such as `ANTIGRAVITY_MODEL=gemini-3.8-flash-medium` + `ANTIGRAVITY_EFFORT=high`) throws a startup error in `resolveEffortCliArgs()` (`src/harness/lib/reasoning-effort.ts`). Use either a base model ID with `<AGENT>_EFFORT` or a tiered model ID without `<AGENT>_EFFORT`.
 
 ### Usage Examples
 
 ```bash
 # Run Pi withClaude Sonnet
 PI_MODEL=anthropic/claude-sonnet node src/harness/quick-smoke.ts pi
-
-# Run Gemini CLI with Flash
-GEMINI_MODEL=gemini-2.5-flash node src/harness/quick-smoke.ts gemini-cli
 
 # Run Codex with GPT-5
 CODEX_MODEL=gpt-5 node src/harness/quick-smoke.ts codex-cli
@@ -124,7 +123,6 @@ const commandArgs = ['-p', ...(model ? ['--model', model] : []), userPrompt];
 
 If no model env var is set:
 - **Pi**: Uses the model from `~/.pi/agent/settings.json` (`defaultModel`)
-- **Gemini CLI**: Uses the model from `~/.gemini/settings.json` or prompts
 - **Codex CLI**: Uses default model (configurable via `codex settings`)
 - **Antigravity CLI**: Uses agy's default model (override with `ANTIGRAVITY_MODEL`)
 - **Jetski CLI**: Uses default model from Jetski config
@@ -182,7 +180,6 @@ Each agent has different auth file locations:
 
 | Agent | Auth Files | Location |
 |-------|-----------|----------|
-| Gemini CLI | `oauth_creds.json`, `google_accounts.json`, `installation_id` | `~/.gemini/` |
 | Pi | `auth.json`, `settings.json`, `trust.json` | `~/.pi/agent/` |
 | Claude Code | GCP credentials via env | `gcloud` config |
 | Codex CLI | OAuth via login flow | `~/.codex/` |
@@ -214,7 +211,6 @@ Each agent outputs trajectory in different formats:
 
 | Agent | Format | Location | Parser |
 |-------|--------|----------|--------|
-| Gemini CLI | JSON/JSONL | `.gemini/tmp/*/chats/*.json` | `JSON.parse()` |
 | Pi | JSONL | `.pi/agent/sessions/*.jsonl` | Line-by-line JSON |
 | Claude Code | JSON | `~/.claude/projects/*/sessions/` | `JSON.parse()` |
 | Codex CLI | TOML config + JSONL | `~/.codex/` | Custom parser |
@@ -437,7 +433,7 @@ The `quick-smoke.ts` script supports all registered agents:
 ```bash
 # Usage: node src/harness/quick-smoke.ts [agent] [guided|unguided]
 node src/harness/quick-smoke.ts pi unguided
-node src/harness/quick-smoke.ts gemini-cli guided
+node src/harness/quick-smoke.ts antigravity-cli guided
 node src/harness/quick-smoke.ts # defaults to pi
 
 # Or via environment variable
@@ -496,20 +492,11 @@ Agents may invoke login shells that reset PATH via `/usr/libexec/path_helper`. T
 setupIsolatedShellProfiles(tempHome, targetDir);
 ```
 
-### 2. Concurrent Writes
-
-Multiple parallel runs may write to the same config files (e.g., `projects.json`). Pre-populate these files in `createIsolatedHome()`:
-
-```typescript
-const mockProjects = { projects: { [workDir]: 'work' } };
-fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects));
-```
-
-### 3. Unix Socket Path Limits
+### 2. Unix Socket Path Limits
 
 On macOS, Unix socket paths have a ~100 character limit. Use `/tmp/` directly instead of `os.tmpdir()` for isolated HOME directories.
 
-### 4. Trajectory Parsing
+### 3. Trajectory Parsing
 
 Different agents use different trajectory formats. Always handle:
 - Missing files (graceful degradation)
@@ -548,9 +535,6 @@ console.log(`DEBUG: Isolated HOME at ${tempHome}`);
 ### Inspect Trajectory Files
 
 ```bash
-# Gemini CLI
-cat /tmp/ghh-gemini-*/.gemini/tmp/*/chats/*.json | jq '.'
-
 # Pi
 cat /tmp/ghh-pi-*/.pi/agent/sessions/*.jsonl | jq '.'
 
@@ -598,9 +582,9 @@ node src/harness/quick-smoke.ts
 # Test specific agent
 node src/harness/quick-smoke.ts <agent> [guided|unguided]
 
-# Available agents: jetski-cli, gemini-cli, claude-code, codex-cli, pi
+# Available agents: jetski-cli, antigravity-cli, claude-code, codex-cli, pi
 node src/harness/quick-smoke.ts pi unguided
-node src/harness/quick-smoke.ts gemini-cli guided
+node src/harness/quick-smoke.ts antigravity-cli guided
 
 # Or via environment
 export SMOKE_AGENT=pi

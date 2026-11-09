@@ -9,13 +9,9 @@ import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
+import { loadAllowedEnvFile } from '../src/harness/lib/secret-guard.ts';
 
-// Load environment variables (Node 20.12+)
-try {
-  process.loadEnvFile(path.join(rootDir, '.env'));
-} catch {
-  // Ignore if file doesn't exist
-}
+loadAllowedEnvFile(path.join(rootDir, '.env'));
 
 // --- Single Source of Truth Metadata ---
 
@@ -34,11 +30,15 @@ const ALL_OPTIONS = {
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
   targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
+  json: { type: 'boolean', desc: 'Output analyzer findings in structured JSON format' },
+  guide: { type: 'string', desc: 'Filter analyzer to a specific guide ID' },
+  'include-docs-and-tests': { type: 'boolean', desc: 'Include documentation, example, demo, and test files in analysis' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
+  'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
@@ -196,7 +196,10 @@ function showHelp() {
       title: 'Guide Development',
       commands: ['dev', 'pr', 'dev-gap'],
     },
-
+    {
+      title: 'Codebase Analysis',
+      commands: ['legacy-scan'],
+    },
     {
       title: 'Evaluation & Dashboard',
       commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill', 'compare'],
@@ -224,13 +227,13 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : '';
+          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : flagName === 'guide' ? ' <id>' : '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -246,6 +249,13 @@ function showHelp() {
 
 async function main() {
   const command = positionals[0];
+
+  if (command === 'legacy-scan' || command === 'analyze') {
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
+    const result = await runAnalyzeCli(process.argv.slice(3));
+    writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
 
   if (values.help || !command) {
     showHelp();
