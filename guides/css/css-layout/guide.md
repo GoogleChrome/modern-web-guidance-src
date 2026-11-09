@@ -20,18 +20,18 @@ web-feature-ids:
 
 # CSS Layouts and Responsive Design
 
-1. [1 Fundamentals](#1-fundamentals)
-   1. [Which layout mode to use?](#11-which-layout-mode-to-use)
-   2. [Working principles](#12-working-principles)
-2. [2 Flexbox](#2-flexbox)
-3. [3 Grid and subgrid](#3-grid-and-subgrid)
-   1. [Code example: grid and subgrid](#31-code-example-grid-and-subgrid)
-4. [4 Container queries](#4-container-queries)
-   1. [Code example: fluid typography using container query units](#41-code-example-fluid-typography-using-container-query-units)
-5. [5 Native overlays, anchor positioning, and stacking contexts](#5-native-overlays-anchor-positioning-and-stacking-contexts)
-6. [6 Overflow tracking and layout stability](#6-overflow-tracking-and-layout-stability)
-7. [7 Viewport mechanics and track distribution](#7-viewport-mechanics-and-track-distribution)
-8. [8 Grid lanes (aka masonry)](#8-grid-lanes-aka-masonry)
+- [1 Fundamentals](#1-fundamentals)
+  - [1.1 Which layout mode to use?](#11-which-layout-mode-to-use)
+  - [1.2 Working principles](#12-working-principles)
+- [2 Flexbox](#2-flexbox)
+- [3 Grid and subgrid](#3-grid-and-subgrid)
+  - [3.1 Code example: grid and subgrid](#31-code-example-grid-and-subgrid)
+- [4 Container queries](#4-container-queries)
+  - [4.1 Code example: fluid typography using container query units](#41-code-example-fluid-typography-using-container-query-units)
+- [5 Native overlays, anchor positioning, and stacking contexts](#5-native-overlays-anchor-positioning-and-stacking-contexts)
+- [6 Overflow tracking and layout stability](#6-overflow-tracking-and-layout-stability)
+- [7 Viewport mechanics and track distribution](#7-viewport-mechanics-and-track-distribution)
+- [8 Grid lanes (aka masonry)](#8-grid-lanes-aka-masonry)
 
 ## 1 Fundamentals
 
@@ -258,7 +258,8 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `scrollbar-gutter: stable` to reserve space for scrollbars and prevent layout shifts when content grows.
 - Use `overscroll-behavior: contain` (or `none`) on nested scroll regions (such as sidebars, modals, and lists) to stop scroll chains from bubbling into the page, or `overscroll-behavior: chain` on intermediate scroll wrappers (such as swipe-to-reveal tracks) when excess scroll should propagate to an ancestor scroller without triggering a local rubber-band bounce.
 - Use the `-webkit-line-clamp` + `display: -webkit-box` + `-webkit-box-orient: vertical` triad for multi-line truncation — despite the prefix, this pattern is fully specified and not deprecated. Declare the unprefixed `line-clamp` shorthand alongside it; browsers that don't yet support it ignore the property harmlessly.
-- For text that must stay on one line (labels, table cells, file names), truncate with `text-overflow: ellipsis` and reveal the full text on hover and focus. See {{ GUIDE_REF("single-line-overflow") }} for more details.
+- For text that must stay on one line (labels, table cells, file names) see {{ GUIDE_REF("single-line-overflow") }} for techniques for truncating and revealing the full text on demand without UX friction.
+
 **Do not:**
 
 - Don't use `overflow: scroll` when `auto` will do — `scroll` forces scrollbars even when there's nothing to scroll.
