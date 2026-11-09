@@ -324,7 +324,7 @@ drawer.addEventListener('cancel', (event) => {
 
 ## Implementation for a drawer that also acts as a sidebar
 
-Use this implementation when the same element also becomes a regular, always-visible sidebar under certain conditions (see [Choose the drawer element](#choose-the-drawer-element)). Remove its `role` and `aria-modal` while it acts as a sidebar. This guide does not cover the sidebar layout itself.
+Use this implementation when the same element also becomes a regular, always-visible sidebar under certain conditions (see [Choose the drawer element](#choose-the-drawer-element)). Toggle `role` from the same media query that switches the layout (e.g. with `matchMedia()`): remove it while the element acts as a sidebar, and restore `role="dialog"` when it becomes a drawer again. This guide does not cover the sidebar layout itself.
 
 Follow the [`<dialog>` implementation](#implementation-with-dialog), with these changes:
 

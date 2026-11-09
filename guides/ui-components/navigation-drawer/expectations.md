@@ -7,6 +7,7 @@
 - The drawer element has an accessible name (via `aria-label` or `aria-labelledby`).
 - If the drawer is a `<dialog>` element, it is opened with `showModal()`.
 - If the drawer is not a `<dialog>` element, it has `role="dialog"` and `popover="manual"`.
+- If the drawer also acts as an always-visible sidebar, it does not have `role="dialog"` while it acts as a sidebar.
 - If the drawer is not a `<dialog>` element, it has `aria-modal="true"` while open, and the attribute is removed when it closes.
 - When the drawer is open, a dimmed backdrop (the `::backdrop` pseudo-element) is visible behind it that covers the rest of the page.
 - The drawer's navigation sheet does not span the full width of the viewport when open, leaving a portion of the dimmed backdrop visible alongside it.
