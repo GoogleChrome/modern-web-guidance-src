@@ -168,7 +168,7 @@ Bars reused across elements can be memoized once in the shared rule, named by in
 |---|---|
 | `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--skeleton-bar()` and set `--lines: 2` |
 | `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
-| `li` | 1 bar each, native marker hidden and replaced by a `li::before` dot; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
+| `li` | 1 bar each, drawn by `li::after`, with the native marker replaced by a `li::before` dot (see Lists); vary widths. Leave the list's padding alone so the indent matches the real list |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
 ## 4. Lists
