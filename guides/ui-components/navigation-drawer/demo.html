@@ -232,8 +232,10 @@
     function observeEscKeyDismiss() {
       // Escape fires `cancel` on a modal dialog; slide out instead of closing instantly.
       drawer.addEventListener('cancel', (event) => {
-        event.preventDefault();
-        closeDrawer();
+        if (event.cancelable) {
+          event.preventDefault();
+          closeDrawer();
+        }
       });
     }
 
