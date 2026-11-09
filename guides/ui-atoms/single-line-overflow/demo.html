@@ -91,7 +91,7 @@
         /* 1px short, so the text still counts as overflowing and the query keeps matching */
         translate: calc(1px - 100%);
         /* Example value. Set only here: the text snaps back when the pointer leaves */
-        transition: margin-inline-start 2s linear, translate 2s linear;
+        transition: margin-inline-start 2s ease-in, translate 2s ease-in;
       }
 
       /* The overflow is on the left, so the text moves right */
@@ -152,7 +152,7 @@
     .fade .label:is(:hover, :focus-visible) {
       --fade-size: 0px;
       /* Set only here, so the fade is back as soon as the text snaps back */
-      transition: --fade-size 2s linear;
+      transition: --fade-size 2s ease-in;
     }
   }
 

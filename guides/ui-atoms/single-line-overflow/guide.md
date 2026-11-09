@@ -200,8 +200,8 @@ Move the text by the difference between the element's width and its own: a perce
       margin-inline-start: 100%;
       /* 1px short, so the text still counts as overflowing and the query keeps matching */
       translate: calc(1px - 100%);
-      /* Example value. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
-      transition: margin-inline-start 2s linear, translate 2s linear;
+      /* Example values. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
+      transition: margin-inline-start 2s ease-in, translate 2s ease-in;
     }
 
     /* The overflow is on the left, so the text moves right */
@@ -212,7 +212,7 @@ Move the text by the difference between the element's width and its own: a perce
 }
 ```
 
-The duration is fixed, so longer text scrolls faster. Pick it for the longest text you expect.
+The duration is fixed, so longer text scrolls faster. Pick it for the longest text you expect. Use a timing function that starts slowly and accelerates, such as `ease-in`: a pointer that only passes over barely moves the text, and the end, which is what the user is waiting for, arrives quickly.
 
 With a fade instead of an ellipsis, the text would scroll under the fade and its end would stay unreadable. Shrink the fade in step with the scroll, so it is gone when the end arrives:
 
@@ -220,8 +220,8 @@ With a fade instead of an ellipsis, the text would scroll under the fade and its
 @media (prefers-reduced-motion: no-preference) {
   .label:is(:hover, :focus-visible) {
     --fade-size: 0px;
-    /* Same duration as the scroll. Set only here, so the fade is back as soon as the text snaps back. */
-    transition: --fade-size 2s linear;
+    /* Same duration and easing as the scroll. Set only here, so the fade is back as soon as the text snaps back. */
+    transition: --fade-size 2s ease-in;
   }
 }
 ```
@@ -346,7 +346,7 @@ if (!CSS.supports('container-type', 'scroll-state')) {
     display: inline-block;
     margin-inline-start: 100%;
     translate: calc(1px - 100%);
-    transition: margin-inline-start 2s linear, translate 2s linear;
+    transition: margin-inline-start 2s ease-in, translate 2s ease-in;
   }
 }
 ```
