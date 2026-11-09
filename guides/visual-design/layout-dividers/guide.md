@@ -11,7 +11,7 @@ web-feature-ids:
 
 # Layout dividers
 
-Draw dividers between items of a flex, grid, or multicol container with CSS gap decorations (`column-rule`, `row-rule`, `rule`) set on the container. Rules paint centered in the gap, behind items, never change gap or container size, and are clipped to the container's content box. This is preferred over item borders, `:last-child` resets, `<hr>`, or divider elements, which break when items wrap or reflow and add markup whose only job is to be a line.
+Draw dividers between items of a flex, grid, or multicol container with CSS gap decorations (`column-rule`, `row-rule`, `rule`) set on the container. Rules paint centered in the gap, behind items, never change gap or container size, and stop at the container's content-box edges by default. This is preferred over item borders, `:last-child` resets, `<hr>`, or divider elements, which break when items wrap or reflow and add markup whose only job is to be a line.
 
 ## Implementation steps
 
