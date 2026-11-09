@@ -495,6 +495,7 @@ export interface CodexTurnContextItem {
   collaboration_mode?: CodexCollaborationMode;
   realtime_active?: boolean;
   summary?: string;
+  reasoning_effort?: string;
   effort?: string;
   user_instructions?: string;
   multi_agent_version?: string;

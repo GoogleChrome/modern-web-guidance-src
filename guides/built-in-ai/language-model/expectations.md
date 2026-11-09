@@ -13,3 +13,8 @@
 1. `session.destroy()` should be called when a session is no longer needed, to free device memory.
 1. Session clones created with `session.clone()` share the base session's initial context while accumulating their own separate conversation history afterwards, and unused cloned or base sessions are cleaned up with `destroy()`.
 1. `session.contextUsage` and `session.contextWindow` reflect the current token count and maximum respectively. Code should not assume a fixed token limit.
+1. `downloadprogress` events update the value of a `<progress>` element that has an accessible name.
+1. The element that receives streamed output has `aria-live="polite"` and was in the page when it loaded.
+1. The element that receives streamed output has `aria-busy="true"` while the response streams in.
+1. After a streamed response finishes, the element that received it has `aria-busy="false"`.
+1. When `LanguageModel.availability()` returns `"downloadable"` or `"downloading"`, `LanguageModel.create()` is only called during transient user activation (`navigator.userActivation.isActive` is `true`), such as from a button's click handler.

@@ -66,3 +66,138 @@ export function getAgentBadge(agentName) {
     const kind = AGENTS[name]?.badge ?? inferBadgeKind(name);
     return kind ? `<span class="agent-badge ${kind}" aria-hidden="true">${BADGE_GLYPHS[kind]}</span>` : '';
 }
+
+export const REASONING_EFFORT_SOURCES = /** @type {const} */ ([
+    'observed',
+    'configured',
+    'model-id',
+    'agent-default',
+]);
+
+const VALID_EFFORT_TOKEN_RE = /^[a-z0-9_-]+$/;
+
+/** @type {Record<import('./evals.d.ts').ReasoningEffortSource, number>} */
+const EFFORT_SOURCE_PRECEDENCE = {
+    observed: 4,
+    configured: 3,
+    'model-id': 2,
+    'agent-default': 1,
+};
+
+/** @type {Record<string, number>} */
+const EFFORT_TIER_ORDER = {
+    off: 0,
+    none: 1,
+    minimal: 2,
+    low: 3,
+    medium: 4,
+    high: 5,
+    xhigh: 6,
+    max: 7,
+    default: 99,
+};
+
+/**
+ * Validates an untrusted `reasoningEffort` value and returns a clean copy with
+ * only allowlisted keys, or `undefined` when absent or malformed.
+ * @param {unknown} raw
+ * @returns {import('./evals.d.ts').ReasoningEffort | undefined}
+ */
+export function sanitizeReasoningEffort(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const record = /** @type {Record<string, unknown>} */ (raw);
+    const { source, level } = record;
+    if (source !== 'observed' && source !== 'configured' && source !== 'model-id' && source !== 'agent-default') {
+        return undefined;
+    }
+    if (level === undefined || level === null) {
+        return source === 'agent-default' ? { source } : undefined;
+    }
+    if (typeof level !== 'string' || !VALID_EFFORT_TOKEN_RE.test(level)) {
+        return undefined;
+    }
+    return { level, source };
+}
+
+/**
+ * Normalizes a missing or untrusted `reasoningEffort` for UI readers so legacy suites
+ * without `reasoningEffort` behave identically to `{ source: 'agent-default' }`.
+ * @param {unknown} raw
+ * @returns {import('./evals.d.ts').ReasoningEffort}
+ */
+export function normalizeReasoningEffort(raw) {
+    return sanitizeReasoningEffort(raw) ?? { source: 'agent-default' };
+}
+
+/**
+ * Returns the normalized effort level token for display and filtering (`'default'` when unset).
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function getEffortLevel(raw) {
+    const norm = normalizeReasoningEffort(raw);
+    return norm.level || 'default';
+}
+
+/**
+ * True when `reasoningEffort` is missing or resolved to `agent-default`.
+ * @param {unknown} raw
+ * @returns {boolean}
+ */
+export function isDefaultEffort(raw) {
+    const norm = normalizeReasoningEffort(raw);
+    return norm.source === 'agent-default' || !norm.level;
+}
+
+/**
+ * Formats the human-readable provenance tooltip / accessible label for a `ReasoningEffort`.
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function getEffortTooltip(raw) {
+    const norm = normalizeReasoningEffort(raw);
+    const level = norm.level || 'default';
+    if (norm.source === 'agent-default' || !norm.level) {
+        return 'Reasoning effort: default (CLI built-in default; not explicitly configured or logged)';
+    }
+    if (norm.source === 'observed') {
+        return `Reasoning effort: ${level} (observed from agent logs)`;
+    }
+    if (norm.source === 'configured') {
+        return `Reasoning effort: ${level} (configured by harness)`;
+    }
+    return `Reasoning effort: ${level} (from model ID)`;
+}
+
+/**
+ * Compares two effort level tokens in logical tier order (low -> medium -> high -> ... -> default).
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function compareEffortLevels(a, b) {
+    if (a === b) return 0;
+    const rankA = EFFORT_TIER_ORDER[a] ?? 50;
+    const rankB = EFFORT_TIER_ORDER[b] ?? 50;
+    if (rankA !== rankB) return rankA - rankB;
+    return a.localeCompare(b);
+}
+
+/**
+ * Picks whichever `ReasoningEffort` has strictly higher source precedence
+ * (`observed > configured > model-id > agent-default`), keeping `current` on ties.
+ * @param {import('./evals.d.ts').ReasoningEffort | undefined} current
+ * @param {import('./evals.d.ts').ReasoningEffort | undefined} candidate
+ * @returns {import('./evals.d.ts').ReasoningEffort | undefined}
+ */
+export function pickHigherPrecedenceEffort(current, candidate) {
+    if (!candidate) return current;
+    if (!current) return candidate;
+    const rankCandidate = candidate.source !== 'agent-default' && !candidate.level
+        ? 0
+        : (EFFORT_SOURCE_PRECEDENCE[candidate.source] ?? 0);
+    const rankCurrent = current.source !== 'agent-default' && !current.level
+        ? 0
+        : (EFFORT_SOURCE_PRECEDENCE[current.source] ?? 0);
+    return rankCandidate > rankCurrent ? candidate : current;
+}
