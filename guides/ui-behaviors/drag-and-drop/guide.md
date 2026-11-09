@@ -1,6 +1,6 @@
 ---
 name: drag-and-drop
-description: Support dragging to rearrange the children of a list or row while preserving their state and accessible order.
+description: Support dragging to rearrange the children of a container along one axis (horizontal or vertical) while preserving their state and accessible order.
 web-feature-ids:
   - move-before
   - pointer-events-api
