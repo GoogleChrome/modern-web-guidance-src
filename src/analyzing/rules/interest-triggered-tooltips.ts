@@ -16,7 +16,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = '332c95d0cbc9';
+export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = 'c28b54e4a72e';
 
 const INTEREST_GUARD_TOKENS = [
   'interestfor',

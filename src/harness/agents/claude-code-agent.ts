@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
 import { cleanupIsolatedHome, parseAgentArgs, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import {
   type StandardizedStep,
@@ -105,9 +106,10 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
     const isSubagent = relativePath.includes('subagents/');
     const rawDestName = isSubagent ? `subagent-${baseName}.jsonl` : `session-${baseName}.jsonl`;
-    fs.copyFileSync(src, path.join(targetDir, rawDestName));
+    const destJsonl = path.join(targetDir, rawDestName);
+    fs.writeFileSync(destJsonl, sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
 
-    const logData = coalesceClaudeEntries(parseJsonlFile(src));
+    const logData = coalesceClaudeEntries(parseJsonlFile(destJsonl));
 
     parsedSessions.push({ relativePath, baseName, logData });
 
@@ -121,7 +123,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
   // Step 2: Generate HTML viewers embedding subagent trajectories where referenced (main sessions only)
   for (const session of parsedSessions) {
     if (!session.relativePath.includes('subagents/')) {
-      const htmlContent = generateClaudeTrajectoryHtml(session.logData, subagentsMap);
+      const htmlContent = sanitizeTextSecrets(generateClaudeTrajectoryHtml(session.logData, subagentsMap));
       const destName = `session-${session.baseName}.html`;
       const dest = path.join(targetDir, destName);
       fs.writeFileSync(dest, htmlContent, 'utf8');

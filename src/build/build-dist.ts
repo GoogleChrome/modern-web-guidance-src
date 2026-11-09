@@ -224,12 +224,12 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       updateVersionsInDir(publishRoot, version);
     }
 
-    const staticModelDir = path.join(rootDir, "src/rag/static-model");
-    const destStaticModelDir = path.join(DIST_DIR, "static-model");
-    if (fs.existsSync(staticModelDir)) {
-      fs.mkdirSync(destStaticModelDir, { recursive: true });
-      for (const file of ["words.json", "words.i8", "words.scale.f32"]) {
-        fs.copyFileSync(path.join(staticModelDir, file), path.join(destStaticModelDir, file));
+    const ragGenDir = path.join(rootDir, "src/rag/gen");
+    const destGenDir = path.join(DIST_DIR, "gen");
+    if (fs.existsSync(ragGenDir)) {
+      fs.mkdirSync(destGenDir, { recursive: true });
+      for (const file of ["query-words.json", "query-words.i8", "query-words.scale.f32"]) {
+        fs.copyFileSync(path.join(ragGenDir, file), path.join(destGenDir, file));
       }
     }
 
@@ -254,13 +254,13 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         JSON.stringify(resultSearch.metafile)
       );
 
-      console.log("Bundling analyze.mjs...");
+      console.log("Bundling legacy-scan.mjs...");
       const resultAnalyze = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/analyze.mjs"),
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/legacy-scan.mjs"),
         banner: {
           js: `// @ts-nocheck
 import { createRequire } from 'module';
@@ -280,7 +280,7 @@ const __dirname = __dirnameFunction(__filename);
       });
 
       fs.writeFileSync(
-        path.join(ROOT_DIST_DIR, "analyze.meta.json"),
+        path.join(ROOT_DIST_DIR, "legacy-scan.meta.json"),
         JSON.stringify(resultAnalyze.metafile)
       );
 
@@ -301,7 +301,7 @@ const __dirname = __dirnameFunction(__filename);
               return { path: './search.mjs', external: true }
             });
             build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
-              return { path: './analyze.mjs', external: true }
+              return { path: './legacy-scan.mjs', external: true }
             });
           },
         }],

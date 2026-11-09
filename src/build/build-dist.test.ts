@@ -47,7 +47,7 @@ describe('processSkills', () => {
     
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/analyze.mjs')), 'analyze.mjs should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/legacy-scan.mjs')), 'legacy-scan.mjs should exist');
 
     // Verify standalone skills and their references exist
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');

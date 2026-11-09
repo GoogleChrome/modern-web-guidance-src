@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, expectNever } from '../../../src/grading/test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -56,17 +56,32 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
 
   test('The incorrect spelling :auto-fill must not be used', () => {
     const css = getAllCssText();
+    expect(getAutofillRules(css).length).toBeGreaterThan(0);
     expect(/:(?:-webkit-)?auto-fill\b/i.test(css)).toBe(false);
   });
 
   test('The :autofill pseudo-class must only be applied to <input>, <select>, or <textarea>', () => {
     const css = getAllCssText();
-    const directMatches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:-webkit-)?auto-?fill\b/gi)];
-    const isMatches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:is|where)\([^)]*:(?:-webkit-)?auto-?fill\b/gi)];
-    const matches = [...directMatches, ...isMatches];
-    expect(matches.length).toBeGreaterThan(0);
-    const invalidTags = matches.map(m => m[1].toLowerCase()).filter(t => !['input', 'select', 'textarea'].includes(t));
-    expect(invalidTags).toHaveLength(0);
+    const rules = getAutofillRules(css);
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) {
+      const selectors = rule.selector.split(',').map(s => s.trim());
+      for (const sel of selectors) {
+        if (!/:(?:-webkit-)?auto-?fill\b/i.test(sel)) continue;
+        const match = sel.match(/(?:^|[\s>+~])([a-zA-Z][\w-]*)(?::[a-zA-Z-()]*)?:(?:-webkit-)?auto-?fill\b/i);
+        if (match) {
+          const tag = match[1].toLowerCase();
+          expect(['input', 'select', 'textarea']).toContain(tag);
+        }
+        const isMatch = sel.match(/:(?:is|where)\(([^)]+)\):(?:-webkit-)?auto-?fill\b/i);
+        if (isMatch) {
+          const tags = isMatch[1].split(',').map(t => t.trim().toLowerCase());
+          for (const t of tags) {
+            expect(['input', 'select', 'textarea']).toContain(t);
+          }
+        }
+      }
+    }
   });
 
   test('If :-webkit-autofill is used, it must be combined with :autofill inside :is()', () => {
@@ -74,14 +89,13 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     const rules = getAutofillRules(css);
     expect(rules.length).toBeGreaterThan(0);
     const webkitRules = rules.filter(r => /:-webkit-autofill\b/i.test(r.selector));
-    const allWrappedInIs = webkitRules.every(r => {
+    for (const r of webkitRules) {
       const stripped = r.selector.replace(
         /:is\(\s*(?::autofill\s*,\s*:-webkit-autofill|:-webkit-autofill\s*,\s*:autofill)\s*\)/gi,
         ''
       );
-      return !/:-webkit-autofill\b/i.test(stripped);
-    });
-    expect(allWrappedInIs).toBe(true);
+      expect(/:-webkit-autofill\b/i.test(stripped)).toBe(false);
+    }
   });
 
   test.beforeEach(async ({ page }) => {
@@ -100,6 +114,7 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
   });
 
   test('JavaScript must not apply inline styles to form controls', async ({ page }) => {
+    expect(getAutofillRules(getAllCssText()).length).toBeGreaterThan(0);
     let controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
     if (controls.length === 0) {
       await page.evaluate(() => {
@@ -113,13 +128,12 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     for (const control of controls) {
       await control.fill('Test Value').catch(() => {});
     }
-    await page.waitForTimeout(1000);
 
-    const hasInlineStyles = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('input, select, textarea'))
-        .some(el => (el as HTMLElement).style.length > 0);
-    });
-    expect(hasInlineStyles).toBe(false);
+    await expectNever(
+      page,
+      () => Array.from(document.querySelectorAll('input, select, textarea')).some((el: any) => el.style.length > 0),
+      { forMs: 300 }
+    );
   });
 
   test('The autofilled state must not change layout-affecting properties (border-width, padding, font-size)', () => {

@@ -161,7 +161,9 @@ function resolveLexicalBinding(
  */
 export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
   let current = unwrapExpression(node);
+  const seen = new Set<Node>();
   for (let hops = 0; hops < maxHops && Node.isIdentifier(current); hops++) {
+    seen.add(current);
     const name = current.getText();
     const binding = resolveLexicalBinding(current, name, current.getStart());
     const init =
@@ -171,7 +173,11 @@ export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
     if (!init || init === current) {
       break;
     }
-    current = unwrapExpression(init);
+    const unwrappedInit = unwrapExpression(init);
+    if (seen.has(unwrappedInit)) {
+      break;
+    }
+    current = unwrappedInit;
   }
   return current;
 }
@@ -263,51 +269,166 @@ const BROWSER_GLOBAL_ROOTS = new Set([
   'self',
 ]);
 
+function getStaticStringValue(node: Node | undefined): string | null {
+  if (!node) {
+    return null;
+  }
+  const unwrapped = unwrapExpression(node);
+  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
+    ? unwrapped.getLiteralText()
+    : null;
+}
+
+function matchesTokenExact(name: string | null | undefined, featureTokens: readonly string[]): boolean {
+  if (!name) {
+    return false;
+  }
+  const lower = name.toLowerCase();
+  return featureTokens.some((token) => token.toLowerCase() === lower);
+}
+
+function matchesTokenNameOrSubstring(name: string | null | undefined, featureTokens: readonly string[]): boolean {
+  if (!name) {
+    return false;
+  }
+  const lower = name.toLowerCase();
+  return featureTokens.some((token) => {
+    const tokenLower = token.toLowerCase();
+    return lower === tokenLower || lower.includes(tokenLower);
+  });
+}
+
+function getRootExpression(node: Node): Node {
+  let root = unwrapExpression(node);
+  while (Node.isPropertyAccessExpression(root)) {
+    root = unwrapExpression(root.getExpression());
+  }
+  return root;
+}
+
+interface PropertyCheck {
+  readonly target: Node;
+  readonly prop: Node;
+}
+
+function extractPropertyCheck(node: Node): PropertyCheck | null {
+  if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.InKeyword) {
+    return { target: node.getRight(), prop: node.getLeft() };
+  }
+
+  if (Node.isCallExpression(node)) {
+    const callee = unwrapExpression(node.getExpression());
+    if (Node.isPropertyAccessExpression(callee)) {
+      const method = callee.getName();
+      const args = node.getArguments();
+      const first = args[0];
+      const second = args[1];
+
+      if (method === 'hasOwn' && first && second && isGlobalReference(callee.getExpression(), 'Object')) {
+        return { target: first, prop: second };
+      }
+      if (method === 'hasOwnProperty' && first) {
+        return { target: callee.getExpression(), prop: first };
+      }
+      if (method === 'call' && first && second) {
+        const target = unwrapExpression(callee.getExpression());
+        const isHasOwn =
+          (Node.isIdentifier(target) && target.getText() === 'hasOwnProperty') ||
+          (Node.isPropertyAccessExpression(target) && target.getName() === 'hasOwnProperty');
+        if (isHasOwn) {
+          return { target: first, prop: second };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Validates that an AST expression represents an authentic browser feature detection check
  * rather than a bare variable null-check (e.g. `if (container)`).
  */
-function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): boolean {
+function isValidFeatureCondition(
+  expr: Node,
+  featureTokens: readonly string[],
+  seen: Set<Node> = new Set(),
+): boolean {
   const unwrapped = unwrapExpression(expr);
 
+  const propCheck = extractPropertyCheck(unwrapped);
+  if (propCheck) {
+    const propName = getStaticStringValue(propCheck.prop);
+    if (matchesTokenNameOrSubstring(propName, featureTokens)) {
+      return true;
+    }
+    const targetRoot = getRootExpression(propCheck.target);
+    const hasGlobalTargetRoot =
+      Node.isIdentifier(targetRoot) &&
+      (BROWSER_GLOBAL_ROOTS.has(targetRoot.getText()) ||
+        /^HTML[A-Z]/.test(targetRoot.getText()) ||
+        matchesTokenExact(targetRoot.getText(), featureTokens)) &&
+      isUnshadowedGlobal(targetRoot, targetRoot.getText());
+    return hasGlobalTargetRoot
+      ? isValidFeatureCondition(propCheck.target, featureTokens, seen)
+      : false;
+  }
+
   if (Node.isIdentifier(unwrapped)) {
-    return (
-      featureTokens.includes(unwrapped.getText()) &&
-      isUnshadowedGlobal(unwrapped, unwrapped.getText())
-    );
+    const name = unwrapped.getText();
+    if (matchesTokenExact(name, featureTokens) && isUnshadowedGlobal(unwrapped, name)) {
+      return true;
+    }
+    if (seen.has(unwrapped)) {
+      return false;
+    }
+    seen.add(unwrapped);
+    const resolved = resolveLocalExpression(unwrapped, 5);
+    return resolved !== unwrapped && !seen.has(resolved)
+      ? isValidFeatureCondition(resolved, featureTokens, seen)
+      : false;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
     return (
-      unwrapped.getOperatorToken().getKind() === SyntaxKind.InKeyword ||
-      isValidFeatureCondition(unwrapped.getLeft(), featureTokens) ||
-      isValidFeatureCondition(unwrapped.getRight(), featureTokens)
+      isValidFeatureCondition(unwrapped.getLeft(), featureTokens, seen) ||
+      isValidFeatureCondition(unwrapped.getRight(), featureTokens, seen)
     );
   }
 
   if (Node.isTypeOfExpression(unwrapped)) {
-    return isValidFeatureCondition(unwrapped.getExpression(), featureTokens);
+    return isValidFeatureCondition(unwrapped.getExpression(), featureTokens, seen);
   }
 
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
     if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
-      return isGlobalReference(callee.getExpression(), 'CSS');
+      if (isGlobalReference(callee.getExpression(), 'CSS')) {
+        const argsText = unwrapped.getArguments().map((a) => a.getText()).join(' ');
+        return (
+          matchesTokenNameOrSubstring(argsText, featureTokens) ||
+          featureTokens.some((t) => t.toLowerCase() === 'css.supports')
+        );
+      }
     }
     return false;
   }
 
   if (Node.isPropertyAccessExpression(unwrapped)) {
-    let root: Node = unwrapped;
-    while (Node.isPropertyAccessExpression(root)) {
-      root = unwrapExpression(root.getExpression());
+    if (matchesTokenNameOrSubstring(unwrapped.getName(), featureTokens)) {
+      return true;
     }
+    const root = getRootExpression(unwrapped);
     if (Node.isIdentifier(root)) {
       const rootText = root.getText();
-      return (
-        (BROWSER_GLOBAL_ROOTS.has(rootText) && isUnshadowedGlobal(root, rootText)) ||
-        featureTokens.includes(unwrapped.getName())
-      );
+      const isGlobalRoot =
+        (BROWSER_GLOBAL_ROOTS.has(rootText) ||
+          /^HTML[A-Z]/.test(rootText) ||
+          matchesTokenExact(rootText, featureTokens)) &&
+        isUnshadowedGlobal(root, rootText);
+      if (isGlobalRoot) {
+        return matchesTokenNameOrSubstring(unwrapped.getText(), featureTokens);
+      }
     }
   }
 
@@ -320,6 +441,7 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
 function conditionCheckPolarity(
   conditionExpr: Node,
   featureTokens: readonly string[],
+  seen: Set<Node> = new Set(),
 ): 'positive' | 'negative' | null {
   const unwrapped = unwrapExpression(conditionExpr);
 
@@ -327,15 +449,15 @@ function conditionCheckPolarity(
     Node.isPrefixUnaryExpression(unwrapped) &&
     unwrapped.getOperatorToken() === SyntaxKind.ExclamationToken
   ) {
-    const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens);
+    const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens, seen);
     return inner === 'positive' ? 'negative' : inner === 'negative' ? 'positive' : null;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
     const op = unwrapped.getOperatorToken().getKind();
     if (op === SyntaxKind.AmpersandAmpersandToken || op === SyntaxKind.BarBarToken) {
-      const left = conditionCheckPolarity(unwrapped.getLeft(), featureTokens);
-      const right = conditionCheckPolarity(unwrapped.getRight(), featureTokens);
+      const left = conditionCheckPolarity(unwrapped.getLeft(), featureTokens, seen);
+      const right = conditionCheckPolarity(unwrapped.getRight(), featureTokens, seen);
       if (left && right) {
         return left === right ? left : null;
       }
@@ -343,11 +465,18 @@ function conditionCheckPolarity(
     }
   }
 
-  const condText = unwrapped.getText();
-  if (
-    !featureTokens.some((token) => condText.includes(token)) ||
-    !isValidFeatureCondition(unwrapped, featureTokens)
-  ) {
+  if (Node.isIdentifier(unwrapped)) {
+    if (seen.has(unwrapped)) {
+      return null;
+    }
+    seen.add(unwrapped);
+    const resolved = resolveLocalExpression(unwrapped, 5);
+    if (resolved !== unwrapped && !seen.has(resolved)) {
+      return conditionCheckPolarity(resolved, featureTokens, seen);
+    }
+  }
+
+  if (!isValidFeatureCondition(unwrapped, featureTokens, seen)) {
     return null;
   }
 
@@ -413,13 +542,14 @@ function sourceFileContainsAnyToken(
     sourceFileTokenCache.set(sf, cache);
   }
 
-  let sfText: string | undefined;
+  let sfTextLower: string | undefined;
   for (const token of tokens) {
-    let hasToken = cache.get(token);
+    const tokenLower = token.toLowerCase();
+    let hasToken = cache.get(tokenLower);
     if (hasToken === undefined) {
-      sfText ??= sf.getFullText();
-      hasToken = sfText.includes(token);
-      cache.set(token, hasToken);
+      sfTextLower ??= sf.getFullText().toLowerCase();
+      hasToken = sfTextLower.includes(tokenLower);
+      cache.set(tokenLower, hasToken);
     }
     if (hasToken) {
       return true;
@@ -500,16 +630,6 @@ export interface MatchedEventListener {
   readonly eventName: string;
   readonly handlerNode: Node;
   readonly targetNode: Node | undefined;
-}
-
-function getStaticStringValue(node: Node | undefined): string | null {
-  if (!node) {
-    return null;
-  }
-  const unwrapped = unwrapExpression(node);
-  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
-    ? unwrapped.getLiteralText()
-    : null;
 }
 
 /**

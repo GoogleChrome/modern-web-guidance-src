@@ -75,7 +75,7 @@ test('processSkills rewrites modern-web-guidance@latest to @next when distTag is
   }
 });
 
-test('validate dry-run checks without throwing and allows StaticEmbedder fallback in buildDist', async () => {
+test('validate dry-run checks without throwing and allows uncached chunk fallback in buildDist', async () => {
   const embedCalls: Array<{ check?: boolean } | undefined> = [];
   const buildCalls: Array<{ version?: string; failOnMissingVectors?: boolean; distTag?: DistTag }> = [];
   let distTestsRan = 0;
@@ -93,9 +93,6 @@ test('validate dry-run checks without throwing and allows StaticEmbedder fallbac
           {
             guideId: 'example-guide',
             category: 'css',
-            description: 'Example',
-            featuresUsed: [],
-            chunkContent: 'chunk',
             embeddedText: 'chunk',
             hash: 'abc',
           },
@@ -120,8 +117,8 @@ test('validate dry-run checks without throwing and allows StaticEmbedder fallbac
   assert.strictEqual(distTestsRan, 1);
 });
 
-test('validate release embeds missing chunks and enforces failOnMissingVectors and distTag', async () => {
-  const embedCalls: Array<{ check?: boolean } | undefined> = [];
+test('validate release embeds missing chunks with prune: true and enforces failOnMissingVectors and distTag', async () => {
+  const embedCalls: Array<{ check?: boolean; prune?: boolean } | undefined> = [];
   const buildCalls: Array<{ version?: string; failOnMissingVectors?: boolean; distTag?: DistTag }> = [];
 
   await validate('0.0.198', {
@@ -148,7 +145,7 @@ test('validate release embeds missing chunks and enforces failOnMissingVectors a
     runDistTests: () => {},
   });
 
-  assert.deepStrictEqual(embedCalls, [undefined]);
+  assert.deepStrictEqual(embedCalls, [{ prune: true }]);
   assert.deepStrictEqual(buildCalls, [{ version: '0.0.198', failOnMissingVectors: true, distTag: 'next' }]);
 });
 
