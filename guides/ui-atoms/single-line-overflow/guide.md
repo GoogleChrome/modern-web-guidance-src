@@ -212,7 +212,14 @@ Move the text by the difference between the element's width and its own: a perce
 }
 ```
 
-The duration is fixed, so longer text scrolls faster. Pick it for the longest text you expect. Use a timing function that starts slowly and accelerates, such as `ease-in`: a pointer that only passes over barely moves the text, and the end, which is what the user is waiting for, arrives quickly.
+The duration is fixed, so longer text scrolls faster. CSS cannot measure the text, so if a constant speed matters, set a `--scroll-width` custom property from script to the hidden width (`scrollWidth - clientWidth`, as a number) in the `ResizeObserver` from the detection section below, and derive the duration from it, for both the scroll and the fade:
+
+```css
+/* Example speed: 10ms per hidden pixel. Without script, assumes 200px. */
+transition-duration: calc(var(--scroll-width, 200) * 10ms);
+```
+
+Use a timing function that starts slowly and accelerates, such as `ease-in`: a pointer that only passes over barely moves the text, and the end, which is what the user is waiting for, arrives quickly.
 
 With a fade instead of an ellipsis, the text would scroll under the fade and its end would stay unreadable. Shrink the fade in step with the scroll, so it is gone when the end arrives:
 
