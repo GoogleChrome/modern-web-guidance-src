@@ -139,13 +139,6 @@ async function startSimulation(page: Page) {
     }
 
     const output = document.getElementById('output');
-    document.addEventListener('click', () => {
-      const isDone = w.__hasFinished || (output && /done|complete|finished/i.test(output.textContent || ''));
-      if (w.__simActive && !isDone) {
-        w.clickedWhileRunning = true;
-      }
-    });
-
     const isCompleteText = (text: string | null | undefined) =>
       Boolean(text && /done|complete|finished|all\s+\w*\s*processed/i.test(text));
 
@@ -185,6 +178,14 @@ async function startSimulation(page: Page) {
     requestAnimationFrame(tick);
 
     btn?.click();
+
+    document.addEventListener('click', (e) => {
+      if (btn && (e.target === btn || btn.contains(e.target as Node))) return;
+      const isDone = w.__hasFinished || (output && /done|complete|finished/i.test(output.textContent || ''));
+      if (w.__simActive && !isDone) {
+        w.clickedWhileRunning = true;
+      }
+    });
 
     if (btn?.disabled) {
       w.__btnWasDisabled = true;
@@ -276,6 +277,9 @@ test.describe('Scheduler Yield Tests', () => {
 
     const ticks = await page.evaluate(() => (window as any).rafTicksWhileRunning);
     expect(ticks).toBeGreaterThan(0);
+
+    const yieldCount = await page.evaluate(() => (window as any).__yieldCount);
+    expect(yieldCount).toBeGreaterThan(1);
   });
 
   test('The application uses a time-based deadline of around 50ms to determine when to yield', async ({ page }) => {
