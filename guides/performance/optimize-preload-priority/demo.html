@@ -5,22 +5,23 @@
   <meta charset="UTF-8">
   <title>Optimize Preload Priority Demo</title>
 
-  <!-- 
-    1. Video Poster (High Priority)
-  -->
+  <!-- 1. Critical LCP Video Poster (elevated from default low image priority) -->
   <link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
 
-  <!-- 
-    2. Critical Web Font (High Priority by default)
-  -->
+  <!-- 2. Critical Web Font (high priority by default; always include crossorigin) -->
   <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
 
-  <!-- 
-    3. Secondary Web Font (Low Priority)
-  -->
+  <!-- 3. Secondary Web Font (deprioritized to avoid contending with critical assets) -->
   <link rel="preload" as="font" type="font/woff2" href="secondary-font.woff2" crossorigin fetchpriority="low">
 
+  <!-- 4. Late-discovered Critical Stylesheet (preloaded with as="style") -->
+  <link rel="preload" as="style" href="critical-theme.css" fetchpriority="high">
 
+  <!-- 5. Critical Interactive ES Module (fetches and parses module graph at high priority) -->
+  <link rel="modulepreload" href="app.js" fetchpriority="high">
+
+  <!-- 6. Background ES Module (warmed at low priority so critical assets finish first) -->
+  <link rel="modulepreload" href="analytics.js" fetchpriority="low">
 </head>
 
 <body>
@@ -29,6 +30,14 @@
     <source src="example-video.webm" type="video/webm">
   </video>
 
+  <script type="module">
+    const themeLink = document.createElement('link');
+    themeLink.rel = 'stylesheet';
+    themeLink.href = 'critical-theme.css';
+    document.head.append(themeLink);
+  </script>
+  <script type="module" src="app.js"></script>
+  <script type="module" src="analytics.js" fetchpriority="low"></script>
 </body>
 
 </html>

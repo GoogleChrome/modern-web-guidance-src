@@ -9,6 +9,9 @@ web-feature-ids:
 
 Browsers assign default priorities to scripts based on where they appear in the document and whether they have attributes like `async` or `defer`. Using `fetchpriority` gives developers explicit control to ensure critical scripts load first, while non-essential scripts stay out of the way.
 
+> [!NOTE]
+> `fetchpriority` on `<script>` only reprioritizes scripts the HTML parser has already discovered; to discover and prioritize ES module dependency graphs (`modulepreload`) or late-discovered critical assets (`preload`) earlier, see {{ GUIDE_REF("optimize-preload-priority") }}.
+
 ## How to implement
 
 1. **Identify critical scripts**: Determine which scripts are essential for the page's core functionality or initial user interaction.

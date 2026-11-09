@@ -47,10 +47,13 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 | :--- | :--- | :--- |
 | `preconnect` | Resolve TLS/DNS for known third-party APIs | API endpoints, font services |
 | `dns-prefetch` | Lean fallback for non-critical third-party origins | Ad servers, analytics fallbacks |
-| `preload` | Same-origin asset needed *now* for rendering | Hero images, render-blocking fonts |
+| `preload` | Same-origin asset needed *now* for rendering | Hero images, critical fonts, late-discovered CSS |
+| `modulepreload` | Critical ES module and its static import graph needed *now* | Interactive entry modules, core shared chunks |
 | `prefetch` | Assets needed for next-page navigation | Next-page bundle, detail views |
 
 **Single-Sentence Mental Model**: "Preconnect for domains, Preload for viewport, Prefetch for futures."
+
+For tuning relative priority across preloads, module graphs, scripts, and images, see {{ GUIDE_REF("optimize-preload-priority") }}, {{ GUIDE_REF("optimize-script-priority") }}, and {{ GUIDE_REF("optimize-image-priority") }}.
 
 ## Largest Contentful Paint (LCP) & Resource Fetching
 
