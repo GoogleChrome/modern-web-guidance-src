@@ -238,8 +238,7 @@ describe('applyPatchSync', () => {
   });
 
   test('applies git-style patches when target directory is reached through a symlink parent', () => {
-    // When targetDir is reached via a symlink parent (e.g. macOS /var -> /private/var),
-    // canonicalizing with fs.realpathSync ensures GIT_CEILING_DIRECTORIES matches physical getcwd().
+    // Note: Passes with or without realpathSync on current git; realpath is defensive for platforms/git builds that compare against unresolved ceiling paths (e.g. macOS /var -> /private/var).
     const realTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-symlink-real-'));
     try {
       initGitRepo(realTmpDir);
