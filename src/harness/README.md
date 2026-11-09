@@ -76,7 +76,7 @@ The harness does **not** centrally configure which model each agent uses. Instea
 | Agent | Model Env Var | Effort Env Var / Knob | CLI Effort Flag | Default Effort When Unset |
 |-------|---------------|-----------------------|-----------------|---------------------------|
 | **Antigravity CLI** | `ANTIGRAVITY_MODEL` | `ANTIGRAVITY_EFFORT` | `--effort <level>` | agy's built-in default (`agent-default`, or `model-id` if the model ends in `-<level>`) |
-| **Claude Code** | `ANTHROPIC_MODEL` | `CLAUDE_EFFORT` | `--effort <level>` | Claude Code's built-in default (captured as `observed` when `api-request` logs `params.output_config.effort`, else `agent-default`) |
+| **Claude Code** | `ANTHROPIC_MODEL` | `CLAUDE_EFFORT` | `--effort <level>` | Claude Code's built-in default (captured as `observed` from `api-request` `params.output_config.effort` or `assistant` `effort`, else `agent-default`) |
 | **Codex CLI** | `CODEX_MODEL` | `CODEX_EFFORT` | `-c model_reasoning_effort=<level>` | `~/.codex/config.toml` / CLI default (captured as `observed` from rollout `turn_context`) |
 | **Jetski CLI** | `JETSKI_MODEL` | `JETSKI_EFFORT` | `--effort <level>` | Jetski CLI's built-in default (captured as `observed` from `gen_metadata` fields `1.21` / `3.28` / `1.19`) |
 | **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `:<thinking>` suffix on `PI_MODEL` (e.g. `...:low`, `...:off`) | Passed via `--model <id>:<thinking>` | `~/.pi/agent/settings.json` / CLI default (`model-id` when `:suffix` is set, `observed` on `thinking_level_change`) |
