@@ -528,3 +528,56 @@ test('changedSince and findStaleTargets detect when expectations.md is modified 
   assert.strictEqual(changedSince([expPath], [graderPath]), false);
   assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), false);
 });
+
+test('prepareTargetGuide expands build-time macros into workDir so agents see transcluded content without raw macros', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { prepareTargetGuide } = await import('./dev.ts');
+  const { MACRO_PATTERN } = await import('../core/macros.ts');
+  const { rootDir } = await import('../core/paths.ts');
+
+  const tmpWorkDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prepare-target-guide-test-'));
+  t.after(() => fs.rmSync(tmpWorkDir, { recursive: true, force: true }));
+
+  // tabs guide uses {{ FEATURE_FALLBACKS("focusgroup") }}
+  const tabsGuideDir = path.join(rootDir, 'guides', 'ui-components', 'tabs');
+  const rawGuideContent = fs.readFileSync(path.join(tabsGuideDir, 'guide.md'), 'utf-8');
+  assert.ok(
+    rawGuideContent.includes('FEATURE_FALLBACKS("focusgroup")'),
+    'fixture guide must contain raw FEATURE_FALLBACKS macro in source'
+  );
+
+  prepareTargetGuide(tabsGuideDir, tmpWorkDir);
+
+  const stagedGuidePath = path.join(tmpWorkDir, 'guide.md');
+  assert.ok(fs.existsSync(stagedGuidePath), 'guide.md must exist in workDir');
+
+  const stagedContent = fs.readFileSync(stagedGuidePath, 'utf-8');
+
+  // Must preserve frontmatter
+  assert.ok(stagedContent.startsWith('---'), 'staged guide must preserve frontmatter');
+
+  // Must contain transcluded fallback guidance from features/focusgroup.md
+  assert.ok(
+    stagedContent.includes('@microsoft/focusgroup-polyfill'),
+    'staged guide must contain transcluded focusgroup polyfill'
+  );
+  assert.ok(
+    stagedContent.includes('### Fallbacks & browser support for focusgroup'),
+    'staged guide must contain transcluded fallback section heading'
+  );
+
+  // Must have zero unexpanded macros
+  assert.strictEqual(
+    stagedContent.includes('FEATURE_FALLBACKS'),
+    false,
+    'staged guide must not contain raw FEATURE_FALLBACKS macro'
+  );
+  assert.strictEqual(
+    MACRO_PATTERN.test(stagedContent),
+    false,
+    'staged guide must contain no unexpanded macros'
+  );
+});
+
