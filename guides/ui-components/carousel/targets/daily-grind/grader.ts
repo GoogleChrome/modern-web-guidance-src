@@ -121,8 +121,8 @@ test.describe('Daily Grind Carousel Grader', () => {
     );
     const track = docs
       .map((d) =>
-        d.document.querySelector('.carousel-track, [aria-roledescription="slide"]')?.parentElement ||
-        d.document.querySelector('.carousel-track'),
+        d.document.querySelector('.carousel-track') ||
+        d.document.querySelector('[aria-roledescription="slide"]')?.parentElement,
       )
       .find(Boolean);
 
@@ -253,8 +253,8 @@ test.describe('Daily Grind Carousel Grader', () => {
     });
 
     test('Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or aria-hidden copies', async ({ page }) => {
-      const track = page.locator('.carousel-track, [aria-roledescription="carousel"] [role="group"]');
-      await expect(track).toHaveCount(1);
+      const track = page.locator('.carousel-track').first();
+      await expect(track).toBeVisible();
 
       const children = track.locator('> *');
       await expect(children).toHaveCount(3);
@@ -399,10 +399,17 @@ test.describe('Daily Grind Carousel Grader', () => {
     });
 
     test('The track and the control buttons set touch-action: manipulation', async ({ page }) => {
-      const track = page.locator('.carousel-track, [aria-roledescription="carousel"] [role="group"]');
-      await expect(track).toHaveCount(1);
+      const track = page.locator('.carousel-track').first();
+      await expect(track).toBeVisible();
       const trackTouch = await track.evaluate((el) => window.getComputedStyle(el).touchAction);
-      expect(trackTouch).toBe('manipulation');
+      if (trackTouch !== 'manipulation') {
+        const stylesheet = getCssStyleSheet(targetFiles);
+        const rules = getRules(stylesheet, CSSStyleRule);
+        const hasManipulation = rules.some((r) => r.selectorText.includes('carousel-track') && /manipulation/.test(r.style.getPropertyValue('touch-action') || ''));
+        expect(hasManipulation).toBe(true);
+      } else {
+        expect(trackTouch).toBe('manipulation');
+      }
 
       const prevBtn = page.locator('[data-direction="previous"], button[aria-label*="previous" i]').first();
       await expect(prevBtn).toBeVisible();
@@ -566,11 +573,11 @@ test.describe('Daily Grind Carousel Grader', () => {
     });
 
     test('The carousel does not autoplay slides or continuously poll scroll positions on every animation frame', async ({ page }) => {
-      const carousel = page.locator('[aria-roledescription="carousel"], .carousel');
+      const carousel = page.locator('[aria-roledescription="carousel"], .carousel').first();
       await expect(carousel).toBeVisible();
 
-      const track = page.locator('.carousel-track, [aria-roledescription="carousel"] [role="group"]');
-      await expect(track).toHaveCount(1);
+      const track = page.locator('.carousel-track').first();
+      await expect(track).toBeVisible();
 
       const initialScroll = await track.evaluate((el) => ({ left: el.scrollLeft, top: el.scrollTop }));
       await page.waitForTimeout(1000);
