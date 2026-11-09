@@ -85,10 +85,15 @@
       </section>
     </main>
 
-    <footer class="dashboard-footer">
+    <footer class="dashboard-footer site-legal-footer">
       <a href="./" class="secondary-btn">← Back to results</a>
       <button id="view-gcs-artifacts-btn" class="secondary-btn" hidden>View source</button>
       <button id="view-log-btn" class="secondary-btn">View full run log</button>
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
     </footer>
   </div>
 
@@ -130,6 +135,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="dashboard.js"></script>
 </body>
 
