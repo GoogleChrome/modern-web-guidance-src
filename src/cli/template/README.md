@@ -8,7 +8,7 @@
 
 *Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, alongside the web development community.*
 
-[Documentation](https://developer.chrome.com/docs/modern-web-guidance) · [Evaluation Dashboard](https://googlechrome.github.io/modern-web-guidance-src/) · [Source Code](https://github.com/GoogleChrome/modern-web-guidance-src) · [Report an Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues)
+[Documentation](https://developer.chrome.com/docs/modern-web-guidance) · [Eval Dashboard](https://googlechrome.github.io/modern-web-guidance-src/) · [Source Code](https://github.com/GoogleChrome/modern-web-guidance-src) · [Report an Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues)
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
 
@@ -98,8 +98,8 @@ Configure Origin Trial and volatile feature opt-ins for a repository with an opt
 
 | CLI Command | `.mwgrc` Key | Effect |
 | :--- | :--- | :--- |
-| `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs (interactive terminal prompt; set to `false` or remove to opt out). |
-| `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features (interactive terminal prompt; set to `false` or remove to opt out). |
+| `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs. |
+| `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features. |
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
@@ -221,7 +221,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
 
 ### Recent eval results snapshot
 
-Explore full per-agent and per-guide breakdowns on the **[Evaluation Dashboard](https://googlechrome.github.io/modern-web-guidance-src/)**.
+Explore full per-agent and per-guide breakdowns on the **[Eval Dashboard](https://googlechrome.github.io/modern-web-guidance-src/)**.
 
 <!-- INJECT_EVAL_RESULTS_START -->
 <!-- INJECT_EVAL_RESULTS_END -->
@@ -252,7 +252,7 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-Found a bug, outdated pattern, or missing web platform feature? [Open an issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues) or see [`CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md) and [`GOVERNANCE.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/GOVERNANCE.md) in the [source repository (`GoogleChrome/modern-web-guidance-src`)](https://github.com/GoogleChrome/modern-web-guidance-src).
+Found a bug, outdated pattern, or missing web platform feature? [Open an issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues) or see [`CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md) in the [source repository (`GoogleChrome/modern-web-guidance-src`)](https://github.com/GoogleChrome/modern-web-guidance-src).
 
 Huge thanks to everyone who has contributed!
 
