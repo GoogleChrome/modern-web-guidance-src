@@ -244,9 +244,8 @@
     }
 
     /* Decorative key hint; the handle label and live region cover assistive technology. */
-    .task:has(> .drag-handle:focus-visible)::after,
-    .task:has(> .drag-handle[aria-pressed="true"])::after {
-      content: "Space to reorder" / "";
+    .key-hint {
+      display: none;
       position: absolute;
       inset-block-start: 0;
       inset-inline-end: 0.5rem;
@@ -259,8 +258,13 @@
       pointer-events: none;
     }
 
-    .task:has(> .drag-handle[aria-pressed="true"])::after {
-      content: "Arrows to move · Space to drop · Esc to cancel" / "";
+    .task:has(> .drag-handle:focus-visible) > .key-hint:not([data-grabbed]),
+    .task:has(> .drag-handle[aria-pressed="true"]) > .key-hint[data-grabbed] {
+      display: block;
+    }
+
+    .task:has(> .drag-handle[aria-pressed="true"]) > .key-hint:not([data-grabbed]) {
+      display: none;
     }
 
     .drag-handle[aria-pressed="true"] {
@@ -359,16 +363,22 @@
       <li class="task" data-reorder-item data-label="Outline project">
         <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Outline project <input value="Write the first draft"></label>
       </li>
       <li class="task" data-reorder-item data-label="Review research">
         <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Review research <input value="Collect source notes"></label>
       </li>
       <li class="task" data-reorder-item data-label="Schedule review">
         <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Schedule review <input value="Invite the team"></label>
       </li>
       </ol>
@@ -424,21 +434,29 @@
       <li class="task" data-reorder-item data-label="Draft">
         <button class="drag-handle icon" type="button" aria-label="Reorder Draft" aria-pressed="false" title="Drag to reorder Draft"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Draft <input value="Outline"></label>
       </li>
       <li class="task" data-reorder-item data-label="Review">
         <button class="drag-handle icon" type="button" aria-label="Reorder Review" aria-pressed="false" title="Drag to reorder Review"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Review <input value="Sources"></label>
       </li>
       <li class="task" data-reorder-item data-label="Edit">
         <button class="drag-handle icon" type="button" aria-label="Reorder Edit" aria-pressed="false" title="Drag to reorder Edit"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Edit <input value="Tighten"></label>
       </li>
       <li class="task" data-reorder-item data-label="Design">
         <button class="drag-handle icon" type="button" aria-label="Reorder Design" aria-pressed="false" title="Drag to reorder Design"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Design <input value="Layout"></label>
       </li>
       </ol>
@@ -451,16 +469,22 @@
       <li class="task" data-reorder-item data-label="Outline project">
         <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Outline project <input value="Write the first draft"></label>
       </li>
       <li class="task" data-reorder-item data-label="Review research">
         <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Review research <input value="Collect source notes"></label>
       </li>
       <li class="task" data-reorder-item data-label="Schedule review">
         <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Schedule review <input value="Invite the team"></label>
       </li>
       </ol>
@@ -473,21 +497,29 @@
       <li class="task" data-reorder-item data-label="Draft">
         <button class="drag-handle icon" type="button" aria-label="Reorder Draft" aria-pressed="false" title="Drag to reorder Draft"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Draft <input value="Outline"></label>
       </li>
       <li class="task" data-reorder-item data-label="Review">
         <button class="drag-handle icon" type="button" aria-label="Reorder Review" aria-pressed="false" title="Drag to reorder Review"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Review <input value="Sources"></label>
       </li>
       <li class="task" data-reorder-item data-label="Edit">
         <button class="drag-handle icon" type="button" aria-label="Reorder Edit" aria-pressed="false" title="Drag to reorder Edit"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Edit <input value="Tighten"></label>
       </li>
       <li class="task" data-reorder-item data-label="Design">
         <button class="drag-handle icon" type="button" aria-label="Reorder Design" aria-pressed="false" title="Drag to reorder Design"
           style="--icon: var(--icon-grip);"></button>
+        <span class="key-hint" aria-hidden="true">Space to reorder</span>
+        <span class="key-hint" aria-hidden="true" data-grabbed>Arrows to move · Space to drop · Esc to cancel</span>
         <label>Design <input value="Layout"></label>
       </li>
       </ol>
