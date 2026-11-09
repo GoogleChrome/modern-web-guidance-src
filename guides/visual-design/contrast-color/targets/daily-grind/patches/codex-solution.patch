@@ -6,18 +6,48 @@ index 0000000..849ddff
 @@ -0,0 +1 @@
 +dist/
 diff --git a/index.html b/index.html
-index 66c9173..505be08 100644
+index 66c9173..34249da 100644
 --- a/index.html
 +++ b/index.html
-@@ -29,6 +29,7 @@
+@@ -28,9 +28,36 @@
+     }
  
      /* Navigation */
-     nav {
++    nav,
++    .btn {
 +      --contrast-bg: var(--primary);
++      color: white;
++    }
++
++    footer {
++      --contrast-bg: var(--secondary);
++      color: black;
++    }
++
++    /* Dynamic fallback for browsers with relative color syntax. */
++    @supports (color: oklch(from red l c h)) {
++      nav,
++      .btn,
++      footer {
++        color: oklch(from var(--contrast-bg) clamp(0, (0.623 - l) * 100000, 1) 0 h);
++      }
++    }
++
++    @supports (color: contrast-color(red)) {
++      nav,
++      .btn,
++      footer {
++        color: contrast-color(var(--contrast-bg));
++      }
++    }
++
+     nav {
        background: var(--primary);
-       color: white;
+-      color: white;
        padding: 1rem 5%;
-@@ -56,14 +57,14 @@
+       display: flex;
+       justify-content: space-between;
+@@ -56,18 +83,17 @@
      }
  
      nav a {
@@ -31,19 +61,20 @@ index 66c9173..505be08 100644
      nav a:hover {
 -      color: var(--accent);
 +      text-decoration: underline;
-+      text-underline-offset: 4px;
      }
  
      .logout-link {
-@@ -121,6 +122,7 @@
+-      border: 1px solid var(--accent);
++      border: 1px solid currentColor;
+       padding: 5px 12px;
+       border-radius: 4px;
      }
- 
+@@ -123,16 +149,14 @@
      .btn {
-+      --contrast-bg: var(--primary);
        display: inline-block;
        background: var(--primary);
-       color: white;
-@@ -128,15 +130,16 @@
+-      color: white;
+       padding: 10px 20px;
        text-decoration: none;
        border-radius: 5px;
        margin-top: 15px;
@@ -52,17 +83,11 @@ index 66c9173..505be08 100644
  
      .btn:hover {
 -      background: #3e2723;
-+      box-shadow: inset 0 0 0 2px currentColor;
++      text-decoration: underline;
      }
  
      footer {
-+      --contrast-bg: var(--secondary);
-       background: var(--secondary);
-+      color: black;
-       text-align: center;
-       padding: 40px 20px;
-       margin-top: 40px;
-@@ -148,10 +151,28 @@
+@@ -148,7 +172,7 @@
  
      .footer-links a {
        margin: 0 10px;
@@ -71,27 +96,6 @@ index 66c9173..505be08 100644
        text-decoration: none;
        font-size: 0.85rem;
      }
-+
-+    /* Dynamic fallback for browsers with relative colors and sign(). */
-+    @supports (color: oklch(from red max(0, sign(0.623 - l)) 0 h)) {
-+      nav,
-+      .btn,
-+      footer {
-+        color: oklch(from var(--contrast-bg) max(0, sign(0.623 - l)) 0 h);
-+      }
-+    }
-+
-+    /* Prefer the browser's maximum-contrast black or white foreground. */
-+    @supports (color: contrast-color(red)) {
-+      nav,
-+      .btn,
-+      footer {
-+        color: contrast-color(var(--contrast-bg));
-+      }
-+    }
-   </style>
- </head>
- 
 diff --git a/package.json b/package.json
 index 2bd4d77..43e7284 100644
 --- a/package.json

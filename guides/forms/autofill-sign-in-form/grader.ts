@@ -34,7 +34,6 @@ function getSourceContent(): string {
 }
 
 test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
-
   test.beforeEach(async ({ page, TARGET_URL }) => {
     if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
       await page.route('http://localhost/*', async (route) => {
@@ -53,10 +52,13 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
         }
       });
     }
-    await page.goto(TARGET_URL).catch(() => {});
+    const signinUrl = TARGET_URL.includes('/signin')
+      ? TARGET_URL
+      : `${TARGET_URL.replace(/\/$/, '')}/signin`;
+    await page.goto(signinUrl).catch(() => page.goto(TARGET_URL).catch(() => {}));
   });
 
-  test('All sign-in inputs must be within a <form> element', async ({ page }) => {
+  test('The sign-in input fields are contained within a form element', async ({ page }) => {
     const isVisible = await page.locator('form').first().isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
       expect(isVisible).toBe(true);
@@ -67,7 +69,7 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     expect(hasForm).toBe(true);
   });
 
-  test('The form must have a submit button', async ({ page }) => {
+  test('The form includes a submit button', async ({ page }) => {
     const isVisible = await page.locator('button[type="submit"], input[type="submit"]').first().isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
       expect(isVisible).toBe(true);
@@ -78,10 +80,15 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     expect(hasSubmit).toBe(true);
   });
 
-  test('Every input in the form must have an associated label', async ({ page }) => {
-    const isVisible = await page.locator('label').first().isVisible({ timeout: 500 }).catch(() => false);
+  test('The email and password inputs have associated label elements', async ({ page }) => {
+    const emailInput = page.locator('input[type="email"], input[name="email"], input[name="username"]').first();
+    const passwordInput = page.locator('input[type="password"], input[name="password"]').first();
+    const isVisible = await emailInput.isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
-      expect(isVisible).toBe(true);
+      const emailHasLabel = await emailInput.evaluate((el: HTMLInputElement) => Boolean(el.labels && el.labels.length > 0)).catch(() => false);
+      const passwordHasLabel = await passwordInput.evaluate((el: HTMLInputElement) => Boolean(el.labels && el.labels.length > 0)).catch(() => false);
+      expect(emailHasLabel).toBe(true);
+      expect(passwordHasLabel).toBe(true);
       return;
     }
     const code = getSourceContent();
@@ -89,109 +96,66 @@ test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
     expect(hasLabels).toBe(true);
   });
 
-  test('Labels must have a "for" attribute matching an input "id"', async ({ page }) => {
-    const isVisible = await page.locator('label[for]').first().isVisible({ timeout: 500 }).catch(() => false);
+  test('The email input has type="email" and autocomplete="username"', async ({ page }) => {
+    const emailInput = page.locator('input[type="email"], input[name="email"], input[name="username"]').first();
+    const isVisible = await emailInput.isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
-      expect(isVisible).toBe(true);
-      return;
-    }
-    const code = getSourceContent();
-    const hasFor = /htmlFor=|for=/i.test(code);
-    expect(hasFor).toBe(true);
-  });
-
-  test('Email input must have type="email"', async ({ page }) => {
-    const isVisible = await page.locator('input[type="email"]').first().isVisible({ timeout: 500 }).catch(() => false);
-    if (isVisible) {
-      expect(isVisible).toBe(true);
+      const type = await emailInput.getAttribute('type').catch(() => null);
+      const auto = await emailInput.getAttribute('autocomplete').catch(() => null);
+      expect(type).toBe('email');
+      expect(auto).toMatch(/username|email/i);
       return;
     }
     const code = getSourceContent();
     expect(/type=[{"']?email[}"']?/i.test(code)).toBe(true);
-  });
-
-  test('Email input must have autocomplete="username"', async ({ page }) => {
-    const isVisible = await page.locator('input[type="email"], input[name="username"], input[name="email"]').first().isVisible({ timeout: 500 }).catch(() => false);
-    if (isVisible) {
-      const attr = await page.locator('input[type="email"], input[name="username"], input[name="email"]').first().getAttribute('autocomplete', { timeout: 500 }).catch(() => null);
-      if (attr) {
-        expect(attr.includes('username') || attr.includes('email')).toBe(true);
-        return;
-      }
-    }
-    const code = getSourceContent();
     expect(/autoComplete=[{"']?(username|email)[}"']?|autocomplete=[{"']?(username|email)[}"']?/i.test(code)).toBe(true);
   });
 
-  test('Password input must have type="password"', async ({ page }) => {
-    const isVisible = await page.locator('input[type="password"]').first().isVisible({ timeout: 500 }).catch(() => false);
+  test('The password input has type="password" and autocomplete="current-password"', async ({ page }) => {
+    const passwordInput = page.locator('input[type="password"], input[name="password"]').first();
+    const isVisible = await passwordInput.isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
-      expect(isVisible).toBe(true);
+      const type = await passwordInput.getAttribute('type').catch(() => null);
+      const auto = await passwordInput.getAttribute('autocomplete').catch(() => null);
+      expect(type).toBe('password');
+      expect(auto).toMatch(/\bcurrent-password\b/i);
       return;
     }
     const code = getSourceContent();
-    expect(/type=[{"']?password[}"']?|showPassword/i.test(code)).toBe(true);
-  });
-
-  test('Password input must have autocomplete="current-password"', async ({ page }) => {
-    const isVisible = await page.locator('input[type="password"]').first().isVisible({ timeout: 500 }).catch(() => false);
-    if (isVisible) {
-      const attr = await page.locator('input[type="password"]').first().getAttribute('autocomplete', { timeout: 500 }).catch(() => null);
-      if (attr) {
-        expect(attr.includes('current-password') || attr.includes('password')).toBe(true);
-        return;
-      }
-    }
-    const code = getSourceContent();
+    expect(/type=[{"']?password[}"']?|['"]password['"]|showPassword/i.test(code)).toBe(true);
     expect(/autoComplete=[{"']?(current-password|password)[}"']?|autocomplete=[{"']?(current-password|password)[}"']?/i.test(code)).toBe(true);
   });
 
-  test('Email input must be required', async ({ page }) => {
-    const isVisible = await page.locator('input[type="email"]').first().isVisible({ timeout: 500 }).catch(() => false);
+  test('Both the email and password inputs have the required attribute', async ({ page }) => {
+    const emailInput = page.locator('input[type="email"], input[name="email"], input[name="username"]').first();
+    const passwordInput = page.locator('input[type="password"], input[name="password"]').first();
+    const isVisible = await emailInput.isVisible({ timeout: 500 }).catch(() => false);
     if (isVisible) {
-      const req = await page.locator('input[type="email"]').first().evaluate((el: any) => el.required).catch(() => null);
-      if (req !== null) {
-        expect(req).toBe(true);
-        return;
-      }
-    }
-    const code = getSourceContent();
-    expect(/required/i.test(code)).toBe(true);
-  });
-
-  test('Password input must be required', async ({ page }) => {
-    const isVisible = await page.locator('input[type="password"]').first().isVisible({ timeout: 500 }).catch(() => false);
-    if (isVisible) {
-      const req = await page.locator('input[type="password"]').first().evaluate((el: any) => el.required).catch(() => null);
-      if (req !== null) {
-        expect(req).toBe(true);
-        return;
-      }
-    }
-    const code = getSourceContent();
-    expect(/required/i.test(code)).toBe(true);
-  });
-
-  test('There must be exactly one email input', async ({ page }) => {
-    const count = await page.locator('input[type="email"]').count().catch(() => 0);
-    if (count > 0) {
-      expect(count).toBe(1);
+      const reqEmail = await emailInput.evaluate((el: any) => el.required).catch(() => null);
+      const reqPassword = await passwordInput.evaluate((el: any) => el.required).catch(() => null);
+      expect(reqEmail).toBe(true);
+      expect(reqPassword).toBe(true);
       return;
     }
     const code = getSourceContent();
-    const matches = code.match(/type=[{"']?email[}"']?/gi) || [];
-    expect(matches.length).toBe(1);
+    const emailRequired = /type=[{"']?email[}"'][^>]*required|required[^>]*type=[{"']?email[}"']/i.test(code) || (code.includes('required') && code.includes('email'));
+    const passwordRequired = /type=[{"']?password[}"'][^>]*required|required[^>]*type=[{"']?password[}"']/i.test(code) || (code.includes('required') && code.includes('password'));
+    expect(emailRequired).toBe(true);
+    expect(passwordRequired).toBe(true);
   });
 
-  test('There must be exactly one password input', async ({ page }) => {
-    const count = await page.locator('input[type="password"]').count().catch(() => 0);
-    if (count > 0) {
-      expect(count).toBe(1);
+  test('The form contains exactly one email input and exactly one password input', async ({ page }) => {
+    const emailCount = await page.locator('input[type="email"]').count().catch(() => 0);
+    const passwordCount = await page.locator('input[type="password"]').count().catch(() => 0);
+    if (emailCount > 0 && passwordCount > 0) {
+      expect(emailCount).toBe(1);
+      expect(passwordCount).toBe(1);
       return;
     }
     const code = getSourceContent();
-    const matches = code.match(/type=(?:[{"']?password[}"']?|\{[^}]*['"]password['"][^}]*\})/gi) || [];
-    expect(matches.length).toBe(1);
+    const emailMatches = code.match(/type=[{"']?email[}"']?/gi) || [];
+    const passwordMatches = code.match(/type=(?:[{"']?password[}"']?|\{[^}]*['"]password['"][^}]*\})|showPassword/gi) || [];
+    expect(emailMatches.length).toBe(1);
+    expect(passwordMatches.length).toBe(1);
   });
-
 });

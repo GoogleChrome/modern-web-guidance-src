@@ -85,10 +85,15 @@
       </section>
     </main>
 
-    <footer class="dashboard-footer">
+    <footer class="dashboard-footer site-legal-footer">
       <a href="./" class="secondary-btn">← Back to results</a>
       <button id="view-gcs-artifacts-btn" class="secondary-btn" hidden>View source</button>
       <button id="view-log-btn" class="secondary-btn">View full run log</button>
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
     </footer>
   </div>
 
@@ -101,6 +106,7 @@
     <code>Uncached tokens = total − cached</code> (fresh input + output + thinking tokens). Multi-turn agents re-read cached prompt prefixes on every tool turn (roughly 85–96% cached for Claude Code and Codex CLI, ~20% for Antigravity CLI), so both uncached tokens and totals with cache share are shown.
   </div>
   <div id="dumbbell-tooltip" popover="hint" class="chart-tooltip" role="tooltip"></div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
   <dialog id="modal" aria-labelledby="modal-title" closedby="any">
     <div class="modal-content">
       <form method="dialog" class="close-modal-form">
@@ -129,6 +135,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="dashboard.js"></script>
 </body>
 

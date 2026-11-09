@@ -4,16 +4,13 @@ This repo is the source repository for [GoogleChrome/modern-web-guidance](https:
 
 [**Modern Web Guidance**](https://developer.chrome.com/docs/modern-web-guidance) is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
 
-> [!NOTE]
-> This is a **preview release** of Modern Web Guidance. We're actively adding new content and we [welcome contributions or feedback on GitHub](https://github.com/GoogleChrome/modern-web-guidance-src).
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for how we work on the project and orientation of the codebase. We're open to contributions to guidance, eval cases, eval infra and more. :) 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and [GOVERNANCE.md](./GOVERNANCE.md) for how we work on the project and orientation of the codebase.
 
 ---
 
-*Supported by the Google Chrome team, the Microsoft Edge team, and the web development community.*
+*Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, alongside the web development community.*
 
-<!-- <LIKE A DEMO VIDEO LOOP OR SOMETHING?> -->
+[Documentation](https://developer.chrome.com/docs/modern-web-guidance) · [Eval Dashboard](https://googlechrome.github.io/modern-web-guidance-src/) · [Source Code](https://github.com/GoogleChrome/modern-web-guidance-src) · [Report an Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues)
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/terminal.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Quickstart
 
@@ -31,6 +28,9 @@ npx modern-web-guidance@latest search "animate a dialog modal backdrop"
 
 # Retrieve a guide by ID
 npx modern-web-guidance@latest retrieve "animate-to-from-top-layer"
+
+# Scan a codebase for legacy patterns to modernize
+npx modern-web-guidance@latest legacy-scan .
 ```
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lightbulb.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Why?
@@ -87,33 +87,34 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 #### The full list
 
 <details>
-<summary><strong>245 modern web features</strong></summary>
+<summary><strong>246 modern web features</strong></summary>
 
-### CSS & Layout (136 features)
+### CSS & Layout (137 features)
 
 | | | |
 | :--- | :--- | :--- |
-| [::backdrop](https://web-platform-dx.github.io/web-features-explorer/features/backdrop/) | [content-visibility](https://web-platform-dx.github.io/web-features-explorer/features/content-visibility/) | [prefers-reduced-motion media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-reduced-motion/) |
-| [::details-content](https://web-platform-dx.github.io/web-features-explorer/features/details-content/) | [contrast-color()](https://web-platform-dx.github.io/web-features-explorer/features/contrast-color/) | [progress()](https://web-platform-dx.github.io/web-features-explorer/features/progress-function/) |
-| [::file-selector-button](https://web-platform-dx.github.io/web-features-explorer/features/file-selector-button/) | [Cross-document view transitions](https://web-platform-dx.github.io/web-features-explorer/features/cross-document-view-transitions/) | [Relative colors](https://web-platform-dx.github.io/web-features-explorer/features/relative-color/) |
-| [::placeholder](https://web-platform-dx.github.io/web-features-explorer/features/placeholder/) | [currentColor](https://web-platform-dx.github.io/web-features-explorer/features/currentcolor/) | [rem](https://web-platform-dx.github.io/web-features-explorer/features/rem/) |
-| [::selection](https://web-platform-dx.github.io/web-features-explorer/features/selection/) | [Custom highlights](https://web-platform-dx.github.io/web-features-explorer/features/highlight/) | [resize (CSS property)](https://web-platform-dx.github.io/web-features-explorer/features/resize/) |
-| [:dir()](https://web-platform-dx.github.io/web-features-explorer/features/dir-pseudo/) | [Custom properties](https://web-platform-dx.github.io/web-features-explorer/features/custom-properties/) | [revert](https://web-platform-dx.github.io/web-features-explorer/features/revert-value/) |
-| [:focus-visible](https://web-platform-dx.github.io/web-features-explorer/features/focus-visible/) | [display animation](https://web-platform-dx.github.io/web-features-explorer/features/display-animation/) | [revert-rule](https://web-platform-dx.github.io/web-features-explorer/features/revert-rule/) |
-| [:focus-within](https://web-platform-dx.github.io/web-features-explorer/features/focus-within/) | [Element-scoped view transitions](https://web-platform-dx.github.io/web-features-explorer/features/view-transitions-element-scoped/) | [Safe area inset environment variables](https://web-platform-dx.github.io/web-features-explorer/features/safe-area-inset/) |
-| [:has()](https://web-platform-dx.github.io/web-features-explorer/features/has/) | [em unit](https://web-platform-dx.github.io/web-features-explorer/features/em-unit/) | [Scroll marker target pseudo-classes](https://web-platform-dx.github.io/web-features-explorer/features/scroll-marker-targets/) |
-| [:host-context()](https://web-platform-dx.github.io/web-features-explorer/features/host-context/) | [field-sizing](https://web-platform-dx.github.io/web-features-explorer/features/field-sizing/) | [Scroll method promises](https://web-platform-dx.github.io/web-features-explorer/features/scroll-promises/) |
-| [:is()](https://web-platform-dx.github.io/web-features-explorer/features/is/) | [filter](https://web-platform-dx.github.io/web-features-explorer/features/filter/) | [Scroll snap](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap/) |
-| [:modal](https://web-platform-dx.github.io/web-features-explorer/features/modal/) | [flex-wrap: balance](https://web-platform-dx.github.io/web-features-explorer/features/flexbox-flex-wrap-balance/) | [Scroll snap events](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap-events/) |
-| [:not()](https://web-platform-dx.github.io/web-features-explorer/features/not/) | [Flexbox](https://web-platform-dx.github.io/web-features-explorer/features/flexbox/) | [scroll-axis-lock](https://web-platform-dx.github.io/web-features-explorer/features/scroll-axis-lock/) |
-| [:nth-child() of &lt;selector>](https://web-platform-dx.github.io/web-features-explorer/features/nth-child-of/) | [font-size](https://web-platform-dx.github.io/web-features-explorer/features/font-size/) | [Scroll-driven animations](https://web-platform-dx.github.io/web-features-explorer/features/scroll-driven-animations/) |
-| [:placeholder-shown](https://web-platform-dx.github.io/web-features-explorer/features/placeholder-shown/) | [font-size-adjust](https://web-platform-dx.github.io/web-features-explorer/features/font-size-adjust/) | [scroll-initial-target](https://web-platform-dx.github.io/web-features-explorer/features/scroll-initial-target/) |
-| [:user-valid and :user-invalid](https://web-platform-dx.github.io/web-features-explorer/features/user-pseudos/) | [Forced colors](https://web-platform-dx.github.io/web-features-explorer/features/forced-colors/) | [scroll-target-group](https://web-platform-dx.github.io/web-features-explorer/features/scroll-target-group/) |
-| [:where()](https://web-platform-dx.github.io/web-features-explorer/features/where/) | [Gradient interpolation](https://web-platform-dx.github.io/web-features-explorer/features/gradient-interpolation/) | [scrollbar-color](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-color/) |
-| [@function](https://web-platform-dx.github.io/web-features-explorer/features/function/) | [Gradients](https://web-platform-dx.github.io/web-features-explorer/features/gradients/) | [scrollbar-gutter](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-gutter/) |
-| [@scope](https://web-platform-dx.github.io/web-features-explorer/features/scope/) | [Grid](https://web-platform-dx.github.io/web-features-explorer/features/grid/) | [scrollbar-width](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-width/) |
-| [@starting-style](https://web-platform-dx.github.io/web-features-explorer/features/starting-style/) | [Grid lanes](https://web-platform-dx.github.io/web-features-explorer/features/grid-lanes/) | [scrollend](https://web-platform-dx.github.io/web-features-explorer/features/scrollend/) |
-| [@supports](https://web-platform-dx.github.io/web-features-explorer/features/supports/) | [Hyphenation](https://web-platform-dx.github.io/web-features-explorer/features/hyphens/) | [scrollIntoView()](https://web-platform-dx.github.io/web-features-explorer/features/scroll-into-view/) |
+| [::backdrop](https://web-platform-dx.github.io/web-features-explorer/features/backdrop/) | [Content](https://web-platform-dx.github.io/web-features-explorer/features/content/) | [prefers-contrast media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-contrast/) |
+| [::details-content](https://web-platform-dx.github.io/web-features-explorer/features/details-content/) | [content-visibility](https://web-platform-dx.github.io/web-features-explorer/features/content-visibility/) | [prefers-reduced-motion media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-reduced-motion/) |
+| [::file-selector-button](https://web-platform-dx.github.io/web-features-explorer/features/file-selector-button/) | [contrast-color()](https://web-platform-dx.github.io/web-features-explorer/features/contrast-color/) | [progress()](https://web-platform-dx.github.io/web-features-explorer/features/progress-function/) |
+| [::placeholder](https://web-platform-dx.github.io/web-features-explorer/features/placeholder/) | [Cross-document view transitions](https://web-platform-dx.github.io/web-features-explorer/features/cross-document-view-transitions/) | [Relative colors](https://web-platform-dx.github.io/web-features-explorer/features/relative-color/) |
+| [::selection](https://web-platform-dx.github.io/web-features-explorer/features/selection/) | [currentColor](https://web-platform-dx.github.io/web-features-explorer/features/currentcolor/) | [rem](https://web-platform-dx.github.io/web-features-explorer/features/rem/) |
+| [:dir()](https://web-platform-dx.github.io/web-features-explorer/features/dir-pseudo/) | [Custom highlights](https://web-platform-dx.github.io/web-features-explorer/features/highlight/) | [resize (CSS property)](https://web-platform-dx.github.io/web-features-explorer/features/resize/) |
+| [:focus-visible](https://web-platform-dx.github.io/web-features-explorer/features/focus-visible/) | [Custom properties](https://web-platform-dx.github.io/web-features-explorer/features/custom-properties/) | [revert](https://web-platform-dx.github.io/web-features-explorer/features/revert-value/) |
+| [:focus-within](https://web-platform-dx.github.io/web-features-explorer/features/focus-within/) | [display animation](https://web-platform-dx.github.io/web-features-explorer/features/display-animation/) | [revert-rule](https://web-platform-dx.github.io/web-features-explorer/features/revert-rule/) |
+| [:has()](https://web-platform-dx.github.io/web-features-explorer/features/has/) | [Element-scoped view transitions](https://web-platform-dx.github.io/web-features-explorer/features/view-transitions-element-scoped/) | [Safe area inset environment variables](https://web-platform-dx.github.io/web-features-explorer/features/safe-area-inset/) |
+| [:host-context()](https://web-platform-dx.github.io/web-features-explorer/features/host-context/) | [em unit](https://web-platform-dx.github.io/web-features-explorer/features/em-unit/) | [Scroll marker target pseudo-classes](https://web-platform-dx.github.io/web-features-explorer/features/scroll-marker-targets/) |
+| [:is()](https://web-platform-dx.github.io/web-features-explorer/features/is/) | [field-sizing](https://web-platform-dx.github.io/web-features-explorer/features/field-sizing/) | [Scroll method promises](https://web-platform-dx.github.io/web-features-explorer/features/scroll-promises/) |
+| [:modal](https://web-platform-dx.github.io/web-features-explorer/features/modal/) | [filter](https://web-platform-dx.github.io/web-features-explorer/features/filter/) | [Scroll snap](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap/) |
+| [:not()](https://web-platform-dx.github.io/web-features-explorer/features/not/) | [flex-wrap: balance](https://web-platform-dx.github.io/web-features-explorer/features/flexbox-flex-wrap-balance/) | [Scroll snap events](https://web-platform-dx.github.io/web-features-explorer/features/scroll-snap-events/) |
+| [:nth-child() of &lt;selector>](https://web-platform-dx.github.io/web-features-explorer/features/nth-child-of/) | [Flexbox](https://web-platform-dx.github.io/web-features-explorer/features/flexbox/) | [scroll-axis-lock](https://web-platform-dx.github.io/web-features-explorer/features/scroll-axis-lock/) |
+| [:placeholder-shown](https://web-platform-dx.github.io/web-features-explorer/features/placeholder-shown/) | [font-size](https://web-platform-dx.github.io/web-features-explorer/features/font-size/) | [Scroll-driven animations](https://web-platform-dx.github.io/web-features-explorer/features/scroll-driven-animations/) |
+| [:user-valid and :user-invalid](https://web-platform-dx.github.io/web-features-explorer/features/user-pseudos/) | [font-size-adjust](https://web-platform-dx.github.io/web-features-explorer/features/font-size-adjust/) | [scroll-initial-target](https://web-platform-dx.github.io/web-features-explorer/features/scroll-initial-target/) |
+| [:where()](https://web-platform-dx.github.io/web-features-explorer/features/where/) | [Forced colors](https://web-platform-dx.github.io/web-features-explorer/features/forced-colors/) | [scroll-target-group](https://web-platform-dx.github.io/web-features-explorer/features/scroll-target-group/) |
+| [@function](https://web-platform-dx.github.io/web-features-explorer/features/function/) | [Gradient interpolation](https://web-platform-dx.github.io/web-features-explorer/features/gradient-interpolation/) | [scrollbar-color](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-color/) |
+| [@scope](https://web-platform-dx.github.io/web-features-explorer/features/scope/) | [Gradients](https://web-platform-dx.github.io/web-features-explorer/features/gradients/) | [scrollbar-gutter](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-gutter/) |
+| [@starting-style](https://web-platform-dx.github.io/web-features-explorer/features/starting-style/) | [Grid](https://web-platform-dx.github.io/web-features-explorer/features/grid/) | [scrollbar-width](https://web-platform-dx.github.io/web-features-explorer/features/scrollbar-width/) |
+| [@supports](https://web-platform-dx.github.io/web-features-explorer/features/supports/) | [Grid lanes](https://web-platform-dx.github.io/web-features-explorer/features/grid-lanes/) | [scrollend](https://web-platform-dx.github.io/web-features-explorer/features/scrollend/) |
+| [abs() and sign()](https://web-platform-dx.github.io/web-features-explorer/features/abs-sign/) | [Hyphenation](https://web-platform-dx.github.io/web-features-explorer/features/hyphens/) | [scrollIntoView()](https://web-platform-dx.github.io/web-features-explorer/features/scroll-into-view/) |
 | [accent-color](https://web-platform-dx.github.io/web-features-explorer/features/accent-color/) | [image-set()](https://web-platform-dx.github.io/web-features-explorer/features/image-set/) | [Shadow parts](https://web-platform-dx.github.io/web-features-explorer/features/shadow-parts/) |
 | [Active view transition](https://web-platform-dx.github.io/web-features-explorer/features/active-view-transition/) | [Individual transform properties](https://web-platform-dx.github.io/web-features-explorer/features/individual-transforms/) | [sibling-count() and sibling-index()](https://web-platform-dx.github.io/web-features-explorer/features/sibling-count/) |
 | [Alt text for generated content](https://web-platform-dx.github.io/web-features-explorer/features/alt-text-generated-content/) | [inherit](https://web-platform-dx.github.io/web-features-explorer/features/inherit-value/) | [Sticky positioning](https://web-platform-dx.github.io/web-features-explorer/features/sticky-positioning/) |
@@ -138,7 +139,6 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 | [Container queries (size)](https://web-platform-dx.github.io/web-features-explorer/features/container-queries/) | [overlay](https://web-platform-dx.github.io/web-features-explorer/features/overlay/) | [Viewport units](https://web-platform-dx.github.io/web-features-explorer/features/viewport-units/) |
 | [Container scroll-state queries](https://web-platform-dx.github.io/web-features-explorer/features/container-scroll-state-queries/) | [overscroll-behavior](https://web-platform-dx.github.io/web-features-explorer/features/overscroll-behavior/) | [Web animations](https://web-platform-dx.github.io/web-features-explorer/features/web-animations/) |
 | [Container style queries](https://web-platform-dx.github.io/web-features-explorer/features/container-style-queries/) | [prefers-color-scheme media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-color-scheme/) |  |
-| [Content](https://web-platform-dx.github.io/web-features-explorer/features/content/) | [prefers-contrast media query](https://web-platform-dx.github.io/web-features-explorer/features/prefers-contrast/) |  |
 
 ### HTML & DOM (36 features)
 
@@ -190,7 +190,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 </details>
 
 <details>
-<summary><strong>197 real-world developer use cases</strong></summary>
+<summary><strong>198 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -379,6 +379,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 <h3>ui-components</h3>
 
 - **[accordion](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/accordion.md)**: Build an accordion component with animation, optional exclusive (one-open-at-a-time) behavior, and brand-consistent styling.
+- **[app-menus](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/app-menus.md)**: Build an application menu bar where several top-level menus (such as File, Edit, and View) act as a single keyboard stop and switch between each other on hover or arrow keys.
 - **[breadcrumbs](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/breadcrumbs.md)**: Build a breadcrumb trail that shows the user's location within a site hierarchy and lets them navigate to ancestor pages.
 - **[card](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/card.md)**: Build a card component that adapts its presentation to its own available space and contents.
 - **[checkbox](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/checkbox.md)**: Style checkboxes, including custom icons, layout, colors, check/uncheck animations, while preserving native functionality and accessibility.
@@ -447,14 +448,22 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 * **Progressive Enhancement & Nuanced Fallbacks**: We distinguish between purely additive enhancements (like speculative preloading) which are safe to let older browsers silently ignore, and critical behaviors (like dialog controls or network beacons) where we write highly considered, low-overhead fallbacks.
 * **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
-* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents can dynamically adapt to current browser support and any browser support preferences (configurable via `npx modern-web-guidance@latest set-baseline <widely|newly|limited|YYYY>` or `"baseline"` in `.mwgrc`).
-* **Origin Trial Opt-In Gate**: Guides for experimental Origin Trial APIs are discoverable via search, but gated on `retrieve` so agents do not adopt unstable APIs without consent. Run `npx modern-web-guidance@latest set-allow-origin-trials` in your terminal to opt a project in (writes `{"allowOriginTrials": true}` to `.mwgrc`; set to `false` or delete `.mwgrc` to opt out).
-* **Volatile Feature Opt-In Gate**: Guides relying on volatile features (single-engine features shipped within 3 months, plus pinned features) are discoverable via search, but gated on `retrieve` so agents do not adopt unstable APIs without consent. Run `npx modern-web-guidance@latest set-allow-volatile-features` in your terminal to opt a project in (writes `{"allowVolatileFeatures": true}` to `.mwgrc`; set to `false` or delete `.mwgrc` to opt out).
+* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents dynamically adapt to current browser support.
+* **Origin Trial & Volatile Feature Gates**: Guides covering experimental **Origin Trial** APIs or **volatile features** (single-engine features shipped within the last 3 months or still stabilizing) remain discoverable via `search`, but are gated on `retrieve` so agents do not adopt unstable APIs without explicit developer consent.
+
+### Project Configuration (`.mwgrc`)
+
+Configure Origin Trial and volatile feature opt-ins for a repository with an optional `.mwgrc` JSON file in your project root (or `~/.mwgrc` as a user-level fallback), which you can commit to share across your team:
+
+| CLI Command | `.mwgrc` Key | Effect |
+| :--- | :--- | :--- |
+| `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs. |
+| `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features. |
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
 1. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web-guidance` CLI for web platform queries.
-2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, CPU-efficient TensorFlow.js model (no network calls, no API keys).
+2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, zero-dependency embedding model and BM25 search engine (no network calls, no API keys).
 3. **Guide Fetch**: The agent retrieves the guide via `modern-web-guidance retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
 
 > [!TIP]
@@ -538,34 +547,37 @@ If you installed the skill using `npx modern-web-guidance@latest install`, you c
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 
-## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well
 
-We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** to ensure AI agents write better code.  We run automated evaluations using a closed-loop validation pipeline:
+We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** so AI agents write better code. We run automated evaluations using a closed-loop validation pipeline:
 
 ```
   [ Expert-authored guidance and demo ]
             │
             ▼
-  [ Generated assets ] ──> Playwright Grader (.spec.ts) & Negative Demo (.html)
+  [ Target generation ] ──> Tasks on real webapps, Golden solutions, Playwright graders
             │
             ▼
-  [ Calibration loop ] ───────> Runs Grader on Gold-Standard Demo (Must Pass 100%)
-            │                   Runs Grader on Negative Demo (Must Fail 100%)
+  [ Calibration loop ] ───> Runs Grader on Golden Solutions (Must Pass 100%)
+            │               Runs Grader on Unmodified Base App (Must Fail 100%)
             ▼
-  [ E2E agent evals ] ────────> Runs coding agents in guided vs. unguided modes
-                                Compares accuracy w/ and w/o the skill
+  [ E2E agent evals ] ────> Runs coding agents in guided vs. unguided modes
+                            Compares pass rates and accessibility w/ and w/o the skill
 ```
 
-0. **Simulated Developer Tasks**: We define realistic, developer prompts that mimic real-world requests (e.g., "make my images load faster"). The prompts avoid naming APIs or features, testing whether the agent can successfully discover the relevant guides naturally.
-1. **Browser-based Assertions**: We write browser automation scripts that verify the guide was followed correctly: exact runtime behaviors, computed styles, accessibility states, etc.
-2. **Self-Healing Calibration**: Graders are calibrated against both a reference implementation (100% pass target) and a control page (0% pass target). The agent automatically refines tests on failure.
-3. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key. If there's little opportunity, then models already do a great job and our guidance isn't providing much value. Based on the results, we revise guides to maximize the uplift, optimizing their effectiveness.
+1. **Simulated Developer Tasks**: We define realistic developer prompts against full base applications (`daily-grind`, `devtools-times`) that mimic real-world requests (e.g., "make my images load faster"). Prompts avoid naming APIs or features, testing whether the agent can naturally discover and apply the right guides.
+2. **Static & Browser-Based Assertions**: Playwright graders verify that each implementation requirement was followed—checking source patterns, computed styles, runtime DOM behaviors, and accessibility states.
+3. **Self-Healing Calibration**: Graders are calibrated against multi-agent (Claude/Codex/AGY) golden solutions (100% pass target) and an unmodified baseline application (0% pass target).
+4. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key: if models already succeed without guidance, we prune redundant advice; where agents struggle, we refine guides to maximize uplift.
 
 ### Recent eval results snapshot
+
+Explore full per-agent and per-guide breakdowns on the **[Eval Dashboard](https://googlechrome.github.io/modern-web-guidance-src/)**.
 
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
+| Nov 8 | antigravity_cli (gemini-4-argon) | 214 / 1673 | 58% → 94% (**+36pp**) |
 | Nov 8 | codex_cli (gpt-6.1-sol) | 215 / 1795 | 54% → 82% (**+28pp**) |
 | Nov 8 | claude_code (opus-5-5) | 215 / 1801 | 57% → 88% (**+31pp**) |
 | Nov 6 | codex_cli (gpt-6.1-sol) | 212 / 1773 | 53% → 86% (**+33pp**) |
@@ -575,7 +587,6 @@ We developed a robust eval harness to ensure that the content is **empirically p
 | Nov 4 | claude_code (opus-5-5) | 209 / 1743 | 57% → 90% (**+33pp**) |
 | Nov 4 | antigravity_cli (gemini-4-argon) | 207 / 1722 | 60% → 96% (**+36pp**) |
 | Nov 2 | codex_cli (gpt-6.1-sol) | 205 / 1729 | 55% → 82% (**+27pp**) |
-| Nov 2 | claude_code (opus-5-5) | 205 / 1729 | 58% → 90% (**+32pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 
@@ -587,8 +598,8 @@ You can customize which skill packs are installed using the `--choose` flag:
 npx modern-web-guidance@latest install --choose
 ```
 
-* **`modern-web-guidance`** (~234 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
-* **`chrome-extensions`** (~181 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
+* **`modern-web-guidance`** (~205 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
+* **`chrome-extensions`** (~175 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
@@ -604,7 +615,7 @@ Google handles this data in accordance with the [Google Privacy Policy](https://
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/users.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Contributors
 
-If you'd like to contribute to modern-web-guidance, please see the [source repo's `CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md). The `modern-web-guidance` repo is purely a publish target for clean skills installation.
+Found a bug, outdated pattern, or missing web platform feature? [Open an issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues) or see [`CONTRIBUTING.md`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md) in the [source repository (`GoogleChrome/modern-web-guidance-src`)](https://github.com/GoogleChrome/modern-web-guidance-src).
 
 Huge thanks to everyone who has contributed!
 
@@ -615,7 +626,7 @@ Huge thanks to everyone who has contributed!
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;">  License
 
 Unless otherwise noted:
-* Software code in this repository is licensed under the [Apache License 2.0](LICENSE).
+* Software code in this project is licensed under the [Apache License 2.0](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/LICENSE).
 * Documentation and guide content under `guides/` are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
 Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors and [W3C](https://www.w3.org/), [WHATWG](https://whatwg.org), and [IETF](https://www.ietf.org) specifications.

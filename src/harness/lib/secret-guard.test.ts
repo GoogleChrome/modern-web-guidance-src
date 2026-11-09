@@ -4,9 +4,12 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
+  ALLOWED_CHILD_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
   collectHostSecrets,
   copySanitizedNpmrc,
   extractBase64TrajectoryPayloads,
+  filterAllowedEnv,
   findSecretLeaks,
   loadAllowedEnvFile,
   sanitizeNpmrc,
@@ -30,16 +33,61 @@ describe('loadAllowedEnvFile', () => {
       const envFile = path.join(dir, '.env');
       fs.writeFileSync(
         envFile,
-        `PI_MODEL=openrouter/test/model\nANTIGRAVITY_MODEL=preset\nGEMINI_API_KEY=AIzaSy${'M'.repeat(33)}\nUNLISTED_TOKEN=secret-1234\n`,
+        [
+          'PI_MODEL=openrouter/test/model',
+          'ANTIGRAVITY_MODEL=preset',
+          'ANTIGRAVITY_EFFORT=high',
+          'CLAUDE_EFFORT=medium',
+          'CODEX_EFFORT=xhigh',
+          'JETSKI_EFFORT=max',
+          `GEMINI_API_KEY=AIzaSy${'M'.repeat(33)}`,
+          'UNLISTED_TOKEN=secret-1234',
+        ].join('\n') + '\n',
         'utf8',
       );
       const targetEnv: NodeJS.ProcessEnv = { ANTIGRAVITY_MODEL: 'caller-override' };
       const res = loadAllowedEnvFile(envFile, targetEnv);
       assert.strictEqual(targetEnv.PI_MODEL, 'openrouter/test/model');
       assert.strictEqual(targetEnv.ANTIGRAVITY_MODEL, 'caller-override');
+      assert.strictEqual(targetEnv.ANTIGRAVITY_EFFORT, 'high');
+      assert.strictEqual(targetEnv.CLAUDE_EFFORT, 'medium');
+      assert.strictEqual(targetEnv.CODEX_EFFORT, 'xhigh');
+      assert.strictEqual(targetEnv.JETSKI_EFFORT, 'max');
       assert.strictEqual(targetEnv.GEMINI_API_KEY, undefined);
       assert.strictEqual(targetEnv.UNLISTED_TOKEN, undefined);
       assert.deepStrictEqual(res.ignored, ['GEMINI_API_KEY', 'UNLISTED_TOKEN']);
+
+      const wrapperFiltered = filterAllowedEnv(targetEnv, ALLOWED_WRAPPER_ENV_KEYS);
+      assert.strictEqual(wrapperFiltered.ANTIGRAVITY_EFFORT, 'high');
+      assert.strictEqual(wrapperFiltered.CLAUDE_EFFORT, 'medium');
+      assert.strictEqual(wrapperFiltered.CODEX_EFFORT, 'xhigh');
+      assert.strictEqual(wrapperFiltered.JETSKI_EFFORT, 'max');
+
+      const childFiltered = filterAllowedEnv(targetEnv, ALLOWED_CHILD_ENV_KEYS);
+      assert.strictEqual(childFiltered.ANTIGRAVITY_EFFORT, undefined);
+      assert.strictEqual(childFiltered.CLAUDE_EFFORT, undefined);
+      assert.strictEqual(childFiltered.CODEX_EFFORT, undefined);
+      assert.strictEqual(childFiltered.JETSKI_EFFORT, undefined);
+    });
+  });
+
+  test('loads *_MODEL and *_EFFORT keys while ignoring credential-looking and unlisted keys', () => {
+    withTempDir((dir) => {
+      const envFile = path.join(dir, '.env');
+      fs.writeFileSync(
+        envFile,
+        'GEMINI_MODEL=gemini-3.1-pro-preview\ngemini_model=gemini-1.5-flash\nCLAUDE_EFFORT=high\nMODEL_API_KEY=secret-key-12345678\nUNLISTED_KEY=some-value\n',
+        'utf8',
+      );
+      const targetEnv: NodeJS.ProcessEnv = {};
+      const res = loadAllowedEnvFile(envFile, targetEnv);
+      assert.strictEqual(targetEnv.GEMINI_MODEL, 'gemini-3.1-pro-preview');
+      assert.strictEqual(targetEnv.gemini_model, 'gemini-1.5-flash');
+      assert.strictEqual(targetEnv.CLAUDE_EFFORT, 'high');
+      assert.strictEqual(targetEnv.MODEL_API_KEY, undefined);
+      assert.strictEqual(targetEnv.UNLISTED_KEY, undefined);
+      assert.deepStrictEqual(res.loaded, ['CLAUDE_EFFORT', 'GEMINI_MODEL', 'gemini_model']);
+      assert.deepStrictEqual(res.ignored, ['MODEL_API_KEY', 'UNLISTED_KEY']);
     });
   });
 });
@@ -92,6 +140,68 @@ describe('sanitizeNpmrc & copySanitizedNpmrc', () => {
       }
     });
   });
+
+  test('uses NPM_CONFIG_USERCONFIG as the source for sanitized .npmrc in isolated HOME when set', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = `npm_${'K'.repeat(36)}`;
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\nfetch-retries=5\n`,
+        'utf8',
+      );
+
+      const prevUserConfig = process.env.NPM_CONFIG_USERCONFIG;
+      process.env.NPM_CONFIG_USERCONFIG = customNpmrc;
+      let isolated = '';
+      try {
+        isolated = createIsolatedHome('custom-npmrc-test');
+        const isolatedNpmrc = fs.readFileSync(path.join(isolated, '.npmrc'), 'utf8');
+        assert.ok(isolatedNpmrc.includes('registry=http://localhost:4873/'), 'Registry should be preserved');
+        assert.ok(!isolatedNpmrc.includes(token), '_authToken should be stripped');
+        assert.ok(isolatedNpmrc.includes('fetch-retries=5'), 'Safe config should be preserved');
+      } finally {
+        if (prevUserConfig === undefined) delete process.env.NPM_CONFIG_USERCONFIG;
+        else process.env.NPM_CONFIG_USERCONFIG = prevUserConfig;
+        if (isolated) fs.rmSync(isolated, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test('uses lowercase npm_config_userconfig as the source for sanitized .npmrc in isolated HOME when set', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm-lower');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = `npm_${'L'.repeat(36)}`;
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\nfetch-retries=5\n`,
+        'utf8',
+      );
+
+      const prevUserConfig = process.env.NPM_CONFIG_USERCONFIG;
+      const prevLowerConfig = process.env.npm_config_userconfig;
+      delete process.env.NPM_CONFIG_USERCONFIG;
+      process.env.npm_config_userconfig = customNpmrc;
+      let isolated = '';
+      try {
+        isolated = createIsolatedHome('custom-npmrc-lower-test');
+        const isolatedNpmrc = fs.readFileSync(path.join(isolated, '.npmrc'), 'utf8');
+        assert.ok(isolatedNpmrc.includes('registry=http://localhost:4873/'), 'Registry should be preserved');
+        assert.ok(!isolatedNpmrc.includes(token), '_authToken should be stripped');
+        assert.ok(isolatedNpmrc.includes('fetch-retries=5'), 'Safe config should be preserved');
+      } finally {
+        if (prevUserConfig === undefined) delete process.env.NPM_CONFIG_USERCONFIG;
+        else process.env.NPM_CONFIG_USERCONFIG = prevUserConfig;
+        if (prevLowerConfig === undefined) delete process.env.npm_config_userconfig;
+        else process.env.npm_config_userconfig = prevLowerConfig;
+        if (isolated) fs.rmSync(isolated, { recursive: true, force: true });
+      }
+    });
+  });
 });
 
 describe('collectHostSecrets', () => {
@@ -126,6 +236,103 @@ describe('collectHostSecrets', () => {
         process.env.HOME = prevHome;
       }
     });
+  });
+
+  test('does not collect *_MODEL or *_EFFORT values from .env while still collecting credential and unlisted keys', () => {
+    withTempDir((dir) => {
+      const root = path.join(dir, 'root');
+      fs.mkdirSync(root, { recursive: true });
+
+      const geminiModel = 'gemini-3.1-pro-preview';
+      const geminiModelLower = 'gemini-1.5-flash-lower';
+      const effortLevel = 'extended-reasoning-effort';
+      const modelApiKey = 'model-api-key-secret-12345';
+      const unlistedSecret = 'unlisted-secret-config-value';
+
+      fs.writeFileSync(
+        path.join(root, '.env'),
+        [
+          `GEMINI_MODEL=${geminiModel}`,
+          `gemini_model=${geminiModelLower}`,
+          `CLAUDE_EFFORT=${effortLevel}`,
+          `MODEL_API_KEY=${modelApiKey}`,
+          `UNLISTED_CUSTOM_CONFIG=${unlistedSecret}`,
+        ].join('\n'),
+        'utf8',
+      );
+
+      const secrets = collectHostSecrets({ rootDir: root, env: {} });
+      assert.strictEqual(secrets.includes(geminiModel), false, 'GEMINI_MODEL value should not be collected as secret');
+      assert.strictEqual(secrets.includes(geminiModelLower), false, 'gemini_model value should not be collected as secret');
+      assert.strictEqual(secrets.includes(effortLevel), false, '*_EFFORT value should not be collected as secret');
+      assert.strictEqual(secrets.includes(modelApiKey), true, 'MODEL_API_KEY value should still be collected as secret');
+      assert.strictEqual(secrets.includes(unlistedSecret), true, 'Unlisted config value should still be collected as secret');
+    });
+  });
+
+  test('collects auth tokens from NPM_CONFIG_USERCONFIG as secret needles', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = ['ya29', 'custom', 'C'.repeat(36)].join('.');
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\n`,
+        'utf8',
+      );
+
+      const secrets = collectHostSecrets({
+        rootDir: dir,
+        homeDir: dir,
+        env: { NPM_CONFIG_USERCONFIG: customNpmrc },
+      });
+      assert.strictEqual(secrets.includes(token), true, 'Token from NPM_CONFIG_USERCONFIG should be collected as secret needle');
+    });
+  });
+
+  test('collects auth tokens from lowercase npm_config_userconfig as secret needles', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm-lower');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = ['ya29', 'lower', 'D'.repeat(36)].join('.');
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\n`,
+        'utf8',
+      );
+
+      const secrets = collectHostSecrets({
+        rootDir: dir,
+        homeDir: dir,
+        env: { npm_config_userconfig: customNpmrc },
+      });
+      assert.strictEqual(secrets.includes(token), true, 'Token from npm_config_userconfig should be collected as secret needle');
+    });
+  });
+});
+
+describe('ALLOWED_WRAPPER_ENV_KEYS vs ALLOWED_CHILD_ENV_KEYS', () => {
+  test('wrapper allowlist keeps NPM_CONFIG_USERCONFIG and npm_config_userconfig while child allowlist drops them', () => {
+    assert.strictEqual(ALLOWED_WRAPPER_ENV_KEYS.has('NPM_CONFIG_USERCONFIG'), true);
+    assert.strictEqual(ALLOWED_WRAPPER_ENV_KEYS.has('npm_config_userconfig'), true);
+    assert.strictEqual(ALLOWED_CHILD_ENV_KEYS.has('NPM_CONFIG_USERCONFIG'), false);
+    assert.strictEqual(ALLOWED_CHILD_ENV_KEYS.has('npm_config_userconfig'), false);
+
+    const sourceEnv = {
+      PATH: '/usr/bin',
+      NPM_CONFIG_USERCONFIG: '/path/to/.npmrc',
+      npm_config_userconfig: '/path/to/.npmrc',
+    };
+
+    const wrapperEnv = filterAllowedEnv(sourceEnv, ALLOWED_WRAPPER_ENV_KEYS);
+    assert.strictEqual(wrapperEnv.NPM_CONFIG_USERCONFIG, '/path/to/.npmrc');
+    assert.strictEqual(wrapperEnv.npm_config_userconfig, '/path/to/.npmrc');
+
+    const childEnv = filterAllowedEnv(sourceEnv, ALLOWED_CHILD_ENV_KEYS);
+    assert.strictEqual(childEnv.NPM_CONFIG_USERCONFIG, undefined);
+    assert.strictEqual(childEnv.npm_config_userconfig, undefined);
   });
 });
 

@@ -3,10 +3,10 @@
  *
  * Chunks are embedded with taskType "RETRIEVAL_DOCUMENT", 768 dimensions,
  * MRL-truncated to 256 dimensions and L2-normalized.
- * Results are stored in an Int8 + scale cache in `src/rag/static-model/`.
+ * Results are stored in an Int8 + scale cache in `src/rag/gen/`.
  *
  * Usage:
- *   node src/rag/embed-chunks.ts [--check] [--force] [--seed-from path/to/gemini-emb.json]
+ *   node src/rag/embed-guide-chunks.ts [--check] [--force] [--prune]
  */
 
 import path from "node:path";
@@ -14,57 +14,23 @@ import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { rootDir } from "../core/paths.ts";
 import {
-  scanCorpusChunks,
-  loadChunkCache,
-  saveChunkCache,
   truncateAndNormalize256,
   TEACHER_MODEL,
   TASK_TYPE,
   TEACHER_DIM,
   STATIC_DIMS,
   DEFAULT_CACHE_DIR,
+  loadChunkCache,
+  saveChunkCache,
+} from "./guide-chunk-cache.ts";
+import {
+  scanCorpusChunks,
   type GuideChunk,
-} from "./chunk-cache.ts";
-
-interface BatchEmbeddingResponse {
-  embeddings: Array<{ values: number[] }>;
-}
-
-function isBatchEmbeddingResponse(val: unknown): val is BatchEmbeddingResponse {
-  if (typeof val !== "object" || val === null || !("embeddings" in val)) return false;
-  const emb = (val as { embeddings: unknown }).embeddings;
-  return (
-    Array.isArray(emb) &&
-    emb.every(
-      (item) =>
-        typeof item === "object" &&
-        item !== null &&
-        "values" in item &&
-        Array.isArray((item as { values: unknown }).values)
-    )
-  );
-}
-
-async function postWithRetry(url: string, body: unknown): Promise<unknown> {
-  for (let attempt = 1; ; attempt++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch((e: unknown) => (e instanceof Error ? e : new Error(String(e))));
-
-    if (!(res instanceof Error) && res.ok) {
-      return res.json();
-    }
-    const is429 = !(res instanceof Error) && res.status === 429;
-    const status =
-      res instanceof Error ? res.message : `${res.status} ${(await res.text()).slice(0, 300)}`;
-    if (attempt >= 20) {
-      throw new Error(`Gemini embedding HTTP failed after ${attempt} attempts: ${status}`);
-    }
-    await new Promise((r) => setTimeout(r, is429 ? 15_000 : 1_500 * attempt));
-  }
-}
+} from "../core/guide-chunks.ts";
+import {
+  postWithRetry,
+  isBatchEmbeddingResponse,
+} from "./gemini-api.ts";
 
 export interface EmbedChunksOptions {
   check?: boolean;
@@ -145,13 +111,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
 
       res.embeddings.forEach((e, i) => {
         const chunk = batch[i];
-        const v768 = Float32Array.from(e.values);
-        let sumSq = 0;
-        for (let k = 0; k < TEACHER_DIM; k++) sumSq += v768[k] * v768[k];
-        const norm = Math.sqrt(sumSq) || 1;
-        for (let k = 0; k < TEACHER_DIM; k++) v768[k] /= norm;
-
-        const v256 = truncateAndNormalize256(v768);
+        const v256 = truncateAndNormalize256(e.values);
         workingCache.set(chunk.hash, v256);
         newEmbeds++;
       });
@@ -221,7 +181,7 @@ async function main(): Promise<void> {
       for (const g of missingGuides) {
         console.error(`   - ${g}`);
       }
-      console.error(`\nRun 'node src/rag/embed-chunks.ts' to embed them before publishing.`);
+      console.error(`\nRun 'node src/rag/embed-guide-chunks.ts' to embed them before publishing.`);
       process.exit(1);
     } else {
       console.log(
@@ -238,7 +198,7 @@ async function main(): Promise<void> {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   main().catch((err) => {
-    console.error("Error in embed-chunks:", err);
+    console.error("Error in embed-guide-chunks:", err);
     process.exit(1);
   });
 }

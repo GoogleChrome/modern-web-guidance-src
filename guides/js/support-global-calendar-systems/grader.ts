@@ -8,22 +8,50 @@ function getTargetCode(): string {
   const currentTargetFile = process.env.TARGET_FILE;
   if (!currentTargetFile || !fs.existsSync(currentTargetFile)) return '';
   const currentFilePath = path.resolve(currentTargetFile);
-  const currentTargetDir = path.dirname(currentFilePath);
-  let code = fs.readFileSync(currentFilePath, 'utf-8');
-  const scriptSrcs = [...code.matchAll(/src=["']([^"']+)["']/g)].map(m => m[1]);
-  for (const src of scriptSrcs) {
-    if (!src.startsWith('http') && !src.startsWith('//')) {
-      const scriptPath = path.join(currentTargetDir, src);
-      if (fs.existsSync(scriptPath)) {
-        code += '\n' + fs.readFileSync(scriptPath, 'utf-8');
+  const visited = new Set<string>();
+  const chunks: string[] = [];
+
+  function readRecursive(filePath: string) {
+    const resolved = path.resolve(filePath);
+    if (visited.has(resolved) || !fs.existsSync(resolved)) return;
+    visited.add(resolved);
+
+    const content = fs.readFileSync(resolved, 'utf-8');
+    // Skip large vendored polyfill bundles so polyfill internals don't trip source checks.
+    if (
+      resolved !== currentFilePath &&
+      (/polyfill|vendor/i.test(resolved) || content.length >= 100_000)
+    ) {
+      return;
+    }
+    chunks.push(content);
+
+    const dir = path.dirname(resolved);
+    const refs = [
+      ...[...content.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m => m[1]),
+      ...[...content.matchAll(/(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.[^"']+)["']/g)].map(m => m[1]),
+      ...[...content.matchAll(/import\s*\(\s*["'](\.[^"']+)["']\s*\)/g)].map(m => m[1]),
+    ];
+    for (const ref of refs) {
+      if (!ref.startsWith('http') && !ref.startsWith('//')) {
+        const candidate = ref.startsWith('/')
+          ? path.join(path.dirname(currentFilePath), ref.slice(1))
+          : path.join(dir, ref);
+        readRecursive(candidate);
       }
     }
   }
-  return code;
+
+  readRecursive(currentFilePath);
+  return chunks.join('\n');
 }
 
 interface GraderStats {
   assignCount: number;
+  hasGlobalTemporal: boolean;
+  polyfillLoaded: boolean;
+  localPolyfillLoaded: boolean;
+  renderedCalendarOutput: boolean;
   originalWithCalendarCalled: boolean;
   originalCompareCalled: boolean;
   monthCodeGetterCalled: boolean;
@@ -32,10 +60,24 @@ interface GraderStats {
   toLocaleStringCalls: { locales: any; options: any }[];
   supportedValuesCalls: string[];
   legacyDateConstructorCalledWithArgs: boolean;
+  legacyDateCallStacks?: string[];
   temporalUsed: boolean;
+  requestedScripts?: string[];
 }
 
-async function handleLocalhostRoute(page: any, targetUrl?: string) {
+function isLocalPolyfillContent(localFilePath: string, content: string): boolean {
+  return (
+    /\.m?js$/i.test(localFilePath) &&
+    content.includes('Temporal') &&
+    (content.length > 50_000 || /polyfill/i.test(path.basename(localFilePath)))
+  );
+}
+
+async function handleLocalhostRoute(
+  page: any,
+  targetUrl?: string,
+  onLocalFileServed?: (localFilePath: string, content: string) => void
+) {
   const currentTargetFile = process.env.TARGET_FILE;
   const currentFilePath = currentTargetFile ? path.resolve(currentTargetFile) : '';
   const currentTargetDir = currentFilePath ? path.dirname(currentFilePath) : '';
@@ -48,6 +90,9 @@ async function handleLocalhostRoute(page: any, targetUrl?: string) {
       const localFilePath = path.join(currentTargetDir, sanitizedPath);
 
       if (fs.existsSync(localFilePath)) {
+        if (onLocalFileServed && /\.m?js$/i.test(localFilePath)) {
+          onLocalFileServed(localFilePath, fs.readFileSync(localFilePath, 'utf-8'));
+        }
         await route.fulfill({ path: localFilePath });
       } else if (fs.existsSync(currentFilePath)) {
         await route.fulfill({ status: 200, contentType: 'text/html', body: fs.readFileSync(currentFilePath, 'utf-8') });
@@ -59,9 +104,23 @@ async function handleLocalhostRoute(page: any, targetUrl?: string) {
 }
 
 async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderStats> {
+  let cdnPolyfillLoaded = false;
+  let localPolyfillLoaded = false;
+  const localPolyfillBasenames = new Set<string>();
+  const requestedScripts = new Set<string>();
+  page.on('request', (req: any) => {
+    if (req.resourceType() === 'script') {
+      requestedScripts.add(req.url());
+    }
+  });
+
   await page.addInitScript(() => {
     const stats: GraderStats = {
       assignCount: 0,
+      hasGlobalTemporal: false,
+      polyfillLoaded: false,
+      localPolyfillLoaded: false,
+      renderedCalendarOutput: false,
       originalWithCalendarCalled: false,
       originalCompareCalled: false,
       monthCodeGetterCalled: false,
@@ -70,6 +129,7 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
       toLocaleStringCalls: [],
       supportedValuesCalls: [],
       legacyDateConstructorCalledWithArgs: false,
+      legacyDateCallStacks: [],
       temporalUsed: false
     };
     (globalThis as any).__grader_stats__ = stats;
@@ -90,6 +150,7 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
           const isInternal = stack.includes('polyfill') || stack.includes('esm.sh') || stack.includes('playwright');
           if (!isInternal) {
             stats.legacyDateConstructorCalledWithArgs = true;
+            stats.legacyDateCallStacks?.push(stack);
           }
         }
         return Reflect.construct(target, args);
@@ -99,8 +160,6 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
 
     function spyOnTemporal(val: any) {
       if (val && typeof val === 'object') {
-        stats.temporalUsed = true;
-
         const spyOnMethod = (targetObj: any, prop: string, callback: (...args: any[]) => void) => {
           let curr = targetObj;
           while (curr && curr !== Object.prototype) {
@@ -137,9 +196,20 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
           }
         };
 
+        if (val.Now) {
+          spyOnMethod(val.Now, 'plainDateISO', () => {
+            stats.temporalUsed = true;
+          });
+        }
+
         if (val.PlainDate) {
+          spyOnMethod(val.PlainDate, 'from', () => {
+            stats.temporalUsed = true;
+          });
+
           if (val.PlainDate.prototype) {
             spyOnMethod(val.PlainDate.prototype, 'withCalendar', () => {
+              stats.temporalUsed = true;
               stats.originalWithCalendarCalled = true;
             });
             spyOnGetter(val.PlainDate.prototype, 'monthCode', () => {
@@ -157,6 +227,7 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
           }
 
           spyOnMethod(val.PlainDate, 'compare', () => {
+            stats.temporalUsed = true;
             stats.originalCompareCalled = true;
           });
         }
@@ -165,67 +236,81 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
 
     (globalThis as any).__spyOnTemporal = spyOnTemporal;
 
-    let assignedValue: any = undefined;
-    Object.defineProperty(globalThis, 'Temporal', {
-      configurable: true,
-      enumerable: true,
-      get() {
-        return assignedValue;
-      },
-      set(val) {
-        if (val) {
-          spyOnTemporal(val);
-        }
-        assignedValue = val;
-        stats.assignCount++;
-      }
-    });
+    // Remove native Temporal so `'Temporal' in globalThis` is false and polyfill loading is exercised.
+    delete (globalThis as any).Temporal;
   });
 
-  await page.route(/.*(@js-temporal\/polyfill|cdn\.jsdelivr\.net|esm\.sh\/@js-temporal|unpkg\.com\/@js-temporal|temporal-polyfill).*/, async (route: any) => {
+  await page.route(/^https?:\/\/.*(?:@js-temporal\/polyfill|temporal-polyfill).*/i, async (route: any) => {
+    cdnPolyfillLoaded = true;
     const mockPolyfillEsm = `
-      const createPlainDate = (calId = 'iso8601') => {
-        const pd = {
-          calendarId: calId,
-          calendar: { id: calId },
-          year: 2026,
-          month: 5,
-          day: 15,
-          get monthCode() { return 'M05'; },
-          get monthsInYear() { return 12; },
-          get daysInMonth() { return 31; },
-          add() { return pd; },
-          subtract() { return pd; },
-          withCalendar(newCal) {
-            const id = typeof newCal === 'string' ? newCal : (newCal?.id || 'islamic-umalqura');
-            return createPlainDate(id);
-          },
-          with() { return pd; },
-          toLocaleString(locales, options) { return '1447 AH'; }
-        };
-        return pd;
-      };
+      class PlainDate {
+        constructor(calId = 'iso8601', y = 2026, m = 5, d = 15) {
+          this._cal = calId;
+          this._y = y;
+          this._m = m;
+          this._d = d;
+        }
+        get calendarId() { return this._cal; }
+        get calendar() { return { id: this._cal }; }
+        get year() { return this._y; }
+        get month() { return this._m; }
+        get day() { return this._d; }
+        get monthCode() { return 'M' + String(this._m).padStart(2, '0'); }
+        get monthsInYear() { return 12; }
+        get daysInMonth() { return 30; }
+        get inLeapYear() { return false; }
+        get era() { return this._cal === 'japanese' ? 'reiwa' : undefined; }
+        get eraYear() { return this._cal === 'japanese' ? 8 : undefined; }
+        toString() {
+          return String(this._y).padStart(4, '0') + '-' + String(this._m).padStart(2, '0') + '-' + String(this._d).padStart(2, '0');
+        }
+        add() { return this; }
+        subtract() { return this; }
+        withCalendar(newCal) {
+          const id = typeof newCal === 'string' ? newCal : (newCal?.id || 'islamic-umalqura');
+          return new PlainDate(id, this._y, this._m, this._d);
+        }
+        with(fields) {
+          return new PlainDate(
+            this._cal,
+            fields?.year ?? this._y,
+            fields?.month ?? this._m,
+            fields?.day ?? this._d
+          );
+        }
+        toLocaleString(locales, options) {
+          const loc = String(locales || '');
+          if (this._cal === 'japanese' || loc.includes('japanese') || options?.calendar === 'japanese') {
+            return 'May 15, Reiwa 8';
+          }
+          return '1447 AH';
+        }
+        toPlainYearMonth() {
+          return { year: this._y, month: this._m, monthCode: this.monthCode, daysInMonth: 30 };
+        }
+      }
 
       const T = {
         Now: {
-          plainDateISO() { return createPlainDate('iso8601'); }
+          plainDateISO() { return new PlainDate('iso8601', 2026, 5, 15); }
         },
-        PlainDate: {
+        PlainDate: Object.assign(PlainDate, {
           from(val) {
-            const calId = typeof val === 'object' && val?.calendar ? val.calendar : 'iso8601';
-            return createPlainDate(calId);
+            if (typeof val === 'string') {
+              const m = val.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+              if (m) return new PlainDate('iso8601', +m[1], +m[2], +m[3]);
+            }
+            const calId = typeof val === 'object' && val?.calendar
+              ? (typeof val.calendar === 'string' ? val.calendar : (val.calendar.id || 'iso8601'))
+              : 'iso8601';
+            return new PlainDate(calId, val?.year ?? 2026, val?.month ?? 5, val?.day ?? 15);
           },
           compare() { return 0; }
-        }
+        })
       };
 
-      if (typeof window !== 'undefined') {
-        window.Temporal = T;
-        if (window.__spyOnTemporal) window.__spyOnTemporal(T);
-      }
-      if (typeof globalThis !== 'undefined') {
-        globalThis.Temporal = T;
-        if (globalThis.__spyOnTemporal) globalThis.__spyOnTemporal(T);
+      if (typeof globalThis !== 'undefined' && globalThis.__spyOnTemporal) {
+        globalThis.__spyOnTemporal(T);
       }
 
       export const Temporal = T;
@@ -238,18 +323,56 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     });
   });
 
-  await handleLocalhostRoute(page, targetUrl);
+  await handleLocalhostRoute(page, targetUrl, (localFilePath, content) => {
+    if (isLocalPolyfillContent(localFilePath, content)) {
+      localPolyfillLoaded = true;
+      localPolyfillBasenames.add(path.basename(localFilePath));
+    }
+  });
 
   const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('load');
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect.poll(async () => page.evaluate(() => (globalThis as any).__grader_stats__)).toBeTruthy();
 
-  return await page.evaluate(() => (globalThis as any).__grader_stats__);
+  const pageData = await page.evaluate(() => {
+    const stats = (globalThis as any).__grader_stats__;
+    const islamic = document.getElementById('islamic-date')?.textContent?.trim() || '';
+    const renderedCalendarOutput = Boolean(islamic && islamic !== 'Loading...' && islamic !== '-');
+    return {
+      stats,
+      hasGlobalTemporal: typeof (globalThis as any).Temporal !== 'undefined',
+      renderedCalendarOutput
+    };
+  });
+
+  const legacyDateConstructorCalledWithArgs = (pageData.stats.legacyDateCallStacks || []).some(
+    (stack: string) => ![...localPolyfillBasenames].some(name => stack.includes(name))
+  );
+
+  return {
+    ...pageData.stats,
+    legacyDateConstructorCalledWithArgs,
+    hasGlobalTemporal: pageData.hasGlobalTemporal,
+    polyfillLoaded: cdnPolyfillLoaded || localPolyfillLoaded,
+    localPolyfillLoaded,
+    renderedCalendarOutput: pageData.renderedCalendarOutput,
+    requestedScripts: [...requestedScripts]
+  };
 }
 
-async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: GraderStats, polyfillRequested: boolean }> {
+async function setupNativePage(
+  page: any,
+  targetUrl?: string
+): Promise<{ stats: GraderStats; polyfillRequested: boolean; requestedScripts: string[] }> {
   let polyfillRequested = false;
+  const requestedScripts = new Set<string>();
+  page.on('request', (req: any) => {
+    if (req.resourceType() === 'script') {
+      requestedScripts.add(req.url());
+    }
+  });
 
   await page.route('**/*', async (route: any) => {
     const url = route.request().url();
@@ -259,11 +382,19 @@ async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: 
     await route.continue();
   });
 
-  await handleLocalhostRoute(page, targetUrl);
+  await handleLocalhostRoute(page, targetUrl, (localFilePath, content) => {
+    if (isLocalPolyfillContent(localFilePath, content)) {
+      polyfillRequested = true;
+    }
+  });
 
   await page.addInitScript(() => {
     const stats: GraderStats = {
       assignCount: 0,
+      hasGlobalTemporal: false,
+      polyfillLoaded: false,
+      localPolyfillLoaded: false,
+      renderedCalendarOutput: false,
       originalWithCalendarCalled: false,
       originalCompareCalled: false,
       monthCodeGetterCalled: false,
@@ -373,102 +504,126 @@ async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: 
 
   const url = targetUrl || ('file://' + process.env.TARGET_FILE);
   await page.goto(url);
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('load');
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect.poll(async () => page.evaluate(() => (globalThis as any).__grader_stats__)).toBeTruthy();
 
   const stats = await page.evaluate(() => (globalThis as any).__grader_stats__);
-  return { stats, polyfillRequested };
+  return { stats, polyfillRequested, requestedScripts: [...requestedScripts] };
+}
+
+function usedLocalPolyfillRuntime(stats: GraderStats): boolean {
+  return stats.localPolyfillLoaded && stats.renderedCalendarOutput;
 }
 
 test.describe('Temporal API Support Grader', () => {
   test.setTimeout(30000);
 
-  test('should feature-detect and manually assign the loaded polyfill', async ({ page, TARGET_URL }) => {
+  test('The implementation feature-detects Temporal and assigns the loaded polyfill to `globalThis.Temporal`.', async ({ page, browser, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
-    const code = getTargetCode();
-    const hasAssignment = stats.assignCount > 0 || /Temporal\s*=\s*/.test(code) || /module\.Temporal/.test(code) || /return\s+.*Temporal/.test(code);
-    expect(hasAssignment).toBe(true);
+    let hasDynamicPolyfill = false;
+    if (stats.hasGlobalTemporal) {
+      const nativeContext = await browser.newContext();
+      const nativePage = await nativeContext.newPage();
+      try {
+        const { requestedScripts: nativeScripts } = await setupNativePage(nativePage, TARGET_URL);
+        const nativeSet = new Set(nativeScripts);
+        hasDynamicPolyfill = (stats.requestedScripts || []).some(url => !nativeSet.has(url));
+      } finally {
+        await nativeContext.close();
+      }
+    }
+    expect(hasDynamicPolyfill && stats.hasGlobalTemporal).toBe(true);
   });
 
-  test('should conditionally load polyfill only if native support is absent', async ({ page, TARGET_URL }) => {
+  test('The implementation conditionally loads a Temporal polyfill only if native support is absent.', async ({ page, TARGET_URL }) => {
     const { stats, polyfillRequested } = await setupNativePage(page, TARGET_URL);
     expect(polyfillRequested).toBe(false);
     expect(stats.temporalUsed).toBe(true);
   });
 
-  test('should verify target calendar support using Intl.supportedValuesOf', async ({ page, TARGET_URL }) => {
+  test('The implementation verifies target calendar support using `Intl.supportedValuesOf(\'calendar\')`.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedSupportedValues = stats.supportedValuesCalls.includes('calendar') || /supportedValuesOf\s*\(\s*['"]calendar['"]\s*\)/.test(code) || /isCalendarSupported/.test(code) || /withCalendar/.test(code);
+    const usedSupportedValues = stats.supportedValuesCalls.includes('calendar')
+      || (usedLocalPolyfillRuntime(stats) && /supportedValuesOf\s*\(\s*['"]calendar['"]\s*\)/.test(code));
     expect(usedSupportedValues).toBe(true);
   });
 
-  test('should use withCalendar to associate non-ISO calendar systems', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `withCalendar()` to associate non-ISO calendar systems.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedWithCalendar = stats.originalWithCalendarCalled || /\.withCalendar\s*\(/.test(code);
+    const usedWithCalendar = stats.originalWithCalendarCalled
+      || (usedLocalPolyfillRuntime(stats) && /\.withCalendar\s*\(/.test(code));
     expect(usedWithCalendar).toBe(true);
   });
 
-  test('should use monthCode instead of numeric month for lunisolar calendars', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `monthCode` instead of numeric month for lunisolar calendars.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedMonthCode = stats.monthCodeGetterCalled || /\.monthCode\b/.test(code);
+    const usedMonthCode = stats.monthCodeGetterCalled
+      || (usedLocalPolyfillRuntime(stats) && /\.monthCode\b/.test(code));
     expect(usedMonthCode).toBe(true);
   });
 
-  test('should use monthsInYear as the upper bound when iterating through months', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `monthsInYear` as the upper bound when iterating through months.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedMonthsInYear = stats.monthsInYearGetterCalled || /\.monthsInYear\b/.test(code);
+    const usedMonthsInYear = stats.monthsInYearGetterCalled
+      || (usedLocalPolyfillRuntime(stats) && /\.monthsInYear\b/.test(code));
     expect(usedMonthsInYear).toBe(true);
   });
 
-  test('should use toLocaleString specifying the calendar in locale or options', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `toLocaleString()` specifying the calendar in locale or options.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
     const hasRuntimeLocales = stats.toLocaleStringCalls.some(call => {
       const localesStr = String(call.locales || '');
       return localesStr.includes('-u-ca-') || (call.options && call.options.calendar);
     });
-    const hasCodeLocales = /\.toLocaleString\s*\(/.test(code) && (/-u-ca-/.test(code) || /calendar:/.test(code) || /dateStyle/.test(code));
+    const hasCodeLocales = usedLocalPolyfillRuntime(stats)
+      && /\.toLocaleString\s*\(/.test(code)
+      && (/-u-ca-/.test(code) || /calendar\s*:/.test(code) || /dateStyle/.test(code));
     expect(hasRuntimeLocales || hasCodeLocales).toBe(true);
   });
 
-  test('should use Temporal.PlainDate.compare to compare dates', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `Temporal.PlainDate.compare()` to compare dates.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedCompare = stats.originalCompareCalled || /PlainDate\.compare\b/.test(code) || /Temporal\.compare\b/.test(code);
+    const usedCompare = stats.originalCompareCalled
+      || (usedLocalPolyfillRuntime(stats) && (/PlainDate\.compare\b/.test(code) || /Temporal\.compare\b/.test(code)));
     expect(usedCompare).toBe(true);
   });
 
-  test('should use daysInMonth when checking month invariants or doing day iterations', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `daysInMonth` when checking month invariants or doing day iterations.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedDaysInMonth = stats.daysInMonthGetterCalled || /\.daysInMonth\b/.test(code);
+    const usedDaysInMonth = stats.daysInMonthGetterCalled
+      || (usedLocalPolyfillRuntime(stats) && /\.daysInMonth\b/.test(code));
     expect(usedDaysInMonth).toBe(true);
   });
 
-  test('should not use legacy Date object for non-Gregorian calculations', async ({ page, TARGET_URL }) => {
+  test('The implementation uses `Temporal` instead of the legacy `Date` object for non-Gregorian calculations.', async ({ page, TARGET_URL }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usesTemporal = stats.temporalUsed || /\bTemporal\./.test(code);
+    const usesTemporal = stats.temporalUsed
+      || (usedLocalPolyfillRuntime(stats) && (/\bTemporal\./.test(code) || /\bPlainDate\.from\b/.test(code)));
     expect(usesTemporal).toBe(true);
     expect(stats.legacyDateConstructorCalledWithArgs).toBe(false);
   });
 
-  test('should account for era names in systems relying on eras', async ({ page, TARGET_URL }) => {
+  test('The implementation accounts for era names in systems relying on eras.', async ({ page, TARGET_URL }) => {
     await handleLocalhostRoute(page, TARGET_URL);
     const url = TARGET_URL || ('file://' + process.env.TARGET_FILE);
     await page.goto(url);
-    await page.waitForLoadState('domcontentloaded').catch(() => {});
-    await page.waitForTimeout(300);
+    await page.waitForLoadState('load');
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 
-    const japaneseCardExists = await page.locator(':text("Japanese")').count() > 0;
-    expect(japaneseCardExists).toBe(true);
     const bodyText = await page.textContent('body') || '';
     const code = getTargetCode();
-    const hasEra = /Reiwa|Heisei|Showa|Taisho|Meiji/i.test(bodyText) || /era:\s*['"]long['"]/i.test(code) || /eraYear\b/.test(code);
+    const hasEra = /Reiwa|Heisei|Showa|Taisho|Meiji|令和|平成|昭和|大正|明治/i.test(bodyText)
+      || /era\s*:\s*['"](?:long|short|narrow)['"]/i.test(code)
+      || /\beraYear\b/.test(code);
     expect(hasEra).toBe(true);
   });
 });

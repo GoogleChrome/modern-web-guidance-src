@@ -4,6 +4,13 @@ import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { Agents } from '../config.ts';
 import { parseJsonlFile } from './agent-shared.ts';
 import { guideIdsFromLog } from './guide-usage.ts';
+import {
+  resolveReasoningEffort,
+  type ReasoningEffort,
+  type ReasoningEffortSource,
+} from './reasoning-effort.ts';
+
+export type { ReasoningEffort, ReasoningEffortSource };
 
 // Colocated agent parsers
 import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
@@ -54,7 +61,7 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 4;
+export const NORMALIZER_VERSION = 5;
 
 const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
@@ -218,6 +225,7 @@ export interface TrajectorySummary {
   tokenUsage?: { total: number; cached: number };
   initialPrompt?: string;
   model?: string;
+  reasoningEffort?: ReasoningEffort;
   retrievedGuides?: string[];
   fileReadGuides?: string[];
   toolsUsed?: string[];
@@ -333,8 +341,37 @@ export function categorizeAction(
   return 'incidental_noise';
 }
 
-export function finalizeTrajectorySummary(summary: TrajectorySummary): TrajectorySummary {
+export interface FinalizeTrajectorySummaryOptions {
+  fallback?: ReasoningEffort;
+  env?: NodeJS.ProcessEnv;
+}
+
+export function finalizeTrajectorySummary(
+  summary: TrajectorySummary,
+  fallbackOrOptions?: ReasoningEffort | FinalizeTrajectorySummaryOptions,
+): TrajectorySummary {
+  const isOptionsObj =
+    fallbackOrOptions !== undefined &&
+    ('fallback' in fallbackOrOptions || 'env' in fallbackOrOptions);
+  const fallbackEffort = isOptionsObj
+    ? (fallbackOrOptions as FinalizeTrajectorySummaryOptions).fallback
+    : (fallbackOrOptions as ReasoningEffort | undefined);
+  const env = isOptionsObj
+    ? (fallbackOrOptions as FinalizeTrajectorySummaryOptions).env
+    : undefined;
+
   summary.normalizerVersion = NORMALIZER_VERSION;
+  summary.reasoningEffort = resolveReasoningEffort({
+    agent: summary.agent,
+    model: summary.model,
+    observed: summary.reasoningEffort?.source === 'observed' ? summary.reasoningEffort : undefined,
+    fallback: fallbackEffort?.level
+      ? fallbackEffort
+      : isOptionsObj
+        ? undefined
+        : summary.reasoningEffort,
+    ...(env !== undefined ? { env } : {}),
+  });
   if (Array.isArray(summary.steps)) {
     summary.steps.sort((a, b) => {
       if (a.timestamp && b.timestamp) {
@@ -457,9 +494,13 @@ export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySu
 export function generateNormalizedTrajectorySync(
   targetDir: string,
   agentName: string,
-  initialPrompt?: string
+  initialPrompt?: string,
+  options?: { env?: NodeJS.ProcessEnv },
 ): TrajectorySummary | null {
   try {
+    const previousSummary = readTrajectorySummary(targetDir);
+    const previousEffort = previousSummary?.reasoningEffort;
+    const effectiveEnv = options?.env ?? (previousSummary ? {} : process.env);
     let summary: TrajectorySummary | null = null;
     const normalizedAgent = normalizeAgentName(agentName) || agentName;
 
@@ -493,7 +534,7 @@ export function generateNormalizedTrajectorySync(
         summary.retrievedGuides = [...new Set([...(summary.retrievedGuides ?? []), ...guideIdsFromLog(logEntries)])];
         summary.toolsUsed = [...new Set([...(summary.toolsUsed ?? []), 'modern-web-guidance'])];
       }
-      finalizeTrajectorySummary(summary);
+      finalizeTrajectorySummary(summary, { fallback: previousEffort, env: effectiveEnv });
       writeTrajectorySummary(targetDir, summary);
       return summary;
     }
@@ -523,7 +564,7 @@ export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySumm
     const detectedAgent = detectAgentForRun(runDir, existing);
     if (detectedAgent) {
       console.log(`[Trajectory] Regenerating trajectory_summary.json (v${existing?.normalizerVersion ?? 'none'} → v${NORMALIZER_VERSION}) in ${runDir}`);
-      const regenerated = generateNormalizedTrajectorySync(runDir, detectedAgent, existing?.initialPrompt);
+      const regenerated = generateNormalizedTrajectorySync(runDir, detectedAgent, existing?.initialPrompt, { env: {} });
       if (regenerated) {
         return regenerated;
       }

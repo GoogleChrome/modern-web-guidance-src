@@ -1,10 +1,10 @@
-import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
+import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
 import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
 /** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
@@ -120,6 +120,7 @@ function buildTasksFromRecentSuites(suites) {
                 agentId: family.id,
                 agentLabel: family.label,
                 model: suite?.model || '',
+                reasoningEffort: suite?.reasoningEffort,
                 suiteId: suite?.testId || '',
                 date,
                 unguided: toRun(slice.unguided),
@@ -302,7 +303,10 @@ function renderPromptBar(task, pair) {
             return `<a class="ab-prov-link" href="${ghHref}" target="_blank" rel="noopener">${escapeHtml(slug)}</a>`;
         }).join(', ');
         const guidePrefix = cleanGuides.length > 1 ? 'Guides:' : 'Guide:';
-        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (${escapeHtml(pair.model)})</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
+        const effortChipHtml = pair.model
+            ? renderEffortChip(pair.reasoningEffort)
+            : '';
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
 /** @param {string} msg

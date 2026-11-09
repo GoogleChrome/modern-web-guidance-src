@@ -16,7 +16,7 @@ Always read and follow `.agents/skills/<skill>/SKILL.md` before starting a task:
 - `nightly-eval-investigation`, `dev-prompt-canary`, `grader-replay`: Eval diagnostics, grader replay, & `gd dev` prompt changes
 - `project-maintenance`, `coherence-auditor`: Routine maintenance & coherence audits
 
-For repository architecture and contributor workflows, see `docs/CONTEXT.md` and `CONTRIBUTING.md`.
+For repository architecture, governance, and contributor workflows, see [`docs/CONTEXT.md`](./docs/CONTEXT.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`GOVERNANCE.md`](./GOVERNANCE.md), [`guides/CONTRIBUTING.md`](./guides/CONTRIBUTING.md), and [`docs/ATLS.md`](./docs/ATLS.md).
 
 ## PR Review Etiquette
 

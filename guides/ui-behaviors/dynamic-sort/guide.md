@@ -1,7 +1,6 @@
 ---
 name: dynamic-sort
 description: Best practices for handling dynamic user-triggered reordering of a container's children (e.g. list items, table rows, or a card grid), with optional animated reordering that respects user preferences, good screen reader UX, and optimal performance for large lists.
-draft: wip
 web-feature-ids:
   - view-transitions
   - view-transitions-element-scoped

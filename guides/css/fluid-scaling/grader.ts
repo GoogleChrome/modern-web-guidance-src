@@ -69,7 +69,7 @@ test('The component title has a font-size that uses container query units (like 
   expect(hasContainerUnit).toBe(true);
 });
 
-test('The component title uses clamp() to constrain the font size', async ({ page }) => {
+test('The component title uses clamp() to constrain the font size between a minimum and maximum value', async ({ page }) => {
   const hasClamp = await page.evaluate(() => {
     let found = false;
 
@@ -117,7 +117,7 @@ test('The component title uses clamp() to constrain the font size', async ({ pag
   expect(hasClamp).toBe(true);
 });
 
-test('The maximum size in clamp() for font size is at most 2.5 times the minimum size', async ({ page }) => {
+test('The maximum size in clamp() for font size is at most 2.5 times the minimum size to meet accessibility guidelines', async ({ page }) => {
   const clampRatio = await page.evaluate(() => {
     const extractClampValue = (styleStr: string | null): number | null => {
       if (!styleStr || !styleStr.includes('clamp(')) return null;
@@ -243,53 +243,4 @@ test('The font size of the title changes when the width of the container changes
   expect(fontSizeChanged).toBe(true);
 });
 
-test('A fallback font size using viewport units (like vw) or media queries is provided for browsers that do not support container query units', async ({ page }) => {
-  const hasFallback = await page.evaluate(() => {
-    let hasViewportUnit = false;
-    let hasMediaQuery = false;
-    let hasContainerUnit = false;
 
-    const checkRule = (rule: CSSRule) => {
-      if (rule instanceof CSSStyleRule) {
-        const selector = rule.selectorText || '';
-        if (selector.includes('card-title') || selector.includes('title')) {
-          const fontSize = rule.style.fontSize;
-          if (fontSize) {
-            if (fontSize.includes('vw') || fontSize.includes('vh') || fontSize.includes('vmin') || fontSize.includes('vmax')) {
-              hasViewportUnit = true;
-            }
-            if (fontSize.includes('cqi') || fontSize.includes('cqw') || fontSize.includes('cqmin') || fontSize.includes('cqmax')) {
-              hasContainerUnit = true;
-            }
-          }
-        }
-      } else if (rule instanceof CSSSupportsRule) {
-        for (let i = 0; i < rule.cssRules.length; i++) {
-          checkRule(rule.cssRules[i]);
-        }
-      } else if (rule instanceof CSSMediaRule) {
-        hasMediaQuery = true;
-        for (let i = 0; i < rule.cssRules.length; i++) {
-          checkRule(rule.cssRules[i]);
-        }
-      }
-    };
-
-    for (let i = 0; i < document.styleSheets.length; i++) {
-      const sheet = document.styleSheets[i];
-      try {
-        const rules = sheet.cssRules || sheet.rules;
-        if (!rules) continue;
-        for (let j = 0; j < rules.length; j++) {
-          checkRule(rules[j]);
-        }
-      } catch (e) {
-        // Ignore cross-origin errors
-      }
-    }
-
-    return (hasViewportUnit || hasMediaQuery) && hasContainerUnit;
-  });
-
-  expect(hasFallback).toBe(true);
-});

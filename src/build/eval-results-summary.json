@@ -1,5 +1,18 @@
 [
   {
+    "testId": "nightly-2026-11-08_16-39-19-antigravity_cli",
+    "timestamp": "2026-11-08T22:23:23.132Z",
+    "agent": "antigravity_cli",
+    "serving": "skills_cli",
+    "model": "gemini-4-argon",
+    "taskCount": 214,
+    "assertionCount": 1673,
+    "unguidedPassRate": 58,
+    "guidedPassRate": 94,
+    "skillVersion": "2026_11_06-909bc374",
+    "cliVersion": "0.0.204"
+  },
+  {
     "testId": "nightly-2026-11-08_07-35-35-codex_cli",
     "timestamp": "2026-11-08T08:30:55.780Z",
     "agent": "codex_cli",
@@ -113,19 +126,6 @@
     "assertionCount": 1729,
     "unguidedPassRate": 55,
     "guidedPassRate": 82,
-    "skillVersion": "2026_10_30-58d055df",
-    "cliVersion": "0.0.196"
-  },
-  {
-    "testId": "nightly-2026-11-02_02-29-05-claude_code",
-    "timestamp": "2026-11-02T03:03:36.923Z",
-    "agent": "claude_code",
-    "serving": "skills_cli",
-    "model": "claude-opus-5-5",
-    "taskCount": 205,
-    "assertionCount": 1729,
-    "unguidedPassRate": 58,
-    "guidedPassRate": 90,
     "skillVersion": "2026_10_30-58d055df",
     "cliVersion": "0.0.196"
   }

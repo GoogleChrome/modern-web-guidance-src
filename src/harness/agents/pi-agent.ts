@@ -30,6 +30,7 @@ import {
   getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -76,6 +77,7 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
     ...sessionArgs, // ephemeral mode: only if explicitly requested
     '--offline', // disable network operations for update checks
     ...modelArg,
+    ...resolveEffortCliArgs(Agents.PI, piModel),
     ...extraArgs,
     prompt
   ];
@@ -145,6 +147,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
   const toolUseToStepMap = new Map<string, number>();
 
   const modelCounts: Record<string, number> = {};
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let cachedTokens = 0;
   let hasTokenData = false;
@@ -155,6 +158,14 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
 
   const processEntries = (entries: any[], subagentId?: string) => {
     for (const entry of entries) {
+      if (
+        !subagentId &&
+        (entry.type === 'thinking_level_change' || entry.type === 'session') &&
+        typeof entry.thinkingLevel === 'string' &&
+        entry.thinkingLevel.trim()
+      ) {
+        observedEffort = entry.thinkingLevel.trim().toLowerCase();
+      }
       let model: string | undefined;
       if (entry.type === 'message' && entry.message?.model) {
         model = entry.message.model;
@@ -310,6 +321,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
     model: topModel ? topModel[0] : 'unknown',
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),

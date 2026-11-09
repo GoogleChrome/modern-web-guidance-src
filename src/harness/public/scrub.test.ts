@@ -184,6 +184,42 @@ describe('findLeaks', () => {
     }
   });
 
+  test('the Emscripten virtual-FS home is neither rewritten nor a leak', () => {
+    // Emscripten hard-codes `/home/web_user`, so every cpp-on-the-web patch carries it.
+    for (const s of ['/home/web_user', "FS.mkdir('/home/web_user/data')", 'cwd: /home/web_user/src/main.cpp', 'PATH=/opt/bin:/home/web_user/bin']) {
+      assert.equal(scrubString(s), s, s);
+      assert.deepEqual(findLeaks(s), [], s);
+    }
+  });
+
+  test('bare home directories of generic accounts are not leaks, with or without trailing prose punctuation', () => {
+    for (const s of ['HOME=/home/runner', '(cwd /home/web_user)', '{cwd: /home/web_user}', 'C:\\Users\\runner', '\\\\home\\\\web_user']) {
+      assert.deepEqual(findLeaks(scrubString(s)), [], s);
+    }
+  });
+
+  test('anything inside another generic home is rewritten or flagged, so a name after it fails closed', () => {
+    assert.equal(scrubString('npm cache /home/runner/.npm'), 'npm cache ~/.npm');
+    for (const s of [
+      `/home/runner/work/${FAKE_LDAP}/x`,
+      `/Users/user/${FAKE_LDAP}/x`,
+      `/home/web_user)/${FAKE_LDAP}/x`,
+      `PATH=/opt/bin:/home/runner/work/${FAKE_LDAP}/x`,
+      `C:\\Users\\runner\\work\\${FAKE_LDAP}\\x`,
+      `/mnt/c/Users/user/${FAKE_LDAP}/x`,
+      `\\\\home\\\\runner\\\\${FAKE_LDAP}`,
+    ]) {
+      assert.ok(findLeaks(scrubString(s)).length > 0, s);
+    }
+  });
+
+  test('cloudtop and CitC paths are still rewritten or flagged even under a generic account name', () => {
+    assert.equal(scrubString('/usr/local/google/home/runner/x'), '~/x');
+    for (const s of ['/usr/local/google/home/runner/x', '/google/src/cloud/root/ws/x']) {
+      assert.ok(findLeaks(s).length > 0, s);
+    }
+  });
+
   test('a colon before a home directory does not make it safe', () => {
     for (const s of [`PATH=/opt/bin:${LINUX_HOME}/bin`, `scp host:${LINUX_HOME}/x .`]) {
       assert.ok(findLeaks(s).length > 0, s);
@@ -257,7 +293,7 @@ describe('harvestUserSegments', () => {
 
   test('ignores generic container accounts, non-token segments, and non-home paths', () => {
     assert.deepEqual(
-      harvestUserSegments('/home/runner/.npm /home/node/.cache /Users/ubuntu/x /home/ab/x /Users/42/x ./home/Home http://h/home/settings'),
+      harvestUserSegments('/home/runner/.npm /home/node/.cache /home/web_user/x /Users/ubuntu/x /home/ab/x /Users/42/x ./home/Home http://h/home/settings'),
       [],
     );
   });
