@@ -110,6 +110,6 @@ document.addEventListener('animationstart', (event) => {
 });
 ```
 
-You can feature-detect support using `Object.hasOwn(AnimationEvent.prototype, 'animation')` (or `Object.hasOwn(TransitionEvent.prototype, 'animation')`).
+You can feature-detect support using `'animation' in AnimationEvent.prototype` (or `'animation' in TransitionEvent.prototype`).
 
 When reduced motion means an animation or transition never runs (it's only applied inside `@media (prefers-reduced-motion: no-preference)`, set to `none`, or given a zero duration and no delay), `animationend` and `transitionend` never fire. If your code waits for these events to remove or hide an element, continue immediately when `element.getAnimations()` returns an empty array, or keep a short opacity transition instead of removing it.
