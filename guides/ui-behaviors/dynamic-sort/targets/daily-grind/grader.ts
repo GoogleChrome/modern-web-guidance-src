@@ -1,423 +1,251 @@
-import {
-  test,
-  expect,
-  getTargetFiles,
-  getCssStyleSheet,
-  getJsProject,
-  getHtmlDocuments,
-  getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import {
-  CSSStyleRule,
-  CSSMediaRule,
-  getDeclaredProperties,
-} from 'cssomnom';
-import {
-  SyntaxKind,
-} from 'ts-morph';
+import { test, expect } from '../../../../../src/grading/test-fixture.ts';
 import type { Page, Locator } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
 
-// @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+// Spies installed before page scripts run. They wrap startViewTransition (element-scoped and
+// document-level) to record, at update-callback time, whether the cards were reordered inside the
+// callback and which view-transition-name each card has; they also keep the transition objects so
+// tests can wait for them to finish instead of sleeping.
+async function instrument(page: Page, { removeViewTransitions = false } = {}) {
+  await page.addInitScript((removeVT: boolean) => {
+    const w = window as any;
+    w.__vt = { calls: [] as any[], transitions: [] as any[] };
+    w.__moveBeforeCards = 0;
 
-function getResolvedJsFiles(files: string[]): string[] {
-  const docs = getHtmlDocuments(files);
-  const linkedScripts = docs.flatMap((d) => {
-    const scripts = Array.from(d.document.querySelectorAll('script[src]')) as any[];
-    const dir = path.dirname(d.file);
-    return scripts
-      .map((s) => path.resolve(dir, s.getAttribute('src')))
-      .filter((f) => fs.existsSync(f));
-  });
-  return Array.from(new Set([...files, ...linkedScripts]));
+    const cardOrder = () =>
+      Array.from(document.querySelectorAll('.card')).map((c) => c.querySelector('h3')?.textContent?.trim());
+
+    if (removeVT) {
+      delete (Element.prototype as any).startViewTransition;
+      delete (Document.prototype as any).startViewTransition;
+    } else {
+      for (const proto of [Element.prototype, Document.prototype] as any[]) {
+        const orig = proto.startViewTransition;
+        if (typeof orig !== 'function') continue;
+        proto.startViewTransition = function (arg: any) {
+          const call: any = { scope: this === document ? 'document' : 'element', reorderedInside: false, names: [] };
+          w.__vt.calls.push(call);
+          const userUpdate = typeof arg === 'function' ? arg : arg?.update;
+          const wrapped = async () => {
+            call.names = Array.from(document.querySelectorAll('.card')).map(
+              (c) => getComputedStyle(c).viewTransitionName,
+            );
+            const before = JSON.stringify(cardOrder());
+            await userUpdate?.();
+            call.reorderedInside = JSON.stringify(cardOrder()) !== before;
+          };
+          const t = orig.call(this, typeof arg === 'function' || !arg ? wrapped : { ...arg, update: wrapped });
+          w.__vt.transitions.push(t);
+          return t;
+        };
+      }
+    }
+
+    const origMove = (Element.prototype as any).moveBefore;
+    if (typeof origMove === 'function') {
+      (Element.prototype as any).moveBefore = function (node: Node, ref: Node | null) {
+        if ((node as Element)?.classList?.contains('card')) w.__moveBeforeCards++;
+        return origMove.call(this, node, ref);
+      };
+    }
+  }, removeViewTransitions);
 }
 
-async function triggerReorder(page: Page): Promise<Locator> {
+const cardTitles = (page: Page) =>
+  page.evaluate(() => Array.from(document.querySelectorAll('.card h3')).map((h) => h.textContent?.trim() ?? ''));
+
+async function orderChangedFrom(page: Page, before: string[], timeout = 1000): Promise<boolean> {
+  return page
+    .waitForFunction(
+      (prev) => JSON.stringify(Array.from(document.querySelectorAll('.card h3')).map((h) => h.textContent?.trim() ?? '')) !== prev,
+      JSON.stringify(before),
+      { timeout },
+    )
+    .then(() => true, () => false);
+}
+
+// Activates the sort control (a <select>, radio group, or button) until the card order changes.
+// Returns the control the user activated. `beforeAttempt` runs before each activation so callers
+// can reset per-reorder counters when an option happens to leave the order unchanged.
+async function triggerReorder(page: Page, beforeAttempt: () => Promise<unknown> = async () => {}): Promise<Locator> {
+  const before = await cardTitles(page);
+  expect(before.length).toBeGreaterThan(1);
+
   const select = page.locator('select').first();
   if ((await select.count()) > 0) {
-    await select.waitFor({ state: 'visible', timeout: 5000 });
-    const currentIndex = await select.evaluate((el: HTMLSelectElement) => el.selectedIndex);
-    const targetIndex = currentIndex === 0 ? 1 : 0;
-    await select.selectOption({ index: targetIndex });
-    return select;
+    const n = await select.locator('option').count();
+    const current = await select.evaluate((el: HTMLSelectElement) => el.selectedIndex);
+    for (let i = 0; i < n; i++) {
+      if (i === current) continue;
+      await beforeAttempt();
+      await select.focus();
+      await select.selectOption({ index: i });
+      if (await orderChangedFrom(page, before)) return select;
+    }
   }
 
-  const sortBtn = page
-    .locator('button')
-    .filter({ hasText: /sort|name|price|reverse|order/i })
-    .first();
-  if ((await sortBtn.count()) > 0) {
-    await sortBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await sortBtn.click();
-    return sortBtn;
+  const radios = page.locator('input[type="radio"]');
+  for (let i = 0; i < (await radios.count()); i++) {
+    const radio = radios.nth(i);
+    if ((await radio.isChecked()) || !(await radio.isVisible())) continue;
+    await beforeAttempt();
+    await radio.check();
+    if (await orderChangedFrom(page, before)) return radio;
   }
 
-  const anyBtn = page.locator('main button').first();
-  if ((await anyBtn.count()) > 0) {
-    await anyBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await anyBtn.click();
-    return anyBtn;
+  const buttons = page.locator('main button');
+  for (let i = 0; i < (await buttons.count()); i++) {
+    const btn = buttons.nth(i);
+    if (!(await btn.isVisible())) continue;
+    await beforeAttempt();
+    await btn.click();
+    if (await orderChangedFrom(page, before)) return btn;
   }
 
-  throw new Error('No reorder control found on page');
+  throw new Error('No control on the page reordered the Seasonal Favorites cards');
+}
+
+async function waitForTransitions(page: Page) {
+  await page.evaluate(() =>
+    Promise.all(((window as any).__vt?.transitions ?? []).map((t: any) => t.finished.catch(() => {}))),
+  );
 }
 
 test.describe('dynamic-sort Target Grader', () => {
-  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+  test('A user action reorders the list items in the DOM so DOM order matches visual order', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    await triggerReorder(page);
+    await waitForTransitions(page);
 
-  test('When the reorder is animated, it runs inside a view transition started with startViewTransition(), guarded by feature detection', () => {
-    const allJsFiles = getResolvedJsFiles(targetFiles);
-    const project = getJsProject(allJsFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    expect(sourceFiles.length).toBeGreaterThan(0);
-
-    const callExprs = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-    const svtCalls = callExprs.filter((c) => {
-      const text = c.getExpression().getText();
-      return text.includes('startViewTransition');
+    const visualMatchesDom = await page.evaluate(() => {
+      const rects = Array.from(document.querySelectorAll('.card')).map((c) => c.getBoundingClientRect());
+      return rects.every((a, i) => {
+        const b = rects[i + 1];
+        if (!b) return true;
+        const nextRow = b.top >= a.bottom - 5;
+        const sameRowToRight = b.left >= a.left - 5 && b.top <= a.bottom && a.top <= b.bottom;
+        return nextRow || sameRowToRight;
+      });
     });
-
-    expect(svtCalls.length).toBeGreaterThan(0);
-
-    const hasFeatureDetection = sourceFiles.some((sf) => {
-      const ifConditions = sf
-        .getDescendantsOfKind(SyntaxKind.IfStatement)
-        .map((i) => i.getExpression().getText());
-      const conditionalExprs = sf
-        .getDescendantsOfKind(SyntaxKind.ConditionalExpression)
-        .map((c) => c.getCondition().getText());
-      const binaryExprs = sf
-        .getDescendantsOfKind(SyntaxKind.BinaryExpression)
-        .map((b) => b.getText());
-
-      const allConditions = [...ifConditions, ...conditionalExprs, ...binaryExprs];
-      return allConditions.some((text) => text.includes('startViewTransition'));
-    });
-
-    expect(hasFeatureDetection).toBe(true);
+    expect(visualMatchesDom).toBe(true);
   });
 
-  test('When the reorder is animated, each list item has a unique view-transition-name or uses match-element', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const declaredProps = getDeclaredProperties(stylesheet);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
-    const vtnRules = styleRules.filter((r) =>
-      Boolean(r.style.getPropertyValue('view-transition-name'))
-    );
-
-    const usesMatchElement = vtnRules.some((r) =>
-      r.style.getPropertyValue('view-transition-name').includes('match-element')
-    );
-
-    const docs = getHtmlDocuments(targetFiles);
-    const hasInlineVtn = docs.some((d) => {
-      const cards = Array.from(d.document.querySelectorAll('.card'));
-      return cards.some((c: any) =>
-        c.getAttribute('style')?.includes('view-transition-name')
-      );
+  test('Item elements captured before a reorder are the same connected elements after the reorder, rather than being recreated', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    await page.evaluate(() => {
+      (window as any).__captured = Array.from(document.querySelectorAll('.card'));
     });
+    await triggerReorder(page);
 
-    const allJsFiles = getResolvedJsFiles(targetFiles);
-    const project = getJsProject(allJsFiles);
-    const hasJsVtn = project
-      .getSourceFiles()
-      .some((sf) => sf.getText().includes('viewTransitionName'));
-
-    expect(declaredProps.has('view-transition-name') || hasInlineVtn || hasJsVtn).toBe(true);
-    expect(usesMatchElement || vtnRules.length > 0 || hasInlineVtn || hasJsVtn).toBe(true);
+    const same = await page.evaluate(() => {
+      const captured: Element[] = (window as any).__captured;
+      const now = Array.from(document.querySelectorAll('.card'));
+      return now.length === captured.length && captured.every((c) => c.isConnected && now.includes(c));
+    });
+    expect(same).toBe(true);
   });
 
-  test('When the reorder is animated, view transition animations are disabled when prefers-reduced-motion: reduce is active', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const mediaRules = getRules(stylesheet, CSSMediaRule);
-    const reducedMotionRule = mediaRules.find(
-      (r) =>
-        r.conditionText.includes('prefers-reduced-motion') &&
-        r.conditionText.includes('reduce')
-    );
-
-    const allJsFiles = getResolvedJsFiles(targetFiles);
-    const project = getJsProject(allJsFiles);
-    const hasJsReducedMotion = project
-      .getSourceFiles()
-      .some(
-        (sf) =>
-          sf.getText().includes('prefers-reduced-motion') &&
-          sf.getText().includes('reduce')
-      );
-
-    expect(Boolean(reducedMotionRule) || hasJsReducedMotion).toBe(true);
-
-    if (reducedMotionRule) {
-      const innerStyleRules = getRules(reducedMotionRule, CSSStyleRule);
-      const disablesAnimation = innerStyleRules.some((r) => {
-        const anim =
-          r.style.getPropertyValue('animation') ||
-          r.style.getPropertyValue('animation-name');
-        const duration = r.style.getPropertyValue('animation-duration');
-        return (
-          anim.includes('none') || duration === '0s' || duration === '0ms'
-        );
-      });
-      expect(disablesAnimation || hasJsReducedMotion).toBe(true);
-    }
+  test('Items are reordered with moveBefore() when Object.hasOwn(Element.prototype, "moveBefore") is true', async ({ page, TARGET_URL }) => {
+    await instrument(page);
+    await page.goto(TARGET_URL);
+    expect(await page.evaluate(() => Object.hasOwn(Element.prototype, 'moveBefore'))).toBe(true);
+    await triggerReorder(page);
+    await waitForTransitions(page);
+    expect(await page.evaluate(() => (window as any).__moveBeforeCards)).toBeGreaterThan(0);
   });
 
-  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
+  test('When the reorder is animated, it runs inside a view transition started with startViewTransition(), guarded by feature detection', async ({ page, TARGET_URL }) => {
+    await instrument(page);
+    await page.goto(TARGET_URL);
+    await triggerReorder(page);
+    await waitForTransitions(page);
+    const calls = await page.evaluate(() => (window as any).__vt.calls);
+    expect(calls.length, 'startViewTransition() was not called').toBeGreaterThan(0);
+    expect(calls.some((c: any) => c.reorderedInside), 'cards were not reordered inside the update callback').toBe(true);
+  });
 
-  test.describe('Browser tests', () => {
-    test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.goto(TARGET_URL);
+  test('Reorder still works when startViewTransition() is unsupported (feature detection)', async ({ page, TARGET_URL }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await instrument(page, { removeViewTransitions: true });
+    await page.goto(TARGET_URL);
+    await triggerReorder(page);
+    expect(errors).toEqual([]);
+  });
+
+  test('When the reorder is animated, each list item has a unique view-transition-name or uses match-element', async ({ page, TARGET_URL }) => {
+    await instrument(page);
+    await page.goto(TARGET_URL);
+    await triggerReorder(page);
+    await waitForTransitions(page);
+    const calls = await page.evaluate(() => (window as any).__vt.calls);
+    const call = calls.find((c: any) => c.reorderedInside);
+    expect(call, 'no view transition wrapped the reorder').toBeTruthy();
+    const names: string[] = call.names;
+    expect(names.length).toBeGreaterThan(1);
+    expect(names.every((n) => n && n !== 'none'), `card names at capture: ${names.join(', ')}`).toBe(true);
+    const explicit = names.filter((n) => n !== 'match-element' && n !== 'auto');
+    expect(new Set(explicit).size).toBe(explicit.length);
+  });
+
+  test('When the reorder is animated, view transition animations are disabled when prefers-reduced-motion: reduce is active', async ({ page, TARGET_URL }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await instrument(page);
+    await page.goto(TARGET_URL);
+    await triggerReorder(page);
+    // Skipping the transition entirely is fine; if one runs, it must have no running animations.
+    const animated = await page.evaluate(async () => {
+      const ts: any[] = (window as any).__vt.transitions;
+      await Promise.all(ts.map((t) => t.ready.catch(() => {})));
+      return document
+        .getAnimations()
+        .filter((a: any) => String(a.effect?.pseudoElement ?? '').startsWith('::view-transition'))
+        .filter((a) => a.playState === 'running' && Number(a.effect?.getComputedTiming().duration) > 0)
+        .map((a: any) => `${a.effect.pseudoElement} ${a.animationName ?? ''}`);
     });
+    expect(animated).toEqual([]);
+  });
 
-    test('A user action reorders the list items in the DOM so DOM order matches visual order', async ({
-      page,
-    }) => {
-      const initialTitles = await page.locator('.card h3').allTextContents();
-      expect(initialTitles.length).toBeGreaterThan(1);
+  test('The list element does not have aria-live, and one role="status" region has its text set once per reorder', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    const liveAncestor = await page.evaluate(
+      () => document.querySelector('.card')?.parentElement?.closest('[aria-live]:not([aria-live="off"]), [role="status"], [role="log"], [role="alert"]')?.outerHTML.slice(0, 120) ?? null,
+    );
+    expect(liveAncestor).toBeNull();
 
-      const control = await triggerReorder(page);
-      expect(control).toBeDefined();
-
-      await page.waitForFunction(
-        (origFirst) => {
-          const cards = Array.from(document.querySelectorAll('.card h3'));
-          return cards[0]?.textContent?.trim() !== origFirst;
-        },
-        initialTitles[0]?.trim(),
-        { timeout: 5000 }
-      );
-
-      const newTitles = await page.locator('.card h3').allTextContents();
-      expect(newTitles).not.toEqual(initialTitles);
-
-      const isMatchingVisual = await page.evaluate(() => {
-        const cards = Array.from(document.querySelectorAll('.card'));
-        const rects = cards.map((c) => c.getBoundingClientRect());
-
-        for (let i = 0; i < rects.length - 1; i++) {
-          const a = rects[i];
-          const b = rects[i + 1];
-
-          const bIsLower = b.top >= a.bottom - 5;
-          const bIsRightSameRow =
-            b.left >= a.left - 5 && b.top <= a.bottom && a.top <= b.bottom;
-
-          if (!bIsLower && !bIsRightSameRow) {
-            return false;
-          }
+    const status = page.locator('[role="status"]');
+    await expect(status).toHaveCount(1);
+    await page.evaluate(() => {
+      const el = document.querySelector('[role="status"]')!;
+      const w = window as any;
+      w.__statusTexts = [] as string[];
+      // One record per write, so a loop that writes once per item is counted per write.
+      // Clearing the region before writing (to force a repeat announcement) is not counted.
+      new MutationObserver((records) => {
+        for (const r of records) {
+          const t = (r.type === 'characterData'
+            ? (r.target as CharacterData).data
+            : Array.from(r.addedNodes).map((n) => n.textContent).join('')).trim();
+          if (t) w.__statusTexts.push(t);
         }
-        return true;
-      });
-
-      expect(isMatchingVisual).toBe(true);
+      }).observe(el, { childList: true, characterData: true, subtree: true });
     });
 
-    test('Item elements captured before a reorder are the same connected elements after the reorder, rather than being recreated', async ({
-      page,
-    }) => {
-      const capturedCount = await page.evaluate(() => {
-        const cards = Array.from(document.querySelectorAll('.card'));
-        (window as any).__capturedNodes = cards;
-        cards.forEach((card, index) => {
-          (card as any).__capturedId = index;
-        });
-        return cards.length;
-      });
-      expect(capturedCount).toBeGreaterThan(1);
+    await triggerReorder(page, () => page.evaluate(() => { (window as any).__statusTexts = []; }));
+    await expect(status).not.toBeEmpty();
+    await page.evaluate(() => Promise.all(((window as any).__vt?.transitions ?? []).map((t: any) => t.finished.catch(() => {}))));
+    const texts = await page.evaluate(() => (window as any).__statusTexts);
+    expect(texts, `status announcements: ${JSON.stringify(texts)}`).toHaveLength(1);
+  });
 
-      const initialFirstTitle = await page.locator('.card h3').first().textContent();
-      await triggerReorder(page);
-
-      await page.waitForFunction(
-        (origFirst) => {
-          const cards = Array.from(document.querySelectorAll('.card h3'));
-          return cards[0]?.textContent?.trim() !== origFirst;
-        },
-        initialFirstTitle?.trim(),
-        { timeout: 5000 }
-      );
-
-      const identityCheck = await page.evaluate(() => {
-        const captured: HTMLElement[] = (window as any).__capturedNodes || [];
-        const currentCards = Array.from(
-          document.querySelectorAll('.card')
-        ) as HTMLElement[];
-
-        if (captured.length === 0 || currentCards.length === 0) {
-          return { ok: false, reason: 'empty' };
-        }
-
-        const allIdentical = currentCards.every((c) => captured.includes(c));
-        const allRetainedMarkers = currentCards.every(
-          (c) => (c as any).__capturedId !== undefined
-        );
-        const allStillConnected = captured.every((c) => c.isConnected);
-
-        return {
-          ok:
-            allIdentical &&
-            allRetainedMarkers &&
-            allStillConnected &&
-            currentCards.length === captured.length,
-          allIdentical,
-          allRetainedMarkers,
-          allStillConnected,
-        };
-      });
-
-      expect(identityCheck.ok).toBe(true);
-    });
-
-    test('Items are reordered with moveBefore() when Object.hasOwn(Element.prototype, "moveBefore") is true', async ({
-      page,
-    }) => {
-      await page.addInitScript(() => {
-        if (!Object.hasOwn(Element.prototype, 'moveBefore')) {
-          (Element.prototype as any).moveBefore = function (
-            node: Node,
-            ref: Node | null
-          ) {
-            return this.insertBefore(node, ref);
-          };
-        }
-        (window as any).__moveBeforeCalls = [];
-        const origMove = (Element.prototype as any).moveBefore;
-        (Element.prototype as any).moveBefore = function (
-          node: Node,
-          ref: Node | null
-        ) {
-          (window as any).__moveBeforeCalls.push({
-            containerTag: this.tagName,
-            nodeTag: (node as HTMLElement)?.tagName,
-            isCard: (node as HTMLElement)?.classList?.contains('card'),
-          });
-          return origMove.call(this, node, ref);
-        };
-      });
-
-      await page.reload();
-
-      const initialFirstTitle = await page.locator('.card h3').first().textContent();
-      expect(initialFirstTitle).toBeTruthy();
-
-      await triggerReorder(page);
-
-      await page.waitForFunction(
-        (origFirst) => {
-          const cards = Array.from(document.querySelectorAll('.card h3'));
-          return cards[0]?.textContent?.trim() !== origFirst;
-        },
-        initialFirstTitle?.trim(),
-        { timeout: 5000 }
-      );
-
-      const moveBeforeCalls = await page.evaluate(() => {
-        return (window as any).__moveBeforeCalls || [];
-      });
-
-      expect(moveBeforeCalls.length).toBeGreaterThan(0);
-      const cardMoves = moveBeforeCalls.filter((c: any) => c.isCard);
-      expect(cardMoves.length).toBeGreaterThan(0);
-    });
-
-    test('The list element does not have aria-live, and one role="status" region has its text set once per reorder', async ({
-      page,
-    }) => {
-      const listEl = page.locator('.grid').first();
-      expect(await listEl.count()).toBeGreaterThan(0);
-      const ariaLive = await listEl.getAttribute('aria-live');
-      expect(ariaLive).toBeNull();
-
-      const statusRegions = page.locator('[role="status"]');
-      expect(await statusRegions.count()).toBe(1);
-
-      await page.evaluate(() => {
-        const statusEl = document.querySelector('[role="status"]');
-        (window as any).__statusUpdateCount = 0;
-        if (statusEl) {
-          const origDescriptor = Object.getOwnPropertyDescriptor(
-            Node.prototype,
-            'textContent'
-          );
-          if (origDescriptor && origDescriptor.set) {
-            const origSet = origDescriptor.set;
-            Object.defineProperty(statusEl, 'textContent', {
-              set(val) {
-                (window as any).__statusUpdateCount++;
-                origSet.call(this, val);
-              },
-              get() {
-                return origDescriptor.get?.call(this);
-              },
-              configurable: true,
-            });
-          }
-        }
-      });
-
-      const initialFirstTitle = await page.locator('.card h3').first().textContent();
-      await triggerReorder(page);
-
-      await page.waitForFunction(
-        (origFirst) => {
-          const cards = Array.from(document.querySelectorAll('.card h3'));
-          return cards[0]?.textContent?.trim() !== origFirst;
-        },
-        initialFirstTitle?.trim(),
-        { timeout: 5000 }
-      );
-
-      await expect(statusRegions.first()).not.toBeEmpty();
-
-      const updateCount = await page.evaluate(() => {
-        return (window as any).__statusUpdateCount ?? 0;
-      });
-
-      expect(updateCount).toBe(1);
-    });
-
-    test('Focus remains on the activated control after the reorder completes', async ({
-      page,
-    }) => {
-      const select = page.locator('select').first();
-      const sortBtn = page.locator('main button').first();
-      const control = (await select.count()) > 0 ? select : sortBtn;
-
-      expect(await control.count()).toBeGreaterThan(0);
-      await control.waitFor({ state: 'visible', timeout: 5000 });
-
-      await control.focus();
-      await expect(control).toBeFocused();
-
-      const initialFirstTitle = await page.locator('.card h3').first().textContent();
-
-      if ((await select.count()) > 0) {
-        const currentIndex = await control.evaluate(
-          (el: HTMLSelectElement) => el.selectedIndex
-        );
-        const targetIndex = currentIndex === 0 ? 1 : 0;
-        await control.selectOption({ index: targetIndex });
-      } else {
-        await control.click();
-      }
-
-      await page.waitForFunction(
-        (origFirst) => {
-          const cards = Array.from(document.querySelectorAll('.card h3'));
-          return cards[0]?.textContent?.trim() !== origFirst;
-        },
-        initialFirstTitle?.trim(),
-        { timeout: 5000 }
-      );
-
-      await page.waitForTimeout(350);
-      await expect(control).toBeFocused();
-    });
+  test('Focus remains on the activated control after the reorder completes', async ({ page, TARGET_URL }) => {
+    await instrument(page);
+    await page.goto(TARGET_URL);
+    const control = await triggerReorder(page);
+    await expect(control).toBeFocused();
+    await waitForTransitions(page);
+    // Catch solutions that move focus after the animation ends.
+    await expect(control).toBeFocused();
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await expect(control).toBeFocused();
   });
 });
