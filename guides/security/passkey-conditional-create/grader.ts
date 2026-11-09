@@ -127,8 +127,6 @@ test.describe('Passkey Conditional Create', () => {
                 clientDataJSON: new Uint8Array([1]).buffer,
                 attestationObject: new Uint8Array([2]).buffer,
               },
-              getClientExtensionResults: () => ({}),
-              toJSON: () => ({ id: 'mock-id', type: 'public-key' }),
             });
             return cred;
           }
