@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Combobox demo</title>
+<style>
+  :root {
+    --accent: #0a5fd8;
+    --border: light-dark(#767676, #9a9a9a);
+    --surface: light-dark(#fff, #1e1e1e);
+    --hover: light-dark(#eef3fb, #2b3442);
+    color-scheme: light dark;
+    font-family: system-ui, sans-serif;
+  }
+  body { max-inline-size: 32rem; margin-block: 2rem; margin-inline: auto; padding-inline: 1rem; }
+  form, search { display: grid; gap: 1.5rem; }
+  fieldset {
+    border: 0; padding: 0; margin: 0; display: grid; gap: .375rem;
+    & label { font-weight: 600; }
+  }
+  .hint { margin: 0; font-size: .875rem; opacity: .8; }
+
+  input, select, button {
+    font: inherit;
+    padding: .5rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: .375rem;
+    background: var(--surface);
+    color: inherit;
+  }
+  input { inline-size: 100%; box-sizing: border-box; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* Customizable select for the region filter */
+  select, select::picker(select) { appearance: base-select; }
+  select {
+    &::picker(select) {
+      border: 1px solid var(--border);
+      border-radius: .375rem;
+      background: var(--surface);
+      padding: .25rem;
+    }
+    & option {
+      padding: .375rem .5rem;
+      border-radius: .25rem;
+      &:hover, &:checked { background: var(--hover); }
+      &::checkmark { content: "\2713"; order: 1; margin-inline-start: auto; }
+    }
+  }
+
+  /* Combobox popup: a popover anchored to the input */
+  .combobox { anchor-name: --combobox; }
+  #city-listbox {
+    position: fixed;
+    position-anchor: --combobox;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block;
+    inline-size: anchor-size(inline);
+    max-block-size: min(16rem, 50dvh);
+    margin-block: .25rem;
+    padding: .25rem;
+    overflow-block: auto;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: .375rem;
+    background: var(--surface);
+    color: inherit;
+    box-sizing: border-box;
+
+    & li {
+      padding: .5rem .75rem; border-radius: .25rem; cursor: pointer;
+      &:hover { background: var(--hover); }
+      &[aria-selected="true"] { background: var(--hover); outline: 2px solid var(--accent); outline-offset: -2px; }
+    }
+    & mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; }
+    & .empty { cursor: default; opacity: .7; }
+  }
+
+  .sr-only {
+    position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Combobox</h1>
+
+<form id="trip" action="#">
+  <search>
+  <fieldset>
+    <label for="region">Region</label>
+    <select id="region" name="region">
+      <option value="">All regions</option>
+      <option value="europe">Europe</option>
+      <option value="asia">Asia</option>
+      <option value="americas">Americas</option>
+    </select>
+  </fieldset>
+
+  <fieldset>
+    <label id="city-label" for="city">Destination</label>
+    <p id="city-hint" class="hint">Type to filter suggestions, or enter any destination.</p>
+    <div class="combobox">
+      <!-- Without JS or anchor positioning, the native datalist provides the suggestions. -->
+      <input id="city" name="city" type="text" autocomplete="off" list="cities"
+             spellcheck="false" aria-describedby="city-hint">
+    </div>
+    <datalist id="cities">
+      <option value="Amsterdam" data-region="europe"></option>
+      <option value="Athens" data-region="europe"></option>
+      <option value="Berlin" data-region="europe"></option>
+      <option value="Lisbon" data-region="europe"></option>
+      <option value="London" data-region="europe"></option>
+      <option value="Bangkok" data-region="asia"></option>
+      <option value="Hanoi" data-region="asia"></option>
+      <option value="Kyoto" data-region="asia"></option>
+      <option value="Seoul" data-region="asia"></option>
+      <option value="Lima" data-region="americas"></option>
+      <option value="Mexico City" data-region="americas"></option>
+      <option value="Montreal" data-region="americas"></option>
+      <option value="New York" data-region="americas"></option>
+    </datalist>
+    <ul id="city-listbox" popover="manual" role="listbox" aria-labelledby="city-label"></ul>
+    <p id="city-status" class="sr-only" role="status"></p>
+  </fieldset>
+  </search>
+
+  <button type="submit">Search</button>
+  <output></output>
+</form>
+</main>
+
+<script>
+  document.getElementById('trip').addEventListener('submit', (e) => {
+    e.preventDefault();
+    e.target.querySelector('output').value = 'Submitted: ' + new FormData(e.target).get('city');
+  });
+
+  const input = document.getElementById('city');
+  const datalist = document.getElementById('cities');
+  const listbox = document.getElementById('city-listbox');
+  const status = document.getElementById('city-status');
+  const region = document.getElementById('region');
+
+  // Enhance only when popover and anchor positioning are available; otherwise keep the native datalist.
+  const enhanced = Object.hasOwn(HTMLElement.prototype, 'popover') && CSS.supports('position-anchor: --a');
+
+  if (enhanced) {
+    const options = [...datalist.options].map(o => ({ value: o.value, region: o.dataset.region }));
+    let items = [];
+    let active = -1;
+
+    input.removeAttribute('list');
+    datalist.remove();
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-controls', 'city-listbox');
+    input.setAttribute('aria-expanded', 'false');
+
+    const matches = () => {
+      const q = input.value.trim().toLowerCase();
+      return options.filter(o =>
+        (!region.value || o.region === region.value) && o.value.toLowerCase().includes(q));
+    };
+
+    const render = () => {
+      const q = input.value.trim();
+      const found = matches();
+      listbox.replaceChildren(...found.map((o, i) => {
+        const li = document.createElement('li');
+        li.role = 'option';
+        li.id = `city-opt-${i}`;
+        li.dataset.value = o.value;
+        const at = q ? o.value.toLowerCase().indexOf(q.toLowerCase()) : -1;
+        if (at < 0) li.textContent = o.value;
+        else {
+          const mark = document.createElement('mark');
+          mark.textContent = o.value.slice(at, at + q.length);
+          li.append(o.value.slice(0, at), mark, o.value.slice(at + q.length));
+        }
+        return li;
+      }));
+      items = [...listbox.children];
+      if (!items.length) {
+        const li = document.createElement('li');
+        li.className = 'empty';
+        li.role = 'presentation';
+        li.textContent = 'No suggestions. Your entry will be used as typed.';
+        listbox.append(li);
+      }
+      setActive(-1);
+      status.textContent = found.length ? `${found.length} suggestion${found.length === 1 ? '' : 's'} available` : 'No suggestions';
+    };
+
+    const setActive = (i) => {
+      active = i;
+      items.forEach((li, n) => li.setAttribute('aria-selected', String(n === i)));
+      if (i >= 0) {
+        input.setAttribute('aria-activedescendant', items[i].id);
+        items[i].scrollIntoView({ block: 'nearest' });
+      } else {
+        input.removeAttribute('aria-activedescendant');
+      }
+    };
+
+    const open = () => {
+      render();
+      if (!listbox.matches(':popover-open')) listbox.showPopover();
+      input.setAttribute('aria-expanded', 'true');
+    };
+
+    const close = () => {
+      if (listbox.matches(':popover-open')) listbox.hidePopover();
+      input.setAttribute('aria-expanded', 'false');
+      setActive(-1);
+    };
+
+    const choose = (li) => {
+      input.value = li.dataset.value;
+      close();
+    };
+
+    input.addEventListener('input', open);
+    input.addEventListener('blur', close);
+    region.addEventListener('change', () => { if (document.activeElement === input) open(); });
+
+    input.addEventListener('keydown', (e) => {
+      const isOpen = input.getAttribute('aria-expanded') === 'true';
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          if (!isOpen) open();
+          if (items.length) setActive((active + 1) % items.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (!isOpen) open();
+          if (items.length) setActive((active - 1 + items.length) % items.length);
+          break;
+        case 'Home': case 'End':
+          if (isOpen && active >= 0) { e.preventDefault(); setActive(e.key === 'Home' ? 0 : items.length - 1); }
+          break;
+        case 'Enter':
+          if (isOpen && active >= 0) { e.preventDefault(); choose(items[active]); }
+          break;
+        case 'Escape':
+          if (isOpen) { e.preventDefault(); close(); }
+          else input.value = '';
+          break;
+      }
+    });
+
+    // Keep focus in the input when clicking an option.
+    listbox.addEventListener('mousedown', (e) => e.preventDefault());
+    listbox.addEventListener('click', (e) => {
+      const li = e.target.closest('[role="option"]');
+      if (li) choose(li);
+    });
+  } else {
+    region.addEventListener('change', () => {
+      for (const o of datalist.options) o.disabled = !!region.value && o.dataset.region !== region.value;
+    });
+  }
+</script>
+</body>
+</html>

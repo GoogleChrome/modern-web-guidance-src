@@ -1,0 +1,18 @@
+- The combobox `<input>` has an associated `<label>` linked via matching `for` and `id`.
+- The `<input>` has `role="combobox"`, `aria-controls` referencing the listbox `id`, and `aria-autocomplete="list"` when a custom listbox is used.
+- The combobox `<input>` has `aria-expanded="false"` while the popup is closed and `aria-expanded="true"` while it is open.
+- The listbox is a `<ul>` with `role="listbox"` containing `<li>` children with `role="option"`, and is not built from `<div>` or `<span>` elements.
+- The listbox has `popover="manual"` and opens with `showPopover()`.
+- The listbox is positioned with CSS anchor positioning (`position-anchor` and `position-area`), and its `inline-size` is set from `anchor-size(inline)`.
+- Typing in the input filters the visible options to those containing the typed text, case-insensitively.
+- Pressing ArrowDown while the popup is closed opens it and sets `aria-activedescendant` on the input to the id of the first option.
+- Pressing ArrowDown and ArrowUp moves `aria-activedescendant` between options while DOM focus stays on the input.
+- The active option has `aria-selected="true"` and all other options do not.
+- Pressing Enter with an active option puts its value into the input and closes the popup.
+- Pressing Enter with an active option does not submit the form.
+- Pressing Escape while the popup is open closes it.
+- Clicking an option puts its value into the input and closes the popup.
+- A value typed that matches no option remains in the input and is submitted with the form.
+- A visually hidden element with `role="status"` or `aria-live="polite"` is updated with the suggestion count after filtering.
+- When no options match, the popup shows a message that is not exposed as `role="option"`.
+- When popover or anchor positioning is unsupported, the `<input>` keeps its `list` attribute and the `<datalist>` supplies suggestions.
