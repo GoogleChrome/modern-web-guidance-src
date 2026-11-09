@@ -156,7 +156,7 @@ The rest of this section covers only what is specific to tabs.
   </div>
   <!-- Outside the tablist: a tablist may only contain tabs.
        Icon, not text, so it does not read as another tab. -->
-  <button type="button" class="more" hidden aria-label="More tabs">⋯</button>
+  <button type="button" class="more" hidden aria-label="More tabs" aria-haspopup="menu" aria-expanded="false">⋯</button>
   <!-- Menu: see the menu guide. One menuitem per tab. -->
   <!-- Tab panels -->
 </div>

@@ -133,6 +133,19 @@ describe('buildSuite', () => {
     assert.match(res2.reason ?? '', /forbidden token/);
   });
 
+  test('publishes a patch that references the Emscripten virtual-FS home', async () => {
+    const options = makeOptions();
+    write(
+      path.join(options.storeRoot, SUITE, SECURITY_RUN, 'agent.patch'),
+      'diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -0,0 +1,2 @@\n+const HOME = "/home/web_user";\n+FS.mkdir("/home/web_user/data");\n',
+    );
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'built', result.status === 'skipped' ? result.reason : '');
+    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN, 'agent.patch'), 'utf8');
+    assert.ok(patch.includes('"/home/web_user"'));
+    assert.ok(patch.includes('"/home/web_user/data"'));
+  });
+
   test('generates a diff against the base app for legacy runs', async () => {
     const options = makeOptions();
     await buildSuite(SUITE, options);

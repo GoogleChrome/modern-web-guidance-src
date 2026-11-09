@@ -22,7 +22,7 @@ import {
   rebuildEvals,
 } from './rebuild-evals.ts';
 import type { PublicEvals, SkipCode } from './rebuild-evals.ts';
-import { assertClean, harvestUserSegments, harvestUserSegmentsIn, LEAK_PATTERNS, LeakError, scrubString } from './scrub.ts';
+import { assertClean, GENERIC_USERS, harvestUserSegments, harvestUserSegmentsIn, LEAK_PATTERNS, LeakError, scrubString } from './scrub.ts';
 import type { SuiteRef, SuiteStore } from './suite-store.ts';
 
 /**
@@ -66,6 +66,7 @@ const BUILDER_VERSION = crypto
     assertion: PUBLIC_ASSERTION_FIELDS,
     agents: [...PUBLIC_AGENTS].sort(),
     leaks: LEAK_PATTERNS.map(pattern => pattern.re.source),
+    genericUsers: [...GENERIC_USERS].sort(),
     excludedPaths: EXCLUDED_PATH_RE.source,
     maxPatchBytes: MAX_PATCH_BYTES,
   }))
