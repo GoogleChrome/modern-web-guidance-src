@@ -122,19 +122,30 @@
       box-shadow: var(--drag-preview-shadow);
     }
 
-    /* Sits in the gap between the items around the drop spot, so nothing shifts until release. */
-    .drop-marker {
+    /* The list's pseudo-elements draw the marker in the gap around the drop spot, so nothing shifts until release.
+       Script sets --drop-x/y/w/h from the neighbors' rects; fixed positioning keeps it steady while the list scrolls. */
+    .task-list[data-drop]::before,
+    .task-list[data-drop]::after {
+      content: "";
       position: fixed;
       z-index: 1;
       pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    .task-list[data-drop]::after {
+      left: var(--drop-x);
+      top: var(--drop-y);
+      width: var(--drop-w);
+      height: var(--drop-h);
       border-radius: 999px;
       background: var(--drop-marker-color);
     }
 
-    .drop-marker::before {
-      content: "";
-      position: absolute;
-      box-sizing: border-box;
+    .task-list[data-drop]::before {
+      left: var(--drop-x);
+      top: var(--drop-y);
+      z-index: 2;
       inline-size: var(--drop-marker-dot);
       block-size: var(--drop-marker-dot);
       border: var(--drop-marker-size) solid var(--drop-marker-color);
@@ -142,29 +153,21 @@
       background: var(--canvas);
     }
 
-    .drop-marker[data-axis="block"] {
-      height: var(--drop-marker-size);
+    .task-list[data-drop="block"]::before {
+      translate: -50% calc(var(--drop-h) / 2 - 50%);
     }
 
-    .drop-marker[data-axis="block"]::before {
-      inset-inline-start: 0;
-      inset-block-start: 50%;
-      translate: -50% -50%;
-    }
-
-    .drop-marker[data-axis="inline"] {
-      width: var(--drop-marker-size);
-    }
-
-    .drop-marker[data-axis="inline"]::before {
-      inset-block-start: 0;
-      inset-inline-start: 50%;
-      translate: -50% -50%;
+    .task-list[data-drop="inline"]::before {
+      translate: calc(var(--drop-w) / 2 - 50%) -50%;
     }
 
     @media (forced-colors: active) {
-      .drop-marker {
+      .task-list[data-drop]::after {
         background: Highlight;
+      }
+
+      .task-list[data-drop]::before {
+        border-color: Highlight;
       }
     }
 
@@ -521,7 +524,6 @@
       let pointerHandle = null;
       let pointerStartNext = null;
       let dropBefore;
-      let dropMarker = null;
       let markerPrev = null;
       let markerNext = null;
       let isMoving = false;
@@ -578,8 +580,11 @@
       }
 
       function clearDropMarker() {
-        dropMarker?.remove();
-        dropMarker = null;
+        delete list.dataset.drop;
+        list.style.removeProperty('--drop-x');
+        list.style.removeProperty('--drop-y');
+        list.style.removeProperty('--drop-w');
+        list.style.removeProperty('--drop-h');
       }
 
       // The marker sits between the items on either side of the drop spot; the list itself doesn't change.
@@ -588,11 +593,7 @@
         const index = before ? siblings.indexOf(before) : siblings.length;
         markerPrev = siblings[index - 1] ?? null;
         markerNext = before;
-        dropMarker = document.createElement('div');
-        dropMarker.className = 'drop-marker';
-        dropMarker.dataset.axis = inline ? 'inline' : 'block';
-        dropMarker.setAttribute('aria-hidden', 'true');
-        document.body.append(dropMarker);
+        list.dataset.drop = inline ? 'inline' : 'block';
       }
 
       // Place the marker from the neighbors' rects on every drop-spot update and scroll step.
@@ -602,20 +603,22 @@
         const prev = markerPrev?.getBoundingClientRect();
         const next = markerNext?.getBoundingClientRect();
         const rect = prev ?? next;
-        const style = dropMarker.style;
-        style.margin = '0';
+        const size = 'var(--drop-marker-size)';
+        const set = (name, value) => list.style.setProperty(name, value);
         if (inline) {
           const rtl = isRtl();
-          style.top = `${rect.top}px`;
-          style.height = `${rect.height}px`;
+          set('--drop-y', `${rect.top}px`);
+          set('--drop-h', `${rect.height}px`);
+          set('--drop-w', size);
           const edge = prev
             ? (rtl ? `${prev.left}px - ${gap} + ${centered}` : `${prev.right}px + ${centered}`)
             : (rtl ? `${next.right}px + ${centered}` : `${next.left}px - ${gap} + ${centered}`);
-          style.left = `calc(${edge})`;
+          set('--drop-x', `calc(${edge})`);
         } else {
-          style.left = `${rect.left}px`;
-          style.width = `${rect.width}px`;
-          style.top = prev ? `calc(${prev.bottom}px + ${centered})` : `calc(${next.top}px - ${gap} + ${centered})`;
+          set('--drop-x', `${rect.left}px`);
+          set('--drop-w', `${rect.width}px`);
+          set('--drop-h', size);
+          set('--drop-y', prev ? `calc(${prev.bottom}px + ${centered})` : `calc(${next.top}px - ${gap} + ${centered})`);
         }
       }
 
@@ -758,7 +761,7 @@
           if (before === pointerItem.nextElementSibling) clearDropMarker();
           else showDropMarker(before, siblings);
         }
-        if (dropMarker) placeDropMarker();
+        if (list.dataset.drop) placeDropMarker();
       }
 
       function autoScroll(now) {
