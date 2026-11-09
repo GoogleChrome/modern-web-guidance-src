@@ -258,6 +258,14 @@
         <p>No test runs found yet. Run the test suite to get started.</p>
       </div>
     </main>
+
+    <footer class="site-legal-footer">
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
@@ -281,6 +289,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="hero.js"></script>
   <script type="module" src="showcase.js"></script>
   <script type="module" src="landing.js"></script>

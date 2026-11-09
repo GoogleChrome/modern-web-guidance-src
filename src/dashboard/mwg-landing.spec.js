@@ -500,4 +500,58 @@ test.describe('Search quality page MWG compliance', () => {
     expect(thirdParty).toEqual([]);
     expect(errors).toEqual([]);
   });
+
+  test('analytics bootstrap scrubs non-allowlisted query params/hashes and renders the themed Category 2B cookie bar when required', async ({ page }) => {
+    const errors = collectErrors(page);
+
+    for (const path of ['/', '/dashboard.html?testId=example-result', '/guide.html?guide=content-vis', '/search/', '/demos/']) {
+      await page.goto(`${path}${path.includes('?') ? '&' : '?'}email=user@example.com&token=secret#oauth_fragment`);
+      await expect(page.locator('.site-legal-footer a[href="https://policies.google.com/privacy"]')).toBeVisible();
+      await expect(page.locator('.site-legal-footer a[href="https://policies.google.com/terms"]')).toBeVisible();
+      const configCall = await page.evaluate(() => {
+        const dl = /** @type {any[]} */ (/** @type {any} */ (window).dataLayer || []);
+        const entry = dl.find(item => item?.[0] === 'config');
+        return entry ? { id: entry[1], opts: entry[2] } : null;
+      });
+      expect(configCall?.id).toBe('G-V48MZB1JQE');
+      expect(configCall?.opts?.allow_google_signals).toBe(false);
+      expect(configCall?.opts?.allow_ad_personalization_signals).toBe(false);
+      expect(configCall?.opts?.page_location).not.toContain('user@example.com');
+      expect(configCall?.opts?.page_location).not.toContain('secret');
+      expect(configCall?.opts?.page_location).not.toContain('oauth_fragment');
+      if (path.includes('testId=example-result')) {
+        expect(configCall?.opts?.page_location).toContain('testId=example-result');
+      }
+      if (path.includes('guide=content-vis')) {
+        expect(configCall?.opts?.page_location).toContain('guide=content-vis');
+      }
+    }
+
+    await page.goto('/?previewCookieBar=1');
+    const cnbScript = page.locator('script[src*="cookienotificationbar.min.js"]');
+    await expect(cnbScript).toHaveAttribute('data-glue-cookie-notification-bar-category', '2B');
+    await expect(cnbScript).toHaveAttribute(
+      'data-glue-cookie-notification-bar-site-id',
+      'Modern Web Guidance Eval Dashboard',
+    );
+    await expect(page.locator('.glue-cookie-notification-bar')).toBeVisible();
+    const isFirstElement = await page.evaluate(
+      () => document.body.firstElementChild?.classList.contains('glue-cookie-notification-bar') ?? false,
+    );
+    expect(isFirstElement).toBe(true);
+
+    for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
+      await page.emulateMedia({ colorScheme });
+      const acceptBtn = page.locator('.glue-cookie-notification-bar__accept');
+      await acceptBtn.focus();
+      const styles = await acceptBtn.evaluate(el => {
+        const cs = getComputedStyle(el);
+        return { bg: cs.backgroundColor, color: cs.color };
+      });
+      expect(styles.color).toBe('rgb(255, 255, 255)');
+      expect(styles.bg).not.toBe('rgb(255, 255, 255)');
+    }
+
+    expect(errors).toEqual([]);
+  });
 });
