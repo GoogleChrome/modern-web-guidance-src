@@ -1,1 +1,1 @@
-- Convert the Seasonal Favorites section into a carousel component that can display the coffee cards in either a horizontal or vertical layout.
+- Turn the Seasonal Favorites section into a carousel that shows the coffee cards one at a time.
