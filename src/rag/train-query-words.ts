@@ -1,8 +1,8 @@
 /**
- * Distills and trains the 256-d static word-embedding model (`src/rag/static-model/`)
+ * Distills and trains the 256-d static word-embedding model (`src/rag/gen/`)
  * from `gemini-embedding-001` using a Model2Vec + Tokenlearn recipe:
  *
- * 1. Vocabulary construction: unions existing `src/rag/static-model/words.json` (which
+ * 1. Vocabulary construction: unions existing `src/rag/gen/query-words.json` (which
  *    includes general-English whole words and domain aliases) with all tokens found across
  *    current `guides/` markdown chunks.
  * 2. Teacher word distillation: embeds each vocabulary word with `gemini-embedding-001`
@@ -15,41 +15,43 @@
  *    `gemini-embedding-001` embeddings of training queries (guide titles/headings/descriptions
  *    plus optional `--extra-queries <jsonl>`), with L2 regularization (`MU = 0.05`) pulling
  *    toward `(E0, W0)`. All evaluation queries (`harness`, `oos`, `wild`) are strictly excluded.
- * 5. Quantization: symmetric per-row `Int8` quantization of `E` (`words.i8`) with row scales
- *    folded into `W` (`words.scale.f32`).
+ * 5. Quantization: symmetric per-row `Int8` quantization of `E` (`query-words.i8`) with row scales
+ *    folded into `W` (`query-words.scale.f32`).
  *
  * Usage:
- *   node src/rag/train-static-model.ts [--extra-queries path/to/train-queries.jsonl] [--skip-tokenlearn]
+ *   node src/rag/train-query-words.ts [--extra-queries path/to/train-queries.jsonl] [--skip-tokenlearn]
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import matter from "@11ty/gray-matter";
 import { marked, type Tokens } from "marked";
 import {
-  extractH1Heading,
   getGuideMarkdownPath,
-  isDraftStub,
   scanAllGuides,
-  stripAllComments,
 } from "../core/guide-validation.ts";
-import { replaceMacros } from "../core/macros.ts";
 import { outDir, rootDir } from "../core/paths.ts";
 import { config } from "../core/skills-config.ts";
-import { chunkMarkdown, formatChunkHeader } from "../build/build-guides.ts";
+import { extractGuideChunks } from "../core/guide-chunks.ts";
 import { tokenize, tokenizeBm25 } from "./bm25.ts";
 import { dotProduct } from "./search.ts";
 import {
   accumulateNormalizedVector,
   encodeTokens,
-  STATIC_EMBEDDING_DIMS,
 } from "./static-embedder.ts";
+import {
+  STATIC_DIMS,
+  truncateAndNormalize256,
+} from "./quantize.ts";
+import {
+  postWithRetry,
+  isBatchEmbeddingResponse,
+} from "./gemini-api.ts";
 
 const TEACHER_DIM = 768;
 const DEFAULT_TEACHER_MODEL = "gemini-embedding-001";
-const DEFAULT_OUT_DIR = path.join(rootDir, "src/rag/static-model");
+const DEFAULT_OUT_DIR = path.join(rootDir, "src/rag/gen");
 const DEFAULT_CACHE_DIR = path.join(outDir, "static-model-cache");
 
 export interface QuantizeExportResult {
@@ -60,8 +62,8 @@ export interface QuantizeExportResult {
 }
 
 /**
- * Quantizes Float32 word vectors `E` (V × 256) to symmetric per-row `Int8` (`words.i8`)
- * and folds each row's `maxAbs / 127` scale factor into the per-word weight `W` (`words.scale.f32`).
+ * Quantizes Float32 word vectors `E` (V × 256) to symmetric per-row `Int8` (`query-words.i8`)
+ * and folds each row's `maxAbs / 127` scale factor into the per-word weight `W` (`query-words.scale.f32`).
  */
 export function quantizeAndExportStaticModel(
   words: string[],
@@ -70,7 +72,7 @@ export function quantizeAndExportStaticModel(
   targetDir = DEFAULT_OUT_DIR
 ): QuantizeExportResult {
   const V = words.length;
-  const D = STATIC_EMBEDDING_DIMS;
+  const D = STATIC_DIMS;
   if (E.length !== V * D) {
     throw new Error(`Expected E of length ${V * D}, got ${E.length}`);
   }
@@ -98,13 +100,13 @@ export function quantizeAndExportStaticModel(
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
-  fs.writeFileSync(path.join(targetDir, "words.json"), JSON.stringify(words));
+  fs.writeFileSync(path.join(targetDir, "query-words.json"), JSON.stringify(words));
   fs.writeFileSync(
-    path.join(targetDir, "words.i8"),
+    path.join(targetDir, "query-words.i8"),
     Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength)
   );
   fs.writeFileSync(
-    path.join(targetDir, "words.scale.f32"),
+    path.join(targetDir, "query-words.scale.f32"),
     Buffer.from(foldedScales.buffer, foldedScales.byteOffset, foldedScales.byteLength)
   );
 
@@ -208,22 +210,21 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
 
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    const raw = fs.readFileSync(guidePath, "utf8");
-    const { data, content: markdownBody } = matter(raw);
-    if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+    const extracted = extractGuideChunks({
+      filePath: guidePath,
+      category: inv.category,
+      id: inv.name,
+      target: "skills-cli",
+    });
+
+    if (!extracted) {
       continue;
     }
-    const description = typeof data.description === "string" ? data.description.trim() : "";
-    const processed = replaceMacros(markdownBody, guidePath, { target: "skills-cli" });
-    const h1Title = extractH1Heading(processed);
-    const title = ((typeof data.title === "string" && data.title.trim()) || h1Title || inv.name.replace(/-/g, " ")).trim();
-    const featureIds: string[] = data["web-feature-ids"] || [];
-    const header = formatChunkHeader(title, inv.name, inv.category, featureIds);
-    const summaryChunk = `# ${title}\n\n${description}`;
-    const chunks = [...chunkMarkdown(processed), summaryChunk];
 
-    for (const chunk of chunks) {
-      chunkTexts.push(`${header}\n\n${chunk}`);
+    const { title, description, processedMarkdown, embeddedChunks } = extracted;
+
+    for (const ec of embeddedChunks) {
+      chunkTexts.push(ec.embeddedText);
     }
 
     syntheticQueries.push(inv.name.replace(/-/g, " "));
@@ -231,7 +232,7 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
     if (description) syntheticQueries.push(description);
 
     const headings = marked
-      .lexer(processed)
+      .lexer(processedMarkdown)
       .filter((t): t is Tokens.Heading => t.type === "heading" && (t.depth === 2 || t.depth === 3))
       .map((t) => t.text.trim());
     for (const h of headings) {
@@ -241,44 +242,6 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
   }
 
   return { chunkTexts, syntheticQueries };
-}
-
-function isBatchEmbeddingResponse(
-  val: unknown
-): val is { embeddings: Array<{ values: number[] }> } {
-  if (typeof val !== "object" || val === null || !("embeddings" in val)) return false;
-  const emb = (val as { embeddings: unknown }).embeddings;
-  return (
-    Array.isArray(emb) &&
-    emb.every(
-      (item) =>
-        typeof item === "object" &&
-        item !== null &&
-        "values" in item &&
-        Array.isArray((item as { values: unknown }).values)
-    )
-  );
-}
-
-async function postWithRetry(url: string, body: unknown): Promise<unknown> {
-  for (let attempt = 1; ; attempt++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch((e: unknown) => (e instanceof Error ? e : new Error(String(e))));
-
-    if (!(res instanceof Error) && res.ok) {
-      return res.json();
-    }
-    const is429 = !(res instanceof Error) && res.status === 429;
-    const status =
-      res instanceof Error ? res.message : `${res.status} ${(await res.text()).slice(0, 300)}`;
-    if (attempt >= 20) {
-      throw new Error(`Gemini embedding HTTP failed after ${attempt} attempts: ${status}`);
-    }
-    await new Promise((r) => setTimeout(r, is429 ? 15_000 : 1_500 * attempt));
-  }
 }
 
 async function embedWithTeacher(
@@ -368,13 +331,6 @@ async function embedWithTeacher(
   return out;
 }
 
-function truncateAndNormalize256(v: Float32Array): Float32Array {
-  const t = v.slice(0, STATIC_EMBEDDING_DIMS);
-  const n = Math.hypot(...t) || 1;
-  for (let k = 0; k < STATIC_EMBEDDING_DIMS; k++) t[k] /= n;
-  return t;
-}
-
 async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
@@ -403,7 +359,7 @@ async function main(): Promise<void> {
   console.log("Scanning guides corpus and existing vocabulary...");
   const { chunkTexts, syntheticQueries } = scanCorpusAndSyntheticQueries();
 
-  const existingWordsPath = path.join(targetDir, "words.json");
+  const existingWordsPath = path.join(targetDir, "query-words.json");
   const existingWords: string[] = fs.existsSync(existingWordsPath)
     ? (JSON.parse(fs.readFileSync(existingWordsPath, "utf8")) as string[])
     : [];
@@ -469,7 +425,7 @@ async function main(): Promise<void> {
   console.log(`Embedding vocabulary with teacher (${teacherModel})...`);
   const wordVecs = await embedWithTeacher(words, "teacher-words-q", apiKey, teacherModel, cacheDir);
 
-  const D = STATIC_EMBEDDING_DIMS;
+  const D = STATIC_DIMS;
   const E0 = new Float32Array(V * D);
   for (let i = 0; i < V; i++) {
     const full = wordVecs.get(words[i]);

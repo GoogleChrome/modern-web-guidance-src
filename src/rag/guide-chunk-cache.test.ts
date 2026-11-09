@@ -6,16 +6,18 @@ import path from "node:path";
 import {
   computeChunkHash,
   truncateAndNormalize256,
+  quantizeVectors,
+  dequantizeVectorRow,
   loadChunkCache,
   saveChunkCache,
-  scanCorpusChunks,
   TEACHER_MODEL,
   TASK_TYPE,
   STATIC_DIMS,
-} from "./chunk-cache.ts";
-import { embedGuideChunks } from "./embed-chunks.ts";
+} from "./guide-chunk-cache.ts";
+import { scanCorpusChunks } from "../core/guide-chunks.ts";
+import { embedGuideChunks } from "./embed-guide-chunks.ts";
 
-describe("chunk-cache", () => {
+describe("guide-chunk-cache", () => {
   it("computeChunkHash produces deterministic hashes sensitive to text and metadata", () => {
     const textA = "guide-a: description\n\nchunk content";
     const textB = "guide-a: description\n\nchunk content modified";
@@ -109,12 +111,30 @@ describe("chunk-cache", () => {
     }
   });
 
+  it("quantizeVectors and dequantizeVectorRow handle uncached empty vectors (scale 0) alongside dense vectors", () => {
+    const v0 = new Float32Array(STATIC_DIMS);
+    v0[0] = 0.6;
+    v0[1] = -0.8;
+    const { qTable, scales } = quantizeVectors([v0, []], STATIC_DIMS);
+    assert.strictEqual(scales.length, 2);
+    assert.ok(scales[0] > 0, "Non-empty vector must have positive scale");
+    assert.strictEqual(scales[1], 0, "Empty vector must have zero scale");
+
+    const deq0 = dequantizeVectorRow(qTable, scales, 0, STATIC_DIMS);
+    assert.strictEqual(deq0.length, STATIC_DIMS);
+    assert.ok(Math.abs(deq0[0] - 0.6) < 0.01);
+    assert.ok(Math.abs(deq0[1] - -0.8) < 0.01);
+
+    const deq1 = dequantizeVectorRow(qTable, scales, 1, STATIC_DIMS);
+    assert.strictEqual(deq1.length, 0, "Zero-scale row must dequantize to empty Float32Array(0)");
+  });
+
   it("loadChunkCache detects corrupted binary files", () => {
     const corruptDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-cache-test-"));
     try {
-      fs.writeFileSync(path.join(corruptDir, "chunks.json"), JSON.stringify(["hash1", "hash2"]));
-      fs.writeFileSync(path.join(corruptDir, "chunks.i8"), Buffer.alloc(100)); // wrong length
-      fs.writeFileSync(path.join(corruptDir, "chunks.scale.f32"), Buffer.alloc(8));
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.json"), JSON.stringify(["hash1", "hash2"]));
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.i8"), Buffer.alloc(100)); // wrong length
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.scale.f32"), Buffer.alloc(8));
 
       assert.throws(() => loadChunkCache(corruptDir), /Chunk cache corrupted/);
     } finally {
