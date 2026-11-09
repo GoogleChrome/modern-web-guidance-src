@@ -14,11 +14,12 @@ import { GcsSuiteStore } from './suite-store.ts';
 /**
  * CLI: publish the public copy of eval suites to `gh-pages`.
  *
- *   node src/harness/public/publish-cli.ts [--dry-run]
+ *   node src/harness/public/publish-cli.ts [--dry-run] [--force]
  *
  * Stateless: checks out what is currently published, rebuilds it from the
  * checked-in allowlist (incrementally, via the published `build-state.json`),
- * and pushes the result. `--dry-run` builds and reports without pushing.
+ * and pushes the result. `--dry-run` builds and reports without pushing;
+ * `--force` rebuilds every suite even when `build-state.json` says it is unchanged.
  * Nothing is published if any suite failed. Operator names come from
  * `PUBLIC_EVALS_FORBIDDEN_TOKENS` when set (required in CI); locally the OS
  * user and the usernames harvested from each suite's own paths cover the
@@ -37,11 +38,12 @@ async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
       'dry-run': { type: 'boolean', default: false },
+      force: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
   if (values.help) {
-    console.log('Usage: publish-cli.ts [--dry-run]');
+    console.log('Usage: publish-cli.ts [--dry-run] [--force]');
     return 0;
   }
 
@@ -62,6 +64,7 @@ async function main(): Promise<number> {
       allowlist,
       forbiddenTokens: tokens,
       forbiddenTokensVersion: tokensVersion,
+      force: values.force,
     });
     reportResults(results, path.join(outDir, PUBLIC_EVALS_DIR));
     assertNoFailures(results);
