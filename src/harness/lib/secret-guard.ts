@@ -96,6 +96,7 @@ export const ALLOWED_WRAPPER_ENV_KEYS: ReadonlySet<string> = new Set([
   'PI_WORKERS', 'PI_SUITE_NAME', 'CODEX_CLI_BIN', 'CLAUDE_CODE_CLI_BIN',
   'ANTIGRAVITY_CLI_BIN', 'JETSKI_CLI_BIN', 'GOOGLE_APPLICATION_CREDENTIALS',
   'ENABLE_FILE_LOGGING', 'MODERN_WEB_LOG_DIR', 'SMOKE_AGENT', 'FULL',
+  'NPM_CONFIG_USERCONFIG', 'npm_config_userconfig',
 ]);
 
 export const ALLOWED_GRADER_ENV_KEYS: ReadonlySet<string> = new Set([
@@ -296,7 +297,8 @@ export function collectHostSecrets(options: {
     for (const secret of processNpmrc(npmrcRaw).secrets) secrets.add(secret);
   }
 
-  const userConfig = (options.env ?? process.env).NPM_CONFIG_USERCONFIG;
+  const envSource = options.env ?? process.env;
+  const userConfig = envSource.NPM_CONFIG_USERCONFIG || envSource.npm_config_userconfig;
   if (userConfig) {
     const userConfigRaw = readUtf8IfExists(userConfig);
     if (userConfigRaw !== null) {

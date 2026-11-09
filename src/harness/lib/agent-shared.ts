@@ -197,7 +197,7 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
   }
 
   // Copy sanitized npm config so isolated runs don't inherit host auth tokens or broken private registries
-  const userConfig = process.env.NPM_CONFIG_USERCONFIG;
+  const userConfig = process.env.NPM_CONFIG_USERCONFIG || process.env.npm_config_userconfig;
   const originalHome = process.env.HOME || process.cwd();
   const npmrcSource = userConfig && fs.existsSync(userConfig) ? userConfig : path.join(originalHome, '.npmrc');
   copySanitizedNpmrc(npmrcSource, path.join(tempHome, '.npmrc'));
