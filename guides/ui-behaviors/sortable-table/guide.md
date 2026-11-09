@@ -26,7 +26,7 @@ For sorting lists and card grids that are not tables, see {{ GUIDE_REF("dynamic-
 * **MANDATORY:** Put a `<button type="button">` inside each sortable `<th scope="col">`. Do not make the `<th>` itself clickable, and do not use `<a>` or `role="button"`.
 * Set `aria-sort="ascending"` or `aria-sort="descending"` on the `<th>` of the currently sorted column only, and remove it from all other headers. Do not set `aria-sort="none"`, and do not put `aria-sort` on the button.
 * Leave non-sortable columns as plain `<th>` text with no button. Keep their padding, alignment and font weight matching the sortable headers: drop the cell padding only on `th:has(> button)`, since the button supplies it.
-* Keep the `<caption>`, and keep rows in a `<tbody>` so header rows are never reordered.
+* Keep the table's `<caption>` as its accessible name, and keep data rows in a `<tbody>` so sorting reorders only body rows and never the `<thead>` row.
 * Use a decorative icon for the sort direction (`aria-hidden="true"`, `currentColor`, see {{ GUIDE_REF("icons") }}). Drive its appearance from `th[aria-sort]` in CSS, not from extra classes or JavaScript. The icon is visual only and hidden from assistive technology, so always convey the sort state with `aria-sort` on the `<th>`.
 * Give the button a minimum 24px target and a `:focus-visible` outline. Make it fill the cell.
 
