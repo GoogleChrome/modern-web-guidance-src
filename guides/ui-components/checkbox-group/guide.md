@@ -170,7 +170,7 @@ MANDATORY: The checkbox must stay to the left of all label text, including wrapp
 
 ### Secondary column (the rarer case)
 
-When rows have a secondary column, make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and secondary column align across all rows. Wrap each column's content in a single `<span>`:
+When rows have a secondary column (such as a trailing `<span class="model">CW-01</span>` inside each `<label>`), make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and secondary column align across all rows. Wrap each column's content in a single `<span>`:
 
 ```css
 .options {
