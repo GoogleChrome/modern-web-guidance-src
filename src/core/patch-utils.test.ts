@@ -236,6 +236,34 @@ describe('applyPatchSync', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('applies git-style patches when target directory is reached through a symlink parent', () => {
+    // When targetDir is reached via a symlink parent (e.g. macOS /var -> /private/var),
+    // canonicalizing with fs.realpathSync ensures GIT_CEILING_DIRECTORIES matches physical getcwd().
+    const realTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-symlink-real-'));
+    try {
+      initGitRepo(realTmpDir);
+      const realTargetDir = path.join(realTmpDir, 'results', 'base_app');
+      fs.mkdirSync(realTargetDir, { recursive: true });
+      fs.writeFileSync(path.join(realTargetDir, 'index.html'), '<p>before</p>\n');
+
+      const symlinkParent = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'patch-symlink-parent-')), 'linked');
+      fs.symlinkSync(realTmpDir, symlinkParent);
+      const targetDir = path.join(symlinkParent, 'results', 'base_app');
+
+      const patchPath = path.join(realTmpDir, 'change.patch');
+      fs.writeFileSync(
+        patchPath,
+        'diff --git a/index.html b/index.html\n--- a/index.html\n+++ b/index.html\n@@ -1 +1 @@\n-<p>before</p>\n+<p>after</p>\n'
+      );
+
+      const result = applyPatchSync(targetDir, patchPath);
+      assert.strictEqual(result.success, true, `Expected success, got error: ${result.error}`);
+      assert.strictEqual(fs.readFileSync(path.join(realTargetDir, 'index.html'), 'utf8'), '<p>after</p>\n');
+    } finally {
+      fs.rmSync(realTmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 function initTestRepo(repoDir: string) {

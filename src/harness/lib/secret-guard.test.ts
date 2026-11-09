@@ -4,9 +4,12 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
+  ALLOWED_CHILD_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
   collectHostSecrets,
   copySanitizedNpmrc,
   extractBase64TrajectoryPayloads,
+  filterAllowedEnv,
   findSecretLeaks,
   loadAllowedEnvFile,
   sanitizeNpmrc,
@@ -141,6 +144,39 @@ describe('sanitizeNpmrc & copySanitizedNpmrc', () => {
       }
     });
   });
+
+  test('uses lowercase npm_config_userconfig as the source for sanitized .npmrc in isolated HOME when set', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm-lower');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = `npm_${'L'.repeat(36)}`;
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\nfetch-retries=5\n`,
+        'utf8',
+      );
+
+      const prevUserConfig = process.env.NPM_CONFIG_USERCONFIG;
+      const prevLowerConfig = process.env.npm_config_userconfig;
+      delete process.env.NPM_CONFIG_USERCONFIG;
+      process.env.npm_config_userconfig = customNpmrc;
+      let isolated = '';
+      try {
+        isolated = createIsolatedHome('custom-npmrc-lower-test');
+        const isolatedNpmrc = fs.readFileSync(path.join(isolated, '.npmrc'), 'utf8');
+        assert.ok(isolatedNpmrc.includes('registry=http://localhost:4873/'), 'Registry should be preserved');
+        assert.ok(!isolatedNpmrc.includes(token), '_authToken should be stripped');
+        assert.ok(isolatedNpmrc.includes('fetch-retries=5'), 'Safe config should be preserved');
+      } finally {
+        if (prevUserConfig === undefined) delete process.env.NPM_CONFIG_USERCONFIG;
+        else process.env.NPM_CONFIG_USERCONFIG = prevUserConfig;
+        if (prevLowerConfig === undefined) delete process.env.npm_config_userconfig;
+        else process.env.npm_config_userconfig = prevLowerConfig;
+        if (isolated) fs.rmSync(isolated, { recursive: true, force: true });
+      }
+    });
+  });
 });
 
 describe('collectHostSecrets', () => {
@@ -228,6 +264,50 @@ describe('collectHostSecrets', () => {
       });
       assert.strictEqual(secrets.includes(token), true, 'Token from NPM_CONFIG_USERCONFIG should be collected as secret needle');
     });
+  });
+
+  test('collects auth tokens from lowercase npm_config_userconfig as secret needles', () => {
+    withTempDir((dir) => {
+      const customConfigDir = path.join(dir, 'custom-npm-lower');
+      fs.mkdirSync(customConfigDir, { recursive: true });
+      const customNpmrc = path.join(customConfigDir, '.npmrc');
+      const token = ['ya29', 'lower', 'D'.repeat(36)].join('.');
+      fs.writeFileSync(
+        customNpmrc,
+        `registry=http://localhost:4873/\n//npm.pkg.example/:_authToken=${token}\n`,
+        'utf8',
+      );
+
+      const secrets = collectHostSecrets({
+        rootDir: dir,
+        homeDir: dir,
+        env: { npm_config_userconfig: customNpmrc },
+      });
+      assert.strictEqual(secrets.includes(token), true, 'Token from npm_config_userconfig should be collected as secret needle');
+    });
+  });
+});
+
+describe('ALLOWED_WRAPPER_ENV_KEYS vs ALLOWED_CHILD_ENV_KEYS', () => {
+  test('wrapper allowlist keeps NPM_CONFIG_USERCONFIG and npm_config_userconfig while child allowlist drops them', () => {
+    assert.strictEqual(ALLOWED_WRAPPER_ENV_KEYS.has('NPM_CONFIG_USERCONFIG'), true);
+    assert.strictEqual(ALLOWED_WRAPPER_ENV_KEYS.has('npm_config_userconfig'), true);
+    assert.strictEqual(ALLOWED_CHILD_ENV_KEYS.has('NPM_CONFIG_USERCONFIG'), false);
+    assert.strictEqual(ALLOWED_CHILD_ENV_KEYS.has('npm_config_userconfig'), false);
+
+    const sourceEnv = {
+      PATH: '/usr/bin',
+      NPM_CONFIG_USERCONFIG: '/path/to/.npmrc',
+      npm_config_userconfig: '/path/to/.npmrc',
+    };
+
+    const wrapperEnv = filterAllowedEnv(sourceEnv, ALLOWED_WRAPPER_ENV_KEYS);
+    assert.strictEqual(wrapperEnv.NPM_CONFIG_USERCONFIG, '/path/to/.npmrc');
+    assert.strictEqual(wrapperEnv.npm_config_userconfig, '/path/to/.npmrc');
+
+    const childEnv = filterAllowedEnv(sourceEnv, ALLOWED_CHILD_ENV_KEYS);
+    assert.strictEqual(childEnv.NPM_CONFIG_USERCONFIG, undefined);
+    assert.strictEqual(childEnv.npm_config_userconfig, undefined);
   });
 });
 
