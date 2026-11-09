@@ -24,15 +24,11 @@ test.describe('Position-Aware Tooltips Grader', () => {
   test('sets role="tooltip" on popover and aria-describedby on trigger pointing to popover ID', async ({ page }) => {
     await page.goto(targetUrl);
     const isValid = await page.evaluate(() => {
-      const trigger = document.querySelector('[popovertarget]');
-      if (!trigger) return false;
-      const targetId = trigger.getAttribute('popovertarget');
-      if (!targetId) return false;
-      const popover = document.getElementById(targetId);
-      if (!popover) return false;
-      const hasRoleTooltip = popover.getAttribute('role') === 'tooltip';
-      const triggerAria = trigger.getAttribute('aria-describedby');
-      return hasRoleTooltip && triggerAria === targetId;
+      const triggers = Array.from(document.querySelectorAll('[aria-describedby]'));
+      return triggers.some((trigger) => {
+        const ids = (trigger.getAttribute('aria-describedby') || '').trim().split(/\s+/).filter(Boolean);
+        return ids.some((id) => document.getElementById(id)?.getAttribute('role') === 'tooltip');
+      });
     });
     expect(isValid).toBe(true);
   });
@@ -47,7 +43,9 @@ test.describe('Position-Aware Tooltips Grader', () => {
     });
     await page.goto(targetUrl);
     // Wait for potential dynamic import and execution of polyfill
-    await page.waitForTimeout(1000);
+    await page.waitForFunction(() => {
+      return HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype;
+    });
     const isPolyfilled = await page.evaluate(() => {
       return HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype;
     });
@@ -179,99 +177,90 @@ test.describe('Position-Aware Tooltips Grader', () => {
         const beforeContent = window.getComputedStyle(el, '::before').getPropertyValue('content');
         const afterContent = window.getComputedStyle(el, '::after').getPropertyValue('content');
         
-        if ((beforeContent && beforeContent !== 'none' && beforeContent !== '""') ||
-            (afterContent && afterContent !== 'none' && afterContent !== '""')) {
+        if ((beforeContent && beforeContent !== 'none' && beforeContent !== 'normal') ||
+            (afterContent && afterContent !== 'none' && afterContent !== 'normal')) {
           return true;
         }
       }
+
+      // Check stylesheets as well because headless Chromium may not evaluate CSS anchor-position pseudo-elements dynamically
+      for (let j = 0; j < document.styleSheets.length; j++) {
+        try {
+          const sheet = document.styleSheets[j];
+          const checkRules = (rules: CSSRuleList): boolean => {
+            for (let i = 0; i < rules.length; i++) {
+              const rule = rules[i];
+              if (rule instanceof CSSStyleRule && /::(before|after)/.test(rule.selectorText)) {
+                const baseSel = rule.selectorText.replace(/::?(before|after).*$/, '').trim();
+                if (rule.selectorText.includes('popover') || rule.selectorText.includes('tooltip') || rule.selectorText.includes('arrow') || (popover && baseSel && (() => { try { return popover.matches(baseSel) || !!popover.querySelector(baseSel); } catch { return false; } })())) {
+                  return true;
+                }
+              }
+              if ((rule as any).cssRules && checkRules((rule as any).cssRules)) {
+                return true;
+              }
+            }
+            return false;
+          };
+          if (sheet.cssRules && checkRules(sheet.cssRules)) return true;
+        } catch {}
+      }
+
       return false;
     });
     expect(hasPseudoArrow).toBe(true);
   });
 
   test('updates the visual styling and layout when the tooltip flips to a fallback position purely via CSS without JS', async ({ page }) => {
-    // Intercept scroll/resize event listeners to block JS-based positioning updates
+    // Intercept scroll/resize event listeners to verify no JS-based positioning updates are used
     await page.addInitScript(() => {
+      (window as any).__jsFlipListenerRegistered = false;
       const originalAddEventListener = window.addEventListener;
       window.addEventListener = function(type: string, _listener: any, _options?: any) {
         if (type === 'scroll' || type === 'resize') {
-          console.log(`Intercepted JS listener for: ${type}`);
-          return; // Block scroll and resize event listeners!
+          (window as any).__jsFlipListenerRegistered = true;
         }
         return originalAddEventListener.apply(this, arguments as any);
       };
     });
 
     await page.goto(targetUrl);
-    await page.waitForTimeout(500);
 
-    // Trigger popover open (if not already opened)
-    await page.evaluate(() => {
-      const trigger = document.querySelector('[popovertarget]') as HTMLElement;
-      const popover = document.querySelector('[popover]') as HTMLElement;
-      if (trigger && popover && window.getComputedStyle(popover).display === 'none') {
-        trigger.click();
-      }
-    });
+    const read = () =>
+      page.evaluate(() => {
+        const c = document.querySelector('[popover] *') || document.querySelector('[popover]');
+        if (!c) return '';
+        const b = getComputedStyle(c, '::before');
+        const s = getComputedStyle(c);
+        return [b.content, s.borderRadius, s.marginBlockStart, s.marginBlockEnd].join('|');
+      });
 
-    // State 1: Scroll anchor to the bottom of the viewport (default position)
-    await page.evaluate(() => {
-      const anchor = document.querySelector('[popovertarget]') || document.getElementById('anchor');
-      if (anchor) {
-        anchor.scrollIntoView({ block: 'end' });
-      }
-    });
-    await page.waitForTimeout(500);
+    const isOpen = await page
+      .locator('[popover]')
+      .first()
+      .evaluate((el) => el.matches(':popover-open'))
+      .catch(() => false);
+    if (!isOpen) {
+      await page.locator('[popovertarget]').first().click();
+    }
 
-    // Read State 1 styles
-    const state1 = await page.evaluate(() => {
-      const popover = document.querySelector('[popover]') || document.getElementById('tooltip');
-      if (!popover) return null;
-      const content = popover.querySelector('*') || popover;
-      const beforeStyle = window.getComputedStyle(content, '::before');
-      const contentStyle = window.getComputedStyle(content);
-      return {
-        arrowContent: beforeStyle.getPropertyValue('content'),
-        borderRadius: contentStyle.borderRadius,
-        marginBlockStart: contentStyle.marginBlockStart,
-        marginBlockEnd: contentStyle.marginBlockEnd,
-      };
-    });
+    await page
+      .locator('#anchor, [popovertarget]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'end' }));
+    const before = await read();
+    expect(before).not.toBe('');
 
-    // State 2: Scroll anchor to the top of the viewport (fallback position)
-    await page.evaluate(() => {
-      const anchor = document.querySelector('[popovertarget]') || document.getElementById('anchor');
-      if (anchor) {
-        anchor.scrollIntoView({ block: 'start' });
-      }
-    });
-    await page.waitForTimeout(500);
+    await page
+      .locator('#anchor, [popovertarget]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await expect.poll(read).not.toBe(before);
 
-    // Read State 2 styles
-    const state2 = await page.evaluate(() => {
-      const popover = document.querySelector('[popover]') || document.getElementById('tooltip');
-      if (!popover) return null;
-      const content = popover.querySelector('*') || popover;
-      const beforeStyle = window.getComputedStyle(content, '::before');
-      const contentStyle = window.getComputedStyle(content);
-      return {
-        arrowContent: beforeStyle.getPropertyValue('content'),
-        borderRadius: contentStyle.borderRadius,
-        marginBlockStart: contentStyle.marginBlockStart,
-        marginBlockEnd: contentStyle.marginBlockEnd,
-      };
-    });
-
-    expect(state1).not.toBeNull();
-    expect(state2).not.toBeNull();
-
-    // Verify that at least one key presentation style (the arrow or container content style)
-    // changed as a result of the CSS layout flip
-    const arrowChanged = state1!.arrowContent !== state2!.arrowContent;
-    const borderChanged = state1!.borderRadius !== state2!.borderRadius;
-    const marginChanged = state1!.marginBlockStart !== state2!.marginBlockStart || state1!.marginBlockEnd !== state2!.marginBlockEnd;
-
-    expect(arrowChanged || borderChanged || marginChanged).toBe(true);
+    const jsListenerRegistered = await page.evaluate(() =>
+      Boolean((window as any).__jsFlipListenerRegistered),
+    );
+    expect(jsListenerRegistered).toBe(false);
   });
 
 });

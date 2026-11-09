@@ -2,200 +2,478 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
-  getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
-import { CSSStyleRule } from 'cssomnom';
+} from '../../../../../src/grading/test-fixture.ts';
+import {
+  Node,
+  SyntaxKind,
+  type CallExpression,
+  type NewExpression,
+  type PropertyAssignment,
+  type ShorthandPropertyAssignment,
+  type SourceFile,
+} from 'ts-morph';
+import type { Page } from '@playwright/test';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('Daily Grind Local Network Access Grader', () => {
-
-  // --- STATIC ASSERTIONS ---
-
-  test('queries granular local-network or loopback-network permission via navigator.permissions.query', () => {
-    const project = getJsProject(targetFiles);
-    const queryCalls = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    ).filter(call => {
-      const exprText = call.getExpression().getText();
-      return exprText.endsWith('permissions.query') || exprText === 'query';
+function getPermissionQueryCalls(sourceFiles: SourceFile[]): CallExpression[] {
+  return sourceFiles
+    .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression))
+    .filter((call) => {
+      const expr = call.getExpression();
+      if (!Node.isPropertyAccessExpression(expr)) return false;
+      if (expr.getName() !== 'query') return false;
+      const receiverText = expr.getExpression().getText();
+      return /\bpermissions\b/.test(receiverText);
     });
-    const stringLiterals = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    ).map(s => s.getLiteralValue());
-    const templateTexts = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.TemplateExpression)
-    ).map(t => t.getText());
-    const hasGranularName =
-      stringLiterals.some(s => s === 'local-network' || s === 'loopback-network') ||
-      (templateTexts.some(t => t.includes('-network')) &&
-        stringLiterals.some(s => s === 'local' || s === 'loopback'));
-    const hasGranularPermissionQuery = queryCalls.length > 0 && hasGranularName;
+}
 
-    expect(hasGranularPermissionQuery).toBe(true);
-  });
+function isCallProtectedByErrorHandling(call: CallExpression): boolean {
+  const tryStmt = call.getFirstAncestorByKind(SyntaxKind.TryStatement);
+  if (tryStmt && tryStmt.getCatchClause()) {
+    return true;
+  }
+  let current: Node | undefined = call.getParent();
+  while (current) {
+    if (Node.isPropertyAccessExpression(current) && current.getName() === 'catch') {
+      return true;
+    }
+    current = current.getParent();
+  }
+  return false;
+}
 
-  test('implements fallback error handling when permission name is unrecognized', () => {
-    const project = getJsProject(targetFiles);
-    const queryCalls = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    ).filter(call => {
-      const exprText = call.getExpression().getText();
-      return exprText.endsWith('permissions.query') || exprText === 'query';
-    });
-    const hasFallbackHandling = queryCalls.some(call => {
-      const hasTryAncestor = Boolean(call.getFirstAncestorByKind(SyntaxKind.TryStatement));
-      const hasCatchCall = Boolean(call.getParent()?.getText().includes('.catch'));
-      return hasTryAncestor || hasCatchCall;
-    });
+function getAllStringLiteralValues(sourceFiles: SourceFile[]): string[] {
+  return sourceFiles.flatMap((sf) => [
+    ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((lit) => lit.getLiteralText()),
+    ...sf
+      .getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral)
+      .map((lit) => lit.getLiteralText()),
+  ]);
+}
 
-    expect(hasFallbackHandling).toBe(true);
-  });
+function collectStringLiteralsFromNode(node: Node): string[] {
+  if (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)) {
+    return [node.getLiteralText()];
+  }
+  return [
+    ...node.getDescendantsOfKind(SyntaxKind.StringLiteral).map((lit) => lit.getLiteralText()),
+    ...node
+      .getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral)
+      .map((lit) => lit.getLiteralText()),
+  ];
+}
 
-  test('never queries the legacy local-network-access permission name', () => {
-    const project = getJsProject(targetFiles);
-    const queryCalls = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    ).filter(call => {
-      const exprText = call.getExpression().getText();
-      return exprText.endsWith('permissions.query') || exprText === 'query';
-    });
-    const stringLiterals = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    ).map(s => s.getLiteralValue());
-    const templateTexts = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.TemplateExpression)
-    ).map(t => t.getText());
-    const hasGranularQuery = queryCalls.length > 0 && (
-      stringLiterals.some(s => s === 'local-network' || s === 'loopback-network') ||
-      (templateTexts.some(t => t.includes('-network')) &&
-        stringLiterals.some(s => s === 'local' || s === 'loopback'))
-    );
-    const queriesLegacyName = stringLiterals.includes('local-network-access') ||
-      queryCalls.some(call => call.getText().includes('local-network-access'));
-    const neverQueriesLegacy = hasGranularQuery && !queriesLegacyName;
+function resolveTargetAddressSpaces(
+  props: Array<PropertyAssignment | ShorthandPropertyAssignment>,
+  allCalls: CallExpression[],
+  sourceFiles: SourceFile[]
+): Set<string> {
+  const configuredSpaces = new Set<string>();
 
-    expect(neverQueriesLegacy).toBe(true);
-  });
+  for (const prop of props) {
+    const init = Node.isPropertyAssignment(prop)
+      ? prop.getInitializer()
+      : prop.getObjectAssignmentInitializer() ?? prop.getNameNode();
+    if (!init) continue;
 
-  test('specifies targetAddressSpace local for local network endpoint requests', () => {
-    const project = getJsProject(targetFiles);
-    const docs = getHtmlDocuments(targetFiles);
-    const propAssignments = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment)
-    );
-    const stringLiterals = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    ).map(s => s.getLiteralValue());
-    const hasLocalInHtml = docs.some(d =>
-      Boolean(d.document.querySelector('option[value="local"], [data-address-space="local"], [value="local"]'))
-    );
-    const hasTargetAddressSpaceProp = propAssignments.some(p => p.getName() === 'targetAddressSpace');
-    const hasLocalTargetAddressSpace = hasTargetAddressSpaceProp && (stringLiterals.includes('local') || hasLocalInHtml);
+    for (const text of collectStringLiteralsFromNode(init)) {
+      configuredSpaces.add(text);
+    }
 
-    expect(hasLocalTargetAddressSpace).toBe(true);
-  });
+    const identNode = Node.isIdentifier(init)
+      ? init
+      : Node.isShorthandPropertyAssignment(prop)
+        ? prop.getNameNode()
+        : undefined;
+    if (identNode && Node.isIdentifier(identNode)) {
+      const identName = identNode.getText();
+      const ancestorFns = prop
+        .getAncestors()
+        .filter(
+          (node) =>
+            Node.isFunctionDeclaration(node) ||
+            Node.isFunctionExpression(node) ||
+            Node.isArrowFunction(node) ||
+            Node.isMethodDeclaration(node)
+        );
 
-  test('specifies targetAddressSpace loopback for loopback endpoint requests', () => {
-    const project = getJsProject(targetFiles);
-    const docs = getHtmlDocuments(targetFiles);
-    const propAssignments = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment)
-    );
-    const stringLiterals = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    ).map(s => s.getLiteralValue());
-    const hasLoopbackInHtml = docs.some(d =>
-      Boolean(d.document.querySelector('option[value="loopback"], [data-address-space="loopback"], [value="loopback"]'))
-    );
-    const hasTargetAddressSpaceProp = propAssignments.some(p => p.getName() === 'targetAddressSpace');
-    const hasLoopbackTargetAddressSpace = hasTargetAddressSpaceProp && (stringLiterals.includes('loopback') || hasLoopbackInHtml);
+      for (const enclosingFn of ancestorFns) {
+        if (
+          !Node.isFunctionDeclaration(enclosingFn) &&
+          !Node.isFunctionExpression(enclosingFn) &&
+          !Node.isArrowFunction(enclosingFn) &&
+          !Node.isMethodDeclaration(enclosingFn)
+        ) {
+          continue;
+        }
 
-    expect(hasLoopbackTargetAddressSpace).toBe(true);
-  });
+        const params = enclosingFn.getParameters();
+        const paramIndex = params.findIndex((param) => param.getName() === identName);
+        if (paramIndex === -1) continue;
 
-  test('provides interactive controls to trigger local and loopback connections on user gesture', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const interactiveElements = docs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('button, [type="submit"], [role="button"], form[data-connection]'))
-    );
-    const hasInteractiveControls = interactiveElements.length > 0 && docs.some(d => {
-      const hasTrigger = Boolean(d.document.querySelector('button, [type="submit"], form[data-connection]'));
-      const hasConnectionContext = Boolean(
-        d.document.querySelector('[data-permission-status], [data-connection], [id*="local"], [id*="loopback"], [id*="connection"]')
-      );
-      return hasTrigger && hasConnectionContext;
-    });
+        const matchedParam = params[paramIndex];
+        const paramInit = matchedParam.getInitializer();
+        if (paramInit) {
+          for (const text of collectStringLiteralsFromNode(paramInit)) {
+            configuredSpaces.add(text);
+          }
+        }
 
-    expect(hasInteractiveControls).toBe(true);
-  });
+        const paramTypeNode = matchedParam.getTypeNode();
+        if (paramTypeNode) {
+          for (const text of collectStringLiteralsFromNode(paramTypeNode)) {
+            configuredSpaces.add(text);
+          }
+          const typeName = paramTypeNode.getText().trim();
+          for (const sf of sourceFiles) {
+            for (const typeAlias of sf.getDescendantsOfKind(SyntaxKind.TypeAliasDeclaration)) {
+              if (typeAlias.getName() === typeName) {
+                for (const text of collectStringLiteralsFromNode(typeAlias)) {
+                  configuredSpaces.add(text);
+                }
+              }
+            }
+          }
+        }
 
-  test('does not fire requests automatically on page load when permission state is prompt', () => {
-    const project = getJsProject(targetFiles);
-    const stringLiterals = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    ).map(s => s.getLiteralValue());
-    const eventListeners = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    ).filter(call => call.getExpression().getText().endsWith('addEventListener'));
-    const hasGestureListener = eventListeners.some(call => {
-      const text = call.getText();
-      return text.includes('"click"') || text.includes("'click'") ||
-             text.includes('"submit"') || text.includes("'submit'");
-    });
-    const hasPermissionStateGating = stringLiterals.includes('prompt') || stringLiterals.includes('granted');
-    const gatedOnUserInteraction = hasGestureListener && hasPermissionStateGating;
+        let fnName: string | undefined;
+        if (Node.isFunctionDeclaration(enclosingFn) || Node.isMethodDeclaration(enclosingFn)) {
+          fnName = enclosingFn.getName();
+        } else {
+          const varDecl = enclosingFn.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+          fnName = varDecl?.getName();
+        }
 
-    expect(gatedOnUserInteraction).toBe(true);
-  });
+        if (fnName) {
+          for (const call of allCalls) {
+            const callExprText = call.getExpression().getText();
+            if (callExprText === fnName || callExprText.endsWith(`.${fnName}`)) {
+              const arg = call.getArguments()[paramIndex];
+              if (arg) {
+                for (const text of collectStringLiteralsFromNode(arg)) {
+                  configuredSpaces.add(text);
+                }
+              }
+            }
+          }
+        }
+      }
 
-  test('provides visible error or remediation feedback elements in the UI', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const hasRemediationElement = docs.some(d =>
-      Boolean(d.document.querySelector('[data-remediation], [data-error], .remediation, [role="alert"], [role="status"], [aria-live]'))
-    );
-    const hasRemediationStyles = rules.some(r =>
-      r instanceof CSSStyleRule && /remediation|error|feedback/i.test(r.selectorText)
-    );
-    const hasVisibleRemediationFeedback = hasRemediationElement || hasRemediationStyles;
+      for (const sf of sourceFiles) {
+        for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+          if (varDecl.getName() === identName) {
+            const varInit = varDecl.getInitializer();
+            if (varInit) {
+              for (const text of collectStringLiteralsFromNode(varInit)) {
+                configuredSpaces.add(text);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
-    expect(hasVisibleRemediationFeedback).toBe(true);
-  });
+  return configuredSpaces;
+}
 
-  test('catches local and loopback request failures without unhandled promise rejections', () => {
-    const project = getJsProject(targetFiles);
-    const fetchCalls = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    ).filter(call => {
-      const exprText = call.getExpression().getText();
-      return exprText === 'fetch' || exprText.endsWith('.fetch');
-    });
-    const hasCatchClause = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CatchClause)
-    ).length > 0;
-    const catchesConnectionFailures = fetchCalls.length > 0 && hasCatchClause;
+interface LnaGraderState {
+  permissionState: 'prompt' | 'granted' | 'denied';
+  fetchMode: 'ok' | 'fail';
+  permissionQueries: string[];
+  fetchCalls: Array<{ url: string; targetAddressSpace: string | null }>;
+  unhandledRejections: number;
+}
 
-    expect(catchesConnectionFailures).toBe(true);
-  });
+async function setupBrowserPage(
+  page: Page,
+  targetUrl: string,
+  options: { permissionState?: 'prompt' | 'granted' | 'denied'; fetchMode?: 'ok' | 'fail' } = {}
+): Promise<void> {
+  const permissionState = options.permissionState ?? 'prompt';
+  const fetchMode = options.fetchMode ?? 'ok';
 
-  test('delegates local-network or loopback-network permissions on embedded iframes', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const iframes = docs.flatMap(d => Array.from<any>(d.document.querySelectorAll('iframe')));
-    const hasNetworkFeatures = docs.some(d =>
-      Boolean(d.document.querySelector('[data-permission-status], [data-remediation], [data-connection], [id*="local"], [id*="loopback"], [id*="connection"]'))
-    );
-    const delegatesIframePermissions = hasNetworkFeatures &&
-      iframes.every(iframe => {
-        const allow = (iframe as any).getAttribute?.('allow') || '';
-        return allow.includes('local-network') || allow.includes('loopback-network');
+  await page.addInitScript(
+    ({ initialPermState, initialFetchMode }) => {
+      const state: LnaGraderState = {
+        permissionState: initialPermState,
+        fetchMode: initialFetchMode,
+        permissionQueries: [],
+        fetchCalls: [],
+        unhandledRejections: 0,
+      };
+      (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader = state;
+
+      window.addEventListener('unhandledrejection', () => {
+        state.unhandledRejections += 1;
       });
 
-    expect(delegatesIframePermissions).toBe(true);
+      const queryPermission = async (descriptor: { name?: string }) => {
+        const name = descriptor && typeof descriptor.name === 'string' ? descriptor.name : '';
+        state.permissionQueries.push(name);
+        if (name !== 'local-network' && name !== 'loopback-network') {
+          throw new TypeError(`Unrecognized permission name: ${name}`);
+        }
+        return {
+          name,
+          state: state.permissionState,
+          onchange: null,
+          addEventListener() {},
+          removeEventListener() {},
+          dispatchEvent() {
+            return true;
+          },
+        };
+      };
+
+      if (navigator.permissions) {
+        try {
+          navigator.permissions.query = queryPermission as typeof navigator.permissions.query;
+        } catch {
+          Object.defineProperty(navigator, 'permissions', {
+            configurable: true,
+            value: { query: queryPermission },
+          });
+        }
+      } else {
+        Object.defineProperty(navigator, 'permissions', {
+          configurable: true,
+          value: { query: queryPermission },
+        });
+      }
+
+      const OriginalRequest = window.Request;
+      class TrackedRequest extends OriginalRequest {
+        __targetAddressSpace?: string;
+        constructor(input: RequestInfo | URL, init?: RequestInit & { targetAddressSpace?: string }) {
+          super(input, init);
+          if (init && typeof init === 'object' && 'targetAddressSpace' in init && init.targetAddressSpace) {
+            this.__targetAddressSpace = init.targetAddressSpace;
+          }
+        }
+      }
+      window.Request = TrackedRequest;
+
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (
+        input: RequestInfo | URL,
+        init?: RequestInit & { targetAddressSpace?: string }
+      ): Promise<Response> => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input && typeof input.url === 'string'
+                ? input.url
+                : String(input);
+
+        const reqInput = input as TrackedRequest & { targetAddressSpace?: string };
+        const targetAddressSpace =
+          (init && typeof init === 'object' ? init.targetAddressSpace : undefined) ??
+          (reqInput && typeof reqInput === 'object'
+            ? reqInput.__targetAddressSpace ?? reqInput.targetAddressSpace
+            : undefined) ??
+          null;
+
+        state.fetchCalls.push({ url, targetAddressSpace });
+
+        if (url && !url.startsWith(window.location.origin)) {
+          if (state.fetchMode === 'fail') {
+            throw new TypeError('Failed to fetch');
+          }
+          return new Response(JSON.stringify({ status: 'ok', ready: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        return originalFetch(input, init);
+      };
+    },
+    { initialPermState: permissionState, initialFetchMode: fetchMode }
+  );
+
+  const httpsUrl = targetUrl.replace(/^http:/, 'https:');
+  const httpsOrigin = new URL(httpsUrl).origin;
+  const httpOrigin = new URL(targetUrl).origin;
+
+  await page.route('https://images.unsplash.com/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/jpeg', body: '' })
+  );
+
+  await page.route(`${httpsOrigin}/**`, async (route) => {
+    const reqUrl = route.request().url();
+    const mappedHttpUrl = reqUrl.replace(httpsOrigin, httpOrigin);
+    const res = await fetch(mappedHttpUrl);
+    const body = Buffer.from(await res.arrayBuffer());
+    const headers: Record<string, string> = {};
+    res.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    await route.fulfill({
+      status: res.status,
+      headers,
+      body,
+    });
+  });
+
+  await page.goto(httpsUrl);
+}
+
+test.describe('local-network-access Target Grader', () => {
+  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+
+  test('queries granular local-network or loopback-network permissions via navigator.permissions.query() with fallback error handling', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+    const permissionQueryCalls = getPermissionQueryCalls(sourceFiles);
+    expect(permissionQueryCalls.length).toBeGreaterThan(0);
+
+    const stringLiterals = getAllStringLiteralValues(sourceFiles);
+    const queriesGranularPermission =
+      stringLiterals.includes('local-network') || stringLiterals.includes('loopback-network');
+    const allCallsHaveFallbackErrorHandling = permissionQueryCalls.every((call) =>
+      isCallProtectedByErrorHandling(call)
+    );
+
+    expect(queriesGranularPermission && allCallsHaveFallbackErrorHandling).toBe(true);
+  });
+
+  test('never queries the legacy local-network-access permission name via navigator.permissions.query()', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+    const permissionQueryCalls = getPermissionQueryCalls(sourceFiles);
+    expect(permissionQueryCalls.length).toBeGreaterThan(0);
+
+    const stringLiterals = getAllStringLiteralValues(sourceFiles);
+    expect(stringLiterals.includes('local-network-access')).toBe(false);
+  });
+
+  test('specifies targetAddressSpace local for local network endpoints and loopback for loopback endpoints in fetch() or Request options', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = project.getSourceFiles();
+
+    const allCalls: CallExpression[] = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+    );
+    const allNews: NewExpression[] = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.NewExpression)
+    );
+
+    const hasFetchOrRequest =
+      allCalls.some((c) => /\bfetch$/.test(c.getExpression().getText())) ||
+      allNews.some((n) => /\bRequest$/.test(n.getExpression().getText()));
+    expect(hasFetchOrRequest).toBe(true);
+
+    const targetAddressSpaceProps: Array<PropertyAssignment | ShorthandPropertyAssignment> =
+      sourceFiles.flatMap((sf) => [
+        ...sf
+          .getDescendantsOfKind(SyntaxKind.PropertyAssignment)
+          .filter((prop) => prop.getName().replace(/['"`]/g, '') === 'targetAddressSpace'),
+        ...sf
+          .getDescendantsOfKind(SyntaxKind.ShorthandPropertyAssignment)
+          .filter((prop) => prop.getName() === 'targetAddressSpace'),
+      ]);
+    expect(targetAddressSpaceProps.length).toBeGreaterThan(0);
+
+    const configuredSpaces = resolveTargetAddressSpaces(
+      targetAddressSpaceProps,
+      allCalls,
+      sourceFiles
+    );
+    expect(configuredSpaces.has('local') && configuredSpaces.has('loopback')).toBe(true);
+  });
+
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
+
+  const SPECIFIC_CONNECT_BTN_RE =
+    /connect.*(brewer|brewing|companion|helper|utility|local|loopback|device)|brewer|brewing|companion|helper|utility/i;
+  const GENERIC_CONNECT_BTN_RE =
+    /connect|pair|test|check|ping|status|sync|discover|scan/i;
+
+  async function findConnectButton(page: Page) {
+    const specific = page.getByRole('button', { name: SPECIFIC_CONNECT_BTN_RE });
+    if ((await specific.count()) > 0) {
+      return specific.first();
+    }
+    const generic = page.getByRole('button', { name: GENERIC_CONNECT_BTN_RE });
+    if ((await generic.count()) > 0) {
+      return generic.first();
+    }
+    return page.locator('button').first();
+  }
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await setupBrowserPage(page, TARGET_URL, { permissionState: 'prompt', fetchMode: 'ok' });
+    });
+
+    test('does not fire local network or loopback requests automatically on page load when permission state is prompt and triggers them on explicit user interaction', async ({
+      page,
+    }) => {
+      const connectButton = await findConnectButton(page);
+      await expect(connectButton).toBeEnabled();
+
+      const initialFetchCalls = await page.evaluate(
+        () => (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader.fetchCalls.length
+      );
+      expect(initialFetchCalls).toBe(0);
+
+      await connectButton.click();
+
+      await expect
+        .poll(async () =>
+          page.evaluate(
+            () =>
+              (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader.fetchCalls.length
+          )
+        )
+        .toBeGreaterThan(0);
+    });
+
+    test('catches failed or denied local network or loopback requests without unhandled promise rejections and reveals visible error or remediation feedback in the UI', async ({
+      page,
+    }) => {
+      const pageErrors: string[] = [];
+      page.on('pageerror', (err) => {
+        pageErrors.push(err.message || String(err));
+      });
+
+      const connectButton = await findConnectButton(page);
+      await expect(connectButton).toBeEnabled();
+
+      const beforeBodyText = await page.locator('body').innerText();
+
+      await page.evaluate(() => {
+        (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader.fetchMode = 'fail';
+      });
+
+      await connectButton.click();
+
+      const ERROR_OR_REMEDIATION_RE =
+        /error|fail|couldn'?t|can'?t|could not|unable|denied|blocked|offline|unreachable|troubleshoot|check|ensure|make sure|verify|power|powered on|same (wi-?fi|network)|wi-?fi|permission/i;
+
+      await expect
+        .poll(async () => {
+          const state = await page.evaluate(
+            () => (window as unknown as { __lnaGrader: LnaGraderState }).__lnaGrader
+          );
+          const afterBodyText = await page.locator('body').innerText();
+          const bodyChanged = afterBodyText.trim() !== beforeBodyText.trim();
+          const hasErrorFeedback =
+            bodyChanged && ERROR_OR_REMEDIATION_RE.test(afterBodyText);
+          return (
+            state.fetchCalls.length > 0 &&
+            state.unhandledRejections === 0 &&
+            pageErrors.length === 0 &&
+            hasErrorFeedback
+          );
+        })
+        .toBe(true);
+    });
   });
 });

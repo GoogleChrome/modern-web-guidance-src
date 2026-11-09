@@ -87,7 +87,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 #### The full list
 
 <details>
-<summary><strong>241 modern web features</strong></summary>
+<summary><strong>245 modern web features</strong></summary>
 
 ### CSS & Layout (136 features)
 
@@ -157,38 +157,40 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 | [&lt;link rel="preload">](https://web-platform-dx.github.io/web-features-explorer/features/link-rel-preload/) | [hidden="until-found"](https://web-platform-dx.github.io/web-features-explorer/features/hidden-until-found/) | [popover="hint"](https://web-platform-dx.github.io/web-features-explorer/features/popover-hint/) |
 | [&lt;progress>](https://web-platform-dx.github.io/web-features-explorer/features/progress/) | [HTML setter methods](https://web-platform-dx.github.io/web-features-explorer/features/html-setters/) | [Shadow DOM](https://web-platform-dx.github.io/web-features-explorer/features/shadow-dom/) |
 
-### JavaScript & APIs (69 features)
+### JavaScript & APIs (73 features)
 
 | | | |
 | :--- | :--- | :--- |
-| [&lt;meta name="text-scale">](https://web-platform-dx.github.io/web-features-explorer/features/meta-text-scale/) | [Interaction contentful paint performance entries](https://web-platform-dx.github.io/web-features-explorer/features/interaction-contentful-paint/) | [Sanitizer API](https://web-platform-dx.github.io/web-features-explorer/features/sanitizer/) |
-| [&lt;template for>](https://web-platform-dx.github.io/web-features-explorer/features/template-for/) | [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
-| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Small, large, and dynamic viewport units](https://web-platform-dx.github.io/web-features-explorer/features/viewport-unit-variants/) |
-| [ARIA attribute reflection](https://web-platform-dx.github.io/web-features-explorer/features/aria-attribute-reflection/) | [Keyboard events](https://web-platform-dx.github.io/web-features-explorer/features/keyboard-events/) | [Soft navigation performance entries](https://web-platform-dx.github.io/web-features-explorer/features/soft-navigations/) |
-| [Async clipboard](https://web-platform-dx.github.io/web-features-explorer/features/async-clipboard/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
-| [autocorrect](https://web-platform-dx.github.io/web-features-explorer/features/autocorrect/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Subresource integrity](https://web-platform-dx.github.io/web-features-explorer/features/subresource-integrity/) |
-| [border-shape](https://web-platform-dx.github.io/web-features-explorer/features/border-shape/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
-| [Connection allowlists](https://web-platform-dx.github.io/web-features-explorer/features/connection-allowlists/) | [light-dark() image values](https://web-platform-dx.github.io/web-features-explorer/features/light-dark-image/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
-| [corner-shape](https://web-platform-dx.github.io/web-features-explorer/features/corner-shape/) | [Local network access](https://web-platform-dx.github.io/web-features-explorer/features/local-network-access/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
-| [Credential management](https://web-platform-dx.github.io/web-features-explorer/features/credential-management/) | [Long animation frames performance entries](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [text-decoration-inset](https://web-platform-dx.github.io/web-features-explorer/features/tmp-text-decoration-inset/) |
-| [cross-origin() for url()](https://web-platform-dx.github.io/web-features-explorer/features/url-cross-origin/) | [long-animation-frames-style-layout](https://web-platform-dx.github.io/web-features-explorer/features/tmp-long-animation-frames-style-layout/) | [text-fit](https://web-platform-dx.github.io/web-features-explorer/features/text-fit/) |
-| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
-| [email-verification](https://web-platform-dx.github.io/web-features-explorer/features/tmp-email-verification/) | [Origin](https://web-platform-dx.github.io/web-features-explorer/features/origin/) | [touch-action](https://web-platform-dx.github.io/web-features-explorer/features/touch-action/) |
-| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
-| [Event timing performance entries](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Page visibility state performance entries](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Trusted types](https://web-platform-dx.github.io/web-features-explorer/features/trusted-types/) |
-| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
-| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Password credentials](https://web-platform-dx.github.io/web-features-explorer/features/password-credentials/) | [Web app origin migration](https://web-platform-dx.github.io/web-features-explorer/features/app-migration/) |
-| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
-| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Pointer Events](https://web-platform-dx.github.io/web-features-explorer/features/pointer-events-api/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
-| [HTML processing instructions](https://web-platform-dx.github.io/web-features-explorer/features/html-processing-instructions/) | [Referrer policy](https://web-platform-dx.github.io/web-features-explorer/features/referrer-policy/) | [Web Cryptography](https://web-platform-dx.github.io/web-features-explorer/features/web-cryptography/) |
-| [image()](https://web-platform-dx.github.io/web-features-explorer/features/image-function/) | [referrer-policy() for url()](https://web-platform-dx.github.io/web-features-explorer/features/url-referrer-policy/) | [WebAssembly](https://web-platform-dx.github.io/web-features-explorer/features/wasm/) |
-| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [webcrypto-modern-algos](https://web-platform-dx.github.io/web-features-explorer/features/tmp-webcrypto-modern-algos/) |
-| [integrity() for url()](https://web-platform-dx.github.io/web-features-explorer/features/url-integrity/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) | [WebOTP](https://web-platform-dx.github.io/web-features-explorer/features/web-otp/) |
+| [&lt;install>](https://web-platform-dx.github.io/web-features-explorer/features/install/) | [Interaction contentful paint performance entries](https://web-platform-dx.github.io/web-features-explorer/features/interaction-contentful-paint/) | [Scheduler API](https://web-platform-dx.github.io/web-features-explorer/features/scheduler/) |
+| [&lt;meta name="text-scale">](https://web-platform-dx.github.io/web-features-explorer/features/meta-text-scale/) | [Intersection observer](https://web-platform-dx.github.io/web-features-explorer/features/intersection-observer/) | [Small, large, and dynamic viewport units](https://web-platform-dx.github.io/web-features-explorer/features/viewport-unit-variants/) |
+| [&lt;template for>](https://web-platform-dx.github.io/web-features-explorer/features/template-for/) | [Intl.DurationFormat](https://web-platform-dx.github.io/web-features-explorer/features/intl-duration-format/) | [Soft navigation performance entries](https://web-platform-dx.github.io/web-features-explorer/features/soft-navigations/) |
+| [AbortController and AbortSignal](https://web-platform-dx.github.io/web-features-explorer/features/aborting/) | [Keyboard events](https://web-platform-dx.github.io/web-features-explorer/features/keyboard-events/) | [Speculation rules](https://web-platform-dx.github.io/web-features-explorer/features/speculation-rules/) |
+| [ARIA attribute reflection](https://web-platform-dx.github.io/web-features-explorer/features/aria-attribute-reflection/) | [Language detector](https://web-platform-dx.github.io/web-features-explorer/features/languagedetector/) | [Subresource integrity](https://web-platform-dx.github.io/web-features-explorer/features/subresource-integrity/) |
+| [Async clipboard](https://web-platform-dx.github.io/web-features-explorer/features/async-clipboard/) | [LanguageModel](https://web-platform-dx.github.io/web-features-explorer/features/languagemodel/) | [Summarizer](https://web-platform-dx.github.io/web-features-explorer/features/summarizer/) |
+| [autocorrect](https://web-platform-dx.github.io/web-features-explorer/features/autocorrect/) | [Lazy-loading images and iframes](https://web-platform-dx.github.io/web-features-explorer/features/loading-lazy/) | [SVG](https://web-platform-dx.github.io/web-features-explorer/features/svg/) |
+| [beforeinstallprompt](https://web-platform-dx.github.io/web-features-explorer/features/beforeinstallprompt/) | [light-dark() image values](https://web-platform-dx.github.io/web-features-explorer/features/light-dark-image/) | [Temporal](https://web-platform-dx.github.io/web-features-explorer/features/temporal/) |
+| [border-shape](https://web-platform-dx.github.io/web-features-explorer/features/border-shape/) | [Local network access](https://web-platform-dx.github.io/web-features-explorer/features/local-network-access/) | [text-decoration-inset](https://web-platform-dx.github.io/web-features-explorer/features/tmp-text-decoration-inset/) |
+| [Connection allowlists](https://web-platform-dx.github.io/web-features-explorer/features/connection-allowlists/) | [Long animation frames performance entries](https://web-platform-dx.github.io/web-features-explorer/features/long-animation-frames/) | [text-fit](https://web-platform-dx.github.io/web-features-explorer/features/text-fit/) |
+| [corner-shape](https://web-platform-dx.github.io/web-features-explorer/features/corner-shape/) | [long-animation-frames-style-layout](https://web-platform-dx.github.io/web-features-explorer/features/tmp-long-animation-frames-style-layout/) | [Top-level await](https://web-platform-dx.github.io/web-features-explorer/features/top-level-await/) |
+| [Credential management](https://web-platform-dx.github.io/web-features-explorer/features/credential-management/) | [Navigation API](https://web-platform-dx.github.io/web-features-explorer/features/navigation/) | [touch-action](https://web-platform-dx.github.io/web-features-explorer/features/touch-action/) |
+| [cross-origin() for url()](https://web-platform-dx.github.io/web-features-explorer/features/url-cross-origin/) | [navigator.install()](https://web-platform-dx.github.io/web-features-explorer/features/navigator-install/) | [Translator](https://web-platform-dx.github.io/web-features-explorer/features/translator/) |
+| [document.modelContext](https://web-platform-dx.github.io/web-features-explorer/features/document-modelcontext/) | [Origin](https://web-platform-dx.github.io/web-features-explorer/features/origin/) | [Trusted types](https://web-platform-dx.github.io/web-features-explorer/features/trusted-types/) |
+| [email-verification](https://web-platform-dx.github.io/web-features-explorer/features/tmp-email-verification/) | [Page visibility](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility/) | [User agent client hints](https://web-platform-dx.github.io/web-features-explorer/features/ua-client-hints/) |
+| [enterkeyhint](https://web-platform-dx.github.io/web-features-explorer/features/enterkeyhint/) | [Page visibility state performance entries](https://web-platform-dx.github.io/web-features-explorer/features/page-visibility-state/) | [Web app manifest](https://web-platform-dx.github.io/web-features-explorer/features/manifest/) |
+| [Event timing performance entries](https://web-platform-dx.github.io/web-features-explorer/features/event-timing/) | [Partitioned cookies](https://web-platform-dx.github.io/web-features-explorer/features/partitioned-cookies/) | [Web app origin migration](https://web-platform-dx.github.io/web-features-explorer/features/app-migration/) |
+| [Federated credential management](https://web-platform-dx.github.io/web-features-explorer/features/fedcm/) | [Password credentials](https://web-platform-dx.github.io/web-features-explorer/features/password-credentials/) | [Web authentication](https://web-platform-dx.github.io/web-features-explorer/features/webauthn/) |
+| [Fetch](https://web-platform-dx.github.io/web-features-explorer/features/fetch/) | [Permissions policy](https://web-platform-dx.github.io/web-features-explorer/features/permissions-policy/) | [Web authentication signal methods](https://web-platform-dx.github.io/web-features-explorer/features/webauthn-signals/) |
+| [fetchLater](https://web-platform-dx.github.io/web-features-explorer/features/fetchlater/) | [Pointer Events](https://web-platform-dx.github.io/web-features-explorer/features/pointer-events-api/) | [Web Cryptography](https://web-platform-dx.github.io/web-features-explorer/features/web-cryptography/) |
+| [Form-associated WebMCP attributes](https://web-platform-dx.github.io/web-features-explorer/features/declarative-webmcp/) | [Referrer policy](https://web-platform-dx.github.io/web-features-explorer/features/referrer-policy/) | [WebAssembly](https://web-platform-dx.github.io/web-features-explorer/features/wasm/) |
+| [HTML processing instructions](https://web-platform-dx.github.io/web-features-explorer/features/html-processing-instructions/) | [referrer-policy() for url()](https://web-platform-dx.github.io/web-features-explorer/features/url-referrer-policy/) | [webcrypto-modern-algos](https://web-platform-dx.github.io/web-features-explorer/features/tmp-webcrypto-modern-algos/) |
+| [image()](https://web-platform-dx.github.io/web-features-explorer/features/image-function/) | [Registered custom properties](https://web-platform-dx.github.io/web-features-explorer/features/registered-custom-properties/) | [WebOTP](https://web-platform-dx.github.io/web-features-explorer/features/web-otp/) |
+| [inputmode](https://web-platform-dx.github.io/web-features-explorer/features/inputmode/) | [Resize observer](https://web-platform-dx.github.io/web-features-explorer/features/resize-observer/) |  |
+| [integrity() for url()](https://web-platform-dx.github.io/web-features-explorer/features/url-integrity/) | [Sanitizer API](https://web-platform-dx.github.io/web-features-explorer/features/sanitizer/) |  |
 
 </details>
 
 <details>
-<summary><strong>194 real-world developer use cases</strong></summary>
+<summary><strong>197 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -297,6 +299,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 
 <h3>pwa</h3>
 
+- **[install-web-app](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/pwa/install-web-app.md)**: Install web applications from a page using browser-controlled consent UI.
 - **[migrate-web-app-origin](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/pwa/migrate-web-app-origin.md)**: Transfer an installed web app to a new origin while preserving user configuration and OS-level shortcuts.
 
 <h3>security</h3>
@@ -328,7 +331,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[responsive-table](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/responsive-table.md)**: Build a data table that presents tabular data with proper header semantics, and remains readable and navigable on small screens and with assistive technologies.
 - **[scroll-position-aware-elements](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/scroll-position-aware-elements.md)**: Build floating buttons or widgets (back-to-top, scroll-to-bottom, chat launchers, etc.) that appear and disappear based on whether the user has scrolled at all.
 - **[scroll-progress-indicator](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/scroll-progress-indicator.md)**: Create a scroll progress bar, stepped progress tracker, or any visual affordance that communicates how far through a page or section the user has scrolled.
-- **[scrollability-affordance-hints](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/scrollability-affordance-hints.md)**: Build scroll-shadow overlays, gradient fades, or directional arrow indicators that appear only when there's actually more content to scroll to in that direction.
+- **[scrollability-affordance-hints](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/scrollability-affordance-hints.md)**: Build scroll shadows or fading edges that appear only when there's actually more content to scroll to in that direction.
 - **[shrinking-header-on-scroll](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/shrinking-header-on-scroll.md)**: Smoothly animate a fixed header or full-page cover on scroll to dynamically shrink, gain shadows, and transform its layout over a predefined scroll distance.
 - **[state-aware-sticky-headers](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/state-aware-sticky-headers.md)**: Build sticky section headers or navbars that visually transform when they're actually "stuck" at the top, changing their color scheme or gaining a shadow.
 - **[viewport-aware-dropdowns](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-atoms/viewport-aware-dropdowns.md)**: Position dropdowns, flyouts, or contextual action panels tethered to a trigger button so they automatically flip axes at viewport edges instead of getting clipped.
@@ -384,6 +387,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[dialog](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/dialog.md)**: Build a modal or non-modal dialog component that is accessible, manages focus appropriately, and can be dismissed the way users expect on each platform.
 - **[hovercard](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/hovercard.md)**: Build a hovercard component that displays an interactive structured preview of the page a certain type of link (e.g. a user profile) will navigate to when hovered over.
 - **[menu](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/menu.md)**: Build a menu component that displays a list of options or actions, with support for nested submenus.
+- **[navbar](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/navbar.md)**: Build a site navigation bar that adapts across screen sizes and indicates the current page.
 - **[navigation-drawer](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/navigation-drawer.md)**: Create a navigation drawer component that, when triggered from a menu button, slides in from the side overlaid on top of existing page content, and slides out when dismissed (by swiping away, tapping outside, or pressing escape).
 - **[persistent-app-tours](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/persistent-app-tours.md)**: Create persistent onboarding walkthroughs using tethered native overlays that stay open during user interaction.
 - **[persistent-toast-notifications](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/persistent-toast-notifications.md)**: Create non-intrusive toast and overlay notifications for persistent, stackable messaging and state communication.
@@ -392,6 +396,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[scrollspy](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/scrollspy.md)**: Highlight the currently visible section of a page in a navigation menu
 - **[spinner](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/spinner.md)**: Build a loading spinner that communicates busy state to all users, respects reduced-motion preferences, and animates efficiently.
 - **[stack-drill-down](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/stack-drill-down.md)**: Build full-screen hierarchical navigation that lets users drill down into nested views and swipe or navigate back to return, with browser history kept in sync.
+- **[tabs](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/tabs.md)**: Build a responsive tabbed interface with good UX when not all tabs fit on screen.
 - **[toolbar](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/toolbar.md)**: Build a toolbar component that displays a set of controls for performing actions.
 
 <h3>user-experience</h3>
@@ -561,6 +566,8 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
+| Nov 8 | codex_cli (gpt-6.1-sol) | 215 / 1795 | 54% → 82% (**+28pp**) |
+| Nov 8 | claude_code (opus-5-5) | 215 / 1801 | 57% → 88% (**+31pp**) |
 | Nov 6 | codex_cli (gpt-6.1-sol) | 212 / 1773 | 53% → 86% (**+33pp**) |
 | Nov 6 | claude_code (opus-5-5) | 212 / 1773 | 56% → 90% (**+34pp**) |
 | Nov 6 | antigravity_cli (gemini-4-argon) | 212 / 1722 | 60% → 96% (**+36pp**) |
@@ -569,8 +576,6 @@ We developed a robust eval harness to ensure that the content is **empirically p
 | Nov 4 | antigravity_cli (gemini-4-argon) | 207 / 1722 | 60% → 96% (**+36pp**) |
 | Nov 2 | codex_cli (gpt-6.1-sol) | 205 / 1729 | 55% → 82% (**+27pp**) |
 | Nov 2 | claude_code (opus-5-5) | 205 / 1729 | 58% → 90% (**+32pp**) |
-| Nov 1 | antigravity_cli (gemini-4-argon) | 205 / 1705 | 61% → 96% (**+35pp**) |
-| Oct 30 | codex_cli (gpt-6.1-sol) | 204 / 1721 | 55% → 84% (**+29pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 

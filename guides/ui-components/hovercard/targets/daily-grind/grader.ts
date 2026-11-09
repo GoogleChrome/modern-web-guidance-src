@@ -6,122 +6,166 @@ import {
   getRules,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
-  CSSStyleRule,
   CSSMediaRule,
   CSSStartingStyleRule,
+  type CSSRule,
+  type CSSStyleDeclaration,
 } from 'cssomnom';
 import type { Document } from 'linkedom';
 
-// @ts-ignore - package.json omits "type": "module", causing nodenext to infer CJS
+// @ts-ignore - package.json in target lacks "type": "module" under moduleResolution nodenext
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function ruleHasDiscreteDisplayAndOverlayTransition(rule: CSSStyleRule): boolean {
-  const transition = rule.style.getPropertyValue('transition');
-  const transitionProp = rule.style.getPropertyValue('transition-property');
-  const transitionBehavior = rule.style.getPropertyValue('transition-behavior');
-  const combinedProps = `${transition} ${transitionProp}`;
+function getRuleStyle(rule: CSSRule): CSSStyleDeclaration | null {
+  if ('style' in rule && rule.style) {
+    return rule.style as CSSStyleDeclaration;
+  }
+  return null;
+}
 
-  const hasDisplay = /\b(display|all)\b/.test(combinedProps);
-  const hasOverlay = /\b(overlay|all)\b/.test(combinedProps);
+function hasTransitionWithDiscreteOverlayAndDisplay(style: CSSStyleDeclaration): boolean {
+  const transition = style.getPropertyValue('transition').toLowerCase();
+  const transitionProperty = style.getPropertyValue('transition-property').toLowerCase();
+  const transitionBehavior = style.getPropertyValue('transition-behavior').toLowerCase();
+
+  const propsText = `${transition} ${transitionProperty}`;
+  const hasDisplay = /\b(display|all)\b/.test(propsText);
+  const hasOverlay = /\b(overlay|all)\b/.test(propsText);
   const hasAllowDiscrete =
     /\ballow-discrete\b/.test(transitionBehavior) || /\ballow-discrete\b/.test(transition);
 
   return hasDisplay && hasOverlay && hasAllowDiscrete;
 }
 
-function ruleHasAnimatedOpacityOrTransformTransition(rule: CSSStyleRule): boolean {
-  const transition = rule.style.getPropertyValue('transition');
-  const transitionProp = rule.style.getPropertyValue('transition-property');
-  const transitionDuration = rule.style.getPropertyValue('transition-duration');
-  const combinedProps = `${transition} ${transitionProp}`;
-
-  const transitionsOpacityOrTransform = /\b(opacity|transform|all)\b/.test(combinedProps);
-  if (!transitionsOpacityOrTransform) return false;
-
-  if (/\bnone\b/.test(transitionProp) || /\bnone\b/.test(transition)) return false;
-  if (/^0(s|ms)?$/.test(transitionDuration.trim())) return false;
-
-  return true;
-}
-
 test.describe('hovercard Target Grader', () => {
-  test('Trigger links use interestfor to open their associated popover on hover and focus', () => {
+  test('The popover uses position-area to position itself relative to the trigger link.', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const hasAssociatedInterestPopover = docs.some(({ document }) => {
-      const triggers = Array.from(document.querySelectorAll('a[interestfor]'));
-      return (
-        triggers.length > 0 &&
-        triggers.every((trigger) => {
-          const targetId = trigger.getAttribute('interestfor')?.trim();
-          if (!targetId) return false;
-          const targetEl = document.getElementById(targetId);
-          return Boolean(targetEl && targetEl.hasAttribute('popover'));
-        })
-      );
-    });
-    expect(hasAssociatedInterestPopover).toBe(true);
-  });
+    const popovers = docs.flatMap((d) => Array.from(d.document.querySelectorAll('[popover]')));
+    expect(popovers.length).toBeGreaterThan(0);
 
-  test('The popover uses position-area (or inset-area) to position itself relative to the trigger link', () => {
-    const styleRules = getRules(targetFiles, CSSStyleRule);
-    const hasPositionArea = styleRules.some((rule) => {
-      const posArea =
-        rule.style.getPropertyValue('position-area').trim() ||
-        rule.style.getPropertyValue('inset-area').trim();
-      return posArea.length > 0 && posArea !== 'none';
+    const allRules = getRules(targetFiles);
+
+    const hasPositionArea = allRules.some((rule) => {
+      const style = getRuleStyle(rule);
+      if (!style) return false;
+      const posArea = style.getPropertyValue('position-area').trim();
+      const insetArea = style.getPropertyValue('inset-area').trim();
+      return posArea.length > 0 || insetArea.length > 0;
     });
+
     expect(hasPositionArea).toBe(true);
   });
 
-  test('The popover has a transition that includes display: allow-discrete and overlay: allow-discrete', () => {
-    const styleRules = getRules(targetFiles, CSSStyleRule);
-    const hasDiscreteTransition = styleRules.some((rule) =>
-      ruleHasDiscreteDisplayAndOverlayTransition(rule),
-    );
+  test('The popover has a transition that includes display: allow-discrete and overlay: allow-discrete.', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const popovers = docs.flatMap((d) => Array.from(d.document.querySelectorAll('[popover]')));
+    expect(popovers.length).toBeGreaterThan(0);
+
+    const allRules = getRules(targetFiles);
+
+    const hasDiscreteTransition = allRules.some((rule) => {
+      const style = getRuleStyle(rule);
+      if (!style) return false;
+      return hasTransitionWithDiscreteOverlayAndDisplay(style);
+    });
+
     expect(hasDiscreteTransition).toBe(true);
   });
 
-  test('The popover has a @starting-style block that defines its initial state for entry animations', () => {
+  test('The popover has a @starting-style block that defines its initial state for entry animations (e.g. opacity: 0).', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const popovers = docs.flatMap((d) => Array.from(d.document.querySelectorAll('[popover]')));
+    expect(popovers.length).toBeGreaterThan(0);
+
     const startingStyleRules = getRules(targetFiles, CSSStartingStyleRule);
-    const hasStartingStyleState = startingStyleRules.some((startingRule) => {
-      const innerStyleRules = getRules(startingRule, CSSStyleRule);
-      return innerStyleRules.some(
-        (rule) =>
-          rule.style.getPropertyValue('opacity').trim().length > 0 ||
-          rule.style.getPropertyValue('transform').trim().length > 0 ||
-          rule.style.getPropertyValue('scale').trim().length > 0 ||
-          rule.style.getPropertyValue('translate').trim().length > 0,
-      );
+    expect(startingStyleRules.length).toBeGreaterThan(0);
+
+    const hasStartingDeclarations = startingStyleRules.some((startingRule) => {
+      const innerRules = getRules(startingRule);
+      return innerRules.some((r) => {
+        const style = getRuleStyle(r);
+        if (!style) return false;
+        return (
+          style.getPropertyValue('opacity').trim().length > 0 ||
+          style.getPropertyValue('transform').trim().length > 0 ||
+          style.getPropertyValue('scale').trim().length > 0 ||
+          style.getPropertyValue('translate').trim().length > 0
+        );
+      });
     });
-    expect(hasStartingStyleState).toBe(true);
+
+    expect(hasStartingDeclarations).toBe(true);
   });
 
-  test('If prefers-reduced-motion: reduce is active, the popover opens without a transform or opacity transition', () => {
-    const mediaRules = getRules(targetFiles, CSSMediaRule);
+  test('If prefers-reduced-motion: reduce is active, the popover opens without a transform or opacity transition.', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const popovers = docs.flatMap((d) => Array.from(d.document.querySelectorAll('[popover]')));
+    expect(popovers.length).toBeGreaterThan(0);
 
-    const gatedByNoPreference = mediaRules.some(
-      (media) =>
-        /\bprefers-reduced-motion\s*:\s*no-preference\b/i.test(media.conditionText) &&
-        getRules(media, CSSStyleRule).some((rule) =>
-          ruleHasAnimatedOpacityOrTransformTransition(rule),
-        ),
+    const mediaRules = getRules(targetFiles, CSSMediaRule).filter((rule) =>
+      rule.conditionText.includes('prefers-reduced-motion')
     );
+    expect(mediaRules.length).toBeGreaterThan(0);
 
-    const disabledInReduce = mediaRules.some(
-      (media) =>
-        /\bprefers-reduced-motion\s*:\s*reduce\b/i.test(media.conditionText) &&
-        getRules(media, CSSStyleRule).some((rule) => {
-          const transition = rule.style.getPropertyValue('transition');
-          const transitionProp = rule.style.getPropertyValue('transition-property');
-          const transitionDuration = rule.style.getPropertyValue('transition-duration');
+    const gatesMotionProperly = mediaRules.some((mediaRule) => {
+      const condition = mediaRule.conditionText.toLowerCase();
+      const innerRules = getRules(mediaRule);
+
+      if (condition.includes('no-preference')) {
+        return innerRules.some((r) => {
+          const style = getRuleStyle(r);
+          if (!style) return false;
+          const trans = `${style.getPropertyValue('transition')} ${style.getPropertyValue('transition-property')} ${style.getPropertyValue('transition-duration')}`.toLowerCase();
+          return /\b(opacity|transform|translate|scale|all)\b/.test(trans) && /[1-9]/.test(trans);
+        });
+      }
+
+      if (condition.includes('reduce')) {
+        return innerRules.some((r) => {
+          const style = getRuleStyle(r);
+          if (!style) return false;
+          const trans = style.getPropertyValue('transition').toLowerCase();
+          const dur = style.getPropertyValue('transition-duration').toLowerCase();
+          const prop = style.getPropertyValue('transition-property').toLowerCase();
           return (
-            /\bnone\b/.test(transition) ||
-            /\bnone\b/.test(transitionProp) ||
-            /^0(s|ms)?$/.test(transitionDuration.trim())
+            trans.includes('none') ||
+            prop.includes('none') ||
+            /^0(s|ms)?(\s*,\s*0(s|ms)?)*$/.test(dur.trim())
           );
-        }),
-    );
+        });
+      }
 
-    expect(gatedByNoPreference || disabledInReduce).toBe(true);
+      return false;
+    });
+
+    expect(gatesMotionProperly).toBe(true);
+  });
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
+
+    test('Hovering over the link opens its associated popover.', async ({ page }) => {
+      const trigger = page.locator('a[interestfor], .card a[href]').first();
+      await expect(trigger).toBeVisible();
+      await expect(page.locator('[popover]:popover-open')).toHaveCount(0);
+
+      await trigger.hover();
+
+      const openPopover = page.locator('[popover]:popover-open').first();
+      await expect(openPopover).toBeVisible({ timeout: 5000 });
+    });
+
+    test('Focusing the link opens its associated popover.', async ({ page }) => {
+      const trigger = page.locator('a[interestfor], .card a[href]').first();
+      await expect(trigger).toBeVisible();
+      await expect(page.locator('[popover]:popover-open')).toHaveCount(0);
+
+      await trigger.focus();
+
+      const openPopover = page.locator('[popover]:popover-open').first();
+      await expect(openPopover).toBeVisible({ timeout: 5000 });
+    });
   });
 });

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
 import { rootDir } from '../core/paths.ts';
-import { embedGuideChunks } from '../rag/embed-chunks.ts';
+import { embedGuideChunks } from '../rag/embed-guide-chunks.ts';
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 
@@ -21,7 +21,8 @@ const GH_PUBLISH_PATTERNS = [
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
   '!**/static-model/**',
-  '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/gen/**',
+  '!**/*.{js,mjs,ts,bin,map,gz,i8,f32}',
   '!**/guides.json',
   '!**/skill-version.txt',
   '!THIRD_PARTY_NOTICES',
@@ -385,11 +386,11 @@ async function main() {
 
     console.log('Committing automated documentation updates to source repo...');
     try {
-      execSync('git diff --quiet README.md src/build/eval-results-summary.json src/rag/static-model/chunks.json src/rag/static-model/chunks.i8 src/rag/static-model/chunks.scale.f32', { cwd: ROOT_DIR });
+      execSync('git diff --quiet README.md src/build/eval-results-summary.json src/rag/gen/guide-chunk-cache.json src/rag/gen/guide-chunk-cache.i8 src/rag/gen/guide-chunk-cache.scale.f32', { cwd: ROOT_DIR });
       console.log("No changes in README.md, src/build/eval-results-summary.json, or static chunk cache to commit.");
     } catch (err) {
       console.log("Changes found in README.md, eval-results-summary.json, or static chunk cache, committing...");
-      execSync('git add README.md src/build/eval-results-summary.json src/rag/static-model/chunks.json src/rag/static-model/chunks.i8 src/rag/static-model/chunks.scale.f32', { stdio: 'inherit', cwd: ROOT_DIR });
+      execSync('git add README.md src/build/eval-results-summary.json src/rag/gen/guide-chunk-cache.json src/rag/gen/guide-chunk-cache.i8 src/rag/gen/guide-chunk-cache.scale.f32', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git pull --rebase origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });

@@ -4,15 +4,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  chunkMarkdown,
-  formatChunkHeader,
   generateGuidesIndex,
   generateGuidesTocYaml,
-  processSingleGuideFile,
+  processSkillsCliGuide,
+  processDevsiteGuide,
   type DevsiteGuideMetadata,
   type StoreUseCase,
 } from './build-guides.ts';
-import { StaticEmbedder } from '../rag/static-embedder.ts';
+import { chunkMarkdown, formatChunkHeader } from '../core/guide-chunks.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {
@@ -182,7 +181,7 @@ describe('formatChunkHeader', () => {
   });
 });
 
-describe('processSingleGuideFile cache miss regression', () => {
+describe('processSkillsCliGuide cache miss regression', () => {
   it('assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-cache-miss-test-'));
     try {
@@ -191,32 +190,54 @@ describe('processSingleGuideFile cache miss regression', () => {
         guideFile,
         `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`
       );
-      const embedder = StaticEmbedder.getInstance();
-      embedder.init();
-
       const storeUseCases: StoreUseCase[] = [];
       const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
       const emptyCache = new Map<string, Float32Array>();
 
-      await processSingleGuideFile(
-        guideFile,
-        'css',
-        'test-guide',
-        [],
+      await processSkillsCliGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        useCases: [],
         storeUseCases,
-        embedder,
-        undefined,
-        undefined,
-        undefined,
-        emptyCache,
-        missingChunks
-      );
+        chunkCache: emptyCache,
+        missingChunks,
+      });
 
       assert.ok(missingChunks.length > 0, 'Should record cache miss');
       assert.ok(storeUseCases.length > 0, 'Should have generated store use cases');
       for (const item of storeUseCases) {
         assert.deepStrictEqual(item.vector, [], 'Uncached chunk vector must be empty array, not StaticEmbedder vector');
       }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('processes guide for devsite output and extracts metadata', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-guide-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: DevSite Test Guide\ndescription: Guide for devsite\nweb-feature-ids:\n  - subgrid\n---\n# DevSite Test Guide\nSome markdown content.`
+      );
+      const devsiteGuides: DevsiteGuideMetadata[] = [];
+      const outGuidesDir = path.join(tmpDir, 'built');
+
+      await processDevsiteGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        buildGuidesDir: outGuidesDir,
+        devsiteGuides,
+      });
+
+      assert.strictEqual(devsiteGuides.length, 1);
+      assert.strictEqual(devsiteGuides[0].id, 'test-guide');
+      assert.strictEqual(devsiteGuides[0].title, 'DevSite Test Guide');
+      assert.deepStrictEqual(devsiteGuides[0].webFeatureIds, ['subgrid']);
+      assert.ok(fs.existsSync(path.join(outGuidesDir, 'css/test-guide.md')));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

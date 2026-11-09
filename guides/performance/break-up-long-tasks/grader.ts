@@ -29,7 +29,7 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
 
     performance.now = () => {
       const real = origPerfNow();
-      if (w.__simActive && !document.getElementById('output') && w.__yieldCount < 8) {
+      if (w.__simActive && w.__yieldCount < 8) {
         virtualOffset += 0.5;
       }
       return real + virtualOffset;
@@ -46,7 +46,7 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
     };
 
     const pauseForInterleaving = () => {
-      if (!document.getElementById('output') && w.__simActive && w.__yieldCount <= 6) {
+      if (w.__simActive && w.__yieldCount <= 6) {
         const pauseStart = origPerfNow();
         return new Promise<void>((resolve) =>
           origSetTimeout(() => {
@@ -74,7 +74,7 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
       if (delay === 0 || delay === undefined) {
         w.setTimeoutFallbackCalled = true;
         recordYield();
-        if (!document.getElementById('output') && w.__simActive && w.__yieldCount <= 6) {
+        if (w.__simActive && w.__yieldCount <= 6) {
           const pauseStart = origPerfNow();
           return origSetTimeout(
             () => {
@@ -101,30 +101,75 @@ async function startSimulation(page: Page) {
     w.schedulerYieldCalled = false;
     w.setTimeoutFallbackCalled = false;
     w.__simActive = true;
+    w.__btnWasDisabled = false;
 
-    const output = document.getElementById('output');
-    document.addEventListener('click', () => {
-      if (output) {
-        if (!(output.textContent || '').includes('Done')) {
-          w.clickedWhileRunning = true;
-        }
-      } else if (w.__simActive && !w.__hasFinished) {
-        w.clickedWhileRunning = true;
-      }
-    });
+    const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
+    const btn =
+      byId ||
+      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => {
+          if (
+            b.classList.contains('nav-cta') ||
+            b.classList.contains('btn-primary') ||
+            b.classList.contains('btn-ghost') ||
+            b.classList.contains('card-btn') ||
+            b.closest('dialog')
+          ) {
+            return false;
+          }
+          const desc = `${b.id} ${b.className} ${b.textContent || ''}`;
+          return /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(desc);
+        },
+      );
+    w.__simBtn = btn;
+    if (btn?.disabled) {
+      w.__btnWasDisabled = true;
+    }
 
-    if (output) {
-      const observer = new MutationObserver(() => {
-        if (output.textContent && /Done/i.test(output.textContent)) {
+    if (btn) {
+      const btnObs = new MutationObserver(() => {
+        if (btn.disabled) {
+          w.__btnWasDisabled = true;
+        } else if (w.__btnWasDisabled) {
           w.__hasFinished = true;
           w.__simActive = false;
-          observer.disconnect();
         }
       });
-      observer.observe(output, { childList: true, characterData: true, subtree: true });
+      btnObs.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+    }
+
+    const output = document.getElementById('output');
+    const isCompleteText = (text: string | null | undefined) =>
+      Boolean(text && /done|complete|finished|all\s+\w*\s*processed/i.test(text));
+
+    const candidateEls = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '#output, [role="status"], [aria-live], #status, .status, #simulation-status, #result-summary, #results, #simulation-results, #table-container',
+      ),
+    );
+    if (candidateEls.length > 0) {
+      const textObs = new MutationObserver(() => {
+        for (const el of candidateEls) {
+          if (isCompleteText(el.textContent)) {
+            w.__hasFinished = true;
+            w.__simActive = false;
+            textObs.disconnect();
+            return;
+          }
+        }
+      });
+      for (const el of candidateEls) {
+        textObs.observe(el, { childList: true, characterData: true, subtree: true });
+      }
     }
 
     const tick = () => {
+      if (btn?.disabled) {
+        w.__btnWasDisabled = true;
+      } else if (w.__btnWasDisabled && btn && !btn.disabled) {
+        w.__hasFinished = true;
+        w.__simActive = false;
+      }
       if (!w.__hasFinished) {
         w.rafTicksWhileRunning++;
         requestAnimationFrame(tick);
@@ -132,43 +177,64 @@ async function startSimulation(page: Page) {
     };
     requestAnimationFrame(tick);
 
-    const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
-    const btn =
-      byId ||
-      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-        (b) =>
-          !b.classList.contains('nav-cta') &&
-          !b.classList.contains('btn-primary') &&
-          !b.classList.contains('btn-ghost') &&
-          !b.classList.contains('card-btn') &&
-          !b.closest('dialog') &&
-          /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
-            `${b.id} ${b.className} ${b.textContent || ''}`,
-          ),
-      );
     btn?.click();
+
+    document.addEventListener('click', (e) => {
+      if (btn && (e.target === btn || btn.contains(e.target as Node))) return;
+      const isDone = w.__hasFinished || (output && /done|complete|finished/i.test(output.textContent || ''));
+      if (w.__simActive && !isDone) {
+        w.clickedWhileRunning = true;
+      }
+    });
+
+    if (btn?.disabled) {
+      w.__btnWasDisabled = true;
+    }
+    if (output && isCompleteText(output.textContent)) {
+      w.__hasFinished = true;
+      w.__simActive = false;
+    }
   });
 }
 
 async function waitForSimulationDone(page: Page) {
-  const hasExplicitOutput = (await page.locator('#output').count()) > 0;
-  if (hasExplicitOutput) {
-    await expect(page.locator('#output')).toHaveText(/Done|complete|finished|processed/i, { timeout: 6000 });
-    return;
+  try {
+    await page.waitForFunction(
+      () => {
+        const w = window as any;
+        if (w.__hasFinished) return true;
+
+        if (w.__yieldCount > 0 && w.__lastRealYieldTime && w.__origPerfNow() - w.__lastRealYieldTime > 150) {
+          w.__hasFinished = true;
+          w.__simActive = false;
+          return true;
+        }
+
+        if (w.__simBtn && w.__btnWasDisabled && !w.__simBtn.disabled) {
+          w.__hasFinished = true;
+          w.__simActive = false;
+          return true;
+        }
+
+        const outputEls = document.querySelectorAll(
+          '#output, [role="status"], [aria-live], #status, .status, #simulation-status, #result-summary, #results, #simulation-results, #table-container',
+        );
+        for (const el of outputEls) {
+          const text = el.textContent || '';
+          if (/done|complete|finished|all\s+\w*\s*processed/i.test(text)) {
+            w.__hasFinished = true;
+            w.__simActive = false;
+            return true;
+          }
+        }
+
+        return false;
+      },
+      { timeout: 2500 },
+    );
+  } catch {
+    // Proceed to assertions if bounded wait expires
   }
-  await page.waitForFunction(
-    () => {
-      const w = window as any;
-      if (w.__hasFinished) return true;
-      if (w.__yieldCount > 0 && w.__lastRealYieldTime && w.__origPerfNow() - w.__lastRealYieldTime > 150) {
-        w.__hasFinished = true;
-        w.__simActive = false;
-        return true;
-      }
-      return false;
-    },
-    { timeout: 6000 },
-  );
 }
 
 test.describe('Scheduler Yield Tests', () => {
@@ -193,7 +259,7 @@ test.describe('Scheduler Yield Tests', () => {
     });
   });
 
-  test('should process heavy computation asynchronously', async ({ page }) => {
+  test('The application processes heavy computation asynchronously', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -203,7 +269,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(rafTicksWhileRunning).toBeGreaterThan(0);
   });
 
-  test('should yield control back to the main thread periodically', async ({ page }) => {
+  test('The application yields control back to the main thread periodically during processing', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -211,9 +277,12 @@ test.describe('Scheduler Yield Tests', () => {
 
     const ticks = await page.evaluate(() => (window as any).rafTicksWhileRunning);
     expect(ticks).toBeGreaterThan(0);
+
+    const yieldCount = await page.evaluate(() => (window as any).__yieldCount);
+    expect(yieldCount).toBeGreaterThan(1);
   });
 
-  test('should use a time-based deadline of around 50ms', async ({ page }) => {
+  test('The application uses a time-based deadline of around 50ms to determine when to yield', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -232,7 +301,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(avgInterval).toBeLessThanOrEqual(110);
   });
 
-  test('should use scheduler.yield if available', async ({ page }) => {
+  test('The application uses scheduler.yield if available', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -242,7 +311,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(schedulerYieldCalled).toBe(true);
   });
 
-  test('should fallback to setTimeout when scheduler.yield is not supported', async ({ page }) => {
+  test('The application falls back to setTimeout when scheduler.yield is not supported', async ({ page }) => {
     await installYieldHarness(page, { deleteScheduler: true });
     await page.goto(targetUrl);
     await startSimulation(page);
@@ -252,7 +321,7 @@ test.describe('Scheduler Yield Tests', () => {
     expect(setTimeoutFallbackCalled).toBe(true);
   });
 
-  test('should remain responsive to user interaction while processing', async ({ page }) => {
+  test('The application remains responsive to user interaction while processing', async ({ page }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);

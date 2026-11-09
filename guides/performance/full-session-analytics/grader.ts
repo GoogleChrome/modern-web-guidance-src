@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, expectNever } from '../../test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -58,7 +58,7 @@ function getCombinedCode(): string {
 
 test.describe(`Full-Session Analytics Expectations: ${demoName}`, () => {
   
-  test('The fetchLater() API is invoked with a URL string and optionally a DeferredRequestInit object', () => {
+  test('The fetchLater() API is invoked with a URL string and a DeferredRequestInit object', () => {
     const code = getCombinedCode();
     const hasFetchLaterInvocation = /(?:globalThis\.|window\.)?\bfetchLater\s*\(\s*[^)]+/.test(code);
     expect(hasFetchLaterInvocation).toBe(true);
@@ -81,7 +81,7 @@ test.describe(`Full-Session Analytics Expectations: ${demoName}`, () => {
     expect(tryCatchRegex.test(code)).toBeTruthy();
   });
 
-  test('The fetchLater() polyfill should be included in the bundle', () => {
+  test('The fetchLater() polyfill is included in the bundle', () => {
     const code = getCombinedCode();
     const hasPolyfill =
       code.includes('globalThis.fetchLater ??=') ||
@@ -113,7 +113,7 @@ test.describe(`Browser tests for Full-Session Analytics: ${demoName}`, () => {
     });
   });
 
-  test('Only a single beacon should be sent, after the user leaves the page', async ({ page }) => {
+  test('Only a single beacon is sent, after the user leaves the page', async ({ page }) => {
     let analyticsRequests = 0;
     page.on('request', request => {
       if (request.url().includes('/analytics/endpoint')) {
@@ -125,14 +125,29 @@ test.describe(`Browser tests for Full-Session Analytics: ${demoName}`, () => {
     await page.addInitScript(() => {
       delete (window as any).fetchLater;
       delete (globalThis as any).fetchLater;
+      (window as any).__prematureFlush = false;
+      const origSendBeacon = navigator.sendBeacon;
+      if (origSendBeacon) {
+        navigator.sendBeacon = function(...args) {
+          (window as any).__prematureFlush = true;
+          return origSendBeacon.apply(this, args);
+        };
+      }
+      const origFetch = window.fetch;
+      window.fetch = function(...args: any[]) {
+        const url = String(args[0] || '');
+        if (url.includes('/analytics/endpoint')) {
+          (window as any).__prematureFlush = true;
+        }
+        return origFetch.apply(this, args as any);
+      };
     });
 
     await page.goto(demoUrl);
     
-    // Wait a brief moment to allow any immediate incorrect beacons to fire
-    await page.waitForTimeout(1000);
-    
-    const requestsBeforeLeave = analyticsRequests;
+    // Assert no immediate incorrect beacons fire before leaving
+    await expectNever(page, () => Boolean((window as any).__prematureFlush), { forMs: 300 });
+    expect(analyticsRequests).toBe(0);
     
     // Simulate user leaving the page (visibility hidden)
     await page.evaluate(() => {
@@ -143,12 +158,7 @@ test.describe(`Browser tests for Full-Session Analytics: ${demoName}`, () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    // Wait a bit for the polyfill to send the beacon
-    await page.waitForTimeout(500);
-
-    // Validate that EXACTLY 0 requests fired before leaving, and EXACTLY 1 fired in total after leaving.
-    const isDeferredAndSingle = (requestsBeforeLeave === 0 && analyticsRequests === 1);
-    
-    expect(isDeferredAndSingle).toBe(true);
+    // Wait for the polyfill to send the beacon
+    await expect.poll(() => analyticsRequests).toBe(1);
   });
 });

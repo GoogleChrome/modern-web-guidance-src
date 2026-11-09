@@ -7,7 +7,6 @@ import { guideIdsFromLog } from './guide-usage.ts';
 
 // Colocated agent parsers
 import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
-import { parseGeminiTrajectory, loadGeminiLogs } from '../agents/gemini-cli-agent.ts';
 import { parseCodexTrajectory, loadCodexLogs } from '../agents/codex-cli-agent.ts';
 import { parseJetskiTrajectory, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
 import { parsePiTrajectory, loadPiLogs } from '../agents/pi-agent.ts';
@@ -22,16 +21,6 @@ export {
   loadClaudeLogs,
   extractClaudeMetadata
 } from '../agents/claude-code-agent.ts';
-
-export {
-  parseGeminiTrajectory,
-  collectGeminiGuidesFromTrajectory,
-  collectGeminiToolsFromTrajectory,
-  extractGeminiCliModel,
-  extractGeminiCliTokenUsage,
-  loadGeminiLogs,
-  extractGeminiMetadata
-} from '../agents/gemini-cli-agent.ts';
 
 export {
   parseCodexTrajectory,
@@ -444,13 +433,12 @@ export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySu
     return normalizeAgentName(existingSummary.agent);
   }
 
-  // 3. Check directory path tokens (e.g. -claude_code, -codex_cli, -jetski_cli, -gemini_cli)
+  // 3. Check directory path tokens (e.g. -claude_code, -codex_cli, -jetski_cli, -antigravity_cli)
   const dirLower = runDir.toLowerCase().replace(/-/g, '_');
   if (dirLower.includes('claude_code')) return Agents.CLAUDE_CODE;
   if (dirLower.includes('codex_cli')) return Agents.CODEX_CLI;
   if (dirLower.includes('jetski_cli') || dirLower.includes('jetski')) return Agents.JETSKI_CLI;
   if (dirLower.includes('antigravity_cli') || dirLower.includes('antigravity') || dirLower.includes('agy')) return Agents.ANTIGRAVITY_CLI;
-  if (dirLower.includes('gemini_cli')) return Agents.GEMINI_CLI;
   if (/(?:^|[/\\_])pi(?:$|[/\\_])/.test(dirLower)) return Agents.PI;
 
   // 4. Inspect raw files as final fallback
@@ -476,19 +464,13 @@ export function generateNormalizedTrajectorySync(
     const normalizedAgent = normalizeAgentName(agentName) || agentName;
 
     if (normalizedAgent === Agents.JETSKI_CLI) {
-      summary = finalizeTrajectorySummary(parseJetskiCliSession(targetDir));
+      summary = parseJetskiCliSession(targetDir);
     } else if (normalizedAgent === Agents.ANTIGRAVITY_CLI) {
-      summary = finalizeTrajectorySummary({ ...parseJetskiCliSession(targetDir), agent: Agents.ANTIGRAVITY_CLI });
+      summary = { ...parseJetskiCliSession(targetDir), agent: Agents.ANTIGRAVITY_CLI };
     } else if (normalizedAgent === Agents.CLAUDE_CODE) {
       const { logData, subagentsMap } = loadClaudeLogs(targetDir);
       if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
         summary = parseClaudeTrajectory(logData, subagentsMap);
-      }
-    } else if (normalizedAgent === Agents.GEMINI_CLI) {
-      const { logData, subagentsMap } = loadGeminiLogs(targetDir);
-      const msgs = Array.isArray(logData) ? logData : (logData?.messages || []);
-      if (msgs.length > 0 || Object.keys(subagentsMap).length > 0) {
-        summary = parseGeminiTrajectory(logData, subagentsMap);
       }
     } else if (normalizedAgent === Agents.CODEX_CLI) {
       const { logData, subagentsMap } = loadCodexLogs(targetDir);

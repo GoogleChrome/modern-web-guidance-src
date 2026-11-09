@@ -3,128 +3,431 @@ import {
   expect,
   getTargetFiles,
   getCssStyleSheet,
-  getJsProject,
-  getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
-import type { Document } from 'linkedom';
-import { CSSStyleRule, CSSSupportsRule, type CSSStyleSheet } from 'cssomnom';
+} from '../../../../../src/grading/test-fixture.ts';
+import {
+  CSSStyleRule,
+  CSSSupportsRule,
+  CSSGroupingRule,
+  type CSSRule,
+  type CSSStyleSheet,
+} from 'cssomnom';
 
+// @ts-ignore - package.json lacks "type": "module" in daily-grind, causing tsc module nodenext to flag import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
+function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
+  const all: CSSRule[] = [];
+  for (const rule of rules) {
+    all.push(rule);
+    if (rule instanceof CSSGroupingRule && rule.cssRules) {
+      all.push(...collectAllRules(rule.cssRules));
+    }
+  }
+  return all;
+}
+
 test.describe('faster-spa-view-transitions Target Grader', () => {
-  // Requirement 1: Inactive view elements must have content-visibility: hidden applied in their computed styles.
-  test('inactive view elements have content-visibility: hidden applied in styles', () => {
+  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+
+  test('When content-visibility: hidden is not supported, a @supports not (content-visibility: hidden) fallback rule applies display: none to inactive view elements', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const styleRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-    const hasInactiveHidden = styleRules.some((r) => {
-      const hasHidden = r.style.getPropertyValue('content-visibility') === 'hidden';
-      const targetsInactive =
-        /\b(inactive|hidden)\b/i.test(r.selectorText) || /aria-hidden/i.test(r.selectorText);
-      return hasHidden && targetsInactive;
-    });
-    expect(hasInactiveHidden).toBe(true);
-  });
+    const allRules = collectAllRules(stylesheet.cssRules);
 
-  // Requirement 2: The active view element must not have content-visibility: hidden applied (it should be visible or default).
-  test('active view elements are defined and do not apply content-visibility: hidden', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const styleRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const viewContainersExist = docs.some((d) =>
-      Boolean(d.document.querySelector('.spa-view, [class*="spa-view"], [data-view]'))
+    const supportsRules = allRules.filter(
+      (r): r is CSSSupportsRule =>
+        r instanceof CSSSupportsRule &&
+        /\bnot\b/i.test(r.conditionText) &&
+        /content-visibility\s*:\s*hidden/i.test(r.conditionText),
     );
-    const baseRulesDontHide = !styleRules.some((r) => {
-      const sel = r.selectorText;
-      const isBaseViewRule =
-        /\bspa-view\b/.test(sel) && !/\binactive\b|\bhidden\b|aria-hidden/.test(sel);
-      return isBaseViewRule && r.style.getPropertyValue('content-visibility') === 'hidden';
-    });
+    expect(supportsRules.length).toBeGreaterThan(0);
 
-    expect(viewContainersExist && baseRulesDontHide).toBe(true);
-  });
-
-  // Requirement 3: The implementation must toggle the content-visibility state when switching between views.
-  test('view switching logic toggles inactive state or content-visibility on view containers', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const stringLiterals = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    );
-    const hasInactiveOrViewReference = stringLiterals.some((str) => {
-      const val = str.getLiteralValue();
-      return val === 'inactive' || val === 'spa-view' || val === 'hidden';
-    });
-
-    const callExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-    const hasClassOrStyleMutation = callExpressions.some((call) => {
-      const text = call.getText();
-      return (
-        /classList\.(add|toggle|remove)/.test(text) ||
-        /setAttribute\(\s*['"`](class|aria-hidden|style)['"`]/i.test(text)
+    const hasDisplayNoneFallback = supportsRules.some((sr) => {
+      const innerRules = collectAllRules(sr.cssRules);
+      return innerRules.some(
+        (ir): ir is CSSStyleRule =>
+          ir instanceof CSSStyleRule &&
+          ir.style.getPropertyValue('display').trim() === 'none',
       );
     });
-
-    expect(sourceFiles.length > 0 && hasInactiveOrViewReference && hasClassOrStyleMutation).toBe(
-      true
-    );
+    expect(hasDisplayNoneFallback).toBe(true);
   });
 
-  // Requirement 4: The implementation must use aria-hidden="true" on inactive view elements to ensure they are removed from the accessibility tree.
-  test('inactive view elements use aria-hidden="true" to remove from accessibility tree', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
-    const stringLiterals = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
-    );
-    const hasAriaHiddenInJs = stringLiterals.some((str) => str.getLiteralValue() === 'aria-hidden');
-    const hasAriaHiddenInHtml = docs.some((d) => Boolean(d.document.querySelector('[aria-hidden]')));
-
-    expect(hasAriaHiddenInJs || hasAriaHiddenInHtml).toBe(true);
-  });
-
-  // Requirement 5: The implementation should maintain focus management by moving focus to the active view container upon transition.
-  test('focus management moves focus to active view container upon navigation', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const callExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-    const hasFocusCall = callExpressions.some((call) => {
-      const expr = call.getExpression();
-      if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-        return expr.getText().endsWith('.focus');
-      }
-      return false;
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
     });
 
-    expect(sourceFiles.length > 0 && hasFocusCall).toBe(true);
-  });
+    test('Inactive view elements have content-visibility: hidden applied in their computed styles', async ({
+      page,
+    }) => {
+      // Navigate across views to ensure lazy-instantiated views are mounted and cached
+      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
+      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
 
-  // Requirement 6: If content-visibility is not supported, inactive view elements must have display: none applied in their computed styles.
-  test('fallback provides display: none for browsers without content-visibility support', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules);
-    const supportsRules = rules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
+      const state = await page.evaluate(() => {
+        const allElements = Array.from(document.querySelectorAll('body *'));
+        const hiddenViews = allElements.filter(
+          (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+        );
+        return {
+          hiddenCount: hiddenViews.length,
+          allHaveHidden:
+            hiddenViews.length > 0 &&
+            hiddenViews.every(
+              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+            ),
+        };
+      });
 
-    const hasFallbackRule = supportsRules.some((r) => {
-      const cond = r.conditionText;
-      const isNegation = cond.includes('not') && cond.includes('content-visibility');
-      const hasDisplayNone = Array.from(r.cssRules).some(
-        (nr) => nr instanceof CSSStyleRule && nr.style.getPropertyValue('display') === 'none'
-      );
-      return isNegation && hasDisplayNone;
+      expect(state.hiddenCount).toBeGreaterThan(0);
+      expect(state.allHaveHidden).toBe(true);
     });
 
-    expect(hasFallbackRule).toBe(true);
+    test('When a view element is active, it does not have content-visibility: hidden applied (its computed content-visibility is visible)', async ({
+      page,
+    }) => {
+      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
+      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+
+      const state = await page.evaluate(() => {
+        const allElements = Array.from(document.querySelectorAll('body *'));
+        const hiddenViews = allElements.filter(
+          (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+        );
+        if (hiddenViews.length === 0) {
+          return { hiddenCount: 0, activeComputedVisibility: null };
+        }
+        const parent = hiddenViews[0].parentElement;
+        if (!parent) {
+          return { hiddenCount: hiddenViews.length, activeComputedVisibility: null };
+        }
+        const siblings = Array.from(parent.children);
+        const activeViews = siblings.filter(
+          (el) =>
+            !hiddenViews.includes(el) &&
+            window.getComputedStyle(el).display !== 'none' &&
+            !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName),
+        );
+        if (activeViews.length === 0) {
+          return { hiddenCount: hiddenViews.length, activeComputedVisibility: null };
+        }
+        return {
+          hiddenCount: hiddenViews.length,
+          activeComputedVisibility: window.getComputedStyle(activeViews[0])
+            .contentVisibility,
+        };
+      });
+
+      expect(state.hiddenCount).toBeGreaterThan(0);
+      expect(state.activeComputedVisibility).toBe('visible');
+    });
+
+    test('Switching between views toggles the content-visibility state between the active and inactive view elements', async ({
+      page,
+    }) => {
+      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+
+      // Tag the active Menu view while on Menu (polling to allow async route handlers like hashchange to finish)
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const allElements = Array.from(document.querySelectorAll('body *'));
+            const hiddenViews = allElements.filter(
+              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+            );
+            if (hiddenViews.length === 0) return false;
+            const parent = hiddenViews[0].parentElement;
+            if (!parent) return false;
+            const siblings = Array.from(parent.children);
+            const activeView = siblings.find(
+              (el) =>
+                !hiddenViews.includes(el) &&
+                window.getComputedStyle(el).display !== 'none' &&
+                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                  el.tagName,
+                ) &&
+                /\bmenu\b/i.test(el.textContent || ''),
+            );
+            if (!activeView) return false;
+            activeView.setAttribute('data-grader-view-menu', 'true');
+            return true;
+          });
+        })
+        .toBe(true);
+
+      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
+
+      // Tag the active Locations view while on Locations and check visibility states
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const allElements = Array.from(document.querySelectorAll('body *'));
+            const hiddenViews = allElements.filter(
+              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+            );
+            if (hiddenViews.length === 0) return null;
+            const parent = hiddenViews[0].parentElement;
+            if (!parent) return null;
+            const siblings = Array.from(parent.children);
+            const menuView = document.querySelector(
+              '[data-grader-view-menu="true"]',
+            );
+            const activeView = siblings.find(
+              (el) =>
+                el !== menuView &&
+                !hiddenViews.includes(el) &&
+                window.getComputedStyle(el).display !== 'none' &&
+                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                  el.tagName,
+                ) &&
+                /\blocations\b/i.test(el.textContent || ''),
+            );
+            if (!activeView || !menuView) {
+              return null;
+            }
+
+            activeView.setAttribute('data-grader-view-locations', 'true');
+
+            return {
+              locationsVisibility:
+                window.getComputedStyle(activeView).contentVisibility,
+              menuVisibility:
+                window.getComputedStyle(menuView).contentVisibility,
+            };
+          });
+        })
+        .toEqual({
+          locationsVisibility: 'visible',
+          menuVisibility: 'hidden',
+        });
+
+      // Switch back to Menu
+      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const locationsView = document.querySelector(
+              '[data-grader-view-locations="true"]',
+            );
+            const menuView = document.querySelector(
+              '[data-grader-view-menu="true"]',
+            );
+            if (!locationsView || !menuView) return null;
+            return {
+              locationsVisibility:
+                window.getComputedStyle(locationsView).contentVisibility,
+              menuVisibility:
+                window.getComputedStyle(menuView).contentVisibility,
+            };
+          });
+        })
+        .toEqual({
+          locationsVisibility: 'hidden',
+          menuVisibility: 'visible',
+        });
+    });
+
+    test('Inactive view elements have the inert attribute applied (and removed when active) so hidden content is excluded from the keyboard tab order and accessibility tree', async ({
+      page,
+    }) => {
+      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const allElements = Array.from(document.querySelectorAll('body *'));
+            const hiddenViews = allElements.filter((el) => {
+              const style = window.getComputedStyle(el);
+              return (
+                style.contentVisibility === 'hidden' ||
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                (style.display === 'none' &&
+                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+              );
+            });
+            if (hiddenViews.length === 0) return false;
+            const parent = hiddenViews[0].parentElement;
+            if (!parent) return false;
+            const siblings = Array.from(parent.children);
+            const activeView = siblings.find(
+              (el) =>
+                !hiddenViews.includes(el) &&
+                window.getComputedStyle(el).display !== 'none' &&
+                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                  el.tagName,
+                ) &&
+                /\bmenu\b/i.test(el.textContent || ''),
+            );
+            if (!activeView) return false;
+            activeView.setAttribute('data-grader-inert-menu', 'true');
+            return true;
+          });
+        })
+        .toBe(true);
+
+      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
+
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const allElements = Array.from(document.querySelectorAll('body *'));
+            const hiddenViews = allElements.filter((el) => {
+              const style = window.getComputedStyle(el);
+              return (
+                style.contentVisibility === 'hidden' ||
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                (style.display === 'none' &&
+                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+              );
+            });
+            if (hiddenViews.length === 0) return null;
+            const parent = hiddenViews[0].parentElement;
+            if (!parent) return null;
+            const siblings = Array.from(parent.children);
+            const menuView = document.querySelector(
+              '[data-grader-inert-menu="true"]',
+            );
+            const activeView = siblings.find(
+              (el) =>
+                el !== menuView &&
+                !hiddenViews.includes(el) &&
+                window.getComputedStyle(el).display !== 'none' &&
+                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                  el.tagName,
+                ) &&
+                /\blocations\b/i.test(el.textContent || ''),
+            );
+            if (!activeView || !menuView) {
+              return null;
+            }
+
+            activeView.setAttribute('data-grader-inert-locations', 'true');
+
+            const allInactiveInert = hiddenViews.every(
+              (el) =>
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                window.getComputedStyle(el).display === 'none',
+            );
+            const activeInert =
+              (activeView as HTMLElement).inert === true ||
+              activeView.hasAttribute('inert');
+
+            return {
+              allInactiveInert,
+              activeInert,
+            };
+          });
+        })
+        .toEqual({
+          allInactiveInert: true,
+          activeInert: false,
+        });
+
+      // Switch back to Menu and verify inert is removed on Menu and applied to Locations
+      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const locationsView = document.querySelector(
+              '[data-grader-inert-locations="true"]',
+            ) as HTMLElement | null;
+            const menuView = document.querySelector(
+              '[data-grader-inert-menu="true"]',
+            ) as HTMLElement | null;
+            if (!locationsView || !menuView) return null;
+
+            return {
+              locationsInert:
+                locationsView.inert === true ||
+                locationsView.hasAttribute('inert'),
+              menuInert:
+                menuView.inert === true || menuView.hasAttribute('inert'),
+            };
+          });
+        })
+        .toEqual({
+          locationsInert: true,
+          menuInert: false,
+        });
+    });
+
+    test('Switching to a view moves keyboard focus to the newly active view container', async ({
+      page,
+    }) => {
+      await page.evaluate(() => {
+        (window as unknown as { __graderFocusedViews?: Element[] }).__graderFocusedViews = [];
+        document.addEventListener(
+          'focusin',
+          (e) => {
+            if (e.target instanceof Element) {
+              (
+                window as unknown as { __graderFocusedViews: Element[] }
+              ).__graderFocusedViews.push(e.target);
+            }
+          },
+          true,
+        );
+        const origFocus = HTMLElement.prototype.focus;
+        HTMLElement.prototype.focus = function (...args) {
+          (
+            window as unknown as { __graderFocusedViews: Element[] }
+          ).__graderFocusedViews.push(this);
+          return origFocus.apply(this, args);
+        };
+      });
+
+      await page.locator('nav').getByRole('link', { name: 'Rewards' }).click();
+
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => {
+            const allElements = Array.from(document.querySelectorAll('body *'));
+            const hiddenViews = allElements.filter((el) => {
+              const style = window.getComputedStyle(el);
+              return (
+                style.contentVisibility === 'hidden' ||
+                (el as HTMLElement).inert === true ||
+                el.hasAttribute('inert') ||
+                (el as HTMLElement).hidden ||
+                (style.display === 'none' &&
+                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+              );
+            });
+            if (hiddenViews.length === 0) return false;
+            const parent = hiddenViews[0].parentElement;
+            if (!parent) return false;
+            const siblings = Array.from(parent.children);
+            const activeView = siblings.find(
+              (el) =>
+                !hiddenViews.includes(el) &&
+                window.getComputedStyle(el).display !== 'none' &&
+                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
+                /\brewards\b/i.test(el.textContent || ''),
+            );
+            if (!activeView) return false;
+
+            const recorded =
+              (window as unknown as { __graderFocusedViews?: Element[] })
+                .__graderFocusedViews || [];
+
+            return (
+              document.activeElement === activeView ||
+              activeView.contains(document.activeElement) ||
+              recorded.some((el) => el === activeView || activeView.contains(el))
+            );
+          });
+        })
+        .toBe(true);
+    });
   });
 });

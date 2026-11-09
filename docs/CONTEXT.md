@@ -136,7 +136,7 @@ pnpm link --global && gd setup-completion
 | `gd run <template> <prompt>` | Runs an ad-hoc agent test against a template directory. |
 | `gd baselinestatus <query>` | Queries browser support and Baseline status for web platform features. |
 
-For detailed `gd dev`, `gd eval`, and `gd compare` pipeline mechanics and runner architecture, see **[`src/harness/README.md`](../src/harness/README.md)**. For agent installation and `.env` credential setup (`Antigravity CLI`, `Jetski CLI`, `Gemini CLI`, `Claude Code`, `Codex CLI`), see **[`docs/EVALS.md`](./EVALS.md)**.
+For detailed `gd dev`, `gd eval`, and `gd compare` pipeline mechanics and runner architecture, see **[`src/harness/README.md`](../src/harness/README.md)**. For agent installation and `.env` credential setup (`Antigravity CLI`, `Jetski CLI`, `Claude Code`, `Codex CLI`), see **[`docs/EVALS.md`](./EVALS.md)**.
 
 ---
 
