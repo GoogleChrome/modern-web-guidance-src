@@ -209,14 +209,6 @@ Treat the customizable select as a progressive enhancement over a plain `<select
 
 {{ FEATURE_FALLBACKS("customizable-select") }}
 
-### Browser support for popover
+{{ FEATURE_FALLBACKS("popover") }}
 
-{{ BASELINE_STATUS("popover") }}
-
-### Browser support for anchor positioning
-
-{{ BASELINE_STATUS("anchor-positioning") }}
-
-### Browser support for CSS masks
-
-{{ BASELINE_STATUS("masks") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}
