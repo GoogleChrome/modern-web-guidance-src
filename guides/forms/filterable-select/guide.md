@@ -1,6 +1,6 @@
 ---
 name: filterable-select
-description: Build a filterable select control that allows users to type to narrow down a list of predefined options and select one or more items.
+description: Build a filterable select control that allows users to type to narrow down a list of predefined options.
 web-feature-ids:
   - customizable-select
   - popover
