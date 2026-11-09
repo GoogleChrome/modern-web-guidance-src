@@ -258,6 +258,7 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `scrollbar-gutter: stable` to reserve space for scrollbars and prevent layout shifts when content grows.
 - Use `overscroll-behavior: contain` (or `none`) on nested scroll regions (such as sidebars, modals, and lists) to stop scroll chains from bubbling into the page, or `overscroll-behavior: chain` on intermediate scroll wrappers (such as swipe-to-reveal tracks) when excess scroll should propagate to an ancestor scroller without triggering a local rubber-band bounce.
 - Use the `-webkit-line-clamp` + `display: -webkit-box` + `-webkit-box-orient: vertical` triad for multi-line truncation — despite the prefix, this pattern is fully specified and not deprecated. Declare the unprefixed `line-clamp` shorthand alongside it; browsers that don't yet support it ignore the property harmlessly.
+- For text that must stay on one line (labels, table cells, file names), truncate with `text-overflow: ellipsis` and reveal the full text on hover and focus. See {{ GUIDE_REF("single-line-overflow") }} for more details.
 **Do not:**
 
 - Don't use `overflow: scroll` when `auto` will do — `scroll` forces scrollbars even when there's nothing to scroll.

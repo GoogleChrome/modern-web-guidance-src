@@ -13,7 +13,7 @@ guides:
   - scrollability-affordance-hints
   - overflow-popup
   - menu
-  - interest-triggered-tooltips
+  - single-line-overflow
 ---
 
 # Tabbed interfaces
@@ -206,8 +206,8 @@ It is more well suited to user-driven tablists (e.g. a document editor) rather t
 
 - Let inactive tabs shrink and keep the selected tab at its full width: `flex: 0 1 auto` on the tabs, and `min-inline-size: max-content` on the selected tab, which also overrides any `max-inline-size`, so its label is never truncated. DO NOT use `flex-shrink: 0` for this: it cannot transition smoothly (see below).
 - Set a `min-inline-size` on the tabs. Once every inactive tab is at its minimum, the remaining overflow is handled by scrolling or the overflow menu.
-- Truncate shrunk labels with `text-overflow: ellipsis`. Put the label in its own element, since `text-overflow` needs `overflow: hidden` and would otherwise clip the focus ring.
-- Keep the full label in the DOM, so the accessible name and find-in-page are unaffected. Show it to sighted users on hover and focus with a tooltip; see {{ GUIDE_REF("interest-triggered-tooltips") }}.
+- Truncate shrunk labels with `text-overflow: ellipsis`. Put the label in its own element, so `overflow: hidden` applies to the text only and an icon beside it is never clipped.
+- Keep the full label in the DOM, so the accessible name and find-in-page are unaffected. Reveal it by scrolling the label inside the tab on hover, and on focus when activation is manual (with automatic activation the focused tab is selected, so it is already full width). See {{ GUIDE_REF("single-line-overflow") }} for more details.
 - If tabs have icons, keep the icon visible and truncate only the label, so a minimum-width tab is still recognizable.
 - Transition `min-inline-size` so tabs resize smoothly when the selection changes, instead of jumping. Set `interpolate-size: allow-keywords` on the tablist so it interpolates to and from `max-content`; no view transition is needed. Only transition it when `prefers-reduced-motion` is `no-preference`. Transitioning `flex-shrink` does not work: any value above 0 shrinks a tab all the way to its minimum when the tabs overflow.
 

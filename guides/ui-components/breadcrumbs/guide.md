@@ -12,6 +12,7 @@ web-feature-ids:
 guides:
   - menu
   - icons
+  - single-line-overflow
 ---
 
 # Build breadcrumbs
@@ -137,6 +138,7 @@ These are optional. Implement them only when the trail needs them, and choose th
 
 - **Sibling menus:** when ancestors have meaningful siblings (e.g. docs sections), let an ancestor expose its siblings in a menu. Keep the ancestor link navigating and put the toggle in a separate button, never inside the `<a>`. For menu mechanics, see {{ GUIDE_REF("menu") }}.
 - **Long trails:** collapse the middle of a trail with more than 3 items on narrow containers instead of letting it wrap, keeping the first item and the last two. Put the hidden links in a popup opened from a "…" button, and keep the full trail when script is unavailable.
+- **Long labels:** keep every item on one line and truncate long ancestor labels with `text-overflow: ellipsis` and a `max-inline-size` on the link, revealing the full label on hover and focus. Never truncate the current page. See {{ GUIDE_REF("single-line-overflow") }} for more details.
 
 ## Fallback strategy
 

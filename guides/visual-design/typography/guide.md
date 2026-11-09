@@ -29,6 +29,7 @@ todo-web-feature-ids:
 
 - Use unitless numbers for `line-height` (e.g., `1.5`) to ensure relative scaling during font-size inheritance.
 - Use `overflow-wrap: break-word` (or `anywhere`) to contain long URLs.
+- For text that must stay on one line, such as labels, tabs and table cells, truncate with `text-overflow: ellipsis` instead of letting it overflow or wrap. See {{ GUIDE_REF("single-line-overflow") }} for more details.
 - **DON'T** use `px` for font-size. Prefer `rem` to honor the user's browser font-size preferences (root font size), or `em`/percentages for contextual sizing.
 - **DON'T** set a fixed `height` or `block-size` on elements that contain text, such as buttons, badges, tabs and cards. Let the content set the height, with `min-block-size` if a minimum is needed, so text doesn't overflow or get clipped when users increase text spacing to a line height of 1.5, spacing after paragraphs of 2em, letter spacing of 0.12em and word spacing of 0.16em (WCAG 1.4.12 Text Spacing requires no loss of content or functionality at these values).
 
