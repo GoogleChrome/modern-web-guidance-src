@@ -15,12 +15,14 @@ Toast notifications are transient status messages. Unlike menus, they should not
 
 ## When to use
 
-Toast notifications must be used to provide non-critical, supplemental information about the results of an interaction. An example may include confirming that a form submission was successful. Notifications that require immediate attention should instead use an alternative component. Examples include inline banners, dialogs or modal dialogs. These examples surface information in a way that is easier to identify for everyone. Toasts should be used sparingly, as making them accessible to everyone means addressing complex considerations, and is the reason why some companies have opted to no longer use them, and instead, utilize the alternative aforementioned components.
+Toast notifications must be used to provide non-critical, supplemental information about the results of an interaction, or an event (e.g. an email has been received). An example may include confirming that a form submission was successful. Notifications that require immediate attention should instead use an alternative component. Examples include inline banners, dialogs or modal dialogs. These examples surface information in a way that is easier to identify for everyone. Toasts should be used sparingly, as making them accessible to everyone means addressing complex considerations, and is the reason why some companies have opted to no longer use them, and instead, utilize the alternative aforementioned components.
 
 ## Implementation guidelines
 
+Prefer persistent toast notifications that remain present until they are dismissed, except for frequent, low importance events, where the friction persistence creates outweighs the value of the information provided. In those cases, do evaluate whether toasts actually add to the user experience in general — in some cases it may be preferable to not have them at all.
+
 * **MANDATORY:** Use popover="manual" so the notification stays visible until explicitly closed or timed out by a script.
-* **MANDATORY:** Persistent toast notifications must remain present until they are dismissed.
+* **MANDATORY:** Ensure that the information in the toast can be identified by other means, so that if it is part of a pattern that disappears after a short period of time, people can still identify the information without the toast being present.
 * **DO** use a container to manage the stacking of multiple toasts. Since popovers in the Top Layer ignore parent z-index, you must position them individually or within a common layout group.
 * **DO** add toast notifications consistently to the same container in the page, so that people using assistive technologies can consistently locate them.
 * **DO** make the container a region, with an accessible name, so that it can be easily identified using a screen reader. For example: `<div role="region" aria-label="Notifications"></div>`.
