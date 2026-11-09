@@ -21,7 +21,7 @@ Wire this with a short script instead of hand-authoring the attributes, so the m
 2. For every `[interestfor]` trigger whose target has `popover="hint"`, classify the target the way the browser and polyfill do: **rich** if it contains headings, lists, tables, sectioning elements, `<details>`, focusable elements (links, buttons, form controls, `contenteditable`, `tabindex` other than `-1`), or any element with a `role` other than `presentation`, `none`, `generic`, or `image`; **plain** otherwise.
 3. **Plain:** normalize whitespace and compare the hint text with the trigger's accessible name (`aria-labelledby` targets, else `aria-label`, else text content including image `alt`, else `title`). Equal: do nothing. Otherwise set `role="tooltip"` on the hint if it has no role, then point `aria-describedby` at the hint when the trigger has a name, or `aria-labelledby` when it has none, unless the trigger already has that attribute.
 4. **Rich:** set `aria-expanded` on the trigger to the popover's current state (`:popover-open`), unless the trigger already has `aria-expanded`. Remember which triggers the script owns.
-5. **Rich, where `interestfor` is supported natively** (`"interestForElement" in HTMLButtonElement.prototype`): keep `aria-expanded` in sync from the popover's `toggle` event with a single capturing listener on `document`, updating every trigger with a matching `interestfor` that the script owns. The polyfill syncs `aria-expanded` itself.
+5. **Rich, where `interestfor` is supported natively** (`Object.hasOwn(HTMLButtonElement.prototype, "interestForElement")`): keep `aria-expanded` in sync from the popover's `toggle` event with a single capturing listener on `document`, updating every trigger with a matching `interestfor` that the script owns. The polyfill syncs `aria-expanded` itself.
 
 Things that are easy to get wrong:
 
@@ -58,7 +58,7 @@ Interest invokers must be conditionally polyfilled using the `interestfor` polyf
 
 ```html
 <script type="module">
-  if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+  if (!Object.hasOwn(HTMLButtonElement.prototype, "interestForElement")) {
     // CDN link only used for example, prefer bundling.
     await import("https://unpkg.com/interestfor@latest");
   }
