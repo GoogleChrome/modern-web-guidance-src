@@ -1,815 +1,682 @@
-diff --git a/carousel.css b/carousel.css
-new file mode 100644
-index 0000000..3126cca
---- /dev/null
-+++ b/carousel.css
-@@ -0,0 +1,234 @@
-+/* Carousel Component Styles */
-+
-+.carousel {
-+  position: relative;
-+  width: 100%;
-+  max-width: 800px;
-+  margin: 0 auto;
-+}
-+
-+/* Track and snapping */
-+.carousel-track {
-+  display: flex;
-+  gap: 1rem;
-+  overflow-x: auto;
-+  /* mandatory so the track always rests on a slide, which the settled-scroll status relies on */
-+  scroll-snap-type: x mandatory;
-+  touch-action: manipulation;
-+  padding: 1rem 0;
-+  scrollbar-width: thin;
-+}
-+
-+.carousel-track > * {
-+  flex: 0 0 100%; /* one slide per view; use a smaller basis for a peek layout */
-+  scroll-snap-align: center;
-+  box-sizing: border-box;
-+}
-+
-+/* Enable scroll-behavior: smooth on the track only inside prefers-reduced-motion: no-preference */
-+@media (prefers-reduced-motion: no-preference) {
-+  .carousel-track {
-+    scroll-behavior: smooth;
-+  }
-+}
-+
-+/* Vertical layout adaptation */
-+.carousel[data-orientation="vertical"],
-+.carousel[aria-orientation="vertical"],
-+.carousel.carousel--vertical,
-+.carousel.vertical,
-+.carousel.is-vertical {
-+  max-width: 480px;
-+}
-+
-+.carousel[data-orientation="vertical"] .carousel-track,
-+.carousel[aria-orientation="vertical"] .carousel-track,
-+.carousel.carousel--vertical .carousel-track,
-+.carousel.vertical .carousel-track,
-+.carousel.is-vertical .carousel-track {
-+  flex-direction: column;
-+  overflow-x: hidden;
-+  overflow-y: auto;
-+  scroll-snap-type: y mandatory;
-+  height: 420px;
-+  padding: 0 1rem;
-+}
-+
-+.carousel[data-orientation="vertical"] .carousel-track > *,
-+.carousel[aria-orientation="vertical"] .carousel-track > *,
-+.carousel.carousel--vertical .carousel-track > *,
-+.carousel.vertical .carousel-track > *,
-+.carousel.is-vertical .carousel-track > * {
-+  flex: 0 0 100%;
-+  height: 100%;
-+}
-+
-+/* Slide content container */
-+.carousel-slide {
-+  display: flex;
-+  justify-content: center;
-+  align-items: center;
-+  padding: 0 40px;
-+}
-+
-+.carousel[data-orientation="vertical"] .carousel-slide,
-+.carousel[aria-orientation="vertical"] .carousel-slide,
-+.carousel.carousel--vertical .carousel-slide,
-+.carousel.vertical .carousel-slide,
-+.carousel.is-vertical .carousel-slide {
-+  padding: 40px 0;
-+}
-+
-+.carousel-slide .card {
-+  width: 100%;
-+  max-width: 360px;
-+}
-+
-+/* Controls */
-+.carousel-controls {
-+  position: absolute;
-+  top: 50%;
-+  left: 0;
-+  right: 0;
-+  transform: translateY(-50%);
-+  display: flex;
-+  justify-content: space-between;
-+  align-items: center;
-+  pointer-events: none;
-+  z-index: 10;
-+  padding: 0 4px;
-+}
-+
-+.carousel[data-orientation="vertical"] .carousel-controls,
-+.carousel[aria-orientation="vertical"] .carousel-controls,
-+.carousel.carousel--vertical .carousel-controls,
-+.carousel.vertical .carousel-controls,
-+.carousel.is-vertical .carousel-controls {
-+  top: 0;
-+  bottom: 0;
-+  left: 50%;
-+  right: auto;
-+  transform: translateX(-50%);
-+  flex-direction: column;
-+  justify-content: space-between;
-+  align-items: center;
-+  height: 100%;
-+  padding: 4px 0;
-+}
-+
-+.carousel-controls button {
-+  pointer-events: auto;
-+  touch-action: manipulation;
-+  background: white;
-+  color: var(--primary);
-+  border: 1px solid var(--secondary);
-+  border-radius: 20px;
-+  padding: 8px 16px;
-+  font-size: 0.85rem;
-+  font-weight: 600;
-+  cursor: pointer;
-+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-+  transition: background-color 0.2s, color 0.2s;
-+}
-+
-+.carousel-controls button:hover:not(:disabled) {
-+  background: var(--primary);
-+  color: white;
-+}
-+
-+.carousel-controls button:disabled {
-+  opacity: 0.35;
-+  cursor: not-allowed;
-+}
-+
-+/* Focus visible styling */
-+.carousel-controls button:focus-visible,
-+.carousel-markers button:focus-visible,
-+.carousel-track:focus-visible {
-+  outline: 2px solid var(--accent);
-+  outline-offset: 2px;
-+}
-+
-+/* Markers */
-+.carousel-markers {
-+  display: flex;
-+  justify-content: center;
-+  align-items: center;
-+  gap: 0.75rem;
-+  margin-top: 1rem;
-+}
-+
-+.carousel-markers button {
-+  width: 14px;
-+  height: 14px;
-+  border-radius: 50%;
-+  border: 2px solid var(--primary);
-+  background: transparent;
-+  cursor: pointer;
-+  padding: 0;
-+  touch-action: manipulation;
-+  transition: background-color 0.2s, transform 0.2s;
-+}
-+
-+.carousel-markers button[aria-current="true"] {
-+  background: var(--primary);
-+  transform: scale(1.15);
-+}
-+
-+/* Visually hidden status region */
-+.visually-hidden {
-+  position: absolute;
-+  width: 1px;
-+  height: 1px;
-+  padding: 0;
-+  margin: -1px;
-+  overflow: hidden;
-+  clip: rect(0, 0, 0, 0);
-+  white-space: nowrap;
-+  border: 0;
-+}
-+
-+/* Layout switcher controls */
-+.carousel-layout-switcher {
-+  display: flex;
-+  justify-content: center;
-+  align-items: center;
-+  gap: 8px;
-+  margin-bottom: 1rem;
-+}
-+
-+.carousel-layout-switcher span {
-+  font-size: 0.9rem;
-+  font-weight: 600;
-+  color: var(--text);
-+}
-+
-+.carousel-layout-switcher button {
-+  background: white;
-+  border: 1px solid var(--secondary);
-+  border-radius: 4px;
-+  padding: 4px 12px;
-+  font-size: 0.85rem;
-+  cursor: pointer;
-+  transition: background 0.2s, color 0.2s;
-+}
-+
-+.carousel-layout-switcher button[aria-pressed="true"],
-+.carousel-layout-switcher button.active {
-+  background: var(--primary);
-+  color: white;
-+  border-color: var(--primary);
-+}
-+
-+/* Looping: continuous navigation rules */
-+@supports (order: sibling-index()) or (order: sibling-count()) {
-+  /* The first slide parks after the last while --current is the last or second-to-last index. */
-+  .carousel-track > :first-child {
-+    order: clamp(0, var(--current) - (sibling-count() - 3), 1);
-+  }
-+
-+  /* The last slide parks before the first while --current is 0 or 1. */
-+  .carousel-track > :last-child {
-+    order: calc(-1 * clamp(0, 2 - var(--current), 1));
-+  }
-+}
-diff --git a/carousel.js b/carousel.js
-new file mode 100644
-index 0000000..0d2a908
---- /dev/null
-+++ b/carousel.js
-@@ -0,0 +1,469 @@
-+/**
-+ * Carousel Component
-+ *
-+ * Implements accessible native scrolling carousel with CSS scroll snap,
-+ * looping via CSS order and parking compensation, live marker updates,
-+ * scrollend settling, and horizontal or vertical layouts.
-+ */
-+
-+export class Carousel {
-+  /**
-+   * @param {HTMLElement} element
-+   * @param {Object} [options]
-+   * @param {'horizontal'|'vertical'} [options.orientation]
-+   * @param {boolean} [options.finite]
-+   */
-+  constructor(element, options = {}) {
-+    this.carousel = element;
-+    this.options = options;
-+
-+    this.track = this.carousel.querySelector('.carousel-track');
-+    if (!this.track) return;
-+
-+    this.slides = Array.from(this.track.children);
-+    if (this.slides.length === 0) return;
-+
-+    this.prevButton = this.carousel.querySelector('[data-direction="previous"]');
-+    this.nextButton = this.carousel.querySelector('[data-direction="next"]');
-+    this.statusEl = this.carousel.querySelector('[role="status"]');
-+    this.markersNav = this.carousel.querySelector('.carousel-markers');
-+    this.layoutButtons = Array.from(this.carousel.querySelectorAll('.carousel-layout-switcher button, [data-layout]'));
-+
-+    this.pendingTarget = null;
-+    this.scrollGeneration = 0;
-+    this.userHasScrolled = false;
-+    this.lastSettledSlide = this.slides[0];
-+    this.currentActiveIndex = 0;
-+    this.markerButtons = [];
-+    this.scrollRafId = null;
-+    this.debounceTimer = null;
-+
-+    if (options.orientation) {
-+      this.carousel.dataset.orientation = options.orientation;
-+    }
-+
-+    this.init();
-+  }
-+
-+  isVertical() {
-+    return (
-+      this.carousel.dataset.orientation === 'vertical' ||
-+      this.carousel.getAttribute('aria-orientation') === 'vertical' ||
-+      this.carousel.classList.contains('carousel--vertical') ||
-+      this.carousel.classList.contains('vertical') ||
-+      this.carousel.classList.contains('is-vertical')
-+    );
-+  }
-+
-+  isLoopingEnabled() {
-+    const supportsSiblingIndex =
-+      typeof CSS !== 'undefined' &&
-+      CSS.supports &&
-+      (CSS.supports('order', 'sibling-index()') || CSS.supports('order', 'sibling-count()'));
-+
-+    const isFiniteRequested =
-+      this.options.finite === true ||
-+      this.carousel.hasAttribute('data-finite') ||
-+      this.carousel.classList.contains('finite');
-+
-+    return Boolean(supportsSiblingIndex && this.slides.length >= 3 && !isFiniteRequested);
-+  }
-+
-+  init() {
-+    this.setupMarkers();
-+    this.setupControls();
-+    this.setupScrollListeners();
-+    this.setupLayoutSwitcher();
-+    this.setupMutationObserver();
-+
-+    // Initial setup (silent in status region)
-+    if (this.isLoopingEnabled()) {
-+      this.track.style.setProperty('--current', '0');
-+      this.updateInert(0);
-+      if (this.prevButton) this.prevButton.disabled = false;
-+      if (this.nextButton) this.nextButton.disabled = false;
-+    } else {
-+      if (this.prevButton) this.prevButton.disabled = true;
-+      if (this.nextButton) this.nextButton.disabled = this.slides.length <= 1;
-+    }
-+
-+    this.setActiveMarker(0);
-+    this.updateLayoutToggleButtons();
-+  }
-+
-+  setupMarkers() {
-+    if (!this.markersNav) return;
-+
-+    // Check if markers are already defined in HTML
-+    let buttons = Array.from(this.markersNav.querySelectorAll('button'));
-+    if (buttons.length === 0) {
-+      this.slides.forEach((slide, index) => {
-+        const btn = document.createElement('button');
-+        btn.type = 'button';
-+        const markerName = slide.dataset.markerName || `Go to slide ${index + 1}`;
-+        btn.setAttribute('aria-label', markerName);
-+        if (index === 0) {
-+          btn.setAttribute('aria-current', 'true');
-+        }
-+        this.markersNav.appendChild(btn);
-+        buttons.push(btn);
-+      });
-+    }
-+
-+    this.markerButtons = buttons;
-+    this.markerButtons.forEach((btn, index) => {
-+      btn.addEventListener('click', () => {
-+        this.userHasScrolled = true;
-+        this.navigateToSlide(this.slides[index]);
-+      });
-+    });
-+  }
-+
-+  setupControls() {
-+    if (this.prevButton) {
-+      this.prevButton.addEventListener('click', () => {
-+        this.handleDirectionClick('previous');
-+      });
-+    }
-+
-+    if (this.nextButton) {
-+      this.nextButton.addEventListener('click', () => {
-+        this.handleDirectionClick('next');
-+      });
-+    }
-+  }
-+
-+  setupLayoutSwitcher() {
-+    this.layoutButtons.forEach(btn => {
-+      btn.addEventListener('click', () => {
-+        const layout = btn.dataset.layout || 'horizontal';
-+        this.setOrientation(layout);
-+      });
-+    });
-+  }
-+
-+  setOrientation(orientation) {
-+    this.carousel.dataset.orientation = orientation;
-+    this.carousel.setAttribute('aria-orientation', orientation);
-+  }
-+
-+  setupMutationObserver() {
-+    if (typeof MutationObserver === 'undefined') return;
-+
-+    this.observer = new MutationObserver(mutations => {
-+      for (const m of mutations) {
-+        if (
-+          m.type === 'attributes' &&
-+          (m.attributeName === 'data-orientation' ||
-+            m.attributeName === 'aria-orientation' ||
-+            m.attributeName === 'class')
-+        ) {
-+          this.handleOrientationChange();
-+        }
-+      }
-+    });
-+
-+    this.observer.observe(this.carousel, {
-+      attributes: true,
-+      attributeFilter: ['data-orientation', 'aria-orientation', 'class']
-+    });
-+  }
-+
-+  handleOrientationChange() {
-+    this.updateLayoutToggleButtons();
-+
-+    const isVert = this.isVertical();
-+    const currentSlide = this.lastSettledSlide || this.slides[0];
-+    const prevSnap = this.track.style.scrollSnapType;
-+    this.track.style.scrollSnapType = 'none';
-+
-+    if (isVert) {
-+      this.track.scrollLeft = 0;
-+      const trackRect = this.track.getBoundingClientRect();
-+      const slideRect = currentSlide.getBoundingClientRect();
-+      const delta = slideRect.top + slideRect.height / 2 - (trackRect.top + trackRect.height / 2);
-+      this.track.scrollTop += delta;
-+    } else {
-+      this.track.scrollTop = 0;
-+      const trackRect = this.track.getBoundingClientRect();
-+      const slideRect = currentSlide.getBoundingClientRect();
-+      const delta = slideRect.left + slideRect.width / 2 - (trackRect.left + trackRect.width / 2);
-+      this.track.scrollLeft += delta;
-+    }
-+
-+    this.track.style.scrollSnapType = prevSnap || '';
-+    this.onSettle();
-+  }
-+
-+  updateLayoutToggleButtons() {
-+    const isVert = this.isVertical();
-+    this.layoutButtons.forEach(btn => {
-+      const active =
-+        (btn.dataset.layout === 'vertical' && isVert) ||
-+        (btn.dataset.layout === 'horizontal' && !isVert);
-+      btn.classList.toggle('active', active);
-+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-+    });
-+  }
-+
-+  getSlidesInVisualOrder() {
-+    const isVert = this.isVertical();
-+    const prop = isVert ? 'top' : 'left';
-+    return [...this.slides].sort((a, b) => {
-+      return a.getBoundingClientRect()[prop] - b.getBoundingClientRect()[prop];
-+    });
-+  }
-+
-+  getNearestSlide() {
-+    const isVert = this.isVertical();
-+    const trackRect = this.track.getBoundingClientRect();
-+    const trackCenter = isVert
-+      ? trackRect.top + trackRect.height / 2
-+      : trackRect.left + trackRect.width / 2;
-+
-+    let minDistance = Infinity;
-+    let nearest = this.slides[0];
-+
-+    for (const slide of this.slides) {
-+      const slideRect = slide.getBoundingClientRect();
-+      const slideCenter = isVert
-+        ? slideRect.top + slideRect.height / 2
-+        : slideRect.left + slideRect.width / 2;
-+      const distance = Math.abs(slideCenter - trackCenter);
-+      if (distance < minDistance) {
-+        minDistance = distance;
-+        nearest = slide;
-+      }
-+    }
-+
-+    return nearest;
-+  }
-+
-+  setActiveMarker(index) {
-+    if (index < 0 || index >= this.slides.length) return;
-+    this.markerButtons.forEach((btn, i) => {
-+      if (i === index) {
-+        btn.setAttribute('aria-current', 'true');
-+      } else {
-+        btn.removeAttribute('aria-current');
-+      }
-+    });
-+    this.currentActiveIndex = index;
-+  }
-+
-+  updateInert(settledIndex) {
-+    this.slides.forEach(s => (s.inert = false));
-+    if (this.isLoopingEnabled() && this.slides.length >= 3) {
-+      const n = this.slides.length;
-+      // First slide parks after the last when --current is the last or second-to-last index
-+      const isFirstParked = settledIndex >= n - 2 && settledIndex !== 0;
-+      if (isFirstParked) {
-+        this.slides[0].inert = true;
-+      }
-+      // Last slide parks before the first when --current is 0 or 1
-+      const isLastParked = settledIndex <= 1 && settledIndex !== n - 1;
-+      if (isLastParked) {
-+        this.slides[n - 1].inert = true;
-+      }
-+    }
-+  }
-+
-+  navigateToSlide(targetSlide) {
-+    if (!targetSlide) return;
-+    this.userHasScrolled = true;
-+    this.pendingTarget = targetSlide;
-+    this.scrollGeneration++;
-+
-+    const targetIndex = this.slides.indexOf(targetSlide);
-+    this.setActiveMarker(targetIndex);
-+
-+    const isVert = this.isVertical();
-+    const trackRect = this.track.getBoundingClientRect();
-+    const targetRect = targetSlide.getBoundingClientRect();
-+
-+    const delta = isVert
-+      ? targetRect.top + targetRect.height / 2 - (trackRect.top + trackRect.height / 2)
-+      : targetRect.left + targetRect.width / 2 - (trackRect.left + trackRect.width / 2);
-+
-+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-+    const behavior = prefersReducedMotion ? 'auto' : 'smooth';
-+
-+    if (isVert) {
-+      this.track.scrollBy({ top: delta, behavior });
-+    } else {
-+      this.track.scrollBy({ left: delta, behavior });
-+    }
-+  }
-+
-+  handleDirectionClick(direction) {
-+    this.userHasScrolled = true;
-+    const visualSlides = this.getSlidesInVisualOrder();
-+    const currentSlide = this.pendingTarget || this.getNearestSlide();
-+    const currentIndex = visualSlides.indexOf(currentSlide);
-+
-+    let targetSlide = null;
-+    const looping = this.isLoopingEnabled();
-+
-+    if (direction === 'next') {
-+      if (looping) {
-+        targetSlide = visualSlides[(currentIndex + 1) % visualSlides.length];
-+      } else {
-+        if (currentIndex < visualSlides.length - 1) {
-+          targetSlide = visualSlides[currentIndex + 1];
-+        }
-+      }
-+    } else if (direction === 'previous') {
-+      if (looping) {
-+        targetSlide = visualSlides[(currentIndex - 1 + visualSlides.length) % visualSlides.length];
-+      } else {
-+        if (currentIndex > 0) {
-+          targetSlide = visualSlides[currentIndex - 1];
-+        }
-+      }
-+    }
-+
-+    if (targetSlide) {
-+      this.navigateToSlide(targetSlide);
-+    }
-+  }
-+
-+  setupScrollListeners() {
-+    // Live marker updates throttled with requestAnimationFrame
-+    this.track.addEventListener(
-+      'scroll',
-+      () => {
-+        this.userHasScrolled = true;
-+        // Skip listener entirely while a click or key press has a pending target
-+        if (this.pendingTarget) return;
-+
-+        if (this.scrollRafId !== null) return;
-+        this.scrollRafId = requestAnimationFrame(() => {
-+          this.scrollRafId = null;
-+          if (this.pendingTarget) return;
-+
-+          const nearest = this.getNearestSlide();
-+          if (!nearest) return;
-+          const index = this.slides.indexOf(nearest);
-+          if (index !== this.currentActiveIndex) {
-+            this.setActiveMarker(index);
-+          }
-+        });
-+      },
-+      { passive: true }
-+    );
-+
-+    // Settle handler
-+    const supportsScrollEnd = 'onscrollend' in window;
-+
-+    if (supportsScrollEnd) {
-+      this.track.addEventListener('scrollend', () => {
-+        this.onSettle(this.scrollGeneration);
-+      });
-+    } else {
-+      this.track.addEventListener(
-+        'scroll',
-+        () => {
-+          clearTimeout(this.debounceTimer);
-+          const currentGen = this.scrollGeneration;
-+          this.debounceTimer = setTimeout(() => {
-+            this.onSettle(currentGen);
-+          }, 150);
-+        },
-+        { passive: true }
-+      );
-+    }
-+  }
-+
-+  onSettle(sourceGen) {
-+    // Ignore a scrollend that arrives after the next scroll has started
-+    if (sourceGen !== undefined && sourceGen !== this.scrollGeneration) {
-+      return;
-+    }
-+
-+    this.pendingTarget = null;
-+    const settledSlide = this.getNearestSlide();
-+    if (!settledSlide) return;
-+
-+    const settledIndex = this.slides.indexOf(settledSlide);
-+    const isVert = this.isVertical();
-+    const looping = this.isLoopingEnabled();
-+
-+    // Announce "Slide N of M" in the status region only when settled slide changes
-+    // from previously settled slide (silent on initial load and compensating park scrolls)
-+    if (settledSlide !== this.lastSettledSlide) {
-+      if (this.userHasScrolled && this.statusEl) {
-+        this.statusEl.textContent = `Slide ${settledIndex + 1} of ${this.slides.length}`;
-+      }
-+      this.lastSettledSlide = settledSlide;
-+    }
-+
-+    this.setActiveMarker(settledIndex);
-+
-+    if (!looping) {
-+      const visualSlides = this.getSlidesInVisualOrder();
-+      const visualIndex = visualSlides.indexOf(settledSlide);
-+      if (this.prevButton) this.prevButton.disabled = visualIndex === 0;
-+      if (this.nextButton) this.nextButton.disabled = visualIndex === visualSlides.length - 1;
-+    } else {
-+      if (this.prevButton) this.prevButton.disabled = false;
-+      if (this.nextButton) this.nextButton.disabled = false;
-+
-+      // Looping parking update & compensating scroll
-+      const prop = isVert ? 'top' : 'left';
-+      const beforeOffset = settledSlide.getBoundingClientRect()[prop];
-+
-+      const prevSnap = this.track.style.scrollSnapType;
-+      this.track.style.scrollSnapType = 'none';
-+
-+      this.track.style.setProperty('--current', String(settledIndex));
-+
-+      const afterOffset = settledSlide.getBoundingClientRect()[prop];
-+      const delta = afterOffset - beforeOffset;
-+
-+      if (delta !== 0) {
-+        if (isVert) {
-+          this.track.style.overflowY = 'hidden';
-+          this.track.scrollTop += delta;
-+        } else {
-+          this.track.style.overflowX = 'hidden';
-+          this.track.scrollLeft += delta;
-+        }
-+
-+        // Lock overflow on the scrolling axis and restore two animation frames later
-+        requestAnimationFrame(() => {
-+          requestAnimationFrame(() => {
-+            if (isVert) {
-+              this.track.style.overflowY = '';
-+            } else {
-+              this.track.style.overflowX = '';
-+            }
-+          });
-+        });
-+      }
-+
-+      this.track.style.scrollSnapType = prevSnap || '';
-+      this.updateInert(settledIndex);
-+    }
-+  }
-+}
-+
-+export function initCarousel(element, options) {
-+  return new Carousel(element, options);
-+}
-+
-+// Auto-initialize when loaded in browser
-+if (typeof window !== 'undefined') {
-+  const initAll = () => {
-+    document.querySelectorAll('.carousel').forEach(el => {
-+      if (!el.__carousel) {
-+        el.__carousel = new Carousel(el);
-+      }
-+    });
-+  };
-+
-+  if (document.readyState === 'loading') {
-+    document.addEventListener('DOMContentLoaded', initAll);
-+  } else {
-+    initAll();
-+  }
-+}
 diff --git a/index.html b/index.html
-index 66c9173..a435d33 100644
+index 66c9173..df58f45 100644
 --- a/index.html
 +++ b/index.html
-@@ -5,6 +5,7 @@
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>The Daily Grind | Artisanal Coffee</title>
-+  <link rel="stylesheet" href="carousel.css">
-   <style>
-     :root {
-       --primary: #4e342e;
-@@ -175,25 +176,51 @@
+@@ -113,6 +113,12 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      width: 100%;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
+     }
+ 
+     .card h3 {
+@@ -135,6 +141,241 @@
+       background: #3e2723;
+     }
+ 
++    /* Visually Hidden */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Carousel Component */
++    .carousel {
++      position: relative;
++      display: grid;
++      grid-template-areas:
++        "heading"
++        "toggle"
++        "track"
++        "status"
++        "markers";
++      grid-template-columns: 1fr;
++      max-width: 580px;
++      margin: 0 auto;
++      padding: 0 10px;
++    }
++
++    .carousel > h2 {
++      grid-area: heading;
++      margin-bottom: 1rem;
++      text-align: center;
++    }
++
++    .carousel-layout-toggle {
++      grid-area: toggle;
++      display: flex;
++      justify-content: center;
++      gap: 0.5rem;
++      margin-bottom: 1.5rem;
++    }
++
++    .layout-toggle-btn {
++      background: white;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      padding: 5px 16px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      font-weight: 500;
++      cursor: pointer;
++      touch-action: manipulation;
++      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
++    }
++
++    .layout-toggle-btn.active,
++    .layout-toggle-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .layout-toggle-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Controls */
++    .carousel-controls {
++      grid-area: track;
++      position: absolute;
++      inset: 0;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      pointer-events: none;
++      z-index: 2;
++      padding: 0 5px;
++    }
++
++    .carousel-controls button {
++      pointer-events: auto;
++      touch-action: manipulation;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      width: 44px;
++      height: 44px;
++      font-size: 1.2rem;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      transition: background 0.2s, color 0.2s, opacity 0.2s, transform 0.2s;
++    }
++
++    .carousel-controls button:hover:not(:disabled) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .carousel-controls button:disabled {
++      opacity: 0.3;
++      cursor: not-allowed;
++    }
++
++    .carousel-controls button:focus-visible,
++    .carousel-markers button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Track and Slides */
++    .carousel-track {
++      grid-area: track;
++      display: flex;
++      flex-direction: row;
++      gap: 1rem;
++      overflow-x: auto;
++      overflow-y: hidden;
++      scroll-snap-type: x mandatory;
++      touch-action: pan-x manipulation;
++      padding: 10px 0;
++      scrollbar-width: thin;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .carousel-track {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .carousel-track > * {
++      flex: 0 0 100%;
++      scroll-snap-align: center;
++    }
++
++    /* Looping parking rules */
++    @supports (order: sibling-index()) {
++      /* The first slide parks after the last while --current is the last or second-to-last index. */
++      .carousel-track > :first-child {
++        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
++      }
++
++      /* The last slide parks before the first while --current is 0 or 1. */
++      .carousel-track > :last-child {
++        order: calc(-1 * clamp(0, 2 - var(--current), 1));
++      }
++    }
++
++    /* Markers */
++    .carousel-markers {
++      grid-area: markers;
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 0.6rem;
++      margin-top: 1.25rem;
++    }
++
++    .carousel-markers button {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: var(--secondary);
++      cursor: pointer;
++      padding: 0;
++      touch-action: manipulation;
++      transition: background-color 0.2s, transform 0.2s;
++    }
++
++    .carousel-markers button[aria-current="true"] {
++      background: var(--primary);
++      transform: scale(1.25);
++    }
++
++    /* Vertical Carousel layout */
++    .carousel[data-layout="vertical"],
++    .carousel[data-orientation="vertical"],
++    .carousel.carousel--vertical,
++    .carousel.vertical {
++      max-width: 440px;
++    }
++
++    .carousel[data-layout="vertical"] .carousel-track,
++    .carousel[data-orientation="vertical"] .carousel-track,
++    .carousel.carousel--vertical .carousel-track,
++    .carousel.vertical .carousel-track {
++      flex-direction: column;
++      overflow-x: hidden;
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++      touch-action: pan-y manipulation;
++      height: 300px;
++    }
++
++    .carousel[data-layout="vertical"] .carousel-track > *,
++    .carousel[data-orientation="vertical"] .carousel-track > *,
++    .carousel.carousel--vertical .carousel-track > *,
++    .carousel.vertical .carousel-track > * {
++      flex: 0 0 100%;
++      height: 100%;
++      scroll-snap-align: center;
++    }
++
++    .carousel[data-layout="vertical"] .carousel-controls,
++    .carousel[data-orientation="vertical"] .carousel-controls,
++    .carousel.carousel--vertical .carousel-controls,
++    .carousel.vertical .carousel-controls {
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 0;
++    }
++
++    .carousel[data-layout="vertical"] .carousel-controls button[data-direction="previous"] span[aria-hidden="true"],
++    .carousel[data-orientation="vertical"] .carousel-controls button[data-direction="previous"] span[aria-hidden="true"],
++    .carousel.carousel--vertical .carousel-controls button[data-direction="previous"] span[aria-hidden="true"],
++    .carousel.vertical .carousel-controls button[data-direction="previous"] span[aria-hidden="true"] {
++      transform: rotate(90deg);
++      display: inline-block;
++    }
++
++    .carousel[data-layout="vertical"] .carousel-controls button[data-direction="next"] span[aria-hidden="true"],
++    .carousel[data-orientation="vertical"] .carousel-controls button[data-direction="next"] span[aria-hidden="true"],
++    .carousel.carousel--vertical .carousel-controls button[data-direction="next"] span[aria-hidden="true"],
++    .carousel.vertical .carousel-controls button[data-direction="next"] span[aria-hidden="true"] {
++      transform: rotate(90deg);
++      display: inline-block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +416,43 @@
    </header>
  
    <main class="container">
 -    <section>
--      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="carousel" aria-roledescription="carousel" aria-label="Seasonal Favorites" data-layout="horizontal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
 -        <div class="card">
--          <h3>Maple Oat Latte</h3>
--          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
--          <a href="/menu/seasonal" class="btn">View Details</a>
-+    <section class="carousel" aria-roledescription="carousel" aria-label="Seasonal Favorites" data-orientation="horizontal">
-+      <h2 style="text-align: center; margin-bottom: 0.5rem;">Seasonal Favorites</h2>
 +
-+      <div class="carousel-layout-switcher" aria-label="Carousel layout">
-+        <span>Layout:</span>
-+        <button type="button" data-layout="horizontal" aria-pressed="true" class="active">Horizontal</button>
-+        <button type="button" data-layout="vertical" aria-pressed="false">Vertical</button>
++      <div class="carousel-layout-toggle" role="group" aria-label="Carousel layout">
++        <button type="button" class="layout-toggle-btn active" data-layout="horizontal" aria-pressed="true">Horizontal</button>
++        <button type="button" class="layout-toggle-btn" data-layout="vertical" aria-pressed="false">Vertical</button>
 +      </div>
 +
 +      <div class="carousel-controls">
-+        <button type="button" data-direction="previous" aria-label="Previous slide">Previous slide</button>
-+        <button type="button" data-direction="next" aria-label="Next slide">Next slide</button>
++        <button type="button" data-direction="previous" aria-label="Previous slide"><span aria-hidden="true">&#10094;</span><span class="visually-hidden">Previous slide</span></button>
++        <button type="button" data-direction="next" aria-label="Next slide"><span class="visually-hidden">Next slide</span><span aria-hidden="true">&#10095;</span></button>
 +      </div>
 +
 +      <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
-+        <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3" data-marker-name="Go to slide 1">
-+          <div class="card">
-+            <h3>Maple Oat Latte</h3>
-+            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+            <a href="/menu/seasonal" class="btn">View Details</a>
-+          </div>
++        <div class="card carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
++            data-marker-name="Go to slide 1">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
 -        <div class="card">
--          <h3>Dark Roast Espresso</h3>
--          <p>Bold, smokey, and perfect for a morning boost.</p>
--          <a href="/menu/espresso" class="btn">View Details</a>
-+        <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3" data-marker-name="Go to slide 2">
-+          <div class="card">
-+            <h3>Dark Roast Espresso</h3>
-+            <p>Bold, smokey, and perfect for a morning boost.</p>
-+            <a href="/menu/espresso" class="btn">View Details</a>
-+          </div>
++        <div class="card carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3"
++            data-marker-name="Go to slide 2">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
          </div>
 -        <div class="card">
--          <h3>Cold Brew</h3>
--          <p>Steeped for 18 hours for maximum smoothness.</p>
--          <a href="/menu/cold-brew" class="btn">View Details</a>
-+        <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3" data-marker-name="Go to slide 3">
-+          <div class="card">
-+            <h3>Cold Brew</h3>
-+            <p>Steeped for 18 hours for maximum smoothness.</p>
-+            <a href="/menu/cold-brew" class="btn">View Details</a>
-+          </div>
++        <div class="card carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3"
++            data-marker-name="Go to slide 3">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>
 +
 +      <p class="visually-hidden" role="status" aria-live="polite"></p>
 +
-+      <nav class="carousel-markers" aria-label="Choose a slide">
-+        <button type="button" aria-label="Go to slide 1" aria-current="true"></button>
-+        <button type="button" aria-label="Go to slide 2"></button>
-+        <button type="button" aria-label="Go to slide 3"></button>
-+      </nav>
++      <nav class="carousel-markers" aria-label="Choose a slide"></nav>
      </section>
    </main>
  
-@@ -207,6 +234,8 @@
+@@ -207,6 +466,361 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script type="module" src="carousel.js"></script>
++  <script type="module">
++    function initCarousel() {
++      const carousel = document.querySelector('.carousel');
++      if (!carousel) return;
++
++      const track = carousel.querySelector('.carousel-track');
++      if (!track) return;
++      const slides = Array.from(track.children);
++      if (slides.length === 0) return;
++
++      const prevBtn = carousel.querySelector('button[data-direction="previous"]');
++      const nextBtn = carousel.querySelector('button[data-direction="next"]');
++      const statusEl = carousel.querySelector('[role="status"]');
++      const markersNav = carousel.querySelector('.carousel-markers');
++
++      const supportsScrollEnd = 'onscrollend' in window;
++      const supportsSiblingIndex = CSS.supports('order', 'sibling-index()') || CSS.supports('order', 'calc(sibling-count())');
++      const isLooping = supportsSiblingIndex && slides.length >= 3;
++
++      let pendingTarget = null;
++      let activeMarkerIndex = 0;
++      let previouslySettledSlide = null;
++      let isInitialLoad = true;
++      let scrollSequence = 0;
++
++      function isVertical() {
++        if (carousel.dataset.layout === 'vertical' || carousel.dataset.orientation === 'vertical') return true;
++        if (carousel.classList.contains('carousel--vertical') || carousel.classList.contains('vertical')) return true;
++        return getComputedStyle(track).flexDirection === 'column';
++      }
++
++      function prefersReducedMotion() {
++        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++      }
++
++      function getVisualSlides() {
++        const vertical = isVertical();
++        return [...slides].sort((a, b) => {
++          const rectA = a.getBoundingClientRect();
++          const rectB = b.getBoundingClientRect();
++          return vertical ? rectA.top - rectB.top : rectA.left - rectB.left;
++        });
++      }
++
++      function getNearestSlide() {
++        const vertical = isVertical();
++        const trackRect = track.getBoundingClientRect();
++        const trackCenter = vertical
++          ? trackRect.top + track.clientHeight / 2
++          : trackRect.left + track.clientWidth / 2;
++
++        let nearest = slides[0];
++        let minDiff = Infinity;
++
++        for (const slide of slides) {
++          const slideRect = slide.getBoundingClientRect();
++          const slideCenter = vertical
++            ? slideRect.top + slideRect.height / 2
++            : slideRect.left + slideRect.width / 2;
++          const diff = Math.abs(slideCenter - trackCenter);
++          if (diff < minDiff) {
++            minDiff = diff;
++            nearest = slide;
++          }
++        }
++        return nearest;
++      }
++
++      // Build or wire markers
++      let markerButtons = Array.from(markersNav ? markersNav.querySelectorAll('button') : []);
++      if (markersNav && markerButtons.length === 0) {
++        markerButtons = slides.map((slide, idx) => {
++          const btn = document.createElement('button');
++          btn.type = 'button';
++          const name = slide.getAttribute('data-marker-name') || `Go to slide ${idx + 1}`;
++          btn.setAttribute('aria-label', name);
++          btn.title = name;
++          markersNav.appendChild(btn);
++          return btn;
++        });
++      }
++
++      function setActiveMarker(index) {
++        activeMarkerIndex = index;
++        markerButtons.forEach((btn, idx) => {
++          if (idx === index) {
++            btn.setAttribute('aria-current', 'true');
++          } else {
++            btn.removeAttribute('aria-current');
++          }
++        });
++      }
++
++      function scrollToSlide(slide, immediate = false) {
++        const vertical = isVertical();
++        const trackRect = track.getBoundingClientRect();
++        const slideRect = slide.getBoundingClientRect();
++
++        const trackCenter = vertical
++          ? trackRect.top + track.clientHeight / 2
++          : trackRect.left + track.clientWidth / 2;
++        const slideCenter = vertical
++          ? slideRect.top + slideRect.height / 2
++          : slideRect.left + slideRect.width / 2;
++
++        const offset = slideCenter - trackCenter;
++        const behavior = immediate || prefersReducedMotion() ? 'auto' : 'smooth';
++
++        if (Math.abs(offset) > 0.5) {
++          if (vertical) {
++            track.scrollBy({ top: offset, behavior });
++          } else {
++            track.scrollBy({ left: offset, behavior });
++          }
++        }
++      }
++
++      function navigate(direction) {
++        scrollSequence++;
++        const thisScrollId = scrollSequence;
++
++        const baseSlide = (pendingTarget && slides.includes(pendingTarget))
++          ? pendingTarget
++          : getNearestSlide();
++
++        const visualSlides = getVisualSlides();
++        const baseIdx = visualSlides.indexOf(baseSlide);
++        if (baseIdx === -1) return;
++
++        let targetSlide;
++        if (direction === 'next') {
++          if (isLooping) {
++            targetSlide = visualSlides[(baseIdx + 1) % visualSlides.length];
++          } else {
++            targetSlide = visualSlides[Math.min(baseIdx + 1, visualSlides.length - 1)];
++          }
++        } else {
++          if (isLooping) {
++            targetSlide = visualSlides[(baseIdx - 1 + visualSlides.length) % visualSlides.length];
++          } else {
++            targetSlide = visualSlides[Math.max(baseIdx - 1, 0)];
++          }
++        }
++
++        pendingTarget = targetSlide;
++        const targetOrigIdx = slides.indexOf(targetSlide);
++
++        setActiveMarker(targetOrigIdx);
++        scrollToSlide(targetSlide);
++
++        if (prefersReducedMotion()) {
++          onScrollSettled(thisScrollId);
++        }
++      }
++
++      function navigateToMarker(index) {
++        scrollSequence++;
++        const thisScrollId = scrollSequence;
++
++        const targetSlide = slides[index];
++        if (!targetSlide) return;
++
++        pendingTarget = targetSlide;
++        setActiveMarker(index);
++        scrollToSlide(targetSlide);
++
++        if (prefersReducedMotion()) {
++          onScrollSettled(thisScrollId);
++        }
++      }
++
++      function onScrollSettled(expectedScrollId) {
++        if (expectedScrollId !== undefined && expectedScrollId !== scrollSequence) {
++          return;
++        }
++
++        pendingTarget = null;
++
++        const settledSlide = getNearestSlide();
++        const settledIndex = slides.indexOf(settledSlide);
++
++        setActiveMarker(settledIndex);
++
++        if (!isInitialLoad && settledSlide !== previouslySettledSlide) {
++          if (statusEl) {
++            statusEl.textContent = `Slide ${settledIndex + 1} of ${slides.length}`;
++          }
++        }
++        previouslySettledSlide = settledSlide;
++
++        if (!isLooping) {
++          if (prevBtn) prevBtn.disabled = (settledIndex === 0);
++          if (nextBtn) nextBtn.disabled = (settledIndex === slides.length - 1);
++        } else {
++          if (prevBtn) prevBtn.disabled = false;
++          if (nextBtn) nextBtn.disabled = false;
++        }
++
++        if (isLooping) {
++          updateParking(settledSlide, settledIndex);
++        }
++
++        isInitialLoad = false;
++      }
++
++      function updateParking(currentSlide, currentIndex) {
++        const prevCurrentStr = track.style.getPropertyValue('--current');
++        const prevCurrentVal = prevCurrentStr === '' ? null : parseInt(prevCurrentStr, 10);
++
++        if (prevCurrentVal !== currentIndex) {
++          const vertical = isVertical();
++
++          const rectBefore = currentSlide.getBoundingClientRect();
++          const posBefore = vertical ? rectBefore.top : rectBefore.left;
++
++          track.style.scrollSnapType = 'none';
++          track.style.scrollBehavior = 'auto';
++          if (vertical) {
++            track.style.overflowY = 'hidden';
++          } else {
++            track.style.overflowX = 'hidden';
++          }
++
++          track.style.setProperty('--current', String(currentIndex));
++
++          const rectAfter = currentSlide.getBoundingClientRect();
++          const posAfter = vertical ? rectAfter.top : rectAfter.left;
++          const diff = posAfter - posBefore;
++
++          if (Math.abs(diff) > 0.5) {
++            if (vertical) {
++              track.scrollTop += diff;
++            } else {
++              track.scrollLeft += diff;
++            }
++          }
++
++          requestAnimationFrame(() => {
++            requestAnimationFrame(() => {
++              if (vertical) {
++                track.style.overflowY = '';
++              } else {
++                track.style.overflowX = '';
++              }
++              track.style.scrollSnapType = '';
++              track.style.scrollBehavior = '';
++            });
++          });
++        }
++
++        slides.forEach(slide => {
++          if (slide === currentSlide) {
++            slide.inert = false;
++          } else {
++            const order = getComputedStyle(slide).order;
++            if (order !== '0' && order !== '') {
++              slide.inert = true;
++            } else {
++              slide.inert = false;
++            }
++          }
++        });
++      }
++
++      let rafId = null;
++      track.addEventListener('scroll', () => {
++        if (pendingTarget !== null) return;
++
++        if (rafId !== null) return;
++        rafId = requestAnimationFrame(() => {
++          rafId = null;
++          if (pendingTarget !== null) return;
++
++          const nearest = getNearestSlide();
++          const nearestIdx = slides.indexOf(nearest);
++          if (nearestIdx !== activeMarkerIndex) {
++            setActiveMarker(nearestIdx);
++          }
++        });
++      }, { passive: true });
++
++      if (supportsScrollEnd) {
++        track.addEventListener('scrollend', () => {
++          onScrollSettled(scrollSequence);
++        });
++      } else {
++        let scrollTimeout = null;
++        track.addEventListener('scroll', () => {
++          clearTimeout(scrollTimeout);
++          const thisId = scrollSequence;
++          scrollTimeout = setTimeout(() => {
++            onScrollSettled(thisId);
++          }, 100);
++        }, { passive: true });
++      }
++
++      if (prevBtn) {
++        prevBtn.addEventListener('click', () => navigate('previous'));
++      }
++      if (nextBtn) {
++        nextBtn.addEventListener('click', () => navigate('next'));
++      }
++      markerButtons.forEach((btn, idx) => {
++        btn.addEventListener('click', () => navigateToMarker(idx));
++      });
++
++      const toggleBtns = carousel.querySelectorAll('.layout-toggle-btn');
++      toggleBtns.forEach(btn => {
++        btn.addEventListener('click', () => {
++          const mode = btn.dataset.layout;
++          setLayout(mode);
++        });
++      });
++
++      function setLayout(mode) {
++        carousel.dataset.layout = mode;
++        carousel.classList.toggle('carousel--vertical', mode === 'vertical');
++        carousel.classList.toggle('vertical', mode === 'vertical');
++        toggleBtns.forEach(b => {
++          const active = b.dataset.layout === mode;
++          b.classList.toggle('active', active);
++          b.setAttribute('aria-pressed', String(active));
++        });
++        const current = previouslySettledSlide || slides[0];
++        scrollToSlide(current, true);
++        onScrollSettled(scrollSequence);
++      }
++
++      const observer = new MutationObserver((mutations) => {
++        for (const m of mutations) {
++          if (m.type === 'attributes' && (m.attributeName === 'class' || m.attributeName === 'data-layout' || m.attributeName === 'data-orientation')) {
++            const mode = isVertical() ? 'vertical' : 'horizontal';
++            toggleBtns.forEach(b => {
++              const active = b.dataset.layout === mode;
++              b.classList.toggle('active', active);
++              b.setAttribute('aria-pressed', String(active));
++            });
++            const current = previouslySettledSlide || slides[0];
++            scrollToSlide(current, true);
++          }
++        }
++      });
++      observer.observe(carousel, { attributes: true, attributeFilter: ['class', 'data-layout', 'data-orientation'] });
++
++      // Run initial marker, button, and parking sync once on load
++      onScrollSettled(scrollSequence);
++    }
++
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', initCarousel);
++    } else {
++      initCarousel();
++    }
++  </script>
 +
  </body>
  
  </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..baf9900 100644
+index 2bd4d77..7a0d913 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "echo 'Build successful'",
++    "build": "node -e 'console.log(\"Build successful\")'",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {

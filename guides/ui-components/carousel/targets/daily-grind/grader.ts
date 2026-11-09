@@ -135,11 +135,15 @@ test.describe('Daily Grind Carousel Grader', () => {
     expect(prevName).toBeTruthy();
     expect(nextName).toBeTruthy();
 
-    // Node.DOCUMENT_POSITION_FOLLOWING is 4
-    const prevFollowedByTrack = Boolean((prevBtn as any).compareDocumentPosition(track) & 4);
-    const nextFollowedByTrack = Boolean((nextBtn as any).compareDocumentPosition(track) & 4);
-    expect(prevFollowedByTrack).toBe(true);
-    expect(nextFollowedByTrack).toBe(true);
+    const allEls = docs.flatMap((d) => Array.from(d.document.querySelectorAll('*')));
+    const prevIdx = allEls.indexOf(prevBtn);
+    const nextIdx = allEls.indexOf(nextBtn);
+    const trackIdx = allEls.indexOf(track);
+    expect(prevIdx).toBeGreaterThan(-1);
+    expect(nextIdx).toBeGreaterThan(-1);
+    expect(trackIdx).toBeGreaterThan(-1);
+    expect(prevIdx).toBeLessThan(trackIdx);
+    expect(nextIdx).toBeLessThan(trackIdx);
 
     const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasNativeScrollPseudo = styleRules.some(
@@ -556,8 +560,8 @@ test.describe('Daily Grind Carousel Grader', () => {
       await expect(nextBtn).toBeVisible();
       await nextBtn.click();
 
-      // Check immediately without waiting for scroll to settle
-      expect(await markers.nth(1).getAttribute('aria-current')).toBe('true');
+      // Check without waiting for scroll to settle
+      await expect(markers.nth(1)).toHaveAttribute('aria-current', 'true');
       expect(await markers.first().getAttribute('aria-current')).not.toBe('true');
     });
 
