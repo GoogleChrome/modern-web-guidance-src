@@ -44,16 +44,36 @@ async function getTopLevelTrigger(page: Page): Promise<Locator> {
   return page.locator(`#${id}`);
 }
 
-async function getSubmenuTrigger(page: Page): Promise<Locator> {
-  const id = await page.evaluate(() => {
+async function getMenuWithSubmenu(page: Page): Promise<{ rootTrigger: Locator; subTrigger: Locator }> {
+  const ids = await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll<HTMLElement>('button[commandfor]'));
-    const sub = btns.find(b => Boolean(b.closest('[popover]')));
-    if (!sub) return null;
-    if (!sub.id) sub.id = `_subtrig_${Math.random().toString(36).slice(2)}`;
-    return sub.id;
+    const topLevel = btns.filter(b => !b.closest('[popover]'));
+
+    for (const top of topLevel) {
+      const popId = top.getAttribute('commandfor');
+      const popover = popId ? document.getElementById(popId) : null;
+      if (!popover) continue;
+      const sub = popover.querySelector<HTMLElement>('button[commandfor]');
+      if (sub) {
+        if (!top.id) top.id = `_trig_top_${Math.random().toString(36).slice(2)}`;
+        if (!sub.id) sub.id = `_trig_sub_${Math.random().toString(36).slice(2)}`;
+        return { rootId: top.id, subId: sub.id };
+      }
+    }
+    return null;
   });
-  if (!id) return page.locator('nonexistent-submenu-trigger');
-  return page.locator(`#${id}`);
+
+  if (!ids) {
+    return {
+      rootTrigger: page.locator('nonexistent-root-trigger'),
+      subTrigger: page.locator('nonexistent-submenu-trigger'),
+    };
+  }
+
+  return {
+    rootTrigger: page.locator(`#${ids.rootId}`),
+    subTrigger: page.locator(`#${ids.subId}`),
+  };
 }
 
 async function getTopLevelTriggerWithCommand(page: Page, requireSubmenu = false): Promise<Locator> {
@@ -183,7 +203,7 @@ test.describe('Menu Component Grader', () => {
       expect(hasPerMenuAnchorRule).toBe(false);
 
       // Open root menu with keyboard
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.focus();
       await page.keyboard.press('Enter');
@@ -192,7 +212,6 @@ test.describe('Menu Component Grader', () => {
       await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
       // Open submenu with keyboard
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
       await subTrigger.focus();
       await page.keyboard.press('ArrowRight');
@@ -480,12 +499,11 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('Focusing a submenu trigger previews its submenu and sets aria-expanded="true" without moving focus into the submenu, and moving focus to a sibling item closes that submenu and sets aria-expanded="false"', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.click();
       await page.waitForTimeout(100);
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       const subId = await subTrigger.getAttribute('commandfor');
@@ -510,12 +528,11 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('Pressing Enter or Space on a previewed submenu trigger closes that preview and sets aria-expanded="false" without moving focus from the trigger', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.click();
       await page.waitForTimeout(100);
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       await subTrigger.focus();
@@ -629,12 +646,11 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('Pressing ArrowRight on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing ArrowLeft in a submenu closes only that submenu and restores focus to its parent trigger', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.click();
       await page.waitForTimeout(100);
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       const subId = await subTrigger.getAttribute('commandfor');
@@ -664,7 +680,7 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('Pressing Escape closes only current menu level, sets trigger aria-expanded to "false", and restores focus to the trigger that opened it, including for nested submenus', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger: subTrigger1 } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.focus();
       await page.keyboard.press('Enter');
@@ -673,7 +689,6 @@ test.describe('Menu Component Grader', () => {
       const rootMenu = page.locator(`#${rootMenuId}`);
       await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
-      const subTrigger1 = await getSubmenuTrigger(page);
       expect(await subTrigger1.count()).toBeGreaterThan(0);
       await subTrigger1.focus();
       await page.keyboard.press('ArrowRight');
@@ -921,7 +936,7 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.focus();
       await page.keyboard.press('Enter');
@@ -930,7 +945,6 @@ test.describe('Menu Component Grader', () => {
       const rootMenu = page.locator(`#${menuId}`);
       await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       const subId = await subTrigger.getAttribute('commandfor');
@@ -954,12 +968,11 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a safe triangle), while moving to a sibling item outside that path closes it', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.focus();
       await page.keyboard.press('Enter');
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       await subTrigger.hover();
@@ -1080,7 +1093,7 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.focus();
       await page.keyboard.press('Enter');
@@ -1089,7 +1102,6 @@ test.describe('Menu Component Grader', () => {
       const rootMenu = page.locator(`#${rootMenuId}`);
       await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       const subId = await subTrigger.getAttribute('commandfor');
@@ -1152,7 +1164,7 @@ test.describe('Menu Component Grader', () => {
     test('At a 375 px viewport, an open submenu sits directly below its trigger item and its box does not intersect the trigger box', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
 
-      const rootTrigger = await getTopLevelTrigger(page);
+      const { rootTrigger, subTrigger } = await getMenuWithSubmenu(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.focus();
       await page.keyboard.press('Enter');
@@ -1160,7 +1172,6 @@ test.describe('Menu Component Grader', () => {
       const rootMenu = page.locator(`#${rootMenuId}`);
       await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
-      const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
       await subTrigger.focus();
       await page.keyboard.press('ArrowRight');
