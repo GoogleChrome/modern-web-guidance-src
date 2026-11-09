@@ -290,14 +290,14 @@
 {"qid":"aq0290","query":"measure interaction rendering","expectedGuide":"interaction-paint-timing","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
 {"qid":"aq0291","query":"measure soft navigation paint","expectedGuide":"interaction-paint-timing","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
 {"qid":"aq0292","query":"measure soft navigation timing","expectedGuide":"interaction-paint-timing","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
-{"qid":"aq0293","query":"hover tooltip anchor positioning","expectedGuide":"interest-triggered-tooltips","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
-{"qid":"aq0294","query":"hover tooltip anchored to button","expectedGuide":"interest-triggered-tooltips","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
-{"qid":"aq0295","query":"hover tooltip popover","expectedGuide":"interest-triggered-tooltips","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
-{"qid":"aq0296","query":"hover tooltip popover anchor","expectedGuide":"interest-triggered-tooltips","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
-{"qid":"aq0297","query":"position hover tooltip","expectedGuide":"interest-triggered-tooltips","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
-{"qid":"aq0298","query":"show anchored tooltip","expectedGuide":"interest-triggered-tooltips","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
-{"qid":"aq0299","query":"show tooltip popover on hover","expectedGuide":"interest-triggered-tooltips","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"dev"}
-{"qid":"aq0300","query":"tooltip popover","expectedGuide":"interest-triggered-tooltips","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0293","query":"hover tooltip anchor positioning","expectedGuide":"tooltip","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0294","query":"hover tooltip anchored to button","expectedGuide":"tooltip","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0295","query":"hover tooltip popover","expectedGuide":"tooltip","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0296","query":"hover tooltip popover anchor","expectedGuide":"tooltip","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0297","query":"position hover tooltip","expectedGuide":"tooltip","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0298","query":"show anchored tooltip","expectedGuide":"tooltip","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0299","query":"show tooltip popover on hover","expectedGuide":"tooltip","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0300","query":"tooltip popover","expectedGuide":"tooltip","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
 {"qid":"aq0301","query":"Build an accessible textarea form button with progressive states, feature detection, and download progress for the browser Language Detector API","expectedGuide":"language-detection","agent":"codex_cli","runDate":"2026-09-07","words":20,"split":"dev"}
 {"qid":"aq0302","query":"language detection","expectedGuide":"language-detection","agent":"antigravity_cli","runDate":"2026-10-07","words":2,"split":"dev"}
 {"qid":"aq0303","query":"build accessible textarea controls progressive enhancement streaming client-side AI sessions progress monitoring resource cleanup","expectedGuide":"language-model","agent":"codex_cli","runDate":"2026-09-09","words":14,"split":"dev"}
@@ -329,7 +329,7 @@
 {"qid":"aq0329","query":"anchor onboarding popover","expectedGuide":"persistent-app-tours","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
 {"qid":"aq0330","query":"anchor persistent popover","expectedGuide":"persistent-app-tours","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
 {"qid":"aq0331","query":"anchor popover to link","expectedGuide":"persistent-app-tours","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
-{"qid":"aq0332","query":"anchor position popover","expectedGuide":"persistent-app-tours","expectedGuides":["persistent-app-tours","interest-triggered-tooltips"],"agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0332","query":"anchor position popover","expectedGuide":"persistent-app-tours","expectedGuides":["persistent-app-tours","tooltip"],"agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
 {"qid":"aq0333","query":"anchor positioned popover","expectedGuide":"persistent-app-tours","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
 {"qid":"aq0334","query":"anchor positioning onboarding tour popover","expectedGuide":"persistent-app-tours","agent":"antigravity_cli","runDate":"2026-10-01","words":5,"split":"dev"}
 {"qid":"aq0335","query":"anchor positioning onboarding tour step popover","expectedGuide":"persistent-app-tours","agent":"jetski_cli","runDate":"2026-09-18","words":6,"split":"dev"}

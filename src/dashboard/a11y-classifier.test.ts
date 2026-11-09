@@ -53,7 +53,7 @@ test('classifyAccessibilityCheck excludes known false-positive keyword collision
         ['ui-behaviors', 'scrollytelling', 'Use timeline-scope to make the named timelines accessible'],
         ['forms', 'rich-media-picker', 'The implementation MUST NOT rely on heavy custom JavaScript to replicate keyboard focus'],
         ['ui-atoms', 'scroll-position-aware-elements', 'should use transitionable visibility to handle entry/exit animations and avoid tab order when hidden'],
-        ['ui-behaviors', 'interest-triggered-tooltips', 'Tooltips must be hoverable and persistent per WCAG 1.4.13 guidelines'],
+        ['ui-components', 'tooltip', 'Tooltips must be hoverable and persistent per WCAG 1.4.13 guidelines'],
         ['ui-components', 'scrollspy', 'aria-current state is synchronized using a scrollend event listener'],
         ['ui-components', 'scrollspy', 'aria-current state synchronizes with visible section when scrolling stops'],
         ['ui-components', 'stack-drill-down', 'Calls to focus inside the stack pass preventScroll: true'],

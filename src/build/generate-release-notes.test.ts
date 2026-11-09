@@ -748,7 +748,7 @@ test('parseBaselineUpdateFromPatch extracts feature name from patch context line
 -Supported by: Chrome 133 (Feb 2025), Edge 133 (Feb 2025), and Firefox 149 (Mar 2026).
 +Supported by: Chrome 151, Edge 151, and Firefox 153 (Jul 2026).
 `;
-  const infoVersion = parseBaselineUpdateFromPatch('interest-triggered-tooltips', patchVersionUpdate);
+  const infoVersion = parseBaselineUpdateFromPatch('tooltip', patchVersionUpdate);
   assert.ok(infoVersion);
   assert.strictEqual(infoVersion.featureName, 'popover="hint"');
   assert.strictEqual(infoVersion.statusDescription, 'Updated supported browser versions for **Chrome, Edge, and Firefox**');

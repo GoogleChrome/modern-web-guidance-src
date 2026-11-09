@@ -187,7 +187,7 @@
             }
           ]
         },
-        "interest-triggered-tooltips": {
+        "tooltip": {
           "prompt": "add a tooltip to the seasonal favorites cards. when someone hovers over the 'view details' buttons, i want a little popover to appear with more info like calorie counts. make sure it's positioned right next to the button.",
           "discipline": "ui-behaviors",
           "unguided": {
@@ -210,7 +210,7 @@
             "uncachedTokens": 45990,
             "totalTokens": 214876,
             "guidesUsed": [
-              "interest-triggered-tooltips",
+              "tooltip",
               "position-aware-tooltips"
             ],
             "earlyFailure": false
@@ -906,7 +906,7 @@
             }
           ]
         },
-        "interest-triggered-tooltips": {
+        "tooltip": {
           "prompt": "add a tooltip to the seasonal favorites cards. when someone hovers over the 'view details' buttons, i want a little popover to appear with more info like calorie counts. make sure it's positioned right next to the button.",
           "discipline": "ui-behaviors",
           "unguided": {
@@ -929,7 +929,7 @@
             "uncachedTokens": 49708,
             "totalTokens": 170404,
             "guidesUsed": [
-              "interest-triggered-tooltips",
+              "tooltip",
               "position-aware-tooltips",
               "hovercard",
               "html",
@@ -1627,7 +1627,7 @@
             }
           ]
         },
-        "interest-triggered-tooltips": {
+        "tooltip": {
           "prompt": "add a tooltip to the seasonal favorites cards. when someone hovers over the 'view details' buttons, i want a little popover to appear with more info like calorie counts. make sure it's positioned right next to the button.",
           "discipline": "ui-behaviors",
           "unguided": {
@@ -1650,7 +1650,7 @@
             "uncachedTokens": 28715,
             "totalTokens": 259115,
             "guidesUsed": [
-              "interest-triggered-tooltips",
+              "tooltip",
               "position-aware-tooltips",
               "css"
             ],

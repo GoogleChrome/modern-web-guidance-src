@@ -1,5 +1,5 @@
 ---
-name: interest-triggered-tooltips
+name: tooltip
 description: Show a tooltip or supplemental information when a user hovers over, focuses on, or long-presses an interactive element, without requiring a click.
 web-feature-ids:
   - interest-invokers

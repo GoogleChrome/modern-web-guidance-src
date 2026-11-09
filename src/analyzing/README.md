@@ -277,7 +277,7 @@ Every web platform standard in the catalog is classified across two orthogonal a
 | `scroll-entry-exit-effects` | `scroll-entry-exit-effects/js-scroll-reveal` | JS | `held-out` | 58 | 25 / 25 | 96.0% ([80.5%, 99.3%]) | 96.0% ([80.5%, 99.3%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
 | `animate-to-intrinsic-sizes` | `animate-to-intrinsic-sizes` | CSS | `held-out` | 88 | 35 / 33 | 94.3% ([81.4%, 98.4%]) | 100.0% ([89.6%, 100.0%]) | CSS `interpolate-size: allow-keywords` and `calc-size()` for intrinsic size transitions |
 | `dark-mode` | `dark-mode` | CSS | `held-out` | 150 | 35 / 34 | 94.3% ([81.4%, 98.4%]) | 94.1% ([80.9%, 98.4%]) | `color-scheme: light dark` and `light-dark()` color function |
-| `interest-triggered-tooltips` | `interest-triggered-tooltips/js-tooltip` | JS | `held-out` | 69 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
+| `tooltip` | `tooltip/js-tooltip` | JS | `held-out` | 69 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
 | `calculate-event-differentials` | `format-human-readable-durations/js-duration-formatter` | JS | `held-out` | 40 | 25 / 25 | 92.0% ([75.0%, 97.8%]) | 92.0% ([75.0%, 97.8%]) | Native `Temporal.Duration` and `Intl.DurationFormat` |
 | `ime-safe-enter-submit` | `ime-safe-enter-submit` | JS | `held-out` | 40 | 18 / 15 | 88.9% ([67.2%, 96.9%]) | 100.0% ([79.6%, 100.0%]) | `event.isComposing` guard on `keydown` Enter handlers for IME composition safety |
 | `autofill-sign-up-form` | `autofill-sign-up-form` | DOM | `held-out` | 219 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 96.6% ([82.8%, 99.4%]) | Standard `autocomplete="new-password"` on registration and sign-up password inputs |
