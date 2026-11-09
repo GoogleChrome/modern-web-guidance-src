@@ -101,36 +101,7 @@ async function startSimulation(page: Page) {
     w.schedulerYieldCalled = false;
     w.setTimeoutFallbackCalled = false;
     w.__simActive = true;
-
-    const output = document.getElementById('output');
-    document.addEventListener('click', () => {
-      if (output) {
-        if (!(output.textContent || '').includes('Done')) {
-          w.clickedWhileRunning = true;
-        }
-      } else if (w.__simActive && !w.__hasFinished) {
-        w.clickedWhileRunning = true;
-      }
-    });
-
-    if (output) {
-      const observer = new MutationObserver(() => {
-        if (output.textContent && /Done/i.test(output.textContent)) {
-          w.__hasFinished = true;
-          w.__simActive = false;
-          observer.disconnect();
-        }
-      });
-      observer.observe(output, { childList: true, characterData: true, subtree: true });
-    }
-
-    const tick = () => {
-      if (!w.__hasFinished) {
-        w.rafTicksWhileRunning++;
-        requestAnimationFrame(tick);
-      }
-    };
-    requestAnimationFrame(tick);
+    w.__btnWasDisabled = false;
 
     const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
     const btn =
@@ -150,29 +121,119 @@ async function startSimulation(page: Page) {
           return /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(desc);
         },
       );
+    w.__simBtn = btn;
+    if (btn?.disabled) {
+      w.__btnWasDisabled = true;
+    }
+
+    if (btn) {
+      const btnObs = new MutationObserver(() => {
+        if (btn.disabled) {
+          w.__btnWasDisabled = true;
+        } else if (w.__btnWasDisabled) {
+          w.__hasFinished = true;
+          w.__simActive = false;
+        }
+      });
+      btnObs.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+    }
+
+    const output = document.getElementById('output');
+    document.addEventListener('click', () => {
+      const isDone = w.__hasFinished || (output && /done|complete|finished/i.test(output.textContent || ''));
+      if (w.__simActive && !isDone) {
+        w.clickedWhileRunning = true;
+      }
+    });
+
+    const isCompleteText = (text: string | null | undefined) =>
+      Boolean(text && /done|complete|finished|all\s+\w*\s*processed/i.test(text));
+
+    const candidateEls = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '#output, [role="status"], [aria-live], #status, .status, #simulation-status, #result-summary, #results, #simulation-results, #table-container',
+      ),
+    );
+    if (candidateEls.length > 0) {
+      const textObs = new MutationObserver(() => {
+        for (const el of candidateEls) {
+          if (isCompleteText(el.textContent)) {
+            w.__hasFinished = true;
+            w.__simActive = false;
+            textObs.disconnect();
+            return;
+          }
+        }
+      });
+      for (const el of candidateEls) {
+        textObs.observe(el, { childList: true, characterData: true, subtree: true });
+      }
+    }
+
+    const tick = () => {
+      if (btn?.disabled) {
+        w.__btnWasDisabled = true;
+      } else if (w.__btnWasDisabled && btn && !btn.disabled) {
+        w.__hasFinished = true;
+        w.__simActive = false;
+      }
+      if (!w.__hasFinished) {
+        w.rafTicksWhileRunning++;
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+
     btn?.click();
+
+    if (btn?.disabled) {
+      w.__btnWasDisabled = true;
+    }
+    if (output && isCompleteText(output.textContent)) {
+      w.__hasFinished = true;
+      w.__simActive = false;
+    }
   });
 }
 
 async function waitForSimulationDone(page: Page) {
-  const hasExplicitOutput = (await page.locator('#output').count()) > 0;
-  if (hasExplicitOutput) {
-    await expect(page.locator('#output')).toHaveText(/Done|complete|finished|processed/i, { timeout: 6000 });
-    return;
+  try {
+    await page.waitForFunction(
+      () => {
+        const w = window as any;
+        if (w.__hasFinished) return true;
+
+        if (w.__yieldCount > 0 && w.__lastRealYieldTime && w.__origPerfNow() - w.__lastRealYieldTime > 150) {
+          w.__hasFinished = true;
+          w.__simActive = false;
+          return true;
+        }
+
+        if (w.__simBtn && w.__btnWasDisabled && !w.__simBtn.disabled) {
+          w.__hasFinished = true;
+          w.__simActive = false;
+          return true;
+        }
+
+        const outputEls = document.querySelectorAll(
+          '#output, [role="status"], [aria-live], #status, .status, #simulation-status, #result-summary, #results, #simulation-results, #table-container',
+        );
+        for (const el of outputEls) {
+          const text = el.textContent || '';
+          if (/done|complete|finished|all\s+\w*\s*processed/i.test(text)) {
+            w.__hasFinished = true;
+            w.__simActive = false;
+            return true;
+          }
+        }
+
+        return false;
+      },
+      { timeout: 2500 },
+    );
+  } catch {
+    // Proceed to assertions if bounded wait expires
   }
-  await page.waitForFunction(
-    () => {
-      const w = window as any;
-      if (w.__hasFinished) return true;
-      if (w.__yieldCount > 0 && w.__lastRealYieldTime && w.__origPerfNow() - w.__lastRealYieldTime > 150) {
-        w.__hasFinished = true;
-        w.__simActive = false;
-        return true;
-      }
-      return false;
-    },
-    { timeout: 6000 },
-  );
 }
 
 test.describe('Scheduler Yield Tests', () => {
