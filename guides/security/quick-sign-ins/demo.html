@@ -63,8 +63,8 @@
               data-product-id="sneaker-1"
               data-testid="favorite-button"
               aria-pressed="false"
-              aria-label="Save Multicolor Sneakers to favorites">
-              ♥ Save to favorites
+              aria-label="Save to favorites: Multicolor Sneakers">
+              ♡ Save to favorites
             </button>
           </div>
         </article>
@@ -80,8 +80,8 @@
               class="favorite-btn"
               data-product-id="sneaker-2"
               aria-pressed="false"
-              aria-label="Save Classic White Runners to favorites">
-              ♥ Save to favorites
+              aria-label="Save to favorites: Classic White Runners">
+              ♡ Save to favorites
             </button>
           </div>
         </article>
@@ -91,9 +91,10 @@
     <div id="auth-status" class="status-banner" role="status" aria-live="polite" data-testid="auth-status"></div>
 
     <!-- Fallback sign-in UI revealed when Immediate UI mode throws NotAllowedError or is unsupported -->
-    <section id="fallback-signin" class="fallback-panel" data-testid="fallback-signin" hidden aria-labelledby="fallback-heading">
+    <section id="fallback-signin" class="fallback-panel" data-testid="fallback-signin" hidden aria-labelledby="fallback-heading"
+    aria-describedby="fallback-description">
       <h2 id="fallback-heading">Sign in to continue</h2>
-      <p>No local passkey or saved password was immediately available on this device. Sign in with your account below.</p>
+      <p id="fallback-description">No local passkey or saved password was immediately available on this device. Sign in with your account below.</p>
       <form id="fallback-signin-form" action="/api/login/password" method="POST">
         <div class="form-field">
           <label for="fallback-username">Username</label>
@@ -155,6 +156,7 @@
 
       if (triggerButton) {
         triggerButton.setAttribute('aria-pressed', 'true');
+        triggerButton.textContent = `♥ Save to favorites`;
         statusEl.textContent = `Signed in as ${username} and saved item to favorites.`;
         triggerButton.focus();
       } else {
@@ -297,6 +299,9 @@
       if (document.body.dataset.signedIn === 'true') {
         const nextPressed = button.getAttribute('aria-pressed') !== 'true';
         button.setAttribute('aria-pressed', String(nextPressed));
+        button.textContent = nextPressed
+          ? '♥ Save to favorites'
+          : '♡ Save to favorites';
         statusEl.textContent = nextPressed
           ? 'Added item to favorites.'
           : 'Removed item from favorites.';
