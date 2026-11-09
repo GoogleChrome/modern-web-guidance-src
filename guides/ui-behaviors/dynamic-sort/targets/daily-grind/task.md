@@ -1,0 +1,1 @@
+- Add controls to dynamically reorder the Seasonal Favorites cards, with smooth animations that honor user preferences, a good screen reader experience, and solid performance for large lists.
