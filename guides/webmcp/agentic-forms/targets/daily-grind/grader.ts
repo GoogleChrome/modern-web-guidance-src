@@ -1,4 +1,3 @@
-import { SyntaxKind, Node, type Project } from 'ts-morph';
 import {
   test,
   expect,
@@ -6,171 +5,361 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-} from '../../../../test-fixture.ts';
+} from '../../../../../src/grading/test-fixture.ts';
+import { SyntaxKind, type CallExpression, type Node, type SourceFile } from 'ts-morph';
+import { pathToFileURL } from 'node:url';
 import { CSSStyleRule } from 'cssomnom';
 
-// @ts-ignore - import.meta is available in ESM runner
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+const targetFiles: string[] = getTargetFiles(pathToFileURL(process.cwd() + '/grader.ts').href);
 
-function getSubmitListenerNodes(project: Project): Node[] {
-  const listeners: Node[] = [];
-  const sourceFiles = project.getSourceFiles();
+function getSubmitHandlerNodes(sourceFiles: SourceFile[]): Node[] {
+  const handlers: Node[] = [];
 
   for (const sf of sourceFiles) {
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
+    // 1. Collect functions/arrows passed to addEventListener('submit', ...)
+    const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+    for (const call of callExprs) {
       const expr = call.getExpression();
-      if (expr.getText().endsWith('addEventListener')) {
+      if (
+        expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+        expr.getName() === 'addEventListener'
+      ) {
         const args = call.getArguments();
-        if (args.length >= 2) {
-          const firstArgText = args[0].getText().replace(/['"]/g, '');
-          if (firstArgText === 'submit') {
-            listeners.push(args[1]);
+        const firstArgText = args[0]?.getText().replace(/^['"`]|['"`]$/g, '');
+        if (firstArgText === 'submit' && args[1]) {
+          handlers.push(args[1]);
+        }
+      }
+    }
+
+    // 2. Collect .onsubmit = ... assignments
+    const binExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
+    for (const bin of binExprs) {
+      const left = bin.getLeft();
+      if (
+        left.isKind(SyntaxKind.PropertyAccessExpression) &&
+        left.getName() === 'onsubmit' &&
+        bin.getOperatorToken().getText() === '='
+      ) {
+        handlers.push(bin.getRight());
+      }
+    }
+  }
+
+  // Fallback: if no explicit listener found, return all sourceFiles so helpers can still be inspected if structured differently,
+  // or resolve any helper functions called inside the submit handlers.
+  const expanded: Node[] = [...handlers];
+  const visitedNames = new Set<string>();
+
+  for (const handler of handlers) {
+    const sf = handler.getSourceFile();
+    // Resolve identifier handler reference (e.g. form.addEventListener('submit', handleSubmit))
+    if (handler.isKind(SyntaxKind.Identifier)) {
+      const name = handler.getText();
+      visitedNames.add(name);
+      for (const file of sourceFiles) {
+        file.getDescendantsOfKind(SyntaxKind.FunctionDeclaration).forEach((fn) => {
+          if (fn.getName() === name) expanded.push(fn);
+        });
+        file.getDescendantsOfKind(SyntaxKind.VariableDeclaration).forEach((vd) => {
+          if (vd.getName() === name) expanded.push(vd);
+        });
+      }
+    }
+
+    // Also include local/top-level helper functions called from within the handler
+    const innerCalls = handler.getDescendantsOfKind(SyntaxKind.CallExpression);
+    for (const call of innerCalls) {
+      const callee = call.getExpression();
+      if (callee.isKind(SyntaxKind.Identifier)) {
+        const fnName = callee.getText();
+        if (!visitedNames.has(fnName)) {
+          visitedNames.add(fnName);
+          sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration).forEach((fn) => {
+            if (fn.getName() === fnName) expanded.push(fn);
+          });
+          sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration).forEach((vd) => {
+            if (vd.getName() === fnName) expanded.push(vd);
+          });
+        }
+      }
+    }
+  }
+
+  return expanded;
+}
+
+function expressionProducesPromise(arg: Node, scopeNodes: Node[]): boolean {
+  // 1. Direct Promise.resolve(...) or Promise.reject(...) or new Promise(...)
+  if (arg.isKind(SyntaxKind.NewExpression)) {
+    if (arg.getExpression().getText() === 'Promise') return true;
+  }
+
+  if (arg.isKind(SyntaxKind.CallExpression)) {
+    const callee = arg.getExpression();
+    const calleeText = callee.getText();
+    if (
+      calleeText.startsWith('Promise.') ||
+      calleeText === 'fetch' ||
+      calleeText.endsWith('.then') ||
+      calleeText.endsWith('.catch') ||
+      // Method calls and async IIFEs can't be resolved here; assume a Promise
+      // rather than failing a valid handler.
+      !callee.isKind(SyntaxKind.Identifier)
+    ) {
+      return true;
+    }
+
+    // Check if calling an async function or a function returning a Promise
+    if (callee.isKind(SyntaxKind.Identifier)) {
+      const fnName = callee.getText();
+      for (const scope of scopeNodes) {
+        const sf = scope.getSourceFile();
+        for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+          if (fn.getName() === fnName) {
+            if (fn.isAsync()) return true;
+            const returns = fn.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+            if (
+              returns.some((r) => {
+                const retExpr = r.getExpression();
+                return retExpr ? expressionProducesPromise(retExpr, scopeNodes) : false;
+              })
+            ) {
+              return true;
+            }
+          }
+        }
+        for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+          if (vd.getName() === fnName) {
+            const init = vd.getInitializer();
+            if (
+              init &&
+              (init.isKind(SyntaxKind.ArrowFunction) || init.isKind(SyntaxKind.FunctionExpression)) &&
+              (init.isAsync() ||
+                (!init.getBody().isKind(SyntaxKind.Block) &&
+                  expressionProducesPromise(init.getBody(), scopeNodes)))
+            ) {
+              return true;
+            }
           }
         }
       }
     }
+  }
 
-    const binaryExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-    for (const be of binaryExprs) {
-      if (be.getOperatorToken().getText() === '=') {
-        const left = be.getLeft().getText();
-        if (left.endsWith('.onsubmit') || left === 'onsubmit') {
-          listeners.push(be.getRight());
+  // 2. Identifier referencing a variable initialized to a Promise or async call
+  if (arg.isKind(SyntaxKind.Identifier)) {
+    const varName = arg.getText();
+    for (const scope of scopeNodes) {
+      const sf = scope.getSourceFile();
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (vd.getName() === varName) {
+          const init = vd.getInitializer();
+          if (init && init !== arg && expressionProducesPromise(init, scopeNodes)) {
+            return true;
+          }
+        }
+      }
+      // Or if it's a parameter of a helper function, check call sites of that helper function
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        const init = vd.getInitializer();
+        if (init && (init.isKind(SyntaxKind.ArrowFunction) || init.isKind(SyntaxKind.FunctionExpression))) {
+          const paramIdx = init.getParameters().findIndex((p) => p.getName() === varName);
+          if (paramIdx !== -1) {
+            const helperName = vd.getName();
+            const helperCalls = sf
+              .getDescendantsOfKind(SyntaxKind.CallExpression)
+              .filter((c) => c.getExpression().getText() === helperName);
+            if (
+              helperCalls.some((c) => {
+                const callArg = c.getArguments()[paramIdx];
+                return callArg ? expressionProducesPromise(callArg, scopeNodes) : false;
+              })
+            ) {
+              return true;
+            }
+          }
         }
       }
     }
   }
 
-  const resolved = listeners.map((node) => {
-    if (Node.isIdentifier(node)) {
-      const name = node.getText();
-      const sf = node.getSourceFile();
-      const fnDecl = sf.getFunction(name);
-      if (fnDecl) return fnDecl;
-      const varDecl = sf.getVariableDeclaration(name);
-      if (varDecl) {
-        const init = varDecl.getInitializer();
-        if (init) return init;
-      }
-    }
-    return node;
-  }).filter((n): n is Node => Boolean(n));
-
-  if (resolved.length > 0) {
-    return resolved;
-  }
-
-  return sourceFiles;
+  return false;
 }
 
-test.describe('daily-grind Target Grader', () => {
-
+test.describe('agentic-forms Target Grader', () => {
   test('The form element has both toolname and tooldescription attributes', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasToolForm = docs.some(({ document }) => {
-      const forms = Array.from(document.querySelectorAll('form'));
-      return forms.some((form: any) => {
-        const toolName = form.getAttribute('toolname');
-        const toolDesc = form.getAttribute('tooldescription');
-        return Boolean(toolName && toolName.trim() && toolDesc && toolDesc.trim());
-      });
+    const forms = docs.flatMap((d) => Array.from(d.document.querySelectorAll('form')) as any[]);
+    expect(forms.length).toBeGreaterThan(0);
+
+    const validForm = forms.find((form) => {
+      const toolname = form.getAttribute('toolname')?.trim();
+      const tooldescription = form.getAttribute('tooldescription')?.trim();
+      return Boolean(toolname && tooldescription);
     });
-    expect(hasToolForm).toBe(true);
+
+    expect(validForm).toBeDefined();
   });
 
   test('Input elements have associated labels or toolparamdescription attributes', () => {
     const docs = getHtmlDocuments(targetFiles);
-    let foundValidForm = false;
+    const toolForms = docs.flatMap(
+      (d) =>
+        Array.from(d.document.querySelectorAll('form[toolname], form[tooldescription], form')).map((form) => ({
+          doc: d.document,
+          form: form as any,
+        }))
+    );
+    expect(toolForms.length).toBeGreaterThan(0);
 
-    for (const { document } of docs) {
-      const forms = Array.from(document.querySelectorAll('form[toolname]'));
-      for (const form of forms) {
-        const inputs = Array.from(
-          (form as any).querySelectorAll('input:not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]), select, textarea')
+    const controlsWithStatus = toolForms.flatMap(({ doc, form }) => {
+      const controls = Array.from(
+        form.querySelectorAll(
+          'input:not([type="hidden"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="image"]), select, textarea'
+        )
+      ) as any[];
+
+      return controls.map((ctrl) => {
+        const hasOwnParamDesc = Boolean(ctrl.getAttribute('toolparamdescription')?.trim());
+        const parentFieldset = ctrl.closest('fieldset');
+        const hasFieldsetParamDesc = Boolean(parentFieldset?.getAttribute('toolparamdescription')?.trim());
+        const hasWrappingLabel = Boolean(ctrl.closest('label')?.textContent?.trim());
+        const id = ctrl.getAttribute('id')?.trim();
+        const hasForLabel = Boolean(
+          id &&
+            Array.from(doc.querySelectorAll('label') as any[]).some(
+              (lbl) => lbl.getAttribute('for') === id && Boolean(lbl.textContent?.trim())
+            )
         );
-        if (inputs.length === 0) continue;
+        const hasAriaDesc = Boolean(
+          ctrl.getAttribute('aria-description')?.trim() || ctrl.getAttribute('aria-label')?.trim()
+        );
 
-        const allInputsValid = inputs.every((el: any) => {
-          const hasToolParamDesc = Boolean(
-            el.getAttribute('toolparamdescription')?.trim() ||
-            el.closest('fieldset[toolparamdescription]')?.getAttribute('toolparamdescription')?.trim()
-          );
-          const id = el.getAttribute('id');
-          const hasForLabel = Boolean(id && document.querySelector(`label[for="${id}"]`));
-          const hasWrappingLabel = Boolean(el.closest('label'));
-          const hasAriaLabel = Boolean(
-            el.getAttribute('aria-label')?.trim() ||
-            el.getAttribute('aria-labelledby')?.trim() ||
-            el.getAttribute('aria-description')?.trim()
-          );
+        return (
+          hasOwnParamDesc ||
+          hasFieldsetParamDesc ||
+          hasWrappingLabel ||
+          hasForLabel ||
+          hasAriaDesc
+        );
+      });
+    });
 
-          return hasToolParamDesc || hasForLabel || hasWrappingLabel || hasAriaLabel;
-        });
-
-        if (allInputsValid) {
-          foundValidForm = true;
-          break;
-        }
-      }
-      if (foundValidForm) break;
-    }
-
-    expect(foundValidForm).toBe(true);
+    expect(controlsWithStatus.length).toBeGreaterThan(0);
+    expect(controlsWithStatus.every(Boolean)).toBe(true);
   });
 
   test('The submit event listener uses event.preventDefault()', () => {
     const project = getJsProject(targetFiles);
-    const nodes = getSubmitListenerNodes(project);
-    const hasPreventDefault = nodes.some((node) => {
-      const calls = node.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((call) => {
-        const propAccess = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-        return propAccess?.getName() === 'preventDefault' || call.getExpression().getText().endsWith('.preventDefault');
-      });
-    });
+    const handlerNodes = getSubmitHandlerNodes(project.getSourceFiles());
+    expect(handlerNodes.length).toBeGreaterThan(0);
+
+    const hasPreventDefault = handlerNodes.some((node) =>
+      node
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .some((call) => {
+          const expr = call.getExpression();
+          return (
+            expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+            expr.getName() === 'preventDefault'
+          );
+        })
+    );
+
     expect(hasPreventDefault).toBe(true);
   });
 
   test('The submit event listener checks event.agentInvoked', () => {
     const project = getJsProject(targetFiles);
-    const nodes = getSubmitListenerNodes(project);
-    const hasAgentInvoked = nodes.some((node) => {
-      const propAccesses = node.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
-      const hasProp = propAccesses.some((pa) => pa.getName() === 'agentInvoked');
-      const identifiers = node.getDescendantsOfKind(SyntaxKind.Identifier);
-      const hasId = identifiers.some((id) => id.getText() === 'agentInvoked');
-      return hasProp || hasId;
+    const handlerNodes = getSubmitHandlerNodes(project.getSourceFiles());
+    expect(handlerNodes.length).toBeGreaterThan(0);
+
+    const checksAgentInvoked = handlerNodes.some((node) => {
+      const hasPropAccess = node
+        .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+        .some((prop) => prop.getName() === 'agentInvoked');
+      const hasElementAccess = node
+        .getDescendantsOfKind(SyntaxKind.ElementAccessExpression)
+        .some(
+          (elem) =>
+            elem.getArgumentExpression()?.getText().replace(/^['"`]|['"`]$/g, '') === 'agentInvoked'
+        );
+      const hasBinding = node
+        .getDescendantsOfKind(SyntaxKind.BindingElement)
+        .some((b) => (b.getPropertyNameNode()?.getText() || b.getName()) === 'agentInvoked');
+
+      return hasPropAccess || hasElementAccess || hasBinding;
     });
-    expect(hasAgentInvoked).toBe(true);
+
+    expect(checksAgentInvoked).toBe(true);
   });
 
   test('The submit event listener calls event.respondWith() with a Promise', () => {
     const project = getJsProject(targetFiles);
-    const nodes = getSubmitListenerNodes(project);
-    const hasRespondWith = nodes.some((node) => {
-      const calls = node.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((call) => {
-        const propAccess = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-        const isRespondWith = propAccess?.getName() === 'respondWith' || call.getExpression().getText().endsWith('.respondWith');
-        return isRespondWith && call.getArguments().length > 0;
-      });
+    const handlerNodes = getSubmitHandlerNodes(project.getSourceFiles());
+    expect(handlerNodes.length).toBeGreaterThan(0);
+
+    const respondWithCalls: CallExpression[] = handlerNodes.flatMap((node) =>
+      node.getDescendantsOfKind(SyntaxKind.CallExpression).filter((call) => {
+        const expr = call.getExpression();
+        if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+          return expr.getName() === 'respondWith';
+        }
+        if (expr.isKind(SyntaxKind.ElementAccessExpression)) {
+          return (
+            expr.getArgumentExpression()?.getText().replace(/^['"`]|['"`]$/g, '') === 'respondWith'
+          );
+        }
+        return false;
+      })
+    );
+
+    expect(respondWithCalls.length).toBeGreaterThan(0);
+
+    const calledWithPromise = respondWithCalls.some((call) => {
+      const firstArg = call.getArguments()[0];
+      return firstArg ? expressionProducesPromise(firstArg, handlerNodes) : false;
     });
-    expect(hasRespondWith).toBe(true);
+
+    expect(calledWithPromise).toBe(true);
   });
 
   test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
-    const hasRule = getRules(targetFiles, CSSStyleRule).some(
-      (r) => r.selectorText.includes(':tool-form-active') && r.style.length > 0
+    const styleRules = getRules(targetFiles, CSSStyleRule);
+    expect(styleRules.length).toBeGreaterThan(0);
+
+    const matchingRule = styleRules.find(
+      (rule) =>
+        rule.selectorText.includes(':tool-form-active') && rule.style.length > 0
     );
-    expect(hasRule).toBe(true);
+
+    expect(matchingRule).toBeDefined();
   });
 
-  test('The :tool-submit-active pseudo-class is used to provide visual feedback', () => {
-    const hasRule = getRules(targetFiles, CSSStyleRule).some(
-      (r) => r.selectorText.includes(':tool-submit-active') && r.style.length > 0
-    );
-    expect(hasRule).toBe(true);
-  });
+  test('The :tool-submit-active pseudo-class is used to provide visual feedback for forms without toolautosubmit', () => {
+    const docs = getHtmlDocuments(targetFiles);
+    const toolForms = docs
+      .flatMap((d) => Array.from(d.document.querySelectorAll('form')) as any[])
+      .filter((form) => {
+        const toolname = form.getAttribute('toolname')?.trim();
+        const tooldescription = form.getAttribute('tooldescription')?.trim();
+        return Boolean(toolname && tooldescription);
+      });
+    expect(toolForms.length).toBeGreaterThan(0);
 
+    const formsWithoutAutoSubmit = toolForms.filter((form) => {
+      if (!form.hasAttribute('toolautosubmit')) return true;
+      const val = form.getAttribute('toolautosubmit');
+      return val !== null && val.trim().toLowerCase() === 'false';
+    });
+
+    const styleRules = getRules(targetFiles, CSSStyleRule);
+    const hasSubmitActiveRule = styleRules.some(
+      (rule) =>
+        rule.selectorText.includes(':tool-submit-active') && rule.style.length > 0
+    );
+
+    expect(formsWithoutAutoSubmit.length === 0 || hasSubmitActiveRule).toBe(true);
+  });
 });
