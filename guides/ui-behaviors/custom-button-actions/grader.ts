@@ -14,21 +14,70 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
+const invokersPolyfillStub = `
+class CommandEvent extends Event {
+  constructor(type, init = {}) {
+    super(type, init);
+    this.command = init.command || '';
+    this.source = init.source || null;
+  }
+}
+globalThis.CommandEvent = CommandEvent;
+if (!('commandForElement' in HTMLButtonElement.prototype)) {
+  Object.defineProperty(HTMLButtonElement.prototype, 'commandForElement', {
+    configurable: true,
+    get() {
+      const id = this.getAttribute('commandfor');
+      return id ? document.getElementById(id) : null;
+    },
+    set(el) {
+      if (el?.id) this.setAttribute('commandfor', el.id);
+    },
+  });
+}
+if (!('command' in HTMLButtonElement.prototype)) {
+  Object.defineProperty(HTMLButtonElement.prototype, 'command', {
+    configurable: true,
+    get() {
+      return this.getAttribute('command') || '';
+    },
+    set(val) {
+      this.setAttribute('command', val);
+    },
+  });
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target?.closest?.('button[commandfor][command]');
+  if (!btn) return;
+  const target = btn.commandForElement;
+  if (!target) return;
+  target.dispatchEvent(new CommandEvent('command', { command: btn.command, source: btn }));
+});
+export { CommandEvent };
+export default {};
+`;
+
+async function routeLocalFiles(page: import('@playwright/test').Page) {
+  await page.route('http://localhost/**', async (route) => {
+    const requestPath = new URL(route.request().url()).pathname;
+    const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+
+    if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+      const isJs = /\.(m?js|cjs)$/i.test(localFilePath);
+      await route.fulfill({
+        path: localFilePath,
+        ...(isJs ? { contentType: 'application/javascript' } : {}),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+}
+
 test.describe(`Invoker Commands API Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
-    // Route local files
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
-    });
-
+    await routeLocalFiles(page);
     await page.goto(demoUrl);
   });
 
@@ -45,18 +94,54 @@ test.describe(`Invoker Commands API Expectations: ${demoName}`, () => {
   });
 
 
-  test('Invoker Commands API is available (natively or via polyfill)', async ({ page }) => {
-    // Wait for either native support or the polyfill to be ready
-    await page.waitForFunction(() => 'commandForElement' in HTMLButtonElement.prototype);
-    
-    const isAvailable = await page.evaluate(() => 'commandForElement' in HTMLButtonElement.prototype);
-    expect(isAvailable).toBe(true);
-
-    // Additionally check that at least one button is using the API to avoid 
-    // false positives in environments where the browser supports it natively 
-    // but the page doesn't actually use it (like in the negative-demo).
+  test('Invoker Commands API is available (natively or via polyfill)', async ({ page, browser }) => {
     const invokerButton = page.locator('button[commandfor]');
     await expect(invokerButton.first()).toBeVisible();
+
+    const fallbackContext = await browser.newContext();
+    const fallbackPage = await fallbackContext.newPage();
+    try {
+      await routeLocalFiles(fallbackPage);
+      await fallbackPage.route(
+        /https?:\/\/(?:esm\.run|esm\.sh|cdn\.jsdelivr\.net|unpkg\.com)\/.*invokers-polyfill.*/,
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/javascript',
+            body: invokersPolyfillStub,
+          });
+        }
+      );
+      await fallbackPage.addInitScript(() => {
+        delete (HTMLButtonElement.prototype as any).commandForElement;
+        delete (HTMLButtonElement.prototype as any).command;
+        delete (window as any).CommandEvent;
+        window.addEventListener(
+          'command',
+          (event) => {
+            if (event.isTrusted) {
+              event.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+      });
+
+      await fallbackPage.goto(demoUrl, { waitUntil: 'networkidle' });
+      await fallbackPage.evaluate(
+        () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      );
+
+      const spinBtn = fallbackPage.getByRole('button', { name: /Spin/i });
+      const targetId = await spinBtn.getAttribute('commandfor');
+      expect(targetId).toBeTruthy();
+
+      const target = fallbackPage.locator(`#${targetId}`);
+      await spinBtn.click();
+      await expect(target).toHaveClass(/is-spun/);
+    } finally {
+      await fallbackContext.close();
+    }
   });
 
   test('Clicking Spin toggles is-spun class on target element', async ({ page }) => {
