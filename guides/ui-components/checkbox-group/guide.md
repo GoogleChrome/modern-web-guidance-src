@@ -204,7 +204,7 @@ For a de-emphasized hint under the main label, place it outside `<label>` as a `
 <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 ```
 
-Align the hint with the label text, not the checkbox: use `margin-inline-start: 2rem` (checkbox width plus column gap) for label-only rows, or `grid-column: 2` when `.options` is a subgrid. Style it smaller and muted with at least 4.5:1 contrast.
+Align the hint with the label text, not the checkbox: use `display: block` and `margin-inline-start: 2rem` (checkbox width plus column gap) for label-only rows, or `grid-column: 2` when `.options` is a grid. Style it smaller and muted with at least 4.5:1 contrast.
 
 ### Radio groups
 
