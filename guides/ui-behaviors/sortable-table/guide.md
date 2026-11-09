@@ -75,6 +75,7 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'bas
 function sortRows(rows, index, type, direction) {
   const factor = direction === 'ascending' ? 1 : -1;
   // Prefer the raw value when the displayed text is formatted.
+  // This reads the DOM on every comparison; for large tables, read each row's value once before sorting.
   const value = (row) => row.cells[index].dataset.value ?? row.cells[index].textContent.trim();
   return rows.sort((a, b) =>
     factor * (type === 'number' ? value(a) - value(b) : collator.compare(value(a), value(b)))
