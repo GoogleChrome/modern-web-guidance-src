@@ -1,11 +1,5 @@
 - Dragging an item with a pointer, either from a dedicated drag handle or from the item itself, changes the item's DOM and visible position within the collection.
-- During a pointer drag, sibling items do not change position.
-- During a pointer drag, a drop marker between the two items around the drop spot shows where the dragged item will land.
-- Showing the drop marker does not shift the layout of the items.
-- While the list autoscrolls during a drag, the drop marker stays between the two items around the drop spot.
-- When the drop spot is after the last item, the drop marker is positioned inside the scroll container.
-- The dragged item's DOM position changes once, on release.
-- The drop marker's color and size come from CSS custom properties.
+- During a pointer drag, sibling items stay in place and a drop marker indicates where the dragged item will land without shifting layout, committing the DOM move once on release.
 - In a horizontal row, dragging an item with a pointer along the row's axis changes its DOM position by its horizontal position, and the visible order of the items matches their DOM order.
 - In a horizontal row, the arrow keys follow the visual direction: in a right-to-left row the arrow key pointing left moves a grabbed item later in the DOM and the one pointing right moves it earlier.
 - Pressing `Escape` during a pointer drag cancels it, removes the marker, and leaves the item in its original position.
