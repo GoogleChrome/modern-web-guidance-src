@@ -159,8 +159,9 @@ select.addEventListener('focusout', () => requestAnimationFrame(() => {
 `<select multiple>` is an always-open listbox in customizable select (it has no popup, so `showPicker()` does nothing), so DO NOT use it for a dropdown that stays open while the user clicks several options. Build the multi-select as a trigger button that opens a `popover` containing the filter input and a `<fieldset>` of checkboxes. Checkboxes submit under the shared `name` natively. Popover provides light dismiss, `Escape`, and focus return; `autofocus` on the input moves focus to it when the popover opens.
 
 ```html
+<label id="toppings-label" for="toppings-trigger">Toppings</label>
 <button type="button" id="toppings-trigger" popovertarget="toppings-panel"
-        aria-labelledby="toppings-label" aria-describedby="toppings-selected">Select toppings</button>
+        aria-labelledby="toppings-label toppings-trigger" aria-describedby="toppings-selected">Select toppings</button>
 <!-- Muted list of the chosen options, visible while the popover is closed -->
 <p id="toppings-selected">None selected</p>
 <div id="toppings-panel" popover>
