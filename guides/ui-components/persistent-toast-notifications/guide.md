@@ -30,7 +30,6 @@ Toast notifications must be used to provide non-critical, supplemental informati
 * **DO** provide an explicit "Close" button within the toast using popovertargetaction="hide".
 * **DO** ensure that a toast's dismiss button is keyboard-focusable (without automatically stealing focus when the toast appears), so keyboard users can navigate to the toast region and dismiss notifications.
 * **DO** manage focus when a user manually dismisses a currently focused toast: move focus to the next remaining toast in the stack, or—if no toasts remain—return focus to the user's prior focus location (or the control that triggered the toast).
-* **DO** use JavaScript for auto-dismissal timers (e.g., calling hidePopover() after 3000ms), if the user has set that they want auto-dismissal.
 * **DO** declare `transition-behavior: allow-discrete` as a separate property after `transition` (rather than inside the `transition` shorthand) to animate entry and exit from the Top Layer without older browsers ignoring the `transition` declaration.
 * **DO** provide a non-animated version using the `prefers-reduced-motion` media query
 * **DO** ensure that toast messages scale in size, and that all toast content remains visible when resizing text up to 200% to adhere to WCAG 1.4.4 Resize Text (Level AA)
