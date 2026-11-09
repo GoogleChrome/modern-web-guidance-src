@@ -228,12 +228,19 @@
 
   .short {
     display: none;
+    user-select: none;
   }
 
   /* Example threshold, in the cell's own font size */
   @container (inline-size < 6em) {
+    /* Visually hidden, but still in the accessibility tree */
     .long {
-      display: none;
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .short {
@@ -284,11 +291,11 @@
 <div class="resizable" style="inline-size: 100%">
   <table>
     <tr>
-      <td><div class="day"><span class="long">Monday</span><span class="short">Mon</span></div></td>
-      <td><div class="day"><span class="long">Tuesday</span><span class="short">Tue</span></div></td>
-      <td><div class="day"><span class="long">Wednesday</span><span class="short">Wed</span></div></td>
-      <td><div class="day"><span class="long">Thursday</span><span class="short">Thu</span></div></td>
-      <td><div class="day"><span class="long">Friday</span><span class="short">Fri</span></div></td>
+      <td><div class="day"><span class="long">Monday</span><span class="short" aria-hidden="true">Mon</span></div></td>
+      <td><div class="day"><span class="long">Tuesday</span><span class="short" aria-hidden="true">Tue</span></div></td>
+      <td><div class="day"><span class="long">Wednesday</span><span class="short" aria-hidden="true">Wed</span></div></td>
+      <td><div class="day"><span class="long">Thursday</span><span class="short" aria-hidden="true">Thu</span></div></td>
+      <td><div class="day"><span class="long">Friday</span><span class="short" aria-hidden="true">Fri</span></div></td>
     </tr>
   </table>
 </div>

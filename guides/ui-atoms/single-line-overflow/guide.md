@@ -125,11 +125,11 @@ DO NOT use a single gradient as the mask. A mask is clipped to the border box by
 
 ### 3. Replace with a predefined shorter version
 
-Put both versions in the markup and switch them with a container query on the cell or item. Use a short form that is understood on its own (Sat, Nov, kg), because it becomes the accessible name while shown.
+Put both versions in the markup and switch them with a container query on the cell or item. The short version is presentational: hide it from assistive technology and from selection, and hide the long version visually rather than with `display: none`, so the full text stays the accessible name and what copy and find-in-page see.
 
 ```html
 <!-- The wrapper is the container: size containment has no effect on table cells themselves -->
-<td><div class="day"><span class="long">Saturday</span><span class="short">Sat</span></div></td>
+<td><div class="day"><span class="long">Saturday</span><span class="short" aria-hidden="true">Sat</span></div></td>
 ```
 
 ```css
@@ -139,12 +139,19 @@ Put both versions in the markup and switch them with a container query on the ce
 
 .short {
   display: none;
+  user-select: none;
 }
 
 /* Example threshold: relative units resolve against the container's own font */
 @container (inline-size < 6em) {
+  /* Visually hidden, but still in the accessibility tree */
   .long {
-    display: none;
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .short {
