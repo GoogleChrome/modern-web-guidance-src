@@ -15,6 +15,8 @@ Browsers and screen readers do not yet expose this consistently, so add the equi
 - **DO NOT** attach a rich hint to a control that already uses `aria-expanded` for something else (for example, a button that opens a menu). Its hint would go unannounced; give that hint its own trigger instead.
 - **DO NOT** move focus into the target when interest is shown (no `autofocus`, no `focus()` in an `interest` listener). Interest is triggered by hover or focus alone, so moving focus would fail WCAG 3.2.1 (On Focus).
 
+Not every screen reader reads descriptions when moving through the page (NVDA skips them in browse mode by design), so a plain hint must only carry text the user can afford to miss. Anything the user needs belongs in a toggletip or inline, and anything richer gets `aria-expanded` so its presence is announced.
+
 Wire this with a short script instead of hand-authoring the attributes, so the markup stays declarative and the same rules apply to every hint. The script should:
 
 1. Run in every browser, before loading the `interestfor` polyfill, once the DOM is parsed, and expose a function that can be called again for content inserted later. Scanning upfront is required: a browse-mode screen reader user needs the attributes in place before any interaction, so wiring them lazily on `focus` or `interest` is too late, and so is waiting for the polyfill, which wires its ARIA only on `load` and adds no `role="tooltip"` to plain hints.
