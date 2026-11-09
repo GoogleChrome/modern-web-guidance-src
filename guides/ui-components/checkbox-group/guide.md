@@ -152,8 +152,6 @@ Style `.master` with a 44px minimum hit target and a visual separator:
 MANDATORY: The checkbox must stay to the left of all label text, including wrapped lines and hints. Do not use a flex label: the text becomes flex items beside the checkbox, so a long label can wrap underneath it. Instead make the label a two-column grid (checkbox, text) and wrap the label text in a single `<span>`, because every direct child of the label becomes its own grid item:
 
 ```css
-.checkbox { font-size: 1rem; } /* Keeps the em-based sizes below predictable */
-
 .options label {
   display: grid;
   grid-template-columns: auto 1fr;
