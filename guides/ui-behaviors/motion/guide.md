@@ -19,7 +19,7 @@ web-feature-ids:
 
 # Motion
 
-- Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs.
+- Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs. Both also clip the element's own focus outline, so when the clipped or masked element is focusable (for example, a scroll container with `tabindex="0"`), draw its focus indicator on a parent element that isn't clipped or masked.
 - Use **Scroll-Driven Animations** (`animation-timeline: scroll()`) for non-essential scroll-bound effects instead of JS listeners.
 - Use **View Transitions** to animate between complex layout states seamlessly.
 
@@ -43,9 +43,10 @@ web-feature-ids:
 
 ## Accessibility
 
-- **Provide a pause mechanism**: Allow users to stop auto-running carousels, banners, or other persistent animations.
+- **Provide a pause mechanism**: Allow users to stop auto-running carousels, banners, or other persistent animations. Any moving, blinking, or scrolling content that starts automatically, lasts more than five seconds, and is shown alongside other content needs a visible control to pause, stop, or hide it, such as a `<button>` next to the content that works with the keyboard (WCAG 2.2.2 Pause, Stop, Hide). `prefers-reduced-motion` doesn't replace the control, because users who haven't turned on that setting still need to stop the motion. If the button's label changes between "Pause" and "Play", don't also set `aria-pressed`, or screen readers announce a pressed "Play" button.
 - **Default to static views**: Consider defaulting to static states and allowing users to opt in to motion.
-- **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.
+- **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures. This applies whatever the user's motion preference, so don't put flashing content inside `@media (prefers-reduced-motion: no-preference)` either (WCAG 2.3.1 Three Flashes or Below Threshold: nothing flashes more than three times in any one-second period).
+- **Keep the final state**: When you turn off an animation, make sure the element still ends in its final state, so content isn't left hidden (for example, at `opacity: 0`) and focus and selection indicators still appear.
 
 ### Respect reduced motion
 
@@ -62,9 +63,7 @@ When reduced motion should have no animation at all, default to the static state
 ```css
 /* Good: Default to static state and opt in to full motion */
 .spinner {
-  opacity: 0.5;
   @media (prefers-reduced-motion: no-preference) {
-    opacity: 1;
     animation: spin 1s linear infinite;
   }
 }
@@ -113,3 +112,5 @@ document.addEventListener('animationstart', (event) => {
 ```
 
 You can feature-detect support using `'animation' in AnimationEvent.prototype` (or `'animation' in TransitionEvent.prototype`).
+
+When reduced motion means an animation or transition never runs (it's only applied inside `@media (prefers-reduced-motion: no-preference)`, set to `none`, or given a zero duration and no delay), `animationend` and `transitionend` never fire. If your code waits for these events to remove or hide an element, continue immediately when `element.getAnimations()` returns an empty array, or keep a short opacity transition instead of removing it.
