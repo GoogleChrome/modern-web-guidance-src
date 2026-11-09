@@ -448,16 +448,15 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 * **Progressive Enhancement & Nuanced Fallbacks**: We distinguish between purely additive enhancements (like speculative preloading) which are safe to let older browsers silently ignore, and critical behaviors (like dialog controls or network beacons) where we write highly considered, low-overhead fallbacks.
 * **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
 * **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
-* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents dynamically adapt to current browser support and your project's target threshold.
+* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents dynamically adapt to current browser support.
 * **Origin Trial & Volatile Feature Gates**: Guides covering experimental **Origin Trial** APIs or **volatile features** (single-engine features shipped within the last 3 months or still stabilizing) remain discoverable via `search`, but are gated on `retrieve` so agents do not adopt unstable APIs without explicit developer consent.
 
 ### Project Configuration (`.mwgrc`)
 
-Configure browser support targets and feature opt-ins for a repository with an optional `.mwgrc` JSON file in your project root (or `~/.mwgrc` as a user-level fallback), which you can commit to share across your team:
+Configure Origin Trial and volatile feature opt-ins for a repository with an optional `.mwgrc` JSON file in your project root (or `~/.mwgrc` as a user-level fallback), which you can commit to share across your team:
 
 | CLI Command | `.mwgrc` Key | Effect |
 | :--- | :--- | :--- |
-| `npx modern-web-guidance@latest set-baseline <widely\|newly\|limited\|YYYY>` | `"baseline"` | Sets the browser support target (`"widely"` by default). Retrieved guides instruct agents to omit fallbacks and polyfills for features that already meet your target. |
 | `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs (interactive terminal prompt; set to `false` or remove to opt out). |
 | `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features (interactive terminal prompt; set to `false` or remove to opt out). |
 
@@ -556,7 +555,7 @@ If you installed the skill using `npx modern-web-guidance@latest install`, you c
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 
-## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well ;)
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well
 
 We developed a robust eval harness to ensure that the content is **empirically proven and continuously calibrated** so AI agents write better code. We run automated evaluations using a closed-loop validation pipeline:
 
