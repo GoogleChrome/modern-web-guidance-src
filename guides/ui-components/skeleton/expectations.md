@@ -11,9 +11,11 @@
 - Skeleton colors are derived from the surface with `color-mix()` using an explicit color space.
 - A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay. The shimmer gradient and animation are only applied under `prefers-reduced-motion: no-preference`.
 - Skeleton list items hide the native marker with `list-style: none` and draw a bullet with `li::before` sized in `em`, colored with the skeleton tone.
-- The `ul` or `ol` of a skeleton list keeps the same `padding-inline-start` while loading as when loaded, and its items have `margin-inline-start: 0`.
+- The `ul` or `ol` of a skeleton list keeps the same `padding-inline-start` while loading as when loaded.
 - Only a limited number of cards are visible while loading, even if more are in the markup.
 - Under `forced-colors: active`, the skeleton placeholders (not the container) set `forced-color-adjust: none` and are filled with a system color.
-- The skeleton container has `inert` and `aria-hidden="true"` while loading.
-- The loading message is set, by script, into a `role="status"` element that was already on the page and empty when the skeleton appears.
+- The skeleton container has the `inert` attribute while loading.
+- The skeleton container has `aria-hidden="true"` while loading.
+- The loading message is set, by script, into a `role="status"` element.
+- The `role="status"` element is already on the page and empty when the skeleton appears.
 - If the Baseline target does not support `@function`, the CSS defines no `@function` or `--skeleton-bar()` calls and writes each bar out as a literal `shape()` subpath in `--bars`.

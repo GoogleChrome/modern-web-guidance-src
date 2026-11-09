@@ -33,7 +33,3 @@
 .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
   --bars: shape(from 0 0, --skeleton-bar(0, 42%));
 }
-
-.skeleton[aria-busy="true"] li {
-  --bars: shape(from 0 0, --skeleton-bar(0, var(--line-one)));
-}

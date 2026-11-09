@@ -74,17 +74,3 @@
     arc to var(--bar-radius) calc(var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
     close);
 }
-
-.skeleton[aria-busy="true"] li {
-  --bars: shape(from 0 0,
-    move to var(--bar-radius) calc(var(--bar-gap) / 2),
-    hline to calc(var(--line-one) - var(--bar-radius)),
-    arc to var(--line-one) calc(calc(var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
-    arc to calc(var(--line-one) - var(--bar-radius)) calc(calc(var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
-    hline to var(--bar-radius),
-    arc to 0 calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-radius)),
-    arc to var(--bar-radius) calc(var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
-    close);
-}
