@@ -207,10 +207,14 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
             semantic.getAttribute('aria-labelledby')?.trim(),
         );
       }
-      const decorative = Array.from(
+      const allMatched = Array.from(
         document.querySelectorAll<HTMLElement>(
           '#progress, [id*="progress" i], [class*="progress" i], [style*="scroll("]',
         ),
+      );
+      // Keep only innermost matches: drop any matched element that contains another matched element
+      const decorative = allMatched.filter(
+        (el) => !allMatched.some((other) => other !== el && el.contains(other)),
       );
       return (
         decorative.length > 0 &&
