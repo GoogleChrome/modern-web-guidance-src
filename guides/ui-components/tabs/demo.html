@@ -84,8 +84,22 @@
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
-      /* Lets the label's span query whether it is truncated */
-      container-type: scroll-state;
+      /* Active only while the label overflows: flags it for the span */
+      animation: truncated linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+
+  /* Registered so the flag does not inherit into nested elements */
+  @property --truncated {
+    syntax: "<integer>";
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @keyframes truncated {
+    from, to {
+      --truncated: 1;
     }
   }
 
@@ -96,12 +110,12 @@
       text-overflow: clip;
     }
 
-    @container scroll-state(scrollable: inline-end) {
+    @container style(--truncated: 1) {
       .tablist.shrink button:hover .label > span {
         display: inline-block;
         /* Forward by the label's width, then back by the text's own width */
         margin-inline-start: 100%;
-        /* 1px short, so the text still counts as overflowing and the query keeps matching */
+        /* 1px short, so the text still overflows and the timeline stays active */
         translate: calc(1px - 100%);
         transition: margin-inline-start 2s ease-in, translate 2s ease-in;
       }

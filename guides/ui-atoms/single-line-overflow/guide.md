@@ -5,7 +5,7 @@ web-feature-ids:
   - text-overflow
   - container-queries
   - scroll-driven-animations
-  - container-scroll-state-queries
+  - container-style-queries
   - masks
   - interpolate-size
   - resize-observer
@@ -75,15 +75,15 @@ Wrap the part that may truncate, such as everything before the file extension or
 Use a mask that fades the end of the text. Only fade when the text overflows, or text that fits fades for no reason. An element with `overflow: hidden` is a scroll container, so its scroll timeline is only active when its content overflows. An animation on that timeline applies exactly when the text is truncated:
 
 ```css
-/* --fade-size is the configured size, --fade the live value the animation turns on.
-   Both registered: unregistered custom properties neither animate nor transition. */
-@property --fade-size {
-  syntax: "<length>";
+/* --truncated is the flag the animation sets, registered so it does not inherit into nested elements.
+   --fade-size is the configured size, registered so it can transition. */
+@property --truncated {
+  syntax: "<integer>";
   inherits: false;
-  initial-value: 0px;
+  initial-value: 0;
 }
 
-@property --fade {
+@property --fade-size {
   syntax: "<length>";
   inherits: false;
   initial-value: 0px;
@@ -98,12 +98,13 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
   --fade-dir: right;
   --fade-pos: 100%;
   /* An opaque layer that is not clipped to the box, minus a band at the end.
-     Masking only the band keeps everything else visible, including a focus outline outside the box. */
+     Masking only the band keeps everything else visible, including a focus outline outside the box.
+     The band is --fade-size while truncated, 0 otherwise. */
   mask:
     linear-gradient(black, black) no-clip subtract,
-    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-pos) 0 / var(--fade) 100% no-repeat no-clip;
-  /* Applies only when the text overflows: with no overflow the timeline is inactive and the animation has no effect */
-  animation: fade-end linear both;
+    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-pos) 0 / calc(var(--truncated) * var(--fade-size)) 100% no-repeat no-clip;
+  /* Sets the flag only while the text overflows: with no overflow the timeline is inactive and the animation has no effect */
+  animation: truncated linear both;
   animation-timeline: scroll(self inline);
 
   &:dir(rtl) {
@@ -112,14 +113,14 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
   }
 }
 
-@keyframes fade-end {
+@keyframes truncated {
   from, to {
-    --fade: var(--fade-size);
+    --truncated: 1;
   }
 }
 ```
 
-Keep the two properties separate. The reveal below transitions `--fade-size`, and a keyframe that set the mask directly would not follow that transition.
+Keep the keyframes to the flag and derive the band from it. The reveal below transitions `--fade-size`, and a keyframe that set the band or the mask directly would not follow that transition in every browser.
 
 DO NOT use a single gradient as the mask. A mask is clipped to the border box by default, so it also hides the element's focus outline, which is outside the box.
 
@@ -174,7 +175,7 @@ Choose by whether the element may grow:
 
 ### 1. Scroll the text inside its box
 
-Move the text by the difference between the element's width and its own: a percentage margin resolves against the element, a percentage translate against the text itself. A scroll-state query limits this to truncated text, so text that fits stays put. The inner `span` is the only extra markup: it becomes the box that moves. The same class works on non-interactive elements such as list items, where hover still reveals.
+Move the text by the difference between the element's width and its own: a percentage margin resolves against the element, a percentage translate against the text itself. The element's own scroll timeline flags truncation in a custom property, and a style query on it limits the motion to truncated text, so text that fits stays put. The inner `span` is the only extra markup: it becomes the box that moves. The same class works on non-interactive elements such as list items, where hover still reveals.
 
 ```html
 <a class="label" href="…"><span>Meeting notes from Tuesday afternoon</span></a>
@@ -186,8 +187,16 @@ Move the text by the difference between the element's width and its own: a perce
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Lets descendants query whether the text overflows. Unlike size containment, this does not affect the element's size. */
-  container-type: scroll-state;
+  /* Active only while the text overflows */
+  animation: truncated linear both;
+  animation-timeline: scroll(self inline);
+}
+
+/* The same flag as the fade, registered there so it does not inherit */
+@keyframes truncated {
+  from, to {
+    --truncated: 1;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -196,13 +205,13 @@ Move the text by the difference between the element's width and its own: a perce
     text-overflow: clip;
   }
 
-  @container scroll-state(scrollable: inline-end) {
+  @container style(--truncated: 1) {
     .label:is(:hover, :focus-visible) > span {
       /* Needs its own box to be moved. It stays inline otherwise, so the ellipsis renders. */
       display: inline-block;
       /* Forward by the element's width, then back by the text's own width */
       margin-inline-start: 100%;
-      /* 1px short, so the text still counts as overflowing and the query keeps matching */
+      /* 1px short, so the text still overflows and the timeline stays active */
       translate: calc(1px - 100%);
       /* Example values. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
       transition: margin-inline-start 2s ease-in, translate 2s ease-in;
@@ -270,20 +279,36 @@ See {{ GUIDE_REF("interest-triggered-tooltips") }} for tooltips.
 
 No property reports truncation. Derive it from overflow: the element is truncated when it can scroll toward its inline end. `text-overflow` only changes painting, so this holds with an ellipsis too.
 
-- **In CSS, on the element itself**, use a scroll-driven animation on its own inline scroll timeline, as in the fade above. Any declarations in the keyframes apply only while the text overflows.
-- **In CSS, on descendants and pseudo-elements**, make the element a scroll-state container and query it. For example, to hint that hovering reveals more:
+- **In CSS**, use a scroll-driven animation on the element's own inline scroll timeline, as in the fade above: it is active only while the text overflows. Declarations in the keyframes apply to the element itself. For descendants and pseudo-elements, set a custom property in the keyframes and read it with a style query. For example, to hint that hovering reveals more:
 
   ```css
-  .label {
-    container-type: scroll-state;
+  /* Registered so the flag does not inherit into nested truncated elements */
+  @property --truncated {
+    syntax: "<integer>";
+    inherits: false;
+    initial-value: 0;
   }
 
-  @container scroll-state(scrollable: inline-end) {
+  .label {
+    animation: truncated linear both;
+    animation-timeline: scroll(self inline);
+  }
+
+  @keyframes truncated {
+    from, to {
+      --truncated: 1;
+    }
+  }
+
+  @container style(--truncated: 1) {
     .label > span {
       text-decoration: underline dotted;
     }
   }
   ```
+
+  The element's `animation` carries the detection: add any other animation to that list, since declaring `animation` again replaces it.
+  DO NOT use a scroll-state query (`scrollable`) for this: the spec excludes `overflow: hidden` containers, so a browser that matches today may stop.
 
 - **In script**, when the result drives something CSS cannot (adding a tooltip, setting an attribute), compare `scrollWidth` to `clientWidth` in a `ResizeObserver`. Run the check again when the text changes: `ResizeObserver` reacts only to size changes.
 
@@ -302,7 +327,7 @@ No property reports truncation. Derive it from overflow: the element is truncate
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}
 
-Without scroll-driven animations the fade never shows, and the text is clipped with no indication. If your Baseline target does not support them, use an ellipsis instead, or toggle the fade from script: a `ResizeObserver` compares `scrollWidth` to `clientWidth` and sets a class, which turns the fade on the same way the keyframes do. Run the check again when the text changes: `ResizeObserver` reacts only to size changes.
+Without scroll-driven animations the fade never shows, the hint never shows, and the scroll reveal never starts: the text is clipped with no indication. If your Baseline target does not support them, toggle a class from script: a `ResizeObserver` compares `scrollWidth` to `clientWidth`, and the class sets the same flag as the keyframes. Run the check again when the text changes: `ResizeObserver` reacts only to size changes.
 
 ```js
 if (!CSS.supports('animation-timeline', 'scroll()')) {
@@ -321,32 +346,18 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 ```css
 /* Same as the keyframes */
 .label.truncated {
-  --fade: var(--fade-size);
+  --truncated: 1;
 }
 ```
 
-### Fallbacks & browser support for scroll-state container queries
+### Fallbacks & browser support for style queries
 
-{{ BASELINE_STATUS("container-scroll-state-queries") }}
+{{ BASELINE_STATUS("container-style-queries") }}
 
-Without scroll-state queries the text still truncates, but the hint never shows and the scroll reveal never starts. Set a class from script instead and gate both on it.
-
-```js
-if (!CSS.supports('container-type', 'scroll-state')) {
-  const observer = new ResizeObserver(entries => {
-    for (const { target } of entries) {
-      target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
-    }
-  });
-
-  for (const label of document.querySelectorAll('.label')) {
-    observer.observe(label);
-  }
-}
-```
+Without style queries the fade still works, since it is on the element itself, but the hint and the scroll reveal never apply. Gate them on the class from the scroll-driven animations fallback above instead, and set that class without the `CSS.supports` guard: at-rules cannot be feature-detected.
 
 ```css
-/* Same as the scroll-state queries */
+/* Same as the style queries */
 .label.truncated > span {
   text-decoration: underline dotted;
 }
