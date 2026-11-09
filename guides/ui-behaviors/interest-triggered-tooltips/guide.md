@@ -8,7 +8,7 @@ web-feature-ids:
   - anchor-positioning
 ---
 
-# Tooltips
+# Show a tooltip when hovering
 
 Users expect to see additional related information without completely changing their context. Showing a tooltip when a user is interested in more information can be useful to provide definitions for a term, clarifying the action an icon-only button will take, or provide additional form field guidance.
 
