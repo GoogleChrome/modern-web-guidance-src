@@ -95,11 +95,19 @@ const matches = options.filter(o => o.value.toLowerCase().includes(query));
 
 Visible filtering is invisible to screen reader users unless announced. Keep a visually hidden `role="status"` (`aria-live="polite"`) element and update its text after each filter, such as "3 suggestions available" or "No suggestions". When nothing matches, show an in-popup message with `role="presentation"` rather than an option, so it is not counted as a choice.
 
-### 5. Optional: Match highlighting
+### 5. Optional: Let users add a new item
+
+Add this when the value is a record users build up over time (tags, destinations) and typing an unlisted value should make it a reusable choice. Skip it when unlisted values are just submitted as typed.
+
+* When the trimmed input is non-empty and no option matches it exactly (case-insensitive), append a final `<li role="option">` labeled `Add "<typed text>"`. It is a normal option for `aria-activedescendant`, keyboard, and click handling.
+* Selecting it pushes the typed value into your options source and fills the input with it, so it appears in later filters.
+* With this option present, the "no suggestions" message below is only needed when the input is empty and there are no options at all.
+
+### 6. Optional: Match highlighting
 
 Wrap the matched substring of each option label in `<mark>`. Reset its default yellow background and use weight or underline so the match is not conveyed by color alone. Worth adding when options are long or similar.
 
-### 6. Styling the popup
+### 7. Styling the popup
 
 * Highlight the active option with a background plus an `outline` so it remains visible in forced-colors mode and does not rely on color alone.
 * Give options enough padding for a comfortable touch target.

@@ -183,6 +183,15 @@
         }
         return li;
       }));
+      if (q && !found.some(o => o.value.toLowerCase() === q.toLowerCase())) {
+        const add = document.createElement('li');
+        add.role = 'option';
+        add.id = `city-opt-${found.length}`;
+        add.dataset.value = q;
+        add.dataset.add = '';
+        add.textContent = `Add "${q}"`;
+        listbox.append(add);
+      }
       items = [...listbox.children];
       if (!items.length) {
         const li = document.createElement('li');
@@ -219,6 +228,7 @@
     };
 
     const choose = (li) => {
+      if ('add' in li.dataset) options.push({ value: li.dataset.value, region: region.value });
       input.value = li.dataset.value;
       close();
     };

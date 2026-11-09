@@ -14,5 +14,6 @@
 - Clicking an option puts its value into the input and closes the popup.
 - A value typed that matches no option remains in the input and is submitted with the form.
 - A visually hidden element with `role="status"` or `aria-live="polite"` is updated with the suggestion count after filtering.
-- When no options match, the popup shows a message that is not exposed as `role="option"`.
+- When the combobox offers to add new items and the typed text has no exact match, the last option in the listbox has `role="option"` and text containing the typed text.
+- When the combobox offers to add new items, selecting the add option puts the typed text into the input and the text then appears as an option when the input is filtered again.
 - When popover or anchor positioning is unsupported, the `<input>` keeps its `list` attribute and the `<datalist>` supplies suggestions.
