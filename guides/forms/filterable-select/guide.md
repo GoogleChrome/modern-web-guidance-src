@@ -5,9 +5,6 @@ web-feature-ids:
   - customizable-select
   - popover
   - anchor-positioning
-  - masks
-guides:
-  - animate-element-entry-exit
 ---
 
 # Filterable select
