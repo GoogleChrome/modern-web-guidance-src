@@ -203,12 +203,14 @@
          works alone, even if only part of a card is loading.
          background-attachment: fixed keeps every shape in one viewport-wide
          coordinate space, so they sweep in sync. */
-      .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media) {
+      .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media),
+      .skeleton[aria-busy="true"] li::after {
         background-color: var(--skeleton-tone);
       }
 
       @media (prefers-reduced-motion: no-preference) {
-        .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media) {
+        .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media),
+        .skeleton[aria-busy="true"] li::after {
           background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
           background-repeat: no-repeat;
           background-attachment: fixed;
@@ -233,7 +235,7 @@
       .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
         /* Bar size follows the glyphs (cap height) and the gap fills the rest of
            the line, so bars sit on the real line pitch at any size and leading. */
-        --bar-height: 1cap;
+        --bar-height: 1.25cap;
         --bar-radius: calc(var(--bar-height) / 4);
         --bar-gap: calc(1lh - var(--bar-height));
         --block: calc(var(--lines, 1) * 1lh);
@@ -250,20 +252,16 @@
         text-decoration: none;
       }
 
-      /* List items are solid rounded blocks in every browser, so their outside
-         marker is not clipped. Bars for p, h2 and links come from --bars above;
-         change --bar-height or --bar-radius there and the rounded blocks here
-         follow. Without shape() support, those elements fall back to the same
-         blocks. The height reservation still prevents layout shift. */
+      /* List items draw their own bar with li::after (see Lists below), so the
+         item itself is not clipped and its outside bullet shows. */
       .skeleton[aria-busy="true"] li {
         clip-path: none;
-        overflow: visible; /* Lets the outside marker show */
-        border-radius: .5lh;
+        overflow: visible; /* Lets the outside bullet show */
       }
 
       @supports not (clip-path: shape(from 0 0, close)) {
         .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-          border-radius: .5lh; /* Large enough to read as rounded at any block height */
+          border-radius: var(--bar-radius);
         }
       }
 
@@ -285,21 +283,41 @@
       }
 
 
-      /* Lists: the real ::marker plus a bar per item. display: block would drop
-         the marker, so items stay list-item. The marker sits outside the li in
-         the list's own padding, which stays untouched so the list does not
-         shift when loading finishes. The marker takes the flat tone (a marker
-         cannot take the shimmer). */
+      /* Lists: the native marker is hidden and a li::before dot, sized in em so
+         it scales with the item text, takes its place outside the li in the
+         list's own padding, which stays untouched so the list does not shift
+         when loading finishes. The bar is a li::after that shares --bar-height
+         and --bar-radius with every other bar. */
       .skeleton[aria-busy="true"] li {
-        display: list-item;
-        list-style-position: outside;
+        list-style: none;
+        position: relative;
         margin-inline-start: 0;
+        background: none;
         --line-one: 72%;
       }
 
-      .skeleton[aria-busy="true"] li::marker {
-        color: var(--skeleton-tone);
-        font-size: 1.5em; /* Skeleton markers read as larger, abstract shapes */
+      .skeleton[aria-busy="true"] li::before,
+      .skeleton[aria-busy="true"] li::after {
+        content: "";
+        position: absolute;
+        background-color: var(--skeleton-tone);
+      }
+
+      .skeleton[aria-busy="true"] li::before {
+        inset-inline-start: -1.25em;
+        inset-block-start: .5lh;
+        translate: 0 -50%;
+        inline-size: .6em;
+        block-size: .6em;
+        border-radius: 50%;
+      }
+
+      .skeleton[aria-busy="true"] li::after {
+        inset-inline-start: 0;
+        inset-block-start: calc(var(--bar-gap) / 2);
+        inline-size: var(--line-one);
+        block-size: var(--bar-height);
+        border-radius: var(--bar-radius);
       }
 
       .skeleton[aria-busy="true"] li:nth-child(2) {

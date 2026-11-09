@@ -111,7 +111,7 @@ Text, standalone links and list items share one rule that hides the content and 
 .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
   /* Bar height follows the element's own glyphs, and the gap fills the rest of the line,
      so bars sit on the real line pitch for any font size or leading. No per-element overrides. */
-  --bar-height: 1cap;
+  --bar-height: 1.25cap; /* Real text reads taller than its cap height alone */
   --bar-radius: calc(var(--bar-height) / 4); /* Half the height gives fully round ends */
   --bar-gap: calc(1lh - var(--bar-height));
   display: block;
@@ -147,20 +147,40 @@ Set the shape on `--bars` and read it with `clip-path: var(--bars)`. Do not call
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Keep the real `::marker` for the bullet. The shared `display: block` removes it, so set `display: list-item` with `list-style-position: outside`, and give the marker the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes, and zero only the item's start margin. Items are solid rounded blocks, not bars: set `clip-path: none` and `overflow: visible` so the outside marker is not clipped. This applies to numbered lists too.
+Items are one line tall like the text, not tall blocks: hide the native marker and draw the bullet with `li::before`, because a `::marker` cannot be sized reliably. Set `list-style: none` and make the item `position: relative`, clear its own fill, and draw the bar with `li::after` using the shared `--bar-height` and `--bar-radius`, so list items match the other bars. Place the dot in `em` units so it scales with the item's text, in the flat `--skeleton-tone` color. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes, and zero only the item's start margin. Set `clip-path: none` and `overflow: visible` so the dot, which sits outside the item, is not clipped. This applies to numbered lists too.
 
 ```css
 .skeleton[aria-busy="true"] li {
-  display: list-item;
-  list-style-position: outside;
+  list-style: none;      /* Hides the native marker */
+  position: relative;
   margin-inline-start: 0;
-  clip-path: none;       /* Would clip the outside marker */
-  overflow: visible;     /* Lets the outside marker show */
-  border-radius: .5lh;
+  background: none;      /* The bar is drawn by ::after */
+  clip-path: none;       /* Would clip the dot outside the item */
+  overflow: visible;     /* Lets the dot show */
 }
 
-.skeleton[aria-busy="true"] li::marker {
-  color: var(--skeleton-tone);
+.skeleton[aria-busy="true"] li::before,
+.skeleton[aria-busy="true"] li::after {
+  content: "";
+  position: absolute;
+  background-color: var(--skeleton-tone);
+}
+
+.skeleton[aria-busy="true"] li::before {
+  inset-inline-start: -1.25em;
+  inset-block-start: .5lh;
+  translate: 0 -50%;
+  inline-size: .6em;     /* Scales with the item's text size */
+  block-size: .6em;
+  border-radius: 50%;
+}
+
+.skeleton[aria-busy="true"] li::after {
+  inset-inline-start: 0;
+  inset-block-start: calc(var(--bar-gap) / 2);
+  inline-size: var(--line-one, 100%); /* Set per item to vary widths */
+  block-size: var(--bar-height);
+  border-radius: var(--bar-radius);
 }
 ```
 
@@ -185,7 +205,7 @@ Bars reused across elements can be memoized once in the shared rule, named by in
 |---|---|
 | `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--skeleton-bar()` and set `--lines: 2` |
 | `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
-| `li` | 1 bar each, keeping the real `::marker` as the bullet; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
+| `li` | 1 bar each, native marker hidden and replaced by a `li::before` dot; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
 ## 4. Media and avatars
@@ -260,6 +280,8 @@ Paint the shimmer on each placeholder shape's own `background`, not on a parent 
 
 With `background-attachment: fixed` the sweep is sized to the viewport, so a small loading area catches the highlight only briefly on each pass. Shorten the duration for small areas.
 
+List items paint the shimmer on their `li::after` bar, not on the `li`, which has no fill of its own.
+
 DO NOT animate the `clip-path` shape or the bars' visibility: it flashes. Animate the background.
 
 MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefers-reduced-motion: no-preference)`. Without it, the placeholders stay visible as a flat `--skeleton-tone` fill.
@@ -275,12 +297,12 @@ If your Baseline target does not support `shape()` in `clip-path`, let other bro
 ```css
 @supports not (clip-path: shape(from 0 0, close)) {
   .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-    border-radius: .5lh; /* Large enough to read as rounded at any block height */
+    border-radius: var(--bar-radius);
   }
 }
 ```
 
-Multi-line bars and variable lengths belong to the `shape()` enhancement: without it, each element is one solid rounded block. List items are always one block that keeps its outside bullet.
+Multi-line bars and variable lengths belong to the `shape()` enhancement: without it, each element is one solid rounded block. List items always draw one bar and keep their outside bullet.
 
 ### @function
 
