@@ -70,7 +70,7 @@ To ensure that people can navigate the scrollable region after selecting an anch
 <li><a href="#section-2">Section 2</a></li>
 …
 <!-- Adding a tabindex="-1" attribute to the heading will mean that it can receive focus after being navigated to -->
-<h2 id="#section-2" tabindex="-1">Section 2</h2>
+<h2 id="section-2" tabindex="-1">Section 2</h2>
 ```
 
 To ensure consistent operability across different browsers and assistive technology combinations, ensure that the scrollable container can receive focus (by applying `tabindex="0"`), and has an accessible name that describes the content, along with an appropriate role (such as `role="region"`), if it does not already have an implicit role (which elements like `<main>` do).

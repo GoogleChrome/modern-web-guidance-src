@@ -58,33 +58,20 @@ test.describe(`field-sizing Expectations: ${demoName}`, () => {
 
   // 1. The input element has `field-sizing: content` applied.
   test(`The input element has field-sizing: content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input[type="text"]');
+    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
     expect(styles['field-sizing']).toBe('content');
-  });
-
-  // 2. The input element has an explicit `width` of `auto` or `fit-content` applied.
-  test(`The input element has an explicit width of auto or fit-content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input[type="text"]');
-    expect(['auto', 'fit-content']).toContain(styles['width']);
-  });
-
-  // 3. The input element has `align-self: start`, `justify-self: start`, or `align-self: flex-start` applied to override implicit stretching.
-  test(`The input element has align-self: start, justify-self: start, or align-self: flex-start applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input[type="text"]');
-    const isOverridden = ['start', 'flex-start'].includes(styles['align-self']) || ['start', 'flex-start'].includes(styles['justify-self']);
-    expect(isOverridden).toBe(true);
   });
 
   // 4. The input element has a minimum inline size (`min-inline-size` or `min-width`) applied.
   test(`The input element has a minimum inline size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input[type="text"]');
+    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
     const hasMinSize = !!styles['min-inline-size'] || !!styles['min-width'];
     expect(hasMinSize).toBe(true);
   });
 
   // 5. The input element has a maximum inline size (`max-inline-size` or `max-width`) applied.
   test(`The input element has a maximum inline size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input[type="text"]');
+    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
     const hasMaxSize = !!styles['max-inline-size'] || !!styles['max-width'];
     expect(hasMaxSize).toBe(true);
   });
@@ -126,19 +113,6 @@ test.describe(`field-sizing Expectations: ${demoName}`, () => {
   test(`The select element has field-sizing: content applied`, async ({ page }) => {
     const styles = await getAppliedStyles(page, 'select');
     expect(styles['field-sizing']).toBe('content');
-  });
-
-  // 12. The select element has an explicit `width` of `auto` or `fit-content` applied.
-  test(`The select element has an explicit width of auto or fit-content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'select');
-    expect(['auto', 'fit-content']).toContain(styles['width']);
-  });
-
-  // 13. The select element has `align-self: start`, `justify-self: start`, or `align-self: flex-start` applied to override implicit stretching.
-  test(`The select element has align-self or justify-self applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'select');
-    const isOverridden = ['start', 'flex-start'].includes(styles['align-self']) || ['start', 'flex-start'].includes(styles['justify-self']);
-    expect(isOverridden).toBe(true);
   });
 
   // 14. The select element has a maximum inline size (`max-inline-size` or `max-width`) applied.

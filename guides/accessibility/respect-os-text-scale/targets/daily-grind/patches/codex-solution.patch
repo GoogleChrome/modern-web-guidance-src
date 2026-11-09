@@ -1,24 +1,5 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..1eae0cf
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1,2 @@
-+dist/
-+node_modules/
-diff --git a/build.mjs b/build.mjs
-new file mode 100644
-index 0000000..9b62c40
---- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,5 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
-+
-+const outputDirectory = new URL('./dist/', import.meta.url);
-+await mkdir(outputDirectory, { recursive: true });
-+await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
 diff --git a/index.html b/index.html
-index 66c9173..eb2354d 100644
+index 66c9173..a400084 100644
 --- a/index.html
 +++ b/index.html
 @@ -4,6 +4,7 @@
@@ -29,7 +10,7 @@ index 66c9173..eb2354d 100644
    <title>The Daily Grind | Artisanal Coffee</title>
    <style>
      :root {
-@@ -25,38 +26,44 @@
+@@ -25,6 +26,7 @@
        line-height: 1.6;
        color: var(--text);
        background-color: var(--light);
@@ -37,11 +18,9 @@ index 66c9173..eb2354d 100644
      }
  
      /* Navigation */
-     nav {
-       background: var(--primary);
+@@ -33,29 +35,34 @@
        color: white;
--      padding: 1rem 5%;
-+      padding: 1rem min(5%, 3rem);
+       padding: 1rem 5%;
        display: flex;
 +      flex-wrap: wrap;
 +      gap: 1rem 2rem;
@@ -57,6 +36,7 @@ index 66c9173..eb2354d 100644
        font-weight: bold;
 -      letter-spacing: 1px;
 +      letter-spacing: 0.0625em;
++      min-width: 0;
      }
  
      nav ul {
@@ -64,22 +44,20 @@ index 66c9173..eb2354d 100644
 +      flex-wrap: wrap;
 +      align-items: center;
 +      gap: 0.75rem 1.25rem;
-       list-style: none;
 +      min-width: 0;
+       list-style: none;
      }
  
      nav ul li {
 -      margin-left: 20px;
 +      min-width: 0;
-+      max-width: 100%;
      }
  
      nav a {
-       color: white;
 +      display: inline-block;
+       color: white;
        text-decoration: none;
        font-size: 0.9rem;
-       transition: color 0.3s;
 @@ -68,13 +75,13 @@
  
      .logout-link {
@@ -96,16 +74,19 @@ index 66c9173..eb2354d 100644
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-@@ -85,7 +92,7 @@
+@@ -85,38 +92,40 @@
        align-items: center;
        color: white;
        text-align: center;
 -      padding: 0 20px;
-+      padding: 3rem min(1.25rem, 5vw);
++      padding: 3rem 1.25rem;
      }
  
      .hero h1 {
-@@ -95,28 +102,29 @@
+       font-size: 3rem;
++      line-height: 1.2;
+       margin-bottom: 1rem;
+     }
  
      /* Content Sections */
      .container {
@@ -114,7 +95,7 @@ index 66c9173..eb2354d 100644
 -      padding: 0 20px;
 +      max-width: 68.75rem;
 +      margin: 2.5rem auto;
-+      padding: 0 min(1.25rem, 5vw);
++      padding: 0 1.25rem;
      }
  
      .grid {
@@ -130,8 +111,8 @@ index 66c9173..eb2354d 100644
      .card {
        background: white;
 -      padding: 20px;
-+      padding: 1.25rem min(1.25rem, 5vw);
 +      min-width: 0;
++      padding: 1.25rem;
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
@@ -143,13 +124,13 @@ index 66c9173..eb2354d 100644
        color: var(--primary);
      }
  
-@@ -124,10 +132,11 @@
+@@ -124,10 +133,11 @@
        display: inline-block;
        background: var(--primary);
        color: white;
 -      padding: 10px 20px;
-+      padding: 0.625rem min(1.25rem, 5vw);
 +      max-width: 100%;
++      padding: 0.625rem 1.25rem;
        text-decoration: none;
        border-radius: 5px;
 -      margin-top: 15px;
@@ -157,54 +138,25 @@ index 66c9173..eb2354d 100644
        transition: background 0.3s;
      }
  
-@@ -138,16 +147,21 @@
+@@ -138,16 +148,17 @@
      footer {
        background: var(--secondary);
        text-align: center;
 -      padding: 40px 20px;
 -      margin-top: 40px;
-+      padding: 2.5rem min(1.25rem, 5vw);
++      padding: 2.5rem 1.25rem;
 +      margin-top: 2.5rem;
      }
  
      .footer-links {
 -      margin-bottom: 20px;
-+      display: flex;
-+      flex-wrap: wrap;
-+      justify-content: center;
-+      gap: 0.625rem 1.25rem;
 +      margin-bottom: 1.25rem;
      }
  
      .footer-links a {
 -      margin: 0 10px;
-+      min-width: 0;
-+      max-width: 100%;
++      display: inline-block;
++      margin: 0 0.625rem;
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
-@@ -199,9 +213,9 @@
- 
-   <footer>
-     <div class="footer-links">
--      <a href="/about">Our Story</a> |
--      <a href="/careers">Join the Team</a> |
--      <a href="/contact">Contact Us</a> |
-+      <a href="/about">Our Story</a>
-+      <a href="/careers">Join the Team</a>
-+      <a href="/contact">Contact Us</a>
-       <a href="/privacy-policy">Privacy</a>
-     </div>
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-diff --git a/package.json b/package.json
-index 2bd4d77..5c14ac8 100644
---- a/package.json
-+++ b/package.json
-@@ -2,6 +2,7 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
-+    "build": "node build.mjs",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
-   },
-   "pnpm": {

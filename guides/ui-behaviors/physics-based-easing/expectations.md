@@ -5,4 +5,3 @@
 - A fallback easing function (like `ease-out`) is provided before the `linear()` declaration or within an `@supports` block for browsers that do not support the `linear()` function.
 - The implementation respects user motion preferences by disabling or reducing the animation when `prefers-reduced-motion: reduce` is detected.
 - If `opacity` is transitioned with a `linear()` timing function, the function must not have steps above 1 or below 0.
-- Optional: The implementation includes a JavaScript check using `CSS.supports()` to detect `linear()` support and conditionally applies a fallback animation using a library like Motion or GSAP.

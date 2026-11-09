@@ -1,66 +1,87 @@
 diff --git a/index.html b/index.html
-index 66c9173..e383967 100644
+index 66c9173..f602e7c 100644
 --- a/index.html
 +++ b/index.html
-@@ -135,6 +135,111 @@
+@@ -135,6 +135,161 @@
        background: #3e2723;
      }
  
 +    /* Loyalty Rewards */
++    .rewards {
++      margin-top: 50px;
++    }
++
++    .rewards h2 {
++      text-align: center;
++    }
++
++    .rewards-card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      margin-top: 20px;
++      padding: 30px;
++      text-align: left;
++      border-top: 4px solid var(--accent);
++    }
++
++    .rewards-info {
++      flex: 1 1 280px;
++      max-width: 460px;
++    }
++
++    .rewards-info p {
++      margin-bottom: 8px;
++    }
++
 +    @property --value {
 +      syntax: '<number>';
 +      inherits: true;
 +      initial-value: 0;
 +    }
 +
-+    .loyalty {
-+      margin-top: 60px;
-+    }
-+
-+    .loyalty-card {
-+      display: flex;
-+      flex-wrap: wrap;
-+      align-items: center;
-+      justify-content: center;
-+      gap: 40px;
-+      background: white;
-+      padding: 30px 20px;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      margin-top: 20px;
-+    }
-+
-+    .loyalty-info {
-+      max-width: 400px;
-+      text-align: center;
-+    }
-+
-+    .loyalty-info h3 {
-+      color: var(--primary);
-+      margin-bottom: 10px;
++    @property --max {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 100;
 +    }
 +
 +    .progress-ring-wrapper {
 +      position: relative;
 +      display: grid;
 +      place-items: center;
++      flex: 0 0 auto;
 +    }
 +
 +    progress.progress-ring {
-+      --size: 180px;
-+      --thickness: 16px;
++      --size: 200px;
++      --thickness: 18px;
 +      --track-color: var(--secondary);
-+      --fill-color: var(--accent);
-+      --value: attr(value type(<number>));
++      --fill-color: var(--primary);
++      --value: attr(value type(<number>), 0);
++      --max: attr(max type(<number>), 100);
++
++      -webkit-appearance: none;
++      appearance: none;
++      display: block;
 +      width: var(--size);
 +      height: var(--size);
 +      border-radius: 50%;
-+      appearance: none;
-+      background: conic-gradient(var(--fill-color) calc(var(--value) * 1%),
-+          var(--track-color) 0);
++      color: var(--fill-color);
++
++      background: conic-gradient(
++        var(--fill-color) calc(var(--value) / var(--max) * 100%),
++        var(--track-color) 0
++      );
++
++      /* Clip the background to the border-area to hollow out the center. */
 +      background-clip: border-area;
 +      border: var(--thickness) solid transparent;
 +      background-origin: border-box;
++
++      /* Immediate by default; animate only for users without motion sensitivity. */
 +      transition: --value 0s ease-in-out;
 +    }
 +
@@ -70,93 +91,127 @@ index 66c9173..e383967 100644
 +      }
 +    }
 +
-+    @supports not (background-clip: border-area) {
-+      progress.progress-ring {
-+        mask-image: radial-gradient(transparent calc(50% - var(--thickness)),
-+            black calc(50% - var(--thickness) + 0.5px));
-+        border: 0;
-+      }
-+    }
-+
-+    /* Hide native bars */
++    /* Hide native progress bar UI */
 +    progress.progress-ring::-webkit-progress-bar {
++      display: none;
 +      background: none;
 +    }
 +
 +    progress.progress-ring::-webkit-progress-value {
++      display: none;
 +      background: none;
 +    }
 +
 +    progress.progress-ring::-moz-progress-bar {
++      display: none;
 +      background: none;
 +    }
 +
-+    progress.progress-ring[value="100"] {
-+      --fill-color: #6d4c41;
++    progress.progress-ring::slider-fill {
++      display: none;
++      background: none;
++    }
++
++    /* Fallback for browsers without background-clip: border-area */
++    @supports not (background-clip: border-area) {
++      progress.progress-ring {
++        border: 0;
++        -webkit-mask-image: radial-gradient(
++          farthest-side,
++          transparent calc(100% - var(--thickness)),
++          black calc(100% - var(--thickness) + 0.5px)
++        );
++        mask-image: radial-gradient(
++          farthest-side,
++          transparent calc(100% - var(--thickness)),
++          black calc(100% - var(--thickness) + 0.5px)
++        );
++      }
++    }
++
++    /* Success state: free drink earned */
++    progress.progress-ring[value="10"][max="10"] {
++      --fill-color: var(--accent);
 +    }
 +
 +    .progress-ring-content {
 +      position: absolute;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
 +      text-align: center;
 +      line-height: 1.2;
 +      color: var(--primary);
 +    }
 +
-+    .progress-ring-content strong {
-+      display: block;
-+      font-size: 2rem;
++    .progress-ring-count {
++      font-size: 2.25rem;
++      font-weight: bold;
 +    }
 +
-+    .progress-ring-content span {
++    .progress-ring-label {
 +      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++    }
++
++    .progress-ring-remaining {
++      margin-top: 4px;
++      font-size: 0.75rem;
++      color: var(--text);
 +    }
 +
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -195,6 +300,25 @@
+@@ -195,8 +350,50 @@
          </div>
        </div>
      </section>
 +
-+    <section class="loyalty" aria-labelledby="loyalty-heading">
-+      <h2 id="loyalty-heading" style="text-align: center;">Loyalty Rewards</h2>
-+      <div class="loyalty-card">
++    <section class="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Loyalty Rewards</h2>
++      <div class="card rewards-card">
 +        <div class="progress-ring-wrapper">
-+          <progress id="loyalty-progress" class="progress-ring" value="70" max="100"
-+            aria-label="Progress toward your next free drink: 7 of 10 purchases"></progress>
-+          <div class="progress-ring-content" aria-hidden="true">
-+            <strong id="loyalty-count">7 / 10</strong>
-+            <span>drinks</span>
++          <progress id="rewards-progress" class="progress-ring" value="7" max="10"
++            aria-label="Stamps collected toward your next free drink"></progress>
++          <div class="progress-ring-content">
++            <span class="progress-ring-count"><span id="rewards-count">7</span>/10</span>
++            <span class="progress-ring-label">Stamps</span>
++            <span class="progress-ring-remaining" id="rewards-remaining">3 more to a free drink</span>
 +          </div>
 +        </div>
-+        <div class="loyalty-info">
-+          <h3>You're 3 drinks away from a free one!</h3>
-+          <p>Earn a stamp with every drink you buy. Collect 10 and your next drink is on us.</p>
-+          <a href="/rewards" class="btn">View Rewards</a>
++        <div class="rewards-info">
++          <h3>You're almost there!</h3>
++          <p>Earn one stamp with every handcrafted drink. Collect 10 stamps and your next drink is on us.</p>
++          <p>Rewards never expire and work at every Daily Grind location.</p>
++          <a href="/rewards" class="btn">View My Rewards</a>
 +        </div>
 +      </div>
 +    </section>
    </main>
  
-   <footer>
-@@ -207,6 +331,19 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
 +  <script>
-+    // Fallback: sync the value attribute to --value where attr() isn't supported
-+    if (!CSS.supports("width: attr(value type(<number>))")) {
-+      const progress = document.getElementById("loyalty-progress");
-+      const sync = () => progress.style.setProperty("--value", progress.getAttribute("value"));
-+      sync();
-+      new MutationObserver(sync).observe(progress, {
-+        attributes: true,
-+        attributeFilter: ["value"],
-+      });
-+    }
++    (function () {
++      const progress = document.getElementById("rewards-progress");
++      if (!progress) return;
++
++      // Fallback for browsers that don't support typed attr(): sync attributes to custom properties.
++      if (!CSS.supports("width: attr(value type(<number>))")) {
++        const sync = () => {
++          progress.style.setProperty("--value", progress.getAttribute("value") ?? "0");
++          progress.style.setProperty("--max", progress.getAttribute("max") ?? "100");
++        };
++        sync();
++        const observer = new MutationObserver(sync);
++        observer.observe(progress, {
++          attributes: true,
++          attributeFilter: ["value", "max"],
++        });
++      }
++    })();
 +  </script>
 +
- </body>
- 
- </html>
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

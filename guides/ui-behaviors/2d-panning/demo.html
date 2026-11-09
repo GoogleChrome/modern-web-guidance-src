@@ -49,9 +49,10 @@
           display: block;
         }
 
-        /* Disable native axis-locked touch scrolling when the fallback is active */
+        /* Disable native axis-locked touch panning when the fallback is active;
+           pinch-zoom keeps pinch-to-zoom working */
         .scroller[data-axis-lock='none'] {
-          touch-action: none;
+          touch-action: pinch-zoom;
         }
       }
 
@@ -253,7 +254,7 @@
         </fieldset>
 
         <div class="status-panel">
-          <div id="statusIndicator" class="status-indicator idle" aria-live="polite">
+          <div id="statusIndicator" class="status-indicator idle">
             Waiting for scroll...
           </div>
           <div class="debug-stats">
@@ -340,6 +341,7 @@
           'wheel',
           (e) => {
             if (currentAxisLockMode !== 'none') return;
+            if (e.ctrlKey) return; // Ctrl+wheel and trackpad pinch zoom the page
             e.preventDefault();
             scroller.scrollLeft += e.deltaX;
             scroller.scrollTop += e.deltaY;
