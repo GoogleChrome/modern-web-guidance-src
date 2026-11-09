@@ -240,18 +240,6 @@
       display: inline;
     }
   }
-
-  /* Scale display text down, with an ellipsis for text still too long at the limit */
-  .stat {
-    padding: .5rem 1rem;
-    font-size: 3rem;
-    font-weight: 600;
-    white-space: nowrap;
-    /* Example value: never below 60% of the font size */
-    text-fit: shrink 60%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 </style>
 
 <p>Drag the end edge of each box to make it narrower.</p>
@@ -303,11 +291,6 @@
       <td><div class="day"><span class="long">Friday</span><span class="short">Fri</span></div></td>
     </tr>
   </table>
-</div>
-
-<h2>Scaling display text down</h2>
-<div class="resizable">
-  <div class="stat">1,284,912</div>
 </div>
 
 <script type="module">

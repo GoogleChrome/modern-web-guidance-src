@@ -8,7 +8,6 @@ web-feature-ids:
   - container-scroll-state-queries
   - masks
   - interpolate-size
-  - text-fit
   - resize-observer
   - registered-custom-properties
   - individual-transforms
@@ -33,9 +32,6 @@ There are two components to handling single-line text overflow:
 ## How to display truncated text
 
 Truncation is visual only. Screen readers announce the full text, find-in-page matches it, and copying copies it. This is why the string must never be cut in script.
-
-If scaling the text down is acceptable, you can use `text-fit: shrink` with a lower limit (e.g. `text-fit: shrink 60%` to never go below 60% of the font size), and combine with any of the strategies below for the remaining overflow, if any.
-Note that `text-fit` does not change the computed `font-size` and does not grow content-sized containers, so the element needs an inline size from its layout.
 
 ### 1. Truncate with an ellipsis (at the end or middle)
 
@@ -371,12 +367,6 @@ Without it, `max-content` cannot be interpolated and the element expands instant
   }
 }
 ```
-
-### Fallbacks & browser support for `text-fit`
-
-{{ BASELINE_STATUS("text-fit") }}
-
-Without it, the text is not scaled and the strategy it is combined with handles all of the overflow. For text of predictable length, such as numbers, `font-size: clamp(1.5rem, 12cqi, 4rem)` on a size container approximates the scaling, but scales with the container rather than the text.
 
 ### Fallbacks & browser support for container queries
 
