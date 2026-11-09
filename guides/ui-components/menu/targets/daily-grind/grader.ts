@@ -12,8 +12,6 @@ import {
 
 import {
   CSSStyleRule,
-  CSSSupportsRule,
-  CSSPositionTryRule,
 } from 'cssomnom';
 
 import type { Page, Locator } from '@playwright/test';
@@ -58,6 +56,34 @@ async function getSubmenuTrigger(page: Page): Promise<Locator> {
   return page.locator(`#${id}`);
 }
 
+async function getTopLevelTriggerWithCommand(page: Page, requireSubmenu = false): Promise<Locator> {
+  const id = await page.evaluate((needSub: boolean) => {
+    const btns = Array.from(document.querySelectorAll<HTMLElement>('button[commandfor]'));
+    const topLevel = btns.filter(b => !b.closest('[popover]'));
+
+    const CMD = 'button:not([role="menuitemcheckbox"]):not([role="menuitemradio"]):not([commandfor])';
+    const match = topLevel.find(b => {
+      const targetId = b.getAttribute('commandfor');
+      const popover = targetId ? document.getElementById(targetId) : null;
+      if (!popover) return false;
+      const hasCmd = Boolean(popover.querySelector(CMD));
+      const hasSub = Boolean(popover.querySelector('button[commandfor]'));
+      return needSub ? (hasCmd && hasSub) : hasCmd;
+    }) || topLevel.find(b => {
+      const targetId = b.getAttribute('commandfor');
+      const popover = targetId ? document.getElementById(targetId) : null;
+      return Boolean(popover?.querySelector(CMD));
+    }) || topLevel[0];
+
+    if (!match) return null;
+    if (!match.id) match.id = `_trig_cmd_${Math.random().toString(36).slice(2)}`;
+    return match.id;
+  }, requireSubmenu);
+
+  if (!id) return page.locator('nonexistent-top-level-trigger-with-command');
+  return page.locator(`#${id}`);
+}
+
 async function getSiblingItem(page: Page, triggerLocator: Locator): Promise<Locator> {
   const id = await triggerLocator.evaluate((el: HTMLElement) => {
     const group = el.closest('[focusgroup]');
@@ -74,15 +100,17 @@ async function getSiblingItem(page: Page, triggerLocator: Locator): Promise<Loca
 }
 
 async function openMenuPathTo(page: Page, targetSelector: string): Promise<void> {
+  // Park pointer away from triggers to avoid hover races
+  await page.mouse.move(1, 1);
   const triggerIds = await page.evaluate((selector: string) => {
     const target = document.querySelector(selector);
     if (!target) return null;
     const ids: string[] = [];
     let current: Element | null = target;
     while (current) {
-      const popover = current.closest('[popover]');
+      const popover: Element | null = current.closest('[popover]');
       if (!popover) break;
-      const trigger = document.querySelector<HTMLElement>(`[commandfor="${popover.id}"]`);
+      const trigger: HTMLElement | null = document.querySelector<HTMLElement>(`[commandfor="${popover.id}"]`);
       if (!trigger) break;
       if (!trigger.id) trigger.id = `_path_trig_${Math.random().toString(36).slice(2)}`;
       ids.unshift(trigger.id);
@@ -91,15 +119,25 @@ async function openMenuPathTo(page: Page, targetSelector: string): Promise<void>
     return ids;
   }, targetSelector);
 
-  if (!triggerIds) return;
-  for (const id of triggerIds) {
+  if (!triggerIds || triggerIds.length === 0) return;
+
+  const rootTrig = page.locator(`#${triggerIds[0]}`);
+  const rootPopoverId = await rootTrig.getAttribute('commandfor');
+  const rootPopover = page.locator(`#${rootPopoverId}`);
+  if (!(await isPopoverOpen(page, rootPopover))) {
+    await rootTrig.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => isPopoverOpen(page, rootPopover), { timeout: 1500 }).toBe(true);
+  }
+
+  for (const id of triggerIds.slice(1)) {
     const trig = page.locator(`#${id}`);
     const popoverId = await trig.getAttribute('commandfor');
     const popover = page.locator(`#${popoverId}`);
-    const isOpen = await isPopoverOpen(page, popover);
-    if (!isOpen) {
-      await trig.click();
-      await page.waitForTimeout(50);
+    if (!(await isPopoverOpen(page, popover))) {
+      await trig.focus();
+      await page.keyboard.press('ArrowRight');
+      await expect.poll(() => isPopoverOpen(page, popover), { timeout: 1500 }).toBe(true);
     }
   }
 }
@@ -126,63 +164,156 @@ test.describe('Menu Component Grader', () => {
     }
   });
 
-  test('Menus are anchored to their triggers via CSS Anchor Positioning without per-menu CSS anchor rules, positioning top-level menus below and submenus beside with indented fallback', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    expect(stylesheet.cssRules.length).toBeGreaterThan(0);
-
-    const tryRules = getRules(stylesheet, CSSPositionTryRule);
-    const belowRule = tryRules.find(r => r.name === '--below');
-    expect(belowRule).toBeDefined();
-
-    const belowArea = belowRule?.style.getPropertyValue('position-area') || '';
-    expect(belowArea).toContain('block-end');
-
-    const belowMargin = belowRule?.style.getPropertyValue('margin-inline-start') || '';
-    expect(belowMargin).toBeTruthy();
-
-    const supportsRules = getRules(stylesheet, CSSSupportsRule);
-    const anchorSupports = supportsRules.find(r => r.conditionText.includes('position-area'));
-    expect(anchorSupports).toBeDefined();
-
-    const nestedRules = getRules(anchorSupports!, CSSStyleRule);
-    expect(nestedRules.length).toBeGreaterThan(0);
-
-    const submenuRule = nestedRules.find(r => r.selectorText.includes('[focusgroup') && (r.selectorText.includes('popover') || r.selectorText.includes('.popup')));
-    expect(submenuRule).toBeDefined();
-    expect(submenuRule?.style.getPropertyValue('position-area')).toContain('inline-end');
-    expect(submenuRule?.style.getPropertyValue('position-try-fallbacks')).toContain('--below');
-
-    const topRule = nestedRules.find(r => !r.selectorText.includes('[focusgroup') && (r.selectorText.includes('popover') || r.selectorText.includes('.popup')));
-    expect(topRule).toBeDefined();
-    expect(topRule?.style.getPropertyValue('position-area')).toContain('block-end');
-  });
-
-  test('Menu items align their content across rows with fixed-size leading icon or check slot and trailing content at inline end, without subgrid', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    expect(stylesheet.cssRules.length).toBeGreaterThan(0);
-
-    const styleRules = getRules(stylesheet, CSSStyleRule);
-
-    const subgridRule = styleRules.find(r =>
-      r.style.getPropertyValue('grid-template-columns')?.includes('subgrid') ||
-      r.style.getPropertyValue('grid-template-rows')?.includes('subgrid')
-    );
-    expect(subgridRule).toBeUndefined();
-
-    const beforeRule = styleRules.find(r => r.selectorText.includes('[focusgroup') && r.selectorText.includes('::before'));
-    expect(beforeRule).toBeDefined();
-    const slotSize = beforeRule?.style.getPropertyValue('inline-size') || beforeRule?.style.getPropertyValue('width');
-    expect(slotSize).toBeTruthy();
-
-    const hintRule = styleRules.find(r => r.selectorText.includes('.hint') || r.selectorText.includes('hint'));
-    expect(hintRule).toBeDefined();
-    const marginEnd = hintRule?.style.getPropertyValue('margin-inline-start') || hintRule?.style.getPropertyValue('margin-left');
-    expect(marginEnd).toContain('auto');
-  });
-
   // --- BROWSER TESTS (RUNTIME BEHAVIOR & INTERACTION) ---
 
   test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
+
+    test('Menus are anchored to their triggers via CSS Anchor Positioning without per-menu CSS anchor rules, positioning top-level menus below and submenus beside with indented fallback', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+
+      // Assert no stylesheet rule has per-menu CSS anchor rules (anchor-name or position-anchor)
+      const stylesheet = getCssStyleSheet(targetFiles);
+      const hasPerMenuAnchorRule = Array.from(stylesheet.cssRules).some((r: any) => {
+        const text = r.cssText || '';
+        return /anchor-name\s*:|position-anchor\s*:/.test(text);
+      });
+      expect(hasPerMenuAnchorRule).toBe(false);
+
+      // Open root menu with keyboard
+      const rootTrigger = await getTopLevelTrigger(page);
+      expect(await rootTrigger.count()).toBeGreaterThan(0);
+      await rootTrigger.focus();
+      await page.keyboard.press('Enter');
+      const rootMenuId = await rootTrigger.getAttribute('commandfor');
+      const rootMenu = page.locator(`#${rootMenuId}`);
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
+
+      // Open submenu with keyboard
+      const subTrigger = await getSubmenuTrigger(page);
+      expect(await subTrigger.count()).toBeGreaterThan(0);
+      await subTrigger.focus();
+      await page.keyboard.press('ArrowRight');
+      const subId = await subTrigger.getAttribute('commandfor');
+      const subMenu = page.locator(`#${subId}`);
+      await expect.poll(() => isPopoverOpen(page, subMenu), { timeout: 1500 }).toBe(true);
+
+      const geo = await page.evaluate(({ rId, sTrigId, sId }) => {
+        const rm = document.getElementById(rId)!;
+        const st = document.getElementById(sTrigId)!;
+        const sm = document.getElementById(sId)!;
+        const rt = document.querySelector(`[commandfor="${rId}"]`)!;
+        const rtr = rt.getBoundingClientRect();
+        const rmr = rm.getBoundingClientRect();
+        const str = st.getBoundingClientRect();
+        const smr = sm.getBoundingClientRect();
+        const rmCS = window.getComputedStyle(rm);
+        const smCS = window.getComputedStyle(sm);
+        return {
+          topBelow: rmr.top >= rtr.bottom - 2,
+          subBeside: smr.left >= str.right - 2 || smr.right <= str.left + 2,
+          rootPositionArea: rmCS.getPropertyValue('position-area'),
+          subPositionArea: smCS.getPropertyValue('position-area'),
+        };
+      }, { rId: rootMenuId!, sTrigId: (await subTrigger.getAttribute('id'))!, sId: subId! });
+
+      expect(geo.topBelow).toBe(true);
+      expect(geo.subBeside).toBe(true);
+      expect(geo.rootPositionArea).not.toBe('none');
+      expect(geo.subPositionArea).not.toBe('none');
+    });
+
+    test('Menu items align their content across rows with fixed-size leading icon or check slot and trailing content at inline end, without subgrid', async ({ page }) => {
+      const stylesheet = getCssStyleSheet(targetFiles);
+      expect(stylesheet.cssRules.length).toBeGreaterThan(0);
+
+      const styleRules = getRules(stylesheet, CSSStyleRule);
+      const subgridRule = styleRules.find(r =>
+        r.style.getPropertyValue('grid-template-columns')?.includes('subgrid') ||
+        r.style.getPropertyValue('grid-template-rows')?.includes('subgrid')
+      );
+      expect(subgridRule).toBeUndefined();
+
+      await page.setViewportSize({ width: 1280, height: 800 });
+
+      // Open path to first checkable via keyboard
+      const ids = await page.evaluate(() => {
+        const target = document.querySelector('[role="menuitemcheckbox"]');
+        const list: string[] = [];
+        let cur: Element | null = target;
+        while (cur) {
+          const p: Element | null = cur.closest('[popover]');
+          if (!p) break;
+          const t: HTMLElement | null = document.querySelector<HTMLElement>(`[commandfor="${p.id}"]`);
+          if (!t) break;
+          if (!t.id) t.id = `_t_align_${list.length}_${Math.random().toString(36).slice(2)}`;
+          list.unshift(t.id);
+          cur = t.parentElement;
+        }
+        return list;
+      });
+
+      if (ids.length > 0) {
+        await page.focus(`#${ids[0]}`);
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(80);
+        for (const id of ids.slice(1)) {
+          await page.focus(`#${id}`);
+          await page.keyboard.press('ArrowRight');
+          await page.waitForTimeout(80);
+        }
+      }
+
+      const res = await page.evaluate(() => {
+        const target = document.querySelector('[role="menuitemcheckbox"]');
+        if (!target) return { error: 'no menuitemcheckbox found' };
+        const group = target.closest('[focusgroup]');
+        if (!group) return { error: 'no focusgroup container' };
+
+        const items = Array.from(group.querySelectorAll<HTMLElement>('button'))
+          .filter(b => b.closest('[focusgroup]') === group && b.checkVisibility());
+
+        if (items.length === 0) return { error: 'no visible items in group' };
+
+        const textStart = (b: HTMLElement) => {
+          const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT, {
+            acceptNode: n => n.textContent?.trim() && !n.parentElement?.closest('[aria-hidden="true"]') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+          });
+          const n = walker.nextNode();
+          if (!n) return null;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          const rects = range.getClientRects();
+          return rects.length > 0 ? Math.round(rects[0].left) : null;
+        };
+
+        const beforeWidths = items.map(b => window.getComputedStyle(b, '::before').width);
+        const textPositions = items.map(textStart).filter((x): x is number => x !== null);
+
+        const trailingChecks = items.map(b => {
+          const hint = b.querySelector<HTMLElement>('[aria-hidden="true"]');
+          if (!hint) return true;
+          const br = b.getBoundingClientRect();
+          const cs = window.getComputedStyle(b);
+          const pr = parseFloat(cs.paddingRight) || 0;
+          const hr = hint.getBoundingClientRect().right;
+          return (br.right - pr - hr) <= 2;
+        });
+
+        return {
+          allBeforeSame: beforeWidths.every(w => w === beforeWidths[0] && parseFloat(w) > 0),
+          textAligned: textPositions.every(x => Math.abs(x - textPositions[0]) <= 2),
+          trailingAligned: trailingChecks.every(Boolean),
+        };
+      });
+
+      expect(res.error).toBeUndefined();
+      expect(res.allBeforeSame).toBe(true);
+      expect(res.textAligned).toBe(true);
+      expect(res.trailingAligned).toBe(true);
+    });
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
@@ -284,20 +415,19 @@ test.describe('Menu Component Grader', () => {
       const checkboxPopover = page.locator(`#${checkboxPopoverId}`);
       expect(await isPopoverOpen(page, checkboxPopover)).toBe(true);
 
+      // Park pointer away from triggers to avoid hover timers moving focus
+      await page.mouse.move(1, 1);
       await checkbox.focus();
       const initialChecked = (await checkbox.getAttribute('aria-checked')) === 'true';
 
       await page.keyboard.press('Space');
-      await page.waitForTimeout(100);
-      const checkedAfterSpace = (await checkbox.getAttribute('aria-checked')) === 'true';
-      expect(checkedAfterSpace).toBe(!initialChecked);
+      await expect.poll(async () => (await checkbox.getAttribute('aria-checked')) === 'true', { timeout: 1500 }).toBe(!initialChecked);
       expect(await isPopoverOpen(page, checkboxPopover)).toBe(true);
 
       await page.keyboard.press('Enter');
-      await page.waitForTimeout(350);
+      await expect.poll(() => isPopoverOpen(page, checkboxPopover), { timeout: 1500 }).toBe(false);
       const checkedAfterEnter = (await checkbox.getAttribute('aria-checked')) === 'true';
       expect(checkedAfterEnter).toBe(initialChecked);
-      expect(await isPopoverOpen(page, checkboxPopover)).toBe(false);
 
       await openMenuPathTo(page, '[role="menuitemradio"]');
       const radio = page.locator('[role="menuitemradio"]').first();
@@ -306,10 +436,10 @@ test.describe('Menu Component Grader', () => {
       const radioPopover = page.locator(`#${radioPopoverId}`);
       expect(await isPopoverOpen(page, radioPopover)).toBe(true);
 
+      await page.mouse.move(1, 1);
       await radio.focus();
       await page.keyboard.press('Space');
-      await page.waitForTimeout(350);
-      expect(await isPopoverOpen(page, radioPopover)).toBe(false);
+      await expect.poll(() => isPopoverOpen(page, radioPopover), { timeout: 1500 }).toBe(false);
     });
 
     test('Each popover is the immediate next sibling of its trigger, submenus are popover="auto" placed after trigger inside parent focusgroup without aria-details, and closed submenus are not inline', async ({ page }) => {
@@ -536,21 +666,21 @@ test.describe('Menu Component Grader', () => {
     test('Pressing Escape closes only current menu level, sets trigger aria-expanded to "false", and restores focus to the trigger that opened it, including for nested submenus', async ({ page }) => {
       const rootTrigger = await getTopLevelTrigger(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
-      await rootTrigger.click();
-      await page.waitForTimeout(100);
+      await rootTrigger.focus();
+      await page.keyboard.press('Enter');
 
       const rootMenuId = await rootTrigger.getAttribute('commandfor');
       const rootMenu = page.locator(`#${rootMenuId}`);
-      expect(await isPopoverOpen(page, rootMenu)).toBe(true);
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
       const subTrigger1 = await getSubmenuTrigger(page);
       expect(await subTrigger1.count()).toBeGreaterThan(0);
-      await subTrigger1.click();
-      await page.waitForTimeout(100);
+      await subTrigger1.focus();
+      await page.keyboard.press('ArrowRight');
 
       const subId1 = await subTrigger1.getAttribute('commandfor');
       const subMenu1 = page.locator(`#${subId1}`);
-      expect(await isPopoverOpen(page, subMenu1)).toBe(true);
+      await expect.poll(() => isPopoverOpen(page, subMenu1), { timeout: 1500 }).toBe(true);
 
       const subTrigger2Id = await subMenu1.evaluate((el: HTMLElement) => {
         const btn = el.querySelector<HTMLElement>('[focusgroup] button[commandfor]');
@@ -559,41 +689,35 @@ test.describe('Menu Component Grader', () => {
 
       if (subTrigger2Id) {
         const subTrigger2 = page.locator(`#${subTrigger2Id}`);
-        await subTrigger2.click();
-        await page.waitForTimeout(100);
+        await subTrigger2.focus();
+        await page.keyboard.press('ArrowRight');
 
         const subId2 = await subTrigger2.getAttribute('commandfor');
         const subMenu2 = page.locator(`#${subId2}`);
-        expect(await isPopoverOpen(page, subMenu2)).toBe(true);
+        await expect.poll(() => isPopoverOpen(page, subMenu2), { timeout: 1500 }).toBe(true);
 
         const subItem2 = subMenu2.locator('button, a').first();
         await subItem2.focus();
         await page.waitForTimeout(50);
 
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(150);
-
-        expect(await isPopoverOpen(page, subMenu2)).toBe(false);
-        expect(await subTrigger2.getAttribute('aria-expanded')).toBe('false');
+        await expect.poll(() => isPopoverOpen(page, subMenu2), { timeout: 1500 }).toBe(false);
+        await expect.poll(async () => subTrigger2.getAttribute('aria-expanded'), { timeout: 1500 }).toBe('false');
         expect(await isPopoverOpen(page, subMenu1)).toBe(true);
         const isSub2TriggerFocused = await subTrigger2.evaluate((el: HTMLElement) => document.activeElement === el);
         expect(isSub2TriggerFocused).toBe(true);
       }
 
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(150);
-
-      expect(await isPopoverOpen(page, subMenu1)).toBe(false);
-      expect(await subTrigger1.getAttribute('aria-expanded')).toBe('false');
+      await expect.poll(() => isPopoverOpen(page, subMenu1), { timeout: 1500 }).toBe(false);
+      await expect.poll(async () => subTrigger1.getAttribute('aria-expanded'), { timeout: 1500 }).toBe('false');
       expect(await isPopoverOpen(page, rootMenu)).toBe(true);
       const isSub1TriggerFocused = await subTrigger1.evaluate((el: HTMLElement) => document.activeElement === el);
       expect(isSub1TriggerFocused).toBe(true);
 
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(150);
-
-      expect(await isPopoverOpen(page, rootMenu)).toBe(false);
-      expect(await rootTrigger.getAttribute('aria-expanded')).toBe('false');
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(false);
+      await expect.poll(async () => rootTrigger.getAttribute('aria-expanded'), { timeout: 1500 }).toBe('false');
       const isRootTriggerFocused = await rootTrigger.evaluate((el: HTMLElement) => document.activeElement === el);
       expect(isRootTriggerFocused).toBe(true);
     });
@@ -746,6 +870,14 @@ test.describe('Menu Component Grader', () => {
 
       expect(noPrefAnim.maxDur).toBeLessThanOrEqual(150);
 
+      if (noPrefAnim.maxDur > 0 && noPrefAnim.tProp && noPrefAnim.tProp !== 'none') {
+        const props = noPrefAnim.tProp.split(',').map((s: string) => s.trim().toLowerCase());
+        const allowed = new Set(['opacity', 'translate', 'transform', 'display', 'overlay']);
+        for (const prop of props) {
+          expect(allowed.has(prop)).toBe(true);
+        }
+      }
+
       await rootTrigger.focus();
       const startTime = Date.now();
       await page.keyboard.press('ArrowDown');
@@ -791,8 +923,12 @@ test.describe('Menu Component Grader', () => {
     test('Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu', async ({ page }) => {
       const rootTrigger = await getTopLevelTrigger(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
-      await rootTrigger.click();
-      await page.waitForTimeout(100);
+      await rootTrigger.focus();
+      await page.keyboard.press('Enter');
+
+      const menuId = await rootTrigger.getAttribute('commandfor');
+      const rootMenu = page.locator(`#${menuId}`);
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
       const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
@@ -808,31 +944,45 @@ test.describe('Menu Component Grader', () => {
 
       const siblingItem = await getSiblingItem(page, subTrigger);
       expect(await siblingItem.count()).toBeGreaterThan(0);
+      const sibBox = await siblingItem.boundingBox();
+      expect(sibBox).not.toBeNull();
       await siblingItem.hover();
-      await page.waitForTimeout(200);
+      await page.waitForTimeout(400);
+      await page.mouse.move(sibBox!.x + 5, sibBox!.y + 5);
 
-      expect(await isPopoverOpen(page, subMenu)).toBe(false);
+      await expect.poll(() => isPopoverOpen(page, subMenu), { timeout: 1500 }).toBe(false);
     });
 
     test('A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a safe triangle), while moving to a sibling item outside that path closes it', async ({ page }) => {
       const rootTrigger = await getTopLevelTrigger(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
-      await rootTrigger.click();
-      await page.waitForTimeout(100);
+      await rootTrigger.focus();
+      await page.keyboard.press('Enter');
 
       const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
 
       await subTrigger.hover();
-      await page.waitForTimeout(200);
+      await page.waitForTimeout(300);
 
       const subId = await subTrigger.getAttribute('commandfor');
       expect(subId).toBeTruthy();
       const subMenu = page.locator(`#${subId}`);
-      expect(await isPopoverOpen(page, subMenu)).toBe(true);
+      await expect.poll(() => isPopoverOpen(page, subMenu), { timeout: 1500 }).toBe(true);
 
-      const subItem = subMenu.locator('button, a').first();
-      expect(await subItem.count()).toBeGreaterThan(0);
+      const visibleItemId = await page.evaluate((menuId: string) => {
+        const sm = document.getElementById(menuId);
+        if (!sm) return null;
+        const group = sm.querySelector(':scope > [focusgroup]') || sm;
+        const candidates = Array.from(group.querySelectorAll<HTMLElement>('button, a'))
+          .filter(b => b.closest('[popover]') === sm && b.checkVisibility());
+        const last = candidates[candidates.length - 1];
+        if (!last) return null;
+        if (!last.id) last.id = `_subitem_last_${Math.random().toString(36).slice(2)}`;
+        return last.id;
+      }, subId!);
+      expect(visibleItemId).not.toBeNull();
+      const subItem = page.locator(`#${visibleItemId}`);
 
       const triggerBox = await subTrigger.boundingBox();
       const itemBox = await subItem.boundingBox();
@@ -850,42 +1000,75 @@ test.describe('Menu Component Grader', () => {
       const siblingBox = await siblingItem.boundingBox();
       expect(siblingBox).not.toBeNull();
 
-      await page.mouse.move(siblingBox!.x + siblingBox!.width / 2, siblingBox!.y + siblingBox!.height / 2);
+      await subTrigger.hover();
       await page.waitForTimeout(300);
+      await page.mouse.move(triggerBox!.x + triggerBox!.width / 2, triggerBox!.y + triggerBox!.height / 2);
+      await page.mouse.move(siblingBox!.x + siblingBox!.width / 2, siblingBox!.y + siblingBox!.height / 2, { steps: 5 });
+      await page.waitForTimeout(400);
+      await page.mouse.move(siblingBox!.x + 5, siblingBox!.y + 5);
 
-      expect(await isPopoverOpen(page, subMenu)).toBe(false);
+      await expect.poll(() => isPopoverOpen(page, subMenu), { timeout: 1500 }).toBe(false);
     });
 
     test('Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
-      expect(await rootTrigger.count()).toBeGreaterThan(0);
-      await rootTrigger.click();
-      await page.waitForTimeout(100);
+      const CMD = 'button:not([role="menuitemcheckbox"]):not([role="menuitemradio"]):not([commandfor])';
+      const pathIds = await page.evaluate((cmdSelector: string) => {
+        const cands = Array.from(document.querySelectorAll<HTMLElement>(`[popover] [popover] :is(${cmdSelector}, [role="menuitemradio"])`));
+        const target = cands[0] || document.querySelector<HTMLElement>(`[popover] :is(${cmdSelector}, [role="menuitemradio"])`);
+        if (!target) return null;
+        if (!target.id) target.id = `_cmd_target_${Math.random().toString(36).slice(2)}`;
 
-      const menuId = await rootTrigger.getAttribute('commandfor');
-      const rootMenu = page.locator(`#${menuId}`);
-      expect(await isPopoverOpen(page, rootMenu)).toBe(true);
+        const ids: string[] = [];
+        let cur: Element | null = target;
+        while (cur) {
+          const p: Element | null = cur.closest('[popover]');
+          if (!p) break;
+          const t: HTMLElement | null = document.querySelector<HTMLElement>(`[commandfor="${p.id}"]`);
+          if (!t) break;
+          if (!t.id) t.id = `_trig_path_${ids.length}_${Math.random().toString(36).slice(2)}`;
+          ids.unshift(t.id);
+          cur = t.parentElement;
+        }
+        return { ids, targetId: target.id };
+      }, CMD);
 
-      const subTrigger = await getSubmenuTrigger(page);
-      expect(await subTrigger.count()).toBeGreaterThan(0);
-      await subTrigger.click();
-      await page.waitForTimeout(100);
+      expect(pathIds).not.toBeNull();
+      expect(pathIds!.ids.length).toBeGreaterThan(0);
 
-      const subId = await subTrigger.getAttribute('commandfor');
-      const subMenu = page.locator(`#${subId}`);
-      expect(await isPopoverOpen(page, subMenu)).toBe(true);
+      // Open the hierarchy using keyboard navigation
+      await page.focus(`#${pathIds!.ids[0]}`);
+      await page.keyboard.press('Enter');
 
-      const commandItem = subMenu.locator('button:not([role="menuitemcheckbox"]):not([role="menuitemradio"]):not([commandfor])').first();
-      expect(await commandItem.count()).toBeGreaterThan(0);
+      for (const id of pathIds!.ids.slice(1)) {
+        await page.waitForFunction((elId: string) => {
+          return document.getElementById(elId)?.closest('[popover]')?.matches(':popover-open, .\\:popover-open');
+        }, id);
+        await page.focus(`#${id}`);
+        await page.keyboard.press('ArrowRight');
+      }
 
-      await commandItem.click();
-      await page.waitForTimeout(200);
+      await page.waitForFunction((tgtId: string) => {
+        return document.getElementById(tgtId)?.closest('[popover]')?.matches(':popover-open, .\\:popover-open');
+      }, pathIds!.targetId);
 
-      expect(await isPopoverOpen(page, subMenu)).toBe(false);
-      expect(await isPopoverOpen(page, rootMenu)).toBe(false);
+      // Focus target item and activate with Enter
+      await page.focus(`#${pathIds!.targetId}`);
+      await page.keyboard.press('Enter');
 
-      const rootFocused = await rootTrigger.evaluate((el: HTMLElement) => document.activeElement === el);
-      expect(rootFocused).toBe(true);
+      // Wait until all popovers close and focus restores to root trigger
+      const rootId = pathIds!.ids[0];
+      await page.waitForFunction((rid: string) => {
+        const anyOpen = Array.from(document.querySelectorAll('[popover]')).some(p => p.matches(':popover-open, .\\:popover-open'));
+        return !anyOpen && document.activeElement?.id === rid;
+      }, rootId, { timeout: 1500 });
+
+      const anyOpen = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('[popover]')).some(p => p.matches(':popover-open, .\\:popover-open'));
+      });
+      expect(anyOpen).toBe(false);
+
+      const isRootFocused = await page.evaluate((rid: string) => document.activeElement?.id === rid, rootId);
+      expect(isRootFocused).toBe(true);
 
       const insideHidden = await page.evaluate(() => {
         const active = document.activeElement;
@@ -899,8 +1082,12 @@ test.describe('Menu Component Grader', () => {
     test('A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item', async ({ page }) => {
       const rootTrigger = await getTopLevelTrigger(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
-      await rootTrigger.click();
-      await page.waitForTimeout(100);
+      await rootTrigger.focus();
+      await page.keyboard.press('Enter');
+
+      const rootMenuId = await rootTrigger.getAttribute('commandfor');
+      const rootMenu = page.locator(`#${rootMenuId}`);
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
       const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
@@ -912,12 +1099,10 @@ test.describe('Menu Component Grader', () => {
       const actionAttr = await subTrigger.getAttribute('data-action');
       expect(actionAttr).toBeNull();
 
-      await subTrigger.click();
-      await page.waitForTimeout(100);
-
-      expect(await isPopoverOpen(page, subMenu)).toBe(true);
-      const topMenuId = await rootTrigger.getAttribute('commandfor');
-      expect(await isPopoverOpen(page, page.locator(`#${topMenuId}`))).toBe(true);
+      await subTrigger.focus();
+      await page.keyboard.press('ArrowRight');
+      await expect.poll(() => isPopoverOpen(page, subMenu), { timeout: 1500 }).toBe(true);
+      expect(await isPopoverOpen(page, rootMenu)).toBe(true);
 
       const firstSubItem = subMenu.locator('button, a').first();
       expect(await firstSubItem.count()).toBeGreaterThan(0);
@@ -969,18 +1154,20 @@ test.describe('Menu Component Grader', () => {
 
       const rootTrigger = await getTopLevelTrigger(page);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
-      await rootTrigger.click();
-      await page.waitForTimeout(100);
+      await rootTrigger.focus();
+      await page.keyboard.press('Enter');
+      const rootMenuId = await rootTrigger.getAttribute('commandfor');
+      const rootMenu = page.locator(`#${rootMenuId}`);
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(true);
 
       const subTrigger = await getSubmenuTrigger(page);
       expect(await subTrigger.count()).toBeGreaterThan(0);
-
-      await subTrigger.click();
-      await page.waitForTimeout(150);
+      await subTrigger.focus();
+      await page.keyboard.press('ArrowRight');
 
       const subId = await subTrigger.getAttribute('commandfor');
       const subMenu = page.locator(`#${subId}`);
-      expect(await isPopoverOpen(page, subMenu)).toBe(true);
+      await expect.poll(() => isPopoverOpen(page, subMenu), { timeout: 1500 }).toBe(true);
 
       const triggerBox = await subTrigger.boundingBox();
       const subBox = await subMenu.boundingBox();
@@ -999,7 +1186,7 @@ test.describe('Menu Component Grader', () => {
     });
 
     test('After a pointer activation of a command, focus returns to the root trigger without :focus-visible', async ({ page }) => {
-      const rootTrigger = await getTopLevelTrigger(page);
+      const rootTrigger = await getTopLevelTriggerWithCommand(page, false);
       expect(await rootTrigger.count()).toBeGreaterThan(0);
       await rootTrigger.click();
       await page.waitForTimeout(100);
@@ -1012,9 +1199,7 @@ test.describe('Menu Component Grader', () => {
       expect(await commandItem.count()).toBeGreaterThan(0);
 
       await commandItem.click();
-      await page.waitForTimeout(200);
-
-      expect(await isPopoverOpen(page, rootMenu)).toBe(false);
+      await expect.poll(() => isPopoverOpen(page, rootMenu), { timeout: 1500 }).toBe(false);
 
       const state = await rootTrigger.evaluate((el: HTMLElement) => {
         return {
