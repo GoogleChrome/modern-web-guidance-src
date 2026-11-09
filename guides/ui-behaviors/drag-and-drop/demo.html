@@ -707,7 +707,6 @@
       function cancelPointerReorder(event) {
         if (event.key !== 'Escape') return;
         event.preventDefault();
-        pointerItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         finishPointerReorder(true);
       }
 
