@@ -85,6 +85,9 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
       isolated: true,
       stdio: 'pipe',
       maxBuffer: MAX_BUFFER,
+      // Don't let git discover an enclosing repo (e.g. results/ inside the checkout). There, it reads
+      // `diff --git` paths as relative to that repo's root, skips them all, and still exits 0.
+      env: { GIT_CEILING_DIRECTORIES: path.dirname(absTargetDir) },
     });
     return { success: true };
   } catch (gitErr: unknown) {
