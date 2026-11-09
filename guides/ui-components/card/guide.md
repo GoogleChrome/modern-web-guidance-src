@@ -19,9 +19,10 @@ A card groups one related piece of content or one choice. It is a visual pattern
 
 Choose semantics for the content and its interaction separately:
 
-- use `<article>` as the card root, whether or not it links to a destination;
-- use a native link for navigation. When the whole card is one destination, a single link may wrap the `<article>` only if the card contains no other interactive elements (`a`, `button`, `input`, `select`, `textarea`);
-- keep links and buttons for independent actions as separate native controls;
+- always use `<article>` as the card root, whether or not it links to a destination.
+- use a native link for navigation.
+  - **MANDATORY:** When the whole card is one destination, a single link may wrap the `<article>` only if the card contains no other interactive elements (`a`, `button`, `input`, `select`, `textarea`).
+- keep links and buttons for independent actions as separate native controls inside the card.
 - use a radio button or checkbox with an associated `<label>`, or an `option` in a native `<select>`, when the card is a choice.
 
 Keep media, title, supporting content, and actions in meaningful source order; don't use CSS `order` to contradict it (see {{ GUIDE_REF("css-layout") }}).
@@ -33,7 +34,7 @@ Keep the markup minimal and let CSS selectors recognize each region, so simple c
 - **Media**: an `<img>`, `<picture>`, `<video>`, or `<svg>` as the first child. Add a `.media` class only to arbitrary hero content that is not one of those elements, and never wrap a plain `<img>` in a `.media` element.
 - **Header**: a heading on its own. Use `<hgroup>` only when the heading has a subtitle or tagline, and `<header>` when the region carries more than a title, such as a byline or badge. When the card has a primary destination, the link goes inside the heading.
 - **Content**: a single `<p>`, `<ul>`, or `<dl>` stands on its own. When the content is several elements, such as multiple paragraphs or a paragraph plus a list, group them in one `<div>` so the region is a single grid item.
-- **Footer**: a `<footer>` holding independent actions as native links and buttons. A "read more" link may share the heading link's URL, but give it a descriptive accessible name that starts with the visible text, using visually hidden text (for example, `Read more<span> about poached eggs</span>`), because identical "read more" links are ambiguous in a screen reader's link list. Don't add other footer links that repeat the heading's URL.
+- **Footer**: a `<footer>` holding independent actions such as native links and buttons. Don't include a "read more" or "learn more" link in the footer if its URL is the same as the heading URL, as this will create an unnecessary additional tab stop to the same destination. Only include a "read more" or "learn more" link in the footer if its URL differs from the heading URL. A "read more" or "learn more" link's accessible name **must** have a descriptive accessible name that includes both the visible text **and** appropriate contextual information (typically the card's heading) using either visually hidden text (for example, `<a href="…">Read more<span class="visually-hidden"> about poached eggs</span></a>`) or an `aria-label` attribute applied to the link (for example, `<a href="…" aria-label="Read more about poached eggs">Read more</a>`). This is because identical "read more" and "learn more" links are ambiguous in a screen reader's link list.
 
 The simplest card is an `<article>` containing a heading and a paragraph. Choose the link and action pattern that matches the card's behavior; see [Interaction models](#interaction-models).
 
@@ -73,31 +74,32 @@ When the whole card is one destination and has no independent actions, use one n
 If clicking the card triggers an action rather than navigating, use a `<button>` instead of a link.
 
 When a content card links to a primary destination, also contains other interactive elements, and needs to be clickable as a whole:
+
 - Use a single opt-in, on the primary link itself: put `.card-link` on exactly one link per card (the heading link). Footer and other links never get it, or each would stretch its own overlay and the last one would capture the whole card.
 - Link its title and stretch the pointer hit area across the card with `::after`
 
 ```css
 .card:has(a.card-link) {
-	position: relative;
+ position: relative;
 }
 
 .card a.card-link::after {
-	content: "";
-	position: absolute;
-	inset: 0;
+ content: "";
+ position: absolute;
+ inset: 0;
 }
 ```
 
-- Elevate interactive elements with `position: relative; z-index: 1` so they remain operable. Target types of elements (e.g. `a, button`) rather than requiring opt-in via classes. 
+- Elevate interactive elements with `position: relative; z-index: 1` so they remain operable. Target types of elements (e.g. `a, button`) rather than requiring opt-in via classes.
 - Do NOT apply `z-index` to entire containers as that would make them capture pointer events that don't produce any action.
 
 ```css
 .card:has(a.card-link) {
-	/* Keep other interactive elements above the overlay */
-	a:not(.card-link), button, input, x-button {
-	    position: relative;
-	    z-index: 1;
-	}
+ /* Keep other interactive elements above the overlay */
+ a:not(.card-link), button, input, x-button {
+     position: relative;
+     z-index: 1;
+ }
 }
 ```
 
@@ -105,19 +107,22 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card {
-	a.card-link {
-		&:focus-visible {
-			outline: none; /* Draw it on the card instead */
-		}
-	}
-	
-	&:has(a.card-link:focus-visible) {
-		/* Focus ring */
-	}
+ a.card-link {
+  &:focus-visible {
+   outline: none; /* Draw it on the card instead */
+  }
+ }
+ 
+ &:has(a.card-link:focus-visible) {
+  /* focus ring drawn on the card itself */
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 4px;
+ }
 
-	&:has(a.card-link:hover) {
-		/* Hover styles */
-	}
+ &:has(a.card-link:hover) {
+  background: var(--btn-bg-hover);
+  color: var(--btn-text-hover);
+ }
 }
 
 ```
