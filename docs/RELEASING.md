@@ -6,7 +6,7 @@ To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS 
 
 Releases are published automatically via GitHub Actions:
 * **Workflow**: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
-* **Schedule**: Runs every 12 hours at 02:50 UTC and 14:50 UTC, publishing to the `next` npm dist-tag and the `next` branch of `GoogleChrome/modern-web-guidance` whenever `main` has new commits.
+* **Schedule**: Runs every Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT), publishing to the `latest` npm dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`.
 * **Manual Trigger (`workflow_dispatch`)**: Can be triggered manually via GitHub Actions **Run workflow** with:
   * `dist_tag`: `next` (default) or `latest` (also updates the `next` dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`).
   * `version`: Optional explicit semver override (e.g. `1.0.0`); leave blank to auto-increment the patch version.
