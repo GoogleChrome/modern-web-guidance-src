@@ -10,6 +10,8 @@ web-feature-ids:
   - interpolate-size
   - text-fit
   - resize-observer
+  - registered-custom-properties
+  - individual-transforms
 guides:
   - interest-triggered-tooltips
 ---
