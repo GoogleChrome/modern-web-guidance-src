@@ -87,7 +87,12 @@
         }
 
         thead th {
-          padding: 0;
+          font-weight: 600;
+
+          /* The button supplies the padding, so only sortable headers drop the cell padding. */
+          &:has(> button) {
+            padding: 0;
+          }
 
           &[aria-sort] {
             background: color-mix(in oklch, var(--accent) 12%, var(--surface));
@@ -243,17 +248,18 @@
                 </svg>
               </button>
             </th>
+            <th scope="col">Symbol</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>Mercury</td><td>Terrestrial</td><td class="num" data-value="4879">4,879</td><td class="num">0</td></tr>
-          <tr><td>Venus</td><td>Terrestrial</td><td class="num" data-value="12104">12,104</td><td class="num">0</td></tr>
-          <tr><td>Earth</td><td>Terrestrial</td><td class="num" data-value="12742">12,742</td><td class="num">1</td></tr>
-          <tr><td>Mars</td><td>Terrestrial</td><td class="num" data-value="6779">6,779</td><td class="num">2</td></tr>
-          <tr><td>Jupiter</td><td>Gas giant</td><td class="num" data-value="139820">139,820</td><td class="num">95</td></tr>
-          <tr><td>Saturn</td><td>Gas giant</td><td class="num" data-value="116460">116,460</td><td class="num">146</td></tr>
-          <tr><td>Uranus</td><td>Ice giant</td><td class="num" data-value="50724">50,724</td><td class="num">28</td></tr>
-          <tr><td>Neptune</td><td>Ice giant</td><td class="num" data-value="49244">49,244</td><td class="num">16</td></tr>
+          <tr><td>Mercury</td><td>Terrestrial</td><td class="num" data-value="4879">4,879</td><td class="num">0</td><td>☿</td></tr>
+          <tr><td>Venus</td><td>Terrestrial</td><td class="num" data-value="12104">12,104</td><td class="num">0</td><td>♀</td></tr>
+          <tr><td>Earth</td><td>Terrestrial</td><td class="num" data-value="12742">12,742</td><td class="num">1</td><td>⊕</td></tr>
+          <tr><td>Mars</td><td>Terrestrial</td><td class="num" data-value="6779">6,779</td><td class="num">2</td><td>♂</td></tr>
+          <tr><td>Jupiter</td><td>Gas giant</td><td class="num" data-value="139820">139,820</td><td class="num">95</td><td>♃</td></tr>
+          <tr><td>Saturn</td><td>Gas giant</td><td class="num" data-value="116460">116,460</td><td class="num">146</td><td>♄</td></tr>
+          <tr><td>Uranus</td><td>Ice giant</td><td class="num" data-value="50724">50,724</td><td class="num">28</td><td>⛢</td></tr>
+          <tr><td>Neptune</td><td>Ice giant</td><td class="num" data-value="49244">49,244</td><td class="num">16</td><td>♆</td></tr>
         </tbody>
       </table>
     </div>
