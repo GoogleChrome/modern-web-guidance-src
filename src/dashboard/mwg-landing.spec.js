@@ -546,10 +546,22 @@ test.describe('Search quality page MWG compliance', () => {
       await acceptBtn.focus();
       const styles = await acceptBtn.evaluate(el => {
         const cs = getComputedStyle(el);
-        return { bg: cs.backgroundColor, color: cs.color };
+        const barCs = getComputedStyle(document.querySelector('.glue-cookie-notification-bar'));
+        const cv = document.createElement('canvas');
+        cv.width = 1;
+        cv.height = 1;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = barCs.backgroundColor;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        return { bg: cs.backgroundColor, color: cs.color, barBg: barCs.backgroundColor, barRgb: [r, g, b] };
       });
       expect(styles.color).toBe('rgb(255, 255, 255)');
       expect(styles.bg).not.toBe('rgb(255, 255, 255)');
+      expect(styles.barBg).toContain('oklab(');
+      if (colorScheme === 'dark') {
+        expect(styles.barRgb[2]).toBeGreaterThan(styles.barRgb[0]);
+      }
     }
 
     expect(errors).toEqual([]);
