@@ -41,7 +41,7 @@ Prefer persistent toast notifications that remain present until they are dismiss
 * **DON'T** surface toasts in scenarios where focus redirection may be used at the same time. The focus redirection may cancel out the toast announcements, resulting in people missing information.
 * **DON'T** use toasts in modal dialogs. Content outside of the dialog will be inert and unavailable to assistive technologies. Placing the toast in a modal dialog, separate from the existing toast container makes it difficult to locate, and may lead to people not being able to locate it.
 * **DON'T** surface toast notifications in the background while a modal dialog is open. It's likely the notification will be missed. Instead, suppress the notification until the modal dialog is dismissed.
-* **DON'T** include controls in toast notifications that are not already permanently available outside the toast notifications. Controls in toasts should be used sparingly, and only provided as an alternative way of completing an action.
+* **DON'T** include controls in toast notifications that perform actions not already permanently available outside the toast notifications. Controls in toasts should be used sparingly, and only provided as a shortcut for actions already available via the UI.
 
 ## Optional: Usability & accessibility improvements
 
