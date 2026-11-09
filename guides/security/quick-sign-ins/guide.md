@@ -80,8 +80,7 @@ Because `navigator.credentials.get({ password: true, publicKey, uiMode: 'immedia
 2. **Branch verification by `cred.type`**:
     - If `cred.type === 'public-key'`, serialize the assertion with `cred.toJSON()` and POST it to your WebAuthn verification endpoint. When the server responds with HTTP `404`, call `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rpId, credentialId: encoded.id })`. Always use `publicKey.rpId` from the server's request options—**DO NOT** derive or fall back to `window.location.hostname` on the client, as the server's configured RP ID may be a registrable parent domain (such as `example.com` on `shop.example.com`) or use Related Origin Requests.
     - If `cred.type === 'password'`, POST `{ username: cred.id, password: cred.password }` to your password verification endpoint.
-3. **Handle `NotAllowedError` when no local credentials exist**: Catch `NotAllowedError` (thrown immediately when no local passkeys or saved passwords exist on the device, or when the user dismisses the chooser) and transition to your standard sign-in flow (such as opening an inline sign-in dialog or navigating to `/signin` with a return URL). When revealing an inline fallback sign-in form or dialog in place, move focus to its first interactive control and announce the state change via a polite live region (`role="status"`).
-4. **Restore focus and announce in-place sign-in completion**: When in-place authentication or fallback form submission hides the sign-in trigger or inline form, restore focus to the originating action control (or to a surviving authenticated control in the header) so keyboard focus does not drop to `document.body`, and announce the authenticated state in a status live region (`role="status"`).
+3. **Handle `NotAllowedError` when no local credentials exist**: Catch `NotAllowedError` (thrown immediately when no local passkeys or saved passwords exist on the device, or when the user dismisses the chooser) and transition to your standard sign-in flow (such as opening an inline sign-in dialog or navigating to `/signin` with a return URL).
 
 ```javascript
 let isAuthenticating = false;
@@ -165,17 +164,15 @@ favoriteButton.addEventListener('click', async (event) => {
   isAuthenticating = true;
   try {
     const user = await authenticateWithImmediateUi();
-    // Complete the user's intended action immediately, restore focus so hiding
-    // sign-in UI does not drop focus to document.body, and announce status
+    // Complete the user's intended action immediately
     document.body.dataset.signedIn = 'true';
     favoriteButton.setAttribute('aria-pressed', 'true');
     updateHeaderUserState(user);
-    favoriteButton.focus();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       // No local credentials available or user dismissed dialog:
-      // reveal fallback sign-in UI (moving focus to its first input) or redirect with return URL
-      showFallbackSignInUi({ returnAction: 'favorite', returnFocusEl: favoriteButton });
+      // transition smoothly to fallback sign-in UI or redirect with return URL
+      showFallbackSignInUi({ returnAction: 'favorite' });
       return;
     }
     console.error('Authentication error:', err);

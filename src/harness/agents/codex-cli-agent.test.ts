@@ -18,7 +18,7 @@ import {
   extractWebRunsFromCodexItem,
   parseCodexTrajectory
 } from './codex-cli-agent.ts';
-import { extractModelFromResults, extractReasoningEffortFromResults } from '../lib/collection.ts';
+import { extractModelFromResults } from '../lib/collection.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -852,125 +852,6 @@ test('parseCodexTrajectory preserves tools.web__run calls when batched with exec
     const batchedSummary = parseCodexTrajectory([batchedCall, batchedOutput]);
     writeTrajectorySummary(tempDir, batchedSummary);
     assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'support-global-calendar-systems'), false);
-  } finally {
-    removeTempDir(tempDir);
-  }
-});
-
-test('parseCodexTrajectory extracts observed reasoning_effort from main turn_context and ignores subagent overrides', () => {
-  const mainEntries = [
-    {
-      type: 'turn_context',
-      timestamp: '2026-10-01T12:00:00.000Z',
-      payload: {
-        cwd: '/tmp/work',
-        approval_policy: 'never',
-        sandbox_policy: 'danger-full-access',
-        model: 'gpt-6.1-sol',
-        reasoning_effort: 'High',
-      },
-    },
-    {
-      type: 'response_item',
-      timestamp: '2026-10-01T12:00:01.000Z',
-      payload: {
-        type: 'function_call',
-        call_id: 'call_main_1',
-        name: 'exec_command',
-        arguments: JSON.stringify({ cmd: 'ls' }),
-      },
-    },
-  ];
-  const subagentEntries = [
-    {
-      type: 'turn_context',
-      timestamp: '2026-10-01T12:00:02.000Z',
-      payload: {
-        cwd: '/tmp/work',
-        approval_policy: 'never',
-        sandbox_policy: 'danger-full-access',
-        model: 'gpt-6.1-mini',
-        reasoning_effort: 'low',
-      },
-    },
-    {
-      type: 'response_item',
-      timestamp: '2026-10-01T12:00:03.000Z',
-      payload: {
-        type: 'function_call',
-        call_id: 'call_sub_1',
-        name: 'exec_command',
-        arguments: JSON.stringify({ cmd: 'cat README.md' }),
-      },
-    },
-  ];
-
-  const summary = parseCodexTrajectory(mainEntries, { 'worker-1': subagentEntries });
-  assert.deepStrictEqual(summary.reasoningEffort, { level: 'high', source: 'observed' });
-
-  // Also supports nested collaboration_mode.settings.reasoning_effort
-  const collabSummary = parseCodexTrajectory([
-    {
-      type: 'turn_context',
-      payload: {
-        cwd: '/tmp/work',
-        approval_policy: 'never',
-        sandbox_policy: 'danger-full-access',
-        model: 'gpt-6.1-sol',
-        collaboration_mode: {
-          mode: 'default',
-          settings: { reasoning_effort: 'xhigh' },
-        },
-      },
-    },
-  ]);
-  assert.deepStrictEqual(collabSummary.reasoningEffort, { level: 'xhigh', source: 'observed' });
-});
-
-test('extractReasoningEffortFromResults upgrades historical v4 Codex summaries using raw rollout logs', () => {
-  const tempDir = createTempDir();
-  try {
-    writeTrajectorySummary(tempDir, {
-      normalizerVersion: 4,
-      agent: Agents.CODEX_CLI,
-      model: 'gpt-6.1-sol',
-      steps: [
-        {
-          stepNumber: 1,
-          action: { type: 'run_command', name: 'ls', params: { command: 'ls' } },
-        },
-      ],
-    });
-    fs.writeFileSync(
-      path.join(tempDir, 'session-rollout.jsonl'),
-      [
-        JSON.stringify({
-          type: 'turn_context',
-          timestamp: '2026-10-01T12:00:00.000Z',
-          payload: {
-            cwd: '/tmp/work',
-            approval_policy: 'never',
-            sandbox_policy: 'danger-full-access',
-            model: 'gpt-6.1-sol',
-            reasoning_effort: 'high',
-          },
-        }),
-        JSON.stringify({
-          type: 'response_item',
-          timestamp: '2026-10-01T12:00:01.000Z',
-          payload: {
-            type: 'function_call',
-            call_id: 'call_1',
-            name: 'exec_command',
-            arguments: JSON.stringify({ cmd: 'ls' }),
-          },
-        }),
-      ].join('\n') + '\n',
-      'utf8',
-    );
-
-    const extracted = extractReasoningEffortFromResults(tempDir);
-    assert.deepStrictEqual(extracted, { level: 'high', source: 'observed' });
   } finally {
     removeTempDir(tempDir);
   }

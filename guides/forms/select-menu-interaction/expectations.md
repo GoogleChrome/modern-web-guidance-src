@@ -3,6 +3,3 @@
 - Selecting the "placeholder" option (if enabled) or submitting while empty MUST trigger the error state.
 - CSS MUST use the `:user-invalid` pseudo-class for validation styling.
 - CSS MUST NOT use the basic `:invalid` pseudo-class that triggers immediately.
-- The select has `aria-invalid="true"` while its error state is shown, and doesn't have `aria-invalid="true"` before the error appears or after it clears.
-- While the select has `aria-invalid="true"`, its accessible description includes its visible error text.
-- On page load, the select's accessible description doesn't include its error text.

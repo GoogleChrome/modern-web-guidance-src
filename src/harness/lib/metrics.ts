@@ -1,5 +1,3 @@
-import type { ReasoningEffort } from './reasoning-effort.ts';
-
 export interface PageLoadResult {
   ok: boolean;
   errors: string[];
@@ -92,7 +90,6 @@ export interface EvalsReport {
   agent: string;
   serving: string;
   model: string;
-  reasoningEffort?: ReasoningEffort;
   totalRuntime?: number;
   skillVersion?: string;
   cliVersion?: string;

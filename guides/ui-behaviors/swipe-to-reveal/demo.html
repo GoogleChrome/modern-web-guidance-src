@@ -18,7 +18,7 @@
         --pin-bg: hsl(215 75% 48%);
         --read-bg: hsl(199 84% 38%);
         --star-bg: hsl(38 88% 44%);
-        --archive-bg: hsl(150 50% 32%);
+        --archive-bg: hsl(150 55% 36%);
         --delete-bg: hsl(0 68% 50%);
         --menu-bg: light-dark(#1e293b, #020617);
       }
@@ -79,10 +79,6 @@
         overscroll-behavior: chain;
       }
 
-      .SwipeReveal-content:has(> .SwipeReveal--trigger) {
-        padding-bottom: 2.5rem;
-      }
-
       .SwipeReveal:has(> .SwipeReveal-panel:first-child) {
         grid-template-columns: max-content 100%;
       }
@@ -105,7 +101,6 @@
         scroll-initial-target: nearest;
         background: var(--surface);
         padding: 1rem 1.25rem;
-        position: relative;
         display: grid;
         gap: 0.25rem;
       }
@@ -219,47 +214,6 @@
         background: rgb(255 255 255 / 14%);
         outline: none;
       }
-
-      .SwipeReveal--trigger {
-        aspect-ratio: 1 / 1;
-        background: none;
-        bottom: 0.75rem;
-        border: 0.1rem solid var(--text-muted);
-        border-radius: 1rem;
-        color: var(--text-muted);
-        cursor: pointer;
-        min-height: 24px;
-        min-width: 24px;
-        padding: 0.1rem;
-        position: absolute;
-        right: 1.25rem;
-      }
-
-      .SwipeReveal--trigger:focus-visible {
-        outline-offset: 2px;
-      }
-
-      .SwipeReveal--trigger svg {
-        pointer-events: none;
-      }
-
-      .SwipeReveal--trigger svg circle {
-        fill: var(--text-muted);
-      }
-      
-      .SwipeReveal--trigger svg path {
-        color: var(--text-muted);
-      }
-
-      .SwipeReveal--trigger__leading {
-        left: 1.25rem;
-        right: auto;
-      }
-      
-      .SwipeReveal--trigger__article {
-        bottom: auto;
-        top: 1.25rem;
-      }
     }
   </style>
 </head>
@@ -283,14 +237,11 @@
             <div class="SwipeReveal-content">
               <strong><a href="#">Q3 Architecture RFC</a></strong>
               <p>Review comments on nested scroll container handoff.</p>
-              <button class="SwipeReveal--trigger" aria-label="Q3 Architecture RFC actions" aria-expanded="false">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><circle cx="15" cy="50" r="10"/><circle cx="50" cy="50" r="10"/><circle cx="85" cy="50" r="10"/></svg>
-              </button>
             </div>
             <div class="SwipeReveal-panel" role="group" aria-label="Actions for Q3 Architecture RFC">
-              <button type="button" class="action-pin" data-action="Pinned" tabindex="-1">Pin</button>
-              <button type="button" class="action-archive" data-action="Archived" tabindex="-1">Archive</button>
-              <button type="button" class="action-delete" data-action="Deleted" tabindex="-1">Delete</button>
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
             </div>
           </div>
         </li>
@@ -300,14 +251,11 @@
             <div class="SwipeReveal-content">
               <strong><a href="#">Release v2.14 Checklist</a></strong>
               <p>All smoke tests and accessibility checks passed.</p>
-              <button class="SwipeReveal--trigger" aria-label="Release v2.14 Checklist actions" aria-expanded="false">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><circle cx="15" cy="50" r="10"/><circle cx="50" cy="50" r="10"/><circle cx="85" cy="50" r="10"/></svg>
-              </button>
             </div>
             <div class="SwipeReveal-panel" role="group" aria-label="Actions for Release v2.14 Checklist">
-              <button type="button" class="action-pin" data-action="Pinned" tabindex="-1">Pin</button>
-              <button type="button" class="action-archive" data-action="Archived" tabindex="-1">Archive</button>
-              <button type="button" class="action-delete" data-action="Deleted" tabindex="-1">Delete</button>
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
             </div>
           </div>
         </li>
@@ -317,14 +265,11 @@
             <div class="SwipeReveal-content">
               <strong><a href="#">Design Token Audit</a></strong>
               <p>Verify contrast ratios for dark mode action surfaces.</p>
-              <button class="SwipeReveal--trigger" aria-label="Design Token Audit actions" aria-expanded="false">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><circle cx="15" cy="50" r="10"/><circle cx="50" cy="50" r="10"/><circle cx="85" cy="50" r="10"/></svg>
-              </button>
             </div>
             <div class="SwipeReveal-panel" role="group" aria-label="Actions for Design Token Audit">
-              <button type="button" class="action-pin" data-action="Pinned" tabindex="-1">Pin</button>
-              <button type="button" class="action-archive" data-action="Archived" tabindex="-1">Archive</button>
-              <button type="button" class="action-delete" data-action="Deleted" tabindex="-1">Delete</button>
+              <button type="button" class="action-pin" data-action="Pinned">Pin</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
             </div>
           </div>
         </li>
@@ -339,22 +284,16 @@
         <li class="SwipeRevealList-item" data-title="Weekly Sync Notes">
           <div class="SwipeReveal">
             <div class="SwipeReveal-panel" role="group" aria-label="Leading actions for Weekly Sync Notes">
-              <button type="button" class="action-read" data-action="Marked read" tabindex="-1">Mark read</button>
-              <button type="button" class="action-star" data-action="Starred" tabindex="-1">Star</button>
+              <button type="button" class="action-read" data-action="Marked read">Mark read</button>
+              <button type="button" class="action-star" data-action="Starred">Star</button>
             </div>
             <div class="SwipeReveal-content">
-              <button class="SwipeReveal--trigger SwipeReveal--trigger__leading" aria-label="Weekly Sync Notes leading actions" aria-expanded="false">
-                <svg class="icon-eye" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
               <strong><a href="#">Weekly Sync Notes</a></strong>
               <p>Swipe right to reveal leading actions on the left, or swipe left for trailing actions.</p>
-              <button class="SwipeReveal--trigger" aria-label="Weekly Sync Notes trailing actions" aria-expanded="false">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><circle cx="15" cy="50" r="10"/><circle cx="50" cy="50" r="10"/><circle cx="85" cy="50" r="10"/></svg>
-              </button>
             </div>
             <div class="SwipeReveal-panel" role="group" aria-label="Trailing actions for Weekly Sync Notes">
-              <button type="button" class="action-archive" data-action="Archived" tabindex="-1">Archive</button>
-              <button type="button" class="action-delete" data-action="Deleted" tabindex="-1">Delete</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
             </div>
           </div>
         </li>
@@ -362,22 +301,16 @@
         <li class="SwipeRevealList-item" data-title="Customer Feedback Digest">
           <div class="SwipeReveal">
             <div class="SwipeReveal-panel" role="group" aria-label="Leading actions for Customer Feedback Digest">
-              <button type="button" class="action-read" data-action="Marked read" tabindex="-1">Mark read</button>
-              <button type="button" class="action-star" data-action="Starred" tabindex="-1">Star</button>
+              <button type="button" class="action-read" data-action="Marked read">Mark read</button>
+              <button type="button" class="action-star" data-action="Starred">Star</button>
             </div>
             <div class="SwipeReveal-content">
-              <button class="SwipeReveal--trigger SwipeReveal--trigger__leading" aria-label="Customer Feedback Digest leading actions" aria-expanded="false">
-                <svg class="icon-eye" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
               <strong><a href="#">Customer Feedback Digest</a></strong>
               <p>Top feature requests and usability notes from the beta cohort.</p>
-              <button class="SwipeReveal--trigger" aria-label="Customer Feedback Digest trailing actions" aria-expanded="false">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><circle cx="15" cy="50" r="10"/><circle cx="50" cy="50" r="10"/><circle cx="85" cy="50" r="10"/></svg>
-              </button>
             </div>
             <div class="SwipeReveal-panel" role="group" aria-label="Trailing actions for Customer Feedback Digest">
-              <button type="button" class="action-archive" data-action="Archived" tabindex="-1">Archive</button>
-              <button type="button" class="action-delete" data-action="Deleted" tabindex="-1">Delete</button>
+              <button type="button" class="action-archive" data-action="Archived">Archive</button>
+              <button type="button" class="action-delete" data-action="Deleted">Delete</button>
             </div>
           </div>
         </li>
@@ -391,18 +324,15 @@
       <div class="SwipeReveal SwipeReveal--menu" role="region" aria-labelledby="menu-heading">
         <div class="SwipeReveal-content is-scrollable" tabindex="0">
           <h3>Scrollable Article Preview</h3>
-          <button class="SwipeReveal--trigger SwipeReveal--trigger__article" aria-label="Scrollable Article Preview actions" aria-expanded="false">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><circle cx="15" cy="50" r="10"/><circle cx="50" cy="50" r="10"/><circle cx="85" cy="50" r="10"/></svg>
-          </button>
           <p>Scroll up and down inside this pane, or swipe from the right to reveal the contextual side menu.</p>
           <p>The inner content container (<code>.SwipeReveal-content.is-scrollable</code>) keeps the default <code>overscroll-behavior: auto</code> so it retains its normal bounce effect and chains horizontal swipes out to <code>.SwipeReveal</code> to reveal the menu.</p>
           <p>The outer horizontal wrapper (<code>.SwipeReveal</code>) sets <code>overscroll-behavior: chain</code> so that once the menu reaches its scroll boundary, excess scroll chains into the parent scroller (here, the document) without the menu bouncing.</p>
           <p>In browsers that do not yet support the <code>chain</code> keyword, the property falls back to its initial <code>auto</code> value as a progressive enhancement, preserving scroll chaining across all engines.</p>
         </div>
         <nav class="SwipeReveal-panel" aria-label="Article actions">
-          <a href="#share" data-menu-item="Share article" tabindex="-1">Share article</a>
-          <a href="#bookmark" data-menu-item="Bookmark" tabindex="-1">Bookmark</a>
-          <a href="#export" data-menu-item="Export PDF" tabindex="-1">Export PDF</a>
+          <a href="#share" data-menu-item="Share article">Share article</a>
+          <a href="#bookmark" data-menu-item="Bookmark">Bookmark</a>
+          <a href="#export" data-menu-item="Export PDF">Export PDF</a>
         </nav>
       </div>
     </section>
@@ -410,119 +340,6 @@
 
   <script type="module">
     const statusLog = document.getElementById('statusLog');
-
-    function setActionTabIndexes(reveal, isExpanded) {
-      const actionControls = reveal.querySelectorAll('.SwipeReveal-panel button, .SwipeReveal-panel a');
-      for (const control of actionControls) {
-        control.tabIndex = isExpanded ? 0 : -1;
-      }
-    }
-
-    function syncRevealStateFromScroll(reveal) {
-      const triggers = Array.from(reveal.querySelectorAll('button[aria-label$="actions"]'));
-      if (triggers.length === 0) return;
-
-      const panel = reveal.querySelector('.SwipeReveal-panel');
-      const leadingPanel = reveal.querySelector('.SwipeReveal-panel:first-child');
-      const trailingPanel = reveal.querySelector('.SwipeReveal-panel:last-child');
-      const maxScrollLeft = reveal.scrollWidth - reveal.clientWidth;
-      const leadingIsOpen = Boolean(leadingPanel) && reveal.scrollLeft <= 8;
-      const trailingIsOpen = Boolean(trailingPanel) && maxScrollLeft > 0 && reveal.scrollLeft >= maxScrollLeft - 8;
-
-      let activeTrigger = null;
-      if (leadingIsOpen) {
-        activeTrigger = reveal.querySelector('[aria-label*="leading actions"]') || triggers[0];
-      } else if (trailingIsOpen || (!leadingPanel && reveal.scrollLeft > 8)) {
-        activeTrigger = reveal.querySelector('[aria-label*="trailing actions"]') || triggers[triggers.length - 1];
-      }
-
-      for (const trigger of triggers) {
-        const isActive = trigger === activeTrigger;
-        trigger.setAttribute('aria-expanded', String(isActive));
-      }
-
-      setActionTabIndexes(reveal, Boolean(activeTrigger));
-    }
-
-    for (const reveal of document.querySelectorAll('.SwipeReveal')) {
-      setActionTabIndexes(reveal, false);
-
-      if ('onscrollsnapchanging' in Element.prototype) {
-        reveal.addEventListener('scrollsnapchanging', () => syncRevealStateFromScroll(reveal));
-        reveal.addEventListener('scrollsnapchange', () => syncRevealStateFromScroll(reveal));
-      } else {
-        let rafId = null;
-        reveal.addEventListener('scroll', () => {
-          if (rafId) return;
-          rafId = requestAnimationFrame(() => {
-            rafId = null;
-            syncRevealStateFromScroll(reveal);
-          });
-        }, { passive: true });
-      }
-    }
-
-    for (const trigger of document.querySelectorAll('.SwipeReveal-content button[aria-label$="actions"]')) {
-      trigger.addEventListener('click', () => {
-        const reveal = trigger.closest('.SwipeReveal');
-        if (!reveal) return;
-        const label = (trigger.getAttribute('aria-label') || '').toLowerCase();
-        const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
-        if (isExpanded) {
-          if (label.includes('leading')) {
-            let leadingScrollPanelWidth = reveal.querySelector('.SwipeReveal-panel').offsetWidth;
-            reveal.scrollTo({
-              left: leadingScrollPanelWidth,
-              behavior: 'smooth',
-            });
-          } else if (label.includes('trailing')) {
-            let leadingScrollPanelWidth = reveal.querySelector('.SwipeReveal-panel').offsetWidth;
-            reveal.scrollTo({
-              left: leadingScrollPanelWidth,
-              behavior: 'smooth',
-            });
-          } else {
-            reveal.scrollTo({
-              left: 0,
-              behavior: 'smooth',
-            });
-          }
-
-          for (const actionButton of reveal.querySelectorAll('[aria-label$="actions"]')) {
-            actionButton.setAttribute('aria-expanded', 'false');
-          }
-          setActionTabIndexes(reveal, false);
-          return;
-        }
-
-        const panels = Array.from(reveal.querySelectorAll('.SwipeReveal-panel'));
-        if (panels.length === 0) return;
-
-        let targetScrollLeft = reveal.scrollWidth;
-
-        if (label.includes('leading')) {
-          targetScrollLeft = 0;
-        } else if (label.includes('trailing')) {
-          targetScrollLeft = reveal.scrollWidth;
-        } else if (panels.length === 1) {
-          targetScrollLeft = reveal.scrollWidth;
-        } else {
-          const content = reveal.querySelector('.SwipeReveal-content');
-          const firstTrigger = content.querySelector('[aria-label$="actions"]');
-          targetScrollLeft = trigger === firstTrigger ? 0 : reveal.scrollWidth;
-        }
-
-        reveal.scrollTo({
-          left: targetScrollLeft,
-          behavior: 'smooth',
-        });
-
-        for (const actionButton of reveal.querySelectorAll('button[aria-label$="actions"]')) {
-          actionButton.setAttribute('aria-expanded', actionButton === trigger ? 'true' : 'false');
-        }
-        setActionTabIndexes(reveal, true);
-      });
-    }
 
     for (const list of document.querySelectorAll('.SwipeRevealList')) {
       list.addEventListener('click', (event) => {
@@ -548,6 +365,17 @@
       event.preventDefault();
       statusLog.textContent = `Last action: Selected "${link.dataset.menuItem}" from side menu`;
     });
+
+    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+      content.addEventListener('focusin', (event) => {
+        if (event.target.matches(':focus-visible')) {
+          content.scrollIntoView({
+            block: 'nearest',
+            inline: 'start',
+          });
+        }
+      });
+    }
 
     if (!CSS.supports('scroll-initial-target', 'nearest')) {
       window.addEventListener('load', () => {

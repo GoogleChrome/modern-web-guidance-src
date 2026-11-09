@@ -244,27 +244,6 @@ export class ApiClient {
         }
     }
 
-    /**
-     * Fetches the optional per-run `trajectory_summary.json` payload when present.
-     * Returns `null` silently on public/static copies or when the file does not exist.
-     * @param {string} basePath
-     * @returns {Promise<import('./evals.d.ts').TrajectorySummary | null>}
-     */
-    async getTrajectorySummary(basePath) {
-        if (this.source === 'public' || this.source === 'static') return null;
-        const path = `${basePath}/trajectory_summary.json`;
-        try {
-            if (!(await this._fileExists(path))) return null;
-            const res = await this._fetch(path);
-            if (res.ok) {
-                return await res.json();
-            }
-        } catch {
-            // Optional metadata; ignore missing or malformed trajectory_summary.json
-        }
-        return null;
-    }
-
     /** 
      * Resolves the correct base path for specific run details, parsing legacy logic.
      * @param {string} testId

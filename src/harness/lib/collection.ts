@@ -11,17 +11,6 @@ import { rootDir } from '../../core/paths.ts';
 import { extractTestTitles } from '../../core/grader-coverage.ts';
 import { isSpecSkipped } from '../../grading/run-grader.ts';
 import { type PageLoadResult, type ScenarioCheck } from './metrics.ts';
-import {
-  pickHigherPrecedenceEffort,
-  resolveReasoningEffort,
-  sanitizeReasoningEffort,
-  type ReasoningEffort,
-} from './reasoning-effort.ts';
-import {
-  ensureFreshTrajectorySummarySync,
-  hasRawSessionLogs,
-  NORMALIZER_VERSION,
-} from './trajectory-normalizer.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -38,35 +27,6 @@ export function extractModelFromResults(resultsDir: string): string {
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
   return 'unknown';
-}
-
-export function extractReasoningEffortFromResults(resultsDir: string): ReasoningEffort | undefined {
-  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
-  let parsedVersion: number | undefined;
-  let existingEffort: ReasoningEffort | undefined;
-  try {
-    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-    parsedVersion = summary?.normalizerVersion;
-    existingEffort = sanitizeReasoningEffort(summary?.reasoningEffort);
-  } catch (err) {
-    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
-  }
-
-  if (existingEffort && parsedVersion === NORMALIZER_VERSION) {
-    return existingEffort;
-  }
-  const rawLogsPresent = hasRawSessionLogs(resultsDir);
-  if (existingEffort && !rawLogsPresent) {
-    return existingEffort;
-  }
-  if (rawLogsPresent) {
-    const refreshed = ensureFreshTrajectorySummarySync(resultsDir);
-    const refreshedEffort = sanitizeReasoningEffort(refreshed?.reasoningEffort);
-    if (refreshedEffort) {
-      return refreshedEffort;
-    }
-  }
-  return existingEffort;
 }
 
 export function extractTokenUsageFromResults(resultsDir: string): { total: number; cached: number } | null {
@@ -628,26 +588,11 @@ async function collectAllResults(
   resultsDir: string,
   runDirs: string[],
   taskMap: Map<string, any>
-): Promise<{
-  allResults: Record<string, any[]>;
-  model: string;
-  reasoningEffort?: ReasoningEffort;
-  hasAnySummary: boolean;
-}> {
+): Promise<{ allResults: Record<string, any[]>; model: string }> {
   const allResults: Record<string, any[]> = {};
   let model = 'unknown';
-  let bestEffort: ReasoningEffort | undefined;
-  let hasAnySummary = false;
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
-    const extractedEffort = extractReasoningEffortFromResults(dir);
-    if (extractedEffort) {
-      bestEffort = pickHigherPrecedenceEffort(bestEffort, extractedEffort);
-      hasAnySummary = true;
-    } else if (!hasAnySummary && fs.existsSync(path.join(dir, 'trajectory_summary.json'))) {
-      hasAnySummary = true;
-    }
-
     if (model === 'unknown') {
       const extracted = extractModelFromResults(dir);
       if (extracted !== 'unknown') {
@@ -664,33 +609,19 @@ async function collectAllResults(
     allResults[entry.testName].push(entry.payload);
   }
 
-  return { allResults, model, reasoningEffort: bestEffort, hasAnySummary };
+  return { allResults, model };
 }
 
-export async function collectResults(resultsDir: string, suiteConfig?: SuiteConfig) {
+export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
   const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
   await executeParallelGrading(resultsDir, graderPackages);
-  const { allResults, model, reasoningEffort: runEffort, hasAnySummary } = await collectAllResults(
-    resultsDir,
-    runDirs,
-    taskMap,
-  );
-
-  const reasoningEffort =
-    runEffort && runEffort.source !== 'agent-default'
-      ? runEffort
-      : resolveReasoningEffort({
-          agent: suiteConfig?.agent,
-          model,
-          fallback: runEffort,
-          ...(hasAnySummary ? { env: {} } : {}),
-        });
+  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);
 
-  return { allResults, numRuns: runDirs.length, model, reasoningEffort, totalRuntime: estimatedRuntime };
+  return { allResults, numRuns: runDirs.length, model, totalRuntime: estimatedRuntime };
 }
 

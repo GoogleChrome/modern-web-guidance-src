@@ -80,7 +80,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
   }
 
   try {
-    const { allResults, numRuns, model, reasoningEffort, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
+    const { allResults, numRuns, model, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
@@ -101,7 +101,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
     const cliVersion = getCliVersion();
 
     const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : fallbackRuntime;
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, model, totalRuntime, skillVersion, cliVersion, reasoningEffort);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, model, totalRuntime, skillVersion, cliVersion);
 
     if (totalRuntime) {
       console.log(`Total runtime: ${totalRuntime}ms`);

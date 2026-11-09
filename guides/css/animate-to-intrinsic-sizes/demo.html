@@ -120,7 +120,7 @@
       transition: inline-size 0.4s ease;
     }
 
-    .badge:is(:hover, :focus-visible) {
+    .badge:hover {
       inline-size: auto; /* Fallback for older browsers */
       /* Use calc-size to animate to max-content + extra space */
       inline-size: calc-size(max-content, size + 40px);
@@ -132,7 +132,7 @@
       transition: opacity 0.3s ease;
     }
 
-    .badge:is(:hover, :focus-visible)::after {
+    .badge:hover::after {
       opacity: 1;
     }
     /* Dismissible Alert Example */
@@ -202,10 +202,10 @@
       <div class="alert" id="promo-alert">
         <div class="alert-inner">
           <span>This alert will smoothly collapse to zero when dismissed, using <code>block-size: 0</code> after starting at <code>auto</code>.</span>
-          <button class="dismiss-btn" id="alert-dismiss" aria-label="Dismiss alert" onclick="dismissAlert('promo-alert')">×</button>
+          <button class="dismiss-btn" id="alert-dismiss" onclick="dismissAlert('promo-alert')">×</button>
         </div>
       </div>
-      <button class="expand-btn" id="alert-reset" style="margin-top: 10px;" onclick="resetAlert('promo-alert')">Reset Alert</button>
+      <button class="expand-btn" style="margin-top: 10px;" onclick="resetAlert('promo-alert')">Reset Alert</button>
     </div>
 
     <article class="card" id="product-card">
@@ -241,8 +241,8 @@
 
     <div class="calc-demo">
       <h3>calc-size() Example</h3>
-      <p>Hover or focus the badge to see it expand to its content width + 40px.</p>
-      <a class="badge" href="#product-card">Badge</a>
+      <p>Hover the badge to see it expand to its content width + 40px.</p>
+      <div class="badge">Badge</div>
     </div>
   </main>
 
@@ -256,20 +256,7 @@
     }
 
     function dismissAlert(id) {
-      const alertEl = document.getElementById(id);
-      // Hiding the alert while it contains focus would drop focus to <body>
-      if (alertEl.contains(document.activeElement)) {
-        document.getElementById('alert-reset').focus();
-      }
-      alertEl.classList.add('is-dismissed');
-      // Waits for the transitions the class starts, ignoring any other animations
-      // on the element; under reduced motion there are none
-      const transitions = alertEl.getAnimations().filter((animation) => animation instanceof CSSTransition);
-      Promise.allSettled(transitions.map((transition) => transition.finished)).then(() => {
-        if (alertEl.classList.contains('is-dismissed')) {
-          alertEl.hidden = true;
-        }
-      });
+      document.getElementById(id).classList.add('is-dismissed');
     }
 
     function resetAlert(id) {
@@ -278,6 +265,13 @@
       alertEl.offsetHeight; // Trigger reflow
       alertEl.classList.remove('is-dismissed');
     }
+
+    document.getElementById('promo-alert').addEventListener('transitionend', (e) => {
+      const alertEl = e.currentTarget;
+      if (e.propertyName === 'block-size' && alertEl.classList.contains('is-dismissed')) {
+        alertEl.hidden = true;
+      }
+    });
   </script>
 
 </body>

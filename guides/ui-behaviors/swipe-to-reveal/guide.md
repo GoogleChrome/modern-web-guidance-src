@@ -20,7 +20,7 @@ Whether you are revealing action buttons on a list item or a side menu next to a
 
 ### Step 1: Mark up the swipe wrapper, content, and revealed panel
 
-Place the foreground content first and the revealed controls (action buttons or a side menu) second inside the `.SwipeReveal` scroll container. Because the content is first in DOM order, the scroll container naturally starts at scroll offset `0` with the panel hidden off-screen to the right. For each swipe action, ensure that the accessible name includes the content that it relates to, so that people can differentiate between the available controls.
+Place the foreground content first and the revealed controls (action buttons or a side menu) second inside the `.SwipeReveal` scroll container. Because the content is first in DOM order, the scroll container naturally starts at scroll offset `0` with the panel hidden off-screen to the right.
 
 ```html
 <!-- Example A: List item with revealable action buttons -->
@@ -28,12 +28,11 @@ Place the foreground content first and the revealed controls (action buttons or 
   <div class="SwipeReveal-content">
     <strong>Design review notes</strong>
     <p>Updated component specs for the Q3 release.</p>
-    <button aria-label="Design review notes actions" aria-expanded="false">…</button>
   </div>
   <div class="SwipeReveal-panel" role="group" aria-label="Item actions">
-    <button type="button" tabindex="-1">Pin</button>
-    <button type="button" tabindex="-1">Archive</button>
-    <button type="button" tabindex="-1">Delete</button>
+    <button type="button">Pin</button>
+    <button type="button">Archive</button>
+    <button type="button">Delete</button>
   </div>
 </div>
 
@@ -42,12 +41,11 @@ Place the foreground content first and the revealed controls (action buttons or 
   <div class="SwipeReveal-content is-scrollable" tabindex="0">
     <h2>Article Preview</h2>
     <p>Scroll vertically through this pane, or swipe left to reveal the side menu...</p>
-    <button aria-label="Article actions" aria-expanded="false">…</button>
   </div>
   <nav class="SwipeReveal-panel" aria-label="Contextual menu">
-    <a href="#share" tabindex="-1">Share</a>
-    <a href="#bookmark" tabindex="-1">Bookmark</a>
-    <a href="#export" tabindex="-1">Export PDF</a>
+    <a href="#share">Share</a>
+    <a href="#bookmark">Bookmark</a>
+    <a href="#export">Export PDF</a>
   </nav>
 </div>
 ```
@@ -119,76 +117,24 @@ Make `.SwipeReveal` a two-column grid (`grid-template-columns: 100% max-content`
 
 > If you also want to reveal controls on the left (`inline-start`) side using three columns (`grid-template-columns: max-content 100% max-content`) or two columns (`max-content 100%`), place the leading `.SwipeReveal-panel` before `.SwipeReveal-content`. Because `.SwipeReveal-content` has `scroll-initial-target: nearest`, the scroll container initially rests on the content column rather than the leading panel.
 
-### Step 3: Reveal controls when trigger button is activated
+### Step 3: Snap focusable content panes back into view on keyboard focus
 
-Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest and do not receive focus by default (due to the `tabindex="-1"` attributes), when the corresponding trigger button is activated, we need to ensure that they are revealed as expected. When this happens, we also need to set the `tabindex` attributes to be `tabindex="0"` so that people can move to them and interact with them, and set the `aria-expanded` attribute on the trigger control to be `aria-expanded="true"`. When the trigger control is interacted with when the controls are already revealed, these changes should be reversed.
+Because the buttons or links inside `.SwipeReveal-panel` are off-screen at rest, tabbing into them with a keyboard automatically scrolls `.SwipeReveal` to reveal the focused control. However, because `.SwipeReveal-content` spans `100%` of the outer container's width, most of it remains inside the scrollport even while the side panel is open—so pressing `Shift+Tab` to move focus back onto `.SwipeReveal-content` (or onto a focusable element inside it) will not automatically scroll the track back to `0`.
+
+Listen for `focusin` on `.SwipeReveal-content` and check `event.target.matches(':focus-visible')` so keyboard focus on the pane or any descendant snaps `.SwipeReveal-content` back to the start without interfering with pointer clicks or touch drags:
 
 ```js
-for (const trigger of document.querySelectorAll('.SwipeReveal-content [aria-label$="actions"]')) {
-  trigger.addEventListener('click', () => {
-    const reveal = trigger.closest('.SwipeReveal');
-    if (!reveal) return;
-
-    const label = (trigger.getAttribute('aria-label') || '').toLowerCase();
-    const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
-    if (isExpanded) {
-      if (label.includes('leading')) {
-        let leadingScrollPanelWidth = reveal.querySelector('.SwipeReveal-panel').offsetWidth;
-        reveal.scrollTo({
-          left: leadingScrollPanelWidth,
-          behavior: 'smooth',
-        });
-      } else if (label.includes('trailing')) {
-        let leadingScrollPanelWidth = reveal.querySelector('.SwipeReveal-panel').offsetWidth;
-        reveal.scrollTo({
-          left: leadingScrollPanelWidth,
-          behavior: 'smooth',
-        });
-      } else {
-        reveal.scrollTo({
-          left: 0,
-          behavior: 'smooth',
-        });
-      }
-
-      for (const actionButton of reveal.querySelectorAll('[aria-label$="actions"]')) {
-        actionButton.setAttribute('aria-expanded', 'false');
-      }
-      setActionTabIndexes(reveal, false);
-      return;
+for (const content of document.querySelectorAll('.SwipeReveal-content')) {
+  content.addEventListener('focusin', (event) => {
+    if (event.target.matches(':focus-visible')) {
+      content.scrollIntoView({
+        block: 'nearest',
+        inline: 'start',
+      });
     }
-
-    const panels = Array.from(reveal.querySelectorAll('.SwipeReveal-panel'));
-    if (panels.length === 0) return;
-
-    let targetScrollLeft = reveal.scrollWidth;
-
-    if (label.includes('leading')) {
-      targetScrollLeft = 0;
-    } else if (label.includes('trailing')) {
-      targetScrollLeft = reveal.scrollWidth;
-    } else if (panels.length === 1) {
-      targetScrollLeft = reveal.scrollWidth;
-    } else {
-      const content = reveal.querySelector('.SwipeReveal-content');
-      const firstTrigger = content.querySelector('[aria-label$="actions"]');
-      targetScrollLeft = trigger === firstTrigger ? 0 : reveal.scrollWidth;
-    }
-
-    reveal.scrollTo({
-      left: targetScrollLeft,
-      behavior: 'smooth',
-    });
-
-    for (const actionButton of reveal.querySelectorAll('[aria-label$="actions"]')) {
-      actionButton.setAttribute('aria-expanded', actionButton === trigger ? 'true' : 'false');
-    }
-    setActionTabIndexes(reveal, true);
   });
 }
 ```
-
-Along with this, use {{ GUIDE_REF('scroll-snap-realtime-feedback') }} to ensure that the accessibility state information is kept up to date, if someone swipes open the associated content, rather than triggering it directly with the button.
 
 ## Best practices and pitfalls
 
@@ -197,12 +143,6 @@ Along with this, use {{ GUIDE_REF('scroll-snap-realtime-feedback') }} to ensure 
 - **DO** leave `overscroll-behavior: auto` (the default) on inner scrollable content panes (`.SwipeReveal-content.is-scrollable`) where you want normal bounce feedback to happen while still chaining horizontal swipes to the outer swipe scroller.
 - **DO** implement revealed actions and side-menu items as real focusable DOM controls (`<button>`, `<a>`). When `.SwipeReveal-content` is focusable or contains focusable controls, pair a `focusin` listener with `event.target.matches(':focus-visible')` to call `scrollIntoView({ block: 'nearest', inline: 'start' })` so tabbing back into the content pane closes the side panel without affecting pointer interactions.
 - **DO NOT** intercept `wheel`, `touchmove`, or `pointermove` events in JavaScript to manually translate the content or emulate scroll chaining. Main-thread gesture interception blocks compositor-driven scrolling, breaks native scroll momentum, and degrades responsiveness.
-
-## Accessibility considerations
-
-To adhere to WCAG 2.5.1 Pointer Gestures, functionality must not be available solely through swiping gestures. Visible button elements are an accessible alternative way to activate the same functionality. Buttons provide people with disabilities, particularly people using voice control software, with a usable way of activating the same functionality. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and ensure that there's a way of moving focus to the button and operating it using a keyboard alone.
-
-Another way of adhering to the 2.5.1 Pointer Gestures success criterion is by ensuring that the functionality exists elsewhere. For example, in an email app's inbox, if the email can be swiped left to be favourited, but this can also be achieved via a "Favourite email" button after navigating to an email, this would be sufficient. If the intended use case may require many repeated actions, this approach will be less usable, as it would require people with disabilities to have to spend more time accessing the alternative control. Operating system or browser features (such as a long press on iOS) can also be a sufficient alternative, but are often not as discoverable as permanently visible buttons.
 
 ## Fallback
 

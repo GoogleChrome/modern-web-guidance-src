@@ -240,23 +240,5 @@ test('generateJsonReport handles omitted optional version parameters gracefully'
 
   assert.strictEqual(report.skillVersion, undefined);
   assert.strictEqual(report.cliVersion, undefined);
-  assert.strictEqual(report.reasoningEffort, undefined);
   assert.strictEqual(report.agent, 'codex');
-});
-
-test('generateJsonReport includes reasoningEffort when provided', () => {
-  const report = generateJsonReport(
-    dummyMetrics,
-    {},
-    '2026-06-26T14:00:00Z',
-    1,
-    'codex_cli',
-    'gpt-6.1-sol',
-    1234,
-    undefined,
-    undefined,
-    { level: 'high', source: 'observed' }
-  );
-
-  assert.deepStrictEqual(report.reasoningEffort, { level: 'high', source: 'observed' });
 });

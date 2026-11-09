@@ -1,8 +1,6 @@
 import { Agents } from '../config.ts';
 import { calculateMetrics } from '../lib/metrics.ts';
 import type { EvalsReport, RunResult, ScenarioCheck } from '../lib/metrics.ts';
-import { sanitizeReasoningEffort } from '../lib/reasoning-effort.ts';
-import type { ReasoningEffort } from '../lib/reasoning-effort.ts';
 import { assertClean, scrubValue } from './scrub.ts';
 import type { LeakOptions } from './scrub.ts';
 
@@ -179,7 +177,6 @@ type AssertionField = (typeof PUBLIC_ASSERTION_FIELDS)[number];
 
 /** The shape of a published `evals.json`. */
 export type PublicEvals = Pick<EvalsReport, SuiteField | 'summary' | 'stats'> & {
-  reasoningEffort?: ReasoningEffort;
   results: Record<string, PublicRun[]>;
 };
 
@@ -206,11 +203,8 @@ export function rebuildEvals(raw: EvalsReport, options: RebuildOptions): PublicE
     results[key] = runs.map(rebuildRun);
   }
 
-  const reasoningEffort = sanitizeReasoningEffort(raw.reasoningEffort);
-
   const rebuilt = scrubValue<PublicEvals>({
     ...pickFields(raw, PUBLIC_SUITE_FIELDS),
-    ...(reasoningEffort ? { reasoningEffort } : {}),
     summary: metrics.summary,
     stats: metrics.testStats,
     results,

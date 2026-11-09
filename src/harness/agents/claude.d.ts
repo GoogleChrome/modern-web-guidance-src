@@ -67,14 +67,6 @@ export type TranscriptMessage = SerializedMessage & {
   turnCompanion?: unknown;
   turnOrigin?: unknown;
   turnPosition?: number;
-  params?: {
-    model?: string;
-    output_config?: {
-      effort?: string;
-      [key: string]: unknown;
-    };
-    [key: string]: unknown;
-  };
   message?: ClaudeMessage;
   toolUseResult?: ToolUseResult;
   snapshot?: ClaudeSnapshot;

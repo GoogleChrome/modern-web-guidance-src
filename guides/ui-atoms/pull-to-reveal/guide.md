@@ -59,7 +59,6 @@ To implement a pull-to-reveal pattern:
 
 ## Strategic Implementation & Best Practices
 
-- **MANDATORY:** give every pull to reveal action a visible button (or menu item) that performs the same action with a single click or the Enter key, as WCAG 2.5.1 Pointer Gestures requires for path-based gestures. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and name it after the item it acts on.
 - **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load and intentionally hide peripheral UI units like a search bar at the very top.
 - **DO NOT** confuse this with accessibility focus. This property only moves the **visual** viewport; it does not move the keyboard focus. You must manually manage `element.focus()` if the target is intended to be the starting point for keyboard users.
 - **DO NOT** use this if you need a smooth "scrolling" animation on load; this property is discrete and sets the position instantly during the layout phase.

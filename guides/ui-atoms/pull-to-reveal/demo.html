@@ -112,30 +112,8 @@
       margin-bottom: 20px;
       font-size: 14px;
       font-weight: bold;
-      color: #246bde;
+      color: #3b82f6;
       text-align: center;
-    }
-
-    button#search-trigger {
-      background: #246bde;
-      border: none;
-      border-radius: 8px;
-      color: #ffffff;
-      cursor: pointer;
-      font-weight: bold;
-      margin: auto 0 auto auto;
-      min-height: 24px;
-      min-width: 24px;
-      padding: 0.25rem 0.5rem;
-      width: max-content;
-
-      & svg {
-      height: 1.5rem;
-
-        & path {
-          stroke: #ffffff;
-        }
-      }
     }
   </style>
 </head>
@@ -155,11 +133,6 @@
 
       <!-- The specific target element capturing the initial scroll -->
       <div class="main-content target">
-
-        <button id="search-trigger" aria-label="Search dashboard">
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 100 100"><path stroke-width="7" d="M58.5 36c0 12.426-10.074 22.5-22.5 22.5S13.5 48.426 13.5 36 23.574 13.5 36 13.5 58.5 23.574 58.5 36ZM85.525 90.475l-35-35"/></svg>
-        </button>
-        
         <div class="content-box">
           <h3>Welcome Back!</h3>
           <p>This is your main dashboard. Your search bar is hidden at the top. Scroll up (pull down) to access it!</p>
@@ -193,15 +166,6 @@
         if (targetContent) {
           targetContent.scrollIntoView({ behavior: 'instant', block: 'start' });
         }
-      }
-    });
-
-    const searchTrigger = document.getElementById('search-trigger');
-
-    searchTrigger.addEventListener('click', () => {
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) {
-        searchInput.focus();
       }
     });
   </script>

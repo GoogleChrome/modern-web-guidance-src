@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import type { Metrics, RunResult, ScenarioCheck, EvalsReport } from './metrics.ts';
-import type { ReasoningEffort } from './reasoning-effort.ts';
 
 function pickDisplayRun(runs: RunResult[] | undefined, medianPassRate: number): RunResult | undefined {
   if (!runs || runs.length === 0) return undefined;
@@ -137,18 +136,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
  */
 const SERVING = 'skills_cli';
 
-export function generateJsonReport(
-  metrics: Metrics,
-  allResults: Record<string, RunResult[]>,
-  timestamp: string,
-  runCount: number,
-  agent: string,
-  model: string,
-  totalRuntime?: number,
-  skillVersion?: string,
-  cliVersion?: string,
-  reasoningEffort?: ReasoningEffort,
-): EvalsReport {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, model: string, totalRuntime?: number, skillVersion?: string, cliVersion?: string): EvalsReport {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -158,7 +146,6 @@ export function generateJsonReport(
     agent,
     serving: SERVING,
     model,
-    ...(reasoningEffort ? { reasoningEffort } : {}),
     totalRuntime,
     skillVersion,
     cliVersion

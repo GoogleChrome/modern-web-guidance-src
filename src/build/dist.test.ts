@@ -240,10 +240,7 @@ test('modern-web CLI search and retrieve', async () => {
   assertSearchResults(searchOutWithVersion);
 
   // 2. Validate retrieve
-  let retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
-  // Output over the CLI's inline limit is saved to a file, and its path is printed instead
-  const savedPath = retrieveOut.match(/saved to (\S+\.md)/)?.[1];
-  if (savedPath) retrieveOut = await fs.readFile(savedPath, 'utf8');
+  const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 
   // 3. Validate list

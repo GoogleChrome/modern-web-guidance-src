@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs, sanitizeReasoningEffort } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
 import { SHOWCASE_GUIDE_IDS } from './showcase-config.js';
 const TIMEOUT_MS = 900000;
@@ -105,7 +105,6 @@ const TIMEOUT_MS = 900000;
  * @property {string} agent
  * @property {string} serving
  * @property {string} model
- * @property {import('./evals.d.ts').ReasoningEffort} [reasoningEffort]
  * @property {number} taskCount
  * @property {number} [pairedTaskCount] valid task-guide pairs included in pass rates
  * @property {number} maxRuns
@@ -477,7 +476,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const chartData = calculateChartData(results, eligibleScenarios);
     const showcase = buildShowcaseSlices(showcaseRuns);
-    const reasoningEffort = sanitizeReasoningEffort(evalsData.reasoningEffort);
 
     return {
         testId: testId,
@@ -485,7 +483,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         agent: evalsData.agent || 'unknown',
         serving: serving,
         model: evalsData.model || 'unknown',
-        ...(reasoningEffort ? { reasoningEffort } : {}),
         taskCount: taskCount,
         pairedTaskCount: eligibleScenarios.size,
         maxRuns: maxRuns,

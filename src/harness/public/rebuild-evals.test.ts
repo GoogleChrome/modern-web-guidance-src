@@ -61,45 +61,14 @@ describe('rebuildEvals: field allowlists', () => {
     const raw = loadFixture();
     const out = build(raw);
 
-    const allowed = new Set<string>([...PUBLIC_SUITE_FIELDS, 'reasoningEffort', 'summary', 'stats', 'results']);
+    const allowed = new Set<string>([...PUBLIC_SUITE_FIELDS, 'summary', 'stats', 'results']);
     for (const key of Object.keys(out)) {
       assert.ok(allowed.has(key), `unexpected suite field: ${key}`);
     }
-    assert.ok(!('reasoningEffort' in out), 'older suites without reasoningEffort must keep omitting it');
     for (const field of PRIVATE_SUITE_FIELDS) {
       assert.ok(field in raw, `fixture should contain ${field} so this test is meaningful`);
       assert.ok(!(field in out), `${field} leaked into public evals`);
     }
-  });
-
-  test('copies valid reasoningEffort and omits absent or malformed reasoningEffort', () => {
-    const withObserved = build({
-      ...loadFixture(),
-      reasoningEffort: {
-        level: 'high',
-        source: 'observed',
-        ...({ internalNote: 'do-not-publish' } as Record<string, unknown>),
-      },
-    });
-    assert.deepEqual(withObserved.reasoningEffort, { level: 'high', source: 'observed' });
-
-    const withDefault = build({
-      ...loadFixture(),
-      reasoningEffort: { source: 'agent-default' },
-    });
-    assert.deepEqual(withDefault.reasoningEffort, { source: 'agent-default' });
-
-    const withInvalidSource = build({
-      ...loadFixture(),
-      reasoningEffort: { level: 'high', source: 'bogus' as 'observed' },
-    });
-    assert.ok(!('reasoningEffort' in withInvalidSource));
-
-    const withInvalidLevel = build({
-      ...loadFixture(),
-      reasoningEffort: { level: 'High Spaces!', source: 'observed' },
-    });
-    assert.ok(!('reasoningEffort' in withInvalidLevel));
   });
 
   test('keeps only allowlisted run, runtime, tokenUsage and assertion fields', () => {

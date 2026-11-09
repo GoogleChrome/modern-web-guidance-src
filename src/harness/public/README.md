@@ -48,7 +48,6 @@ shape the private bucket's manifest has. Fields the landing page uses:
 | `timestamp` | ISO string | when the suite ran |
 | `agent` | string | `claude_code`, `codex_cli`, `antigravity_cli` only |
 | `model` | string | only values on the allowlist's `releasedModels` |
-| `reasoningEffort` | object | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; omitted on legacy suites without it |
 | `serving` | string | always `unknown` publicly; the field is not published in `evals.json` |
 | `taskCount`, `maxRuns` | number | |
 | `guidedStats`, `unguidedStats` | `{ passed, total }` | assertion counts |
@@ -66,7 +65,6 @@ present. Types match `src/harness/lib/metrics.ts`.
 | field | notes |
 |---|---|
 | `timestamp`, `agent`, `model`, `totalRuntime` | copied |
-| `reasoningEffort` | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; copied when valid (omitted on older suites without it) |
 | `summary` | recomputed by `calculateMetrics` over the published runs only |
 | `stats` | per-result-key `{ medianPassRate, runPassRates, passedChecks, totalChecks, ... }`, recomputed |
 | `results` | `Record<resultKey, PublicRun[]>` |
