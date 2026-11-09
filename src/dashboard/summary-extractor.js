@@ -1,7 +1,7 @@
 import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
 import { SHOWCASE_GUIDE_IDS } from './showcase-config.js';
-const TIMEOUT_MS = 600000;
+const TIMEOUT_MS = 900000;
 
 /**
  * @typedef {Object} GuideSummary
@@ -106,12 +106,14 @@ const TIMEOUT_MS = 600000;
  * @property {string} serving
  * @property {string} model
  * @property {number} taskCount
+ * @property {number} [pairedTaskCount] valid task-guide pairs included in pass rates
  * @property {number} maxRuns
  * @property {{ passed: number, total: number }} guidedStats
  * @property {{ passed: number, total: number }} unguidedStats
  * @property {SuiteA11yStats} a11yStats
  * @property {SuiteEfficiencyStats} efficiencyStats
  * @property {number} earlyFailureRate
+ * @property {number} [earlyFailureCount]
  * @property {number} [guidedErrorRate]
  * @property {number} [unguidedErrorRate]
  * @property {number} [unguidedLeakRate]
@@ -482,12 +484,14 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         serving: serving,
         model: evalsData.model || 'unknown',
         taskCount: taskCount,
+        pairedTaskCount: eligibleScenarios.size,
         maxRuns: maxRuns,
         guidedStats: { passed: guidedPassed, total: guidedTotal },
         unguidedStats: { passed: unguidedPassed, total: unguidedTotal },
         a11yStats,
         efficiencyStats,
         earlyFailureRate: earlyFailureRate,
+        earlyFailureCount: summaryEarlyFailures,
         guidedErrorRate: guidedErrorRate,
         unguidedErrorRate: unguidedErrorRate,
         ...(unguidedLeakRate > 0 ? { unguidedLeakRate } : {}),

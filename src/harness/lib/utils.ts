@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import { rootDir, baseAppsDir } from '../../core/paths.ts';
 import {
   createIsolatedHome,
-  createTrustedFolders,
   spawnAsync,
   setupAgentCredentials,
   getAgentCommandAndArgs,
+  sanitizeAgentChildEnv,
 } from './agent-shared.ts';
 import { Agents } from '../config.ts';
 import { getDefaultSolutionAgent } from '../../core/guide-validation.ts';
@@ -59,15 +59,15 @@ export async function runAgent(
   workDir?: string,
   options: { captureOutput?: boolean; homeDir?: string } = {}
 ): Promise<string> {
-  const raw = getAgentCommandAndArgs(agent, prompt);
+  const raw = getAgentCommandAndArgs(agent, prompt, options.homeDir);
   const { command, commandArgs } = options.homeDir
     ? wrapCommandInSandbox(raw.command, raw.commandArgs, buildSandboxPolicy(options.homeDir, 'unguided'))
     : raw;
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
+  const env = sanitizeAgentChildEnv(process.env, {
+    ...raw.envOverrides,
     ...(options.homeDir ? { HOME: options.homeDir, ZDOTDIR: options.homeDir } : {}),
     ...(workDir ? { PWD: workDir } : {}),
-  };
+  });
 
   if (options.captureOutput) {
     return runCommand(command, commandArgs, workDir, env);
@@ -95,11 +95,8 @@ export function setupGuideDevWorkDir(
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
-  const geminiDest = path.join(tempHome, '.gemini');
   const effectiveAgent: Agents = agent ?? (getDefaultSolutionAgent() as Agents);
   setupAgentCredentials(effectiveAgent, tempHome);
-
-  createTrustedFolders(geminiDest, [tempHome]);
 
   // Symlink host node_modules to tempHome/node_modules and tempHome/guides/node_modules for local typechecking inside the sandbox
   const hostNodeModules = path.join(rootDir, 'node_modules');
@@ -114,59 +111,4 @@ export function setupGuideDevWorkDir(
   );
   
   return { workDir, tempHome };
-}
-
-export function escapeLeftAngleBracket(text: string): string {
-  return text.replaceAll('<', '&lt;');
-}
-
-export interface PassRates {
-  unguided: string;
-  guided: string;
-  guidesConsumed?: string[];
-}
-
-export function parsePassRates(output: string): Record<string, PassRates> | null {
-  const rates: Record<string, PassRates> = {};
-  const lines = output.split('\n');
-  let currentBaseApp = '';
-
-  for (const line of lines) {
-    const baseAppMatch = line.match(/Running agent test for target:\s*(\S+)/);
-    if (baseAppMatch) {
-      currentBaseApp = baseAppMatch[1].trim();
-      continue;
-    }
-
-    const unguidedMatch = line.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-    if (unguidedMatch) {
-      const app = currentBaseApp || 'demo';
-      if (!rates[app]) {
-        rates[app] = { unguided: '', guided: '', guidesConsumed: [] };
-      }
-      rates[app].unguided = unguidedMatch[1];
-    }
-
-    const guidedMatch = line.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-    if (guidedMatch) {
-      const app = currentBaseApp || 'demo';
-      if (!rates[app]) {
-        rates[app] = { unguided: '', guided: '', guidesConsumed: [] };
-      }
-      rates[app].guided = guidedMatch[1];
-    }
-
-    const guidesMatch = line.match(/Guides consumed:\s+\[(.*)\]/);
-    if (guidesMatch) {
-      const app = currentBaseApp || 'demo';
-      if (!rates[app]) {
-        rates[app] = { unguided: '', guided: '', guidesConsumed: [] };
-      }
-      rates[app].guidesConsumed = guidesMatch[1]
-        ? guidesMatch[1].split(',').map(g => g.trim())
-        : [];
-    }
-  }
-
-  return Object.keys(rates).length > 0 ? rates : null;
 }

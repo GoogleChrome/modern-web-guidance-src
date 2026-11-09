@@ -13,7 +13,7 @@ This guide provides high-density, action-oriented orientation for implementing s
 
 Passkeys rely on the Web Authentication API (WebAuthn), which imposes strict cross-cutting security constraints that must be satisfied before any implementation attempt:
 *   **Secure Contexts**: WebAuthn methods (`navigator.credentials.create` and `navigator.credentials.get`) are strictly gated behind Secure Contexts. Applications MUST run on `https://` in production, or `http://localhost` for local development.
-*   **Relying Party (RP) ID**: Every credential is tied to an RP ID (essentially the domain name of the application). The RP ID passed in the server-side options MUST match or be a valid suffix of the current origin's domain name (e.g., `example.com` is valid for `login.example.com`). Mismatches result in `SecurityError` exceptions on the client side.
+*   **Relying Party (RP) ID**: Every credential is tied to an RP ID (essentially the domain name of the application). The RP ID passed in the server-side options MUST match or be a valid registrable domain suffix of the current origin's domain name (e.g., `example.com` is valid for `login.example.com`), or be authorized via Related Origin Requests (`/.well-known/webauthn`). Mismatches result in `SecurityError` exceptions on the client side. **DO NOT** derive `rpId` from `window.location.hostname` on the client (for example, when calling WebAuthn Signal API methods), because `window.location.hostname` will not match a parent-domain or related-origin RP ID configured on the server; always read `rpId` from the server-provided WebAuthn options (`publicKey.rp.id` or `publicKey.rpId`) or backend API responses.
 
 ## 2. The AAGUID UX Caveat
 

@@ -36,6 +36,9 @@ let activeAgentId = AGENT_ORDER[0];
 let checksExpanded = false;
 let taskPillsListenersBound = false;
 let agentPillsListenersBound = false;
+/** Data source the landing page loaded from; carried on links so they open the same copy. */
+/** @type {import('./data-source.js').DataSource | null} */
+let linkSource = null;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 if (rootEl) {
     ensureGuideCategoriesLoaded();
@@ -47,10 +50,11 @@ if (rootEl) {
  * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
  * match the rest of the page and avoid layout shifts.
  * @param {import('./insights.js').ManifestSuite[]} suites
- * @param {{ hydrated?: boolean }} [options]
+ * @param {{ hydrated?: boolean, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateShowcaseFromSuites(suites, { hydrated = false } = {}) {
+export function updateShowcaseFromSuites(suites, { hydrated = false, source } = {}) {
     if (!rootEl) return;
+    if (source) linkSource = source;
     tasks = buildTasksFromRecentSuites(suites);
     if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
         activeTaskId = tasks[0].id;
@@ -287,8 +291,9 @@ function renderPromptBar(task, pair) {
         promptEl.textContent = task.prompt ? `“${task.prompt}”` : 'Task prompt unavailable.';
     }
     if (metaEl) {
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}`;
+        const sourceQuery = linkSource ? `&source=${encodeURIComponent(linkSource)}` : '';
+        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
@@ -353,8 +358,8 @@ function renderScorecard(task, pair) {
     const gA11yHtml = g.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}${a11yActionHtml}</button>`
         : '';
-    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'run failed before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
-    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">run failed before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
+    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'run failed before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
+    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">run failed before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
     rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => { btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair)); });
 }
 /** @param {ShowcaseTask} task

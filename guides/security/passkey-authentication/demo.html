@@ -65,7 +65,7 @@
               // Segregated signalUnknownCredential only on explicit server 404
               if (PublicKeyCredential.signalUnknownCredential) {
                 await PublicKeyCredential.signalUnknownCredential({
-                  rpId: window.location.hostname,
+                  rpId: publicKey.rpId,
                   credentialId: encodedResponse.id
                 });
               }
