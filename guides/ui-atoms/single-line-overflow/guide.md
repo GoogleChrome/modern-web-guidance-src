@@ -97,11 +97,16 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
   overflow: hidden;
   /* Example value: how much of the text fades */
   --fade-size: 2rem;
-  /* Use `to left` for right-to-left text */
-  mask-image: linear-gradient(to right, black calc(100% - var(--fade)), transparent);
+  /* Gradient directions are physical, so flip it for right-to-left text */
+  --fade-dir: right;
+  mask-image: linear-gradient(to var(--fade-dir), black calc(100% - var(--fade)), transparent);
   /* Applies only when the text overflows: with no overflow the timeline is inactive and the animation has no effect */
   animation: fade-end linear both;
   animation-timeline: scroll(self inline);
+
+  &:dir(rtl) {
+    --fade-dir: left;
+  }
 }
 
 @keyframes fade-end {
@@ -145,7 +150,7 @@ Put both versions in the markup and switch them with a container query on the ce
 
 ## Reveal full text on demand
 
-Reveal on `:hover` and `:focus-visible` of the interactive element, never on hover alone. Move the text only when `prefers-reduced-motion` is `no-preference`; otherwise leave the ellipsis. Touch has no hover, so the full text must also be reachable another way (see below).
+Reveal on `:hover` and `:focus-visible` of the interactive element, never on hover alone. Move the text only when `prefers-reduced-motion` is `no-preference`; otherwise leave the ellipsis.
 
 Hover and focus reveal nothing on touch. Give the full text another route: the selected item shows it untruncated (a selected tab is never shrunk), a row opens a detail view, or the text is also shown in full elsewhere.
 
@@ -187,6 +192,11 @@ The element is a size container, so its child can compute "container width minus
       translate: min(0px, 100cqi - 100%);
       /* Example value. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
       transition: translate 2s linear;
+    }
+
+    /* The overflow is on the left, so the text moves right */
+    &:dir(rtl) > span {
+      translate: max(0px, 100% - 100cqi);
     }
   }
 }
@@ -230,12 +240,11 @@ Let the element grow to its text, and transition the growth. Set `interpolate-si
 
 ### 3. Use a tooltip
 
-A tooltip is exposed as the element's description, so one that only repeats the label makes screen readers announce it twice.
+A tooltip is exposed as the element's description, while the label stays its name.
+If the tooltip only repeats the label, hide it from assistive technology (`aria-hidden="true"`), or screen readers announce the text twice.
+If it adds information, leave it exposed: name and description are announced as different things.
 DO NOT rely on `title` alone: it is unreachable from the keyboard and on touch.
 See {{ GUIDE_REF("interest-triggered-tooltips") }} for tooltips.
-
-If the tooltip only repeats the label, hide it from assistive technology to prevent duplication.
-If the tooltip adds information beyond the label, hide the label from assistive technology to prevent duplication, and leave the rest of it.
 
 ## Detecting whether the text is truncated
 
@@ -333,7 +342,7 @@ Without it, the element expands instantly instead of transitioning. No fallback 
 
 {{ BASELINE_STATUS("text-fit") }}
 
-Without it, the text truncates with the ellipsis declared alongside. For text of predictable length, such as numbers, `font-size: clamp(1.5rem, 12cqi, 4rem)` on a size container approximates the scaling, but scales with the container rather than the text.
+Without it, the text is not scaled and the strategy it is combined with handles all of the overflow. For text of predictable length, such as numbers, `font-size: clamp(1.5rem, 12cqi, 4rem)` on a size container approximates the scaling, but scales with the container rather than the text.
 
 ### Fallbacks & browser support for container queries
 

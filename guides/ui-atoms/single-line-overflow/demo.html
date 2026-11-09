@@ -88,6 +88,11 @@
         /* Example value. Set only here: the text snaps back when the pointer leaves */
         transition: translate 2s linear;
       }
+
+      /* The overflow is on the left, so the text moves right */
+      &:dir(rtl) > span {
+        translate: max(0px, 100% - 100cqi);
+      }
     }
   }
 
@@ -109,9 +114,15 @@
     text-overflow: clip;
     /* Example value: how much of the text fades */
     --fade-size: 2rem;
-    mask-image: linear-gradient(to right, black calc(100% - var(--fade)), transparent);
+    /* Gradient directions are physical, so flip it for right-to-left text */
+    --fade-dir: right;
+    mask-image: linear-gradient(to var(--fade-dir), black calc(100% - var(--fade)), transparent);
     animation: fade-end linear both;
     animation-timeline: scroll(self inline);
+
+    &:dir(rtl) {
+      --fade-dir: left;
+    }
 
     /* Fallback without scroll-driven animations: script toggles the class */
     &.truncated {
