@@ -206,9 +206,10 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
     fs.rmSync(stageDir, { recursive: true, force: true });
     fs.mkdirSync(stageDir, { recursive: true });
 
-    // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.)
+    // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.). A stray public-evals/
+    // build copy must never be staged: the real one is published separately from out/.
     for (const rel of fs.readdirSync(dashboardDir, { recursive: true, encoding: 'utf8' })) {
-        if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel).startsWith('.') || rel.startsWith('mock-results')) continue;
+        if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel).startsWith('.') || rel.startsWith('mock-results') || rel.startsWith('public-evals/')) continue;
         const ext = path.extname(rel);
         if (STATIC_WEB_EXTS.has(ext)) {
             const dest = path.join(stageDir, rel);

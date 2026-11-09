@@ -54,6 +54,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
       'The password input is disabled, readonly, hidden, or a non-interactive display widget.',
       'The password input already provides a valid credential autocomplete token (such as "current-password", "new-password", or "one-time-code").',
       'The password input is for creating or confirming a new password (owned by autofill-sign-up-form).',
+      'The password input is for external service, infrastructure, or device configuration (such as database connections, proxy credentials, SMTP settings, webhooks, or API keys/tokens).',
       'The input is not contained within a form or form-like authentication context.',
       'The component receives its autocomplete attribute dynamically via props, context, or JSX spread.',
     ],

@@ -262,7 +262,10 @@ function processMultiBlockFile(
   if (rules.dom.length > 0) {
     const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
     findings.push(
-      ...materializeRuleMatches(ctx, scanHtmlRules(ctx.relPath, preparedHtml, rules.dom)),
+      ...materializeRuleMatches(
+        ctx,
+        scanHtmlRules(ctx.relPath, preparedHtml, rules.dom, ctx.content),
+      ),
     );
   }
 

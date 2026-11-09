@@ -1,274 +1,421 @@
-/**
- * Expectation Verification Summary:
- * 1. TESTED - Verifies feature detection of document.modelContext before calling imperative WebMCP registration methods.
- * 2. TESTED - Verifies dynamic client-side tools are registered via registerTool with name, description, and execute properties.
- * 3. SKIPPED - Base application does not contain interactive forms or parameterized tool requirements across all solutions.
- * 4. TESTED - Verifies state querying and read tools include annotations with readOnlyHint: true.
- * 5. SKIPPED - Base application does not mandate high-stakes or irreversible actions across all solutions.
- * 6. SKIPPED - Base application does not contain user-generated or third-party dynamic content requiring untrustedContentHint across all solutions.
- * 7. TESTED - Verifies passing an AbortSignal from an AbortController to document.modelContext.registerTool().
- * 8. TESTED - Verifies relying on AbortController.abort() for tool removal and avoiding direct unregisterTool() calls.
- * 9. TESTED - Verifies tool execute handlers resolve only after UI state updates: either they await their work / a frame, or they synchronously reach DOM-mutating code before returning (deferred updates via setTimeout/rAF/.then do not count).
- * 10. SKIPPED - Base application does not contain HTML <form> elements to expose as declarative tools.
- */
+// Manifest of Expectations from expectations.md:
+// Expectation 1: TESTED - Feature-detect document.modelContext before calling imperative WebMCP registration methods
+// Expectation 2: TESTED - Use document.modelContext.registerTool() to register dynamic client-side tools with name, description, and execute properties
+// Expectation 3: TESTED - Define tool input parameters with an inputSchema JSON Schema object where every parameter includes an explicit type and descriptive description
+// Expectation 4: SKIPPED: No read-only query tools exist in the base application or are required by task.md (which only asks for coffee ordering actions)
+// Expectation 5: TESTED - Pass an AbortSignal from an AbortController to document.modelContext.registerTool() to support tool cleanup and lifecycle management
+// Expectation 6: TESTED - Do not call unregisterTool() directly and rely on AbortController.abort() for tool removal
+// Expectation 7: TESTED - Ensure tool execute functions resolve only after corresponding UI state updates have completed
+// Expectation 8: SKIPPED: The base application has no <form> elements and task.md does not require declarative <form> tools over imperative tools
 
 import {
   test,
   expect,
   getTargetFiles,
   getJsProject,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind, Node, type Project, type PropertyAccessExpression } from 'ts-morph';
-import { pathToFileURL } from 'node:url';
+} from '../../../../../src/grading/test-fixture.ts';
+import {
+  SyntaxKind,
+  type Project,
+  type CallExpression,
+  type ObjectLiteralExpression,
+  type Expression,
+  type Node,
+} from 'ts-morph';
 
-const currentFileUrl = typeof __filename !== 'undefined'
-  ? pathToFileURL(__filename).href
-  : pathToFileURL(process.cwd() + '/grader.ts').href;
-const targetFiles: string[] = getTargetFiles(currentFileUrl);
+// @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-// --- Helpers for Expectation 9 ---
-
-// Properties whose *assignment* mutates the DOM.
-const DOM_CONTENT_PROPS = new Set(['innerHTML', 'outerHTML', 'textContent', 'innerText']);
-// Methods whose *invocation* mutates the DOM.
-const DOM_MUTATION_METHODS = new Set([
-  'appendChild', 'insertBefore', 'removeChild', 'replaceChild', 'replaceChildren', 'replaceWith',
-  'insertAdjacentHTML', 'insertAdjacentElement', 'setAttribute', 'removeAttribute', 'toggleAttribute',
-]);
-// Callbacks passed to these run *after* the current task, so UI work inside them
-// happens after execute has already resolved.
-const DEFERRING_CALLS = new Set(['setTimeout', 'setInterval', 'requestAnimationFrame', 'requestIdleCallback', 'queueMicrotask', 'then']);
-
-function isDomMutation(pae: PropertyAccessExpression): boolean {
-  const name = pae.getName();
-  const parent = pae.getParent();
-  if (DOM_CONTENT_PROPS.has(name)) {
-    return Node.isBinaryExpression(parent) && parent.getLeft() === pae
-      && parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken;
-  }
-  if (DOM_MUTATION_METHODS.has(name)) {
-    return Node.isCallExpression(parent) && parent.getExpression() === pae;
-  }
-  // `el.classList.add(...)`, `el.style.display = ...`
-  return name === 'classList' || name === 'style';
-}
-
-function calleeName(expr: Node): string | undefined {
-  if (Node.isIdentifier(expr)) return expr.getText();
-  if (Node.isPropertyAccessExpression(expr)) return expr.getName();
-  return undefined;
-}
-
-// Index every function-like definition in the project by name so calls can be followed.
-function indexFunctions(project: Project): Map<string, Node[]> {
-  const index = new Map<string, Node[]>();
-  const add = (name: string | undefined, fn: Node) => {
-    if (!name) return;
-    if (!index.has(name)) index.set(name, []);
-    index.get(name)!.push(fn);
-  };
-  for (const sf of project.getSourceFiles()) {
-    sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration).forEach(fn => add(fn.getName(), fn));
-    sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration).forEach(fn => add(fn.getName(), fn));
-    for (const kind of [SyntaxKind.VariableDeclaration, SyntaxKind.PropertyAssignment] as const) {
-      sf.getDescendantsOfKind(kind).forEach(decl => {
-        const init = decl.getInitializer();
-        if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) add(decl.getName(), init);
-      });
-    }
-  }
-  return index;
-}
-
-// True if `call` sits inside a callback handed to setTimeout/rAF/.then/etc. within `scope`.
-function isDeferred(call: Node, scope: Node): boolean {
-  for (let n = call.getParent(); n && n !== scope; n = n.getParent()) {
-    if (Node.isCallExpression(n)) {
-      const name = calleeName(n.getExpression());
-      if (name && DEFERRING_CALLS.has(name)) return true;
-    }
-  }
-  return false;
-}
-
-// Does `fn` synchronously reach a DOM mutation, following calls into project functions?
-function reachesDomMutation(fn: Node, index: Map<string, Node[]>, depth = 4, visited = new Set<Node>()): boolean {
-  if (depth < 0 || visited.has(fn)) return false;
-  visited.add(fn);
-
-  const mutations = fn.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-    .filter(pae => isDomMutation(pae) && !isDeferred(pae, fn));
-  if (mutations.length > 0) return true;
-
-  for (const call of fn.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-    if (isDeferred(call, fn)) continue;
-    const name = calleeName(call.getExpression());
-    if (!name) continue;
-    for (const target of index.get(name) ?? []) {
-      if (reachesDomMutation(target, index, depth - 1, visited)) return true;
-    }
-  }
-  return false;
-}
-
-function getExecuteFunction(obj: Node): Node | undefined {
-  if (!Node.isObjectLiteralExpression(obj)) return undefined;
-  const execProp = obj.getProperty('execute');
-  if (!execProp) return undefined;
-  if (Node.isMethodDeclaration(execProp)) return execProp;
-  if (Node.isPropertyAssignment(execProp)) {
-    const init = execProp.getInitializer();
-    if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) return init;
-  }
-  return undefined;
-}
-
-test.describe('WebMCP Daily Grind Target Grader', () => {
-  test('Expectation 1: Feature-detects document.modelContext before calling registration methods', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const ifStatements = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.IfStatement));
-    const hasIfCondition = ifStatements.some(stmt => {
-      const condText = stmt.getExpression().getText();
-      return condText.includes('modelContext');
-    });
-
-    const binaryExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.BinaryExpression));
-    const hasBinaryCheck = binaryExpressions.some(expr => {
-      return expr.getText().includes('modelContext');
-    });
-
-    const conditionalExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.ConditionalExpression));
-    const hasTernaryCheck = conditionalExpressions.some(expr => {
-      return expr.getCondition().getText().includes('modelContext');
-    });
-
-    const propertyAccesses = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression));
-    const hasOptionalChaining = propertyAccesses.some(pa => {
-      return pa.hasQuestionDotToken() && pa.getText().includes('modelContext');
-    });
-
-    const hasFeatureDetection = hasIfCondition || hasBinaryCheck || hasTernaryCheck || hasOptionalChaining;
-    expect(hasFeatureDetection).toBe(true);
-  });
-
-  test('Expectation 2 (Method): Registers client-side tools using document.modelContext.registerTool()', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const callExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const hasRegisterToolCall = callExpressions.some(call => {
-      const exprText = call.getExpression().getText();
-      return /\bregisterTool\b/.test(exprText);
-    });
-
-    expect(hasRegisterToolCall).toBe(true);
-  });
-
-  test('Expectation 2 (Properties): Declares tools with name, description, and execute properties', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const objectLiterals = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression));
-    const hasToolProperties = objectLiterals.some(obj => {
-      const propNames = obj.getProperties().map(p => {
-        if (
-          p.isKind(SyntaxKind.PropertyAssignment) ||
-          p.isKind(SyntaxKind.MethodDeclaration) ||
-          p.isKind(SyntaxKind.ShorthandPropertyAssignment)
-        ) {
-          return p.getName?.() || '';
-        }
-        return '';
-      });
-      return propNames.includes('name') && propNames.includes('description') && propNames.includes('execute');
-    });
-
-    expect(hasToolProperties).toBe(true);
-  });
-
-  test('Expectation 4: Includes annotations with readOnlyHint: true on query/read tools', () => {
-    const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const objectLiterals = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression));
-    const hasReadOnlyHint = objectLiterals.some(obj => {
-      const prop = obj.getProperty('readOnlyHint');
-      if (prop && prop.isKind(SyntaxKind.PropertyAssignment)) {
-        return prop.getInitializer()?.getText() === 'true';
+function findRegisterToolCalls(project: Project): CallExpression[] {
+  return project
+    .getSourceFiles()
+    .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression))
+    .filter((call) => {
+      const expr = call.getExpression();
+      if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+        return expr.getName() === 'registerTool';
       }
       return false;
     });
+}
 
-    expect(hasReadOnlyHint).toBe(true);
+function resolveObjectLiteral(
+  node: Node | undefined,
+  project: Project
+): ObjectLiteralExpression | undefined {
+  if (!node) return undefined;
+  if (node.isKind(SyntaxKind.ObjectLiteralExpression)) {
+    return node;
+  }
+  if (node.isKind(SyntaxKind.ParenthesizedExpression)) {
+    return resolveObjectLiteral(node.getExpression(), project);
+  }
+  if (node.isKind(SyntaxKind.Identifier)) {
+    const name = node.getText();
+    for (const sf of project.getSourceFiles()) {
+      for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        if (varDecl.getName() === name) {
+          const init = varDecl.getInitializer();
+          const resolved = resolveObjectLiteral(init, project);
+          if (resolved) return resolved;
+        }
+      }
+    }
+  }
+  if (node.isKind(SyntaxKind.CallExpression)) {
+    const expr = node.getExpression();
+    if (expr.isKind(SyntaxKind.Identifier)) {
+      const fnName = expr.getText();
+      for (const sf of project.getSourceFiles()) {
+        for (const fnDecl of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+          if (fnDecl.getName() === fnName) {
+            for (const ret of fnDecl.getDescendantsOfKind(SyntaxKind.ReturnStatement)) {
+              const resolved = resolveObjectLiteral(ret.getExpression(), project);
+              if (resolved) return resolved;
+            }
+          }
+        }
+        for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+          if (varDecl.getName() === fnName) {
+            const init = varDecl.getInitializer();
+            if (
+              init &&
+              (init.isKind(SyntaxKind.ArrowFunction) || init.isKind(SyntaxKind.FunctionExpression))
+            ) {
+              const body = init.getBody();
+              if (body.isKind(SyntaxKind.ObjectLiteralExpression) || body.isKind(SyntaxKind.ParenthesizedExpression)) {
+                const resolved = resolveObjectLiteral(body, project);
+                if (resolved) return resolved;
+              }
+              for (const ret of body.getDescendantsOfKind(SyntaxKind.ReturnStatement)) {
+                const resolved = resolveObjectLiteral(ret.getExpression(), project);
+                if (resolved) return resolved;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+function getObjectPropertyInitializer(
+  obj: ObjectLiteralExpression,
+  propName: string
+): Expression | Node | undefined {
+  const prop = obj.getProperty(propName);
+  if (!prop) return undefined;
+  if (prop.isKind(SyntaxKind.PropertyAssignment)) {
+    return prop.getInitializer();
+  }
+  if (prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+    return prop.getNameNode();
+  }
+  if (prop.isKind(SyntaxKind.MethodDeclaration)) {
+    return prop;
+  }
+  return undefined;
+}
+
+test.describe('webmcp Target Grader', () => {
+  test('Expectation 1: Feature-detect document.modelContext before calling imperative WebMCP registration methods', () => {
+    const project: Project = getJsProject(targetFiles);
+    const registerCalls = findRegisterToolCalls(project);
+    expect(registerCalls.length).toBeGreaterThan(0);
+
+    const sourceFiles = project.getSourceFiles();
+    const hasFeatureDetection =
+      registerCalls.some((call) => call.getExpression().getText().includes('?.')) ||
+      sourceFiles.some((sf) => {
+        // Only count modelContext/registerTool reads in a guard's condition, not
+        // code that merely sits inside some unrelated if/ternary/assignment.
+        const inside = (outer: Node, inner: Node) =>
+          inner.getStart() >= outer.getStart() && inner.getEnd() <= outer.getEnd();
+        const hasPropAccessGuard = sf
+          .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+          .some((pa) => {
+            if (pa.getName() !== 'modelContext' && pa.getName() !== 'registerTool') {
+              return false;
+            }
+            return pa.getAncestors().some(
+              (anc) =>
+                (anc.isKind(SyntaxKind.IfStatement) && inside(anc.getExpression(), pa)) ||
+                (anc.isKind(SyntaxKind.ConditionalExpression) && inside(anc.getCondition(), pa)) ||
+                anc.isKind(SyntaxKind.PrefixUnaryExpression) ||
+                anc.isKind(SyntaxKind.TypeOfExpression) ||
+                (anc.isKind(SyntaxKind.BinaryExpression) &&
+                  anc.getOperatorToken().getKind() !== SyntaxKind.EqualsToken &&
+                  inside(anc.getLeft(), pa))
+            );
+          });
+
+        const hasInOperatorGuard = sf
+          .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+          .some((bin) => {
+            if (bin.getOperatorToken().getKind() !== SyntaxKind.InKeyword) return false;
+            const left = bin.getLeft();
+            return (
+              left.isKind(SyntaxKind.StringLiteral) && left.getLiteralValue() === 'modelContext'
+            );
+          });
+
+        return hasPropAccessGuard || hasInOperatorGuard;
+      });
+
+    expect(hasFeatureDetection).toBe(true);
   });
 
-  test('Expectation 7: Passes an AbortSignal from AbortController to registerTool for lifecycle management', () => {
+  test('Expectation 2: Use document.modelContext.registerTool() to register dynamic client-side tools with name, description, and execute properties', () => {
     const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
+    const registerCalls = findRegisterToolCalls(project);
+    expect(registerCalls.length).toBeGreaterThan(0);
 
-    const newExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
-    const hasAbortController = newExpressions.some(ne => ne.getExpression().getText() === 'AbortController');
-
-    const callExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const registerToolCalls = callExpressions.filter(call => /\bregisterTool\b/.test(call.getExpression().getText()));
-    const passesSignal = registerToolCalls.some(call => {
-      const args = call.getArguments();
-      return args.some((arg, index) => index > 0 && /\bsignal\b/.test(arg.getText()));
-    });
-
-    const usesAbortSignal = hasAbortController && passesSignal;
-    expect(usesAbortSignal).toBe(true);
+    for (const call of registerCalls) {
+      const firstArg = call.getArguments()[0];
+      const toolDef = resolveObjectLiteral(firstArg, project);
+      if (!toolDef) continue; // dynamic definitions are checked at runtime below
+      const nameProp = getObjectPropertyInitializer(toolDef, 'name');
+      const descProp = getObjectPropertyInitializer(toolDef, 'description');
+      const execProp = getObjectPropertyInitializer(toolDef, 'execute');
+      expect(nameProp).toBeDefined();
+      expect(descProp).toBeDefined();
+      expect(execProp).toBeDefined();
+    }
   });
 
-  test('Expectation 8: Relies on AbortController.abort() for tool removal and does not call unregisterTool() directly', () => {
+  test('Expectation 5: Pass an AbortSignal from an AbortController to document.modelContext.registerTool() to support tool cleanup and lifecycle management', () => {
     const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
+    const registerCalls = findRegisterToolCalls(project);
+    expect(registerCalls.length).toBeGreaterThan(0);
 
-    const callExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const hasAbortCall = callExpressions.some(call => {
-      const expr = call.getExpression().getText();
-      return expr.endsWith('.abort') || expr === 'abort';
-    });
+    const newExprs = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
+    const hasAbortController = newExprs.some(
+      (ne) => ne.getExpression().getText() === 'AbortController'
+    );
+    expect(hasAbortController).toBe(true);
 
-    // Ignore `this.unregisterTool(...)` — that's a polyfill's own implementation
-    // (e.g. invoked from its abort listener), not the app calling it directly.
-    const callsUnregisterTool = callExpressions.some(call => {
-      const expr = call.getExpression().getText();
-      return /\bunregisterTool\b/.test(expr) && !expr.startsWith('this.');
-    });
-
-    const reliesOnAbort = hasAbortCall && !callsUnregisterTool;
-    expect(reliesOnAbort).toBe(true);
+    for (const call of registerCalls) {
+      const secondArg = call.getArguments()[1];
+      expect(secondArg).toBeDefined();
+      const optionsObj = resolveObjectLiteral(secondArg, project);
+      if (optionsObj) {
+        const signalProp = getObjectPropertyInitializer(optionsObj, 'signal');
+        expect(signalProp).toBeDefined();
+      } else {
+        const hasSignalAccess = secondArg
+          ?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+          .some((pa) => pa.getName() === 'signal');
+        expect(Boolean(hasSignalAccess)).toBe(true);
+      }
+    }
   });
 
-  test('Expectation 9: Ensures tool execute functions resolve only after corresponding UI state updates have completed', () => {
+  test('Expectation 6: Do not call unregisterTool() directly and rely on AbortController.abort() for tool removal', () => {
     const project: Project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
+    const allCalls = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
 
-    // A tool-shaped object literal has at least `name` and `execute`. Accept any
-    // registration style (inline literal, const, array + loop) by scanning literals directly.
-    const objectLiterals = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression));
-    const toolObjects = objectLiterals.filter(obj => obj.getProperty('name') && obj.getProperty('execute'));
-    const executeFns = toolObjects.map(getExecuteFunction).filter((fn): fn is Node => !!fn);
+    const abortCalls = allCalls.filter((call) => {
+      const expr = call.getExpression();
+      return expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'abort';
+    });
+    expect(abortCalls.length).toBeGreaterThan(0);
 
-    // Path A: execute awaits its work (e.g. a render promise, a fetch, or a frame).
-    const hasAsyncAwaitingExecute = executeFns.some(fn => {
-      const isAsync = (Node.isMethodDeclaration(fn) || Node.isArrowFunction(fn) || Node.isFunctionExpression(fn)) && fn.isAsync();
-      return isAsync && fn.getDescendantsOfKind(SyntaxKind.AwaitExpression).length > 0;
+    const unregisterCalls = allCalls.filter((call) => {
+      const expr = call.getExpression();
+      return (
+        expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'unregisterTool'
+      );
+    });
+    expect(unregisterCalls.length).toBe(0);
+  });
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.addInitScript(() => {
+        const registeredTools: Array<{ definition: any; options: any }> = [];
+        (window as any).__webmcpRegisteredTools = registeredTools;
+        Object.defineProperty(document, 'modelContext', {
+          value: {
+            registerTool(definition: any, options?: any) {
+              registeredTools.push({ definition, options });
+              return Promise.resolve();
+            },
+          },
+          configurable: true,
+          writable: true,
+        });
+      });
+      await page.goto(TARGET_URL);
     });
 
-    // Path B: execute synchronously reaches DOM-mutating code before returning
-    // (the synchronous-render equivalent of awaiting the update). Calls deferred
-    // via setTimeout/rAF/.then are not followed, so fire-and-forget still fails.
-    const functionIndex = indexFunctions(project);
-    const hasSyncUiUpdatingExecute = executeFns.some(fn => reachesDomMutation(fn, functionIndex));
+    test('Expectation 2 (runtime): Registered tools have name, description, and execute properties', async ({
+      page,
+    }) => {
+      const defs = await page.evaluate(() =>
+        ((window as any).__webmcpRegisteredTools || []).map((t: any) => ({
+          name: typeof t.definition?.name,
+          description: typeof t.definition?.description,
+          execute: typeof t.definition?.execute,
+        }))
+      );
+      expect(defs.length).toBeGreaterThan(0);
+      for (const d of defs) {
+        expect(d).toEqual({ name: 'string', description: 'string', execute: 'function' });
+      }
+    });
 
-    // Path C: explicitly waiting for a paint before resolving.
-    const callExpressions = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-    const waitsForFrame = callExpressions.some(call => /\brequestAnimationFrame\b/.test(call.getExpression().getText()));
+    test('Expectation 3: Define tool input parameters with an inputSchema JSON Schema object where every parameter includes an explicit type and descriptive description', async ({
+      page,
+    }) => {
+      const toolsWithParams = await page.evaluate(() => {
+        const tools: Array<{ definition: any; options: any }> =
+          (window as any).__webmcpRegisteredTools || [];
+        return tools.map((t) => ({
+          name: t.definition?.name,
+          inputSchema: t.definition?.inputSchema,
+          hasDeclarativeFormsWithParams: Array.from(
+            document.querySelectorAll('form[toolname][tooldescription]')
+          ).map((form) => {
+            const controls = Array.from(
+              form.querySelectorAll('input[name], select[name], textarea[name]')
+            );
+            return {
+              toolname: form.getAttribute('toolname'),
+              controlCount: controls.length,
+              allControlsDescribed:
+                controls.length > 0 &&
+                controls.every((el) => {
+                  const desc =
+                    el.getAttribute('toolparamdescription') ||
+                    el.closest('label')?.textContent?.trim() ||
+                    (el.id
+                      ? document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim()
+                      : '');
+                  return Boolean(desc && desc.length > 0);
+                }),
+            };
+          }),
+        }));
+      });
 
-    expect(hasAsyncAwaitingExecute || hasSyncUiUpdatingExecute || waitsForFrame).toBe(true);
+      expect(toolsWithParams.length).toBeGreaterThan(0);
+
+      let verifiedParamCount = 0;
+      for (const tool of toolsWithParams) {
+        expect(tool.inputSchema).toBeDefined();
+        expect(tool.inputSchema.type).toBe('object');
+        const props = tool.inputSchema.properties || {};
+        const propEntries = Object.entries(props) as Array<[string, any]>;
+
+        for (const [, paramSchema] of propEntries) {
+          expect(typeof paramSchema.type).toBe('string');
+          expect(paramSchema.type.length).toBeGreaterThan(0);
+          expect(typeof paramSchema.description).toBe('string');
+          expect(paramSchema.description.trim().length).toBeGreaterThan(0);
+          verifiedParamCount++;
+        }
+
+        if (propEntries.length === 0 && tool.hasDeclarativeFormsWithParams.length > 0) {
+          for (const formInfo of tool.hasDeclarativeFormsWithParams) {
+            if (formInfo.controlCount > 0 && formInfo.allControlsDescribed) {
+              verifiedParamCount += formInfo.controlCount;
+            }
+          }
+        }
+      }
+
+      expect(verifiedParamCount).toBeGreaterThan(0);
+    });
+
+    test('Expectation 7: Ensure tool execute functions resolve only after corresponding UI state updates have completed', async ({
+      page,
+    }) => {
+      const executionResult = await page.evaluate(async () => {
+        const tools: Array<{ definition: any; options: any }> =
+          (window as any).__webmcpRegisteredTools || [];
+        if (tools.length === 0) {
+          return { toolCount: 0, uiUpdatedBeforeResolve: false };
+        }
+
+        const getStatusSnapshot = () => {
+          const liveNodes = Array.from(
+            document.querySelectorAll('[role="status"], [role="alert"], [aria-live], output, dialog')
+          );
+          const liveText = liveNodes.map((n) => n.textContent?.trim() || '').join(' | ');
+          const mainText =
+            document.querySelector('main')?.textContent?.replace(/\s+/g, ' ').trim() || '';
+          return `${liveText} || ${mainText}`;
+        };
+
+        // Find an ordering tool if one exists, otherwise inspect the registered tool(s)
+        const orderingTool = tools.find((t) => {
+          const props = t.definition?.inputSchema?.properties || {};
+          return Object.keys(props).length > 0;
+        });
+
+        if (orderingTool) {
+          const props = orderingTool.definition.inputSchema.properties;
+          const sampleInput: Record<string, any> = {};
+          for (const [key, schema] of Object.entries(props) as Array<[string, any]>) {
+            if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+              sampleInput[key] = schema.enum[0];
+            } else if (schema.type === 'integer' || schema.type === 'number') {
+              sampleInput[key] = schema.minimum ?? 2;
+            } else if (schema.type === 'string') {
+              sampleInput[key] = 'small';
+            }
+          }
+
+          const beforeText = getStatusSnapshot();
+          await orderingTool.definition.execute(sampleInput);
+          const afterText = getStatusSnapshot();
+
+          return {
+            toolCount: tools.length,
+            uiUpdatedBeforeResolve: afterText !== beforeText && afterText.length > 0,
+          };
+        }
+
+        // If the imperative tool is a read-only tool and ordering is via declarative forms,
+        // submit a form to update the UI and verify the tool's execute() reflects the updated UI state immediately upon resolution
+        const orderForm = document.querySelector('form[toolname], form') as HTMLFormElement | null;
+        if (orderForm) {
+          const beforeText = getStatusSnapshot();
+          let agentResponseResolvedAfterUiUpdate = false;
+          const submitEvent = new SubmitEvent('submit', { bubbles: true, cancelable: true });
+          Object.defineProperty(submitEvent, 'agentInvoked', { value: true });
+          Object.defineProperty(submitEvent, 'respondWith', {
+            value: (promise: Promise<any>) => {
+              const midText = getStatusSnapshot();
+              if (midText !== beforeText && midText.length > 0) {
+                agentResponseResolvedAfterUiUpdate = true;
+              }
+              return promise;
+            },
+          });
+          orderForm.dispatchEvent(submitEvent);
+          const afterFormText = getStatusSnapshot();
+          const toolResult = await tools[0].definition.execute({});
+          const toolText = JSON.stringify(toolResult);
+
+          return {
+            toolCount: tools.length,
+            uiUpdatedBeforeResolve:
+              (agentResponseResolvedAfterUiUpdate || afterFormText !== beforeText) &&
+              toolText.length > 0,
+          };
+        }
+
+        return { toolCount: tools.length, uiUpdatedBeforeResolve: false };
+      });
+
+      expect(executionResult.toolCount).toBeGreaterThan(0);
+      expect(executionResult.uiUpdatedBeforeResolve).toBe(true);
+    });
   });
 });

@@ -1,1 +1,1 @@
-- Prevent the underlying page from scrolling while a modal dialog is open.
+- Add a seasonal patio notice to the Daily Grind homepage that opens as a modal dialog when the page loads, with a Close button, and make sure the page underneath can't scroll while the notice is open.

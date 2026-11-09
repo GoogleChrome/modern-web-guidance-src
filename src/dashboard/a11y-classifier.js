@@ -18,7 +18,7 @@ export const A11Y_SUBCATEGORIES = [
         id: 'aria_roles_live',
         label: 'ARIA, Roles & Live Regions',
         shortLabel: 'ARIA & Roles',
-        description: 'aria-expanded, aria-current, aria-invalid, aria-describedby, aria-hidden, role, <dialog> name, landmarks, heading hierarchy, CSS alt text, and <html lang>'
+        description: 'aria-expanded, aria-current, aria-invalid, aria-describedby, aria-hidden, role, accessible names, landmarks, heading hierarchy, CSS alt text, and <html lang>'
     },
     {
         id: 'labels_forms',
@@ -55,7 +55,32 @@ const FALSE_POSITIVE_SUBSTRINGS = [
     'aria-current state synchronizes with visible section when scrolling stops',
     'calls to focus inside the stack pass preventscroll: true',
     'standalone component examples must document or assume a complete heading hierarchy outline',
-    'continuous keyframe animations must be wrapped inside a reduced-motion media query'
+    'continuous keyframe animations must be wrapped inside a reduced-motion media query',
+    'text-decoration-inset',
+    'border-shape',
+    'trigger links use interestfor',
+    'persistent top bar hides on wheel scroll down',
+    'focusgroup="menu nomemory"',
+    'fallback sets role="menu" on focusgroup containers',
+    'commandfor, command="toggle-popover"',
+    'open and close animations are gated by prefers-reduced-motion: no-preference',
+    'focusing a submenu trigger in a vertical menu previews its menu without moving focus into it',
+    'focusing a submenu trigger previews its menu without moving focus into it',
+    'focusing a submenu trigger in an horizontal menu previews its menu without moving focus into it',
+    'focusing a submenu trigger in a horizontal menu previews its menu without moving focus into it',
+    'animate indicator transitions using scale when prefers-reduced-motion: no-preference is active',
+    'css declares underline transition inside a prefers-reduced-motion: no-preference media query',
+    'no tooltip element or its invoker button sets role="tooltip", aria-describedby, or aria-details manually',
+    'via elementinternals without a matching aria-* attribute on the host',
+    'without setting a role attribute on the host element',
+    'no aria-* state attribute is added to the host',
+    'css keeps the persistent top bar visible when it contains keyboard focus (:focus-within)',
+    'persistent top bar visible when it contains keyboard focus',
+    'no <dialog> has role="dialog" or aria-modal',
+    'the overlay container does not have role="menu"',
+    'the trigger does not have aria-haspopup',
+    'focus returning to a trigger when the window regains focus does not reopen or preview',
+    'clicking a closed trigger opens its menu with focus on the trigger'
 ];
 /** @param {string | undefined | null} msg */
 export function normalizeCheckMessage(msg) { return (msg || '').replace(/\s+/g, ' ').trim(); }
@@ -90,9 +115,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('contrast ratio') ||
         /\b\d+(?:\.\d+)?:1\s+contrast\b/.test(ml) ||
         ml.includes('tap targets must be at least 48px') ||
-        ml.includes('interactive targets meet a minimum size of 24px') ||
-        ((gName === 'fluid-scaling' || gName.endsWith('/fluid-scaling')) &&
-            ml.includes('maximum size in clamp() for font size is at most 2.5 times the minimum size'))
+        ml.includes('interactive targets meet a minimum size of 24px')
     ) {
         return { isAccessibility: true, subCategory: 'motion_contrast_visual' };
     }
@@ -100,6 +123,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('escape key') ||
         ml.includes('esc key') ||
         /\bpressing esc(?:ape)?\b/.test(ml) ||
+        /\bpressing space\b/.test(ml) ||
         (ml.includes('arrowleft') && ml.includes('arrowright') && ml.includes('keyboard')) ||
         ml.includes('repositionable with keyboard arrow keys') ||
         ml.includes('keyboard arrow key navigation prevents default') ||
@@ -108,7 +132,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('semantic tags like <button type="submit">') ||
         ml.includes('semantic, visible submit button') ||
         ml.includes('explicit <button type="submit"> with actionable text') ||
-        ml.includes('the form must have a submit button') ||
         ((gName === 'stack-drill-down' || gName.endsWith('/stack-drill-down')) &&
             ml.includes('drill-down views have an explicit back button, but root view does not'))
     ) {
@@ -134,12 +157,8 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('<search> element') ||
         ml.includes('content alternative text') ||
         ml.includes('using alternative text') ||
-        (ml.includes('<dialog>') && ml.includes('accessible name')) ||
+        ml.includes('accessible name') ||
         ml.includes('the "lang" attribute must be defined on the <html> element') ||
-        (gName.includes('scroll-snap-state-sync') && ml.includes('only one toc link is highlighted as the active one')) ||
-        (gName.includes('scroll-snap-realtime-feedback') &&
-            (ml.includes('the thumbnail corresponding to the final snap target receives active') ||
-                ml.includes('when scrollsnapchanging is unsupported, the fallback promotes the thumbnail to active'))) ||
         (gName.includes('slider') &&
             ml.includes('must not use generated content on slider pseudo-elements, exposing values in ordinary dom elements instead'))
     ) {
@@ -147,7 +166,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     }
     if (
         /\bfocus(?:ed|able|ing|es)?\b|:focus-visible/.test(ml) ||
-        ml.includes('avoid tab order when hidden') ||
+        ml.includes('tab order') ||
         (ml.includes('inert') &&
             (gName === 'navigation-drawer' ||
                 gName.endsWith('/navigation-drawer') ||

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
 // Parse TARGET_FILE from environment or default to demo.html
@@ -12,9 +13,10 @@ interface CSSRule {
   declarations: Array<{ property: string; value: string }>;
 }
 
-function parseCSS(cssText: string): { rules: CSSRule[]; comments: string[] } {
+function parseCSS(cssText: string): { rules: CSSRule[]; comments: string[]; keyframes: string[] } {
   const rules: CSSRule[] = [];
   const comments: string[] = [];
+  const keyframes: string[] = [];
   
   // Extract and strip comments, saving them
   const commentRegex = /\/\*([\s\S]*?)\*\//g;
@@ -78,7 +80,7 @@ function parseCSS(cssText: string): { rules: CSSRule[]; comments: string[] } {
       braceDepth--;
       if (braceDepth === 0) {
         const blockContent = cleanCSS.substring(blockStartIdx, index);
-        if (selectorOrMedia.startsWith('@media')) {
+        if (/^@media\b/i.test(selectorOrMedia)) {
           const mediaQuery = selectorOrMedia;
           // Parse nested rules inside media query
           const nested = parseCSS(blockContent);
@@ -86,6 +88,13 @@ function parseCSS(cssText: string): { rules: CSSRule[]; comments: string[] } {
             nr.media = mediaQuery;
             rules.push(nr);
           }
+          keyframes.push(...nested.keyframes);
+        } else if (/^@(?:-[a-z]+-)?keyframes\b/i.test(selectorOrMedia)) {
+          keyframes.push(blockContent);
+        } else if (/^@(?:supports|layer|container|scope|starting-style)\b/i.test(selectorOrMedia)) {
+          const nested = parseCSS(blockContent);
+          rules.push(...nested.rules);
+          keyframes.push(...nested.keyframes);
         } else {
           const selector = selectorOrMedia;
           const declarations = parseDeclarations(blockContent);
@@ -103,7 +112,7 @@ function parseCSS(cssText: string): { rules: CSSRule[]; comments: string[] } {
     index++;
   }
   
-  return { rules, comments };
+  return { rules, comments, keyframes };
 }
 
 interface CalcSizeParts {
@@ -154,6 +163,31 @@ function extractCalcSizes(cssText: string): CalcSizeParts[] {
     index = i + 1;
   }
   return list;
+}
+
+const SIZE_KEYWORD_RE = /(?<![-\w])size(?![-\w])/i;
+
+function stripParenGroups(input: string): string {
+  let out = '';
+  let depth = 0;
+  for (const ch of input) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    else if (depth === 0) out += ch;
+  }
+  return out;
+}
+
+function isCalculatedCalcSize(cs: CalcSizeParts): boolean {
+  const exprNoVars = cs.calc.replace(/--[a-zA-Z0-9_-]+/g, 'VAR');
+  const hasMath =
+    /(?:^|[\s(])[+-](?=[0-9.(]|size(?![-\w])|VAR\b)|[+-]\s|[*/]/i.test(exprNoVars) ||
+    /\b(?:clamp|min|max|round|mod|rem|abs|sign|calc)\s*\(/i.test(exprNoVars);
+  return (
+    hasMath &&
+    SIZE_KEYWORD_RE.test(exprNoVars) &&
+    !SIZE_KEYWORD_RE.test(stripParenGroups(cs.basis))
+  );
 }
 
 test.describe('CSS Intrinsic Sizes Grader', () => {
@@ -237,7 +271,7 @@ test.describe('CSS Intrinsic Sizes Grader', () => {
     
     const validBasis = calcSizes.length > 0 && calcSizes.every(cs => {
       const basis = cs.basis.trim().toLowerCase();
-      const containsSize = basis.includes('size');
+      const containsSize = SIZE_KEYWORD_RE.test(stripParenGroups(basis));
       const isKnownBasis = ['auto', 'min-content', 'max-content', 'fit-content', 'content', 'any'].some(kw => basis.includes(kw)) || /^[0-9]/.test(basis);
       return isKnownBasis && !containsSize;
     });
@@ -252,8 +286,7 @@ test.describe('CSS Intrinsic Sizes Grader', () => {
     const calcSizes = extractCalcSizes(cleanStyles);
     
     const allUseSizeKeyword = calcSizes.length > 0 && calcSizes.every(cs => {
-      const calc = cs.calc.toLowerCase();
-      return calc.includes('size');
+      return SIZE_KEYWORD_RE.test(cs.calc);
     });
     
     expect(allUseSizeKeyword).toBe(true);
@@ -267,9 +300,8 @@ test.describe('CSS Intrinsic Sizes Grader', () => {
     
     const validCalcSizes = calcSizes.filter(cs => {
       const basis = cs.basis.trim().toLowerCase();
-      const calc = cs.calc.toLowerCase();
-      const basisOk = ['auto', 'min-content', 'max-content', 'fit-content', 'content', 'any'].some(kw => basis.includes(kw)) && !basis.includes('size');
-      const calcOk = calc.includes('size');
+      const basisOk = ['auto', 'min-content', 'max-content', 'fit-content', 'content', 'any'].some(kw => basis.includes(kw)) && !SIZE_KEYWORD_RE.test(stripParenGroups(basis));
+      const calcOk = SIZE_KEYWORD_RE.test(cs.calc);
       return basisOk && calcOk;
     });
     
@@ -306,17 +338,65 @@ test.describe('CSS Intrinsic Sizes Grader', () => {
     expect(hasReducedMotionQuery).toBe(true);
   });
 
-  test('should document that interpolation between two different intrinsic keywords is not supported', async ({ page }) => {
+  async function collectStylesText(page: import('@playwright/test').Page): Promise<string> {
     await page.goto(`file://${targetFile}`);
-    const styles = await page.$$eval('style', (elements) => elements.map(el => el.textContent || ''));
-    const parsed = parseCSS(styles.join('\n'));
-    
-    const hasKeywordInterpolationNote = parsed.comments.some(comment => {
-      const commentLower = comment.toLowerCase();
-      return commentLower.includes('interpolation');
-    });
-    
-    expect(hasKeywordInterpolationNote).toBe(true);
+    const inlineStyles = await page.$$eval('style', elements => elements.map(el => el.textContent || ''));
+    const html = fs.readFileSync(targetFile, 'utf-8');
+    const dir = path.dirname(targetFile);
+    const linkedCss: string[] = [];
+    for (const match of html.matchAll(/<link[^>]+rel=["']?stylesheet["']?[^>]*href=["']([^"']+)["'][^>]*>|<link[^>]+href=["']([^"']+)["'][^>]*rel=["']?stylesheet["']?[^>]*>/gi)) {
+      const href = match[1] || match[2];
+      if (!href || /^https?:\/\//i.test(href)) continue;
+      const cssPath = path.resolve(dir, href);
+      if (fs.existsSync(cssPath) && fs.statSync(cssPath).isFile()) {
+        linkedCss.push(fs.readFileSync(cssPath, 'utf-8'));
+      }
+    }
+    return [...inlineStyles, ...linkedCss].join('\n');
+  }
+
+  test('`calc-size()` is only used for sizing that requires mathematical operations or constraints on an intrinsic basis.', async ({ page }) => {
+    const rawCss = await collectStylesText(page);
+    const parsed = parseCSS(rawCss);
+    const allCssValues = [
+      ...parsed.rules.flatMap(r => r.declarations.map(d => d.value)),
+      ...parsed.keyframes,
+    ].join('\n');
+    const calcSizes = extractCalcSizes(allCssValues);
+
+    expect(calcSizes.length).toBeGreaterThan(0);
+    expect(calcSizes.every(isCalculatedCalcSize)).toBe(true);
+  });
+
+  test('If an animation is present and requires a calculation, it transitions to or from a `calc-size()` value.', async ({ page }) => {
+    const rawCss = await collectStylesText(page);
+    const parsed = parseCSS(rawCss);
+    const decls = parsed.rules.flatMap(r => r.declarations);
+
+    const sizingPropsRe = /\b(?:inline-size|block-size|width|height|min-width|max-width|min-height|max-height|min-inline-size|max-inline-size|min-block-size|max-block-size)\b/i;
+    const sizingPropsSet = new Set([
+      'inline-size', 'block-size', 'width', 'height',
+      'min-width', 'max-width', 'min-height', 'max-height',
+      'min-inline-size', 'max-inline-size', 'min-block-size', 'max-block-size',
+    ]);
+
+    const keyframeHasSizing = parsed.keyframes.some(kfBody => sizingPropsRe.test(kfBody));
+    const keyframeHasCalculatedCalcSize = parsed.keyframes.some(
+      kfBody => sizingPropsRe.test(kfBody) && extractCalcSizes(kfBody).some(isCalculatedCalcSize)
+    );
+
+    const hasSizingTransition = decls.some(decl =>
+      (decl.property === 'transition' || decl.property === 'transition-property') &&
+      !/\bnone\b/i.test(decl.value) &&
+      (sizingPropsRe.test(decl.value) || /\ball\b/i.test(decl.value))
+    );
+    const hasCalculatedCalcSize = decls.some(decl =>
+      sizingPropsSet.has(decl.property) && extractCalcSizes(decl.value).some(isCalculatedCalcSize)
+    );
+
+    const hasAnySizeAnimation = hasSizingTransition || keyframeHasSizing;
+    expect(hasAnySizeAnimation).toBe(true);
+    expect(hasCalculatedCalcSize || keyframeHasCalculatedCalcSize).toBe(true);
   });
 
 });

@@ -1,10 +1,8 @@
 - On page load, the select menu should look neutral (no red border).
 - Selecting a valid option MUST remove the error state.
 - Selecting the "placeholder" option (if enabled) or submitting while empty MUST trigger the error state.
-- DO NOT assert on exact CSS colors or hex/rgb pixel values in the grader. Use a flexible helper function (e.g. `isRed`) to verify the error state to allow the agent to use its own error colors.
-- DO NOT assume specific container class names. The AI might structure the form slightly differently than the demo.
-- DO NOT write static assertions (e.g., `fs.readFileSync`) checking for specific JavaScript data structures like `WeakMap` or exact function names in the source code. Tests must evaluate behavior, not specific code syntax.
-- DO NOT assume the `<select>` element is nested inside a `<form>` tag.
+- CSS MUST use the `:user-invalid` pseudo-class for validation styling.
+- CSS MUST NOT use the basic `:invalid` pseudo-class that triggers immediately.
 - The select has `aria-invalid="true"` while its error state is shown, and doesn't have `aria-invalid="true"` before the error appears or after it clears.
 - While the select has `aria-invalid="true"`, its accessible description includes its visible error text.
 - On page load, the select's accessible description doesn't include its error text.

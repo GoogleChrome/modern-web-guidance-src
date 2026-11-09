@@ -17,7 +17,6 @@ import {
   extractSubagentIdFromFilename,
   extractClaudeMetadata,
   extractCodexMetadata,
-  extractGeminiMetadata,
   extractPiMetadata
 } from './trajectory-normalizer.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
@@ -70,6 +69,9 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
 
   const cliAnalyzeCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest analyze src/ --json' }, undefined, 'run_command');
   assert.strictEqual(cliAnalyzeCat, 'skill_search');
+
+  const cliLegacyScanCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest legacy-scan src/ --json' }, undefined, 'run_command');
+  assert.strictEqual(cliLegacyScanCat, 'skill_search');
 
   const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
   assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
@@ -672,34 +674,31 @@ test('hasTrajectoryGuideLeak ignores host node_modules and passive search result
 test('generateNormalizedTrajectory dispatcher writes summary for given agent', async () => {
   const tempDir = createTempDir();
   try {
-    const sessionData = {
-      messages: [
-        { role: 'user', content: 'Inspect code' },
-        {
-          role: 'gemini',
-          thought: 'Looking up guide',
-          toolCalls: [{ name: 'mcp_modern-web_get_best_practices', args: { use_case_id: 'container-queries' } }]
-        },
-        {
-          role: 'user',
-          toolResults: [{ status: 'success', output: 'Guide details' }]
-        }
-      ]
-    };
-    fs.writeFileSync(path.join(tempDir, 'session-101.json'), JSON.stringify(sessionData));
+    const sessionLine = JSON.stringify({
+      type: 'message',
+      timestamp: '2026-08-09T21:00:00.000Z',
+      message: {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'Looking up guide' },
+          { type: 'toolCall', id: 'tc1', name: 'bash', arguments: { command: 'node modern-web.mjs retrieve container-queries' } }
+        ]
+      }
+    });
+    fs.writeFileSync(path.join(tempDir, 'session-101.jsonl'), sessionLine + '\n');
 
-    await generateNormalizedTrajectory(tempDir, Agents.GEMINI_CLI, 'Inspect code');
+    await generateNormalizedTrajectory(tempDir, Agents.PI, 'Inspect code');
 
     const summaryPath = path.join(tempDir, TRAJECTORY_SUMMARY_FILE);
     assert.ok(fs.existsSync(summaryPath), 'trajectory_summary.json should be created by dispatcher');
 
     const summary = readTrajectorySummary(tempDir);
     assert.ok(summary);
-    assert.strictEqual(summary.agent, Agents.GEMINI_CLI);
+    assert.strictEqual(summary.agent, Agents.PI);
     assert.strictEqual(summary.initialPrompt, 'Inspect code');
     assert.strictEqual(summary.steps.length, 1);
     assert.strictEqual(summary.steps[0].stepNumber, 1);
-    assert.strictEqual(summary.steps[0].action?.name, 'mcp_modern-web_get_best_practices');
+    assert.strictEqual(summary.steps[0].action?.name, 'bash');
   } finally {
     removeTempDir(tempDir);
   }
@@ -781,23 +780,7 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   ]);
   assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
-  // 3. Gemini
-  const geminiMeta = extractGeminiMetadata({
-    messages: [
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: validCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: chainedCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: spaceCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: directNodeMjsCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: goJsonEscapedCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: legacyCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: searchCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: inlineGuideRef } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: genericCmd } }] },
-    ]
-  });
-  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
-
-  // 4. Pi
+  // 3. Pi
   const piMeta = extractPiMetadata([
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: chainedCmd } }] } },

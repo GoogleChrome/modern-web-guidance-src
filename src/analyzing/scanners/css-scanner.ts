@@ -1,10 +1,21 @@
 import {
+  CSSAtRule,
+  CSSConditionRule,
+  CSSGroupingRule,
+  CSSKeyframeRule,
+  CSSKeyframesRule,
+  CSSNestedDeclarations,
+  CSSStyleRule,
+  getDeclaredProperties,
+  getPropertyValues,
+  getRules,
   parse as parseCss,
-  walkRules,
-  walkStyleRules,
+  resolveSelector,
+  type CSSRule,
 } from 'cssomnom';
 import type {
   AnalyzerMatch,
+  CssDeclaration,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -27,6 +38,21 @@ function collectPropertyNames(text: string, regex: RegExp, target: Set<string>):
   }
 }
 
+function getEnclosingAtRule(rule: CSSRule): string | null {
+  for (let curr = rule.parentRule; curr; curr = curr.parentRule) {
+    if (curr instanceof CSSStyleRule) continue;
+    if (
+      curr instanceof CSSGroupingRule ||
+      curr instanceof CSSKeyframesRule ||
+      curr instanceof CSSAtRule
+    ) {
+      const brace = curr.cssText.indexOf('{');
+      if (brace !== -1) return curr.cssText.slice(0, brace).trim();
+    }
+  }
+  return null;
+}
+
 function prepareCssContext(
   filePath: string,
   cssContent: string,
@@ -39,25 +65,56 @@ function prepareCssContext(
     return null;
   }
 
-  const allProperties = new Set<string>();
-  for (const entry of walkRules(sheet)) {
-    if (entry.style) {
-      for (const decl of entry.style._declarations) {
-        allProperties.add(decl.name.toLowerCase());
-      }
+  const allProperties = new Set<string>(
+    Array.from(getDeclaredProperties(sheet), (p) => p.toLowerCase()),
+  );
+  const styleRules: CssRuleView[] = [];
+
+  for (const rule of getRules(sheet)) {
+    if (rule instanceof CSSConditionRule && rule.conditionText) {
+      collectPropertyNames(rule.conditionText, CONDITION_PROP_RE, allProperties);
     }
     if (
-      entry.rule &&
-      'conditionText' in entry.rule &&
-      typeof entry.rule.conditionText === 'string'
+      !(rule instanceof CSSStyleRule) &&
+      !(rule instanceof CSSNestedDeclarations) &&
+      !(rule instanceof CSSKeyframeRule)
     ) {
-      collectPropertyNames(entry.rule.conditionText, CONDITION_PROP_RE, allProperties);
+      continue;
     }
+    const selectorText = resolveSelector(rule);
+    if (selectorText === null) continue;
+
+    const { style } = rule;
+    let cachedDecls: readonly CssDeclaration[] | null = null;
+    let cachedPropSet: Set<string> | null = null;
+
+    styleRules.push({
+      selectorText,
+      line: rule.location?.line ?? 1,
+      column: rule.location?.column ?? 1,
+      parentAtRule: getEnclosingAtRule(rule),
+      get declarations() {
+        return (cachedDecls ??= Array.from(style).flatMap((property) => {
+          const values = getPropertyValues(style, property, {
+            logical: false,
+            shorthands: false,
+          });
+          return values.length > 0
+            ? values.map((value) => ({ property, value }))
+            : [{ property, value: style.getPropertyValue(property) }];
+        }));
+      },
+      getPropertyValue: (p: string) => style.getPropertyValue(p) || null,
+      hasProperty: (p: string) => {
+        const norm = p.startsWith('--') ? p : p.toLowerCase();
+        cachedPropSet ??= new Set(style);
+        return cachedPropSet.has(norm) || style.getPropertyValue(norm) !== '';
+      },
+    });
   }
 
   collectPropertyNames(cssContent, DECL_PROP_RE, allProperties);
 
-  const styleRules: CssRuleView[] = Array.from(walkStyleRules(sheet));
   const ctx: CssMatcherContext = {
     filePath,
     stylesheetText: cssContent,

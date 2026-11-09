@@ -5,6 +5,7 @@ import { extname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { scanAllGuides } from '../../core/guide-validation.ts';
+import { scanFiles } from '../scanners/index.ts';
 import {
   CSS_RULE_EXTENSIONS,
   DOM_RULE_EXTENSIONS,
@@ -501,5 +502,28 @@ describe('qualified rules architectural invariants', () => {
 
   it('enforces anti-sponge selectivity gate on fastTokens across QUALIFIED_RULES', () => {
     assertAntiSpongeSelectivity(QUALIFIED_RULES);
+  });
+
+  it('enforces zero self-hits when running each qualified rule against its own guide demo.html', () => {
+    const allGuides = scanAllGuides();
+    const guideMap = new Map(allGuides.map((g) => [g.name, g]));
+
+    for (const rule of QUALIFIED_RULES) {
+      const guide = guideMap.get(rule.guideId);
+      if (!guide || !guide.hasDemo) {
+        continue;
+      }
+      const demoPath = join(guide.dir, 'demo.html');
+      const demoContent = readFileSync(demoPath, 'utf8');
+      const findings = scanFiles(new Map([[demoPath, demoContent]]), [rule], {
+        includeDocsAndTests: true,
+      });
+      assert.strictEqual(
+        findings.length,
+        0,
+        `Rule "${rule.id}" must produce 0 self-hits on its own guide demo.html (${demoPath}), but found ${findings.length}:\n` +
+          findings.map((f) => `  line ${f.line}: ${f.message}`).join('\n'),
+      );
+    }
   });
 });
