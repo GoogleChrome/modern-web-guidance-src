@@ -148,7 +148,7 @@ Wrap the parking rule in `@supports` for `sibling-index()`. Without support, lea
 
 Treat slide effects as optional enhancements and keep them inside `@media (prefers-reduced-motion: no-preference)`. The carousel's navigation and current-slide feedback must not depend on them.
 
-### Controls and status updates
+## Controls and status updates
 
 Update the active marker as the track scrolls (throttled to one update per animation frame) so the dots keep pace with the visible slide, and run announcements and button state after scrolling settles. Measure only the carousel's scrolling axis.
 
