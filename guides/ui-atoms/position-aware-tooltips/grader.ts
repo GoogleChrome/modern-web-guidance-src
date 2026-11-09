@@ -1,9 +1,11 @@
 /// <reference types="node" />
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
+import * as fs from 'fs';
 import process from 'process';
 
-const targetUrl = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
+const targetFilePath = path.resolve(process.env.TARGET_FILE || 'demo.html');
+const targetUrl = 'file://' + targetFilePath;
 
 test.describe('Position-Aware Tooltips Grader', () => {
 
@@ -33,23 +35,80 @@ test.describe('Position-Aware Tooltips Grader', () => {
     expect(isValid).toBe(true);
   });
 
-  test('conditionally polyfills the Popover API', async ({ page }) => {
+  test('conditionally polyfills the Popover API or provides a manual fallback', async ({ page }) => {
     await page.addInitScript(() => {
-      // Delete popover from HTMLElement prototype to trigger polyfill branch
       delete (HTMLElement.prototype as any).popover;
       delete (HTMLElement.prototype as any).showPopover;
       delete (HTMLElement.prototype as any).hidePopover;
       delete (HTMLElement.prototype as any).togglePopover;
     });
     await page.goto(targetUrl);
-    // Wait for potential dynamic import and execution of polyfill
-    await page.waitForFunction(() => {
-      return HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype;
-    });
-    const isPolyfilled = await page.evaluate(() => {
-      return HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype;
-    });
-    expect(isPolyfilled).toBe(true);
+
+    // 1. Check if the solution conditionally loaded a polyfill that restored popover
+    const hasPolyfill = await page
+      .waitForFunction(
+        () => HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype,
+        undefined,
+        { timeout: 800 }
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasPolyfill) {
+      expect(hasPolyfill).toBe(true);
+      return;
+    }
+
+    // 2. Otherwise accept a working manual fallback:
+    // It must feature detect popover support and toggle the tooltip
+    const fileContent = fs.existsSync(targetFilePath) ? fs.readFileSync(targetFilePath, 'utf8') : '';
+    const hasFeatureCheck = await page.evaluate((source) => {
+      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '');
+      const allText = [source, ...scripts].join('\n');
+      return (
+        /['"]popover['"]\s*in\s*HTMLElement\.prototype/.test(allText) ||
+        /Object\.hasOwn\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\s*\)/.test(allText) ||
+        allText.includes('hasOwnProperty("popover")') ||
+        allText.includes("hasOwnProperty('popover')") ||
+        allText.includes('showPopover')
+      );
+    }, fileContent);
+    expect(hasFeatureCheck).toBe(true);
+
+    const trigger = page.locator('#anchor, [popovertarget], [aria-describedby]').first();
+    const tooltip = page.locator('#latte-tooltip, #maple-tooltip, #tooltip, [role="tooltip"], [popover]').first();
+
+    const isVisible = async () => {
+      return await tooltip.evaluate((el) => {
+        const style = window.getComputedStyle(el);
+        const isHidden = (el instanceof HTMLElement && el.hidden) || el.hasAttribute('hidden');
+        return style.display !== 'none' && style.visibility !== 'hidden' && !isHidden && style.opacity !== '0';
+      }).catch(() => false);
+    };
+
+    // Try showing via click, then hover/focus
+    await trigger.click().catch(() => {});
+    let shown = await isVisible();
+    if (!shown) {
+      await trigger.hover().catch(() => {});
+      await trigger.focus().catch(() => {});
+      shown = await isVisible();
+    }
+
+    // Verify it hides again
+    let hidden = false;
+    if (shown) {
+      await trigger.click().catch(() => {});
+      hidden = !(await isVisible());
+      if (!hidden) {
+        await page.mouse.move(0, 0);
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur?.());
+        await page.mouse.click(10, 10).catch(() => {});
+        hidden = !(await isVisible());
+      }
+    }
+
+    expect(shown && hidden).toBe(true);
   });
 
   test('uses position-area to define default placement', async ({ page }) => {

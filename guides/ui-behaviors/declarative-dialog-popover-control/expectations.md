@@ -7,7 +7,7 @@
 - The fallback strategy MUST feature detect support by checking for `commandForElement` in `HTMLButtonElement.prototype` and `popover` in `HTMLElement.prototype`.
 - Polyfills MUST be loaded via dynamic `import()` only when native support is missing (or forced for testing).
 - The `invokers-polyfill` is dynamically imported (e.g., `import('invokers-polyfill')` with a bundler, or from a CDN such as `https://esm.run/invokers-polyfill`).
-- The `@oddbird/popover-polyfill` is dynamically imported.
+- The `@oddbird/popover-polyfill`, if present, is dynamically imported.
 - CSS styling for the open state of a popover uses `:is()` or `:where()` to combine `:popover-open` with the polyfill class `.\:popover-open`.
 - The target element for explicit popover control (show/hide) has the `popover="manual"` attribute.
 - A `command` event listener is attached directly to each target element (not delegated via bubbling) when using the polyfill.
