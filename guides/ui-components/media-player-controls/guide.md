@@ -7,6 +7,4 @@ web-feature-ids:
   - audio
   - media-session
   - picture-in-picture
-guides:
-  - single-line-overflow
 ---

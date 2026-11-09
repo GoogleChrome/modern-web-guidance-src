@@ -7,5 +7,4 @@ guides:
   - spatial-navigation
   - responsive-table
   - sortable-table
-  - single-line-overflow
 ---
