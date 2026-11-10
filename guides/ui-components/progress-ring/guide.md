@@ -172,12 +172,15 @@ If the transition is absolutely necessary, you can check for `@property` support
 For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center of the `<progress>` element.
 
 ```css
+/* Declarations inside a top-level @supports need a selector, or the parser drops them. */
 @supports not (background-clip: border-area) {
-  mask-image: radial-gradient(
-    transparent calc(50% - var(--thickness)),
-    black calc(50% - var(--thickness) + 0.5px)
-  );
-  border: 0;
+  progress.progress-ring {
+    mask-image: radial-gradient(
+      transparent calc(50% - var(--thickness)),
+      black calc(50% - var(--thickness) + 0.5px)
+    );
+    border: 0;
+  }
 }
 ```
 
