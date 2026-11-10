@@ -402,6 +402,99 @@ test.describe('navbar Target Grader', () => {
       ).toBe(1);
     });
 
+    test('The visual indicator for the current page must not rely on color alone, and have a contrast of at least 3:1 with the background', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.goto(TARGET_URL);
+
+      const result = await page.evaluate(() => {
+        const nav = document.querySelector('nav');
+        const scope = nav?.closest('header') || nav;
+        if (!scope) return { pass: false, reason: 'no nav found' };
+        let current = scope.querySelector<HTMLAnchorElement>('nav a[aria-current="page"]');
+        if (!current) {
+          const first = scope.querySelector<HTMLAnchorElement>('nav a[href]');
+          if (first) {
+            first.setAttribute('aria-current', 'page');
+            current = first;
+          }
+        }
+        if (!current) return { pass: false, reason: 'no current link' };
+        const inactive = scope.querySelector<HTMLAnchorElement>('nav a:not([aria-current="page"])');
+        if (!inactive) return { pass: false, reason: 'no inactive link' };
+
+        const csCurrent = window.getComputedStyle(current);
+        const csInactive = window.getComputedStyle(inactive);
+        const beforeCurrent = window.getComputedStyle(current, '::before');
+        const afterCurrent = window.getComputedStyle(current, '::after');
+
+        // 1. Must not rely on color alone (must have non-color difference)
+        const hasTextDecoration =
+          (csCurrent.textDecorationLine !== 'none' && csCurrent.textDecorationLine !== csInactive.textDecorationLine) ||
+          (csCurrent.textDecoration !== csInactive.textDecoration && csCurrent.textDecoration !== 'none');
+        const hasWeightDiff = Math.abs(parseInt(csCurrent.fontWeight || '400') - parseInt(csInactive.fontWeight || '400')) >= 100;
+        const hasBorderDiff =
+          parseFloat(csCurrent.borderBottomWidth || '0') > 0 ||
+          parseFloat(csCurrent.borderWidth || '0') > parseFloat(csInactive.borderWidth || '0');
+        const hasBgDiff =
+          csCurrent.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+          csCurrent.backgroundColor !== 'transparent' &&
+          csCurrent.backgroundColor !== csInactive.backgroundColor;
+        const hasPseudo =
+          (beforeCurrent.content !== 'none' && beforeCurrent.content !== '') ||
+          (afterCurrent.content !== 'none' && afterCurrent.content !== '');
+        const hasNonColorCue = hasTextDecoration || hasWeightDiff || hasBorderDiff || hasBgDiff || hasPseudo;
+
+        if (!hasNonColorCue) return { pass: false, reason: 'relies on color alone' };
+
+        // 2. Visual indicator contrast must be at least 3:1 against background
+        const parseRgb = (c: string): [number, number, number] => {
+          const m = c.match(/\d+(\.\d+)?/g);
+          return m ? [Number(m[0]), Number(m[1]), Number(m[2])] : [255, 255, 255];
+        };
+        const srgbToLinear = (c: number) => {
+          const s = c / 255;
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        };
+        const relLuminance = ([r, g, b]: [number, number, number]) =>
+          0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+        const contrastRatio = (a: [number, number, number], b: [number, number, number]) => {
+          const l1 = relLuminance(a);
+          const l2 = relLuminance(b);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+
+        const resolveBg = (el: HTMLElement): [number, number, number] => {
+          let curr: HTMLElement | null = el;
+          while (curr) {
+            const bg = window.getComputedStyle(curr).backgroundColor;
+            const m = bg.match(/\d+(\.\d+)?/g);
+            if (m && Number(m[3] ?? 1) > 0.05 && bg !== 'rgba(0, 0, 0, 0)') {
+              return [Number(m[0]), Number(m[1]), Number(m[2])];
+            }
+            curr = curr.parentElement;
+          }
+          return [255, 255, 255];
+        };
+
+        const bg = resolveBg(current);
+        let indicatorColor = csCurrent.color;
+        if (hasTextDecoration && csCurrent.textDecorationColor && csCurrent.textDecorationColor !== 'rgba(0, 0, 0, 0)') {
+          indicatorColor = csCurrent.textDecorationColor;
+        } else if (hasBorderDiff && parseFloat(csCurrent.borderBottomWidth || '0') > 0) {
+          indicatorColor = csCurrent.borderBottomColor;
+        } else if (hasBgDiff) {
+          indicatorColor = csCurrent.backgroundColor;
+        }
+        const ratio = contrastRatio(parseRgb(indicatorColor), bg);
+
+        return { pass: ratio >= 3.0, reason: ratio < 3.0 ? `contrast ratio ${ratio.toFixed(2)} is less than 3:1` : 'ok' };
+      });
+
+      expect(result.pass).toBe(true);
+    });
+
     test('On wide layouts, each nested submenu is a popover="auto" opened by its trigger\'s popovertarget and positioned relative to the trigger with CSS Anchor Positioning', async ({
       page,
     }) => {
