@@ -18,6 +18,7 @@ import {
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
 import { findGraderFiles } from '../core/grader-lint.ts';
+import { replaceMacros } from '../core/macros.ts';
 import {
   type GuideInventory,
   GUIDE_FILE,
@@ -491,6 +492,13 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   return overallSuccess;
 }
 
+export function prepareTargetGuide(guideDirAbs: string, workDir: string): void {
+  const guidePath = path.join(guideDirAbs, GUIDE_FILE);
+  const rawGuide = fs.readFileSync(guidePath, 'utf-8');
+  const expandedGuide = replaceMacros(rawGuide, guidePath, { target: 'skills-cli' });
+  fs.writeFileSync(path.join(workDir, GUIDE_FILE), expandedGuide);
+}
+
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
   if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -498,7 +506,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    prepareTargetGuide(guideDirAbs, workDir);
 
     let prompt: string;
     if (patchType === 'zero-passrate') {

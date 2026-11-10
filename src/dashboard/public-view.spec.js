@@ -164,8 +164,50 @@ test.describe('Public view', () => {
     await expect(row.locator('.source-cell')).toHaveText('public');
     await expect(row.locator('a.suite-link')).toHaveAttribute('href', /source=public/);
     await expect(page.locator('.suite-table-row', { hasText: 'example-result' })).toHaveCount(0);
-    await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
+    await expect(page.locator('#auth-btn')).toBeHidden();
+    await expect(page.locator('#scheduled-only-label')).toBeHidden();
+    await expect(page.locator('#scheduled-only-check')).toBeHidden();
     expect(googleRequests).toEqual([]);
+  });
+
+  test('Scheduled only toggle is hidden on public dashboard but visible on internal', async ({ page }) => {
+    await servePublicCopy(page);
+    await page.goto('/?source=public');
+    await expect(page.locator('#scheduled-only-label')).toBeHidden();
+    await expect(page.locator('#scheduled-only-check')).toBeHidden();
+
+    // On local/internal server it is visible
+    await page.goto('/');
+    await expect(page.locator('#scheduled-only-label')).toBeVisible();
+    await expect(page.locator('#scheduled-only-check')).toBeVisible();
+  });
+
+  test('Sign in with Google button is hidden by default and revealed by ?show_login=true', async ({ page }) => {
+    await servePublicCopy(page);
+
+    await page.goto('/?source=public');
+    await expect(page.locator('#auth-btn')).toBeHidden();
+
+    await page.goto('/?source=public&show_login=false');
+    await expect(page.locator('#auth-btn')).toBeHidden();
+
+    await page.goto('/?source=public&show_login=true');
+    await expect(page.locator('#auth-btn')).toBeVisible();
+    await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
+
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+    await expect(page.locator('#auth-btn')).toBeHidden();
+
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public&show_login=true`);
+    await expect(page.locator('#auth-btn')).toBeVisible();
+    await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
+
+    await page.goto('/guide.html?guide=security&source=public');
+    await expect(page.locator('#auth-btn')).toBeHidden();
+
+    await page.goto('/guide.html?guide=security&source=public&show_login=true');
+    await expect(page.locator('#auth-btn')).toBeVisible();
+    await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
   });
 
   test('suite page renders, and Diff and Log open from public-evals only', async ({ page }) => {
@@ -318,6 +360,9 @@ test.describe('Public view', () => {
     await expect(page.locator('.suites-empty-row')).toBeVisible();
     await expect(page.locator('.suite-table-row')).toHaveCount(0);
     await expect(page.locator('#hero-status-text')).toHaveText('No published results yet. Googlers can sign in to see internal runs.');
+    await expect(page.locator('#hero-auth-btn')).toBeHidden();
+
+    await page.goto('/?source=public&show_login=true');
     await expect(page.locator('#hero-auth-btn')).toBeVisible();
     expect(errors.filter(e => e.includes('public suites'))).toEqual([]);
     expect(googleRequests).toEqual([]);
@@ -328,7 +373,7 @@ test.describe('Public view', () => {
     const authHeaders = await mockPrivateBucket(page);
     const origin = await serveAsGitHubPages(page);
 
-    await page.goto(`${origin}/?source=public`);
+    await page.goto(`${origin}/?source=public&show_login=true`);
     const row = () => page.locator('.suite-table-row', { hasText: 'codex' }).first();
     await expect(row().locator('.source-cell')).toHaveText('public');
     expect(authHeaders).toEqual([]);
@@ -388,6 +433,7 @@ test.describe('Signed-in view', () => {
     await authBtn.click();
     await page.waitForURL(url => url.origin === origin && url.pathname === '/' && url.search === '');
     expect(await page.evaluate(() => localStorage.getItem('gcs_access_token'))).toBeNull();
+    await expect(page.locator('#auth-btn')).toBeHidden();
     await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
     await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first().locator('.source-cell')).toHaveText('public');
     expect(googleRequests).toEqual([]);
@@ -408,6 +454,7 @@ test.describe('Signed-in view', () => {
     await page.locator('#auth-btn').click();
     await page.waitForURL(url => url.origin === origin && url.pathname === '/' && url.search === '');
     expect(await page.evaluate(() => localStorage.getItem('gcs_access_token'))).toBeNull();
+    await expect(page.locator('#auth-btn')).toBeHidden();
     await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
     await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first().locator('.source-cell')).toHaveText('public');
   });
@@ -444,6 +491,7 @@ test.describe('Signed-in view', () => {
 
     await page.goto(`${origin}/`);
     await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first().locator('.source-cell')).toHaveText('public');
+    await expect(page.locator('#auth-btn')).toBeHidden();
     await expect(page.locator('#auth-btn')).toHaveText(/Sign in/);
     expect(authHeaders).toContain('Bearer expired-token');
     expect(await page.evaluate(() => localStorage.getItem('gcs_access_token'))).toBeNull();

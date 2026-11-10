@@ -1,0 +1,274 @@
+diff --git a/index.html b/index.html
+index 66c9173..9311e9c 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,44 @@
+       color: var(--primary);
+     }
+ 
++    .favorites {
++      --drop-marker-color: var(--primary);
++      --drop-line-size: 3px;
++      --drop-ring-size: 8px;
++      --drop-gap: 10px;
++      --lift-opacity: 1;
++      --lift-shadow: 0 8px 20px #3e272340;
++      position: relative;
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      padding: 1rem 0 1rem 1rem;
++      scroll-behavior: auto;
++    }
++    .favorites > .card { flex: 1 0 250px; min-width: 0; scroll-margin: 1rem; position: relative; }
++    .favorites > .card:last-child { margin-inline-end: 1rem; }
++    .reorder-handle { display: none; }
++    .favorites.is-ready .reorder-handle {
++      display: block; margin: 0 auto 10px; padding: 5px 12px;
++      border: 0; border-radius: 4px; background: var(--secondary); color: var(--text);
++      font: inherit; cursor: grab; touch-action: none;
++      -webkit-user-select: none; user-select: none;
++    }
++    .reorder-handle:is(:hover, :focus-visible) { background: var(--accent); outline: none; }
++    .card:has(.reorder-handle:focus-visible) { outline: 3px solid var(--primary); outline-offset: 2px; }
++    .card.is-lifted { z-index: 2; scale: 1.02; opacity: var(--lift-opacity); box-shadow: var(--lift-shadow); }
++    .card.is-dragging { pointer-events: none; }
++    html.is-reordering, html.is-reordering * { cursor: grabbing !important; }
++    .favorites[data-drop]::before, .favorites[data-drop]::after {
++      content: ''; position: fixed; pointer-events: none; z-index: 10;
++      background: var(--drop-marker-color); left: var(--drop-x); top: var(--drop-y);
++    }
++    .favorites[data-drop]::after { width: var(--drop-line-size); height: var(--drop-h); translate: -50% 0; }
++    .favorites[data-drop]::before { width: var(--drop-ring-size); height: var(--drop-ring-size); border-radius: 50%; translate: -50% -50%; }
++    .reorder-help { text-align: center; font-size: .85rem; }
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
++    @media (forced-colors: active) { .favorites { --drop-marker-color: Highlight; } }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,23 +215,28 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <p class="reorder-help" id="reorder-help" hidden>Drag a card’s handle to rearrange, or focus it and press Alt + Left or Right Arrow.</p>
++      <div class="grid favorites" aria-label="Seasonal favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
++          <button type="button" class="reorder-handle" aria-label="Reorder Maple Oat Latte" aria-describedby="reorder-help">⠿ Reorder</button>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
++          <button type="button" class="reorder-handle" aria-label="Reorder Dark Roast Espresso" aria-describedby="reorder-help">⠿ Reorder</button>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
++          <button type="button" class="reorder-handle" aria-label="Reorder Cold Brew" aria-describedby="reorder-help">⠿ Reorder</button>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p id="reorder-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +250,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="seasonal.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..e17d178 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check seasonal.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/seasonal.js b/seasonal.js
+new file mode 100644
+index 0000000..da3efa2
+--- /dev/null
++++ b/seasonal.js
+@@ -0,0 +1,169 @@
++// Reorder existing nodes so card state and sequential reading order stay together.
++(() => {
++  'use strict';
++  const list = document.querySelector('.favorites');
++  const status = document.getElementById('reorder-status');
++  if (!(list instanceof HTMLElement) || !status) return;
++  const cards = () => Array.from(list.children).filter(node => node instanceof HTMLElement);
++  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++  let drag = null;
++  let frame = 0;
++  let announcement = 0;
++  const rtl = () => getComputedStyle(list).direction === 'rtl';
++  function announce(message) {
++    clearTimeout(announcement);
++    status.textContent = '';
++    announcement = setTimeout(() => { status.textContent = message; }, 500);
++  }
++  function report(item, direction = '') {
++    announce(`${item.querySelector('h3').textContent} moved ${direction ? direction + ', ' : ''}to position ${cards().indexOf(item) + 1} of ${cards().length}.`);
++  }
++  function settle(item) {
++    item.getAnimations().forEach(animation => animation.finish());
++  }
++  function snapshot() {
++    return new Map(cards().map(item => [item, item.getBoundingClientRect()]));
++  }
++  function animate(before, lifted) {
++    for (const item of cards()) {
++      const old = before.get(item);
++      const rect = item.getBoundingClientRect();
++      const cleanup = () => {
++        if (drag?.item !== item) item.classList.remove('is-lifted');
++      };
++      if (!old || reducedMotion.matches) { cleanup(); continue; }
++      const animation = item.animate([
++        { translate: `${old.left - rect.left}px ${old.top - rect.top}px` },
++        { translate: '0px 0px' }
++      ], { duration: 220, easing: 'ease-out' });
++      if (item === lifted) animation.finished.then(cleanup, () => {});
++    }
++  }
++  function move(item, reference) {
++    if (reference === item || item.nextElementSibling === reference) return false;
++    if ('moveBefore' in Element.prototype) list.moveBefore(item, reference);
++    else if (reference) reference.before(item);
++    else list.append(item);
++    return true;
++  }
++  function clearMarker() {
++    delete list.dataset.drop;
++    for (const name of ['x', 'y', 'w', 'h']) list.style.removeProperty(`--drop-${name}`);
++  }
++  function update() {
++    if (!drag) return;
++    const bounds = list.getBoundingClientRect();
++    const x = Math.max(bounds.left + list.clientLeft, Math.min(drag.x, bounds.left + list.clientLeft + list.clientWidth));
++    const layoutX = x - bounds.left - list.clientLeft + list.scrollLeft;
++    const others = cards().filter(item => item !== drag.item);
++    drag.reference = others.find(item => rtl()
++      ? layoutX > item.offsetLeft + item.offsetWidth / 2
++      : layoutX < item.offsetLeft + item.offsetWidth / 2) || null;
++    drag.item.style.translate = `${drag.x - drag.startX + list.scrollLeft - drag.startScroll}px 0px`;
++    if (drag.reference === drag.item.nextElementSibling) { clearMarker(); return; }
++    const next = drag.reference;
++    const previous = next ? others[others.indexOf(next) - 1] : others.at(-1);
++    const a = previous?.getBoundingClientRect();
++    const b = next?.getBoundingClientRect();
++    const edgeA = a && (rtl() ? a.left : a.right);
++    const edgeB = b && (rtl() ? b.right : b.left);
++    const gap = Number.parseFloat(getComputedStyle(list).getPropertyValue('--drop-gap')) || 10;
++    const markerX = edgeA !== undefined && edgeB !== undefined ? (edgeA + edgeB) / 2
++      : edgeA !== undefined ? edgeA + (rtl() ? -gap : gap) : edgeB + (rtl() ? gap : -gap);
++    const rect = b || a;
++    list.dataset.drop = '';
++    list.style.setProperty('--drop-x', `${markerX}px`);
++    list.style.setProperty('--drop-y', `${rect.top}px`);
++    list.style.setProperty('--drop-w', '3px');
++    list.style.setProperty('--drop-h', `${rect.height}px`);
++  }
++  function tick(time) {
++    if (!drag) return;
++    const bounds = list.getBoundingClientRect();
++    const zone = Math.min(drag.item.offsetWidth, list.clientWidth / 3);
++    const penetration = drag.x < bounds.left + zone ? (drag.x - bounds.left - zone) / zone
++      : drag.x > bounds.right - zone ? (drag.x - bounds.right + zone) / zone : 0;
++    const dt = Math.min((time - drag.time) / 1000 || 0, .05);
++    drag.time = time;
++    list.scrollLeft += Math.max(-3, Math.min(3, penetration)) * 500 * dt;
++    update();
++    frame = requestAnimationFrame(tick);
++  }
++  function end(cancelled = false) {
++    if (!drag) return;
++    const current = drag;
++    cards().forEach(settle);
++    const before = snapshot();
++    drag = null;
++    cancelAnimationFrame(frame);
++    current.item.style.removeProperty('translate');
++    current.item.classList.remove('is-dragging');
++    document.documentElement.classList.remove('is-reordering');
++    clearMarker();
++    const changed = !cancelled && move(current.item, current.reference);
++    if (current.handle.hasPointerCapture(current.id)) current.handle.releasePointerCapture(current.id);
++    current.item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++    current.handle.focus({ preventScroll: true });
++    animate(before, current.item);
++    if (cancelled) announce(`${current.item.querySelector('h3').textContent}: reordering cancelled.`);
++    else if (changed) report(current.item);
++  }
++  list.addEventListener('pointerdown', event => {
++    if (drag || !event.isPrimary || event.button !== 0 || !(event.target instanceof Element)) return;
++    const handle = event.target.closest('.reorder-handle');
++    if (!(handle instanceof HTMLButtonElement)) return;
++    const item = handle.closest('.card');
++    if (!(item instanceof HTMLElement)) return;
++    cards().forEach(settle);
++    event.preventDefault();
++    handle.focus({ preventScroll: true });
++    drag = { item, handle, id: event.pointerId, x: event.clientX, startX: event.clientX,
++      startScroll: list.scrollLeft, reference: item.nextElementSibling, time: performance.now() };
++    handle.setPointerCapture(event.pointerId);
++    item.classList.add('is-lifted', 'is-dragging');
++    document.documentElement.classList.add('is-reordering');
++    frame = requestAnimationFrame(tick);
++  });
++  document.addEventListener('pointermove', event => {
++    if (drag?.id !== event.pointerId) return;
++    drag.x = event.clientX;
++    update();
++  });
++  document.addEventListener('pointerup', event => {
++    if (drag?.id === event.pointerId) { drag.x = event.clientX; update(); end(); }
++  });
++  document.addEventListener('pointercancel', event => { if (drag?.id === event.pointerId) end(true); });
++  list.addEventListener('lostpointercapture', event => {
++    if (drag?.id === event.pointerId && !drag.handle.hasPointerCapture(event.pointerId)) end(true);
++  });
++  document.addEventListener('keydown', event => {
++    if (event.key === 'Escape' && drag) { event.preventDefault(); end(true); return; }
++    if (drag || !event.altKey || event.ctrlKey || event.metaKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
++    if (!(event.target instanceof HTMLButtonElement) || !event.target.matches('.reorder-handle')) return;
++    event.preventDefault();
++    const handle = event.target;
++    const item = handle.closest('.card');
++    const items = cards();
++    const index = items.indexOf(item);
++    const delta = (event.key === 'ArrowRight' ? 1 : -1) * (rtl() ? -1 : 1);
++    if (index + delta < 0 || index + delta >= items.length) return;
++    items.forEach(settle);
++    const before = snapshot();
++    move(item, delta < 0 ? items[index - 1] : items[index + 2] || null);
++    item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++    handle.focus({ preventScroll: true });
++    animate(before);
++    report(item, event.key === 'ArrowRight' ? 'right' : 'left');
++  });
++  list.addEventListener('focusin', event => {
++    if (!(event.target instanceof Element) || !event.target.matches(':focus-visible')) return;
++    const item = event.target.closest('.card');
++    if (item && !item.getAnimations().length && !drag) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++  });
++  list.addEventListener('scroll', update, { passive: true });
++  document.addEventListener('scroll', update, { passive: true, capture: true });
++  window.addEventListener('resize', update);
++  window.addEventListener('blur', () => end(true));
++  list.classList.add('is-ready');
++  document.getElementById('reorder-help').hidden = false;
++})();

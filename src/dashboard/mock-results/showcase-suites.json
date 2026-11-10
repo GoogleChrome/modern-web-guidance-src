@@ -6,6 +6,10 @@
       "agent": "claude_code",
       "serving": "skills_cli",
       "model": "claude-fable-5-1",
+      "reasoningEffort": {
+        "level": "high",
+        "source": "configured"
+      },
       "taskCount": 198,
       "maxRuns": 1,
       "guidedStats": {
@@ -710,6 +714,10 @@
       "agent": "antigravity_cli",
       "serving": "skills_cli",
       "model": "gemini-4-argon",
+      "reasoningEffort": {
+        "level": "high",
+        "source": "observed"
+      },
       "taskCount": 197,
       "maxRuns": 1,
       "guidedStats": {
@@ -778,7 +786,18 @@
         }
       },
       "earlyFailureRate": 1,
-      "guides": {},
+      "guides": {
+        "content-vis": {
+          "guidedPassed": 7,
+          "guidedTotal": 7,
+          "guidedRate": 100,
+          "unguidedPassed": 4,
+          "unguidedTotal": 7,
+          "unguidedRate": 57,
+          "uplift": 43,
+          "taskName": "content-vis-task"
+        }
+      },
       "showcase": {
         "scrollspy": {
           "prompt": "Convert the Daily Grind sticky navigation bar links (Menu, Locations, Rewards, and My Account) into in-page section anchors with corresponding content sections on the homepage, and highlight whichever section is currently visible in the navigation bar as the user scrolls.",
@@ -1427,6 +1446,10 @@
       "agent": "codex_cli",
       "serving": "skills_cli",
       "model": "gpt-6.1-sol",
+      "reasoningEffort": {
+        "level": "medium",
+        "source": "observed"
+      },
       "taskCount": 198,
       "maxRuns": 1,
       "guidedStats": {
@@ -2125,6 +2148,142 @@
           ]
         }
       }
+    },
+    {
+      "testId": "weekly-2026-10-27_18-00-00-antigravity_cli",
+      "timestamp": "2026-10-27T19:42:10.000Z",
+      "agent": "antigravity_cli",
+      "serving": "skills_cli",
+      "model": "gemini-4-argon",
+      "reasoningEffort": {
+        "level": "medium",
+        "source": "configured"
+      },
+      "taskCount": 197,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 1451,
+        "total": 1629
+      },
+      "unguidedStats": {
+        "passed": 945,
+        "total": 1629
+      },
+      "a11yStats": {
+        "guidedPassed": 176,
+        "guidedTotal": 196,
+        "guidedRate": 90,
+        "unguidedPassed": 102,
+        "unguidedTotal": 196,
+        "unguidedRate": 52,
+        "uplift": 38,
+        "guideCount": 74,
+        "bySubCategory": {
+          "focus_inert": {
+            "guidedPassed": 38,
+            "guidedTotal": 42,
+            "guidedRate": 90,
+            "unguidedPassed": 15,
+            "unguidedTotal": 42,
+            "unguidedRate": 36,
+            "uplift": 54
+          }
+        }
+      },
+      "earlyFailureRate": 1,
+      "guides": {
+        "content-vis": {
+          "guidedPassed": 6,
+          "guidedTotal": 7,
+          "guidedRate": 86,
+          "unguidedPassed": 4,
+          "unguidedTotal": 7,
+          "unguidedRate": 57,
+          "uplift": 29,
+          "taskName": "content-vis-task"
+        }
+      },
+      "showcase": {}
+    },
+    {
+      "testId": "adhoc-2026-10-27_12-00-00-pi",
+      "timestamp": "2026-10-27T12:35:00.000Z",
+      "agent": "pi",
+      "serving": "skills_cli",
+      "model": "openrouter/qwen/qwen3-coder:low",
+      "reasoningEffort": {
+        "level": "low",
+        "source": "model-id"
+      },
+      "taskCount": 40,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 262,
+        "total": 320
+      },
+      "unguidedStats": {
+        "passed": 163,
+        "total": 320
+      },
+      "a11yStats": {
+        "guidedPassed": 34,
+        "guidedTotal": 40,
+        "guidedRate": 85,
+        "unguidedPassed": 21,
+        "unguidedTotal": 40,
+        "unguidedRate": 53,
+        "uplift": 32,
+        "guideCount": 18,
+        "bySubCategory": {}
+      },
+      "earlyFailureRate": 0,
+      "guides": {},
+      "showcase": {}
+    },
+    {
+      "testId": "adhoc-2026-10-26_15-00-00-opencode",
+      "timestamp": "2026-10-26T15:48:00.000Z",
+      "agent": "opencode",
+      "serving": "skills_cli",
+      "model": "gpt-6.1-mini",
+      "reasoningEffort": {
+        "source": "agent-default"
+      },
+      "taskCount": 40,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 250,
+        "total": 320
+      },
+      "unguidedStats": {
+        "passed": 160,
+        "total": 320
+      },
+      "a11yStats": {
+        "guidedPassed": 32,
+        "guidedTotal": 40,
+        "guidedRate": 80,
+        "unguidedPassed": 20,
+        "unguidedTotal": 40,
+        "unguidedRate": 50,
+        "uplift": 30,
+        "guideCount": 18,
+        "bySubCategory": {}
+      },
+      "earlyFailureRate": 0,
+      "guides": {
+        "content-vis": {
+          "guidedPassed": 6,
+          "guidedTotal": 7,
+          "guidedRate": 86,
+          "unguidedPassed": 3,
+          "unguidedTotal": 7,
+          "unguidedRate": 43,
+          "uplift": 43,
+          "taskName": "content-vis-task"
+        }
+      },
+      "showcase": {}
     }
   ]
 }

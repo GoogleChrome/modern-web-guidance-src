@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from '@11ty/gray-matter';
 import { rootDir } from '../core/paths.ts';
-import type { CompactSearchResult, UseCaseResult } from '../rag/search.ts';
+import { loadVectors, type CompactSearchResult, type UseCaseResult } from '../rag/search.ts';
 
 export function assertSearchResults(output: string) {
     const results = JSON.parse(output) as CompactSearchResult[];
@@ -240,7 +240,10 @@ test('modern-web CLI search and retrieve', async () => {
   assertSearchResults(searchOutWithVersion);
 
   // 2. Validate retrieve
-  const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  let retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  // Output over the CLI's inline limit is saved to a file, and its path is printed instead
+  const savedPath = retrieveOut.match(/saved to (\S+\.md)/)?.[1];
+  if (savedPath) retrieveOut = await fs.readFile(savedPath, 'utf8');
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 
   // 3. Validate list
@@ -273,6 +276,29 @@ test('modern-web CLI version flags', async () => {
   assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
 });
 
+test('modern-web CLI fails fast on Node < 22', async () => {
+  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
+  const { spawnSync } = await import('node:child_process');
+  const { pathToFileURL } = await import('node:url');
+  const fileUrl = pathToFileURL(binaryPath).href;
+
+  const spoofCode = `
+    Object.defineProperty(process.versions, 'node', { value: '20.10.0' });
+    Object.defineProperty(process, 'version', { value: 'v20.10.0' });
+    import(${JSON.stringify(fileUrl)});
+  `;
+
+  const res = spawnSync(process.execPath, ['--input-type=module', '-e', spoofCode], {
+    encoding: 'utf8',
+  });
+
+  assert.strictEqual(res.status, 1, 'Expected exit code 1');
+  assert.match(
+    res.stderr,
+    /modern-web-guidance requires Node\.js >= 22 \(current: v20\.10\.0\)\. Please upgrade: https:\/\/nodejs\.org\//
+  );
+});
+
 // TODO: this has been failing locally from publish-skills.ts
 test.skip('THIRD_PARTY_NOTICES validation', async () => {
   const noticesPath = path.join(STAGING_DIR, 'THIRD_PARTY_NOTICES');
@@ -284,7 +310,7 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
 });
 
-test('packaged dist contains static-model files and no .cache', async () => {
+test('packaged dist contains gen/ search tables and no .cache', async () => {
   const packJson = execSync('npm pack --dry-run --json', { encoding: 'utf8', cwd: STAGING_DIR });
   const parsed = JSON.parse(packJson);
   const pkgInfo = Array.isArray(parsed) ? parsed[0] : parsed;
@@ -298,19 +324,21 @@ test('packaged dist contains static-model files and no .cache', async () => {
   const metaFiles = paths.filter((p: string) => p.endsWith('.meta.json'));
   assert.strictEqual(metaFiles.length, 0, `Expected 0 .meta.json files in pack, found: ${metaFiles.join(', ')}`);
 
-  // Must have static model files
-  assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/words.json')),
-    'Pack must contain static-model/words.json'
-  );
-  assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/words.i8')),
-    'Pack must contain static-model/words.i8'
-  );
-  assert.ok(
-    paths.some((p: string) => p.endsWith('static-model/words.scale.f32')),
-    'Pack must contain static-model/words.scale.f32'
-  );
+  // Must have generated search and catalog tables under gen/
+  for (const genFile of [
+    'gen/guides.json',
+    'gen/guide-chunks.json.gz',
+    'gen/guide-chunks.i8',
+    'gen/guide-chunks.scale.f32',
+    'gen/query-words.json',
+    'gen/query-words.i8',
+    'gen/query-words.scale.f32',
+  ]) {
+    assert.ok(
+      paths.some((p: string) => p.endsWith(genFile)),
+      `Pack must contain ${genFile}`
+    );
+  }
 });
 
 test('search operates strictly offline with zero socket or fetch calls', async () => {
@@ -383,10 +411,21 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
 
 test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage', async () => {
   const zlib = await import('node:zlib');
-  const vectorFile = path.join(STAGING_DIR, 'skills/modern-web-guidance/use-cases.vectors.gen.json.gz');
+  const distSkillDir = path.join(STAGING_DIR, 'skills/modern-web-guidance');
+  const vectorFile = path.join(distSkillDir, 'gen/guide-chunks.json.gz');
   const compressed = await fs.readFile(vectorFile);
-  const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8'));
-  assert.ok(items.length > 0, 'Corpus should contain chunks');
+  const rawItems = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8')) as Array<Record<string, unknown>>;
+  assert.ok(rawItems.length > 0, 'Corpus should contain chunks');
+  for (const raw of rawItems) {
+    assert.strictEqual(
+      'vector' in raw,
+      false,
+      'guide-chunks.json.gz must not contain serialized ASCII vector arrays'
+    );
+  }
+
+  const items = loadVectors(distSkillDir);
+  assert.strictEqual(items.length, rawItems.length);
   let teacherCount = 0;
   for (const item of items) {
     assert.ok(

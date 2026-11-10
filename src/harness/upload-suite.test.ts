@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import { uploadDirectory } from './upload-suite.ts';
+import { reconcileAndUploadManifest, uploadDirectory } from './upload-suite.ts';
 import { generateExportHtml } from './lib/trajectory-export.ts';
 import { generateTransientPackage } from './run-suite.ts';
 
@@ -133,5 +133,93 @@ describe('run.mjs env allowlist isolation', () => {
       assert.strictEqual(agentEnv.ANTIGRAVITY_MODEL, 'gemini-test-model');
       assert.ok(graderEnv.PATCH_FILE?.endsWith('agent.patch'));
     });
+  });
+});
+
+describe('reconcileAndUploadManifest', () => {
+  const sampleEvals = (passed: boolean) => ({
+    timestamp: '2026-10-20T00:00:00Z',
+    agent: 'codex_cli',
+    model: 'gpt-6-astra',
+    results: {
+      'app - accordion - guided': [{
+        runNumber: 1,
+        discipline: 'ui-components',
+        results: [{ id: 'chk-1', passed, message: 'Trigger button sets aria-expanded="true" when open' }],
+      }],
+      'app - accordion - unguided': [{
+        runNumber: 1,
+        discipline: 'ui-components',
+        results: [{ id: 'chk-1', passed: false, message: 'Trigger button sets aria-expanded="true" when open' }],
+      }],
+    },
+  });
+
+  function makeManifestBucket(initialManifest: unknown[] | null, suiteEvals: Record<string, unknown>) {
+    let savedManifest: any[] | null = initialManifest ? structuredClone(initialManifest) : null;
+    const downloadedSuites: string[] = [];
+    return {
+      downloadedSuites,
+      getSavedManifest: () => savedManifest,
+      bucket: {
+        async getFiles() {
+          return [[], null, { prefixes: Object.keys(suiteEvals).map(id => `${id}/`) }];
+        },
+        file(objectPath: string) {
+          if (objectPath === 'suites.gen.json') {
+            return {
+              async exists() { return [savedManifest !== null]; },
+              async download() { return [Buffer.from(JSON.stringify(savedManifest))]; },
+              async save(body: string) { savedManifest = JSON.parse(body); },
+            };
+          }
+          const suiteId = objectPath.replace(/\/evals\.json$/, '');
+          return {
+            async download() {
+              downloadedSuites.push(suiteId);
+              return [Buffer.from(JSON.stringify(suiteEvals[suiteId]))];
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test('backfills only suites missing headline stats by default and re-extracts all when reextractAll is set', async () => {
+    const completeStaleEntry = {
+      testId: 'nightly-2026-10-20_07-00-00-codex_cli',
+      guidedStats: { passed: 0, total: 1 },
+      a11yStats: { guidedPassed: 0, guidedTotal: 1, unguidedPassed: 0, unguidedTotal: 1, guidedRate: 0, unguidedRate: 0, uplift: 0, guideCount: 1, bySubCategory: {} },
+      showcase: {},
+    };
+    const missingStatsEntry = {
+      testId: 'nightly-2026-10-21_07-00-00-codex_cli',
+      guidedStats: { passed: 1, total: 1 },
+    };
+    const store = makeManifestBucket(
+      [completeStaleEntry, missingStatsEntry],
+      {
+        'nightly-2026-10-20_07-00-00-codex_cli': sampleEvals(true),
+        'nightly-2026-10-21_07-00-00-codex_cli': sampleEvals(true),
+      },
+    );
+
+    // Default reconciliation: backfills only the incomplete entry, leaving completeStaleEntry untouched.
+    await reconcileAndUploadManifest(store.bucket, null, null);
+    assert.deepEqual(store.downloadedSuites, ['nightly-2026-10-21_07-00-00-codex_cli']);
+    assert.equal(store.getSavedManifest()?.[0].a11yStats.guidedPassed, 0);
+    assert.equal(store.getSavedManifest()?.[1].a11yStats.guidedPassed, 1);
+
+    // Full re-extraction (--reextract-manifest): refreshes already-populated entries too, skipping uploadedSuiteName if just provided.
+    store.downloadedSuites.length = 0;
+    await reconcileAndUploadManifest(
+      store.bucket,
+      'nightly-2026-10-21_07-00-00-codex_cli',
+      sampleEvals(false),
+      { reextractAll: true },
+    );
+    assert.deepEqual(store.downloadedSuites, ['nightly-2026-10-20_07-00-00-codex_cli']);
+    assert.equal(store.getSavedManifest()?.[0].a11yStats.guidedPassed, 1);
+    assert.equal(store.getSavedManifest()?.[1].a11yStats.guidedPassed, 0);
   });
 });

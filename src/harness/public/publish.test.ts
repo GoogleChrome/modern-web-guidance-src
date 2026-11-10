@@ -93,6 +93,27 @@ describe('publishPublicEvals + checkoutPublished', () => {
     assert.equal(execFileSync('git', ['-C', inspect, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim(), '1');
   });
 
+  test('publishes modern-web.log even though the deployed dashboard .gitignore excludes *.log', async () => {
+    const bare = makeBareRemote();
+    seedBranchFile(bare, '.gitignore', '*.log\n');
+    const head = remoteHead(bare);
+    assert.ok(head);
+
+    const out = makeOutDir({
+      'suites.gen.json': '[{"testId":"suite-1"}]\n',
+      'suite-1/evals.json': '{"n":1}\n',
+      'suite-1/1/security/daily-grind/guided/modern-web.log': 'GET /guides/security\n',
+    });
+    await publishPublicEvals(out, { repoUrl: bare, message: 'with log', expectedHead: head, user: TEST_USER });
+
+    const inspect = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-inspect-'));
+    execFileSync('git', ['clone', '--quiet', '--branch', 'gh-pages', bare, inspect]);
+    assert.equal(
+      fs.readFileSync(path.join(inspect, 'public-evals', 'suite-1', '1', 'security', 'daily-grind', 'guided', 'modern-web.log'), 'utf8'),
+      'GET /guides/security\n',
+    );
+  });
+
   test('publishing an identical copy is a no-op, and dot-prefixed entries are not published', async () => {
     const bare = makeBareRemote();
     const out = makeOutDir({

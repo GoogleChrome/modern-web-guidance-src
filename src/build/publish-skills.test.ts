@@ -93,9 +93,6 @@ test('validate dry-run checks without throwing and allows uncached chunk fallbac
           {
             guideId: 'example-guide',
             category: 'css',
-            description: 'Example',
-            featuresUsed: [],
-            chunkContent: 'chunk',
             embeddedText: 'chunk',
             hash: 'abc',
           },

@@ -30,7 +30,47 @@ function findGuideDirs(dir: string, result: Record<string, string> = {}): Record
   return result;
 }
 
-function extractTaskPrompt(taskPath: string): string {
+function stripBaselineTargetSuffix(targetName: string): string {
+  return targetName.replace(/-(?:widely|newly|limited)$/, '');
+}
+
+function resolveTaskFilePath(guideDir: string, targetName: string): string {
+  const baseTarget = stripBaselineTargetSuffix(targetName);
+  const candidates = [
+    path.join(guideDir, 'targets', targetName, 'task.md'),
+    path.join(guideDir, 'targets', baseTarget, 'task.md'),
+    path.join(guideDir, 'tasks', `${targetName}.md`),
+    path.join(guideDir, 'tasks', 'task.md'),
+    path.join(guideDir, 'targets', 'daily-grind', 'task.md'),
+    path.join(guideDir, 'targets', 'devtools-times', 'task.md'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return targetName === 'task'
+    ? path.join(guideDir, 'tasks', 'task.md')
+    : path.join(guideDir, 'targets', baseTarget, 'task.md');
+}
+
+function resolveGraderFilePath(guideDir: string, targetName: string): string {
+  const baseTarget = stripBaselineTargetSuffix(targetName);
+  const candidates = [
+    path.join(guideDir, 'targets', targetName, 'grader.ts'),
+    path.join(guideDir, 'targets', baseTarget, 'grader.ts'),
+    path.join(guideDir, 'grader.ts'),
+    path.join(guideDir, 'targets', 'daily-grind', 'grader.ts'),
+    path.join(guideDir, 'targets', 'devtools-times', 'grader.ts'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return targetName === 'task'
+    ? path.join(guideDir, 'grader.ts')
+    : path.join(guideDir, 'targets', baseTarget, 'grader.ts');
+}
+
+function extractTaskPrompt(guideDir: string, targetName: string): string {
+  const taskPath = resolveTaskFilePath(guideDir, targetName);
   if (!fs.existsSync(taskPath)) return '';
   const content = fs.readFileSync(taskPath, 'utf8');
   const parts = content.split('---');
@@ -54,7 +94,8 @@ function extractGuideDescription(guidePath: string): string {
   return '';
 }
 
-function extractGraderTests(graderPath: string): string[] {
+function extractGraderTests(guideDir: string, targetName: string): string[] {
+  const graderPath = resolveGraderFilePath(guideDir, targetName);
   if (!fs.existsSync(graderPath)) return [];
   const content = fs.readFileSync(graderPath, 'utf8');
   const lines = content.split('\n');
@@ -71,6 +112,8 @@ function extractGraderTests(graderPath: string): string[] {
 }
 
 interface TaskDetails {
+  targetName: string;
+  guideName: string;
   missingExpectedGuideCount: number;
   tooManyGuidesCount: number;
   guidedPassRates: { [agent: string]: number };
@@ -94,15 +137,16 @@ interface FailedAssertion {
   message: string;
 }
 
-function getFailedAssertions(agentData: any, taskName: string, mode: 'guided' | 'unguided'): FailedAssertion[] {
-  const key = `task - ${taskName} - ${mode}`;
+function getFailedAssertions(agentData: any, taskPrefix: string, mode: 'guided' | 'unguided'): FailedAssertion[] {
+  const key = `${taskPrefix} - ${mode}`;
   const runs = agentData.results?.[key] || [];
   const failuresMap = new Map<string, string>();
   for (const run of runs) {
     if (run && Array.isArray(run.results)) {
       for (const res of run.results) {
         if (res.passed === false) {
-          failuresMap.set(res.testId, res.message || '');
+          const checkId = res.id ?? res.testId ?? res.message ?? 'unknown-check';
+          failuresMap.set(String(checkId), res.message || '');
         }
       }
     }
@@ -110,11 +154,11 @@ function getFailedAssertions(agentData: any, taskName: string, mode: 'guided' | 
   return Array.from(failuresMap.entries()).map(([testId, message]) => ({ testId, message }));
 }
 
-function getCommonFailures(taskName: string, mode: 'guided' | 'unguided', parsedDataByAgent: Record<string, any>, activeAgents: string[]): FailedAssertion[] {
+function getCommonFailures(taskPrefix: string, mode: 'guided' | 'unguided', parsedDataByAgent: Record<string, any>, activeAgents: string[]): FailedAssertion[] {
   if (activeAgents.length === 0) return [];
   
   const firstAgent = activeAgents[0];
-  const firstFailures = getFailedAssertions(parsedDataByAgent[firstAgent], taskName, mode);
+  const firstFailures = getFailedAssertions(parsedDataByAgent[firstAgent], taskPrefix, mode);
   let commonTestIds = new Set(firstFailures.map(f => f.testId));
   
   const messageMap = new Map<string, string>();
@@ -124,7 +168,7 @@ function getCommonFailures(taskName: string, mode: 'guided' | 'unguided', parsed
   
   for (let i = 1; i < activeAgents.length; i++) {
     const agent = activeAgents[i];
-    const agentFailures = getFailedAssertions(parsedDataByAgent[agent], taskName, mode);
+    const agentFailures = getFailedAssertions(parsedDataByAgent[agent], taskPrefix, mode);
     const agentTestIds = new Set(agentFailures.map(f => f.testId));
     
     const nextCommon = new Set<string>();
@@ -166,7 +210,7 @@ async function main() {
     // Expected formats:
     // gs://guidance-evals/nightly-YYYY-MM-DD_HH-MM-SS-agent/
     // gs://guidance-evals/nightly-YYYY-MM-DD_HH-MM-SS-agent-user/
-    const match = cleanLine.match(/gs:\/\/guidance-evals\/(nightly-([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-(jetski_cli|codex_cli|claude_code|agy|claude|codex|jetski)(?:-([a-zA-Z0-9_]+))?)\//);
+    const match = cleanLine.match(/gs:\/\/guidance-evals\/(nightly-([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-(jetski_cli|codex_cli|claude_code|antigravity_cli|agy|claude|codex|jetski)(?:-([a-zA-Z0-9_]+))?)\//);
     if (!match) continue;
 
     const [_, folderName, timestampStr, agentStr] = match;
@@ -177,7 +221,7 @@ async function main() {
       agent = 'claude_code';
     } else if (agentLower.includes('codex')) {
       agent = 'codex_cli';
-    } else if (agentLower.includes('jetski') || agentLower.includes('agy')) {
+    } else if (agentLower.includes('jetski') || agentLower.includes('agy') || agentLower.includes('antigravity')) {
       agent = 'jetski_cli';
     }
 
@@ -262,16 +306,19 @@ async function main() {
     }
   }
 
-  // Collect all unique tasks across all runs
-  const allTasks = new Set<string>();
+  // Collect all unique "<targetName> - <guideName>" task prefixes across all runs
+  const allTasks = new Map<string, { targetName: string; guideName: string }>();
   for (const agent of activeAgents) {
     const data = parsedDataByAgent[agent];
     const results = data.results || {};
     for (const key of Object.keys(results)) {
-      // Key is: "task - <guideName> - guided" or "task - <guideName> - unguided"
+      // Key is: "<targetName> - <guideName> - guided|unguided"
       const parts = key.split(' - ');
-      if (parts.length >= 2) {
-        allTasks.add(parts[1]);
+      if (parts.length >= 3) {
+        const targetName = parts[0];
+        const guideName = parts.slice(1, -1).join(' - ');
+        const taskPrefix = `${targetName} - ${guideName}`;
+        allTasks.set(taskPrefix, { targetName, guideName });
       }
     }
   }
@@ -280,14 +327,16 @@ async function main() {
 
   const taskAnalysis: Record<string, TaskDetails> = {};
 
-  for (const taskName of allTasks) {
-    taskAnalysis[taskName] = {
+  for (const [taskPrefix, { targetName, guideName }] of allTasks.entries()) {
+    taskAnalysis[taskPrefix] = {
+      targetName,
+      guideName,
       missingExpectedGuideCount: 0,
       tooManyGuidesCount: 0,
       guidedPassRates: {},
       unguidedPassRates: {},
       guidesConsumed: {},
-      expectedGuide: taskName,
+      expectedGuide: guideName,
     };
 
     for (const agent of activeAgents) {
@@ -296,13 +345,13 @@ async function main() {
       const stats = data.stats || {};
 
       // Guided info
-      const guidedKey = `task - ${taskName} - guided`;
+      const guidedKey = `${taskPrefix} - guided`;
       const guidedRuns = results[guidedKey] || [];
       const guidedStats = stats[guidedKey] || {};
 
       // Pass rate (default to 0 if no guided stats or no runs)
       const guidedPassRate = typeof guidedStats.medianPassRate === 'number' ? guidedStats.medianPassRate : 0;
-      taskAnalysis[taskName].guidedPassRates[agent] = guidedPassRate;
+      taskAnalysis[taskPrefix].guidedPassRates[agent] = guidedPassRate;
 
       // Expected guide and consumed guides
       const guidesConsumed: string[] = [];
@@ -313,23 +362,23 @@ async function main() {
           guidesConsumed.push(...firstRun.guidesUsed);
         }
       }
-      taskAnalysis[taskName].guidesConsumed[agent] = guidesConsumed;
+      taskAnalysis[taskPrefix].guidesConsumed[agent] = guidesConsumed;
 
-      // Flag: Missing expected guide (expected guide is taskName itself)
-      if (!guidesConsumed.includes(taskName)) {
-        taskAnalysis[taskName].missingExpectedGuideCount++;
+      // Flag: Missing expected guide (expected guide is guideName)
+      if (!guidesConsumed.includes(guideName)) {
+        taskAnalysis[taskPrefix].missingExpectedGuideCount++;
       }
 
       // Flag: Too many guides consumed (3 or more)
       if (guidesConsumed.length >= 3) {
-        taskAnalysis[taskName].tooManyGuidesCount++;
+        taskAnalysis[taskPrefix].tooManyGuidesCount++;
       }
 
       // Unguided info
-      const unguidedKey = `task - ${taskName} - unguided`;
+      const unguidedKey = `${taskPrefix} - unguided`;
       const unguidedStats = stats[unguidedKey] || {};
       const unguidedPassRate = typeof unguidedStats.medianPassRate === 'number' ? unguidedStats.medianPassRate : 0;
-      taskAnalysis[taskName].unguidedPassRates[agent] = unguidedPassRate;
+      taskAnalysis[taskPrefix].unguidedPassRates[agent] = unguidedPassRate;
     }
   }
 
@@ -341,7 +390,7 @@ async function main() {
     raw: TaskDetails;
   }[] = [];
 
-  for (const [taskName, details] of Object.entries(taskAnalysis)) {
+  for (const [taskPrefix, details] of Object.entries(taskAnalysis)) {
     const flags: string[] = [];
     const flagDetailsList: string[] = [];
 
@@ -357,25 +406,17 @@ async function main() {
       flagDetailsList.push(`Consumed 3 or more guides in ${details.tooManyGuidesCount} out of ${activeAgents.length} agent runs.`);
     }
 
-    // 3. Low guided percentage rate: Guided pass rate under 75% in all runs
-    const allGuidedUnder75 = activeAgents.every(agent => details.guidedPassRates[agent] < 75);
-    if (allGuidedUnder75) {
-      flags.push('LOW_GUIDED_PASS_RATE');
-      const rateStrings = activeAgents.map(agent => `${agent}: ${details.guidedPassRates[agent]}%`).join(', ');
-      flagDetailsList.push(`Guided pass rate was under 75% in all nightly runs (${rateStrings}).`);
-    }
-
-    // 4. High unguided percentage rate: Unguided pass rate 90% or higher in all runs
-    const allUnguidedOver90 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 90);
-    if (allUnguidedOver90) {
+    // 3. High unguided pass rate (80% or higher in all runs). Low guided pass rate is never flagged.
+    const allUnguidedOver80 = activeAgents.every(agent => details.unguidedPassRates[agent] >= 80);
+    if (allUnguidedOver80) {
       flags.push('HIGH_UNGUIDED_PASS_RATE');
       const rateStrings = activeAgents.map(agent => `${agent}: ${details.unguidedPassRates[agent]}%`).join(', ');
-      flagDetailsList.push(`Unguided pass rate was 90% or higher in all nightly runs (${rateStrings}).`);
+      flagDetailsList.push(`Unguided pass rate was 80% or higher in all nightly runs (${rateStrings}).`);
     }
 
     if (flags.length > 0) {
       flaggedTasks.push({
-        taskName,
+        taskName: taskPrefix,
         flags,
         details: flagDetailsList,
         raw: details,
@@ -435,9 +476,7 @@ async function main() {
         md += `| **${agent}** | ${guidedRate} | ${unguidedRate} | ${consumed} |\n`;
       }
       
-      const commonGuided = item.flags.includes('LOW_GUIDED_PASS_RATE')
-        ? getCommonFailures(item.taskName, 'guided', parsedDataByAgent, activeAgents)
-        : [];
+      const commonGuided = getCommonFailures(item.taskName, 'guided', parsedDataByAgent, activeAgents);
       
       md += `\n#### Qualitative Diagnostic Summary:\n\n`;
       md += `- **Diagnostic Details**:\n`;
@@ -453,13 +492,22 @@ async function main() {
         md += `  - **${flag}**: TODO\n`;
       }
 
-      const folderPath = guideDirsMap[item.taskName];
-      const relativePath = folderPath ? path.relative(repoRoot, folderPath) : `guides/.../${item.taskName}`;
+      const { targetName, guideName } = item.raw;
+      const folderPath = guideDirsMap[guideName];
+      const baseTarget = stripBaselineTargetSuffix(targetName);
+      const relativeGuidePath = folderPath ? path.relative(repoRoot, folderPath) : `guides/.../${guideName}`;
+      const promptPath = folderPath
+        ? path.relative(repoRoot, resolveTaskFilePath(folderPath, targetName))
+        : (targetName === 'task' ? `${relativeGuidePath}/tasks/task.md` : `${relativeGuidePath}/targets/${baseTarget}/task.md`);
+      const guidePathRel = `${relativeGuidePath}/guide.md`;
+      const graderPath = folderPath
+        ? path.relative(repoRoot, resolveGraderFilePath(folderPath, targetName))
+        : (targetName === 'task' ? `${relativeGuidePath}/grader.ts` : `${relativeGuidePath}/targets/${baseTarget}/grader.ts`);
 
       md += `- **Actionable Recommendations**:\n`;
-      md += `  - [ ] **Prompt** (\`${relativePath}/tasks/task.md\`): TODO\n`;
-      md += `  - [ ] **Guide** (\`${relativePath}/guide.md\`): TODO\n`;
-      md += `  - [ ] **Grader** (\`${relativePath}/grader.ts\`): TODO\n\n`;
+      md += `  - [ ] **Prompt** (\`${promptPath}\`): TODO\n`;
+      md += `  - [ ] **Guide** (\`${guidePathRel}\`): TODO\n`;
+      md += `  - [ ] **Grader** (\`${graderPath}\`): TODO\n\n`;
       md += `---\n\n`;
     }
   }
@@ -479,23 +527,22 @@ async function main() {
     }> = {};
 
     for (const item of flaggedTasks) {
-      const folderPath = guideDirsMap[item.taskName];
+      const { targetName, guideName } = item.raw;
+      const folderPath = guideDirsMap[guideName];
       if (!folderPath) {
         console.warn(`  ⚠️ Could not find guide folder for task: ${item.taskName}`);
         continue;
       }
       
       const relativeGuidePath = path.relative(repoRoot, folderPath);
-      const taskPath = path.join(folderPath, 'tasks', 'task.md');
       const guidePath = path.join(folderPath, 'guide.md');
-      const graderPath = path.join(folderPath, 'grader.ts');
 
       contextMap[item.taskName] = {
         flags: item.flags,
         guidePath: relativeGuidePath,
-        prompt: extractTaskPrompt(taskPath),
+        prompt: extractTaskPrompt(folderPath, targetName),
         guideDescription: extractGuideDescription(guidePath),
-        testHeaders: extractGraderTests(graderPath),
+        testHeaders: extractGraderTests(folderPath, targetName),
       };
     }
 

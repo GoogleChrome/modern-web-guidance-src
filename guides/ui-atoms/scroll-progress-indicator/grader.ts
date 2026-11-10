@@ -198,7 +198,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasScrollListener).toBe(false);
   });
 
-  test(`Purely decorative scroll progress indicators must define aria-hidden="true"`, async ({ page }) => {
+  test(`The purely decorative progress indicator element MUST either be empty (no text or image content) or define aria-hidden="true" to hide its content from assistive technology reading trees`, async ({ page }) => {
     const isAccessibleOrHidden = await page.evaluate(() => {
       const semantic = document.querySelector('progress, [role="progressbar"]');
       if (semantic) {
@@ -207,19 +207,27 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
             semantic.getAttribute('aria-labelledby')?.trim(),
         );
       }
-      const decorative = Array.from(
+      const allMatched = Array.from(
         document.querySelectorAll<HTMLElement>(
           '#progress, [id*="progress" i], [class*="progress" i], [style*="scroll("]',
         ),
       );
+      // Keep only innermost matches: drop any matched element that contains another matched element
+      const decorative = allMatched.filter(
+        (el) => !allMatched.some((other) => other !== el && el.contains(other)),
+      );
       return (
         decorative.length > 0 &&
-        decorative.every(
-          (el) =>
-            el.getAttribute('aria-hidden') === 'true' ||
-            el.getAttribute('role') === 'presentation' ||
-            el.getAttribute('role') === 'none',
-        )
+        decorative.every((el) => {
+          if (el.getAttribute('aria-hidden') === 'true' || el.closest('[aria-hidden="true"]')) {
+            return true;
+          }
+          const hasText = Boolean(el.textContent?.trim());
+          const hasImageContent =
+            el.matches('img, svg, picture, video, canvas, object, embed') ||
+            Boolean(el.querySelector('img, svg, picture, video, canvas, object, embed'));
+          return !hasText && !hasImageContent;
+        })
       );
     });
     expect(isAccessibleOrHidden).toBe(true);

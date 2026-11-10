@@ -30,6 +30,7 @@ import {
   getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs, type ReasoningEffort } from '../lib/reasoning-effort.ts';
 import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
@@ -126,7 +127,8 @@ export function getCodexCliCommandAndArgs(prompt: string): { command: string; co
     'exec',
     prompt,
     '--yolo',
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.CODEX_CLI, model)
   ];
   return { command, commandArgs };
 }
@@ -362,12 +364,30 @@ export function extractWebRunsFromCodexItem(obj: any): string[] {
   return typeof raw === 'string' ? extractWebRunsFromText(raw) : [];
 }
 
+function extractCodexEntryEffort(entry: any): string | undefined {
+  let raw: unknown;
+  if (entry?.type === 'turn_context') {
+    raw =
+      entry.payload?.reasoning_effort ??
+      entry.payload?.collaboration_mode?.settings?.reasoning_effort ??
+      entry.payload?.effort;
+  } else if (entry?.type === 'event_msg' && entry.payload?.type === 'thread_settings_applied') {
+    raw =
+      entry.payload?.settings?.reasoning_effort ??
+      entry.payload?.settings?.collaboration_mode?.settings?.reasoning_effort ??
+      entry.payload?.thread_settings?.reasoning_effort ??
+      entry.payload?.thread_settings?.collaboration_mode?.settings?.reasoning_effort;
+  }
+  return typeof raw === 'string' && raw.trim() ? raw.trim().toLowerCase() : undefined;
+}
+
 export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subagentsMap: Record<string, CodexRolloutLine[] | any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let currentThought = '';
   const callMap = new Map<string, StandardizedStep>();
 
   const modelCounts: Record<string, number> = {};
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let cachedTokens = 0;
   let hasTokenData = false;
@@ -383,6 +403,13 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
 
     for (const entry of entries) {
       const timestamp = extractTimestamp(entry);
+
+      if (!subagentId) {
+        const entryEffort = extractCodexEntryEffort(entry);
+        if (entryEffort) {
+          observedEffort = entryEffort;
+        }
+      }
 
       if (typeof entry.payload?.model === 'string') {
         modelCounts[entry.payload.model] = (modelCounts[entry.payload.model] || 0) + 1;
@@ -604,6 +631,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
     model: topModel ? topModel[0] : 'unknown',
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),
@@ -613,6 +641,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
 
 export function extractCodexMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
   model: string;
+  reasoningEffort?: ReasoningEffort;
   tokenUsage?: { total: number; cached: number };
   toolsUsed: string[];
   retrievedGuides: string[];
@@ -621,6 +650,7 @@ export function extractCodexMetadata(logData: any[], subagentsMap: Record<string
   const summary = parseCodexTrajectory(logData, subagentsMap);
   return {
     model: summary.model || 'unknown',
+    reasoningEffort: summary.reasoningEffort,
     tokenUsage: summary.tokenUsage,
     toolsUsed: summary.toolsUsed || [],
     retrievedGuides: summary.retrievedGuides || [],
@@ -653,6 +683,7 @@ function getCodexMetadataForDir(dir: string): ReturnType<typeof extractCodexMeta
   if (summary) {
     return {
       model: summary.model || 'unknown',
+      reasoningEffort: summary.reasoningEffort,
       tokenUsage: summary.tokenUsage,
       toolsUsed: summary.toolsUsed || [],
       retrievedGuides: summary.retrievedGuides || [],

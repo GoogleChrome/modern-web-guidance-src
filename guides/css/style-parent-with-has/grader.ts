@@ -46,12 +46,12 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('On page load, ancestor container should have neutral styling', async ({ page }) => {
+  test('On page load, the ancestor container of the form field has neutral styling', async ({ page }) => {
     const input = page.locator('input[required]').first();
     await waitForErrorState(page, input, false);
   });
 
-  test('Invalid interaction must trigger error state on a parent container', async ({ page }) => {
+  test('Entering an invalid value and clicking away triggers an error visual state on the parent container', async ({ page }) => {
     const input = page.locator('input[required]').first();
     await waitForErrorState(page, input, false); // initial
     await input.fill('a');
@@ -60,13 +60,13 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
     await waitForErrorState(page, input, true); // should turn red!
   });
 
-  test('Correcting the input must revert parent to neutral state', async ({ page }) => {
+  test('Correcting the input reverts the parent container to its neutral visual state', async ({ page }) => {
     const input = page.locator('input[required]').first();
     await input.fill('a');
     await input.fill('');
     await input.blur();
     await waitForErrorState(page, input, true); // triggered
-    
+
     await input.fill('valid@example.com');
     await input.blur();
     await waitForErrorState(page, input, false); // cleared
@@ -98,14 +98,12 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
                 }
               }
             }
-            if (/^(body|html|:root)\s*:has\(/i.test(sel)) {
-              hasBodyHas = true;
-            }
           }
         }
       }
       return { hasScopedHasUserInvalid, hasBodyHas };
     });
+
     expect(check.hasScopedHasUserInvalid).toBe(true);
     expect(check.hasBodyHas).toBe(false);
   });

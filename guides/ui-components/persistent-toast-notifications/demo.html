@@ -1,70 +1,498 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Persistent Toast Notifications</title>
   <style>
-    .toast-container {
-      anchor-name: --toast-container;
-      position: fixed;
-      width: 100cqi;
-      height: 4rem;
-      bottom: 1rem;
+    :root {
+      --page-bg: #f3f4f6;
+      --text: #0f172a;
+      --toast-bg: #ecfdf5;
+      --toast-border: #15803d;
+      --toast-text: #14532d;
+      --toast-width: min(16rem, 100%);
+      --toast-height: 0px;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
     }
 
-    [popover="manual"] {
-      position-anchor: --toast-container;
-      position-area: bottom;
-      margin-bottom: calc(sibling-index() * 1rem);
-      padding: 0.5rem 1rem;
-      background: lightgreen;
-      border: 1px solid green;
-      border-radius: 8px;
-      transition: opacity, transform, display, overlay;
-      transition-duration: 0.3s;
-      transition-behavior: allow-discrete;
-      opacity: 0;
-      transform: translateY(20px);
+    * {
+      box-sizing: border-box;
     }
 
-    [popover="manual"]:popover-open {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @starting-style {
-      [popover="manual"]:popover-open { 
-        opacity: 0; 
-        transform: translateY(20px);
-      }
-    }
-
-    button[popovertargetaction="hide"] {
-      background:none;
-      border:none;
-      cursor:pointer;
+    html {
+      scroll-padding-bottom: var(--toast-height, 0px);
     }
 
     body {
+      background: var(--page-bg);
+      color: var(--text);
+      display: grid;
+      grid-template-columns: 1fr var(--toast-width);
+      margin: 0;
       min-height: 100dvh;
       min-width: 100dvw;
-      padding: 0;
+      padding: 2rem 1rem;
+    }
+
+    .controls {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .toggle {
+      align-items: center;
+      color: var(--text);
+      display: inline-flex;
+      font: inherit;
+      gap: 0.5rem;
+    }
+
+    .toast-trigger {
+      appearance: none;
+      background: #fff;
+      border: 1px solid #334155;
+      border-radius: 999px;
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      padding: 0.7rem 1.1rem;
+    }
+
+    .toast-trigger:focus-visible,
+    .toast-close:focus-visible,
+    .toast-dialog-close:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    .toast-region {
+      align-items: flex-end;
+      bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0.5rem;
+      position: fixed;
+      right: 1rem;
+      width: var(--toast-width);
+    }
+
+    .toast {
+      align-items: center;
+      background: var(--toast-bg);
+      border: 1px solid var(--toast-border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      color: var(--toast-text);
+      display: flex;
+      gap: 0.5rem;
+      justify-content: space-between;
+      margin: 0;
+      max-width: 16rem;
+      min-height: min-content;
+      padding: 0.875rem 1rem;
+      position: relative;
+      transition-behavior: allow-discrete;
+      width: 100%;
+    }
+
+    .toast-close {
+      align-self: flex-start;
+      background: transparent;
+      border: 1px solid var(--toast-border);
+      border-radius: 8px;
+      color: var(--toast-text);
+      cursor: pointer;
+      flex-shrink: 0;
+      font: inherit;
+      padding: 0.35rem 0.7rem;
+    }
+
+    .toast-message {
       margin: 0;
     }
+
+    .toast-history-button {
+      display: none;
+    }
+
+    .toast-dialog {
+      border: 0;
+      border-radius: 1rem;
+      box-shadow: var(--shadow);
+      margin: auto;
+      max-width: min(28rem, calc(100vw - 2rem));
+      padding: 0;
+      width: min(28rem, calc(100vw - 2rem));
+    }
+
+    .toast-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.45);
+    }
+
+    .toast-dialog-header {
+      align-items: center;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+    }
+
+    .toast-dialog-header h2 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    .toast-dialog-close {
+      appearance: none;
+      background: transparent;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      padding: 0.35rem 0.7rem;
+    }
+
+.toast-list-wrapper {
+      max-height: min(24rem, 70dvh);
+      overflow-y: auto;
+    }
+
+    .toast-list {
+      list-style: none;
+      margin: 0;
+      padding: 1rem 1.25rem;
+    }
+
+    .toast-list li {
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      border-radius: 0.75rem;
+      margin-bottom: 0.75rem;
+      padding: 0.75rem 0.85rem;
+    }
+
+    .toast-list li:last-child {
+      margin-bottom: 0;
+    }
+
+    .visually-hidden:not(:focus):not(:active) {
+      clip: rect(0 0 0 0); 
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap; 
+      width: 1px;
+    }
+
+    @media (max-width: 30rem) {
+      body {
+        display: block;
+        padding: 1rem;
+      }
+
+      .controls {
+        justify-content: space-between;
+        margin-bottom: 1rem;
+      }
+
+      .toast-region {
+        align-items: stretch;
+        bottom: 1rem;
+        left: 1rem;
+        max-height: none;
+        overflow: visible;
+        padding: 0;
+        right: 1rem;
+        width: auto;
+      }
+
+      .toast {
+        bottom: 0;
+        max-width: none;
+        min-height: 3.5rem;
+        position: sticky;
+        width: 100%;
+      }
+
+      .toast-history-button {
+        background: #0f172a;
+        border: 0;
+        border-radius: 999px;
+        bottom: calc(1rem + var(--toast-height, 0px));
+        box-shadow: var(--shadow);
+        color: #fff;
+        cursor: pointer;
+        display: block;
+        font: inherit;
+        left: 50%;
+        padding: 0.75rem 1rem;
+        position: fixed;
+        transform: translateX(-50%);
+        z-index: 30;
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+    }
+
   </style>
 </head>
 <body>
-  <button id="toast-trigger" onclick="showToast()">Trigger Toast</button>
-  <div class="toast-container">
-    <div id="toast" popover="manual">
-      Success!
-      <button popovertarget="toast" popovertargetaction="hide" aria-label="close">x</button>
-    </div>
+  <div class="controls">
+    <button id="toast-trigger" class="toast-trigger" type="button">Trigger Toast</button>
+    <label class="toggle" for="auto-dismiss-toggle">
+      <input id="auto-dismiss-toggle" type="checkbox">
+      Auto-dismiss after 3 seconds
+    </label>
   </div>
+
+  <div id="toast-region" class="toast-region" role="region" aria-label="Notifications"></div>
+  <button id="toast-history-button" class="toast-history-button" type="button" aria-haspopup="dialog" aria-controls="toast-dialog">
+    View notifications
+  </button>
+  <dialog id="toast-dialog" class="toast-dialog">
+    <form method="dialog">
+      <div class="toast-dialog-header">
+        <h2>Notifications</h2>
+        <button type="submit" class="toast-dialog-close" aria-label="Close notifications">Close</button>
+      </div>
+      <div class="toast-list-wrapper" role="region" aria-label="Notification history" tabindex="0">
+        <ul id="toast-list" class="toast-list"></ul>
+      </div>
+    </form>
+  </dialog>
+  <div id="toast-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
   <script>
-    function showToast() {
-      const t = document.getElementById('toast');
-      t.showPopover();
-      setTimeout(() => { if (t.matches(':popover-open')) t.hidePopover(); }, 3000);
+    const toastRegion = document.getElementById('toast-region');
+    const toastAnnouncer = document.getElementById('toast-announcer');
+    const toastHistoryButton = document.getElementById('toast-history-button');
+    const toastDialog = document.getElementById('toast-dialog');
+    const toastList = document.getElementById('toast-list');
+    const trigger = document.getElementById('toast-trigger');
+    const autoDismissToggle = document.getElementById('auto-dismiss-toggle');
+    const autoDismissTimers = new Map();
+    const toastHistory = [];
+    const compactedToasts = [];
+    let toastId = 1;
+
+    function isNarrowViewport() {
+      return window.matchMedia('(max-width: 30rem)').matches;
     }
+
+    function getVisibleToasts() {
+      return [...toastRegion.querySelectorAll('.toast')];
+    }
+
+    function updateScrollPadding() {
+      const visibleToasts = getVisibleToasts();
+      const visibleToast = visibleToasts.length === 1 ? visibleToasts[0] : null;
+      const toastHeight = visibleToast ? visibleToast.getBoundingClientRect().height : 0;
+
+      document.documentElement.style.setProperty('--toast-height', `${toastHeight}px`);
+      document.documentElement.style.scrollPaddingBottom = visibleToast ? `${toastHeight}px` : '0px';
+    }
+
+    function removeFromCompactedToasts(toast) {
+      const index = compactedToasts.indexOf(toast);
+
+      if (index >= 0) {
+        compactedToasts.splice(index, 1);
+      }
+    }
+
+    function updateToastVisibilityForViewport() {
+      const allToasts = getVisibleToasts();
+
+      if (allToasts.length === 0) {
+        return;
+      }
+
+      if (isNarrowViewport()) {
+        const latestToast = allToasts[allToasts.length - 1];
+
+        allToasts.forEach((toast) => {
+          if (toast !== latestToast && toast.isConnected && !compactedToasts.includes(toast)) {
+            compactedToasts.push(toast);
+            toastRegion.removeChild(toast);
+          }
+        });
+      } else {
+        const restoredToasts = [...compactedToasts];
+
+        restoredToasts.forEach((toast) => {
+          if (!toast.isConnected) {
+            toastRegion.appendChild(toast);
+          }
+        });
+
+        compactedToasts.length = 0;
+      }
+
+      updateScrollPadding();
+    }
+
+    function renderToastHistory() {
+      const items = toastHistory.map((entry) => `<li>${entry.message}</li>`).join('');
+      toastList.innerHTML = items || '<li>No notifications yet.</li>';
+      toastHistoryButton.textContent = toastHistory.length > 0 ? `View notifications (${toastHistory.length})` : 'View notifications';
+    }
+
+    function stopAutoDismiss(toast) {
+      const timeoutId = autoDismissTimers.get(toast);
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+        autoDismissTimers.delete(toast);
+      }
+    }
+
+    function startAutoDismiss(toast) {
+      stopAutoDismiss(toast);
+
+      if (!autoDismissToggle.checked) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        if (toast.matches(':popover-open')) {
+          toast.hidePopover();
+        }
+
+        stopAutoDismiss(toast);
+        removeFromCompactedToasts(toast);
+        toast.remove();
+        updateScrollPadding();
+      }, 3000);
+
+      autoDismissTimers.set(toast, timeoutId);
+    }
+
+    function syncAutoDismissForAllToasts() {
+      const allToasts = [...toastRegion.querySelectorAll('.toast')];
+
+      for (const toast of allToasts) {
+        if (autoDismissToggle.checked) {
+          startAutoDismiss(toast);
+        } else {
+          stopAutoDismiss(toast);
+        }
+      }
+    }
+
+    function announceToast(message) {
+      const text = (message || '').trim();
+
+      if (!text) {
+        return;
+      }
+
+      if ('ariaNotify' in document) {
+        document.ariaNotify(text);
+        return;
+      }
+
+      toastAnnouncer.textContent = '';
+      toastAnnouncer.textContent = text;
+    }
+
+    function focusNextToast(closedToast) {
+      const allToasts = getVisibleToasts();
+      const remaining = allToasts.filter((toast) => toast !== closedToast).length;
+
+      if (remaining > 0) {
+        let closedIndex = allToasts.indexOf(closedToast);
+        let nextIndex = closedIndex - 1;
+        if (closedIndex === 0) {
+          if (remaining >= 1) {
+            nextIndex = closedIndex + 1;
+          } else {
+            nextIndex = 0;
+          }
+        }
+        const nextToast = allToasts[nextIndex];
+        nextToast.querySelector('.toast-close').focus();
+        return;
+      }
+
+      trigger.focus();
+    }
+
+    function showToast(message = 'Saved successfully.') {
+      const toast = document.createElement('div');
+      const previousFocus = document.activeElement && document.activeElement !== document.body ? document.activeElement : trigger;
+
+      toast.className = 'toast';
+      toast.id = `toast-${toastId++}`;
+      toast.dataset.previousFocus = previousFocus.id || 'toast-trigger';
+      toast.setAttribute('popover', 'manual');
+      toast.innerHTML = `
+        <p class="toast-message">${message}</p>
+        <button type="button" class="toast-close" popovertarget="${toast.id}" popovertargetaction="hide" aria-label="Close notification">Close</button>
+      `;
+
+      toastHistory.push({ id: toast.id, message });
+      renderToastHistory();
+
+      trigger.setAttribute('popovertarget', toast.id);
+      toastRegion.appendChild(toast);
+
+      toast.showPopover();
+      announceToast(message);
+      updateToastVisibilityForViewport();
+
+      if (autoDismissToggle.checked) {
+        startAutoDismiss(toast);
+      }
+
+      const closeButton = toast.querySelector('.toast-close');
+      closeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        const currentToast = event.currentTarget.closest('.toast');
+
+        stopAutoDismiss(currentToast);
+        currentToast.hidePopover();
+        focusNextToast(currentToast);
+
+        removeFromCompactedToasts(currentToast);
+        currentToast.remove();
+        updateToastVisibilityForViewport();
+      });
+    }
+
+    toastHistoryButton.addEventListener('click', () => {
+      toastDialog.showModal();
+    });
+
+    toastDialog.addEventListener('cancel', () => {
+      toastDialog.close();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      trigger.addEventListener('click', () => {
+        showToast();
+      });
+    });
+
+    autoDismissToggle.addEventListener('change', () => {
+      syncAutoDismissForAllToasts();
+    });
+
+    const viewportResizeObserver = new ResizeObserver(() => {
+      updateToastVisibilityForViewport();
+    });
+    viewportResizeObserver.observe(document.body);
+    renderToastHistory();
   </script>
 </body>
 </html>

@@ -13,6 +13,7 @@
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem; }
     .product-card, .fallback-panel { background: #fff; border: 1px solid #c4c7c5; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1rem; }
     button, .btn-link { min-height: 44px; padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; border: 1px solid #747775; background: #fff; color: #1f1f1f; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
+    [hidden] { display: none !important; }
     .btn-primary { background: #0b57d0; border-color: #0b57d0; color: #fff; }
     .favorite-btn[aria-pressed="true"] { background: #fce8e6; border-color: #c5221f; color: #c5221f; }
     .status-banner { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; background: #e8f0fe; color: #174ea6; }
@@ -33,6 +34,13 @@
           data-testid="header-signin-link">
           Sign in
         </a>
+        <button
+          type="button"
+          id="header-signout-btn"
+          data-testid="header-signout-button"
+          hidden>
+          Sign out
+        </button>
       </div>
     </nav>
   </header>
@@ -55,8 +63,8 @@
               data-product-id="sneaker-1"
               data-testid="favorite-button"
               aria-pressed="false"
-              aria-label="Save Multicolor Sneakers to favorites">
-              ♥ Save to favorites
+              aria-label="Save to favorites: Multicolor Sneakers">
+              ♡ Save to favorites
             </button>
           </div>
         </article>
@@ -72,8 +80,8 @@
               class="favorite-btn"
               data-product-id="sneaker-2"
               aria-pressed="false"
-              aria-label="Save Classic White Runners to favorites">
-              ♥ Save to favorites
+              aria-label="Save to favorites: Classic White Runners">
+              ♡ Save to favorites
             </button>
           </div>
         </article>
@@ -83,9 +91,10 @@
     <div id="auth-status" class="status-banner" role="status" aria-live="polite" data-testid="auth-status"></div>
 
     <!-- Fallback sign-in UI revealed when Immediate UI mode throws NotAllowedError or is unsupported -->
-    <section id="fallback-signin" class="fallback-panel" data-testid="fallback-signin" hidden aria-labelledby="fallback-heading">
+    <section id="fallback-signin" class="fallback-panel" data-testid="fallback-signin" hidden aria-labelledby="fallback-heading"
+    aria-describedby="fallback-description">
       <h2 id="fallback-heading">Sign in to continue</h2>
-      <p>No local passkey or saved password was immediately available on this device. Sign in with your account below.</p>
+      <p id="fallback-description">No local passkey or saved password was immediately available on this device. Sign in with your account below.</p>
       <form id="fallback-signin-form" action="/api/login/password" method="POST">
         <div class="form-field">
           <label for="fallback-username">Username</label>
@@ -118,6 +127,7 @@
     const statusEl = document.getElementById('auth-status');
     const badgeEl = document.getElementById('session-badge');
     const headerSignInLink = document.getElementById('header-signin-link');
+    const headerSignOutBtn = document.getElementById('header-signout-btn');
     const fallbackSection = document.getElementById('fallback-signin');
     const fallbackForm = document.getElementById('fallback-signin-form');
 
@@ -125,7 +135,7 @@
     let pendingFavoriteButton = null;
 
     async function isImmediateUiSupported() {
-      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
+      if (!window.isSecureContext || !window.location.hostname || !window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
         return false;
       }
       try {
@@ -140,14 +150,18 @@
       document.body.dataset.signedIn = 'true';
       badgeEl.textContent = `Signed in as ${username}`;
       badgeEl.classList.add('authenticated');
+      headerSignOutBtn.hidden = false;
       headerSignInLink.hidden = true;
       fallbackSection.hidden = true;
 
       if (triggerButton) {
         triggerButton.setAttribute('aria-pressed', 'true');
+        triggerButton.textContent = `♥ Save to favorites`;
         statusEl.textContent = `Signed in as ${username} and saved item to favorites.`;
+        triggerButton.focus();
       } else {
         statusEl.textContent = `Signed in as ${username} in place.`;
+        headerSignOutBtn.focus();
       }
     }
 
@@ -164,11 +178,23 @@
         throw new DOMException('Immediate UI mode is not supported in this browser.', 'NotAllowedError');
       }
 
-      const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
-      if (!optionsResponse.ok) {
-        throw new Error('Failed to fetch login options');
+      let optionsJSON;
+      let usingStaticDemoFallback = false;
+      try {
+        const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
+        if (!optionsResponse.ok) {
+          throw new Error('Failed to fetch login options');
+        }
+        optionsJSON = await optionsResponse.json();
+      } catch {
+        // Static preview fallback when no backend server is running
+        usingStaticDemoFallback = true;
+        optionsJSON = {
+          challenge: 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8',
+          rpId: window.location.hostname,
+          userVerification: 'preferred',
+        };
       }
-      const optionsJSON = await optionsResponse.json();
       const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
 
       const cred = await navigator.credentials.get({
@@ -179,6 +205,10 @@
 
       if (!cred) {
         throw new DOMException('No credential selected.', 'NotAllowedError');
+      }
+
+      if (usingStaticDemoFallback) {
+        return cred.type === 'password' ? (cred.id || 'user') : 'passkey-user';
       }
 
       if (cred.type === 'public-key') {
@@ -252,6 +282,16 @@
       handleContextualSignIn(null);
     });
 
+    headerSignOutBtn.addEventListener('click', () => {
+      document.body.dataset.signedIn = 'false';
+      badgeEl.textContent = 'Signed out';
+      badgeEl.classList.remove('authenticated');
+      headerSignInLink.hidden = false;
+      headerSignOutBtn.hidden = true;
+      statusEl.textContent = 'Signed out.';
+      headerSignInLink.focus();
+    });
+
     document.getElementById('product-grid').addEventListener('click', (event) => {
       const button = event.target.closest('.favorite-btn');
       if (!button) return;
@@ -259,6 +299,9 @@
       if (document.body.dataset.signedIn === 'true') {
         const nextPressed = button.getAttribute('aria-pressed') !== 'true';
         button.setAttribute('aria-pressed', String(nextPressed));
+        button.textContent = nextPressed
+          ? '♥ Save to favorites'
+          : '♡ Save to favorites';
         statusEl.textContent = nextPressed
           ? 'Added item to favorites.'
           : 'Removed item from favorites.';

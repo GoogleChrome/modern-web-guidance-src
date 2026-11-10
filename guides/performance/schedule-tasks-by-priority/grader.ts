@@ -165,24 +165,29 @@ test.describe('Prioritized Task Scheduling API Grader', () => {
     await injectSpy(page);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-    // Click only the batch button and capture the priorities it queues synchronously
-    const queued: string[] = await page.evaluate(() => {
+    const clicked = await page.evaluate(() => {
       const w = window as any;
       w.__postTaskCalls.length = 0;
       w.__executionOrder.length = 0;
       const batch = Array.from(document.querySelectorAll('button')).find((b) => /batch|mixed/i.test(b.textContent || ''));
-      batch?.click();
-      return w.__postTaskCalls.map((c: any) => c.priority);
+      if (batch) {
+        batch.click();
+        return true;
+      }
+      return false;
     });
-    expect(new Set(queued).size).toBeGreaterThanOrEqual(2);
+    expect(clicked).toBe(true);
 
     await expect
-      .poll(() => page.evaluate(() => (window as any).__executionOrder.length))
-      .toBeGreaterThanOrEqual(queued.length);
+      .poll(() => page.evaluate(() => new Set((window as any).__executionOrder).size), { timeout: 3000 })
+      .toBeGreaterThanOrEqual(2);
+
+    await page.waitForTimeout(200);
+
     const order: string[] = await page.evaluate(() => (window as any).__executionOrder);
     const rank: Record<string, number> = { 'user-blocking': 0, 'user-visible': 1, background: 2 };
     // Tasks queued together must run highest priority first, whatever order they were queued in
-    const ran = order.slice(0, queued.length).map((p) => rank[p]);
+    const ran = order.map((p) => rank[p]);
     expect(ran).toEqual([...ran].sort((a, b) => a - b));
   });
 
