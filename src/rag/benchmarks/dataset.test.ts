@@ -136,7 +136,7 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
     assert.strictEqual(agent.manifest.version, "v1");
 
     const guidesJson: { id: string }[] = JSON.parse(
-      fs.readFileSync(path.join(outDir, "build/skills-cli/guides.json"), "utf8")
+      fs.readFileSync(path.join(outDir, "build/skills-cli/gen/guides.json"), "utf8")
     );
     const validIds = new Set(guidesJson.map((g) => g.id));
 
@@ -226,7 +226,7 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
     assert.strictEqual(harness.qrels.size, 160);
 
     const guidesJson: { id: string }[] = JSON.parse(
-      fs.readFileSync(path.join(outDir, "build/skills-cli/guides.json"), "utf8")
+      fs.readFileSync(path.join(outDir, "build/skills-cli/gen/guides.json"), "utf8")
     );
     const validIds = new Set(guidesJson.map((g) => g.id));
 

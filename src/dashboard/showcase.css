@@ -68,6 +68,7 @@
 .ab-checks-toggle:hover { background: var(--color-surface-container); }
 .ab-frame-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border-block-start: 1px solid var(--color-outline-variant); background: var(--color-surface-container-low); font-size: 0.75rem; line-height: 1.35; color: var(--color-on-surface-variant); }
 .ab-run-provenance { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.ab-prov-item { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .ab-prov-link { color: var(--color-primary); text-decoration: none; font-weight: 500; }
 .ab-prov-link:hover { text-decoration: underline; }
 @container spotlight (width < 52rem) {

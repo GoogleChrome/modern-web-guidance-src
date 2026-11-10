@@ -10,13 +10,15 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('sets --mouse-x custom property when moving mouse over the card', async ({ page }) => {
-  const container = page.locator('.product-card').first();
-  const box = await container.boundingBox();
-  if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  }
-  // Allow any pointermove handlers to execute
-  await page.waitForTimeout(100);
+  const container = page.locator('.product-card, .card').first();
+  await container.scrollIntoViewIfNeeded();
+  await container.hover();
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.product-card, .card');
+    if (!el) return false;
+    const val = window.getComputedStyle(el).getPropertyValue('--mouse-x').trim();
+    return val !== '';
+  });
 
   const mouseX = await container.evaluate((el) => {
     return window.getComputedStyle(el).getPropertyValue('--mouse-x').trim();
@@ -25,13 +27,15 @@ test('sets --mouse-x custom property when moving mouse over the card', async ({ 
 });
 
 test('sets --mouse-y custom property when moving mouse over the card', async ({ page }) => {
-  const container = page.locator('.product-card').first();
-  const box = await container.boundingBox();
-  if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  }
-  // Allow any pointermove handlers to execute
-  await page.waitForTimeout(100);
+  const container = page.locator('.product-card, .card').first();
+  await container.scrollIntoViewIfNeeded();
+  await container.hover();
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.product-card, .card');
+    if (!el) return false;
+    const val = window.getComputedStyle(el).getPropertyValue('--mouse-y').trim();
+    return val !== '';
+  });
 
   const mouseY = await container.evaluate((el) => {
     return window.getComputedStyle(el).getPropertyValue('--mouse-y').trim();
@@ -40,7 +44,7 @@ test('sets --mouse-y custom property when moving mouse over the card', async ({ 
 });
 
 test('sets custom property --inner-size to 0px when card is not hovered', async ({ page }) => {
-  const container = page.locator('.product-card').first();
+  const container = page.locator('.product-card, .card').first();
   const innerSize = await container.evaluate((el) => {
     return window.getComputedStyle(el).getPropertyValue('--inner-size').trim();
   });
@@ -48,7 +52,7 @@ test('sets custom property --inner-size to 0px when card is not hovered', async 
 });
 
 test('sets custom property --outer-size to 0px when card is not hovered', async ({ page }) => {
-  const container = page.locator('.product-card').first();
+  const container = page.locator('.product-card, .card').first();
   const outerSize = await container.evaluate((el) => {
     return window.getComputedStyle(el).getPropertyValue('--outer-size').trim();
   });
@@ -92,12 +96,14 @@ test('registers --outer-size property with @property', async ({ page }) => {
 });
 
 test('sets --inner-size to non-zero length when card is hovered', async ({ page }) => {
-  const container = page.locator('.product-card').first();
-  const box = await container.boundingBox();
-  if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  }
-  await page.waitForTimeout(200);
+  const container = page.locator('.product-card, .card').first();
+  await container.scrollIntoViewIfNeeded();
+  await container.hover();
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.product-card, .card');
+    if (!el) return false;
+    return parseFloat(window.getComputedStyle(el).getPropertyValue('--inner-size')) > 0;
+  });
 
   const innerSize = await container.evaluate((el) => {
     return window.getComputedStyle(el).getPropertyValue('--inner-size').trim();
@@ -107,12 +113,14 @@ test('sets --inner-size to non-zero length when card is hovered', async ({ page 
 });
 
 test('sets --outer-size to non-zero length when card is hovered', async ({ page }) => {
-  const container = page.locator('.product-card').first();
-  const box = await container.boundingBox();
-  if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  }
-  await page.waitForTimeout(200);
+  const container = page.locator('.product-card, .card').first();
+  await container.scrollIntoViewIfNeeded();
+  await container.hover();
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.product-card, .card');
+    if (!el) return false;
+    return parseFloat(window.getComputedStyle(el).getPropertyValue('--outer-size')) > 0;
+  });
 
   const outerSize = await container.evaluate((el) => {
     return window.getComputedStyle(el).getPropertyValue('--outer-size').trim();
@@ -156,7 +164,7 @@ test('ensures revealed content has a mask-image radial gradient from black to tr
 
 test('determines gradient position using --mouse-x and --mouse-y properties', async ({ page }) => {
   const positionMatch = await page.evaluate(() => {
-    const card = document.querySelector('.product-card') as HTMLElement;
+    const card = document.querySelector('.product-card, .card') as HTMLElement;
     if (!card) return false;
     card.style.setProperty('--mouse-x', '25%');
     card.style.setProperty('--mouse-y', '75%');
@@ -176,7 +184,7 @@ test('determines gradient position using --mouse-x and --mouse-y properties', as
 
 test('sets gradient stops via --inner-size and --outer-size properties', async ({ page }) => {
   const stopsMatch = await page.evaluate(() => {
-    const card = document.querySelector('.product-card') as HTMLElement;
+    const card = document.querySelector('.product-card, .card') as HTMLElement;
     if (!card) return false;
 
     // Find the reveal element
@@ -251,7 +259,7 @@ test('ensures size properties have a non-zero transition duration by default', a
         if (hasNonZero && targetsSize) return true;
 
         // Fallback: Check parent container card that defines variables transition
-        const card = el.closest('.product-card') || el.parentElement;
+        const card = el.closest('.product-card, .card') || el.parentElement;
         if (card) {
           const parentStyle = window.getComputedStyle(card);
           const parentDuration = parentStyle.transitionDuration;
@@ -288,7 +296,7 @@ test('ensures --mouse-x and --mouse-y have no transition on the revealed content
 
 test('guarantees underlying content remains fully persistent and visible by default', async ({ page }) => {
   const underlyingContentVisible = await page.evaluate(() => {
-    const card = document.querySelector('.product-card');
+    const card = document.querySelector('.product-card, .card');
     if (!card) return false;
     const descendants = Array.from(card.querySelectorAll('*'));
     let hasUnderlyingVisibleContent = false;

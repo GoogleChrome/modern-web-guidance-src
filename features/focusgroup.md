@@ -1,37 +1,23 @@
 # Focusgroup
 
+## Issues
+
+- Put `focusgroup` on an element inside a `[popover]`, not on the `[popover]` itself.
+
+{# Maintainer note: https://issues.chromium.org/issues/564673920 (fixed 2026-09), https://github.com/whatwg/html/issues/11641 #}
+
 ## Fallbacks
 
-For browsers that do not support the `focusgroup` attribute, use feature detection and a polyfill like `@microsoft/focusgroup-polyfill`.
+Load `@microsoft/focusgroup-polyfill` only when native support is missing:
 
-```javascript
-(async () => {
-    if (!HTMLElement.prototype.hasOwnProperty('focusGroup')) {
-        const { polyfill } = await import("https://esm.sh/@microsoft/focusgroup-polyfill");
-        // Polyfills 
-        polyfill();
-    }
-})();
+```js
+if (!(Object.hasOwn(HTMLElement.prototype, 'focusGroup'))) {
+  const { polyfill } = await import('@microsoft/focusgroup-polyfill');
+  polyfill();
+}
 ```
 
-If `focusgroup` is supported, individual behaviours can be feature detected with the `focusGroup` element property’s `supports()` method:
+- Use the `focusgroup` and `focusgroupstart` attributes, not the `focusGroup` property, which the polyfill does not add.
+- The polyfill does not notice items hidden or shown later: add `focusgroup="none"` to an item while it is hidden.
 
-```javascript
-const myTabList = document.createElement('div');
-
-myTabList.setAttribute('focusgroup', 'tablist');
-
-if (!myTabList.focusGroup.supports('tablist')) polyfill(myTabList);
-```
-
-The polyfill has a limitation around focusgroups as or within the top-layer. To workaround, use the `toggle` event to first ensure all candidate focusgroup items have `tabindex=0` set and then call `polyfill()` on the focusgroup.
-
-```javascript
-const menu = document.querySelector('[focusgroup=menu][popover]');
-
-menu.addEventListener('toggle', () => {
-    for (const button of menu.querySelectorAll('button:not(:scope [focusgroup] button, [tabindex])')) {
-        button.tabIndex = 0;
-    }
-}, { once: true });
-```
+{# Maintainer note: limitations from the v1.6.0 README and issues (https://github.com/microsoft/polyfills/tree/main/packages/focusgroup): #74 items in closed popovers, #72 leak on ancestor removal. menu, toolbar, and scroll-snap-realtime-feedback still ship their own fallbacks; migrate them separately. #}

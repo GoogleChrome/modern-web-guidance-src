@@ -11,9 +11,28 @@ const SEARCH_RESULT_SNIPPET_RE =
 const TRUNCATED_SEARCH_HEADER_RE =
   /(?:^|\n)[^\n\uE200]*\(https?:\/\/[^\s()]*modern-web-guidance[^\s()]*\.\.\. \[truncated\]$/;
 const HEREDOC_RE = /<<-?\s*['"]?([A-Za-z0-9_]+)['"]?[^\n]*\n[\s\S]*?\n\1(?=\n|$)/g;
+const FAILED_OPEN_OUTCOME_URL_RE = /(?:Failed to fetch|URL)\s+(https?:\/\/\S+?)(?::(?:\s|$)|\s+is not accessible)/g;
+const FAILED_OPEN_ERROR_ECHO_RE =
+  /(?:Source:\s*open\(\{[^\n]*\}\);\s*\n?)?(?:Failed to fetch\s+https?:\/\/[^\n]*|URL\s+https?:\/\/\S+\s+is not accessible[^\n]*)/g;
 
-function isSearchOnlyWebRun(call: string): boolean {
-  return /["']?\bsearch_query["']?\s*:/.test(call) && !/["']?\bopen["']?\s*:/.test(call);
+function extractOpenRefIds(call: string): string[] {
+  return Array.from(call.matchAll(/["']?\bref_id["']?\s*:\s*["']([^"']+)["']/g), (m) => m[1]);
+}
+
+function isFailedOnlyOpenRun(call: string, failedUrls: ReadonlySet<string>): boolean {
+  if (failedUrls.size === 0 || !/["']?\bopen["']?\s*:/.test(call) || /["']?\bsearch_query["']?\s*:/.test(call)) {
+    return false;
+  }
+  const refIds = extractOpenRefIds(call);
+  return refIds.length > 0 && refIds.every((id) => failedUrls.has(id));
+}
+
+function isSearchOnlyWebRun(call: string, failedUrls?: ReadonlySet<string>): boolean {
+  if (!/["']?\bsearch_query["']?\s*:/.test(call)) return false;
+  if (!/["']?\bopen["']?\s*:/.test(call)) return true;
+  if (!failedUrls || failedUrls.size === 0) return false;
+  const refIds = extractOpenRefIds(call);
+  return refIds.length > 0 && refIds.every((id) => failedUrls.has(id));
 }
 
 function stripHostNodeModules(text: string): string {
@@ -129,19 +148,29 @@ function summaryHasGuideLeak(summaryPath: string, guideName: string): boolean {
           ? (step.action.params as Record<string, unknown>)
           : undefined;
 
-      const webRuns = Array.isArray(rawParams?.webRuns)
+      const failedUrls = new Set<string>(stringArrayOrEmpty(rawParams?.failedOpenUrls));
+      if (typeof step?.outcome?.message === 'string') {
+        for (const m of step.outcome.message.matchAll(FAILED_OPEN_OUTCOME_URL_RE)) {
+          failedUrls.add(m[1]);
+        }
+      }
+
+      const allWebRuns = Array.isArray(rawParams?.webRuns)
         ? rawParams.webRuns.filter((r): r is string => typeof r === 'string')
         : typeof rawParams?.value === 'string' && rawParams.value.includes('tools.web__run')
           ? extractWebRunsFromText(rawParams.value)
           : [];
 
+      const activeWebRuns = allWebRuns.filter((r) => !isFailedOnlyOpenRun(r, failedUrls));
+      const isFailedOnlyWebStep = allWebRuns.length > 0 && activeWebRuns.length === 0;
       const isSearchOnlyWebStep =
-        (webRuns.length > 0 && webRuns.every(isSearchOnlyWebRun)) ||
+        (activeWebRuns.length > 0 && activeWebRuns.every((r) => isSearchOnlyWebRun(r, failedUrls))) ||
         (step?.action?.name === 'web_search' && rawParams?.type === 'search' && !rawParams?.url);
 
       let paramsText = '';
       if (rawParams) {
         const filteredParams: Record<string, unknown> = { ...rawParams };
+        delete filteredParams.failedOpenUrls;
         if (step?.action?.type === 'write_file') {
           delete filteredParams.patch;
           delete filteredParams.content;
@@ -157,15 +186,32 @@ function summaryHasGuideLeak(summaryPath: string, guideName: string): boolean {
           );
         }
         if (Array.isArray(filteredParams.webRuns)) {
-          filteredParams.webRuns = (filteredParams.webRuns as unknown[]).filter(
-            (r) => typeof r !== 'string' || !isSearchOnlyWebRun(r)
-          );
+          filteredParams.webRuns = (filteredParams.webRuns as unknown[])
+            .filter(
+              (r) =>
+                typeof r !== 'string' ||
+                (!isSearchOnlyWebRun(r, failedUrls) && !isFailedOnlyOpenRun(r, failedUrls))
+            )
+            .map((r) => {
+              if (typeof r !== 'string' || failedUrls.size === 0) return r;
+              let cleaned = r;
+              for (const url of failedUrls) {
+                cleaned = cleaned.replaceAll(url, '');
+              }
+              return cleaned;
+            });
         }
-        if (typeof filteredParams.value === 'string' && webRuns.length > 0) {
+        if (typeof filteredParams.value === 'string' && allWebRuns.length > 0) {
           let val = filteredParams.value;
-          for (const r of webRuns) {
-            if (isSearchOnlyWebRun(r)) {
+          for (const r of allWebRuns) {
+            if (isSearchOnlyWebRun(r, failedUrls) || isFailedOnlyOpenRun(r, failedUrls)) {
               val = val.replace(r, '');
+            } else if (failedUrls.size > 0) {
+              let cleanedRun = r;
+              for (const url of failedUrls) {
+                cleanedRun = cleanedRun.replaceAll(url, '');
+              }
+              val = val.replace(r, cleanedRun);
             }
           }
           filteredParams.value = val;
@@ -178,10 +224,14 @@ function summaryHasGuideLeak(summaryPath: string, guideName: string): boolean {
       }
 
       let outcomeText = '';
-      if (!isSearchOnlyWebStep && typeof step?.outcome?.message === 'string') {
+      if (!isSearchOnlyWebStep && !isFailedOnlyWebStep && typeof step?.outcome?.message === 'string') {
         outcomeText = stripHostNodeModules(step.outcome.message)
+          .replace(FAILED_OPEN_ERROR_ECHO_RE, '')
           .replace(SEARCH_RESULT_SNIPPET_RE, '')
           .replace(TRUNCATED_SEARCH_HEADER_RE, '');
+        for (const url of failedUrls) {
+          outcomeText = outcomeText.replaceAll(url, '');
+        }
       }
 
       const stepText = `${paramsText}\n${outcomeText}`;

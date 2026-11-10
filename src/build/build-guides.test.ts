@@ -1,6 +1,21 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { chunkMarkdown, formatChunkHeader, generateGuidesIndex, generateGuidesTocYaml, type DevsiteGuideMetadata } from './build-guides.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  generateGuidesIndex,
+  generateGuidesTocYaml,
+  processSkillsCliGuide,
+  processDevsiteGuide,
+  type DevsiteGuideMetadata,
+  type StoreUseCase,
+} from './build-guides.ts';
+import { chunkMarkdown, formatChunkHeader } from '../core/guide-chunks.ts';
+import {
+  getOriginTrialsRegistry,
+  getVolatileFeaturesRegistry,
+} from '../core/feature-gates.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {
@@ -167,5 +182,108 @@ describe('formatChunkHeader', () => {
       header,
       'Email verification\nemail-verification (forms)\nFeatures: email-verification (email verification)'
     );
+  });
+});
+
+describe('processSkillsCliGuide cache miss regression', () => {
+  it('assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-cache-miss-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`
+      );
+      const storeUseCases: StoreUseCase[] = [];
+      const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
+      const emptyCache = new Map<string, Float32Array>();
+
+      await processSkillsCliGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        useCases: [],
+        storeUseCases,
+        chunkCache: emptyCache,
+        missingChunks,
+      });
+
+      assert.ok(missingChunks.length > 0, 'Should record cache miss');
+      assert.ok(storeUseCases.length > 0, 'Should have generated store use cases');
+      for (const item of storeUseCases) {
+        assert.deepStrictEqual(item.vector, [], 'Uncached chunk vector must be empty array, not StaticEmbedder vector');
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('processDevsiteGuide', () => {
+  it('extracts metadata and omits caution notices for standard guides', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-guide-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: DevSite Test Guide\ndescription: Guide for devsite\nweb-feature-ids:\n  - subgrid\n---\n# DevSite Test Guide\nSome markdown content.`
+      );
+      const devsiteGuides: DevsiteGuideMetadata[] = [];
+      const outGuidesDir = path.join(tmpDir, 'built');
+
+      await processDevsiteGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        buildGuidesDir: outGuidesDir,
+        devsiteGuides,
+      });
+
+      assert.strictEqual(devsiteGuides.length, 1);
+      assert.strictEqual(devsiteGuides[0].id, 'test-guide');
+      assert.strictEqual(devsiteGuides[0].title, 'DevSite Test Guide');
+      assert.deepStrictEqual(devsiteGuides[0].webFeatureIds, ['subgrid']);
+      const output = fs.readFileSync(path.join(outGuidesDir, 'css/test-guide.md'), 'utf-8');
+      assert.ok(!output.includes('<aside class="caution">'));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('wires unfiltered rawFeatureIds into DevSite gate caution notices', async () => {
+    const otKeys = Object.keys(getOriginTrialsRegistry());
+    const volatileKeys = Object.keys(getVolatileFeaturesRegistry());
+    const tmpOtId = otKeys.find((k) => k.startsWith('tmp-')) ?? otKeys[0];
+    const volatileId = volatileKeys.find((k) => k.startsWith('tmp-')) ?? volatileKeys[0];
+    if (!tmpOtId || !volatileId) return;
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-gates-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'gated-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: Gated Guide\ndescription: Both gates\nweb-feature-ids:\n  - ${tmpOtId}\n  - ${volatileId}\n---\n# Gated Guide\nBody content.`
+      );
+      const devsiteGuides: DevsiteGuideMetadata[] = [];
+      const outGuidesDir = path.join(tmpDir, 'built');
+
+      await processDevsiteGuide({
+        filePath: guideFile,
+        category: 'security',
+        id: 'gated-guide',
+        buildGuidesDir: outGuidesDir,
+        devsiteGuides,
+      });
+
+      const output = fs.readFileSync(path.join(outGuidesDir, 'security/gated-guide.md'), 'utf-8');
+      const promoIdx = output.indexOf('{% include "/docs/modern-web-guidance/_guide-promo.html" %}');
+      const otIdx = output.indexOf('set-allow-origin-trials');
+      const volatileIdx = output.indexOf('set-allow-volatile-features');
+      const bodyIdx = output.indexOf('Body content.');
+      assert.ok(promoIdx !== -1 && otIdx > promoIdx && volatileIdx > otIdx && volatileIdx < bodyIdx);
+      assert.strictEqual(output.match(/<aside class="caution">/g)?.length, 2);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

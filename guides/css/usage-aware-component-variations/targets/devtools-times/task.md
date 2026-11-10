@@ -1,1 +1,1 @@
-- Build components that adapt visual logic based on semantic context.
+- Update the article teaser cards and action buttons on The DevTools Times homepage so they automatically switch between a prominent featured presentation (revealing a promotional badge and filled button styling in featured sections like Top News) and a subtle default presentation (hiding the badge with an outlined button in standard sections like World) based on the semantic context of their parent section.

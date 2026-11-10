@@ -3,3 +3,8 @@
 - The outer horizontal swipe-to-reveal container sets `overscroll-behavior: chain` (or `overscroll-behavior-x: chain` / `overscroll-behavior-inline: chain`—not `contain` or `none`) in CSS as a progressive enhancement without JavaScript scroll-interception fallbacks, while the foreground content element retains `overscroll-behavior: auto`.
 - Revealed action controls or side-menu items are focusable DOM elements (such as `<button>` or `<a>`) inside the swipe-to-reveal scroll container, and swiping or scrolling the container to reveal the panel does not automatically trigger, commit, or dismiss the item.
 - When the foreground content element (or a focusable element inside it) receives keyboard focus (`focusin` paired with `:focus-visible`), the foreground content element scrolls back to the inline start (`scrollIntoView({ block: 'nearest', inline: 'start' })`) without triggering on pointer focus.
+- Each swipe to reveal interaction also has an associated trigger `<button>` for revealing the content.
+- Activating the associated trigger button performs the same action as the swipe it stands in for.
+- Each trigger button has an accessible name that includes the associated content's text.
+- Visually hidden controls in the swipe to reveal panel do not receive focus by default and have a `tabindex="-1"` attribute, to keep the number of tab stops to a minimum. When visible, this attribute should be updated to `tabindex="0"`, so that the controls can be reached when visible.
+- The associated trigger button must programmatically report the state of the swipe to reveal content, using `aria-expanded`. This should be set to `aria-expanded="true"` when the swipe to reveal content is visible, and `aria-expanded="false"` when the swipe to reveal content is hidden.
