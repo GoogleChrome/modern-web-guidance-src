@@ -1,10 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { outDir } from "../core/paths.ts";
-import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.ts";
+import { loadVectors, searchUseCases, type EmbedderLike } from "./search.ts";
 
 describe("searchUseCases", () => {
   it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
@@ -20,22 +21,41 @@ describe("searchUseCases", () => {
   });
 
   it("corpus vectors are all L2-normalized unit vectors (norm ~ 1.0)", () => {
-    const vectorsFile = path.join(outDir, "build/skills-cli/use-cases.vectors.gen.json.gz");
-    const compressed = fs.readFileSync(vectorsFile);
-    const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString("utf-8"));
+    const items = loadVectors(path.join(outDir, "build/skills-cli"));
     assert.ok(items.length > 0, "Corpus must have vector entries");
 
     for (const item of items) {
       if (item.vector.length === 0) continue;
       let sumSq = 0;
-      for (const val of item.vector) {
-        sumSq += val * val;
+      for (let i = 0; i < item.vector.length; i++) {
+        sumSq += item.vector[i] * item.vector[i];
       }
       const norm = Math.sqrt(sumSq);
       assert.ok(
         Math.abs(norm - 1.0) < 0.001,
         `Corpus vector for "${item.id}" must be unit length, got norm ${norm}`
       );
+    }
+  });
+
+  it("loadVectors throws an informative error when binary vector files are corrupted", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-guide-chunks-"));
+    try {
+      const dummyChunks = [
+        { id: "g1", description: "d1", category: "css", featuresUsed: [], tokenCount: 10, chunkContent: "c1" },
+        { id: "g2", description: "d2", category: "css", featuresUsed: [], tokenCount: 10, chunkContent: "c2" },
+      ];
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.json.gz"), zlib.gzipSync(JSON.stringify(dummyChunks)));
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.i8"), Buffer.alloc(100)); // not divisible by 2 * 256
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.scale.f32"), Buffer.alloc(4)); // wrong scale byteLength (4 !== 2 * 4)
+
+      assert.throws(() => loadVectors(tmpDir), /Corrupt vector scale file/);
+
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.scale.f32"), Buffer.alloc(8));
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.i8"), Buffer.alloc(3)); // not divisible by 2
+      assert.throws(() => loadVectors(tmpDir), /Corrupt vector i8 file/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
@@ -105,10 +125,10 @@ describe("searchUseCases", () => {
   });
 
   it("surfaces guides matching by web feature ID via enriched chunk content", async () => {
-    // details-name is a web-feature-id on search-hidden-content, enriched in chunk header
+    // details-name is a web-feature-id on accordion and search-hidden-content, enriched in chunk header
     const results = await searchUseCases("details-name", 5);
     assert.ok(results.length > 0, "Should return results for web feature ID query");
-    assert.strictEqual(results[0].id, "search-hidden-content");
+    assert.strictEqual(results[0].id, "accordion");
   });
 
   it("returns results for single-token API queries", async () => {

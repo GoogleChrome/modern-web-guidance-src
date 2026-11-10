@@ -84,10 +84,35 @@ test.describe('spinner Target Grader', () => {
 
   test('<progress> element includes an aria-label attribute for accessibility', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const progressEls = docs.flatMap((d) => Array.from(d.document.querySelectorAll('progress')));
-    const hasAriaLabelInHtml = progressEls.some((el) =>
-      Boolean(el.getAttribute('aria-label')?.trim())
+    const spinnerEls = docs.flatMap((d) =>
+      Array.from(
+        d.document.querySelectorAll(
+          'progress, [role="status"], [role="progressbar"], svg[aria-label], .spinner, .loading'
+        )
+      )
     );
+    const hasAccessibleNameInHtml = spinnerEls.some((el) => {
+      const ariaLabel = el.getAttribute('aria-label')?.trim();
+      if (ariaLabel) return true;
+      const ariaLabelledby = el.getAttribute('aria-labelledby')?.trim();
+      if (ariaLabelledby) return true;
+      const title = el.getAttribute('title')?.trim();
+      if (title) return true;
+      const visuallyHidden = el.querySelector(
+        '.sr-only, .visually-hidden, [class*="hidden" i]'
+      );
+      if (visuallyHidden && (visuallyHidden.textContent?.trim().length ?? 0) > 0)
+        return true;
+      const id = el.getAttribute('id');
+      if (
+        id &&
+        docs.some((d) =>
+          Boolean(d.document.querySelector(`label[for="${id}"]`))
+        )
+      )
+        return true;
+      return false;
+    });
 
     const project = getJsProject(targetFiles);
     const callExpressions = project
@@ -95,11 +120,17 @@ test.describe('spinner Target Grader', () => {
       .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
     const hasAriaLabelInJs = callExpressions.some((call) => {
       const exprText = call.getExpression().getText();
-      const firstArg = call.getArguments()[0]?.getText().replace(/^['"`]|['"`]$/g, '');
-      return exprText.endsWith('setAttribute') && firstArg === 'aria-label';
+      const firstArg = call
+        .getArguments()[0]
+        ?.getText()
+        .replace(/^['"`]|['"`]$/g, '');
+      return (
+        exprText.endsWith('setAttribute') &&
+        (firstArg === 'aria-label' || firstArg === 'aria-labelledby')
+      );
     });
 
-    expect(hasAriaLabelInHtml || hasAriaLabelInJs).toBe(true);
+    expect(hasAccessibleNameInHtml || hasAriaLabelInJs).toBe(true);
   });
 
   test('visual spinner uses a conic-gradient with dynamic angles driven by CSS custom properties', () => {

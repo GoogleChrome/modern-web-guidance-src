@@ -2,20 +2,16 @@ import path from 'path';
 import os from 'os';
 import { pathToFileURL } from 'url';
 import { rootDir } from '../core/paths.ts';
+import { loadAllowedEnvFile } from './lib/secret-guard.ts';
 
 // Disable telemetry for eval harness runs (`node --test` runs are covered
 // automatically via NODE_TEST_CONTEXT in ClearcutLogger).
 process.env.DISABLE_TELEMETRY = '1';
 
-try {
-  process.loadEnvFile(path.join(rootDir, '.env'));
-} catch {
-  // Ignore if missing
-}
+loadAllowedEnvFile(path.join(rootDir, '.env'));
 
 export const Agents = {
   JETSKI_CLI: 'jetski_cli',
-  GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
   CODEX_CLI: 'codex_cli',
   PI: 'pi',
@@ -31,10 +27,6 @@ export type Agents = typeof Agents[keyof typeof Agents];
 export const environmentConfig: EnvironmentConfig = {
   // Jetski CLI Configuration
   jetskiCliBin: process.env.JETSKI_CLI_BIN || '/google/bin/releases/jetski-devs/tools/cli',
-
-  // Gemini CLI Configuration
-  geminiCliBin: process.env.GEMINI_CLI_BIN || path.join(rootDir, 'node_modules/.bin/gemini'),
-  geminiDir: process.env.GEMINI_DIR || path.join(os.homedir(), '.gemini'),
 
   // Claude Code Configuration (through GCP Vertex AI)
   claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(rootDir, 'node_modules/.bin/claude'),
@@ -89,8 +81,6 @@ export async function resolveSuiteConfig(configPath?: string): Promise<SuiteConf
 
 export interface EnvironmentConfig {
   jetskiCliBin: string;
-  geminiCliBin: string;
-  geminiDir: string;
   claudeCodeCliBin: string;
   codexCliBin: string;
   piBin: string;

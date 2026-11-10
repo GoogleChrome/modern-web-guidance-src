@@ -21,9 +21,7 @@ guides:
 
 # Build a toolbar
 
-A toolbar groups related controls (formatting, alignment, view options) into one composite widget with a **single tab stop**. Users `Tab` into it once, move between controls with the arrow keys, and `Tab` out. Use it only for controls that act on something else (an editor, preview, canvas). For site navigation use a navbar; for a dropdown or context menu of commands without a persistent row of controls, see {{ GUIDE_REF("menu") }}.
-
-{# PENDING_GUIDE_REF: For site navigation, see {{ GUIDE_REF("navbar") }}. #}
+A toolbar groups related controls (formatting, alignment, view options) into one composite widget with a **single tab stop**. Users `Tab` into it once, move between controls with the arrow keys, and `Tab` out. Use it only for controls that act on something else (an editor, preview, canvas). For site navigation, see {{ GUIDE_REF("navbar") }}; for a dropdown or context menu of commands without a persistent row of controls, see {{ GUIDE_REF("menu") }}.
 
 ## Structure and semantics
 
@@ -86,7 +84,9 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 
 * Keep a clear `:focus-visible` outline with an offset; never remove it.
 * Style toggled state from the ARIA attribute (`[aria-pressed="true"]`), not a separate class, so visual and accessible state cannot diverge.
-* Show the toggled state with the button background alone; do not add an underline or other mark. Under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`). Draw separators and tooltip boxes with a border (a `transparent` one is fine), not `background` alone, which forced colors replaces with the page color.
+* Show the toggled state by changing the button background; if the contrast between the button background and the adjacent background color is less than 3:1 in each supported color scheme, provide an additional visual cue such as an outline or inset shadow around the background that meets the 3:1 threshold. For more information, see {{ GUIDE_REF("color") }}.
+* Under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`).
+* Draw separators and tooltip boxes with a border (a `transparent` one is fine), not `background` alone, which forced colors replaces with the page color.
 * Wrap hover styles in `@media (hover: hover)` and transitions in `@media (prefers-reduced-motion: no-preference)`.
 
 ## Tooltips for icon-only buttons

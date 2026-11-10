@@ -17,7 +17,6 @@ import {
   extractSubagentIdFromFilename,
   extractClaudeMetadata,
   extractCodexMetadata,
-  extractGeminiMetadata,
   extractPiMetadata
 } from './trajectory-normalizer.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
@@ -70,6 +69,9 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
 
   const cliAnalyzeCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest analyze src/ --json' }, undefined, 'run_command');
   assert.strictEqual(cliAnalyzeCat, 'skill_search');
+
+  const cliLegacyScanCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest legacy-scan src/ --json' }, undefined, 'run_command');
+  assert.strictEqual(cliLegacyScanCat, 'skill_search');
 
   const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
   assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
@@ -672,34 +674,31 @@ test('hasTrajectoryGuideLeak ignores host node_modules and passive search result
 test('generateNormalizedTrajectory dispatcher writes summary for given agent', async () => {
   const tempDir = createTempDir();
   try {
-    const sessionData = {
-      messages: [
-        { role: 'user', content: 'Inspect code' },
-        {
-          role: 'gemini',
-          thought: 'Looking up guide',
-          toolCalls: [{ name: 'mcp_modern-web_get_best_practices', args: { use_case_id: 'container-queries' } }]
-        },
-        {
-          role: 'user',
-          toolResults: [{ status: 'success', output: 'Guide details' }]
-        }
-      ]
-    };
-    fs.writeFileSync(path.join(tempDir, 'session-101.json'), JSON.stringify(sessionData));
+    const sessionLine = JSON.stringify({
+      type: 'message',
+      timestamp: '2026-08-09T21:00:00.000Z',
+      message: {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'Looking up guide' },
+          { type: 'toolCall', id: 'tc1', name: 'bash', arguments: { command: 'node modern-web.mjs retrieve container-queries' } }
+        ]
+      }
+    });
+    fs.writeFileSync(path.join(tempDir, 'session-101.jsonl'), sessionLine + '\n');
 
-    await generateNormalizedTrajectory(tempDir, Agents.GEMINI_CLI, 'Inspect code');
+    await generateNormalizedTrajectory(tempDir, Agents.PI, 'Inspect code');
 
     const summaryPath = path.join(tempDir, TRAJECTORY_SUMMARY_FILE);
     assert.ok(fs.existsSync(summaryPath), 'trajectory_summary.json should be created by dispatcher');
 
     const summary = readTrajectorySummary(tempDir);
     assert.ok(summary);
-    assert.strictEqual(summary.agent, Agents.GEMINI_CLI);
+    assert.strictEqual(summary.agent, Agents.PI);
     assert.strictEqual(summary.initialPrompt, 'Inspect code');
     assert.strictEqual(summary.steps.length, 1);
     assert.strictEqual(summary.steps[0].stepNumber, 1);
-    assert.strictEqual(summary.steps[0].action?.name, 'mcp_modern-web_get_best_practices');
+    assert.strictEqual(summary.steps[0].action?.name, 'bash');
   } finally {
     removeTempDir(tempDir);
   }
@@ -781,23 +780,7 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   ]);
   assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
-  // 3. Gemini
-  const geminiMeta = extractGeminiMetadata({
-    messages: [
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: validCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: chainedCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: spaceCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: directNodeMjsCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: goJsonEscapedCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: legacyCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: searchCmd } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: inlineGuideRef } }] },
-      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: genericCmd } }] },
-    ]
-  });
-  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
-
-  // 4. Pi
+  // 3. Pi
   const piMeta = extractPiMetadata([
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: chainedCmd } }] } },
@@ -972,6 +955,192 @@ test('generateNormalizedTrajectory enriches summary with guides and tool usage f
     assert.deepStrictEqual(summary.retrievedGuides, ['dialog-closedby', 'popover-api']);
     assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
   } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('parseJetskiCliSession extracts observed reasoning effort from gen_metadata display names without altering model extraction', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const { parseJetskiCliSession } = await import('../agents/jetski-cli-agent.ts');
+
+  const geminiDir = createTempDir();
+  const claudeDir = createTempDir();
+  try {
+    const geminiDb = new DatabaseSync(path.join(geminiDir, 'session-1.db'));
+    geminiDb.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+    geminiDb.exec('CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB)');
+    const geminiDisplayBuf = encodeLengthDelimited(1, Buffer.from('Gemini 4 Argon (High)|extra', 'utf8'));
+    geminiDb.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)').run(1, geminiDisplayBuf);
+    geminiDb.close();
+
+    const geminiSummary = parseJetskiCliSession(geminiDir);
+    assert.strictEqual(geminiSummary.model, 'Gemini 4 Argon (High)');
+    assert.deepStrictEqual(geminiSummary.reasoningEffort, { level: 'high', source: 'observed' });
+
+    const claudeDb = new DatabaseSync(path.join(claudeDir, 'session-1.db'));
+    claudeDb.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+    claudeDb.exec('CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB)');
+    const claudeDisplayBuf = encodeLengthDelimited(1, Buffer.from('Claude Fable 5.1 (Max)', 'utf8'));
+    claudeDb.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)').run(1, claudeDisplayBuf);
+    claudeDb.close();
+
+    const claudeSummary = parseJetskiCliSession(claudeDir);
+    assert.strictEqual(claudeSummary.model, 'unknown');
+    assert.deepStrictEqual(claudeSummary.reasoningEffort, { level: 'max', source: 'observed' });
+
+    // Live agy / jetski gen_metadata where 1.21 (model_display_name) is omitted,
+    // 1.19 (chat_model.response_model) = "gemini-3.8-flash", and 3.28 (planner_config.model_name) = "gemini-3.8-flash-high"
+    const nestedDir = createTempDir();
+    try {
+      const nestedDb = new DatabaseSync(path.join(nestedDir, 'session-1.db'));
+      nestedDb.exec('CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB)');
+      nestedDb.exec('CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB)');
+      const chatModelMsg = Buffer.concat([
+        encodeLengthDelimited(1, Buffer.from('Gemini system prompt hint that should not shadow 1.19', 'utf8')),
+        encodeLengthDelimited(19, Buffer.from('gemini-3.8-flash', 'utf8')),
+      ]);
+      const plannerConfigMsg = encodeLengthDelimited(28, Buffer.from('gemini-3.8-flash-high', 'utf8'));
+      const genMetaBuf = Buffer.concat([
+        encodeLengthDelimited(1, chatModelMsg),
+        encodeLengthDelimited(3, plannerConfigMsg),
+      ]);
+      nestedDb.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)').run(1, genMetaBuf);
+      nestedDb.close();
+
+      const nestedSummary = parseJetskiCliSession(nestedDir);
+      assert.strictEqual(nestedSummary.model, 'gemini-3.8-flash');
+      assert.deepStrictEqual(nestedSummary.reasoningEffort, { level: 'high', source: 'observed' });
+    } finally {
+      removeTempDir(nestedDir);
+    }
+  } finally {
+    removeTempDir(geminiDir);
+    removeTempDir(claudeDir);
+  }
+});
+
+test('parseClaudeTrajectory extracts observed reasoning effort from main-session api-request output_config', async () => {
+  const { parseClaudeTrajectory } = await import('../agents/claude-code-agent.ts');
+
+  const summary = parseClaudeTrajectory(
+    [
+      {
+        type: 'api-request',
+        params: {
+          model: 'claude-opus-5-5',
+          output_config: { effort: 'Medium' },
+        },
+      },
+      {
+        type: 'api-request',
+        isSidechain: true,
+        params: {
+          model: 'claude-haiku-4-5',
+          output_config: { effort: 'low' },
+        },
+      },
+      {
+        role: 'assistant',
+        message: {
+          model: 'claude-opus-5-5',
+          content: [{ type: 'text', text: 'Done' }],
+        },
+      },
+    ],
+    {
+      sub1: [
+        {
+          type: 'api-request',
+          params: {
+            model: 'claude-haiku-4-5',
+            output_config: { effort: 'low' },
+          },
+        },
+      ],
+    },
+  );
+  assert.strictEqual(summary.model, 'claude-opus-5-5');
+  assert.deepStrictEqual(summary.reasoningEffort, { level: 'medium', source: 'observed' });
+});
+
+test('parsePiTrajectory extracts observed thinking_level_change and offline regeneration preserves configured effort', async () => {
+  const { parsePiTrajectory } = await import('../agents/pi-agent.ts');
+  const { ensureFreshTrajectorySummary, finalizeTrajectorySummary } = await import('./trajectory-normalizer.ts');
+
+  const piSummary = parsePiTrajectory([
+    { type: 'thinking_level_change', thinkingLevel: 'Medium' },
+    {
+      type: 'message',
+      message: {
+        model: 'deepseek/deepseek-v4.1-flash',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Done' }],
+      },
+    },
+  ]);
+  assert.deepStrictEqual(piSummary.reasoningEffort, { level: 'medium', source: 'observed' });
+
+  const finalizedTiered = finalizeTrajectorySummary({
+    agent: Agents.ANTIGRAVITY_CLI,
+    model: 'gemini-3.8-flash-medium',
+    steps: [],
+  });
+  assert.deepStrictEqual(finalizedTiered.reasoningEffort, { level: 'medium', source: 'model-id' });
+
+  const tempDir = createTempDir();
+  const prevClaudeEffort = process.env.CLAUDE_EFFORT;
+  delete process.env.CLAUDE_EFFORT;
+  try {
+    // Simulate a summary originally recorded with CLAUDE_EFFORT=high, then re-normalized offline when env is gone.
+    writeTrajectorySummary(tempDir, {
+      normalizerVersion: 4,
+      agent: Agents.CLAUDE_CODE,
+      model: 'claude-sonnet-5-5',
+      reasoningEffort: { level: 'high', source: 'configured' },
+      steps: [
+        {
+          stepNumber: 1,
+          action: { type: 'run_command', name: 'Bash', params: { command: 'ls' } },
+        },
+      ],
+    });
+    fs.writeFileSync(
+      path.join(tempDir, 'session-1.jsonl'),
+      JSON.stringify({
+        role: 'assistant',
+        timestamp: '2026-08-10T10:00:00.000Z',
+        message: {
+          model: 'claude-sonnet-5-5',
+          content: [{ type: 'tool_use', id: 'c1', name: 'Bash', input: { command: 'ls' } }],
+        },
+      }) + '\n',
+      'utf8',
+    );
+
+    const refreshed = await ensureFreshTrajectorySummary(tempDir);
+    assert.ok(refreshed);
+    assert.deepStrictEqual(refreshed.reasoningEffort, { level: 'high', source: 'configured' });
+
+    // Also verify that an ambient process.env.CLAUDE_EFFORT = 'low' does NOT leak into offline
+    // v4 -> v5 re-normalization of a historical summary without observed effort.
+    process.env.CLAUDE_EFFORT = 'low';
+    writeTrajectorySummary(tempDir, {
+      normalizerVersion: 4,
+      agent: Agents.CLAUDE_CODE,
+      model: 'claude-sonnet-5-5',
+      steps: [
+        {
+          stepNumber: 1,
+          action: { type: 'run_command', name: 'Bash', params: { command: 'ls' } },
+        },
+      ],
+    });
+    const refreshedWithAmbientEnv = await ensureFreshTrajectorySummary(tempDir);
+    assert.ok(refreshedWithAmbientEnv);
+    assert.deepStrictEqual(refreshedWithAmbientEnv.reasoningEffort, { source: 'agent-default' });
+  } finally {
+    if (prevClaudeEffort === undefined) delete process.env.CLAUDE_EFFORT;
+    else process.env.CLAUDE_EFFORT = prevClaudeEffort;
     removeTempDir(tempDir);
   }
 });

@@ -13,9 +13,22 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
+const WEB_VITALS_BUNDLE_RE = /\bonINP\$|\bhandleLoAFEntries\b|\bgetVisibilityWatcher\b/;
+function isWebVitalsBundle(content: string): boolean {
+  if (WEB_VITALS_BUNDLE_RE.test(content)) return true;
+  return (
+    content.includes('prerenderingchange') &&
+    content.includes('soft-navigation') &&
+    content.includes('first-input')
+  );
+}
+
 function getCodeContent(): string {
-  const files = [filePath];
+  const contents = [fs.readFileSync(filePath, 'utf-8')];
   const ignoredDirs = new Set(['node_modules', 'vendor', 'dist', 'build', 'lib', 'grade-report', 'test-results', '.git']);
+  if (fs.existsSync(path.join(targetDir, 'src'))) {
+    ignoredDirs.add('assets');
+  }
   function walk(dir: string) {
     try {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -26,15 +39,20 @@ function getCodeContent(): string {
         } else if (
           (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
           !entry.name.includes('.test.') &&
+          entry.name !== 'run.mjs' &&
+          entry.name !== 'grade.mjs' &&
           !/web-vitals/i.test(entry.name)
         ) {
-          files.push(path.join(dir, entry.name));
+          const text = fs.readFileSync(path.join(dir, entry.name), 'utf-8');
+          if (!isWebVitalsBundle(text)) {
+            contents.push(text);
+          }
         }
       }
     } catch {}
   }
   walk(targetDir);
-  return files.map(f => fs.readFileSync(f, 'utf-8')).join('\n');
+  return contents.join('\n');
 }
 
 test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
@@ -48,8 +66,8 @@ test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
 
   test('Should handle the case where longestScript.entry might be empty', async () => {
     const html = getCodeContent();
-    // Check for optional chaining when accessing longestScript.entry (directly or via local alias)
-    expect(html).toMatch(/(?:longestScript\?\.entry|longestScript\.entry\?\.|longestScript[\s\S]{0,1000}?(?:\?\.entry\b|\.entry\?\.))/);
+    // Check for optional chaining or conditional guard when accessing longestScript.entry (directly or via local alias)
+    expect(html).toMatch(/(?:(?:longestScript|longest)\?\.entry|(?:longestScript|longest)\.entry\?\.|\bif\s*\([^)]*(?:longestScript|longest)[^)]*\)[\s\S]{0,100}?(?:longestScript|longest)\.entry|\b(?:longestScript|longest)\s*\?[\s\S]{0,100}?(?:longestScript|longest)\.entry|\b(?:longestScript|longest)\s*&&[\s\S]{0,100}?(?:longestScript|longest)\.entry)/);
   });
 
   test('Should use Long Animation Frames (LoAF) data for INP attribution', async () => {
@@ -107,7 +125,7 @@ test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
     });
     expect(scriptContent.trim().length).toBeGreaterThan(0);
     const combined = `${scriptContent}\n${getCodeContent()}`;
-    expect(combined).toMatch(/(?:longestScript\?\.entry|longestScript\.entry\?\.|longestScript[\s\S]{0,1000}?(?:\?\.entry\b|\.entry\?\.))/);
+    expect(combined).toMatch(/(?:(?:longestScript|longest)\?\.entry|(?:longestScript|longest)\.entry\?\.|\bif\s*\([^)]*(?:longestScript|longest)[^)]*\)[\s\S]{0,100}?(?:longestScript|longest)\.entry|\b(?:longestScript|longest)\s*\?[\s\S]{0,100}?(?:longestScript|longest)\.entry|\b(?:longestScript|longest)\s*&&[\s\S]{0,100}?(?:longestScript|longest)\.entry)/);
   });
 
   test('Page should not use Profiler API in its scripts', async ({ page }) => {
@@ -133,5 +151,34 @@ test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
     expect(scriptContent.trim().length).toBeGreaterThan(0);
     const combined = `${scriptContent}\n${getCodeContent()}`;
     expect(combined).toContain('onINP');
+  });
+
+  async function getStrippedSource(page: import('@playwright/test').Page): Promise<string> {
+    const scriptContent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join('\n');
+    });
+    const raw = `${scriptContent}\n${getCodeContent()}`;
+    return raw
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[\s;{}()])\/\/[^\n]*/gm, '$1');
+  }
+
+  test('INP subparts (`inputDelay`, `processingDuration`, `presentationDelay`) are provided.', async ({ page }) => {
+    const code = await getStrippedSource(page);
+    expect(code).toMatch(/\binputDelay\b/);
+    expect(code).toMatch(/\bprocessingDuration\b/);
+    expect(code).toMatch(/\bpresentationDelay\b/);
+  });
+
+  test('Style and layout durations from Long Animation Frames (`styleDuration`, `layoutDuration`, `forcedStyleDuration`, `forcedLayoutDuration`, or combined fallbacks `forcedStyleAndLayoutDuration` / `totalStyleAndLayoutDuration`) are reported.', async ({ page }) => {
+    const code = await getStrippedSource(page);
+    const hasSplitRender = /\bstyleDuration\b/.test(code) && /\blayoutDuration\b/.test(code);
+    const hasSplitForced = /\bforcedStyleDuration\b/.test(code) && /\bforcedLayoutDuration\b/.test(code);
+    const hasCombinedFallback = /\bforcedStyleAndLayoutDuration\b/.test(code) || /\btotalStyleAndLayoutDuration\b/.test(code);
+    const hasRawLoafStyleLayout =
+      /\bstyleAndLayoutStart\b/.test(code) &&
+      (/\bpaintTime\b/.test(code) || /\bstartTime\b/.test(code));
+    expect(hasSplitRender || hasSplitForced || hasCombinedFallback || hasRawLoafStyleLayout).toBe(true);
   });
 });

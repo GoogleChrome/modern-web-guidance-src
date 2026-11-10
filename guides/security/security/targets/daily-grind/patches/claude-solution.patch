@@ -1,104 +1,260 @@
 diff --git a/index.html b/index.html
-index 66c9173..240b763 100644
+index 66c9173..02d18e6 100644
 --- a/index.html
 +++ b/index.html
-@@ -4,6 +4,7 @@
- <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+  <meta name="referrer" content="strict-origin-when-cross-origin">
-   <title>The Daily Grind | Artisanal Coffee</title>
-   <style>
-     :root {
+@@ -135,6 +135,10 @@
+       background: #3e2723;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,7 +180,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
 diff --git a/package.json b/package.json
-index 2bd4d77..52fef7d 100644
+index 2bd4d77..d78fcf0 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,7 +2,8 @@
+@@ -1,8 +1,10 @@
+ {
    "name": "daily-grind",
    "version": "1.0.0",
++  "type": "module",
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "build": "node --check server.js",
-+    "start": "node server.js"
++    "start": "node server.mjs",
++    "build": "node --check server.mjs"
    },
    "pnpm": {
      "onlyBuiltDependencies": []
-diff --git a/server.js b/server.js
+diff --git a/server.mjs b/server.mjs
 new file mode 100644
-index 0000000..ef57263
+index 0000000..3466da2
 --- /dev/null
-+++ b/server.js
-@@ -0,0 +1,72 @@
-+const http = require('node:http');
-+const fs = require('node:fs');
-+const path = require('node:path');
-+const crypto = require('node:crypto');
++++ b/server.mjs
+@@ -0,0 +1,214 @@
++// Minimal Node server for The Daily Grind.
++// Serves the static homepage with hardened security headers and handles /logout.
 +
-+const PORT = parseInt(process.env.PORT || '11222', 10);
-+const WORK_DIR = __dirname;
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { randomBytes } from 'node:crypto';
++import { fileURLToPath } from 'node:url';
++import { dirname, join } from 'node:path';
 +
-+const server = http.createServer((req, res) => {
++const ROOT = dirname(fileURLToPath(import.meta.url));
++const PORT = Number.parseInt(process.env.PORT ?? '', 10) || 11222;
++
++const SESSION_COOKIE = '__Host-session';
++const REPORT_PATH = '/reports';
++const MAX_REPORT_BYTES = 64 * 1024;
++
++// Only explicitly listed files are served; nothing else in the project directory is exposed.
++const PAGES = new Map([
++  ['/', 'index.html'],
++  ['/index.html', 'index.html'],
++]);
++
++/** @param {import('node:http').ServerResponse} res */
++function setSecurityHeaders(res) {
++  // Fresh cryptographic nonce per response. The page currently has no scripts, so no
++  // script can execute unless it is later added with this nonce via a server template.
++  const nonce = randomBytes(16).toString('base64');
++
++  const csp = [
++    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'none'",
++    "form-action 'self'",
++    "require-trusted-types-for 'script'",
++    'report-to main-endpoint',
++  ].join('; ');
++
++  res.setHeader('Reporting-Endpoints', `main-endpoint="${REPORT_PATH}", default="${REPORT_PATH}"`);
++  res.setHeader('Content-Security-Policy', csp);
++  res.setHeader('X-Frame-Options', 'DENY');
++  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
++  res.setHeader(
++    'Permissions-Policy',
++    'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()',
++  );
++  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++}
++
++/**
++ * Fetch Metadata resource isolation policy.
++ * @param {import('node:http').IncomingMessage} req
++ * @param {string} pathname
++ */
++function isAllowedByFetchMetadata(req, pathname) {
 +  const site = req.headers['sec-fetch-site'];
 +  const mode = req.headers['sec-fetch-mode'];
 +  const dest = req.headers['sec-fetch-dest'];
 +
-+  if (site && site !== 'same-origin' && site !== 'same-site' && site !== 'none') {
-+    const isAllowedNav = site === 'cross-site' && mode === 'navigate' &&
-+      (req.method === 'GET' || req.method === 'HEAD') && !['object', 'embed'].includes(dest);
-+    if (!isAllowedNav) {
-+      res.writeHead(403, {
-+        'Content-Type': 'text/plain; charset=utf-8',
-+        'Vary': 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
-+      });
-+      res.end('Forbidden');
++  if (!site) return true; // Legacy browsers that don't send Fetch Metadata.
++  if (site === 'same-origin' || site === 'same-site' || site === 'none') return true;
++
++  // Never let another site sign the visitor out (logout CSRF).
++  if (pathname === '/logout') return false;
++
++  // Allow top-level cross-site link navigations to pages.
++  return (
++    site === 'cross-site' &&
++    mode === 'navigate' &&
++    (req.method === 'GET' || req.method === 'HEAD') &&
++    dest !== 'object' &&
++    dest !== 'embed'
++  );
++}
++
++/**
++ * @param {import('node:http').ServerResponse} res
++ * @param {number} status
++ * @param {string} body
++ */
++function sendText(res, status, body) {
++  res.statusCode = status;
++  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++  res.end(body);
++}
++
++/** Strip query strings / fragments so secrets never end up in logs. */
++function redactUrl(value) {
++  if (typeof value !== 'string' || value === '') return undefined;
++  try {
++    const url = new URL(value);
++    return `${url.origin}${url.pathname}`;
++  } catch {
++    return value.split(/[?#]/)[0].slice(0, 200);
++  }
++}
++
++/**
++ * Accept violation reports, logging only non-sensitive fields.
++ * @param {import('node:http').IncomingMessage} req
++ * @param {import('node:http').ServerResponse} res
++ */
++function handleReport(req, res) {
++  let size = 0;
++  /** @type {Buffer[]} */
++  const chunks = [];
++  let aborted = false;
++
++  req.on('data', (chunk) => {
++    if (aborted) return;
++    size += chunk.length;
++    if (size > MAX_REPORT_BYTES) {
++      aborted = true;
++      sendText(res, 413, 'Payload Too Large');
++      req.destroy();
 +      return;
 +    }
-+  }
++    chunks.push(chunk);
++  });
 +
-+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-+  res.setHeader('X-Content-Type-Options', 'nosniff');
-+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-+  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
-+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-+  res.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
-+  res.setHeader('Reporting-Endpoints', 'default="https://report.example.com/csp"');
++  req.on('end', () => {
++    if (aborted) return;
++    try {
++      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++      const reports = Array.isArray(parsed) ? parsed : [parsed];
++      for (const report of reports) {
++        const body = report?.body ?? report?.['csp-report'] ?? {};
++        console.warn('[security-report]', {
++          type: report?.type ?? 'csp-violation',
++          directive: body.effectiveDirective ?? body['effective-directive'],
++          blocked: redactUrl(body.blockedURL ?? body['blocked-uri']),
++          document: redactUrl(body.documentURL ?? body['document-uri'] ?? report?.url),
++          disposition: body.disposition,
++        });
++      }
++    } catch {
++      // Ignore malformed reports.
++    }
++    res.statusCode = 204;
++    res.end();
++  });
++}
 +
-+  const nonce = crypto.randomBytes(16).toString('base64');
-+  res.setHeader('Content-Security-Policy', [
-+    "default-src 'self'",
-+    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
-+    "object-src 'none'",
-+    "base-uri 'none'",
-+    "frame-ancestors 'self'",
-+    "require-trusted-types-for 'script'",
-+    "report-to default",
-+  ].join('; '));
-+
-+  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-+  const pathname = parsedUrl.pathname;
-+
-+  if (pathname === '/logout' || pathname === '/logout/') {
-+    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
-+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-+    res.end('Logged out');
++const server = createServer(async (req, res) => {
++  let pathname;
++  try {
++    pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
++  } catch {
++    sendText(res, 400, 'Bad Request');
 +    return;
 +  }
 +
-+  const filePath = path.join(WORK_DIR, 'index.html');
-+  fs.readFile(filePath, (err, data) => {
-+    if (err) {
-+      res.writeHead(500);
-+      res.end('Server error');
++  setSecurityHeaders(res);
++
++  // Reject disallowed cross-site requests before any session handling.
++  if (!isAllowedByFetchMetadata(req, pathname)) {
++    sendText(res, 403, 'Forbidden');
++    return;
++  }
++
++  if (pathname === REPORT_PATH) {
++    if (req.method !== 'POST') {
++      res.setHeader('Allow', 'POST');
++      sendText(res, 405, 'Method Not Allowed');
 +      return;
 +    }
-+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-+    res.end(data);
-+  });
++    handleReport(req, res);
++    return;
++  }
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    res.setHeader('Allow', 'GET, HEAD');
++    sendText(res, 405, 'Method Not Allowed');
++    return;
++  }
++
++  if (pathname === '/logout') {
++    // Sign the visitor out: expire the session cookie and wipe client-side state.
++    res.setHeader(
++      'Set-Cookie',
++      `${SESSION_COOKIE}=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure; HttpOnly; SameSite=Lax`,
++    );
++    res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
++    res.setHeader('Cache-Control', 'no-store');
++    res.statusCode = 303;
++    res.setHeader('Location', '/');
++    res.end();
++    return;
++  }
++
++  const file = PAGES.get(pathname);
++  if (!file) {
++    sendText(res, 404, 'Not Found');
++    return;
++  }
++
++  try {
++    const html = await readFile(join(ROOT, file));
++    res.statusCode = 200;
++    res.setHeader('Content-Type', 'text/html; charset=utf-8');
++    res.setHeader('Content-Length', html.length);
++    res.end(req.method === 'HEAD' ? undefined : html);
++  } catch {
++    sendText(res, 500, 'Internal Server Error');
++  }
 +});
 +
 +server.listen(PORT, () => {
-+  console.log(`Claude solution running on http://localhost:${PORT}`);
++  console.log(`The Daily Grind is running on http://localhost:${PORT}`);
 +});

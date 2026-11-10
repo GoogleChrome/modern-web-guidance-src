@@ -1,0 +1,29 @@
+{
+  "$schema": "./allowlist.schema.json",
+  "include": [
+    "nightly-*-claude_code",
+    "nightly-*-codex_cli",
+    "nightly-*-antigravity_cli"
+  ],
+  "exclude": [],
+  "overrides": [],
+  "releasedModels": [
+    "claude-fable-5-1",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+    "claude-opus-5",
+    "claude-opus-5-5",
+    "claude-sonnet-5",
+    "claude-sonnet-5-5",
+    "gemini-3.8-flash",
+    "gemini-4-argon",
+    "gpt-5.5",
+    "gpt-5.6-sol",
+    "gpt-6-astra",
+    "gpt-6.1-sol"
+  ],
+  "retention": {
+    "maxSuitesPerAgent": 10,
+    "maxSuites": 30
+  }
+}

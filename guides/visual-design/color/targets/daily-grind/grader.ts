@@ -7,10 +7,14 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import { CSSMediaRule, CSSStyleRule, type CSSRule, type CSSStyleSheet } from 'cssomnom';
+import {
+  CSSMediaRule,
+  CSSStyleRule,
+  type RuleRoot,
+} from 'cssomnom';
 import type { Document } from 'linkedom';
 import type { Page } from '@playwright/test';
 
@@ -23,47 +27,13 @@ const currentFileUrl: string =
     : pathToFileURL(path.resolve('grader.ts')).href;
 const targetFiles: string[] = getTargetFiles(currentFileUrl);
 
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if ('cssRules' in rule && rule.cssRules) {
-      result.push(...collectStyleRules(rule.cssRules as Iterable<CSSRule>));
-    }
-  }
-  return result;
-}
-
-function collectMediaRules(rules: Iterable<CSSRule>): CSSMediaRule[] {
-  const result: CSSMediaRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSMediaRule) {
-      result.push(rule);
-    }
-    if ('cssRules' in rule && rule.cssRules) {
-      result.push(...collectMediaRules(rule.cssRules as Iterable<CSSRule>));
-    }
-  }
-  return result;
-}
-
 type DeclarationBlock = { length: number; [index: number]: string; getPropertyValue(p: string): string };
 
 /** Every declaration block (style rules and bare nested declarations) under the given rules, at any depth. */
-function collectDeclarationBlocks(rules: Iterable<CSSRule>): DeclarationBlock[] {
-  const result: DeclarationBlock[] = [];
-  for (const rule of rules) {
-    const style = (rule as unknown as { style?: DeclarationBlock }).style;
-    if (style && typeof style.getPropertyValue === 'function') {
-      result.push(style);
-    }
-    if ('cssRules' in rule && rule.cssRules) {
-      result.push(...collectDeclarationBlocks(rule.cssRules as Iterable<CSSRule>));
-    }
-  }
-  return result;
+function collectDeclarationBlocks(rules: RuleRoot): DeclarationBlock[] {
+  return getRules(rules)
+    .map((r) => (r as unknown as { style?: DeclarationBlock }).style)
+    .filter((s): s is DeclarationBlock => Boolean(s && typeof s.getPropertyValue === 'function'));
 }
 
 const SYSTEM_COLOR_PATTERN =
@@ -252,11 +222,10 @@ async function auditScheme(page: Page, url: string, scheme: 'light' | 'dark'): P
 
 test.describe('color Target Grader', () => {
   test('Expectation 1: Provides @media (forced-colors: active) fallbacks with system colors or visible borders/outlines', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const forcedColorRules = collectMediaRules(stylesheet.cssRules).filter((r) =>
+    const forcedColorRules = getRules(targetFiles, CSSMediaRule).filter((r) =>
       /\bforced-colors\s*:\s*active\b/i.test(r.conditionText),
     );
-    const blocks = forcedColorRules.flatMap((r) => collectDeclarationBlocks(r.cssRules));
+    const blocks = forcedColorRules.flatMap((r) => collectDeclarationBlocks(r));
 
     const hasValidForcedColorsFallback = blocks.some((style) => {
       for (let i = 0; i < style.length; i++) {
@@ -311,8 +280,7 @@ test.describe('color Target Grader', () => {
   });
 
   test('Expectation 4a: Declares support for light and dark color schemes via color-scheme property or meta tag', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const hasColorSchemeCss = styleRules.some((r) => {
@@ -330,16 +298,15 @@ test.describe('color Target Grader', () => {
   });
 
   test('Expectation 4b: Implements dark mode color tokens or styles using @media (prefers-color-scheme: dark) or light-dark()', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const mediaRules = collectMediaRules(stylesheet.cssRules);
-    const allStyleRules = collectStyleRules(stylesheet.cssRules);
+    const mediaRules = getRules(targetFiles, CSSMediaRule);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const darkMediaRules = mediaRules.filter((r) =>
       /\bprefers-color-scheme\s*:\s*dark\b/i.test(r.conditionText),
     );
     const hasDarkMediaStyles =
-      darkMediaRules.flatMap((r) => collectStyleRules(r.cssRules)).length > 0;
+      darkMediaRules.flatMap((r) => getRules(r, CSSStyleRule)).length > 0;
 
     const hasLightDarkFn = allStyleRules.some((r) => /\blight-dark\s*\(/i.test(r.cssText));
 

@@ -12,159 +12,140 @@ import {
   CSSGroupingRule,
   CSSNestedDeclarations,
   type CSSRule,
-  type CSSStyleDeclaration,
+  type CSSStyleDeclaration as CssomnomStyleDeclaration,
 } from 'cssomnom';
 
-// @ts-ignore
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+const targetFiles: string[] = getTargetFiles(
+  // @ts-ignore - package.json omits "type": "module" in this target
+  import.meta.url,
+);
 
-function getCards(docs: Array<{ file: string; document: Document }>): any[] {
-  return docs.flatMap((d) => Array.from(d.document.querySelectorAll('.card')));
+function getCardElements(document: Document): any[] {
+  const byClass = Array.from(document.querySelectorAll('.card'));
+  if (byClass.length > 0) return byClass;
+  return Array.from(document.querySelectorAll('article'));
 }
 
-function resolveSelector(parentSelector: string, childSelector: string): string {
-  if (!parentSelector) return childSelector;
-  const parents = parentSelector.split(',').map((s) => s.trim());
-  const children = childSelector.split(',').map((s) => s.trim());
-  const combined: string[] = [];
-  for (const p of parents) {
-    for (const c of children) {
-      if (c.includes('&')) {
-        combined.push(c.replace(/&/g, p));
-      } else {
-        combined.push(`${p} ${c}`);
-      }
-    }
-  }
-  return combined.join(', ');
-}
-
-interface FlatStyleRule {
-  selectorText: string;
-  style: CSSStyleDeclaration;
+interface FlattenedStyleEntry {
+  selector: string;
+  style: CssomnomStyleDeclaration;
   inContainer: boolean;
   containerCondition: string;
 }
 
-function collectFlatStyleRules(
+function flattenCssRules(
   rules: Iterable<CSSRule>,
   parentSelector = '',
   inContainer = false,
   containerCondition = '',
-): FlatStyleRule[] {
-  const result: FlatStyleRule[] = [];
+): FlattenedStyleEntry[] {
+  const entries: FlattenedStyleEntry[] = [];
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
-      const sel = resolveSelector(parentSelector, rule.selectorText);
+      const resolvedSelector = parentSelector
+        ? rule.selectorText
+            .split(',')
+            .map((s) => {
+              const trimmed = s.trim();
+              return trimmed.includes('&')
+                ? trimmed.replace(/&/g, parentSelector)
+                : `${parentSelector} ${trimmed}`;
+            })
+            .join(', ')
+        : rule.selectorText;
       if (rule.style.length > 0) {
-        result.push({
-          selectorText: sel,
+        entries.push({
+          selector: resolvedSelector,
           style: rule.style,
           inContainer,
           containerCondition,
         });
       }
       if (rule.cssRules && rule.cssRules.length > 0) {
-        result.push(...collectFlatStyleRules(rule.cssRules, sel, inContainer, containerCondition));
+        entries.push(
+          ...flattenCssRules(rule.cssRules, resolvedSelector, inContainer, containerCondition),
+        );
       }
     } else if (rule instanceof CSSNestedDeclarations) {
       if (rule.style.length > 0) {
-        result.push({
-          selectorText: parentSelector,
+        entries.push({
+          selector: parentSelector,
           style: rule.style,
           inContainer,
           containerCondition,
         });
       }
     } else if (rule instanceof CSSContainerRule) {
-      result.push(
-        ...collectFlatStyleRules(rule.cssRules, parentSelector, true, rule.conditionText || rule.containerQuery || ''),
-      );
+      const cond = containerCondition
+        ? `${containerCondition} and ${rule.conditionText}`
+        : rule.conditionText;
+      entries.push(...flattenCssRules(rule.cssRules, parentSelector, true, cond));
     } else if (rule instanceof CSSGroupingRule) {
-      result.push(...collectFlatStyleRules(rule.cssRules, parentSelector, inContainer, containerCondition));
+      entries.push(
+        ...flattenCssRules(rule.cssRules, parentSelector, inContainer, containerCondition),
+      );
     }
   }
-  return result;
-}
-
-function collectContainerRules(rules: Iterable<CSSRule>): CSSContainerRule[] {
-  const result: CSSContainerRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSContainerRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...collectContainerRules(rule.cssRules));
-    }
-  }
-  return result;
+  return entries;
 }
 
 test.describe('card Target Grader', () => {
+  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+
   test('The card root is an <article>; a single link may wrap it only if the card contains no other interactive elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cards = getCards(docs);
-    const allValidArticleRoots =
-      cards.length > 0 &&
-      cards.every((card) => {
-        if (card.tagName.toLowerCase() !== 'article') return false;
-        const wrappingLink = card.closest('a');
-        if (wrappingLink) {
-          const innerInteractives = card.querySelectorAll('a, button, input, select, textarea');
-          return innerInteractives.length === 0;
-        }
-        return true;
-      });
-    expect(allValidArticleRoots).toBe(true);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
+
+    for (const card of cards) {
+      expect(card.tagName.toLowerCase()).toBe('article');
+      const wrappingLink = card.closest('a');
+      if (wrappingLink) {
+        const innerInteractive = card.querySelectorAll('a, button, input, select, textarea');
+        expect(innerInteractive.length).toBe(0);
+      }
+    }
   });
 
-  test("A card's regions (media, heading or header, content, footer) are direct children of the card without unnecessary wrappers", () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cards = getCards(docs);
-    const mediaTags = new Set(['img', 'picture', 'video', 'svg']);
-    const headerTags = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hgroup', 'header']);
+  test("A card's regions (media, heading or header, content, footer) are direct children of the card, with single elements unwrapped", () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
 
-    const allRegionsValid =
-      cards.length > 0 &&
-      cards.every((card) => {
-        const children: any[] = Array.from(card.children);
+    for (const card of cards) {
+      const children = Array.from(card.children) as any[];
+      expect(children.length).toBeGreaterThanOrEqual(2);
 
-        let hasHeadingOrHeader = false;
-        let hasMedia = false;
-        for (const child of children) {
-          const tag = child.tagName.toLowerCase();
-          const isMedia = mediaTags.has(tag) || child.classList?.contains('media');
-          const isHeader = headerTags.has(tag);
-          const isFooter = tag === 'footer';
+      // Media and heading must be direct children of the card, not trapped inside a .card__body wrapper
+      const hasDirectMedia = children.some((c) =>
+        ['img', 'picture', 'video', 'svg'].includes(c.tagName.toLowerCase()),
+      );
+      expect(hasDirectMedia).toBe(true);
 
-          if (isMedia) {
-            hasMedia = true;
-            if (child.classList?.contains('media') && child.children.length === 1) {
-              const innerTag = child.children[0].tagName.toLowerCase();
-              if (mediaTags.has(innerTag)) return false;
-            }
-          } else if (isHeader) {
-            hasHeadingOrHeader = true;
-            if ((tag === 'header' || tag === 'hgroup') && child.children.length < 2) {
-              return false;
-            }
-          } else if (!isFooter) {
-            if (tag === 'div' && child.children.length < 2) {
-              return false;
-            }
-          }
+      const hasDirectHeader = children.some((c) =>
+        ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hgroup', 'header'].includes(c.tagName.toLowerCase()),
+      );
+      expect(hasDirectHeader).toBe(true);
+
+      for (const child of children) {
+        const tag = child.tagName.toLowerCase();
+        if (['hgroup', 'header', 'div'].includes(tag)) {
+          // A wrapper appears only around multiple elements
+          expect(child.children.length).toBeGreaterThan(1);
         }
-        return hasHeadingOrHeader && hasMedia;
-      });
-
-    expect(allRegionsValid).toBe(true);
+      }
+    }
   });
 
   test("A card's descendants adapt with @container rules, and the size container is the card itself, not the grid or list parent", () => {
     const stylesheet = getCssStyleSheet(targetFiles);
-    const flatRules = collectFlatStyleRules(stylesheet.cssRules);
-    const containerRules = collectContainerRules(stylesheet.cssRules);
-    const cards = getCards(getHtmlDocuments(targetFiles));
+    const entries = flattenCssRules(stylesheet.cssRules);
+    expect(entries.length).toBeGreaterThan(0);
+
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
+
     const cardAncestors = new Set<any>();
     for (const card of cards) {
       for (let p = card.parentElement; p; p = p.parentElement) cardAncestors.add(p);
@@ -188,130 +169,182 @@ test.describe('card Target Grader', () => {
       }
       return false;
     };
-    const isSizeContainerRule = (r: FlatStyleRule) => {
-      const cType = r.style.getPropertyValue('container-type');
-      const cShort = r.style.getPropertyValue('container');
-      return /\b(inline-size|size)\b/.test(cType) || /\b(inline-size|size)\b/.test(cShort);
-    };
 
-    const sizeContainerRules = flatRules.filter(isSizeContainerRule);
-    const cardIsContainer = sizeContainerRules.some((r) => matchesAny(r.selectorText, cards));
-    const parentIsContainer = sizeContainerRules.some((r) => matchesAny(r.selectorText, cardAncestors));
+    const sizeContainerRules = entries.filter((e) =>
+      /\b(inline-size|size)\b/i.test(
+        e.style.getPropertyValue('container-type') || e.style.getPropertyValue('container'),
+      ),
+    );
 
-    expect(cards.length > 0 && cardIsContainer && !parentIsContainer && containerRules.length > 0).toBe(true);
+    const cardIsContainer = sizeContainerRules.some((e) => matchesAny(e.selector, cards));
+    expect(cardIsContainer).toBe(true);
+
+    const gridParentIsContainer = sizeContainerRules.some((e) =>
+      matchesAny(e.selector, cardAncestors),
+    );
+    expect(gridParentIsContainer).toBe(false);
+
+    const hasContainerAdaptation = entries.some((e) => e.inContainer);
+    expect(hasContainerAdaptation).toBe(true);
   });
 
-  test('When card images or video fill a fixed-ratio area, aspect-ratio and object-fit are set on the media element itself', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cards = getCards(docs);
-    const hasCardMedia = cards.some((card) => Boolean(card.querySelector('img, video')));
+  test('Card media elements (<img> or <video>) set aspect-ratio and object-fit directly on the media element itself rather than on a wrapper', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
+
+    for (const card of cards) {
+      const media = card.querySelector('img, video');
+      expect(media).not.toBeNull();
+      const region = media.parentElement?.tagName.toLowerCase() === 'picture' ? media.parentElement : media;
+      expect(region.parentElement).toBe(card);
+    }
 
     const stylesheet = getCssStyleSheet(targetFiles);
-    const flatRules = collectFlatStyleRules(stylesheet.cssRules);
-    const mediaHasRatioAndFit = flatRules.some((r) => {
-      if (!/\b(img|video)\b/.test(r.selectorText)) return false;
-      const ratio = r.style.getPropertyValue('aspect-ratio').trim();
-      const fit = r.style.getPropertyValue('object-fit').trim();
-      return ratio.length > 0 && ratio !== 'auto' && fit.length > 0;
-    });
+    const entries = flattenCssRules(stylesheet.cssRules);
 
-    expect(hasCardMedia && mediaHasRatioAndFit).toBe(true);
+    const hasAspectRatioOnMedia = entries.some(
+      (e) =>
+        /\b(img|video)\b/i.test(e.selector) && Boolean(e.style.getPropertyValue('aspect-ratio')),
+    );
+    const hasObjectFitOnMedia = entries.some(
+      (e) =>
+        /\b(img|video)\b/i.test(e.selector) && Boolean(e.style.getPropertyValue('object-fit')),
+    );
+    expect(hasAspectRatioOnMedia).toBe(true);
+    expect(hasObjectFitOnMedia).toBe(true);
   });
 
   test('Informative card images have a non-empty alt attribute', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cards = getCards(docs);
-    const images = cards.flatMap((card) => Array.from(card.querySelectorAll('img')));
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
 
-    const allHaveNonEmptyAlt =
-      images.length > 0 &&
-      images.every((img: any) => {
+    for (const card of cards) {
+      const imgs = Array.from(card.querySelectorAll('img')) as any[];
+      expect(imgs.length).toBeGreaterThan(0);
+      for (const img of imgs) {
         const alt = img.getAttribute('alt');
-        return typeof alt === 'string' && alt.trim().length > 0;
-      });
-
-    expect(allHaveNonEmptyAlt).toBe(true);
+        expect(alt).toBeTruthy();
+        expect(alt.trim().length).toBeGreaterThan(0);
+      }
+    }
   });
 
-  test('When a content card has a primary destination and secondary actions, its heading contains the primary link or actions are distinct native controls, with no ambiguous duplicate links and at most one stretched link', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cards = getCards(docs);
+  test('When a content card has a primary destination and secondary actions, its heading contains the primary <a> link, secondary actions remain separate native controls outside the link, at most one link in the card is a stretched link, and any secondary footer link to the same href provides a distinct descriptive accessible name', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
 
-    const allCardsFollowActionRules =
-      cards.length > 0 &&
-      cards.every((card) => {
-        const buttonsAndInputs = card.querySelectorAll('button, input, select');
-        if (buttonsAndInputs.length === 0) return false;
-
-        const links: any[] = Array.from(card.querySelectorAll('a[href]'));
-        if (links.length === 0) return false;
-
-        const headingLink = card.querySelector(':is(h1, h2, h3, h4, h5, h6) a[href]');
-        if (links.length > 1 && !headingLink) return false;
-
-        const stretchedLinks = links.filter((a) => a.classList?.contains('card-link'));
-        if (stretchedLinks.length > 1) return false;
-        if (stretchedLinks.length === 1 && stretchedLinks[0] !== headingLink) return false;
-
-        const hrefGroups = new Map<string, any[]>();
-        for (const a of links) {
-          const href = a.getAttribute('href')?.trim() || '';
-          const group = hrefGroups.get(href) || [];
-          group.push(a);
-          hrefGroups.set(href, group);
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const entries = flattenCssRules(stylesheet.cssRules);
+    const stretchedLinkClasses = new Set<string>(['card-link']);
+    for (const e of entries) {
+      if (
+        e.selector.includes('::after') &&
+        e.style.getPropertyValue('position') === 'absolute' &&
+        (e.style.getPropertyValue('inset') === '0' ||
+          e.style.getPropertyValue('inset') === '0px' ||
+          e.style.getPropertyValue('top') === '0' ||
+          e.style.getPropertyValue('top') === '0px')
+      ) {
+        const classMatches = e.selector.match(/\.([a-zA-Z0-9_-]+)/g) || [];
+        for (const m of classMatches) {
+          const cls = m.slice(1);
+          if (cls !== 'card') stretchedLinkClasses.add(cls);
         }
+      }
+    }
 
-        for (const [, group] of hrefGroups) {
-          if (group.length > 2) return false;
-          if (group.length === 2) {
-            if (!headingLink || !group.includes(headingLink)) return false;
-            const otherLink = group.find((a) => a !== headingLink);
-            if (!otherLink || !otherLink.closest('footer')) return false;
-            const headingText = (headingLink.textContent || '').trim();
-            const otherText = (otherLink.textContent || '').trim();
-            if (!otherText || otherText === headingText) return false;
-          }
+    for (const card of cards) {
+      const buttons = Array.from(card.querySelectorAll('button')) as any[];
+      expect(buttons.length).toBeGreaterThan(0);
+
+      // Secondary actions must remain outside any <a> link
+      for (const ctrl of Array.from(card.querySelectorAll('button, input, select, textarea')) as any[]) {
+        expect(ctrl.closest('a')).toBeNull();
+      }
+
+      const links = Array.from(card.querySelectorAll('a[href]')) as any[];
+      expect(links.length).toBeGreaterThan(0);
+
+      // Check stretched links in card
+      const stretchedLinks = links.filter((a) =>
+        Array.from(a.classList || []).some((c: any) => stretchedLinkClasses.has(String(c))),
+      );
+      expect(stretchedLinks.length).toBeLessThanOrEqual(1);
+      if (stretchedLinks.length === 1) {
+        const inHeading = Boolean(stretchedLinks[0].closest('h1, h2, h3, h4, h5, h6'));
+        expect(inHeading).toBe(true);
+      }
+
+      // Check duplicate hrefs: if a card has both a heading link and a footer "read more / view details" link with the same href,
+      // the secondary link must include descriptive accessible text (e.g., sr-only / visually-hidden span) and not be a stretched link
+      const hrefGroups = new Map<string, any[]>();
+      for (const link of links) {
+        const href = link.getAttribute('href');
+        if (!href) continue;
+        const list = hrefGroups.get(href) || [];
+        list.push(link);
+        hrefGroups.set(href, list);
+      }
+
+      for (const [, sameHrefLinks] of hrefGroups) {
+        expect(sameHrefLinks.length).toBeLessThanOrEqual(2);
+        if (sameHrefLinks.length === 2) {
+          const [first, second] = sameHrefLinks;
+          expect(Boolean(first.closest('h1, h2, h3, h4, h5, h6'))).toBe(true);
+          expect(Boolean(second.closest('footer'))).toBe(true);
+          // Accessible name of second link must be distinct / descriptive (contains hidden drink name or aria-label)
+          const firstName = (first.getAttribute('aria-label') || first.textContent || '').trim();
+          const secondName = (second.getAttribute('aria-label') || second.textContent || '').trim();
+          expect(secondName.toLowerCase()).not.toBe(firstName.toLowerCase());
+          expect(secondName.toLowerCase()).toContain(firstName.toLowerCase());
         }
-
-        return true;
-      });
-
-    expect(allCardsFollowActionRules).toBe(true);
+      }
+    }
   });
 
-  test('Choice controls use native radio buttons or checkboxes with associated labels, or dropdown choices use a native <select> and <option> elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const cards = getCards(docs);
+  test('Choice controls inside a card use either native radio buttons or checkboxes with associated labels, or a native <select> with <option> elements', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const cards = docs.flatMap((d) => getCardElements(d.document));
+    expect(cards.length).toBeGreaterThan(0);
 
-    const allCardsHaveValidChoices =
-      cards.length > 0 &&
-      cards.every((card) => {
-        const radiosOrCheckboxes: any[] = Array.from(
-          card.querySelectorAll('input[type="radio"], input[type="checkbox"]'),
-        );
-        const selects: any[] = Array.from(card.querySelectorAll('select'));
+    for (const card of cards) {
+      const radiosOrCheckboxes = Array.from(
+        card.querySelectorAll('input[type="radio"], input[type="checkbox"]'),
+      ) as any[];
+      const selects = Array.from(card.querySelectorAll('select')) as any[];
 
-        if (radiosOrCheckboxes.length === 0 && selects.length === 0) return false;
+      expect(radiosOrCheckboxes.length + selects.length).toBeGreaterThan(0);
 
-        const radiosValid = radiosOrCheckboxes.every((input) => {
-          if (input.closest('label')) return true;
+      if (radiosOrCheckboxes.length > 0) {
+        expect(radiosOrCheckboxes.length).toBeGreaterThanOrEqual(3);
+        for (const input of radiosOrCheckboxes) {
           const id = input.getAttribute('id');
-          return Boolean(id && card.querySelector(`label[for="${id}"]`));
-        });
+          const hasWrappingLabel = Boolean(input.closest('label'));
+          const hasForLabel = Boolean(id && card.querySelector(`label[for="${id}"]`));
+          expect(hasWrappingLabel || hasForLabel).toBe(true);
+        }
+      }
 
-        const selectsValid = selects.every((select) => {
-          const options = select.querySelectorAll('option');
-          if (options.length < 2) return false;
-          if (select.closest('label')) return true;
+      if (selects.length > 0) {
+        for (const select of selects) {
+          const options = Array.from(select.querySelectorAll('option')) as any[];
+          expect(options.length).toBeGreaterThanOrEqual(3);
           const id = select.getAttribute('id');
-          return Boolean(id && card.querySelector(`label[for="${id}"]`));
-        });
-
-        return radiosValid && selectsValid;
-      });
-
-    expect(allCardsHaveValidChoices).toBe(true);
+          const hasWrappingLabel = Boolean(select.closest('label'));
+          const hasForLabel = Boolean(id && card.querySelector(`label[for="${id}"]`));
+          const hasAriaLabel = Boolean(
+            select.getAttribute('aria-label') || select.getAttribute('aria-labelledby'),
+          );
+          expect(hasWrappingLabel || hasForLabel || hasAriaLabel).toBe(true);
+        }
+      }
+    }
   });
+
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
@@ -322,222 +355,244 @@ test.describe('card Target Grader', () => {
       page,
     }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
-      const stackedInNarrowContainer = await page.evaluate(() => {
-        const card = document.querySelector('article.card') as HTMLElement | null;
-        if (!card) return false;
-        const media = card.querySelector(':scope > :is(img, picture, video, svg, .media)') as HTMLElement | null;
-        const heading = card.querySelector(':scope > :is(h1, h2, h3, h4, h5, h6, hgroup, header)') as HTMLElement | null;
-        if (!media || !heading) return false;
+      const cards = page.locator('article.card, main article');
+      await expect(cards.first()).toBeVisible();
 
-        const prevWidth = card.style.width;
-        card.style.width = '240px';
-        const mediaRect = media.getBoundingClientRect();
-        const headingRect = heading.getBoundingClientRect();
-        card.style.width = prevWidth;
+      const layout = await cards.first().evaluate((card) => {
+        const htmlCard = card as HTMLElement;
+        const prevWidth = htmlCard.style.width;
+        const prevMaxWidth = htmlCard.style.maxWidth;
+        htmlCard.style.width = '260px';
+        htmlCard.style.maxWidth = '260px';
 
-        return (
-          headingRect.top >= mediaRect.bottom - 2 && Math.abs(headingRect.left - mediaRect.left) < 40
-        );
+        const media = htmlCard.querySelector('img, picture, video, svg') as HTMLElement | null;
+        const heading = htmlCard.querySelector(
+          'h1, h2, h3, h4, h5, h6, hgroup, header',
+        ) as HTMLElement | null;
+
+        const mediaRect = media?.getBoundingClientRect();
+        const headingRect = heading?.getBoundingClientRect();
+
+        htmlCard.style.width = prevWidth;
+        htmlCard.style.maxWidth = prevMaxWidth;
+
+        return {
+          hasMedia: Boolean(mediaRect),
+          hasHeading: Boolean(headingRect),
+          mediaBottom: mediaRect?.bottom ?? 0,
+          mediaLeft: mediaRect?.left ?? 0,
+          headingTop: headingRect?.top ?? 0,
+          headingLeft: headingRect?.left ?? 0,
+        };
       });
 
-      expect(stackedInNarrowContainer).toBe(true);
+      expect(layout.hasMedia).toBe(true);
+      expect(layout.hasHeading).toBe(true);
+      expect(layout.headingTop).toBeGreaterThanOrEqual(layout.mediaBottom - 2);
     });
 
     test('A card with media places its media in a side column beside its text content when its container is wide', async ({
       page,
     }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
-      const sideBySideInWideContainer = await page.evaluate(() => {
-        const card = document.querySelector('article.card') as HTMLElement | null;
-        if (!card) return false;
-        const media = card.querySelector(':scope > :is(img, picture, video, svg, .media)') as HTMLElement | null;
-        const heading = card.querySelector(':scope > :is(h1, h2, h3, h4, h5, h6, hgroup, header)') as HTMLElement | null;
-        if (!media || !heading) return false;
+      const cards = page.locator('article.card, main article');
+      await expect(cards.first()).toBeVisible();
 
-        const prevWidth = card.style.width;
-        const prevGridCols = card.parentElement ? (card.parentElement as HTMLElement).style.gridTemplateColumns : '';
-        if (card.parentElement) {
-          (card.parentElement as HTMLElement).style.gridTemplateColumns = '1fr';
-        }
-        card.style.width = '650px';
+      const layout = await cards.first().evaluate((card) => {
+        const htmlCard = card as HTMLElement;
+        const parent = htmlCard.parentElement;
+        const prevGridCols = parent?.style.gridTemplateColumns ?? '';
+        const prevWidth = htmlCard.style.width;
+        if (parent) parent.style.gridTemplateColumns = '1fr';
+        htmlCard.style.width = '640px';
 
-        const mediaRect = media.getBoundingClientRect();
-        const headingRect = heading.getBoundingClientRect();
-        const mediaGridCol = window.getComputedStyle(media).gridColumnStart;
-        const headingGridCol = window.getComputedStyle(heading).gridColumnStart;
+        const media = htmlCard.querySelector('img, picture, video, svg') as HTMLElement | null;
+        const heading = htmlCard.querySelector(
+          'h1, h2, h3, h4, h5, h6, hgroup, header',
+        ) as HTMLElement | null;
+        const cardChildren = Array.from(htmlCard.children) as HTMLElement[];
+        const nonMediaChildren = cardChildren.filter((c) => c !== media);
 
-        card.style.width = prevWidth;
-        if (card.parentElement) {
-          (card.parentElement as HTMLElement).style.gridTemplateColumns = prevGridCols;
-        }
+        const mediaRect = media?.getBoundingClientRect();
+        const headingRect = heading?.getBoundingClientRect();
+        const nonMediaRects = nonMediaChildren.map((c) => c.getBoundingClientRect());
+        const textBlockTop =
+          nonMediaRects.length > 0 ? Math.min(...nonMediaRects.map((r) => r.top)) : 0;
+        const textBlockBottom =
+          nonMediaRects.length > 0 ? Math.max(...nonMediaRects.map((r) => r.bottom)) : 0;
+        const allNonMediaInRightCol = mediaRect
+          ? nonMediaRects.every((r) => r.left >= mediaRect.right - 2)
+          : false;
 
-        const isBeside = headingRect.left >= mediaRect.left + Math.min(mediaRect.width * 0.5, 40);
-        const overlapsVertically =
-          headingRect.top < mediaRect.bottom + 2 && headingRect.bottom > mediaRect.top - 2;
-        if (isBeside && overlapsVertically) return true;
+        if (parent) parent.style.gridTemplateColumns = prevGridCols;
+        htmlCard.style.width = prevWidth;
 
-        return (
-          mediaGridCol !== 'auto' &&
-          headingGridCol !== 'auto' &&
-          mediaGridCol !== headingGridCol
-        );
+        return {
+          hasMedia: Boolean(mediaRect),
+          hasHeading: Boolean(headingRect),
+          mediaRight: mediaRect?.right ?? 0,
+          mediaTop: mediaRect?.top ?? 0,
+          mediaBottom: mediaRect?.bottom ?? 0,
+          headingLeft: headingRect?.left ?? 0,
+          headingTop: headingRect?.top ?? 0,
+          textBlockTop,
+          textBlockBottom,
+          allNonMediaInRightCol,
+        };
       });
 
-      expect(sideBySideInWideContainer).toBe(true);
+      expect(layout.hasMedia).toBe(true);
+      expect(layout.hasHeading).toBe(true);
+      expect(layout.headingLeft).toBeGreaterThanOrEqual(layout.mediaRight - 2);
+      expect(layout.allNonMediaInRightCol).toBe(true);
+      expect(layout.mediaTop).toBeLessThan(layout.textBlockBottom);
     });
 
-    test('A card without media renders in a single-column layout at both narrow and wide container widths, with no empty media column', async ({
+    test('Side-column media layout rules apply only to cards that contain media (such as via :has()), so a card without media renders in a single-column layout at both narrow and wide container widths with no empty media column', async ({
       page,
     }) => {
+      const stylesheet = getCssStyleSheet(targetFiles);
+      const entries = flattenCssRules(stylesheet.cssRules);
+      expect(entries.length).toBeGreaterThan(0);
+
+      const hasMediaScopedContainerRules = entries.some(
+        (e) =>
+          e.inContainer &&
+          e.selector.includes(':has(') &&
+          /\b(img|picture|video|svg|media)\b/i.test(e.selector),
+      );
+      expect(hasMediaScopedContainerRules).toBe(true);
+
       await page.setViewportSize({ width: 1280, height: 800 });
-      const singleColumnWithoutMedia = await page.evaluate(() => {
-        const card = document.querySelector('article.card') as HTMLElement | null;
-        if (!card) return false;
+      const cards = page.locator('article.card, main article');
+      await expect(cards.first()).toBeVisible();
 
+      const noMediaCheck = await cards.first().evaluate((card) => {
         const clone = card.cloneNode(true) as HTMLElement;
-        const media = clone.querySelector(':scope > :is(img, picture, video, svg, .media)');
-        if (!media) return false;
-        media.remove();
+        clone
+          .querySelectorAll('img, picture, video, svg, .media')
+          .forEach((el) => el.remove());
+        card.parentElement?.appendChild(clone);
 
-        const parent = card.parentElement || document.body;
-        parent.appendChild(clone);
+        const parent = clone.parentElement;
+        const prevGridCols = parent?.style.gridTemplateColumns ?? '';
+        if (parent) parent.style.gridTemplateColumns = '1fr';
 
-        const getLayoutMetrics = (widthPx: string) => {
+        const measureAtWidth = (widthPx: string) => {
           clone.style.width = widthPx;
-          const cardRect = clone.getBoundingClientRect();
           const style = window.getComputedStyle(clone);
           const padLeft = parseFloat(style.paddingLeft) || 0;
           const borderLeft = parseFloat(style.borderLeftWidth) || 0;
-          const heading = clone.querySelector(':scope > :is(h1, h2, h3, h4, h5, h6, hgroup, header)') as HTMLElement | null;
-          const content = clone.querySelector(
-            ':scope > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer)',
-          ) as HTMLElement | null;
-          if (!heading || !content) return null;
-          const hRect = heading.getBoundingClientRect();
-          const cRect = content.getBoundingClientRect();
-          const hStyle = window.getComputedStyle(heading);
-          const marginLeft = parseFloat(hStyle.marginLeft) || 0;
-          const expectedLeft = cardRect.left + borderLeft + padLeft + marginLeft;
+          const contentLeft = clone.getBoundingClientRect().left + borderLeft + padLeft;
+
+          const children = Array.from(clone.children) as HTMLElement[];
+          const childRects = children.map((c) => c.getBoundingClientRect());
           return {
-            leftOffset: Math.abs(hRect.left - expectedLeft),
-            stacked: cRect.top >= hRect.bottom - 2,
+            contentLeft,
+            firstChildLeft: childRects[0]?.left ?? 0,
+            isStackedVertically: childRects.every(
+              (r, i) => i === 0 || r.top >= childRects[i - 1].bottom - 2,
+            ),
           };
         };
 
-        const narrow = getLayoutMetrics('240px');
-        const wide = getLayoutMetrics('650px');
+        const narrow = measureAtWidth('260px');
+        const wide = measureAtWidth('640px');
+
+        if (parent) parent.style.gridTemplateColumns = prevGridCols;
         clone.remove();
 
-        if (!narrow || !wide) return false;
-        return narrow.leftOffset < 15 && narrow.stacked && wide.leftOffset < 15 && wide.stacked;
+        return { narrow, wide };
       });
 
-      const stylesheet = getCssStyleSheet(targetFiles);
-      const flatRules = collectFlatStyleRules(stylesheet.cssRules);
-      const mediaScopedInCss = flatRules.some(
-        (r) =>
-          r.selectorText.includes(':has(') &&
-          /\b(img|picture|video|svg|media)\b/.test(r.selectorText) &&
-          (r.style.getPropertyValue('grid-template-columns').trim() !== '' ||
-            r.style.getPropertyValue('grid-column').trim() !== ''),
-      );
-
-      expect(singleColumnWithoutMedia || mediaScopedInCss).toBe(true);
+      // No empty left media column at narrow or wide width: children start at the left content edge and stack vertically
+      expect(noMediaCheck.narrow.firstChildLeft - noMediaCheck.narrow.contentLeft).toBeLessThan(20);
+      expect(noMediaCheck.narrow.isStackedVertically).toBe(true);
+      expect(noMediaCheck.wide.firstChildLeft - noMediaCheck.wide.contentLeft).toBeLessThan(20);
+      expect(noMediaCheck.wide.isStackedVertically).toBe(true);
     });
 
     test('Hovering, focusing, or selecting a card does not change its layout box (no change to border-width, padding, font-weight, or size)', async ({
       page,
     }) => {
-      const card = page.locator('article.card').first();
-      const before = await card.evaluate((el) => {
-        const s = window.getComputedStyle(el);
-        const r = el.getBoundingClientRect();
-        return {
-          width: r.width,
-          height: r.height,
-          borderTopWidth: s.borderTopWidth,
-          borderRightWidth: s.borderRightWidth,
-          borderBottomWidth: s.borderBottomWidth,
-          borderLeftWidth: s.borderLeftWidth,
-          paddingTop: s.paddingTop,
-          paddingRight: s.paddingRight,
-          paddingBottom: s.paddingBottom,
-          paddingLeft: s.paddingLeft,
-          fontWeight: s.fontWeight,
-        };
-      });
+      const cards = page.locator('article.card, main article');
+      await expect(cards.first()).toBeVisible();
 
-      await card.hover();
-      const firstControl = card.locator('a, button, input:not([type="hidden"]), select').first();
+      const getBoxMetrics = async () =>
+        cards.first().evaluate((el) => {
+          const rect = el.getBoundingClientRect();
+          const cs = window.getComputedStyle(el);
+          return {
+            width: Math.round(rect.width * 10) / 10,
+            height: Math.round(rect.height * 10) / 10,
+            borderTopWidth: cs.borderTopWidth,
+            borderRightWidth: cs.borderRightWidth,
+            borderBottomWidth: cs.borderBottomWidth,
+            borderLeftWidth: cs.borderLeftWidth,
+            paddingTop: cs.paddingTop,
+            paddingRight: cs.paddingRight,
+            paddingBottom: cs.paddingBottom,
+            paddingLeft: cs.paddingLeft,
+            fontWeight: cs.fontWeight,
+          };
+        });
+
+      const initialMetrics = await getBoxMetrics();
+
+      // Hover card and primary link
+      await cards.first().hover();
+      const hoverMetrics = await getBoxMetrics();
+      expect(hoverMetrics).toEqual(initialMetrics);
+
+      // Focus interactive control inside card
+      const firstControl = cards.first().locator('a, button, input, select').first();
       await firstControl.focus();
+      const focusMetrics = await getBoxMetrics();
+      expect(focusMetrics).toEqual(initialMetrics);
 
-      const after = await card.evaluate((el) => {
-        const s = window.getComputedStyle(el);
-        const r = el.getBoundingClientRect();
-        return {
-          width: r.width,
-          height: r.height,
-          borderTopWidth: s.borderTopWidth,
-          borderRightWidth: s.borderRightWidth,
-          borderBottomWidth: s.borderBottomWidth,
-          borderLeftWidth: s.borderLeftWidth,
-          paddingTop: s.paddingTop,
-          paddingRight: s.paddingRight,
-          paddingBottom: s.paddingBottom,
-          paddingLeft: s.paddingLeft,
-          fontWeight: s.fontWeight,
-        };
-      });
-
-      expect(after).toEqual(before);
+      // Select a different size option (radio or select)
+      const radios = cards.first().locator('input[type="radio"]');
+      const selects = cards.first().locator('select');
+      if ((await radios.count()) > 0) {
+        await radios.first().check({ force: true });
+      } else if ((await selects.count()) > 0) {
+        await selects.first().selectOption({ index: 0 });
+      }
+      const selectedMetrics = await getBoxMetrics();
+      expect(selectedMetrics).toEqual(initialMetrics);
     });
 
     test('Focusing a control inside a card shows a visible focus indicator on that control; only a stretched primary link delegates its indicator to the card', async ({
       page,
     }) => {
-      const stylesheet = getCssStyleSheet(targetFiles);
-      const flatRules = collectFlatStyleRules(stylesheet.cssRules);
-      const isVisibleOutlineValue = (value: string) => {
-        const tokens = value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-        if (tokens.length === 0) return false;
-        return !tokens.some((t) => t === 'none' || t === 'hidden' || /^0(\.0+)?([a-z]+)?$/.test(t));
-      };
-      const isVisibleShadowValue = (value: string) => {
-        const v = value.trim().toLowerCase();
-        return v !== '' && v !== 'none';
-      };
-      const hasFocusVisibleRule = flatRules.some(
-        (r) =>
-          (r.selectorText.includes(':focus-visible') || r.selectorText.includes(':focus')) &&
-          (isVisibleOutlineValue(r.style.getPropertyValue('outline')) ||
-            (r.style.getPropertyValue('outline').trim() === '' &&
-              isVisibleOutlineValue(r.style.getPropertyValue('outline-style')) &&
-              !/^0(\.0+)?([a-z]+)?$/.test(r.style.getPropertyValue('outline-width').trim())) ||
-            isVisibleShadowValue(r.style.getPropertyValue('box-shadow'))),
-      );
+      const cards = page.locator('article.card, main article');
+      await expect(cards.first()).toBeVisible();
 
-      const card = page.locator('article.card').first();
-      const nonStretchedControl = card
-        .locator('button, select, input:not([type="hidden"]), a:not(.card-link)')
-        .first();
+      // Ensure nothing inside the card starts focused, and set keyboard modality for :focus-visible
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur?.());
+      await page.keyboard.press('Shift');
 
-      const readIndicators = () =>
-        nonStretchedControl.evaluate((el) => {
+      const button = cards.first().locator('button').first();
+      const readButtonIndicators = () =>
+        button.evaluate((el) => {
           const targets: Element[] = [el, ...Array.from((el as HTMLInputElement).labels ?? [])];
           if (el.nextElementSibling) targets.push(el.nextElementSibling);
           return targets.map((t) => {
-            // Jump any running focus transitions to their end state before measuring.
             t.getAnimations().forEach((a) => {
               try {
                 a.finish();
               } catch {
-                // infinite animations cannot be finished
+                // ignore infinite animations
               }
             });
             const s = window.getComputedStyle(t);
             const r = t.getBoundingClientRect();
             return {
-              rendered: s.visibility !== 'hidden' && parseFloat(s.opacity) > 0 && r.width > 1 && r.height > 1,
+              rendered:
+                s.visibility !== 'hidden' &&
+                parseFloat(s.opacity) > 0 &&
+                r.width > 1 &&
+                r.height > 1,
               outlineStyle: s.outlineStyle,
               outlineWidth: s.outlineWidth,
               outlineColor: s.outlineColor,
@@ -546,90 +601,169 @@ test.describe('card Target Grader', () => {
           });
         });
 
-      const before = await readIndicators();
-      // A key press sets keyboard modality so the subsequent focus matches :focus-visible.
-      await page.keyboard.press('Shift');
-      await nonStretchedControl.focus();
-      const after = await readIndicators();
+      const btnBefore = await readButtonIndicators();
+      await button.focus();
+      const btnAfter = await readButtonIndicators();
 
-      const controlHasVisibleOutline = after.some((a, i) => {
-        const b = before[i];
-        if (!a.rendered) return false;
-        const outlineVisible = a.outlineStyle !== 'none' && parseFloat(a.outlineWidth) > 0;
-        const shadowVisible = a.boxShadow !== 'none';
+      const hasChangedFocusIndicator = (
+        before: {
+          rendered?: boolean;
+          outlineStyle: string;
+          outlineWidth: string;
+          outlineColor: string;
+          boxShadow: string;
+        },
+        after: {
+          rendered?: boolean;
+          outlineStyle: string;
+          outlineWidth: string;
+          outlineColor: string;
+          boxShadow: string;
+        },
+      ) => {
+        if (after.rendered === false) return false;
+        const outlineVisible =
+          after.outlineStyle !== 'none' && parseFloat(after.outlineWidth) > 0;
+        const shadowVisible = after.boxShadow !== 'none';
         const outlineChanged =
           outlineVisible &&
-          (a.outlineStyle !== b.outlineStyle || a.outlineWidth !== b.outlineWidth || a.outlineColor !== b.outlineColor);
-        const shadowChanged = shadowVisible && a.boxShadow !== b.boxShadow;
+          (after.outlineStyle !== before.outlineStyle ||
+            after.outlineWidth !== before.outlineWidth ||
+            after.outlineColor !== before.outlineColor);
+        const shadowChanged = shadowVisible && after.boxShadow !== before.boxShadow;
         return outlineChanged || shadowChanged;
+      };
+
+      const btnIndicator = btnAfter.some((a, i) => hasChangedFocusIndicator(btnBefore[i], a));
+      expect(btnIndicator).toBe(true);
+
+      // Check primary link focus: stretched primary link delegates indicator to card; non-stretched link shows indicator on itself
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur?.());
+      const primaryLinkFocus = await cards.first().evaluate((card) => {
+        const readStyle = (el: Element) => {
+          el.getAnimations().forEach((a) => {
+            try {
+              a.finish();
+            } catch {
+              // ignore infinite animations
+            }
+          });
+          const s = window.getComputedStyle(el);
+          return {
+            outlineStyle: s.outlineStyle,
+            outlineWidth: s.outlineWidth,
+            outlineColor: s.outlineColor,
+            boxShadow: s.boxShadow,
+          };
+        };
+        const styleChangedToVisibleIndicator = (
+          b: ReturnType<typeof readStyle>,
+          a: ReturnType<typeof readStyle>,
+        ) => {
+          const outlineVisible = a.outlineStyle !== 'none' && parseFloat(a.outlineWidth) > 0;
+          const shadowVisible = a.boxShadow !== 'none';
+          const outlineChanged =
+            outlineVisible &&
+            (a.outlineStyle !== b.outlineStyle ||
+              a.outlineWidth !== b.outlineWidth ||
+              a.outlineColor !== b.outlineColor);
+          const shadowChanged = shadowVisible && a.boxShadow !== b.boxShadow;
+          return outlineChanged || shadowChanged;
+        };
+
+        const links = Array.from(card.querySelectorAll('a')) as HTMLElement[];
+        if (links.length === 0) return { hasStretchedLink: false, valid: false };
+        const stretchedLink = links.find((a) => {
+          const after = window.getComputedStyle(a, '::after');
+          return after.position === 'absolute' && after.content !== 'none';
+        });
+        if (!stretchedLink) {
+          const primaryLink = (card.querySelector('h1 a, h2 a, h3 a, h4 a, h5 a, h6 a') ||
+            links[0]) as HTMLElement;
+          const linkBefore = readStyle(primaryLink);
+          primaryLink.focus();
+          const linkAfter = readStyle(primaryLink);
+          return {
+            hasStretchedLink: false,
+            valid: styleChangedToVisibleIndicator(linkBefore, linkAfter),
+          };
+        }
+
+        const cardBefore = readStyle(card);
+        stretchedLink.focus();
+        const linkAfter = readStyle(stretchedLink);
+        const cardAfter = readStyle(card);
+        const linkOutlineRemoved =
+          linkAfter.outlineStyle === 'none' || parseFloat(linkAfter.outlineWidth) === 0;
+        const cardHasFocusRing = styleChangedToVisibleIndicator(cardBefore, cardAfter);
+        return {
+          hasStretchedLink: true,
+          valid: linkOutlineRemoved && cardHasFocusRing,
+        };
       });
 
-      const stretchedLinksCount = await card.locator('a.card-link').count();
-      let stretchedDelegationValid = true;
-      if (stretchedLinksCount > 0) {
-        const stretchedLink = card.locator('a.card-link').first();
-        await stretchedLink.focus();
-        stretchedDelegationValid = await card.evaluate((cardEl) => {
-          const linkEl = cardEl.querySelector('a.card-link');
-          if (!linkEl) return false;
-          const linkStyle = window.getComputedStyle(linkEl);
-          const cardStyle = window.getComputedStyle(cardEl);
-          const linkOutlineHidden = linkStyle.outlineStyle === 'none' || parseFloat(linkStyle.outlineWidth) === 0;
-          const cardHasIndicator =
-            (cardStyle.outlineStyle !== 'none' && parseFloat(cardStyle.outlineWidth) > 0) ||
-            cardStyle.boxShadow !== 'none';
-          return linkOutlineHidden && cardHasIndicator;
-        });
-      }
-
-      expect(hasFocusVisibleRule && controlHasVisibleOutline && stretchedDelegationValid).toBe(true);
+      expect(primaryLinkFocus.valid).toBe(true);
     });
 
     test('The visual order of card regions matches their DOM reading order across container sizes', async ({
       page,
     }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
-      const visualOrderMatchesDom = await page.evaluate(() => {
-        const card = document.querySelector('article.card') as HTMLElement | null;
-        if (!card) return false;
+      const cards = page.locator('article.card, main article');
+      await expect(cards.first()).toBeVisible();
+
+      const orderCheck = await cards.first().evaluate((card) => {
+        const htmlCard = card as HTMLElement;
+        const parent = htmlCard.parentElement;
+        const prevGridCols = parent?.style.gridTemplateColumns ?? '';
+        const prevWidth = htmlCard.style.width;
+        if (parent) parent.style.gridTemplateColumns = '1fr';
 
         const checkOrderAtWidth = (widthPx: string) => {
-          const prevWidth = card.style.width;
-          card.style.width = widthPx;
-          const children = Array.from(card.children) as HTMLElement[];
-          if (children.length < 2) {
-            card.style.width = prevWidth;
-            return false;
-          }
-
-          for (const child of children) {
-            const orderVal = parseInt(window.getComputedStyle(child).order, 10);
-            if (!Number.isNaN(orderVal) && orderVal !== 0) {
-              card.style.width = prevWidth;
-              return false;
-            }
-          }
-
+          htmlCard.style.width = widthPx;
+          const children = Array.from(htmlCard.children) as HTMLElement[];
+          // No child uses CSS order != 0
+          const hasNonZeroCssOrder = children.some(
+            (c) => parseInt(window.getComputedStyle(c).order, 10) !== 0,
+          );
           const rects = children.map((c) => c.getBoundingClientRect());
-          card.style.width = prevWidth;
-
-          for (let i = 0; i < rects.length - 1; i++) {
+          // Each subsequent DOM sibling is either below or to the right of the previous one
+          let monotonic = true;
+          for (let i = 1; i < rects.length; i++) {
+            const prev = rects[i - 1];
             const curr = rects[i];
-            const next = rects[i + 1];
-            const isAbove = curr.top <= next.top + 2;
-            const isLeft = curr.left <= next.left + 2;
-            if (!isAbove && !isLeft) return false;
-            if (Math.abs(curr.left - next.left) < 10 && curr.top > next.top + 2) {
-              return false;
+            const isBelow = curr.top >= prev.top - 2;
+            const isRight = curr.left >= prev.left - 2;
+            if (!isBelow && !isRight) {
+              monotonic = false;
             }
           }
-          return true;
+          // Non-media regions (heading, content, footer) strictly increase in vertical position
+          const nonMediaRects = children
+            .filter(
+              (c) => !['img', 'picture', 'video', 'svg'].includes(c.tagName.toLowerCase()),
+            )
+            .map((c) => c.getBoundingClientRect());
+          let nonMediaTopIncreasing = true;
+          for (let i = 1; i < nonMediaRects.length; i++) {
+            if (nonMediaRects[i].top < nonMediaRects[i - 1].top) {
+              nonMediaTopIncreasing = false;
+            }
+          }
+          return !hasNonZeroCssOrder && monotonic && nonMediaTopIncreasing;
         };
 
-        return checkOrderAtWidth('240px') && checkOrderAtWidth('650px');
+        const narrowValid = checkOrderAtWidth('260px');
+        const wideValid = checkOrderAtWidth('640px');
+
+        if (parent) parent.style.gridTemplateColumns = prevGridCols;
+        htmlCard.style.width = prevWidth;
+
+        return { narrowValid, wideValid };
       });
 
-      expect(visualOrderMatchesDom).toBe(true);
+      expect(orderCheck.narrowValid).toBe(true);
+      expect(orderCheck.wideValid).toBe(true);
     });
   });
 });

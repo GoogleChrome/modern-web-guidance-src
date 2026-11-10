@@ -19,13 +19,24 @@ test.describe('Defer Work Until Scroll Ends', () => {
   };
 
   test.beforeEach(async () => {
-    // If targetUrl is not set properly, fail fast
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set.');
     }
   });
 
-  test('should register a scrollend event listener', async ({ page }) => {
+  test('A scrollable container with id "scroller" has overflow set to auto or scroll', async ({ page }) => {
+    await page.goto(targetUrl);
+
+    const isScrollable = await page.locator('#scroller').evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      return style.overflowY === 'auto' || style.overflowY === 'scroll' ||
+             style.overflowX === 'auto' || style.overflowX === 'scroll';
+    });
+
+    expect(isScrollable).toBe(true);
+  });
+
+  test('The scrollend event listener is registered to handle scroll completion', async ({ page }) => {
     // 1. Inject addEventListener spy before the page scripts run
     await page.addInitScript(() => {
       (window as any).__registeredListeners = [];
@@ -54,61 +65,7 @@ test.describe('Defer Work Until Scroll Ends', () => {
     expect(hasScrollend).toBe(true);
   });
 
-  test('should fall back to debounced scroll event using window.scrollendtimer when native scrollend is missing', async ({ page }) => {
-    // 1. Mock missing scrollend support by deleting the properties and setup spy
-    await page.addInitScript(() => {
-      delete (window as any).onscrollend;
-      delete (Document.prototype as any).onscrollend;
-      delete (HTMLElement.prototype as any).onscrollend;
-
-      (window as any).__scrollendTimerCreated = false;
-      const originalSetTimeout = window.setTimeout;
-      window.setTimeout = function (this: any, _callback: any, _delay: any) {
-        const timer = originalSetTimeout.apply(this, arguments as any);
-        (window as any).__scrollendTimerCreated = true;
-        return timer;
-      } as any;
-    });
-
-    // 2. Load the page
-    await page.goto(targetUrl);
-
-    // 3. Trigger a scroll event on the scroll container
-    const scroller = page.locator('#scroller');
-    await triggerScroll(scroller, 50);
-
-    // 4. Check if window.scrollendtimer was created OR spy caught the timeout trigger
-    const hasTimer = await page.evaluate(() => {
-      return (window as any).scrollendtimer !== undefined || (window as any).__scrollendTimerCreated === true;
-    });
-
-    expect(hasTimer).toBe(true);
-  });
-
-  test('should dispatch a custom scrollend event in fallback mode after scroll ceases', async ({ page }) => {
-    // 1. Mock missing scrollend support
-    await page.addInitScript(() => {
-      delete (window as any).onscrollend;
-      delete (Document.prototype as any).onscrollend;
-      delete (HTMLElement.prototype as any).onscrollend;
-    });
-
-    // 2. Load the page
-    await page.goto(targetUrl);
-
-    // 3. Scroll the container
-    const scroller = page.locator('#scroller');
-    await triggerScroll(scroller, 100);
-
-    // 4. Wait for debounce timeout to fire
-    await page.waitForTimeout(200);
-
-    // 5. Verify the status text changed indicating scroll completion
-    const statusText = await page.locator('#status').textContent();
-    expect(statusText).toContain('Scroll ended');
-  });
-
-  test('should not execute heavy layout calculations or style changes inside scroll event listener', async ({ page }) => {
+  test('The implementation does not execute heavy layout calculations or style changes inside scroll event listeners', async ({ page }) => {
     // 1. Inject spy on addEventListener, layout properties, and performance timing
     await page.addInitScript(() => {
       (window as any).__scrollLayoutReads = 0;
@@ -173,8 +130,7 @@ test.describe('Defer Work Until Scroll Ends', () => {
       window.dispatchEvent(new Event('scroll'));
     });
 
-    // Wait a moment for any processing
-    await page.waitForTimeout(50);
+    await page.waitForFunction(() => !(window as any).__scrollListenerRunning);
 
     // 4. Retrieve layout reads and execution time
     const { layoutReads, duration } = await page.evaluate(() => {
@@ -184,13 +140,73 @@ test.describe('Defer Work Until Scroll Ends', () => {
       };
     });
 
-    // Assert that layout reads inside scroll event is 0
     expect(layoutReads).toBe(0);
-    // Assert that scroll event execution duration is very short (< 5ms)
     expect(duration).toBeLessThan(5);
   });
 
-  test('should not use scroll debouncing fallback when native scrollend is supported', async ({ page }) => {
+  test('The implementation falls back to a debounced scroll event using window.scrollendtimer when native scrollend is missing', async ({ page }) => {
+    // 1. Mock missing scrollend support by deleting the properties and setup spy
+    await page.addInitScript(() => {
+      delete (window as any).onscrollend;
+      delete (Document.prototype as any).onscrollend;
+      delete (HTMLElement.prototype as any).onscrollend;
+
+      (window as any).__scrollendTimerCreated = false;
+      const originalSetTimeout = window.setTimeout;
+      window.setTimeout = function (this: any, _callback: any, _delay: any) {
+        const timer = originalSetTimeout.apply(this, arguments as any);
+        (window as any).__scrollendTimerCreated = true;
+        return timer;
+      } as any;
+    });
+
+    // 2. Load the page
+    await page.goto(targetUrl);
+
+    // 3. Trigger a scroll event on the scroll container
+    const scroller = page.locator('#scroller');
+    await triggerScroll(scroller, 50);
+
+    // 4. Check if window.scrollendtimer was created OR spy caught the timeout trigger
+    const hasTimer = await page.evaluate(() => {
+      return (window as any).scrollendtimer !== undefined || (window as any).__scrollendTimerCreated === true;
+    });
+
+    expect(hasTimer).toBe(true);
+  });
+
+  test('The implementation dispatches a custom scrollend event in fallback mode after scroll ceases', async ({ page }) => {
+    // 1. Mock missing scrollend support
+    await page.addInitScript(() => {
+      delete (window as any).onscrollend;
+      delete (Document.prototype as any).onscrollend;
+      delete (HTMLElement.prototype as any).onscrollend;
+    });
+
+    // 2. Load the page
+    await page.goto(targetUrl);
+
+    // 3. Scroll the container and capture the status text immediately during scroll
+    const scroller = page.locator('#scroller');
+    const duringScrollText = await scroller.evaluate((el: any) => {
+      const style = window.getComputedStyle(el);
+      const isHorizontal = style.overflowX === 'auto' || style.overflowX === 'scroll';
+      if (isHorizontal) {
+        el.scrollLeft = 100;
+      } else {
+        el.scrollTop = 100;
+      }
+      el.dispatchEvent(new Event('scroll'));
+      return (document.getElementById('status')?.textContent || '').trim();
+    });
+
+    // 4. Verify the status text updates after scroll ceases without hardcoding phrasing
+    const status = page.locator('#status');
+    await expect(status).not.toHaveText(duringScrollText);
+    await expect(status).not.toHaveText(/^\s*$/);
+  });
+
+  test('The implementation does not use scroll debouncing fallback when native scrollend is supported', async ({ page }) => {
     // 1. Inject addEventListener spy before the page scripts run
     await page.addInitScript(() => {
       (window as any).__registeredListeners = [];
@@ -229,17 +245,5 @@ test.describe('Defer Work Until Scroll Ends', () => {
 
     // 6. Assert that scroll timer fallback was not initialized
     expect(hasTimer).toBe(false);
-  });
-
-  test('should have a scrollable container with overflow: auto or scroll', async ({ page }) => {
-    await page.goto(targetUrl);
-
-    const isScrollable = await page.locator('#scroller').evaluate((el) => {
-      const style = window.getComputedStyle(el);
-      return style.overflowY === 'auto' || style.overflowY === 'scroll' ||
-             style.overflowX === 'auto' || style.overflowX === 'scroll';
-    });
-
-    expect(isScrollable).toBe(true);
   });
 });

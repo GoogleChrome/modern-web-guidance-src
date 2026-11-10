@@ -6,18 +6,19 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Node, type Project } from 'ts-morph';
-import type { Document } from 'linkedom';
 import {
   getCascadedStyle,
+  closestRule,
   CSSStyleRule,
   CSSSupportsRule,
+  CSSStyleDeclaration,
   type CSSRule,
-  type CSSGroupingRule,
-  type CSSStyleDeclaration,
   type CSSStyleSheet,
 } from 'cssomnom';
+import { SyntaxKind, type Node, type Project } from 'ts-morph';
+import type { Document } from 'linkedom';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -26,56 +27,13 @@ function isNegatedTextFitSupports(rule: CSSSupportsRule): boolean {
   return cond.includes('not') && cond.includes('text-fit');
 }
 
-function collectPrimaryStyleRules(ruleList: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of ruleList) {
-    if (rule instanceof CSSSupportsRule) {
-      if (isNegatedTextFitSupports(rule)) {
-        continue;
-      }
-      result.push(...collectPrimaryStyleRules(rule.cssRules));
-    } else if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-      if (rule.cssRules && rule.cssRules.length > 0) {
-        result.push(...collectPrimaryStyleRules(rule.cssRules));
-      }
-    } else if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
-      result.push(...collectPrimaryStyleRules((rule as CSSGroupingRule).cssRules));
+function getPrimaryStyleRules(stylesheet: CSSStyleSheet): CSSStyleRule[] {
+  return getRules(stylesheet, CSSStyleRule).filter((rule) => {
+    for (let curr = closestRule(rule, CSSSupportsRule); curr; curr = closestRule(curr, CSSSupportsRule)) {
+      if (isNegatedTextFitSupports(curr)) return false;
     }
-  }
-  return result;
-}
-
-function collectFallbackSupportsRules(ruleList: Iterable<CSSRule>): CSSSupportsRule[] {
-  const result: CSSSupportsRule[] = [];
-  for (const rule of ruleList) {
-    if (rule instanceof CSSSupportsRule) {
-      if (isNegatedTextFitSupports(rule)) {
-        result.push(rule);
-      }
-      result.push(...collectFallbackSupportsRules(rule.cssRules));
-    } else if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
-      result.push(...collectFallbackSupportsRules((rule as CSSGroupingRule).cssRules));
-    }
-  }
-  return result;
-}
-
-function collectDeclarationsInGroupingRule(rule: CSSGroupingRule): CSSStyleDeclaration[] {
-  const decls: CSSStyleDeclaration[] = [];
-  for (const child of rule.cssRules) {
-    if (child instanceof CSSStyleRule) {
-      decls.push(child.style);
-      if (child.cssRules && child.cssRules.length > 0) {
-        decls.push(...collectDeclarationsInGroupingRule(child));
-      }
-    } else if ('style' in child && (child as { style?: CSSStyleDeclaration }).style) {
-      decls.push((child as { style: CSSStyleDeclaration }).style);
-    } else if ('cssRules' in child && (child as CSSGroupingRule).cssRules) {
-      decls.push(...collectDeclarationsInGroupingRule(child as CSSGroupingRule));
-    }
-  }
-  return decls;
+    return true;
+  });
 }
 
 interface LockupTarget {
@@ -203,7 +161,7 @@ test.describe('equal-width-text-lines Target Grader', () => {
   test('Stylesheets declare text-fit on the lockup heading with per-line-all, grow or shrink, a percentage guardrail, and a base font-size', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const primaryRules = collectPrimaryStyleRules(stylesheet.cssRules);
+    const primaryRules = getPrimaryStyleRules(stylesheet);
     const targets = findLockupTargets(docs, primaryRules);
 
     const hasValidTextFit = targets.some((target) => {
@@ -226,7 +184,7 @@ test.describe('equal-width-text-lines Target Grader', () => {
   test('Lockup container has a definite inline size and lockup heading sets a tight line-height of 1 or less', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const primaryRules = collectPrimaryStyleRules(stylesheet.cssRules);
+    const primaryRules = getPrimaryStyleRules(stylesheet);
     const targets = findLockupTargets(docs, primaryRules);
 
     const hasDefiniteSizeAndTightLineHeight = targets.some((target) => {
@@ -248,7 +206,7 @@ test.describe('equal-width-text-lines Target Grader', () => {
   test('Forced line span elements inside a lockup are styled with display: block and white-space: nowrap', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const primaryRules = collectPrimaryStyleRules(stylesheet.cssRules);
+    const primaryRules = getPrimaryStyleRules(stylesheet);
     const targets = findLockupTargets(docs, primaryRules);
 
     const hasValidForcedLineSpans = targets.some((target) => {
@@ -289,7 +247,7 @@ test.describe('equal-width-text-lines Target Grader', () => {
   test('Lockup spaces forced line blocks with flex or grid gap and text-box trimming, or styles free lines with text-wrap balance or pretty without text-box', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const primaryRules = collectPrimaryStyleRules(stylesheet.cssRules);
+    const primaryRules = getPrimaryStyleRules(stylesheet);
     const targets = findLockupTargets(docs, primaryRules);
 
     const hasValidLockupSpacing = targets.some((target) => {
@@ -363,18 +321,15 @@ test.describe('equal-width-text-lines Target Grader', () => {
     skipUnless({ unsupported: 'text-fit' });
 
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const fallbackRules = collectFallbackSupportsRules(stylesheet.cssRules);
-    const declarations = fallbackRules.flatMap((rule) =>
-      collectDeclarationsInGroupingRule(rule),
-    );
-
-    const hasValidCssFallback = declarations.some((style) => {
+    const fallbackRules = getRules(stylesheet, CSSSupportsRule).filter(isNegatedTextFitSupports);
+    const hasValidCssFallback = getRules(fallbackRules).some((rule: CSSRule) => {
+      if (!('style' in rule && rule.style instanceof CSSStyleDeclaration)) return false;
       const width = (
-        style.getPropertyValue('width') || style.getPropertyValue('inline-size')
+        rule.style.getPropertyValue('width') || rule.style.getPropertyValue('inline-size')
       )
         .trim()
         .toLowerCase();
-      const fontSize = style.getPropertyValue('font-size').trim();
+      const fontSize = rule.style.getPropertyValue('font-size').trim();
       const hasFitContent = width === 'fit-content';
       const hasMinWithCustomPropAndPct =
         fontSize.toLowerCase().includes('min(') &&
