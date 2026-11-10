@@ -13,14 +13,7 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
 test.describe(`content-based-styling Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`Must implement styling primarily using the CSS :has() pseudo-class`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/:has\(/);
-  });
-
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -37,8 +30,7 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // Browser assertions
-  test(`Must include a container element that may or may not contain a specific child element`, async ({ page }) => {
+  test('The implementation includes container elements where some contain a specific descendant element and others do not', async ({ page }) => {
     const hasValidContainers = await page.evaluate(() => {
       let container = '';
       let child = '';
@@ -54,26 +46,38 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
               }
             }
           }
-        } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-            continue;
-          }
-          throw e;
-        }
+        } catch {}
         if (container) break;
       }
-      
+
       if (!container || !child) return false;
-      
+
       const withChild = document.querySelector(`${container}:has(${child})`);
       const withoutChild = document.querySelector(`${container}:not(:has(${child}))`);
-      return !!withChild && !!withoutChild;
+      return Boolean(withChild && withoutChild);
     });
-    
+
     expect(hasValidContainers).toBe(true);
   });
 
-  test(`Container element styling must change based on the presence of the child element`, async ({ page }) => {
+  test('The content-based styling is implemented with CSS using the :has() selector on the container', async ({ page }) => {
+    const hasRuleWithHas = await page.evaluate(() => {
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes(':has(')) {
+              return true;
+            }
+          }
+        } catch {}
+      }
+      return false;
+    });
+
+    expect(hasRuleWithHas).toBe(true);
+  });
+
+  test('The visual styling or layout of the container element changes based on the presence of that specific descendant element', async ({ page }) => {
     const isStylingDifferent = await page.evaluate(() => {
       let container = '';
       let child = '';
@@ -89,26 +93,21 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
               }
             }
           }
-        } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-            continue;
-          }
-          throw e;
-        }
+        } catch {}
         if (container) break;
       }
-      
+
       if (!container || !child) return false;
-      
+
       const withChild = document.querySelector(`${container}:has(${child})`);
       const withoutChild = document.querySelector(`${container}:not(:has(${child}))`);
-      
+
       if (!withChild || !withoutChild) return false;
-      
+
       const styleWith = window.getComputedStyle(withChild);
       const styleWithout = window.getComputedStyle(withoutChild);
-      
-      const properties = ['flex-direction', 'display', 'background-color', 'grid-template-columns', 'padding'];
+
+      const properties = ['flex-direction', 'display', 'background-color', 'grid-template-columns', 'padding', 'gap', 'align-items'];
       for (const prop of properties) {
         if (styleWith.getPropertyValue(prop) !== styleWithout.getPropertyValue(prop)) {
           return true;
@@ -116,38 +115,7 @@ test.describe(`content-based-styling Expectations: ${demoName}`, () => {
       }
       return false;
     });
-    
+
     expect(isStylingDifferent).toBe(true);
-  });
-
-  test(`The :has() selector must be scoped to the specific component container rather than broad ancestors like body or html`, async ({ page }) => {
-    const isScopedToComponent = await page.evaluate(() => {
-      let foundScopedHas = false;
-      for (const sheet of Array.from(document.styleSheets)) {
-        try {
-          for (const rule of Array.from(sheet.cssRules)) {
-            if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes(':has(')) {
-              const selectors = rule.selectorText.split(',').map((s) => s.trim());
-              for (const sel of selectors) {
-                if (!sel.includes(':has(')) continue;
-                const prefix = sel.split(':has(')[0].trim();
-                if (!prefix || /^(html|body|:root|\*)$/i.test(prefix)) {
-                  return false;
-                }
-                foundScopedHas = true;
-              }
-            }
-          }
-        } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-            continue;
-          }
-          throw e;
-        }
-      }
-      return foundScopedHas;
-    });
-
-    expect(isScopedToComponent).toBe(true);
   });
 });

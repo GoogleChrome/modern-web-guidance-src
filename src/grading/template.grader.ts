@@ -7,10 +7,23 @@ import {
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 
-// NOTE: Add imports from ts-morph, linkedom, or cssomnom as needed:
+// NOTE: Add imports from test-fixture.ts, ts-morph, linkedom, or cssomnom as needed:
+// e.g. import { skipUnless } from '../../../../../src/grading/test-fixture.ts';
 // e.g. import { SyntaxKind, type Project } from 'ts-morph';
 // e.g. import type { Document } from 'linkedom';
-// e.g. import { getCascadedStyle, CSSStyleRule, type CSSStyleSheet } from 'cssomnom';
+// e.g. import {
+//   closestRule,
+//   resolveSelector,
+//   parseSelectorAST,
+//   getDeclaredProperties,
+//   getPropertyValues,
+//   getCascadedStyle,
+//   CSSStyleRule,
+//   CSSMediaRule,
+//   CSSPositionTryRule,
+//   type CSSStyleSheet,
+// } from 'cssomnom';
+// e.g. import { getRules } from '../../../../../src/grading/test-fixture.ts';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -28,10 +41,20 @@ test.describe('<guide-name> Target Grader', () => {
   });
 
   test('Example test containing CSS checks (cssomnom)', () => {
-    // EXAMPLE 1: Static CSS AST parsing across stylesheets, <style> tags, and inline styles:
-    // const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    // const rules = Array.from(stylesheet.cssRules);
-    // const targetRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.target-element');
+    // EXAMPLE 1: Recursive rule lookup across stylesheets and nested rules (pre-order):
+    // const styleRules = getRules(targetFiles, CSSStyleRule);
+    // (Or getCssStyleSheet(targetFiles) if inspecting the stylesheet directly or using getCascadedStyle)
+    // const targetRule = styleRules.find(r => r.selectorText === '.target-element');
+    //
+    // For nested rules and at-rules:
+    // const parentMedia = closestRule(targetRule, CSSMediaRule);
+    // const fullSelector = targetRule ? resolveSelector(targetRule) : null;
+    //
+    // For progressive enhancement fallbacks / multiple values on the same property:
+    // const rowValues = targetRule ? getPropertyValues(targetRule, 'grid-template-rows') : [];
+    //
+    // For fast declaration checks:
+    // const declaredProps = getDeclaredProperties(stylesheet);
     //
     // For utility-first apps (Tailwind), accept either CSS rules or template utility classes:
     // const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
@@ -42,7 +65,7 @@ test.describe('<guide-name> Target Grader', () => {
     // EXAMPLE 2: Resolving cascaded styles against a Linkedom element without a browser:
     // const targetEl = docs.map(d => d.document.querySelector('.target-element')).find(Boolean);
     // if (targetEl) {
-    //   const cascaded = getCascadedStyle(targetEl, rules);
+    //   const cascaded = getCascadedStyle(targetEl, stylesheet);
     //   expect(cascaded.getPropertyValue('display')).toBe('flex');
     // }
   });

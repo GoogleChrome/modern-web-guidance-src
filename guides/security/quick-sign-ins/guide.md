@@ -45,9 +45,10 @@ Browsers enforce strict privacy and security rules when `uiMode: 'immediate'` is
 
 Expose an endpoint that generates discoverable WebAuthn request options for unauthenticated visitors:
 
-1. **Generate a session-bound challenge**: Create a cryptographically random challenge buffer, store it in the server session, and encode it as Base64URL.
-2. **Persist user verification preference**: Set `userVerification: 'preferred'` and store `expectedUserVerification: 'preferred'` in the session.
-3. **Omit `allowCredentials`**: Do not include a non-empty `allowCredentials` list in the options for Immediate UI mode, as browsers reject non-empty allowlists with `NotAllowedError`.
+1. **Include the server's predefined `rpId`**: Set `rpId` explicitly in the request options (matching the RP ID used during passkey registration) so the client can pass `publicKey.rpId` directly to Signal API calls.
+2. **Generate a session-bound challenge**: Create a cryptographically random challenge buffer, store it in the server session, and encode it as Base64URL.
+3. **Persist user verification preference**: Set `userVerification: 'preferred'` and store `expectedUserVerification: 'preferred'` in the session.
+4. **Omit `allowCredentials`**: Do not include a non-empty `allowCredentials` list in the options for Immediate UI mode, as browsers reject non-empty allowlists with `NotAllowedError`.
 
 ```javascript
 // Server-side options generation example (/api/login/options)
@@ -77,9 +78,10 @@ Because `navigator.credentials.get({ password: true, publicKey, uiMode: 'immedia
 
 1. **Request both passkeys and passwords**: Decode the server options using `PublicKeyCredential.parseRequestOptionsFromJSON()` and call `navigator.credentials.get()` inside a user-initiated click handler with `password: true`, `publicKey`, and `uiMode: 'immediate'` (without passing `signal`).
 2. **Branch verification by `cred.type`**:
-    - If `cred.type === 'public-key'`, serialize the assertion with `cred.toJSON()` and POST it to your WebAuthn verification endpoint. When the server responds with HTTP `404`, call `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rpId, credentialId: encoded.id })`.
+    - If `cred.type === 'public-key'`, serialize the assertion with `cred.toJSON()` and POST it to your WebAuthn verification endpoint. When the server responds with HTTP `404`, call `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rpId, credentialId: encoded.id })`. Always use `publicKey.rpId` from the server's request options—**DO NOT** derive or fall back to `window.location.hostname` on the client, as the server's configured RP ID may be a registrable parent domain (such as `example.com` on `shop.example.com`) or use Related Origin Requests.
     - If `cred.type === 'password'`, POST `{ username: cred.id, password: cred.password }` to your password verification endpoint.
-3. **Handle `NotAllowedError` when no local credentials exist**: Catch `NotAllowedError` (thrown immediately when no local passkeys or saved passwords exist on the device, or when the user dismisses the chooser) and transition to your standard sign-in flow (such as opening an inline sign-in dialog or navigating to `/signin` with a return URL).
+3. **Handle `NotAllowedError` when no local credentials exist**: Catch `NotAllowedError` (thrown immediately when no local passkeys or saved passwords exist on the device, or when the user dismisses the chooser) and transition to your standard sign-in flow (such as opening an inline sign-in dialog or navigating to `/signin` with a return URL). When revealing an inline fallback sign-in form or dialog in place, move focus to its first interactive control and announce the state change via a polite live region (`role="status"`).
+4. **Restore focus and announce in-place sign-in completion**: When in-place authentication or fallback form submission hides the sign-in trigger or inline form, restore focus to the originating action control (or to a surviving authenticated control in the header) so keyboard focus does not drop to `document.body`, and announce the authenticated state in a status live region (`role="status"`).
 
 ```javascript
 let isAuthenticating = false;
@@ -112,10 +114,12 @@ async function authenticateWithImmediateUi() {
     });
 
     if (verifyResponse.status === 404) {
-      await PublicKeyCredential.signalUnknownCredential({
-        rpId: publicKey.rpId || window.location.hostname,
-        credentialId: encoded.id, // Base64URL-encoded credential ID string
-      });
+      if (PublicKeyCredential.signalUnknownCredential) {
+        await PublicKeyCredential.signalUnknownCredential({
+          rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
+          credentialId: encoded.id, // Base64URL-encoded credential ID string
+        });
+      }
       throw new Error('Passkey credential is no longer recognized by the server');
     }
 
@@ -161,15 +165,17 @@ favoriteButton.addEventListener('click', async (event) => {
   isAuthenticating = true;
   try {
     const user = await authenticateWithImmediateUi();
-    // Complete the user's intended action immediately
+    // Complete the user's intended action immediately, restore focus so hiding
+    // sign-in UI does not drop focus to document.body, and announce status
     document.body.dataset.signedIn = 'true';
     favoriteButton.setAttribute('aria-pressed', 'true');
     updateHeaderUserState(user);
+    favoriteButton.focus();
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       // No local credentials available or user dismissed dialog:
-      // transition smoothly to fallback sign-in UI or redirect with return URL
-      showFallbackSignInUi({ returnAction: 'favorite' });
+      // reveal fallback sign-in UI (moving focus to its first input) or redirect with return URL
+      showFallbackSignInUi({ returnAction: 'favorite', returnFocusEl: favoriteButton });
       return;
     }
     console.error('Authentication error:', err);

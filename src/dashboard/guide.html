@@ -86,7 +86,7 @@
     }
     .guide-tooltip-date { color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem; }
     .guide-tooltip-rows { display: flex; flex-direction: column; gap: 4px; }
-    .guide-tooltip-row { display: flex; justify-content: space-between; gap: 12px; }
+    .guide-tooltip-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .guide-tooltip-uplift-row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 4px; font-weight: bold; }
     .guide-tooltip-guided { font-weight: 600; color: var(--color-primary); }
     .guide-tooltip-unguided { font-weight: 600; color: var(--text-secondary); }
@@ -146,12 +146,21 @@
         <p>No historical runs found for this guide.</p>
       </div>
     </main>
+
+    <footer class="site-legal-footer">
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <div id="tooltip-container" class="tooltip-container" popover="hint" role="tooltip">
     <div id="tooltip-header"></div>
     <div id="tooltip-content"></div>
   </div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
 
   <script src="features-mapping.gen.js" defer></script>
   <script type="module">
@@ -172,6 +181,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="guide.js"></script>
 </body>
 </html>

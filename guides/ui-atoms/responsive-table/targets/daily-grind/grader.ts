@@ -102,7 +102,7 @@ test.describe('responsive-table Target Grader', () => {
     expect(hasSemanticTable).toBe(true);
   });
 
-  test('When the table wrapper causes scrolling, the wrapper has a role="region" attribute, an accessible name, and a tabindex="0" attribute', () => {
+  test('The scrollable table wrapper has a role="region" attribute, an accessible name (via an aria-labelledby or aria-label attribute), and a tabindex="0" attribute', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const topRules = getTopLevelStyleRules(Array.from(stylesheet.cssRules));
@@ -149,7 +149,7 @@ test.describe('responsive-table Target Grader', () => {
     expect(hasValidWrapper).toBe(true);
   });
 
-  test('When the table container is wider than 600px, column headers remain fixed at the top of the scrollable area during vertical scroll', () => {
+  test('In the wide table layout, column headers remain fixed at the top of the scrollable area during vertical scroll', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const topRules = getTopLevelStyleRules(Array.from(stylesheet.cssRules));
@@ -186,7 +186,7 @@ test.describe('responsive-table Target Grader', () => {
     expect(hasStickyColumnHeaders).toBe(true);
   });
 
-  test('When the table container is wider than 600px, the first column (row headers) remains fixed at the left of the scrollable area during horizontal scroll', () => {
+  test('In the wide table layout, the first column (row headers) remains fixed at the inline start of the scrollable area during horizontal scroll', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const topRules = getTopLevelStyleRules(Array.from(stylesheet.cssRules));
@@ -217,7 +217,7 @@ test.describe('responsive-table Target Grader', () => {
     expect(hasStickyRowHeaders).toBe(true);
   });
 
-  test('When the table container width is reduced below 600px, the table layout transforms into a stacked view where rows are separated blocks', () => {
+  test('When the table container is narrow (via a @container width query), the table layout transforms into a stacked view where rows are separated blocks', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = Array.from(stylesheet.cssRules);
@@ -287,7 +287,8 @@ test.describe('responsive-table Target Grader', () => {
     expect(isTheadHidden).toBe(true);
   });
 
-  test('In the stacked view, each data cell (td) displays a label corresponding to its column header using a pseudo-element', () => {
+  test('In the stacked view, each data cell (td) displays a label corresponding to its column header using a pseudo-element', async ({ page, TARGET_URL }) => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = Array.from(stylesheet.cssRules);
     const responsiveRules = getResponsiveStyleRules(allRules);
@@ -302,11 +303,101 @@ test.describe('responsive-table Target Grader', () => {
       return isTdBefore && hasValidContent;
     });
 
-    const hasColumnLabels =
-      pseudoRulesWithContent.length >= 2 ||
-      pseudoRulesWithContent.some((r) => /\b(attr|var)\s*\(/.test(r.style.getPropertyValue('content')));
+    // Collect custom property definitions (--label-*) and resolved pseudo-element content
+    const customProps = new Map<string, string>();
+    for (const r of allStyleRules) {
+      for (let i = 0; i < r.style.length; i++) {
+        const propName = r.style.item(i);
+        if (propName.startsWith('--')) {
+          customProps.set(propName, r.style.getPropertyValue(propName).replace(/['"]/g, '').trim().toLowerCase());
+        }
+      }
+    }
 
-    expect(hasColumnLabels).toBe(true);
+    const resolvedLabels = new Set<string>();
+    for (const r of pseudoRulesWithContent) {
+      const content = r.style.getPropertyValue('content');
+      for (const m of content.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)\s*\)/g)) {
+        const val = customProps.get(m[1]);
+        if (val) resolvedLabels.add(val);
+      }
+      const literal = content.replace(/var\([^)]*\)|attr\([^)]*\)|['":\s/]/g, ' ').trim().toLowerCase();
+      if (literal) resolvedLabels.add(literal);
+    }
+
+    const matchesColumnHeadersStatic = docs.some(({ document }) => {
+      const table = document.querySelector('table');
+      if (!table) return false;
+      const ths = Array.from(table.querySelectorAll('thead th'))
+        .map((th) => (th.textContent || '').trim().toLowerCase())
+        .filter(Boolean);
+      const dataHeaders = ths.slice(1);
+      if (dataHeaders.length === 0) return false;
+
+      // Also collect any data-* attribute values referenced via attr(...) on td::before
+      const usesAttr = pseudoRulesWithContent.some((r) => /\battr\s*\(/.test(r.style.getPropertyValue('content')));
+      if (usesAttr) {
+        for (const td of Array.from(table.querySelectorAll('tbody td'))) {
+          for (const attr of Array.from(td.attributes || [])) {
+            if (attr.name.startsWith('data-') && attr.value) {
+              resolvedLabels.add(attr.value.trim().toLowerCase());
+            }
+          }
+        }
+      }
+
+      return dataHeaders.every((headerText) =>
+        Array.from(resolvedLabels).some(
+          (label) => label.includes(headerText) || headerText.includes(label)
+        )
+      );
+    });
+
+    const hasStaticColumnLabels =
+      (pseudoRulesWithContent.length >= 2 ||
+        pseudoRulesWithContent.some((r) => /\b(attr|var)\s*\(/.test(r.style.getPropertyValue('content')))) &&
+      matchesColumnHeadersStatic;
+
+    if (hasStaticColumnLabels) {
+      expect(hasStaticColumnLabels).toBe(true);
+      return;
+    }
+
+    // Fallback to live browser evaluation at narrow viewport so JS-synced custom properties (from guide.md) also pass
+    await page.setViewportSize({ width: 480, height: 800 });
+    await page.goto(TARGET_URL);
+    const hasRuntimeColumnLabels = await page.evaluate(() => {
+      const table = document.querySelector('table');
+      if (!table) return false;
+      const ths = Array.from(table.querySelectorAll('thead th'))
+        .map((th) => (th.textContent || '').trim().toLowerCase())
+        .filter(Boolean);
+      const dataHeaders = ths.slice(1);
+      if (dataHeaders.length === 0) return false;
+
+      const firstRowTds = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+      if (firstRowTds.length < dataHeaders.length) return false;
+
+      const beforeLabels = firstRowTds.map((td) =>
+        getComputedStyle(td, '::before')
+          .getPropertyValue('content')
+          .replace(/['":\s/]/g, ' ')
+          .trim()
+          .toLowerCase()
+      );
+
+      return dataHeaders.every((headerText, i) => {
+        const cellLabel = beforeLabels[i] || '';
+        return (
+          cellLabel.length > 0 &&
+          cellLabel !== 'none' &&
+          cellLabel !== 'normal' &&
+          (cellLabel.includes(headerText) || headerText.includes(cellLabel))
+        );
+      });
+    });
+
+    expect(hasRuntimeColumnLabels).toBe(true);
   });
 
   test('In the stacked view, row headers (tbody th) are sticky at the top of their respective row block during scroll', () => {
@@ -328,11 +419,26 @@ test.describe('responsive-table Target Grader', () => {
         cascaded.getPropertyValue('position').trim() === 'sticky' &&
         hasZeroBlockStart(cascaded);
 
-      const matchedViaRules = responsiveRules.some(
+      const hasStickyPositionRule = combinedRules.some(
         (r) =>
-          /\b(tbody\s+th|th)\b/.test(r.selectorText) &&
-          hasZeroBlockStart(r.style)
+          !/\bthead\b/.test(r.selectorText) &&
+          /\b(tbody\s+th|th\[scope=['"]?row['"]?\]|tr\s+th|th)\b/.test(r.selectorText) &&
+          r.style.getPropertyValue('position').trim() === 'sticky'
       );
+      const hasNonStickyResponsiveOverride = responsiveRules.some((r) => {
+        if (/\bthead\b/.test(r.selectorText) || !/\b(tbody\s+th|th)\b/.test(r.selectorText)) return false;
+        const pos = r.style.getPropertyValue('position').trim();
+        return pos.length > 0 && pos !== 'sticky';
+      });
+      const matchedViaRules =
+        hasStickyPositionRule &&
+        !hasNonStickyResponsiveOverride &&
+        responsiveRules.some(
+          (r) =>
+            !/\bthead\b/.test(r.selectorText) &&
+            /\b(tbody\s+th|th)\b/.test(r.selectorText) &&
+            hasZeroBlockStart(r.style)
+        );
 
       return matchedViaCascade || matchedViaRules;
     });

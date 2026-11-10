@@ -104,7 +104,7 @@
           --_to: calc(90deg + var(--arc-end, 158deg));
           --size: 40px;
           --thickness: 2px;
-          --spinner-color: #3b82f6;
+          --spinner-color: #2563eb;
           --track-color: #e2e5e7;
           --spinner-duration: 1.5s;
           --_used-spinner-duration: var(--spinner-duration);
@@ -138,6 +138,13 @@
             border: 0;
           }
 
+          @media (forced-colors: active) {
+            /* Keeps the gradient, which forced colors mode removes, and draws it in system colors */
+            forced-color-adjust: none;
+            --spinner-color: CanvasText;
+            --track-color: Canvas;
+          }
+
           animation:
             progress-spin var(--_used-spinner-duration) linear infinite 
             var(--progress-dash-animation, );
@@ -166,7 +173,12 @@
 
         @media (prefers-reduced-motion: reduce) {
           progress.loading-spinner:indeterminate {
+            /* Slow down the animation significantly rather than stopping it entirely,
+               so the user still knows that the process is active. */
             --_used-spinner-duration: 6s;
+            /* Drops the dash animation, so the arc keeps a fixed length */
+            --progress-dash-animation: ;
+            --arc-end: 158deg;
           }
         }
       }

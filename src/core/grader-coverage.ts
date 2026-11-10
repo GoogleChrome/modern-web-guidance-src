@@ -4,7 +4,7 @@ import path from 'node:path';
 // native binaries, but its pure-JS CPU backend is ~100x slower here.
 import { Embedder } from '../rag/transformers-embedder.ts';
 
-const embedCache = new Map<string, number[]>();
+const embedCache = new Map<string, Promise<number[]>>();
 
 function dotProduct(a: number[], b: number[]): number {
   let dot = 0;
@@ -147,13 +147,16 @@ export async function validateGraderExpectationCoverage(
   const embedder = Embedder.getInstance();
   await embedder.init();
 
-  async function getVec(t: string): Promise<number[]> {
-    let v = embedCache.get(t);
-    if (!v) {
-      v = await embedder.embed(t);
-      embedCache.set(t, v);
+  function getVec(t: string): Promise<number[]> {
+    let pending = embedCache.get(t);
+    if (!pending) {
+      pending = embedder.embed(t).catch(err => {
+        embedCache.delete(t);
+        throw err;
+      });
+      embedCache.set(t, pending);
     }
-    return v;
+    return pending;
   }
 
   const rawTestVectors = await Promise.all(testTitles.map(getVec));

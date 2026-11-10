@@ -29,11 +29,11 @@ See the {{ GUIDE_REF("spinner") }} for handling indeterminate loading states.
 Use a wrapper to hold both the visual ring and the optional center content. The `<progress>` element remains the semantic source of truth. Use a utility class to visually hide the native progress bar while keeping it accessible.
 
 ```html
-<div class="ring-wrapper">
+<div class="progress-ring-wrapper">
   <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
   <!-- Optional: Content to display in the center. Hidden from assistive
        technologies because it repeats the value of the <progress> element. -->
-  <div class="ring-content" aria-hidden="true">
+  <div class="progress-ring-content" aria-hidden="true">
     75%
   </div>
 </div>
