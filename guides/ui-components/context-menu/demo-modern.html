@@ -53,7 +53,7 @@
 
       /* Anchor Positioning */
       .menu-anchor {
-        position: absolute;
+        position: fixed;
         inline-size: 0;
         block-size: 0;
       }
@@ -346,9 +346,8 @@
 
         const openContextMenu = (event) => {
           // TODO: are event.clientX/Y always valid?
-          const rect = card.getBoundingClientRect();
-          const x = event.clientX - rect.left;
-          const y = event.clientY - rect.top;
+          const x = event.clientX;
+          const y = event.clientY;
 
           anchor.style.left = `${x}px`;
           anchor.style.top = `${y}px`;

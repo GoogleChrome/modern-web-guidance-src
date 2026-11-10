@@ -54,7 +54,7 @@ Use CSS Anchor Positioning to align the popover to its anchor while also prevent
 
 ### 2. Method A: Right-Click Trigger (Cursor-Anchored)
 
-To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks. On some platforms (though notably not iOS Safari) this may also be triggered with a long press, but that is not a universal behavior. Put this element inside the element that triggers the context menu.
+To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks. On some platforms (though notably not iOS Safari) this may also be triggered with a long press, but that is not a universal behavior. Put this element inside the element that triggers the context menu, immediately before the visible button.
 
 ```html
 <span class="menu-anchor"></span>
@@ -63,7 +63,7 @@ To position the menu exactly at the cursor, use an invisible anchor element plac
 ```css
 /* An invisible anchor that follows the cursor */
 .menu-anchor {
-  position: absolute;
+  position: fixed;
   inline-size: 0;
   block-size: 0;
 }
@@ -78,13 +78,11 @@ const menuAnchor = card.querySelector('.menu-anchor');
 const popover = card.querySelector('#context-menu');
 
 function openContextMenu(e) {
-  // Calculate relative coordinates
-  const rect = card.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  const x = e.clientX;
+  const y = e.clientY;
 
   // Move the anchor element to the cursor position
-  // Use physical rather than logical to match `getBoundingClientRect()`.
+  // Use physical rather than logical to match clientX/clientY.
   menuAnchor.style.left = `${x}px`;
   menuAnchor.style.top = `${y}px`;
 
@@ -97,10 +95,6 @@ function openContextMenu(e) {
 card.addEventListener('contextmenu', (e) => {
   // Prevent the browser's default context menu
   e.preventDefault();
-  // Keyboard invocation (ContextMenu key or Shift+F10) dispatches contextmenu without mouseup
-  if (e.button <= 0 && !e.ctrlKey) {
-    openContextMenu(e);
-  }
 });
 
 card.addEventListener('mouseup', (e) => {
