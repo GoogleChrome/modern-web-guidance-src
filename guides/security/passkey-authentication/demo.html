@@ -14,16 +14,16 @@
 </head>
 <body>
   <div class="card">
-    <h2>Sign In with Passkey</h2>
+    <h1 id="signin-passkey">Sign In with Passkey</h1>
     
     <!-- Autofill forms annotated with autocompleteTokens and autofocus -->
     <form id="signin-form">
       <label for="username">Username</label>
-      <input type="text" id="username" name="username" autocomplete="username webauthn" autofocus data-testid="username-field">
+      <input type="text" id="username" name="username" aria-describedby="signin-passkey" autocomplete="username webauthn" autofocus data-testid="username-field">
       
       <button type="button" id="auth-btn" data-testid="auth-button">Sign in with Passkey</button>
     </form>
-    <div id="status" class="status" data-testid="auth-status">Idle</div>
+    <div id="status" class="status" role="status" aria-atomic="true" data-testid="auth-status">Idle</div>
   </div>
 
   <script type="module">
@@ -65,7 +65,7 @@
               // Segregated signalUnknownCredential only on explicit server 404
               if (PublicKeyCredential.signalUnknownCredential) {
                 await PublicKeyCredential.signalUnknownCredential({
-                  rpId: window.location.hostname,
+                  rpId: publicKey.rpId,
                   credentialId: encodedResponse.id
                 });
               }

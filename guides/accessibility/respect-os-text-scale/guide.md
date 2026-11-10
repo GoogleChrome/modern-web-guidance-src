@@ -127,6 +127,6 @@ Leave the root font size to the browser. The browser handles the operating syste
 
 ## Fallback Strategies
 
-{{ FEATURE_FALLBACKS("meta-text-scale") }}
+{{ BASELINE_STATUS("meta-text-scale") }}
 
 On browsers where `<meta name="text-scale" content="scale">` is unsupported, the layout degrades gracefully. The page will display the layout at the browser's standard default base font size (typically 16px), and the user can still utilize standard manual page zoom or pinch-to-zoom options.

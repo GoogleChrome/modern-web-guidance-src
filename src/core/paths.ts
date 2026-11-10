@@ -1,3 +1,5 @@
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 /**
@@ -60,3 +62,56 @@ export function resolveGuideResultsDir(targetDir: string, guideInfo?: Partial<Gu
   const category = parts[parts.length - 2] || 'cat';
   return getGuideResultsDir({ category, name });
 }
+
+function isTmpPath(p: string): boolean {
+  const normalized = path.resolve(p);
+  return (
+    normalized === '/tmp' ||
+    normalized.startsWith('/tmp/') ||
+    normalized === '/private/tmp' ||
+    normalized.startsWith('/private/tmp/')
+  );
+}
+
+/**
+ * Resolves a persistent disk directory for `NODE_COMPILE_CACHE` outside `/tmp`.
+ * Uses separate subdirectories for `'harness'` and `'agents'` so agent sandboxes
+ * do not share bytecode caches with harness/grader processes.
+ */
+export function getDiskNodeCompileCacheDir(
+  scope: 'harness' | 'agents' = 'harness',
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const existing = env.NODE_COMPILE_CACHE;
+  if (existing && !isTmpPath(existing)) {
+    return existing;
+  }
+  let homedir = '';
+  try {
+    homedir = os.userInfo().homedir;
+  } catch {
+    homedir = env.HOME || os.homedir();
+  }
+  if (!homedir) {
+    homedir = env.HOME || os.homedir();
+  }
+  return path.join(homedir, '.cache', 'mwg-node-compile-cache', scope);
+}
+
+/**
+ * Ensures `env.NODE_COMPILE_CACHE` points to an existing disk directory outside `/tmp`.
+ */
+export function ensureDiskNodeCompileCache(
+  env: NodeJS.ProcessEnv = process.env,
+  scope: 'harness' | 'agents' = 'harness',
+): string {
+  const dir = getDiskNodeCompileCacheDir(scope, env);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch {
+    // Ignore if filesystem is read-only
+  }
+  env.NODE_COMPILE_CACHE = dir;
+  return dir;
+}
+

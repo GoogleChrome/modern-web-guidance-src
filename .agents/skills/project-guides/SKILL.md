@@ -11,21 +11,23 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
+> **Governance & Review**: See [`GOVERNANCE.md`](../../../GOVERNANCE.md) and [`docs/ATLS.md`](../../../docs/ATLS.md) for authoring permissions (Peers fast-track to Stage 2; every guide requires Peer/ATL authorship and category Content ATL approval before merging).
+
 ## What a real-world coding agent sees
 
-When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
+When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is reference or eval infrastructure:
 
 | File/Directory | Purpose | Seen by real-world agents? |
 |---|---|---|
 | `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
+| `demo.html` | Canonical standalone reference implementation used for Stage 2 validation and review | ❌ No |
 | `expectations.md` | Verification criteria used to generate target evaluation suites | ❌ No |
-| `demo.html` | Reference implementation of the use case | ❌ No |
-| `targets/<base_app>/solution.patch` | Golden diff against clean base app used to calibrate the grader | ❌ No |
-| `targets/<base_app>/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
+| `targets/<base_app>/patches/*-solution.patch` | Golden diffs against clean base apps used to calibrate the grader | ❌ No |
+| `targets/<base_app>/patches/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for authoring (`guide.md`, `expectations.md`, & `demo.html`):** Authors and SMEs strictly author `guide.md`, `expectations.md`, and `demo.html`. You do not author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`—those evaluation files are generated separately by the eval pipeline.
+**Implication for Stage 2 authoring (`guide.md`, `demo.html`, & `expectations.md`):** Stage 2 ends at `guide.md`, `demo.html`, and `expectations.md` (self-validated with the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill). `task.md`, the solution patches, and `grader.ts` are generated downstream in Stage 3 by `gd dev` (see [`src/harness/README.md`](../../../src/harness/README.md)); people can hand-edit them, and agents only when a person asks.
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 
@@ -73,6 +75,7 @@ web-feature-ids:
 
 * The implementation steps should assume any web feature can be used. Choose the best feature for the job, regardless of browser support.
 * **DO NOT** suggest modern features just because they are modern. If a modern feature has no distinct user-visible advantage over a legacy feature for the given use case — but will require a more complex fallback implementation — use the legacy feature.
+* **Weigh tradeoffs across all users.** A guide's output serves many groups: mouse and touch users, keyboard users, assistive technology users, users on slow networks or low-end devices, users in other locales, etc. **DO NOT** recommend an approach that degrades the experience for one group to improve it for another unless the gain clearly outweighs the loss (e.g. a negligible cost to one group for a large benefit to another), and never one that excludes a group from the use case entirely. These are case-by-case calls for the relevant ATLs; when a guide makes such a tradeoff, it must state it explicitly. Maintainability is a cost on the same scale: extra handling for any one group must justify the complexity it adds to the code with a proportionate user benefit.
 * **Platform-Native Composition:** Prefer native platform primitives (`<dialog>`, `[popover]`, `<details>`) over manual re-implementations of top-layer or disclosure behavior (light dismiss, `Escape`, focus restoration, `z-index` stacking).
 * **DO NOT** include cross-browser fallbacks in the implementation section. Those should only be mentioned in the fallback section.
 * Only mark steps as `MANDATORY` if they are truly required for the feature to function. Optional steps (e.g., adding scroll snap, adding an event listener for progressive enhancement) must be labeled as optional. Incorrect use of `MANDATORY` causes agents to implement unnecessary complexity.
@@ -99,7 +102,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 * **MANDATORY:** Include `{{ FEATURE_FALLBACKS("feature-id") }}` or `{{ BASELINE_STATUS("feature-id") }}` as a standalone line for *every* non-widely available feature used.
   * **When to use `FEATURE_FALLBACKS` vs. `BASELINE_STATUS`:**
     * Prefer `FEATURE_FALLBACKS` when the fallback strategy is reusable across guides and `features/<feature-id>.md` exists with a non-empty `## Fallbacks` section (create `features/<feature-id>.md` if multiple guides share the feature).
-    * **Prefer `BASELINE_STATUS` when no `features/<feature-id>.md#fallbacks` entry exists:** If `features/<feature-id>.md` (or its `## Fallbacks` section) does not exist, `FEATURE_FALLBACKS` silently emits *only* the one-line `BASELINE_STATUS` string without a `###` heading or fallback prose. Use `{{ BASELINE_STATUS("feature-id") }}` directly when the fallback strategy is specific to a single guide (writing the fallback inline in `guide.md`), when you need the BCD-key second argument (`{{ BASELINE_STATUS("feature-id", "bcd.key") }}`), or when the feature is Baseline Widely Available and needs no fallback section.
+    * **Use `BASELINE_STATUS` when no `features/<feature-id>.md#fallbacks` entry exists:** `FEATURE_FALLBACKS` requires `features/<feature-id>.md` with a non-empty `## Fallbacks` section and throws a `MacroError` (failing validation/CI) if missing or empty. Use `{{ BASELINE_STATUS("feature-id") }}` directly when the fallback strategy is specific to a single guide (writing the fallback inline in `guide.md`), when you need the BCD-key second argument (`{{ BASELINE_STATUS("feature-id", "bcd.key") }}`), or when the feature is Baseline Widely Available and needs no fallback section.
 * **Baseline Widely Available Features:** While fallback strategies are not required for Baseline Widely Available features, you **SHOULD** include `{{ BASELINE_STATUS("feature-id") }}` for features that became Baseline Widely Available (`baseline_high_date`) within the last 12 months (such as `subgrid` or `:has()`), or that are commonly misjudged by coding agents as lacking support. This affirmatively reassures coding agents whose training data might predate wide availability that the feature is universally supported without needing defensive fallbacks. Do not conflate `baseline_low_date` (Newly Available) with `baseline_high_date` (Widely Available).
 * **No Hard-Coded Browser Support Claims:** Never hard-code browser versions, support matrices, or availability timelines in `guide.md` prose (e.g., *"X is only supported in Chromium"* or *"until X is supported across major browsers"*). Always render availability dynamically via `BASELINE_STATUS` or `FEATURE_FALLBACKS` anchored to a valid `web-feature-id` (or `tmp-*` entry in `features/pending-web-features.json`). Brief factual notes explaining OS/UA integration mechanisms not captured by BCD (such as iOS/macOS Safari's `@domain #code` SMS format for `autocomplete="one-time-code"`) are allowed.
 * **Placement:** Use separate subsections with their own macros if multiple features are used. **DO NOT** use these macros outside the fallback section.
@@ -116,11 +119,11 @@ If the primary implementation uses features that are not Baseline Widely Availab
 | `{{ BASELINE_STATUS("feature-id"[, "bcd.key"]) }}` | `"Baseline status for <Feature>: Widely/Newly available..."` or `"Browser support for <Feature>: Limited availability"`. |
 | `{{ INCLUDE("path[#section]") }}` | Whole markdown file (frontmatter + leading `# H1` stripped) or one section (its heading dropped). Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file. |
 | `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
-| `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
+| `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section from `features/<feature-id>.md` (throws `MacroError` if the file or `#fallbacks` section is missing or empty). |
 | `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
 | `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; markdown link in `devsite`). |
 
-* **Errors**: invalid feature/guide ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* in `INCLUDE`/`FEATURE` (file or section) → `MacroError` for `INCLUDE`/`FEATURE`, or falls back to `BASELINE_STATUS` / `""` for `FEATURE_FALLBACKS` / `FEATURE_ISSUES`.
+* **Errors**: invalid feature/guide ID or missing required argument → `MacroError` (build fails loudly). Missing or empty referenced *content* (file or section) → `MacroError` for `INCLUDE`, `FEATURE`, and `FEATURE_FALLBACKS`, or falls back to `""` for `FEATURE_ISSUES`.
 * **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading. Avoid leaving an explicit `{#section-id}` suffix on a heading in `guide.md` when `slugify(heading)` already matches `#section-id`.
 * **Recursion**: macros inside transcluded content expand normally. No cycle detection — don't write self-referential includes.
 
@@ -152,8 +155,13 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 * **Scoped to this use case:** Only include expectations that apply to the specific use case being graded (roughly 5–10 bullets for a focused scenario; much longer files usually signal scope creep and should be split). Do not copy generic expectations from other guides if they describe behavior that won't appear in an implementation of this guide. Every bullet is a required must-pass test, so only include assertions that every correct implementation satisfies—do not include expectations for genuinely optional branches. In **discipline guides**, each bullet must name the element or feature it governs (forms, images, overlays, cookies, response headers) so its relevance to a given app can be judged.
 * **No external links:** The grader generator cannot resolve them.
 * **Avoid over-constraining:** Prefer observable outcomes over prescribing one syntax when several are valid, and name accepted alternatives explicitly (e.g., *"`100%` or a grid-based full-bleed layout"*). Don't assert implementation details that don't affect correctness (e.g., don't require a direct child relationship if a descendant also works). Never upgrade guide *"Prefer"*, *"Optional"*, or conditional recommendations into unconditional must-pass assertions, never narrow guide phrasing (e.g., turning *"preceding"* into *"immediately before"*), never split *"A or B"* alternatives into `AND`-ed tests, and avoid asserting arbitrary snippet example values (`0.4s`, `ease-in-out`) or overusing *"such as"* examples that cause tests to overfit. Never hardcode site-specific DOM locators (`#id`, `.class`) in `guide.md`'s frontmatter `description` or in `expectations.md`.
+* **Separate native and fallback expectations:** Write core expectations assuming all features in `guide.md` are natively supported. When `guide.md` includes `## Fallback strategies`, write each fallback requirement as a separate plain-English bullet that names the unsupported feature (e.g., *"When `<feature>` is unsupported, ..."*) rather than combining native and fallback checks in the same bullet, so `gd dev` can scope fallback tests with `skipUnless({ unsupported: '<feature>' })` automatically.
 
 ### Writing `demo.html`
 
 * **Reference implementation:** `demo.html` should be a clean, working implementation of the use case (and its fallback strategy when the target feature is not Baseline Widely Available). Keep it self-contained with inline scripts and styles when possible.
 * **Warning-free execution:** Demos must run without browser console errors or warnings to ensure clean evaluation runs.
+
+## Self-Validation (Before Submitting a PR)
+
+Once you have authored `guide.md`, `demo.html`, and `expectations.md`, invoke the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill with your AI coding assistant to self-validate your work before opening a PR or proceeding to Stage 3. This autonomously exercises the demo in a browser via DevTools MCP, verifies expectation alignment, and checks accessibility compliance.

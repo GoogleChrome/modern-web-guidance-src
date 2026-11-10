@@ -195,10 +195,13 @@ async function expectNextToBarbell(page, track) {
     expect(css.anchor).toBe('--barbell-anchor');
     expect(css.fallbacks).toBe('flip-block');
   });
-  test('filter menu chevron does not animate under reduced motion', async ({ page }) => {
+  test('expand chevron does not animate under reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    const manyGuides = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`guide-${i}`, { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60 }]));
+    await page.route('**/api/suites*', route => route.fulfill({ json: { suites: A11Y_SUITES_FIXTURE.suites.map(s => ({ ...s, guides: manyGuides })) } }));
     await page.goto('/');
-    const duration = await page.locator('.filter-runs-chevron').evaluate(el => getComputedStyle(el).transitionDuration);
+    await openBreakdowns(page);
+    const duration = await page.locator('.insights-expand-chevron').first().evaluate(el => getComputedStyle(el).transitionDuration);
     expect(duration.split(',').every(d => parseFloat(d) === 0)).toBe(true);
   });
   test('barbell tooltip still works through the vendored interestfor polyfill', async ({ page }) => {
@@ -233,24 +236,45 @@ async function expectNextToBarbell(page, track) {
     });
     for (const image of bg) expect(image).toContain('repeating-linear-gradient');
   });
-  test('filter menu relies on native popover behavior and keeps aria-expanded in sync', async ({ page }) => {
+  test('inline run filter search and By Model breakdown surface non-scheduled Pi/Mistral/Qwen runs alongside nightly runs', async ({ page }) => {
+    const mixedFixture = {
+      suites: [
+        ...A11Y_SUITES_FIXTURE.suites,
+        {
+          testId: 'pi-mistral-medium-3-5-skills-fix-2026-10-01_12-39-52',
+          timestamp: '2026-10-01T12:39:52.000Z',
+          agent: 'pi',
+          serving: 'skills_cli',
+          model: 'openrouter/mistralai/mistral-medium-3.1',
+          taskCount: 10,
+          maxRuns: 1,
+          guidedStats: { passed: 8, total: 10 },
+          unguidedStats: { passed: 5, total: 10 },
+          showcase: {},
+          guides: {
+            'content-vis': { guidedPassed: 4, guidedTotal: 5, guidedRate: 80, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 40 }
+          }
+        }
+      ]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: mixedFixture }));
     await page.goto('/');
-    const btn = page.locator('#filter-btn');
-    const menu = page.locator('#filter-menu');
-    await btn.click();
-    await expect(menu).toBeVisible();
-    await expect(btn).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('#filter-search')).toBeFocused();
-    expect(await menu.evaluate(el => getComputedStyle(el).zIndex)).toBe('auto');
-    await page.keyboard.press('Escape');
-    await expect(menu).toBeHidden();
-    await expect(btn).toHaveAttribute('aria-expanded', 'false');
-    await expect(btn).toBeFocused();
-    await btn.click();
-    await expect(menu).toBeVisible();
-    await page.locator('.landing-title').click();
-    await expect(menu).toBeHidden();
-    await expect(btn).toHaveAttribute('aria-expanded', 'false');
+    const search = page.locator('#filter-search');
+    const scheduledCheck = page.locator('#scheduled-only-check');
+    await expect(scheduledCheck).toBeChecked();
+    await expect(search).toHaveAttribute('list', 'runs-filter-datalist');
+    await expect(page.locator('#runs-filter-datalist option[value="openrouter/mistralai/mistral-medium-3.1"]')).toHaveAttribute('label', '1 run');
+    await expect(page.locator('#runs-filter-datalist option[value="pi"]')).toHaveAttribute('label', 'Pi CLI · 1 run');
+    // Default table view shows the 2 scheduled nightly runs, hiding the ad-hoc pi run.
+    await expect(page.locator('.suite-table-row')).toHaveCount(2);
+    // Opening Breakdowns shows Mistral in By Model even while Scheduled runs only is checked.
+    await openBreakdowns(page);
+    await expect(page.locator('.insights-panel[data-panel="model"] .pivot-filter-btn', { hasText: 'openrouter/mistralai/mistral-medium-3.1' })).toBeVisible();
+    // Typing "mistral" in the inline search box surfaces the pi-mistral run immediately.
+    await search.fill('mistral');
+    await expect(page.locator('.suite-table-row')).toHaveCount(1);
+    await expect(page.locator('.suite-table-row').first()).toHaveAttribute('data-test-id', 'pi-mistral-medium-3-5-skills-fix-2026-10-01_12-39-52');
+    await expect(page.locator('.suite-table-row .agent-cell').first()).toContainText('Pi CLI');
   });
   test('breakdown explanations use interestfor hint popovers instead of title attributes', async ({ page }) => {
     await page.goto('/');
@@ -421,5 +445,128 @@ test.describe('Guide trend page MWG compliance', () => {
     await expect(tooltip).toBeHidden();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/dashboard\.html\?testId=/);
+  });
+});
+test.describe('Search quality page MWG compliance', () => {
+  test('links from landing header and renders interactive search benchmarks without third-party requests or console errors', async ({ page }) => {
+    const errors = collectErrors(page);
+    /** @type {string[]} */
+    const thirdParty = [];
+    page.on('request', r => { if (/unpkg\.com|jsdelivr|cdn\.|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(r.url())) thirdParty.push(r.url()); });
+
+    await page.goto('/');
+    const searchLink = page.locator('.header-links a[href="search/"]');
+    await expect(searchLink).toHaveText('Search Quality');
+    await searchLink.click();
+    await expect(page).toHaveURL(/\/search\/$/);
+
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
+    await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
+    await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'light dark');
+    await expect(page.locator('h1')).toContainText('MWG CLI: Search quality over time');
+    await expect(page.locator('.cadence-note')).toContainText('updates when changes land in the search pipeline');
+
+    // Section 1: sparkline metric switching and query/axis controls
+    const svgA = page.locator('#svg-a');
+    await expect(svgA).toHaveAttribute('aria-label', /Right guide shown, Wild-v2 test:.*#3089 95\.4%/);
+    await page.locator('.spark[data-metric="ndcg"]').click();
+    await expect(page.locator('.spark[data-metric="ndcg"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(svgA).toHaveAttribute('aria-label', /Leaf nDCG@K, Wild-v2 test:.*#3089 75%/);
+    await expect(page.locator('#a [data-metric-note="ndcg"]')).toBeVisible();
+
+    await page.locator('#a-view input[value="nightly"]').check({ force: true });
+    await expect(svgA).toHaveAttribute('aria-label', /Leaf nDCG@K, Agent test:.*#3089 91\.3%/);
+
+    await page.locator('#a-x input[value="time"]').check({ force: true });
+    await expect(svgA.locator('text.a-row-label', { hasText: '2026' })).toBeVisible();
+
+    await page.locator('#svg-a .a-pt').first().hover();
+    await expect(page.locator('#tip')).toBeVisible();
+
+    // Section 2: milestones table
+    await expect(page.locator('#m-table tbody tr')).toHaveCount(15);
+
+    // Section 3: K-horizon metric toggle
+    const svgK = page.locator('#svg-k');
+    await expect(svgK).toHaveAttribute('aria-label', /^Signal-to-noise by K\./);
+    await page.locator('#k-metric input[value="hit"]').check({ force: true });
+    await expect(svgK).toHaveAttribute('aria-label', /^Right guide shown by K\./);
+
+    // Mobile viewport check: no document-level horizontal overflow
+    await page.setViewportSize({ width: 390, height: 844 });
+    const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    expect(hasHorizontalOverflow).toBe(false);
+
+    expect(thirdParty).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test('analytics bootstrap scrubs non-allowlisted query params/hashes and renders the themed cookie notification bar when required', async ({ page }) => {
+    const errors = collectErrors(page);
+
+    for (const path of ['/', '/dashboard.html?testId=example-result', '/guide.html?guide=content-vis', '/search/', '/demos/']) {
+      await page.goto(`${path}${path.includes('?') ? '&' : '?'}email=user@example.com&token=secret#oauth_fragment`);
+      await expect(page.locator('.site-legal-footer a[href="https://policies.google.com/privacy"]')).toBeVisible();
+      await expect(page.locator('.site-legal-footer a[href="https://policies.google.com/terms"]')).toBeVisible();
+      const configCall = await page.evaluate(() => {
+        const dl = /** @type {any[]} */ (/** @type {any} */ (window).dataLayer || []);
+        const entry = dl.find(item => item?.[0] === 'config');
+        return entry ? { id: entry[1], opts: entry[2] } : null;
+      });
+      expect(configCall?.id).toBe('G-V48MZB1JQE');
+      expect(configCall?.opts?.allow_google_signals).toBe(false);
+      expect(configCall?.opts?.allow_ad_personalization_signals).toBe(false);
+      expect(configCall?.opts?.page_location).not.toContain('user@example.com');
+      expect(configCall?.opts?.page_location).not.toContain('secret');
+      expect(configCall?.opts?.page_location).not.toContain('oauth_fragment');
+      if (path.includes('testId=example-result')) {
+        expect(configCall?.opts?.page_location).toContain('testId=example-result');
+      }
+      if (path.includes('guide=content-vis')) {
+        expect(configCall?.opts?.page_location).toContain('guide=content-vis');
+      }
+    }
+
+    await page.goto('/?previewCookieBar=1');
+    const cnbScript = page.locator('script[src*="cookienotificationbar.min.js"]');
+    await expect(cnbScript).toHaveAttribute('data-glue-cookie-notification-bar-category', '2B');
+    await expect(cnbScript).toHaveAttribute(
+      'data-glue-cookie-notification-bar-site-id',
+      'Modern Web Guidance Eval Dashboard',
+    );
+    await expect(page.locator('.glue-cookie-notification-bar')).toBeVisible();
+    const isFirstElement = await page.evaluate(
+      () => document.body.firstElementChild?.classList.contains('glue-cookie-notification-bar') ?? false,
+    );
+    expect(isFirstElement).toBe(true);
+
+    for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
+      await page.emulateMedia({ colorScheme });
+      const acceptBtn = page.locator('.glue-cookie-notification-bar__accept');
+      await acceptBtn.focus();
+      const styles = await acceptBtn.evaluate(el => {
+        const cs = getComputedStyle(el);
+        const barEl = document.querySelector('.glue-cookie-notification-bar');
+        if (!barEl) throw new Error('Missing cookie notification bar');
+        const barCs = getComputedStyle(barEl);
+        const cv = document.createElement('canvas');
+        cv.width = 1;
+        cv.height = 1;
+        const ctx = cv.getContext('2d');
+        if (!ctx) throw new Error('Missing 2d canvas context');
+        ctx.fillStyle = barCs.backgroundColor;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        return { bg: cs.backgroundColor, color: cs.color, barBg: barCs.backgroundColor, barRgb: [r, g, b] };
+      });
+      expect(styles.color).toBe('rgb(255, 255, 255)');
+      expect(styles.bg).not.toBe('rgb(255, 255, 255)');
+      expect(styles.barBg).toContain('oklab(');
+      if (colorScheme === 'dark') {
+        expect(styles.barRgb[2]).toBeGreaterThan(styles.barRgb[0]);
+      }
+    }
+
+    expect(errors).toEqual([]);
   });
 });

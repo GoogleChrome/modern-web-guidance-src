@@ -19,11 +19,11 @@ web-feature-ids:
 
 # Motion
 
-- Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs.
+- Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs. Both also clip the element's own focus outline, so when the clipped or masked element is focusable (for example, a scroll container with `tabindex="0"`), draw its focus indicator on a parent element that isn't clipped or masked.
 - Use **Scroll-Driven Animations** (`animation-timeline: scroll()`) for non-essential scroll-bound effects instead of JS listeners.
 - Use **View Transitions** to animate between complex layout states seamlessly.
 
-### Performance
+## Performance
 
 - Prefer to animate `opacity` and `transform` (including individual transform properties, e.g. `translate` instead of `left/right/top/bottom`) to ensure animations stay on the compositor thread.
 - Use `transition-behavior: allow-discrete`, `@starting-style`, and (for top-layer elements like `<dialog>` or `[popover]`) `overlay` to animate discrete entry and exit states natively; see {{ GUIDE_REF("animate-element-entry-exit") }} and {{ GUIDE_REF("animate-to-from-top-layer") }}.
@@ -36,32 +36,45 @@ web-feature-ids:
     display,
     overlay;
   transition-duration: 0.2s;
+  /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
   transition-behavior: allow-discrete;
 }
 ```
 
-### Accessibility
+## Accessibility
 
-Use `prefers-reduced-motion` media queries to turn off heavy motion for users who prefer it.
-- **Provide Pause mechanism**: Allow users to stop auto-running carousels, banners, or other persistent animations.
-- **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
-- **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.
+- **Provide a pause mechanism**: Allow users to stop auto-running carousels, banners, or other persistent animations. Any moving, blinking, or scrolling content that starts automatically, lasts more than five seconds, and is shown alongside other content needs a visible control to pause, stop, or hide it, such as a `<button>` next to the content that works with the keyboard (WCAG 2.2.2 Pause, Stop, Hide). `prefers-reduced-motion` doesn't replace the control, because users who haven't turned on that setting still need to stop the motion. If the button's label changes between "Pause" and "Play", don't also set `aria-pressed`, or screen readers announce a pressed "Play" button.
+- **Default to static views**: Consider defaulting to static states and allowing users to opt in to motion.
+- **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures. This applies whatever the user's motion preference, so don't put flashing content inside `@media (prefers-reduced-motion: no-preference)` either (WCAG 2.3.1 Three Flashes or Below Threshold: nothing flashes more than three times in any one-second period).
+- **Keep the final state**: When you turn off an animation, make sure the element still ends in its final state, so content isn't left hidden (for example, at `opacity: 0`) and focus and selection indicators still appear.
 
-**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring.
-Instead, handle motion preferences on a case-by-case basis using one of two approaches, nesting the `@media` query inside the rule so both versions are kept together:
+### Respect reduced motion
 
-- **Start with animations enabled by default, and tone them down using `@media (prefers-reduced-motion: reduce)`**:
+Always respect reduced motion preferences. Choose between `@media (prefers-reduced-motion: no-preference)` and `@media (prefers-reduced-motion: reduce)` based on whether reduced motion removes the animation entirely or only adjusts its parameters:
+- Use `@media (prefers-reduced-motion: no-preference)` when the reduced-motion strategy is to **not have the animation at all** (apply the animation only where needed rather than declaring it broadly and canceling it with `animation: none`).
+- Use `@media (prefers-reduced-motion: reduce)` when the reduced-motion strategy is to **change animation parameters** (such as slowing down `animation-duration`).
+
+**DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring. Instead, handle reduced motion on a case-by-case basis by nesting the `@media` query inside the rule so both versions are kept together. Keep non-motion transitions (such as `color` or `background-color` changes on links and buttons) enabled; only dampen or disable spatial movement, scaling, rotation, or persistent animations.
+
+#### Opt in to motion with `@media (prefers-reduced-motion: no-preference)`
+
+When reduced motion should have no animation at all, default to the static state and enable the animation inside `@media (prefers-reduced-motion: no-preference)` instead of setting `animation` and overriding it with `animation: none`:
 
 ```css
-/* Good: Dampen spin states or slow down animations for reduced motion */
+/* Good: Default to static state and opt in to full motion */
 .spinner {
-  animation: spin 1s linear infinite;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-    opacity: 0.5;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: spin 1s linear infinite;
   }
 }
+```
 
+#### Adjust animation parameters with `@media (prefers-reduced-motion: reduce)`
+
+When the animation should still run under reduced motion with gentler parameters, declare the base animation and override only the changed properties inside `@media (prefers-reduced-motion: reduce)`:
+
+```css
+/* Good: Slow down the animation for reduced motion instead of canceling it */
 progress:not([value]) {
   animation: slide 1s infinite linear;
   @media (prefers-reduced-motion: reduce) {
@@ -70,27 +83,7 @@ progress:not([value]) {
 }
 ```
 
-- **Start with no animations by default, and enable them using `@media (prefers-reduced-motion: no-preference)`**:
-
-```css
-/* Good: Default to static or gentle states and opt-in to full motion */
-.spinner {
-  opacity: 0.5;
-  @media (prefers-reduced-motion: no-preference) {
-    opacity: 1;
-    animation: spin 1s linear infinite;
-  }
-}
-
-progress:not([value]) {
-  animation: slide 20s infinite linear;
-  @media (prefers-reduced-motion: no-preference) {
-    animation-duration: 1s;
-  }
-}
-```
-
-### Working with animation and transition events in JavaScript
+## Working with animation and transition events in JavaScript
 
 On both the `AnimationEvent` (`animationstart`, `animationiteration`, `animationend`, `animationcancel`) and `TransitionEvent` (`transitionrun`, `transitionstart`, `transitionend`, `transitioncancel`) interfaces, `event.target` gives you the originating DOM element. To access the specific `Animation` object (`Animation`, `CSSAnimation`, or `CSSTransition`) that triggered the event, use the readonly `event.animation` property.
 
@@ -119,3 +112,5 @@ document.addEventListener('animationstart', (event) => {
 ```
 
 You can feature-detect support using `'animation' in AnimationEvent.prototype` (or `'animation' in TransitionEvent.prototype`).
+
+When reduced motion means an animation or transition never runs (it's only applied inside `@media (prefers-reduced-motion: no-preference)`, set to `none`, or given a zero duration and no delay), `animationend` and `transitionend` never fire. If your code waits for these events to remove or hide an element, continue immediately when `element.getAnimations()` returns an empty array, or keep a short opacity transition instead of removing it.

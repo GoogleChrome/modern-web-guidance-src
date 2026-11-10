@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { rootDir, suitesDir } from '../core/paths.ts';
 
-const ALLOWED_AGENTS = ['claude_code', 'codex_cli', 'gemini_cli', 'antigravity_cli'];
+const ALLOWED_AGENTS = ['claude_code', 'codex_cli', 'antigravity_cli'];
 
 // Compare case-insensitively and ignore '-'/'_' so spelling variants (e.g. claude-code) still match.
 const normalizeAgent = (name: string) => name.toLowerCase().replace(/[-_]/g, '');

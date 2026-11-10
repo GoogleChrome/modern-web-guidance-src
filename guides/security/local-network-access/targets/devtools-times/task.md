@@ -1,1 +1,1 @@
-- Enable the web application to access resources on a user's local network or loopback interface.
+- Add a developer diagnostics connection widget to The DevTools Times that lets readers connect from their browser to both a hardware test device on their private Wi-Fi LAN (such as 192.168.1.x) and a local companion CLI running on their own machine (127.0.0.1).

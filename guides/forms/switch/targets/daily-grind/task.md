@@ -1,1 +1,1 @@
-- Build an accessible switch in the application.
+- Add a binary on/off preference toggle in the application.

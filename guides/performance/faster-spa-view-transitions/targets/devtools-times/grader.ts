@@ -3,144 +3,342 @@ import {
   expect,
   getTargetFiles,
   getCssStyleSheet,
-  getJsProject,
-  getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
+} from '../../../../../src/grading/test-fixture.ts';
 import {
-  CSSSupportsRule,
+  CSSRule,
   CSSStyleRule,
-  CSSGroupingRule,
-  type CSSRule,
+  CSSSupportsRule,
+  CSSNestedDeclarations,
+  type CSSGroupingRule,
 } from 'cssomnom';
+import type { Page } from '@playwright/test';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function findAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
+function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
   const result: CSSStyleRule[] = [];
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
       result.push(rule);
-      if ('cssRules' in rule && rule.cssRules) {
-        result.push(...findAllStyleRules(Array.from(rule.cssRules)));
-      }
-    } else if (rule instanceof CSSGroupingRule) {
-      result.push(...findAllStyleRules(Array.from(rule.cssRules)));
+    }
+    if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+      result.push(...collectStyleRules(Array.from((rule as CSSGroupingRule).cssRules)));
     }
   }
   return result;
 }
 
-function findSupportsRules(rules: Iterable<CSSRule>): CSSSupportsRule[] {
+function collectSupportsRules(rules: Iterable<CSSRule>): CSSSupportsRule[] {
   const result: CSSSupportsRule[] = [];
-  for (const r of rules) {
-    if (r instanceof CSSSupportsRule) {
-      result.push(r);
-      result.push(...findSupportsRules(Array.from(r.cssRules)));
-    } else if (r instanceof CSSGroupingRule) {
-      result.push(...findSupportsRules(Array.from(r.cssRules)));
+  for (const rule of rules) {
+    if (rule instanceof CSSSupportsRule) {
+      result.push(rule);
+    }
+    if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+      result.push(...collectSupportsRules(Array.from((rule as CSSGroupingRule).cssRules)));
     }
   }
   return result;
+}
+
+function ruleHasPropertyValue(
+  rule: CSSRule,
+  prop: string,
+  expectedValue: string,
+): boolean {
+  if (
+    rule instanceof CSSStyleRule &&
+    rule.style.getPropertyValue(prop).trim() === expectedValue
+  ) {
+    return true;
+  }
+  if (
+    rule instanceof CSSNestedDeclarations &&
+    rule.style.getPropertyValue(prop).trim() === expectedValue
+  ) {
+    return true;
+  }
+  if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+    return Array.from((rule as CSSGroupingRule).cssRules).some((child) =>
+      ruleHasPropertyValue(child, prop, expectedValue),
+    );
+  }
+  return false;
+}
+
+async function clickSectionNavControl(page: Page, sectionPattern: RegExp): Promise<void> {
+  const link = page.locator('nav').getByRole('link', { name: sectionPattern }).first();
+  if ((await link.count()) > 0) {
+    await link.click();
+    return;
+  }
+  const button = page.locator('nav').getByRole('button', { name: sectionPattern }).first();
+  if ((await button.count()) > 0) {
+    await button.click();
+    return;
+  }
+  const tab = page.getByRole('tab', { name: sectionPattern }).first();
+  await tab.click();
+}
+
+function countSpaViewElements(): number {
+  const inactiveSamples = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
+    (el) => {
+      const style = window.getComputedStyle(el);
+      return (
+        el.inert ||
+        style.contentVisibility === 'hidden' ||
+        el.hidden ||
+        (style.display === 'none' &&
+          !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
+          !el.classList.contains('hidden'))
+      );
+    },
+  );
+  let candidates: HTMLElement[] = [];
+  if (inactiveSamples.length > 0 && inactiveSamples[0].parentElement) {
+    const parent = inactiveSamples[0].parentElement;
+    const tagName = inactiveSamples[0].tagName;
+    candidates = Array.from(parent.children).filter(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && child.tagName === tagName,
+    );
+  } else {
+    candidates = inactiveSamples;
+  }
+
+  return candidates.filter((el) => !candidates.some((other) => other !== el && el.contains(other)))
+    .length;
+}
+
+async function ensureMultipleViewsRendered(page: Page): Promise<void> {
+  const initialCount = await page.evaluate(countSpaViewElements);
+
+  if (initialCount < 2) {
+    await clickSectionNavControl(page, /^World$/i);
+    await expect
+      .poll(async () => {
+        return page.evaluate(countSpaViewElements);
+      })
+      .toBeGreaterThanOrEqual(2);
+  }
+}
+
+async function getSpaViewsState(page: Page) {
+  return page.evaluate(() => {
+    const inactiveSamples = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
+      (el) => {
+        const style = window.getComputedStyle(el);
+        return (
+          el.inert ||
+          style.contentVisibility === 'hidden' ||
+          el.hidden ||
+          (style.display === 'none' &&
+            !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
+            !el.classList.contains('hidden'))
+        );
+      },
+    );
+    let candidates: HTMLElement[] = [];
+    if (inactiveSamples.length > 0 && inactiveSamples[0].parentElement) {
+      const parent = inactiveSamples[0].parentElement;
+      const tagName = inactiveSamples[0].tagName;
+      candidates = Array.from(parent.children).filter(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && child.tagName === tagName,
+      );
+    } else {
+      candidates = inactiveSamples;
+    }
+    const els = candidates.filter(
+      (el) => !candidates.some((other) => other !== el && el.contains(other)),
+    );
+    return els.map((el, index) => {
+      const style = window.getComputedStyle(el);
+      const isInactive =
+        el.hasAttribute('inert') ||
+        (el as HTMLElement & { inert?: boolean }).inert === true ||
+        el.getAttribute('aria-hidden') === 'true' ||
+        el.hidden ||
+        style.display === 'none' ||
+        style.contentVisibility === 'hidden';
+      return {
+        index,
+        id: el.id || `view-${index}`,
+        isInactive,
+        contentVisibility: style.contentVisibility,
+        inertAttr: el.hasAttribute('inert'),
+        inertProp: Boolean((el as HTMLElement & { inert?: boolean }).inert),
+        ariaHidden: el.getAttribute('aria-hidden'),
+        isFocused:
+          document.activeElement === el ||
+          (document.activeElement !== document.body && el.contains(document.activeElement)),
+      };
+    });
+  });
 }
 
 test.describe('faster-spa-view-transitions Target Grader', () => {
-
-  test('Inactive view elements must have content-visibility: hidden applied in styles', () => {
+  test('When content-visibility: hidden is not supported, a @supports not (content-visibility: hidden) fallback rule applies display: none to inactive view elements', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = findAllStyleRules(Array.from(stylesheet.cssRules));
-    const docs = getHtmlDocuments(targetFiles);
+    const rules = Array.from(stylesheet.cssRules);
 
-    const hasHiddenCv = styleRules.some(r => r.style.getPropertyValue('content-visibility')?.trim().toLowerCase() === 'hidden') ||
-      docs.some(d => Boolean(d.document.querySelector('[class*="content-visibility-hidden"], [class*="cv-hidden"]')));
+    const allStyleRules = collectStyleRules(rules);
+    const hasContentVisibilityHidden = allStyleRules.some(
+      (r) => r.style.getPropertyValue('content-visibility').trim() === 'hidden',
+    );
+    expect(hasContentVisibilityHidden).toBe(true);
 
-    expect(hasHiddenCv).toBe(true);
-  });
+    const supportsRules = collectSupportsRules(rules);
+    expect(supportsRules.length).toBeGreaterThan(0);
 
-  test('Active view element must not have content-visibility: hidden applied', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = findAllStyleRules(Array.from(stylesheet.cssRules));
-
-    const hasVisibleOrScopedHidden = styleRules.some(r => r.style.getPropertyValue('content-visibility')?.trim().toLowerCase() === 'visible') ||
-      (styleRules.some(r => r.style.getPropertyValue('content-visibility')?.trim().toLowerCase() === 'hidden') &&
-       !styleRules.some(r => r.selectorText.trim() === '.spa-view' && r.style.getPropertyValue('content-visibility')?.trim().toLowerCase() === 'hidden'));
-
-    expect(hasVisibleOrScopedHidden).toBe(true);
-  });
-
-  test('The implementation must toggle content-visibility / inactive state when switching between views', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasInactiveToggle = sourceFiles.some(sf => {
-      const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return callExprs.some(call => {
-        const exprText = call.getExpression().getText();
-        const args = call.getArguments().map(a => a.getText().toLowerCase());
-        const isClassListOp = exprText.includes('classList.add') ||
-          exprText.includes('classList.remove') ||
-          exprText.includes('classList.toggle');
-        const isAttrOp = exprText.includes('setAttribute') ||
-          exprText.includes('toggleAttribute');
-        const hasTargetArg = args.some(arg =>
-          arg.includes('inactive') ||
-          arg.includes('content-visibility') ||
-          arg.includes('spa-view') ||
-          arg.includes('hidden')
-        );
-        return (isClassListOp || isAttrOp) && hasTargetArg;
-      });
+    const matchingSupportsRule = supportsRules.find((sr) => {
+      const cond = sr.conditionText.replace(/\s+/g, ' ').trim().toLowerCase();
+      return (
+        cond.includes('not') &&
+        cond.includes('content-visibility') &&
+        cond.includes('hidden') &&
+        ruleHasPropertyValue(sr, 'display', 'none')
+      );
     });
 
-    expect(hasInactiveToggle).toBe(true);
+    expect(matchingSupportsRule).toBeDefined();
   });
 
-  test('The implementation must use aria-hidden="true" on inactive view elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
-
-    const hasAriaHiddenInMarkup = docs.some(d => Boolean(d.document.querySelector('[aria-hidden="true"], [aria-hidden*="true"]')));
-    const hasAriaHiddenInJs = sourceFiles.some(sf => {
-      const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return callExprs.some(call => {
-        const exprText = call.getExpression().getText();
-        const args = call.getArguments().map(a => a.getText().toLowerCase());
-        return exprText.includes('setAttribute') && args.some(arg => arg.includes('aria-hidden'));
-      });
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
     });
 
-    expect(hasAriaHiddenInMarkup || hasAriaHiddenInJs).toBe(true);
-  });
+    test('Inactive view elements have content-visibility: hidden applied in their computed styles', async ({
+      page,
+    }) => {
+      await ensureMultipleViewsRendered(page);
+      const views = await getSpaViewsState(page);
+      expect(views.length).toBeGreaterThanOrEqual(2);
 
-  test('The implementation should maintain focus management by moving focus to the active view container', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = project.getSourceFiles();
+      const inactiveViews = views.filter((v) => v.isInactive);
+      expect(inactiveViews.length).toBeGreaterThan(0);
 
-    const hasFocusManagement = sourceFiles.some(sf => {
-      const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return callExprs.some(call => {
-        const exprText = call.getExpression().getText();
-        return exprText.endsWith('.focus') || exprText === 'focus';
-      });
+      for (const view of inactiveViews) {
+        expect(view.contentVisibility).toBe('hidden');
+      }
     });
 
-    expect(hasFocusManagement).toBe(true);
-  });
+    test('When a view element is active, it does not have content-visibility: hidden applied (its computed content-visibility is visible)', async ({
+      page,
+    }) => {
+      await ensureMultipleViewsRendered(page);
+      const views = await getSpaViewsState(page);
+      expect(views.length).toBeGreaterThanOrEqual(2);
 
-  test('Fallback to display: none must be applied when content-visibility is not supported', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const supportsRules = findSupportsRules(Array.from(stylesheet.cssRules));
+      const activeViews = views.filter((v) => !v.isInactive);
+      const inactiveViews = views.filter((v) => v.isInactive);
+      expect(inactiveViews.length).toBeGreaterThan(0);
+      expect(activeViews.length).toBe(1);
 
-    const hasFallback = supportsRules.some(sr => {
-      const cond = sr.conditionText.toLowerCase();
-      const isNegatedCv = cond.includes('not') && cond.includes('content-visibility');
-      if (!isNegatedCv) return false;
-      const styleRules = findAllStyleRules(Array.from(sr.cssRules));
-      return styleRules.some(r => r.style.getPropertyValue('display')?.trim().toLowerCase() === 'none');
+      expect(activeViews[0].contentVisibility).toBe('visible');
     });
 
-    expect(hasFallback).toBe(true);
-  });
+    test('Switching between views toggles the content-visibility state between the active and inactive view elements', async ({
+      page,
+    }) => {
+      await clickSectionNavControl(page, /^World$/i);
+      await expect
+        .poll(async () => {
+          const views = await getSpaViewsState(page);
+          return views.length >= 2 && views.some((v) => v.contentVisibility === 'hidden');
+        })
+        .toBe(true);
 
+      const viewsAfterFirstSwitch = await getSpaViewsState(page);
+      const firstActive = viewsAfterFirstSwitch.find((v) => v.contentVisibility === 'visible');
+      expect(firstActive).toBeDefined();
+
+      await clickSectionNavControl(page, /^Reports$/i);
+      await expect
+        .poll(async () => {
+          const views = await getSpaViewsState(page);
+          const prevViewNow = views.find((v) => v.index === firstActive!.index);
+          const currentActive = views.find(
+            (v) => v.contentVisibility === 'visible' && v.index !== firstActive!.index,
+          );
+          return prevViewNow?.contentVisibility === 'hidden' && Boolean(currentActive);
+        })
+        .toBe(true);
+
+      const viewsAfterSecondSwitch = await getSpaViewsState(page);
+      const secondActive = viewsAfterSecondSwitch.find(
+        (v) => v.contentVisibility === 'visible' && v.index !== firstActive!.index,
+      );
+      expect(secondActive).toBeDefined();
+
+      // Switch back to World and verify the cached view becomes visible again while Reports becomes hidden
+      await clickSectionNavControl(page, /^World$/i);
+      await expect
+        .poll(async () => {
+          const views = await getSpaViewsState(page);
+          const worldView = views.find((v) => v.index === firstActive!.index);
+          const reportsView = views.find((v) => v.index === secondActive!.index);
+          return (
+            worldView?.contentVisibility === 'visible' &&
+            reportsView?.contentVisibility === 'hidden'
+          );
+        })
+        .toBe(true);
+    });
+
+    test('Inactive view elements have the inert attribute applied (and removed when active) so hidden content is excluded from the keyboard tab order and accessibility tree', async ({
+      page,
+    }) => {
+      await clickSectionNavControl(page, /^World$/i);
+      await expect
+        .poll(async () => {
+          const views = await getSpaViewsState(page);
+          return views.length >= 2 && views.some((v) => v.isInactive);
+        })
+        .toBe(true);
+
+      const viewsOnWorld = await getSpaViewsState(page);
+      const activeOnWorld = viewsOnWorld.find((v) => !v.isInactive);
+      const inactiveOnWorld = viewsOnWorld.filter((v) => v.isInactive);
+
+      expect(activeOnWorld).toBeDefined();
+      expect(inactiveOnWorld.length).toBeGreaterThan(0);
+
+      expect(activeOnWorld!.inertAttr || activeOnWorld!.inertProp).toBe(false);
+      for (const inactiveView of inactiveOnWorld) {
+        expect(inactiveView.inertAttr || inactiveView.inertProp).toBe(true);
+      }
+
+      // Switch back to Top News to verify inert is removed when an inactive view becomes active and applied to the previously active view
+      await clickSectionNavControl(page, /^Top News$/i);
+      await expect
+        .poll(async () => {
+          const views = await getSpaViewsState(page);
+          const worldViewNow = views.find((v) => v.index === activeOnWorld!.index);
+          const newActive = views.find((v) => !v.isInactive && v.index !== activeOnWorld!.index);
+          return (
+            Boolean(worldViewNow && (worldViewNow.inertAttr || worldViewNow.inertProp)) &&
+            Boolean(newActive && !newActive.inertAttr && !newActive.inertProp)
+          );
+        })
+        .toBe(true);
+    });
+
+    test('Switching to a view moves keyboard focus to the newly active view container', async ({
+      page,
+    }) => {
+      await clickSectionNavControl(page, /^Multimedia$/i);
+
+      await expect
+        .poll(async () => {
+          const views = await getSpaViewsState(page);
+          if (views.length < 2) return false;
+          const activeView = views.find((v) => !v.isInactive);
+          return Boolean(activeView && activeView.isFocused);
+        })
+        .toBe(true);
+    });
+  });
 });
