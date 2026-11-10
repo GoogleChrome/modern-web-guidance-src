@@ -13,7 +13,9 @@ src/harness/public/allowlist.json  ──►  pnpm public:publish  ──►  pu
 - `allowlist.json` on `main` is the single source of truth. The dashboard never
   reads it; nothing changes on the live site until `pnpm public:publish` runs.
 - `pnpm public:publish` is the only thing that pushes `public-evals/` to
-  `gh-pages`.
+  `gh-pages`. The nightly run (`src/harness/nightly/run-guidance-nightly.sh`)
+  calls it after the agents finish when its checkout is on `main`; run it by
+  hand to apply an allowlist change sooner.
 - `releasedModels: []` means **nothing publishes**. Every suite is skipped as
   `unreleased-model` until a model is listed.
 - Every allowlist change goes through a pull request (`CODEOWNERS` enforces
