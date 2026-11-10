@@ -19,7 +19,7 @@ A card groups one related piece of content or one choice. It is a visual pattern
 
 Choose semantics for the content and its interaction separately:
 
-- always use `<article>` as the card root, whether or not it links to a destination.
+- use `<article>` as the root for content cards, whether or not they link to a destination, and `<label>` when the card itself is a radio or checkbox choice.
 - use a native link for navigation.
   - **MANDATORY:** When the whole card is one destination, a single link may wrap the `<article>` only if the card contains no other interactive elements (`a`, `button`, `input`, `select`, `textarea`).
 - keep links and buttons for independent actions as separate native controls inside the card.
