@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { A11Y_SUBCATEGORIES, classifyAccessibilityCheck, classifyScenarioCheck } from './a11y-classifier.js';
+import { A11Y_SUBCATEGORIES, classifyAccessibilityCheck, classifyScenarioCheck, normalizeCheckMessage } from './a11y-classifier.js';
 test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-cutting subcategories', () => {
     const cases: Array<[string, string, string, string]> = [
         ['accessibility', 'respect-os-text-scale', 'Document head opts into OS text scaling via meta text-scale element', 'motion_contrast_visual'],
@@ -40,6 +40,23 @@ test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-c
         ['ui-components', 'breadcrumbs', 'Visual separators must not add divider characters to link or landmark accessible names', 'aria_roles_live'],
         ['visual-design', 'color', 'WCAG 1.4.1: Status indicators do not rely on color alone, pairing color with visible text or an icon that has an accessible name', 'aria_roles_live'],
         ['ui-atoms', 'position-aware-tooltips', 'sets role="tooltip" on popover and aria-describedby on trigger pointing to popover ID', 'aria_roles_live'],
+        ['forms', 'branded-select-styling', 'The picker border or shadow maintains a contrast of at least `3:1` against the page background.', 'motion_contrast_visual'],
+        ['forms', 'branded-select-styling', 'The colors have a contrast of at least `3:1` with the background color.', 'motion_contrast_visual'],
+        ['forms', 'branded-select-styling', 'The `<select>` element has an associated `<label>`.', 'labels_forms'],
+        ['forms', 'autofill-sign-up-form', 'Every `<input>` in the form is labeled using a `<label>` element.', 'labels_forms'],
+        ['forms', 'autofill-sign-up-form', 'Every `<label>` has a `for` attribute matching an input `id`.', 'labels_forms'],
+        ['forms', 'brand-consistent-forms', 'The value for `accent-color` has a contrast of at least `3:1` with the background color.', 'motion_contrast_visual'],
+        ['forms', 'brand-consistent-forms', 'Every `<input>` control has an explicit `id` attribute, and its associated `<label>` explicitly sets the `for` attribute matching the input id.', 'labels_forms'],
+        ['forms', 'rich-media-picker', 'The `<select>` element has an associated `<label>`.', 'labels_forms'],
+        ['forms', 'rich-media-picker', 'The selected `<option>` element must visibly convey its state (e.g. using a custom icon, sufficiently contrasting outline, or sufficiently contrasting background color)', 'motion_contrast_visual'],
+        ['html', 'web-components', 'Interactive controls inside shadow roots use native semantic HTML elements (such as <button>, <input>, <select>, or <a href>) rather than non-semantic <div> or <span> elements with click handlers or tabindex', 'keyboard'],
+        ['ui-atoms', 'responsive-table', 'In the stacked view, the thead element is hidden and is not accessible to screen readers', 'aria_roles_live'],
+        ['ui-behaviors', 'anchor-positioning-tab-underline', 'The underline is drawn with a border, not a background or box-shadow, so it remains visible with forced-colors: active emulated', 'motion_contrast_visual'],
+        ['ui-components', 'card', 'Informative card images have a non-empty alt attribute', 'aria_roles_live'],
+        ['ui-components', 'card', 'The visual order of card regions matches their DOM reading order across container sizes', 'focus_inert'],
+        ['visual-design', 'color', 'Expectation 1: Provides @media (forced-colors: active) fallbacks with system colors or visible borders/outlines', 'motion_contrast_visual'],
+        ['visual-design', 'color', 'Expectation 2: Rendered text meets 4.5:1 (3:1 large) contrast in both light and dark color schemes', 'motion_contrast_visual'],
+        ['visual-design', 'color', 'Expectation 2: Interactive controls keep a 3:1 boundary against adjacent backgrounds in both light and dark color schemes', 'motion_contrast_visual'],
     ];
     for (const [disc, guide, msg, expected] of cases) {
         const res = classifyAccessibilityCheck(disc, guide, msg);
@@ -81,13 +98,26 @@ test('classifyAccessibilityCheck excludes known false-positive keyword collision
         ['ui-atoms', 'viewport-aware-dropdowns', 'The overlay container does not have role="menu"'],
         ['ui-atoms', 'viewport-aware-dropdowns', 'The trigger does not have aria-haspopup'],
         ['ui-components', 'menu', 'Focus returning to a trigger when the window regains focus does not reopen or preview its menu'],
-        ['ui-components', 'menu', 'Clicking a closed trigger opens its menu with focus on the trigger (no item focused and no :focus-visible), clicking again closes it, and clicking outside closes all menus']
+        ['ui-components', 'menu', 'Clicking a closed trigger opens its menu with focus on the trigger (no item focused and no :focus-visible), clicking again closes it, and clicking outside closes all menus'],
+        ['ui-behaviors', 'interest-triggered-tooltips', 'Triggers have an interestfor attribute matching tooltip id']
     ];
     for (const [disc, guide, msg] of fpCases) {
         const res = classifyAccessibilityCheck(disc, guide, msg);
         assert.strictEqual(res.isAccessibility, false, `Expected FP exclusion for ${guide}: ${msg}`);
         assert.strictEqual(res.subCategory, null);
     }
+});
+test('normalizeCheckMessage strips markdown backticks and collapses whitespace', () => {
+    assert.strictEqual(
+        normalizeCheckMessage('The `<select>` element has an associated `<label>`.'),
+        'The <select> element has an associated <label>.'
+    );
+    assert.strictEqual(
+        normalizeCheckMessage('  Maintains a contrast of at least `3:1`   against background.  '),
+        'Maintains a contrast of at least 3:1 against background.'
+    );
+    assert.strictEqual(normalizeCheckMessage(null), '');
+    assert.strictEqual(normalizeCheckMessage(undefined), '');
 });
 test('classifyScenarioCheck ignores synthetic early-failure placeholder checks', () => {
     assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', isEarlyFailure: true, testId: 'chk-1' }, 'accordion').isAccessibility, false);

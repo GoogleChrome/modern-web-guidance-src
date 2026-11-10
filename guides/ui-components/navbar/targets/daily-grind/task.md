@@ -1,0 +1,1 @@
+Rebuild the primary site navigation for The Daily Grind (`Menu` with a submenu for `Seasonal`, `Espresso`, and `Cold Brew`, plus `Locations`, `Rewards`, `My Account`, and `Logout`) so that it displays inline when there is enough horizontal room and collapses behind a `Menu` button on narrower viewports, while indicating the active page.

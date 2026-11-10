@@ -4,6 +4,63 @@
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
     <script type="module">
+      // Explicit ARIA until browsers and the polyfill expose interestfor semantics consistently. Runs before the
+      // polyfill loads: the polyfill wires ARIA only on `load`, too late for some screen readers, and adds no
+      // `role="tooltip"` to plain hints.
+      const managed = new WeakSet();
+      const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
+
+      // Approximates the accessible name: aria-labelledby, then aria-label, then content including image alt, then title.
+      function accessibleName(el) {
+        const labels = (el.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((id) => document.getElementById(id)?.textContent);
+        const alts = [...el.querySelectorAll("img[alt]")].map((img) => img.alt);
+        return text(labels.join(" ")) || text(el.getAttribute("aria-label")) || text(el.textContent + " " + alts.join(" ")) || text(el.title);
+      }
+
+      function wireInterestHints(root = document) {
+        for (const trigger of root.querySelectorAll("[interestfor]")) {
+          const hint = document.getElementById(trigger.getAttribute("interestfor"));
+          if (hint?.getAttribute("popover") !== "hint") {
+            continue;
+          }
+          // Nothing to add when the hint just repeats the trigger's name.
+          const name = accessibleName(trigger);
+          if (text(hint.textContent) === name) {
+            continue;
+          }
+          hint.role ??= "tooltip";
+          const id = CSS.escape(hint.id);
+          if (!name) {
+            // The hint names an unnamed trigger (icon-only button).
+            if (!trigger.hasAttribute("aria-labelledby")) {
+              trigger.setAttribute("aria-labelledby", hint.id);
+            }
+          } else if (trigger.matches(`[popovertarget="${id}"], [commandfor="${id}"]`)) {
+            // Activating the trigger opens the hint, so open/closed state is honest.
+            // Skip triggers whose aria-expanded belongs to something else.
+            if (!trigger.hasAttribute("aria-expanded")) {
+              trigger.ariaExpanded = hint.matches(":popover-open");
+              managed.add(trigger);
+            }
+          } else if (!trigger.hasAttribute("aria-describedby")) {
+            // Activation does something else (a link, an action button): "collapsed" would promise what
+            // Enter does not deliver, so describe instead.
+            trigger.setAttribute("aria-describedby", hint.id);
+          }
+        }
+      }
+
+      wireInterestHints();
+
+      // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
+      document.addEventListener("toggle", ({ target, newState }) => {
+        for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
+          if (managed.has(trigger)) {
+            trigger.ariaExpanded = newState === "open";
+          }
+        }
+      }, true);
+
       if (!("interestForElement" in HTMLButtonElement.prototype)) {
         await import("https://unpkg.com/interestfor@latest");
       }
@@ -11,6 +68,20 @@
     <script type="module">
       if (!("popover" in HTMLElement.prototype)) {
         await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+      }
+      // Without `hint` support the value falls back to `manual`, which never light-dismisses. A toggletip can be
+      // opened by click, with no interest to lose, so switch it to `auto` as it opens. Must happen in `beforetoggle`:
+      // changing the type of an open popover closes it. `beforetoggle` does not bubble, so capture.
+      const probe = document.createElement("div");
+      probe.popover = "hint";
+      if (probe.popover !== "hint") {
+        document.addEventListener("beforetoggle", ({ target, newState }) => {
+          const toggletip = target.getAttribute("popover") === "hint"
+            && document.querySelector(`[popovertarget="${CSS.escape(target.id)}"]`);
+          if (newState === "open" && toggletip) {
+            target.popover = "auto";
+          }
+        }, true);
       }
     </script>
     <script type="module">
@@ -68,25 +139,51 @@
       #tooltip-attrs {
         position-anchor: --tooltip-attrs;
       }
+      button[interestfor="shipping-help"] {
+        anchor-name: --shipping-help;
+      }
+      #shipping-help {
+        position-anchor: --shipping-help;
+      }
+
+      .toggletip {
+        inline-size: 1.5em;
+        block-size: 1.5em;
+        border-radius: 50%;
+        font: inherit;
+        font-size: 0.8em;
+      }
     </style>
   </head>
   <body>
     <h1>Interest-Triggered Tooltips</h1>
     <p>
-      The document <button interestfor="tooltip-dom">DOM</button> is a tree
-      structure that represents the content of a web page. Each node in the tree
-      corresponds to an element, and nodes can have
-      <button interestfor="tooltip-attrs">attributes</button> that provide
-      additional information about the element.
+      The document
+      <!-- The button only reveals the hint, so it also opens on click, tap, and Enter. -->
+      <button type="button" interestfor="tooltip-dom" popovertarget="tooltip-dom" popovertargetaction="show">DOM</button>
+      <!-- Right after the trigger, so it reads in sequence. -->
+      <span id="tooltip-dom" popover="hint">
+        Document Object Model — the browser's in-memory representation of a web
+        page's structure.
+      </span>
+      is a tree structure that represents the content of a web page. Each node
+      in the tree corresponds to an element, and nodes can have
+      <button type="button" interestfor="tooltip-attrs" popovertarget="tooltip-attrs" popovertargetaction="show">attributes</button>
+      <span id="tooltip-attrs" popover="hint">
+        Key-value pairs on HTML elements that configure behavior or provide
+        metadata, such as class or id.
+      </span>
+      that provide additional information about the element.
     </p>
 
-    <div id="tooltip-dom" popover="hint">
-      Document Object Model — the browser's in-memory representation of a web
-      page's structure.
-    </div>
-    <div id="tooltip-attrs" popover="hint">
-      Key-value pairs on HTML elements that configure behavior or provide
-      metadata, such as class or id.
+    <p>
+      <label>Shipping <input name="shipping" value="Standard"></label>
+      <!-- Toggletip: both triggers, so hover/focus and click/tap/Enter all open it. -->
+      <button type="button" class="toggletip" interestfor="shipping-help" popovertarget="shipping-help" popovertargetaction="show" aria-label="More about shipping">?</button>
+    </p>
+    <div id="shipping-help" popover="hint">
+      Free shipping applies to orders over $50. Orders placed before 2pm ship
+      the same day.
     </div>
   </body>
 </html>
