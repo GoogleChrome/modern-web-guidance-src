@@ -12,6 +12,7 @@ web-feature-ids:
 guides:
   - menu
   - icons
+  - single-line-overflow
 ---
 
 # Build breadcrumbs
@@ -47,7 +48,7 @@ This is not for switching between views of the same page (tabs) or for site-wide
   - **Pills / tags:** use rounded or shaped links when the trail is a prominent control, with a separator between them. Show backgrounds only on hover for tags.
 - Style the current page distinctly (weight, color) and non-current links with a hover state.
 - Custom palettes must meet WCAG AA contrast (4.5:1 for text) for links, hover, and the current page against their actual backgrounds (e.g. dark red on light gray). Keep a non-color cue on the current page, such as font weight.
-- Provide a clear `:focus-visible` outline. For shaped or clipped segments use a negative `outline-offset` or a background/color change, since outlines get clipped.
+- Provide a clear `:focus-visible` outline that has a contrast of at least `3:1` with the background color. For shaped or clipped segments use a negative `outline-offset` or a background/color change, since outlines get clipped.
 - Lift the focused link above its neighbors (`position: relative; z-index: 1` on `a:focus-visible`). Neighbors that overlap it (shaped segments) are painted later and cover an outside ring.
 - In `forced-colors: active`, restore borders and an underline on `[aria-current="page"]` since backgrounds are removed. An icon divider drawn as a masked background also needs `forced-color-adjust: none` and a system color such as `CanvasText`, since forced colors replaces the background.
 
@@ -137,6 +138,7 @@ These are optional. Implement them only when the trail needs them, and choose th
 
 - **Sibling menus:** when ancestors have meaningful siblings (e.g. docs sections), let an ancestor expose its siblings in a menu. Keep the ancestor link navigating and put the toggle in a separate button, never inside the `<a>`. For menu mechanics, see {{ GUIDE_REF("menu") }}.
 - **Long trails:** collapse the middle of a trail with more than 3 items on narrow containers instead of letting it wrap, keeping the first item and the last two. Put the hidden links in a popup opened from a "…" button, and keep the full trail when script is unavailable.
+- **Long labels:** keep every item on one line and never truncate the current page. See {{ GUIDE_REF("single-line-overflow") }} for techniques for truncating ancestor labels and revealing the full label on demand without UX friction.
 
 ## Fallback strategy
 

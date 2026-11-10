@@ -1,0 +1,103 @@
+diff --git a/icon.svg b/icon.svg
+new file mode 100644
+index 0000000..86ff5ec
+--- /dev/null
++++ b/icon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#4e342e"/><path d="M128 200h208v100a80 80 0 0 1-80 80h-48a80 80 0 0 1-80-80z" fill="#d7ccc8"/><path d="M336 224h20a40 40 0 0 1 0 80h-20" fill="none" stroke="#d7ccc8" stroke-width="20"/><rect x="112" y="400" width="240" height="16" rx="8" fill="#ffab40"/></svg>
+diff --git a/index.html b/index.html
+index 66c9173..f4df6f5 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.webmanifest">
++  <meta name="theme-color" content="#4e342e">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -131,6 +133,23 @@
+       transition: background 0.3s;
+     }
+ 
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 15px;
++    }
++
++    .hero-actions .btn {
++      margin-top: 0;
++    }
++
++    #install-status:empty {
++      display: none;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -171,9 +190,34 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <install></install>
++    </div>
++    <p id="install-status" role="status"></p>
+   </header>
+ 
++  <script type="module">
++    const installElement = document.querySelector("install");
++    const installStatus = document.querySelector("#install-status");
++
++    installElement.addEventListener("installresult", (event) => {
++      switch (event.result) {
++        case "success":
++          installStatus.textContent = "The app was installed or opened.";
++          break;
++        case "aborted":
++          installStatus.textContent =
++            "Installation was canceled or could not complete.";
++          break;
++        case "invalid-data":
++          installStatus.textContent =
++            "Installation could not start because the app data is invalid.";
++          break;
++      }
++    });
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..f001012
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,17 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#4e342e",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icon.svg",
++      "sizes": "any",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    }
++  ]
++}

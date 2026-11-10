@@ -11,3 +11,4 @@
 - The center of the progress ring is transparent or "hollowed out" using `background-clip: border-area`.
 - If `background-clip: border-area` is not supported, fall back to hollowing out the center of the ring with a radial gradient mask. 
 - The spinner respects `prefers-reduced-motion` by significantly slowing down the animation.
+- With `prefers-reduced-motion: reduce`, the spinner shows an arc in the spinner color, not only the track.

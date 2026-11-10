@@ -44,7 +44,7 @@ export function stemEnglishMinimal(word: string): string {
   }
 }
 
-function tokenizeBm25(text: string): string[] {
+export function tokenizeBm25(text: string): string[] {
   return tokenize(text).map(stemEnglishMinimal);
 }
 

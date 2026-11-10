@@ -5,6 +5,7 @@ import {
   moonriseHeadingId,
   buildHeadingMap,
   escapeJinjaDelimiters,
+  formatDevsiteGateNotices,
 } from './devsite-markdown.ts';
 
 describe('toDevsiteMarkdown', () => {
@@ -340,5 +341,71 @@ describe('block spacing (T6)', () => {
         '- item 2',
       ].join('\n')
     );
+  });
+});
+
+describe('formatDevsiteGateNotices', () => {
+  it('returns an empty array when neither gate has matching features', () => {
+    assert.deepStrictEqual(
+      formatDevsiteGateNotices({ originTrials: [], volatileFeatures: [] }),
+      []
+    );
+  });
+
+  it('formats a single Origin Trial notice with deduplicated ChromeStatus link and no blank lines', () => {
+    const notices = formatDevsiteGateNotices({
+      originTrials: [
+        { id: 'trial-a', name: 'Trial A', chromestatus_url: 'https://chromestatus.com/feature/111' },
+        { id: 'trial-b', name: 'Trial B', chromestatus_url: 'https://chromestatus.com/feature/111' },
+      ],
+      volatileFeatures: [],
+    });
+
+    assert.strictEqual(notices.length, 1);
+    const notice = notices[0];
+    assert.ok(notice.startsWith('<aside class="caution">\n'));
+    assert.ok(notice.endsWith('\n</aside>'));
+    assert.ok(!notice.includes('\n\n'), 'Must not contain blank lines inside <aside>');
+    assert.ok(notice.includes('<b>Caution: Origin Trial features require explicit project opt-in.</b>'));
+    assert.ok(notice.includes('<a href="https://chromestatus.com/feature/111">ChromeStatus entry</a>'));
+    assert.strictEqual(notice.match(/chromestatus\.com\/feature\/111/g)?.length, 1);
+    assert.ok(notice.includes('<pre class="prettyprint lang-shell">npx modern-web-guidance@latest set-allow-origin-trials</pre>'));
+    assert.ok(notice.includes('<code>{"allowOriginTrials": true}</code>'));
+  });
+
+  it('formats multiple distinct ChromeStatus entries and omits link sentence when URLs are absent', () => {
+    const plural = formatDevsiteGateNotices({
+      originTrials: [
+        { id: 'trial-a', name: 'Alpha <API>', chromestatus_url: 'https://chromestatus.com/feature/111?x=1&y=2' },
+        { id: 'trial-b', name: 'Beta API', chromestatus_url: 'https://chromestatus.com/feature/222' },
+      ],
+      volatileFeatures: [],
+    });
+    assert.strictEqual(plural.length, 1);
+    assert.ok(plural[0].includes('See the ChromeStatus entries for current trial status and timeline:'));
+    assert.ok(plural[0].includes('<a href="https://chromestatus.com/feature/111?x=1&amp;y=2">Alpha &lt;API&gt;</a>'));
+    assert.ok(plural[0].includes('<a href="https://chromestatus.com/feature/222">Beta API</a>'));
+
+    const noUrl = formatDevsiteGateNotices({
+      originTrials: [{ id: 'trial-c' }],
+      volatileFeatures: [],
+    });
+    assert.strictEqual(noUrl.length, 1);
+    assert.ok(!noUrl[0].includes('ChromeStatus'));
+  });
+
+  it('formats volatile notices and emits both notices in order when both gates match', () => {
+    const notices = formatDevsiteGateNotices({
+      originTrials: [
+        { id: 'trial-a', chromestatus_url: 'https://chromestatus.com/feature/111' },
+      ],
+      volatileFeatures: [{ id: 'volatile-a', reason: 'Chrome-only' }],
+    });
+
+    assert.strictEqual(notices.length, 2);
+    assert.ok(notices[0].includes('npx modern-web-guidance@latest set-allow-origin-trials'));
+    assert.ok(notices[1].includes('<b>Caution: Volatile features require explicit project opt-in.</b>'));
+    assert.ok(notices[1].includes('<pre class="prettyprint lang-shell">npx modern-web-guidance@latest set-allow-volatile-features</pre>'));
+    assert.ok(notices[1].includes('<code>{"allowVolatileFeatures": true}</code>'));
   });
 });

@@ -1,0 +1,17 @@
+diff --git a/index.html b/index.html
+index 66c9173..4737a55 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,12 @@
+       background: #3e2723;
+     }
+ 
++    :where(a, button):focus,
++    :where(a, button):focus-visible {
++      outline: none;
++      box-shadow: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;

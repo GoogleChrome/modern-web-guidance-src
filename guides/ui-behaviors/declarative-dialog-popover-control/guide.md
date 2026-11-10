@@ -32,6 +32,8 @@ Popovers can be toggled open and closed using a single button.
 
 If you need to control opening and closing with separate buttons, you can use the `show-popover` and `hide-popover` commands.
 
+**IMPORTANT:** Do NOT combine `popovertarget` and `commandfor` on the same `<button>`, for the same popover. This will double-toggle it, breaking functionality.
+
 ```html
 <!-- MANDATORY: Use 'show-popover' to explicitly open the popover. It will not close the popover if clicked again. -->
 <button commandfor="my-explicit-popover" command="show-popover">
@@ -47,6 +49,8 @@ If you need to control opening and closing with separate buttons, you can use th
   </button>
 </div>
 ```
+
+Hiding a popover, using a button inside the popover itself, will result in a loss of focus as the button will be hidden and won't retain focus. In this situation, provide additional scripting to return focus to the trigger/show control, so that people can continue to navigate from where they were previously.
 
 ## Implementing Declarative Modal Dialogs
 
@@ -107,6 +111,6 @@ For projects without a bundler, dynamically import the polyfill directly from a 
 **Invokers Polyfill Limitations**
 MANDATORY: This polyfill does not handle the ARIA states (e.g., `aria-expanded`) of the command button the way native browsers do. You are strongly encouraged to handle these states yourself to ensure your site is fully accessible.
 
-{{ INCLUDE("../custom-button-actions/guide.md#fallback-strategies") }}
+{{ INCLUDE("../custom-button-actions/guide.md#manually-manage-aria-states-in-your-listener") }}
 
 {{ FEATURE_FALLBACKS("popover") }}

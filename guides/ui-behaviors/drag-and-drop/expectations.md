@@ -1,0 +1,16 @@
+- Dragging an item with a pointer, either from a dedicated drag handle or from the item itself, changes the item's DOM and visible position within the collection.
+- During a pointer drag, sibling items stay in place and a drop marker indicates where the dragged item will land without shifting layout, committing the DOM move once on release.
+- The drop marker is drawn with the list's own pseudo-elements rather than an element appended to `<body>`, and no marker is shown when the drop spot is the item's own slot.
+- Pressing `Escape` during a pointer drag cancels it, removes the marker, and leaves the item in its original position.
+- Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.
+- Each item provides an accessible keyboard reordering mechanism, such as an appropriately named, focusable drag handle that supports the arrow keys for its axis (`ArrowUp` and `ArrowDown` in a vertical list, `ArrowLeft` and `ArrowRight` in a horizontal row), or separate movement buttons (or an options menu containing them).
+- Moving an item toward the start of the list with the keyboard mechanism (`ArrowUp` in a vertical list, the arrow key pointing toward the start of a horizontal row, or activating its "move earlier" control) places it immediately before its previous sibling in the DOM.
+- Moving an item toward the end of the list with the keyboard mechanism (`ArrowDown` in a vertical list, the arrow key pointing toward the end of a horizontal row, or activating its "move later" control) places it immediately after its next sibling in the DOM.
+- Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
+- Moving the first item toward the start or the last item toward the end with the keyboard mechanism leaves the DOM order unchanged.
+- Reordering is animated: displaced siblings travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
+- During a pointer drag, the real dragged item (not a clone) follows the pointer via a CSS translation, stays a child of the list, and animates to its resting place when the drag ends.
+- Reordering actions are announced in a live region with the item's new position.
+- Releasing a drag without changing the item's position (such as a plain click on the handle) does not announce a move.
+- The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
+- On a narrow mobile viewport, the items and their movement controls fit without horizontal scrolling.

@@ -32,6 +32,8 @@ Here’s how to create carousel slide effects:
     }
     ```
 
+    Optionally, add `scroll-snap-type: x mandatory` on the scroller and `scroll-snap-align: center` on the slides if you want items to snap cleanly to the center state when scrolling stops.
+
 2.  **Define the animation:** Create a CSS animation that defines the different states of your slides as they traverse the scrollport. You can define keyframes for any part of the animation. For example, you can define a state for when the slides are in the center of the scrollport by including a `50%` keyframe. In this example, the `scale` property makes the slides grow as they approach the center and shrink as they move away.
 
     ```css
@@ -64,6 +66,7 @@ Here’s how to create carousel slide effects:
 This code animates the carousel items of a horizontal scroller on scroll using an **anonymous view-timeline**:
 
 ```css
+/* Scale values are examples; customize with performant properties such as transform, scale, or opacity */
 @keyframes animate {
   0% {
     scale: 0.5;
@@ -80,11 +83,14 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 /* Only runs the effect when the user has no reduced-motion preference */
 @media (prefers-reduced-motion: no-preference) {
-  .scroller > * {
-    /* Applies the animation using an `auto` duration */
-    animation: animate auto linear both;
-    /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
-    animation-timeline: view(inline);
+  /* Include (animation-range: entry) to exclude browsers with partial scroll-driven animation support */
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    .scroller > * {
+      /* Applies the animation using an `auto` duration */
+      animation: animate auto linear both;
+      /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
+      animation-timeline: view(inline);
+    }
   }
 }
 ```
@@ -92,6 +98,7 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 This code animates the carousel items of a horizontal scroller on scroll using a **named view-timeline**:
 
 ```css
+/* Scale values are examples; customize with performant properties such as transform, scale, or opacity */
 @keyframes animate {
   0% {
     scale: 0.5;
@@ -108,14 +115,17 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 /* Only runs the effect when the user has no reduced-motion preference */
 @media (prefers-reduced-motion: no-preference) {
-  /* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
-  .scroller > * {
-    /* Applies the animation using an `auto` duration */
-    animation: animate auto linear both;
-    /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
-    view-timeline: --item inline;
-    /* Sets the animation timeline to use the named view progress timeline defined above */
-    animation-timeline: --item;
+  /* Include (animation-range: entry) to exclude browsers with partial scroll-driven animation support */
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    /* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
+    .scroller > * {
+      /* Applies the animation using an `auto` duration */
+      animation: animate auto linear both;
+      /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
+      view-timeline: --item inline;
+      /* Sets the animation timeline to use the named view progress timeline defined above */
+      animation-timeline: --item;
+    }
   }
 }
 ```
@@ -132,7 +142,7 @@ When using scroll-driven animations, it's important to follow a few best practic
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
 - **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` and `animation-range` *after* it to prevent the shorthand from resetting the timeline.
 
-Prefer a named `view-timeline` when multiple DOM elements need to animate based on the same timeline, or when you need to animate children of the element that has the `view-timeline` defined on it. If the element that you animate is also the element that defines the `view-timeline`, you can use an anonymous view-timeline using `view()`.
+Use an anonymous `view()` timeline by default when the animated element is the same element being tracked, so you do not have to name every individual timeline. Use a named `view-timeline` instead when multiple elements reuse a single timeline (avoiding duplicate timelines) or when reaching across the DOM (such as animating descendants or non-ancestors via `timeline-scope` when `view()` or `scroll(nearest)` does not suffice).
 
 When using the `view()` function to create a scroll-driven animation:
 
@@ -146,7 +156,9 @@ When using the `view-timeline` property to create a scroll-driven animation:
 
 ## Browser support and fallback strategies
 
-{{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
+{{ BASELINE_STATUS("scroll-driven-animations") }}
+
+Therefore, a fallback strategy is typically required.
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
