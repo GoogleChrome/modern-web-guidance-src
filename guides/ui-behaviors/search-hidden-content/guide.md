@@ -99,9 +99,9 @@ hiddenPanel.addEventListener('beforematch', () => {
 
 With mutually exclusive disclosures there's no way to semantically convey which control relates to which piece of hidden/expanded content, in a way that's announced by screen readers. As a result, this may cause WCAG 1.3.2 Meaningful Order issues, as the order in which content should be announced, may no longer be correct, and may affect the meaning of the content.
 
-{# See {{ GUIDE_REF("accordion") }} for accordion patterns, in which multiple disclosures are used in a way that is accessible. #}
+See {{ GUIDE_REF("accordion") }} for accordion patterns, in which multiple disclosures are used in a way that is accessible.
 
-{# See {{ GUIDE_REF("tabs") }} for tab patterns which hides content until a specific tab is selected, keeping the information displayed minimal, helping to reduce the amount of visual noise. #}
+See {{ GUIDE_REF("tabs") }} for tab patterns which hides content until a specific tab is selected, keeping the information displayed minimal, helping to reduce the amount of visual noise.
 
 ## Best practices for `hidden="until-found"`
 
