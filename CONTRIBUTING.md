@@ -84,7 +84,7 @@ This repository includes a curated set of **Agent Skills** in [`.agents/skills/`
 | **Evaluations & Graders** | [`project-evals`](./.agents/skills/project-evals/SKILL.md) | Playwright test grader generation and calibration criteria (Stage 3). |
 | **Baseline Status** | [`web-baseline`](./.agents/skills/web-baseline/SKILL.md) | Checking browser compatibility and Baseline status across web platform features. |
 | **Coding Standards** | [`project-coding-standards`](./.agents/skills/project-coding-standards/SKILL.md) | Architecture conventions, strict typing, canonical enums, and PR review standards for CLI and tooling code. |
-| **Eval Diagnostics** | [`eval-investigation`](./.agents/skills/eval-investigation/SKILL.md), [`nightly-eval-investigation`](./.agents/skills/nightly-eval-investigation/SKILL.md), [`dev-prompt-canary`](./.agents/skills/dev-prompt-canary/SKILL.md) | Investigating local/nightly evaluation runs and validating `gd dev` prompt changes. |
+| **Eval Diagnostics** | [`nightly-eval-investigation`](./.agents/skills/nightly-eval-investigation/SKILL.md), [`dev-prompt-canary`](./.agents/skills/dev-prompt-canary/SKILL.md), [`grader-replay`](./.agents/skills/grader-replay/SKILL.md) | Investigating nightly evaluation runs, validating `gd dev` prompt changes, and replaying graders. |
 | **Repo Maintenance** | [`project-maintenance`](./.agents/skills/project-maintenance/SKILL.md), [`coherence-auditor`](./.agents/skills/coherence-auditor/SKILL.md) | Routine dependency updates, link/doc coherence checks, and workspace hygiene. |
 
 

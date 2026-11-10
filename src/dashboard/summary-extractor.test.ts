@@ -313,6 +313,19 @@ test('extractSuiteSummary preserves valid reasoningEffort and omits absent or ma
     }
 });
 
+test('extractSuiteSummary preserves curated flag when present', () => {
+    const regular = extractSuiteSummary('regular-suite', { results: {} });
+    assert.ok(regular);
+    assert.strictEqual('curated' in regular, false);
+
+    const curated = extractSuiteSummary('curated-suite', {
+        results: {},
+        curated: true,
+    } as never);
+    assert.ok(curated);
+    assert.strictEqual(curated.curated, true);
+});
+
 test('reasoningEffort helpers format provenance tooltips, order levels, and reject unsafe tokens', () => {
     assert.deepStrictEqual(normalizeReasoningEffort(undefined), { source: 'agent-default' });
     assert.strictEqual(sanitizeReasoningEffort({ level: 'custom_tier-2', source: 'observed' })?.level, 'custom_tier-2');

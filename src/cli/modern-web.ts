@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { ensureNodeVersion } from "./node-version.ts";
+
+ensureNodeVersion();
+
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
@@ -58,14 +62,13 @@ function saveRetrievedGuides(content: string): string | null {
 
 function printUsage() {
   console.log(`
-Usage: modern-web <command> [args]
+Usage: modern-web-guidance <command> [args]
 
 Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   legacy-scan [path] [options]  Analyze codebase for legacy web platform patterns
-  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
@@ -287,7 +290,7 @@ async function main() {
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["skills", "remove", ...skills], {
+    const result = spawnSync("npx", ["-y", "skills", "remove", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });

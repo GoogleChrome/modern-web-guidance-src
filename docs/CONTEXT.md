@@ -71,9 +71,9 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `guide.md` | SME (human) | The guidance itself, read by coding agents via Skills (`SKILL.md` is reserved for the entrypoint and standalone skills). Normative rules and build-time macros (`BASELINE_STATUS`, `INCLUDE`, `FEATURE`, `FEATURE_FALLBACKS`, `FEATURE_ISSUES`, `GUIDE_REF`) are specified in [`project-guides`](../.agents/skills/project-guides/SKILL.md). |
 | `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
 | `expectations.md` | SME (human) | Natural-language bulleted list of observable assertions used as input for grader generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)). |
-| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` / `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
-| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated to pass golden patches 100% and zero-passrate baseline 0%. |
-| `targets/<base_app>/task.md` | Generated (`gd dev`) | Single-bullet developer prompt tailored to `<base_app>` fed to evaluation agents. |
+| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` / `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`, empty for almost every guide so calibration runs against the untouched starting app). Used for grader calibration. |
+| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated so every golden patch passes every test and the untouched starting app (`zero-passrate.patch`) passes none, except a `MUST NOT` check it already satisfies (paired with a positive presence check). |
+| `targets/<base_app>/task.md` | Generated (`gd dev`) | Single `- ` bullet developer prompt tailored to `<base_app>` fed to evaluation agents (no YAML frontmatter). |
 | `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
 ### Discipline guides
@@ -126,7 +126,7 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd dev <dir>` | Runs the 5-step Stage 3 pipeline (`src/authoring/dev.ts`): generates target solutions/tasks across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`, or `--targets <apps>`), generates and calibrates `grader.ts` (100% golden / 0% zero-passrate), runs guided vs. unguided evaluations, and writes `results/guides/<category>/<slug>/report.md`. |
+| `gd dev <dir>` | Runs the 5-step Stage 3 pipeline (`src/authoring/dev.ts`): generates target solutions/tasks across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`, or `--targets <apps>`), generates and calibrates `grader.ts` (calibrated so every golden passes and the untouched starting app passes none), runs guided vs. unguided evaluations, and writes `results/guides/<category>/<slug>/report.md`. |
 | `gd dev <dir> --test-grader` | Runs calibration check across target apps without full agent evals. |
 | `gd pr <dir>` | Opens or updates a GitHub Pull Request with auto-labeled classification (`gd-dev-content` / `gd-dev-eval`, removing `needs-dev-rerun`) and `report.md` body. |
 | `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-dev-rerun`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |

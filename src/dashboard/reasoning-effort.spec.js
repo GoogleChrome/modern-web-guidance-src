@@ -82,6 +82,30 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await page.keyboard.press('Escape');
     await expect(effortTooltip).toBeHidden();
 
+    // Tabbing away must not leave the fading-out tooltip unanchored at the viewport's top-left.
+    await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur());
+    await provChip.focus();
+    await expect(effortTooltip).toBeVisible();
+    await page.evaluate(() => {
+      const tip = /** @type {HTMLElement} */ (document.getElementById('effort-tooltip'));
+      /** @type {Array<{ x: number, y: number }>} */
+      const frames = [];
+      /** @type {any} */ (window).__effortFrames = frames;
+      const sample = () => {
+        if (getComputedStyle(tip).display !== 'none') {
+          const r = tip.getBoundingClientRect();
+          frames.push({ x: r.x, y: r.y });
+        }
+        if (frames.length < 120) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    await page.keyboard.press('Tab');
+    await expect(effortTooltip).toBeHidden();
+    await page.waitForTimeout(300);
+    const strayFrames = await page.evaluate(() => /** @type {Array<{ x: number, y: number }>} */ (/** @type {any} */ (window).__effortFrames).filter(f => f.x < 8 && f.y < 8));
+    expect(strayFrames).toEqual([]);
+
     // Show all runs (including ad-hoc) to inspect all 4 sources + legacy omitted field
     await page.locator('#scheduled-only-check').uncheck();
     await page.mouse.move(2, 2);
@@ -109,19 +133,18 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
       await expect(effortTooltip).toBeHidden();
     }
 
-    // Mathematical vertical centering between model text and effort chip
-    const alignment = await page.locator('.suite-table-row[data-test-id="nightly-2026-10-27_23-00-02-antigravity_cli"] .model-cell-inner').evaluate(el => {
-      const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
+    // Effort chip sits underneath the model name
+    const chipBelowModel = await page.locator('.suite-table-row[data-test-id="nightly-2026-10-27_23-00-02-antigravity_cli"] .model-cell-inner').evaluate(el => {
+      const modelEl = el.querySelector('.model-name') || Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
       const range = document.createRange();
-      if (textNode) range.selectNodeContents(textNode);
+      if (modelEl instanceof Element) range.selectNode(modelEl);
+      else if (modelEl) range.selectNodeContents(modelEl);
       const textRect = range.getBoundingClientRect();
       const chipRect = el.querySelector('.effort-chip')?.getBoundingClientRect();
-      if (!chipRect) return Infinity;
-      const textCenter = textRect.top + textRect.height / 2;
-      const chipCenter = chipRect.top + chipRect.height / 2;
-      return Math.abs(textCenter - chipCenter);
+      if (!chipRect) return -Infinity;
+      return chipRect.top - textRect.bottom;
     });
-    expect(alignment).toBeLessThanOrEqual(2);
+    expect(chipBelowModel).toBeGreaterThanOrEqual(-1);
     expect(errors).toEqual([]);
   });
 

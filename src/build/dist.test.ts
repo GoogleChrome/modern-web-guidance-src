@@ -276,6 +276,29 @@ test('modern-web CLI version flags', async () => {
   assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
 });
 
+test('modern-web CLI fails fast on Node < 22', async () => {
+  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
+  const { spawnSync } = await import('node:child_process');
+  const { pathToFileURL } = await import('node:url');
+  const fileUrl = pathToFileURL(binaryPath).href;
+
+  const spoofCode = `
+    Object.defineProperty(process.versions, 'node', { value: '20.10.0' });
+    Object.defineProperty(process, 'version', { value: 'v20.10.0' });
+    import(${JSON.stringify(fileUrl)});
+  `;
+
+  const res = spawnSync(process.execPath, ['--input-type=module', '-e', spoofCode], {
+    encoding: 'utf8',
+  });
+
+  assert.strictEqual(res.status, 1, 'Expected exit code 1');
+  assert.match(
+    res.stderr,
+    /modern-web-guidance requires Node\.js >= 22 \(current: v20\.10\.0\)\. Please upgrade: https:\/\/nodejs\.org\//
+  );
+});
+
 // TODO: this has been failing locally from publish-skills.ts
 test.skip('THIRD_PARTY_NOTICES validation', async () => {
   const noticesPath = path.join(STAGING_DIR, 'THIRD_PARTY_NOTICES');
