@@ -13,6 +13,15 @@ A filterable select lets the user type to narrow a list of predefined options an
 
 {# Verified in Chrome 150 (Oct 2026). Design constraints that drove this guide: the HTML parser closes `<select>` on `<input>`/`<button>`; HTMLSelectElement has showPicker() but no hidePicker(); Chrome does not dispatch toggle on `<select>`; input type=search consumes Escape to clear itself. #}
 
+## Choosing a pattern
+
+There are two search patterns for a constrained set of options:
+
+- **Search in the dropdown (this guide):** the trigger stays a button and the filter input lives inside the popup. Choose it for small to medium lists that users mostly browse, where picking from a visible list is the main interaction.
+- **Search in the trigger (combobox):** the trigger itself is a text input. Choose it for large or unfamiliar lists where users type first, or when options load asynchronously.
+
+A customizable `<select>` cannot put a text input in its trigger, so the combobox pattern isn't possible with it and isn't covered here.
+
 ## How to implement
 
 ### 1. Author a plain `<select>` first
