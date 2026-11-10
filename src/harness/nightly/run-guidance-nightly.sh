@@ -143,9 +143,9 @@ for agent in $AGENTS_TO_RUN; do
   run_agent "$agent"
 done
 
-# Mirror the newly uploaded suites to the public dashboard. Only from a `main`
-# checkout (which run-agent.sh has just fast-forwarded): a --local run or a
-# feature branch would push a local allowlist and scrubber to the live site.
+# Mirror the newly uploaded suites to the public dashboard. Only from a clean
+# `main` checkout that matches origin/main: a --local run, a feature branch, or
+# local edits would push a local allowlist and scrubber to the live site.
 publish_public_evals() {
   if [ "$RUN_LOCAL" = "true" ] || [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ] || [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null)" ]; then
     printf "Public evals not published: requires a clean main checkout synced with origin/main without --local.\n\n" >> "$SUMMARY_FILE"
