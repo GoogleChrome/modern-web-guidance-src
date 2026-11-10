@@ -65,7 +65,6 @@ Commands:
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   legacy-scan [path] [options]  Analyze codebase for legacy web platform patterns
-  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
