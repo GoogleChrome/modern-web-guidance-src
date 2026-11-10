@@ -18,7 +18,7 @@ Elements that render in the "top layer" (like `<dialog>`, elements with the `pop
 
 ### 1. Enable Discrete Transitions
 
-To animate the `display` property, you must set `transition-behavior: allow-discrete`. This allows the element to remain visible during its exit transition. If using transition shorthands, be sure to place the `transition-behavior: allow-discrete` afterwards to prevent the shorthand from negating it.
+To animate the `display` property, you must set `transition-behavior: allow-discrete`. This allows the element to remain visible during its exit transition. If using the `transition` shorthand, place `transition-behavior: allow-discrete` afterward so the shorthand does not reset it.
 
 ### 2. The `overlay` Property
 
@@ -39,12 +39,19 @@ The `::backdrop` pseudo-element can be animated similarly by applying transition
 dialog[open],
 [popover]:popover-open {
   opacity: 1;
-  transform: scale(1);
 
   /* 2. Define the starting state for entry (must come after open state) */
   @starting-style {
     opacity: 0;
-    transform: scale(0.9);
+  }
+
+  /* Scale only for users who haven't asked for reduced motion (see 5) */
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(1);
+
+    @starting-style {
+      transform: scale(0.9);
+    }
   }
 }
 
@@ -52,14 +59,17 @@ dialog[open],
 dialog,
 [popover] {
   opacity: 0;
-  transform: scale(0.9);
 
   /* MANDATORY: transition display and overlay for top-layer elements */
   transition-property: opacity, transform, display, overlay;
   transition-duration: 0.3s;
   transition-timing-function: ease-out;
-  /* Applies to discrete properties like display and overlay */
-  transition-behavior: allow-discrete; /* Note: be sure to write this after the shorthand */
+  /* Separate after transition so a shorthand doesn't reset it or fail in older browsers */
+  transition-behavior: allow-discrete;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(0.9);
+  }
 }
 
 /* 4. Animate the backdrop */
@@ -69,6 +79,7 @@ dialog::backdrop,
   transition-property: background-color, display, overlay;
   transition-duration: 0.3s;
   transition-timing-function: ease-out;
+  /* Separate after transition so a shorthand doesn't reset it or fail in older browsers */
   transition-behavior: allow-discrete;
 }
 
@@ -81,20 +92,12 @@ dialog[open]::backdrop,
   }
 }
 
-/* 5. Respect user preference for reduced motion */
+/* 5. Respect user preference for reduced motion: the scale above only applies
+   with no-preference, so this only shortens the fade */
 @media (prefers-reduced-motion: reduce) {
   dialog,
   [popover] {
-    /* Disable movement and shorten duration for a simple fade */
-    transform: none;
     transition-duration: 0.1s;
-  }
-
-  @starting-style {
-    dialog[open],
-    [popover]:popover-open {
-      transform: none;
-    }
   }
 }
 ```
@@ -102,8 +105,9 @@ dialog[open]::backdrop,
 ## Constraints & Accessibility
 
 - **MANDATORY**: Include `overlay` in your `transition` list for any element moving into or out of the top layer.
-- **MANDATORY**: Use `allow-discrete` for the `display` property transition.
-- **MANDATORY**: Respect user preferences for reduced motion using `prefers-reduced-motion` by simplifying transitions (e.g., removing transforms and shortening duration).
+- **MANDATORY**: Use `transition-behavior: allow-discrete` when transitioning `display` and `overlay`.
+- **DO NOT**: Use `allow-discrete` in the `transition` shorthand — it will make older browsers ignore the entire `transition` declaration. Except in use cases where that is desirable, use a separate `transition-behavior: allow-discrete` declaration.
+- **MANDATORY**: Respect user preferences for reduced motion by applying transforms only inside `@media (prefers-reduced-motion: no-preference)` and shortening the transition duration inside `@media (prefers-reduced-motion: reduce)`, so users who prefer reduced motion get a short fade.
 - **DO**: Place the `@starting-style` block inside or after the "open" state selector to ensure proper cascading.
 - **DO NOT**: Use `@starting-style` for exit animations; exit animations are defined by the transition to the base (closed) state.
 
@@ -123,11 +127,17 @@ Exit animations require both `overlay` and discrete `display` transition support
 ```css
 :is(dialog[open], [popover]:popover-open):where(:not([data-closing])) {
   opacity: 1;
-  transform: scale(1);
 
   @starting-style {
     opacity: 0;
-    transform: scale(0.9);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(1);
+
+    @starting-style {
+      transform: scale(0.9);
+    }
   }
 
   &::backdrop {

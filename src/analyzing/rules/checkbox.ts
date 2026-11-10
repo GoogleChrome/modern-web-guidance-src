@@ -201,7 +201,7 @@ export const checkboxCssMatcher: CssRuleMatcher = {
 export const checkboxRule: AnalyzerRule = {
   id: 'checkbox',
   guideId: 'checkbox',
-  guideHash: '43313f5eb538',
+  guideHash: '485476bc63e0',
   summary:
     'Hiding native checkboxes with opacity: 0 or drawing replacement boxes on sibling label/span pseudo-elements should be modernized with native accent-color or appearance: none directly on <input type="checkbox">.',
   matcher: checkboxCssMatcher,

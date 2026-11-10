@@ -7,7 +7,7 @@ web-feature-ids:
 
 # Ensure text readability with dynamic background colors
 
-When building reusable UI components (like badges or buttons) or supporting dynamic themes, ensuring text is readable against an unpredictable background color can be challenging. The `contrast-color()` CSS function resolves to `black` or `white`, maximizing the contrast ratio against the specified background color.
+When building reusable UI components (like badges, buttons, headers, or footers) or supporting customizable themes, ensuring text remains readable against a variable background color can be challenging. The `contrast-color()` CSS function resolves to `black` (`rgb(0, 0, 0)`) or `white` (`rgb(255, 255, 255)`), maximizing the contrast ratio (targeting at least 4.5:1 WCAG AA contrast) against the specified solid `<color>` value.
 
 ## Determine optimal text color
 
@@ -56,37 +56,28 @@ DO NOT: Hard-code a separate text color for each interaction state when the back
 
 {{ BASELINE_STATUS("contrast-color") }}
 
-To support browsers without `contrast-color()`, you must provide a fallback. If the background color is known and fixed, use a hard-coded contrasting color. For dynamic backgrounds where the color is unknown, choose a strategy from the table below based on your UI requirements and browser support targets.
+To support browsers without `contrast-color()`, you must provide a fallback. If the background color is known and fixed, use a hard-coded contrasting color. For variable background colors (such as theme custom properties where the runtime color is unknown), choose one of the five fallback strategies from the table below based on your UI requirements and browser support targets.
 
 | Strategy | Best For... | Considerations |
 | :--- | :--- | :--- |
-| **Relative Color Syntax** | Automated, high-quality CSS-only contrast calculation. | Highest quality CSS-only fallback. |
+| **Calculate contrast with `color(xyz)`** | Automated, CSS-only contrast calculation, ensures compliance with WCAG 1.4.3 Contrast (Minimum). | Highest quality CSS-only fallback. |
 | **Text Shadow** | Quick readability boost on any background. | Can look "dirty" or "glowy"; may not fit all designs. |
 | **Text Stroke** | Preserving font weight while ensuring edge contrast. | Use `paint-order` to avoid thinning letterforms, if available. |
 | **Translucent Overlay** | Ensuring a minimum contrast area behind the text. | Changes the look of the background color under the text, requires a separate text element. |
 | **SVG Filters** | Reactive contrast that updates as the background changes. | Requires a separate text element; hacky implementation. |
 
-### Recommended: Relative Color Syntax (RCS)
+### Recommended: Calculate contrast with `color(xyz)`
 
-For browsers that support it, RCS provides the most robust automated fallback for dynamic colors.
+In order to adhere to WCAG's 1.4.3 Contrast (Minimum) guideline, calculate the contrasting color using Relative Color Syntax in the CIE XYZ D65 color space, which uses relative luminance as the `y` value. Note that `white` is `color(xyz 0.9505 1 1.089)`, as this is the D65 white point.
 
 {{ BASELINE_STATUS("relative-color") }}
 
-```css
-@supports (color: oklch(from red l c h)) {
-  .badge {
-    /* Highest threshold that passes WCAG. Higher values may be more legible. */
-    --threshold: 0.623;
-    --l: max(0, sign(var(--threshold) - l));
-    color: oklch(from var(--badge-bg) var(--l) 0 h);
-  }
-}
+{# Formula for this is from Lea Verou's blog post: https://lea.verou.me/blog/2024/contrast-color/#xyz-wcag #}
 
-@supports (color: contrast-color(red)) {
-  .badge {
-    color: contrast-color(var(--badge-bg));
-  }
-}
+```css
+--wcag-y-threshold: 0.17913;
+--y: max(0, sign(var(--wcag-y-threshold) - y));
+color: color(from var(--color) xyz-d65 calc(var(--y) * 0.9505) var(--y) calc(var(--y) * 1.089));
 ```
 
 ### Alternative CSS Fallbacks

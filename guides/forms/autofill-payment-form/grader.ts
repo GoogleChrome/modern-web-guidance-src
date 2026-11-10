@@ -32,6 +32,7 @@ test.describe(`Autofill Payment Form Expectations: ${demoName}`, () => {
   });
 
   test('All input, select, and textarea elements must be within a <form> element', async ({ page }) => {
+    expect(await page.locator('form input, form select, form textarea').count()).toBeGreaterThan(0);
     const nonFormInputs = await page.locator('input:not(form input), select:not(form select), textarea:not(form textarea)').count();
     expect(nonFormInputs).toBe(0);
   });
@@ -97,6 +98,7 @@ test.describe(`Autofill Payment Form Expectations: ${demoName}`, () => {
       ccInput.getAttribute('inputmode', { timeout: 2000 }),
       cscInput.getAttribute('inputmode', { timeout: 2000 })
     ]);
+    expect(result.length).toBeGreaterThan(0);
     expect(result.every(mode => mode === 'numeric')).toBe(true);
   });
 

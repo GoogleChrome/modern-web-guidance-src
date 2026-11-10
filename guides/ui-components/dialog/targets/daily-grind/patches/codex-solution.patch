@@ -1,13 +1,23 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..b947077
+index 0000000..849ddff
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,2 @@
-+node_modules/
+@@ -0,0 +1 @@
 +dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..d8ba1d1
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { mkdir, copyFile } from 'node:fs/promises';
++
++await mkdir('dist', { recursive: true });
++await Promise.all(['index.html', 'order.js'].map(file => copyFile(file, `dist/${file}`)));
++console.log('Built static application in dist/');
 diff --git a/index.html b/index.html
-index 66c9173..cce81a6 100644
+index 66c9173..4e1a842 100644
 --- a/index.html
 +++ b/index.html
 @@ -121,6 +121,9 @@
@@ -20,148 +30,97 @@ index 66c9173..cce81a6 100644
        display: inline-block;
        background: var(--primary);
        color: white;
-@@ -135,6 +138,79 @@
+@@ -135,6 +138,32 @@
        background: #3e2723;
      }
  
-+    :focus-visible {
-+      outline: 3px solid #a65300;
-+      outline-offset: 4px;
-+    }
-+
++    :focus-visible { outline: 3px solid #bd6900; outline-offset: 3px; }
 +    dialog {
 +      margin: auto;
-+      width: min(32rem, calc(100% - 2rem));
-+      max-height: calc(100dvh - 2rem);
++      width: min(92vw, 520px);
++      max-height: 90dvh;
 +      overflow: auto;
-+      padding: 1.5rem;
-+      border: 1px solid var(--secondary);
++      padding: 24px;
++      border: 0;
 +      border-radius: 8px;
 +      color: var(--text);
 +      background: var(--light);
 +    }
-+
-+    dialog:modal {
-+      overscroll-behavior: contain;
-+    }
-+
++    dialog:modal { overscroll-behavior: contain; }
 +    dialog::backdrop {
 +      background: rgb(0 0 0 / 60%);
 +      overflow: hidden;
 +      overscroll-behavior: contain;
 +    }
-+
-+    .dialog-heading, .dialog-actions {
-+      display: flex;
-+      justify-content: space-between;
-+      align-items: center;
-+      flex-wrap: wrap;
-+      gap: 1rem;
-+    }
-+
-+    .close-button {
-+      padding: 0.5rem 0.75rem;
-+      font: inherit;
-+      color: var(--text);
-+      background: white;
-+      border: 1px solid var(--primary);
-+      border-radius: 5px;
-+      cursor: pointer;
-+    }
-+
-+    .order-field {
-+      display: grid;
-+      gap: 0.25rem;
-+      margin-top: 1rem;
-+    }
-+
-+    .order-field select, .order-field input {
-+      width: 100%;
-+      min-height: 44px;
-+      padding: 0.5rem;
-+      font: inherit;
-+      color: var(--text);
-+      background: white;
-+      border: 1px solid var(--primary);
-+      border-radius: 4px;
-+    }
-+
-+    #drink-description, .order-note {
-+      margin-top: 1rem;
-+    }
-+
-+    #order-summary:not(:empty) {
-+      padding: 1rem;
-+      margin-top: 1.5rem;
-+      background: var(--secondary);
-+      border-radius: 5px;
-+    }
++    .order-field { display: grid; gap: 4px; margin-top: 16px; }
++    .order-field select, .order-field input { padding: 8px; font: inherit; min-width: 0; }
++    .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
++    #discard-message { min-height: 3.2em; margin-top: 16px; }
++    #discard-message, #discard-order { visibility: hidden; }
++    dialog[data-confirming] #discard-message, dialog[data-confirming] #discard-order { visibility: visible; }
++    #order-status { text-align: center; margin-top: 20px; }
 +
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -171,7 +247,7 @@
+@@ -171,7 +200,7 @@
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
 -    <a href="/order-online" class="btn">Order Now</a>
-+    <button type="button" class="btn" data-drink="maple" aria-haspopup="dialog" aria-controls="drink-dialog">Order Now</button>
++    <button type="button" class="btn" data-order="maple" aria-haspopup="dialog" aria-controls="order-dialog">Order Now</button>
    </header>
  
    <main class="container">
-@@ -181,22 +257,56 @@
+@@ -181,22 +210,52 @@
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <button type="button" class="btn" data-drink="maple" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View details for Maple Oat Latte">View Details</button>
++          <button type="button" class="btn" data-order="maple" aria-haspopup="dialog" aria-controls="order-dialog" aria-label="View details for Maple Oat Latte">View Details</button>
          </div>
          <div class="card">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+          <button type="button" class="btn" data-drink="espresso" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View details for Dark Roast Espresso">View Details</button>
++          <button type="button" class="btn" data-order="espresso" aria-haspopup="dialog" aria-controls="order-dialog" aria-label="View details for Dark Roast Espresso">View Details</button>
          </div>
          <div class="card">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <button type="button" class="btn" data-drink="cold-brew" aria-haspopup="dialog" aria-controls="drink-dialog" aria-label="View details for Cold Brew">View Details</button>
++          <button type="button" class="btn" data-order="cold" aria-haspopup="dialog" aria-controls="order-dialog" aria-label="View details for Cold Brew">View Details</button>
          </div>
        </div>
      </section>
-+    <p id="order-summary" role="status" aria-live="polite" aria-atomic="true"></p>
++    <p id="order-status" role="status"></p>
    </main>
  
-+  <dialog id="drink-dialog" aria-labelledby="drink-title" closedby="any">
-+    <div class="dialog-heading">
-+      <h2 id="drink-title">Drink details</h2>
-+      <form method="dialog">
-+        <button type="submit" class="close-button" value="cancel" aria-label="Close drink details">Close</button>
-+      </form>
-+    </div>
-+    <form id="drink-order" method="dialog">
-+      <label class="order-field" for="drink-choice">
-+        Drink
-+        <select id="drink-choice" name="drink" aria-describedby="drink-description" autofocus>
++  <dialog id="order-dialog" aria-labelledby="order-title" aria-describedby="drink-description" closedby="any">
++    <h2 id="order-title">Maple Oat Latte</h2>
++    <p id="drink-description"></p>
++    <form id="order-form">
++      <label class="order-field" for="drink">Drink
++        <select id="drink" name="drink" autofocus>
 +          <option value="maple">Maple Oat Latte</option>
 +          <option value="espresso">Dark Roast Espresso</option>
-+          <option value="cold-brew">Cold Brew</option>
++          <option value="cold">Cold Brew</option>
 +        </select>
 +      </label>
-+      <p id="drink-description"></p>
-+      <label class="order-field" for="drink-serving">
-+        Serving
-+        <select id="drink-serving" name="serving" required></select>
++      <label class="order-field" for="size">Size
++        <select id="size" name="size"><option>Small</option><option selected>Medium</option><option>Large</option></select>
 +      </label>
-+      <label class="order-field" for="drink-quantity">
-+        Quantity
-+        <input id="drink-quantity" name="quantity" type="number" min="1" max="10" step="1" value="1" required>
++      <label class="order-field" for="milk">Milk
++        <select id="milk" name="milk"><option>None</option><option>Oat</option><option>Whole</option></select>
 +      </label>
-+      <p class="order-note" id="order-note">Save your selection here, then order and pay at the café. This does not place an order.</p>
++      <label class="order-field" for="quantity">Quantity
++        <input id="quantity" name="quantity" type="number" min="1" max="20" value="1" required>
++      </label>
++      <p id="discard-message">Your order has changes. Keep editing or discard your changes to close.</p>
 +      <div class="dialog-actions">
-+        <button type="submit" class="btn" value="cancel" formnovalidate>Cancel</button>
-+        <button type="submit" class="btn" value="save" aria-describedby="order-note">Save selection</button>
++        <button class="btn" type="button" id="discard-order" aria-describedby="discard-message">Discard changes</button>
++        <button class="btn" type="button" id="close-order">Close</button>
++        <button class="btn" type="submit">Add to order</button>
 +      </div>
 +    </form>
 +  </dialog>
@@ -169,146 +128,138 @@ index 66c9173..cce81a6 100644
    <footer>
      <div class="footer-links">
        <a href="/about">Our Story</a> |
-@@ -207,6 +317,7 @@
+@@ -207,6 +266,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script type="module" src="/main.ts"></script>
++  <script src="order.js" defer></script>
  </body>
  
  </html>
-diff --git a/main.ts b/main.ts
+diff --git a/order.js b/order.js
 new file mode 100644
-index 0000000..6d06deb
+index 0000000..df2572f
 --- /dev/null
-+++ b/main.ts
-@@ -0,0 +1,94 @@
-+const drinks = {
-+  maple: {
-+    name: 'Maple Oat Latte',
-+    description: 'Creamy oat milk with a hint of Vermont maple syrup.',
-+    servings: ['Small', 'Medium', 'Large'],
-+  },
-+  espresso: {
-+    name: 'Dark Roast Espresso',
-+    description: 'Bold, smokey, and perfect for a morning boost.',
-+    servings: ['Single shot', 'Double shot'],
-+  },
-+  'cold-brew': {
-+    name: 'Cold Brew',
-+    description: 'Steeped for 18 hours for maximum smoothness.',
-+    servings: ['Small', 'Medium', 'Large'],
-+  },
-+} satisfies Record<string, { name: string; description: string; servings: string[] }>;
-+
-+type DrinkId = keyof typeof drinks;
-+
-+function isDrinkId(value: string): value is DrinkId {
-+  return Object.hasOwn(drinks, value);
-+}
-+
-+const dialog = document.querySelector('#drink-dialog');
-+const title = document.querySelector('#drink-title');
++++ b/order.js
+@@ -0,0 +1,109 @@
++// @ts-check
++const dialog = document.querySelector('#order-dialog');
++const form = document.querySelector('#order-form');
++const drink = document.querySelector('#drink');
++const milk = document.querySelector('#milk');
++const title = document.querySelector('#order-title');
 +const description = document.querySelector('#drink-description');
-+const choice = document.querySelector('#drink-choice');
-+const serving = document.querySelector('#drink-serving');
-+const quantity = document.querySelector('#drink-quantity');
-+const orderForm = document.querySelector('#drink-order');
-+const summary = document.querySelector('#order-summary');
++const discard = document.querySelector('#discard-order');
++const closeButton = document.querySelector('#close-order');
++const status = document.querySelector('#order-status');
 +
-+if (!(dialog instanceof HTMLDialogElement)
-+  || !(choice instanceof HTMLSelectElement)
-+  || !(serving instanceof HTMLSelectElement)
-+  || !(quantity instanceof HTMLInputElement)
-+  || !(orderForm instanceof HTMLFormElement)
-+  || !title || !description || !summary) {
-+  throw new Error('The drink dialog is missing required elements.');
++if (!(dialog instanceof HTMLDialogElement) || !(form instanceof HTMLFormElement) ||
++    !(drink instanceof HTMLSelectElement) || !(milk instanceof HTMLSelectElement) ||
++    !(discard instanceof HTMLButtonElement) || !(closeButton instanceof HTMLButtonElement) ||
++    !title || !description || !status) {
++  throw new Error('Order dialog markup is incomplete.');
 +}
 +
-+function selectDrink(id: DrinkId): void {
-+  const drink = drinks[id];
-+  // These elements are checked at initialization, before handlers are registered.
-+  if (!title || !description || !(choice instanceof HTMLSelectElement)
-+    || !(serving instanceof HTMLSelectElement)) return;
-+  choice.value = id;
-+  title.textContent = drink.name;
-+  description.textContent = drink.description;
-+  serving.replaceChildren(...drink.servings.map((size) => new Option(size, size)));
++const drinks = new Map([
++  ['maple', { name: 'Maple Oat Latte', description: 'Creamy oat milk with a hint of Vermont maple syrup.', milk: 'Oat' }],
++  ['espresso', { name: 'Dark Roast Espresso', description: 'Bold, smokey, and perfect for a morning boost.', milk: 'None' }],
++  ['cold', { name: 'Cold Brew', description: 'Steeped for 18 hours for maximum smoothness.', milk: 'None' }],
++]);
++const snapshot = () => JSON.stringify(Array.from(new FormData(form).entries()));
++let initialOptions = '';
++const dirty = () => snapshot() !== initialOptions;
++function updateDetails() {
++  const selected = drinks.get(drink.value);
++  if (!selected) return;
++  title.textContent = selected.name;
++  description.textContent = selected.description;
 +}
-+
-+for (const button of document.querySelectorAll('button[data-drink]')) {
-+  if (!(button instanceof HTMLButtonElement)) continue;
++function syncChanges() {
++  dialog.setAttribute('closedby', dirty() ? 'none' : 'any');
++  if (!dirty()) {
++    dialog.removeAttribute('data-confirming');
++    closeButton.textContent = 'Close';
++    closeButton.removeAttribute('aria-describedby');
++  }
++}
++function requestDismiss() {
++  if (!dirty()) {
++    dialog.close();
++    return;
++  }
++  dialog.setAttribute('data-confirming', '');
++  closeButton.textContent = 'Keep editing';
++  closeButton.setAttribute('aria-describedby', 'discard-message');
++  closeButton.focus();
++}
++document.querySelectorAll('[data-order]').forEach((button) => {
 +  button.addEventListener('click', () => {
-+    const id = button.dataset.drink;
-+    if (!id || !isDrinkId(id) || dialog.open) return;
-+    orderForm.reset();
-+    selectDrink(id);
++    if (!(button instanceof HTMLButtonElement)) return;
++    form.reset();
++    drink.value = button.dataset.order || 'maple';
++    milk.value = drinks.get(drink.value)?.milk || 'None';
++    updateDetails();
++    initialOptions = snapshot();
++    syncChanges();
++    status.textContent = '';
 +    dialog.showModal();
 +  });
-+}
-+
-+choice.addEventListener('change', () => {
-+  if (isDrinkId(choice.value)) selectDrink(choice.value);
 +});
-+
++form.addEventListener('input', syncChanges);
++form.addEventListener('change', () => { updateDetails(); syncChanges(); });
++dialog.addEventListener('cancel', (event) => {
++  if (dirty()) { event.preventDefault(); requestDismiss(); }
++});
++closeButton.addEventListener('click', () => {
++  if (dialog.hasAttribute('data-confirming')) {
++    dialog.removeAttribute('data-confirming');
++    closeButton.textContent = 'Close';
++    closeButton.removeAttribute('aria-describedby');
++  } else {
++    requestDismiss();
++  }
++});
++discard.addEventListener('click', () => dialog.close('discard'));
++// Also protects dirty orders and supports light dismissal without closedBy support.
++/** @param {PointerEvent} event */
++function outside(event) {
++  const rect = dialog.getBoundingClientRect();
++  return event.clientX < rect.left || event.clientX > rect.right ||
++    event.clientY < rect.top || event.clientY > rect.bottom;
++}
++let pressedOutside = false;
++dialog.addEventListener('pointerdown', (event) => { pressedOutside = outside(event); });
++dialog.addEventListener('pointerup', (event) => {
++  if (pressedOutside && outside(event) && (dirty() || !('closedBy' in HTMLDialogElement.prototype))) {
++    requestDismiss();
++  }
++  pressedOutside = false;
++});
++dialog.addEventListener('pointercancel', () => { pressedOutside = false; });
++form.addEventListener('submit', (event) => {
++  event.preventDefault();
++  const options = new FormData(form);
++  status.textContent = `${options.get('quantity')} × ${options.get('size')} ${drinks.get(drink.value)?.name}, milk: ${milk.value}, added to your order. No payment has been taken.`;
++  dialog.close('added');
++});
 +dialog.addEventListener('close', () => {
-+  const result = dialog.returnValue;
 +  dialog.returnValue = '';
-+  if (result !== 'save' || !isDrinkId(choice.value)) return;
-+  summary.textContent = `Selection saved: ${quantity.valueAsNumber} × ${drinks[choice.value].name}, ${serving.value}. Order and pay at the café; no order has been placed.`;
++  form.reset();
++  dialog.removeAttribute('data-confirming');
++  dialog.setAttribute('closedby', 'any');
++  closeButton.textContent = 'Close';
++  closeButton.removeAttribute('aria-describedby');
++  pressedOutside = false;
 +});
-+
-+// Older browsers still provide native Escape and platform close requests.
-+// Add light dismissal only when the native closedby API is missing.
-+if (!('closedBy' in HTMLDialogElement.prototype)) {
-+  const outside = (event: PointerEvent): boolean => {
-+    const bounds = dialog.getBoundingClientRect();
-+    return event.clientX < bounds.left || event.clientX > bounds.right
-+      || event.clientY < bounds.top || event.clientY > bounds.bottom;
-+  };
-+  let outsidePointer: number | undefined;
-+  dialog.addEventListener('pointerdown', (event) => {
-+    outsidePointer = event.isPrimary && event.button === 0 && outside(event)
-+      ? event.pointerId : undefined;
-+  });
-+  dialog.addEventListener('pointerup', (event) => {
-+    if (outsidePointer === event.pointerId && outside(event) && dialog.open) dialog.close();
-+    outsidePointer = undefined;
-+  });
-+  dialog.addEventListener('pointercancel', () => { outsidePointer = undefined; });
-+}
 diff --git a/package.json b/package.json
-index 2bd4d77..e6798ad 100644
+index 2bd4d77..9b38541 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,7 +2,12 @@
+@@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "build": "tsc --noEmit && vite build",
-+    "start": "vite preview --host 0.0.0.0 --port ${PORT:-11222}"
-+  },
-+  "devDependencies": {
-+    "typescript": "^5.9.3",
-+    "vite": "^7.1.12"
++    "build": "node --check order.js && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-     "onlyBuiltDependencies": []
-diff --git a/tsconfig.json b/tsconfig.json
-new file mode 100644
-index 0000000..b03571b
---- /dev/null
-+++ b/tsconfig.json
-@@ -0,0 +1,11 @@
-+{
-+  "compilerOptions": {
-+    "target": "ES2022",
-+    "module": "ESNext",
-+    "moduleResolution": "Bundler",
-+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-+    "strict": true,
-+    "noEmit": true
-+  },
-+  "include": ["main.ts"]
-+}

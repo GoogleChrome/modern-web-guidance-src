@@ -8,7 +8,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
+  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, automated accessibility check pass rates, completion time, and token efficiency across suites.">
   <title>Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
@@ -58,8 +58,9 @@
             <p class="takeaway-qualifier">Loading…</p>
           </li>
           <li class="takeaway takeaway-secondary" data-metric="a11y">
-            <h3 class="takeaway-label">Accessibility</h3>
+            <h3 class="takeaway-label">Automated accessibility checks</h3>
             <p class="takeaway-figure">…</p>
+            <p class="takeaway-statement">Not a full WCAG audit</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
         </ul>
@@ -97,22 +98,29 @@
       </section>
       <section id="agents-section" class="hero-agents page-section" aria-labelledby="agents-heading">
         <div class="hero-agents-header">
-          <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
-          <p class="hero-agents-note">Latest nightly run per agent. Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
+          <div class="hero-agents-intro">
+            <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
+            <p class="hero-agents-note"><span id="hero-agents-window-note">Latest nightly suite per agent.</span> Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
+          </div>
+          <fieldset id="agents-window-toggle" class="window-pill-toggle" hidden>
+            <legend class="visually-hidden">Agent summary window</legend>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="1" checked>Latest night</label>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="5" id="agents-window-multi"><span id="agents-window-multi-label">Last 5 nights</span></label>
+          </fieldset>
         </div>
         <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
           <table class="agent-table">
-            <caption id="agent-table-caption" class="visually-hidden">Latest nightly runs per agent family, pooled. Unguided → guided.</caption>
+            <caption id="agent-table-caption" class="visually-hidden">Latest nightly suite per agent family. Unguided → guided.</caption>
             <thead>
               <tr>
                 <th scope="col">Agent</th>
                 <th scope="col">Pass rate</th>
                 <th scope="col">Accessibility</th>
-                <th scope="col">Runs</th>
+                <th scope="col">Sample</th>
               </tr>
             </thead>
             <tbody id="agent-table-body">
-              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Runs">—</td></tr>
+              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Sample">—</td></tr>
             </tbody>
           </table>
         </div>
@@ -129,7 +137,7 @@
               <fieldset class="metric-mode-toggle">
                 <legend class="visually-hidden">Comparison check scope</legend>
                 <label id="insights-mode-all" class="metric-mode-btn"><input type="radio" name="insights-mode" value="all" checked>All checks</label>
-                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility subscore</label>
+                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility checks</label>
               </fieldset>
             </div>
             <div id="insights-container" class="insights-grid"></div>
@@ -144,15 +152,19 @@
                 </div>
                 <div class="method-item">
                   <dt>Grading &amp; pass rate</dt>
-                  <dd>Playwright opens the finished app in a real browser and checks the DOM, styles, and source against each requirement. Pass rate is checks passed divided by checks run (crashes or timeouts before grading count as one failed check). Lift is shown in <strong>percentage points (pp)</strong>: 25% → 90% is +65 pp.</dd>
+                  <dd>Playwright opens the finished app in a real browser and checks the DOM, styles, and source against each requirement. Pass rate is checks passed divided by checks run (runs that crash or time out before grading are left out, along with their paired run). Lift is shown in <strong>percentage points (pp)</strong>: 25% → 90% is +65 pp.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Do graders penalize valid alternative code in "Without MWG"?</dt>
+                  <dd>Graders assert rendered browser behavior and spec-compliant accessibility semantics (such as computed roles, focus movement, and keyboard interaction) rather than guide-specific variable names or markup structure. When an audit finds a grader that rejects a valid alternative implementation, we broaden the assertion in the <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">open-source repository</a> and re-score the suite.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Why isn't "With MWG" 100%?</dt>
                   <dd>Task prompts never mention MWG, so the agent has to recognize when a guide applies and follow every detail. Misses come from skipped steps (such as an older-browser fallback), missed guide lookups (see <a href="search/">Search Quality</a>), or strict grader edge cases.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Accessibility subscore</dt>
-                  <dd>Pass rate on accessibility checks across all guides: keyboard support, focus and <code>inert</code>, <code>prefers-reduced-motion</code>, contrast, ARIA, and form labels.</dd>
+                  <dt>Automated accessibility checks</dt>
+                  <dd>Pass rate across automated browser assertions verifying foundational platform mechanics across five dimensions: keyboard support, focus and <code>inert</code>, <code>prefers-reduced-motion</code> and contrast, ARIA roles and states, and form labels. Automated checks catch common AI omissions in code but only cover a subset of accessibility requirements—they do not measure full WCAG compliance or replace manual and assistive-technology testing.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Task duration</dt>
@@ -164,7 +176,7 @@
                 </div>
                 <div class="method-item">
                   <dt>Scheduled nightly runs</dt>
-                  <dd>Automated suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run the full task set on a schedule. Headline numbers pool the <span id="method-recent-n">latest nightly run</span> per agent<span id="method-agents"></span>.</dd>
+                  <dd>Automated suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run the full task set on a schedule. Headline numbers pool the <span id="method-recent-n">latest nightly suite</span> per agent<span id="method-agents"></span>.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Open-source benchmark</dt>
@@ -192,7 +204,7 @@
               <input type="checkbox" id="scheduled-only-check" checked>
               Scheduled only
             </label>
-            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter by ID, model, or agent…" autocomplete="off" aria-label="Filter runs by ID, model, or agent">
+            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter by ID, model, agent, or effort:high…" autocomplete="off" aria-label="Filter runs by ID, model, agent, or effort">
             <datalist id="runs-filter-datalist"></datalist>
           </div>
         </div>
@@ -227,7 +239,7 @@
                   <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
                 </th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y checks</button></th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median duration</button></th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button></th>
                 <th scope="col" id="header-source">
@@ -246,9 +258,18 @@
         <p>No test runs found yet. Run the test suite to get started.</p>
       </div>
     </main>
+
+    <footer class="site-legal-footer">
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
 
   <script type="module">
     // Conditional polyfills for popover (#filter-menu, #barbell-tooltip, hint popovers), CSS anchor
@@ -268,6 +289,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="hero.js"></script>
   <script type="module" src="showcase.js"></script>
   <script type="module" src="landing.js"></script>

@@ -185,8 +185,6 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 -   **Search Mismatch (Agent Searches Skills but Picks the Wrong Guide)**:
     -   *Investigation*: Verify in the trajectory which guide titles or keywords the agent searched for versus what the metadata returned.
     -   *Solution*: Improve the guide's metadata description, title, or associated search keywords so that it ranks higher or explicitly matches likely agent queries.
--   **Missing Skill Tools (Silent Skip)**: GCLI skips tool discovery in untrusted folders.
-    -   *Solution*: Disable `folderTrust` in the harness `settings.json` or set `GEMINI_CLI_INTEGRATION_TEST=true`.
 -   **Conflicting Image Sourcing**: The prompt specifies a filename but a global instruction causes the agent to use external URLs.
     -   *Solution*: Remove conflicting global instructions.
 -   **Overly Rigid Graders vs Valid Alternatives**: If the agent's `index.html` changes faithfully follow the guide but still fail the checks, the grader is likely too brittle (often due to relying on regular expressions).
@@ -206,8 +204,8 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
     -   *Investigation*: Check standard error logs for explicit rate limit or API quota errors.
     -   *Solution*: Do not waste time debugging the guide or grader. Instead, mitigate the issue using these workarounds:
         - **Execution Batching**: Run the evaluations sequentially or in smaller batches (e.g., 2 at a time) to avoid hammering the API.
-        - **Model Fallback**: Temporarily edit the `GEMINI_MODEL` property in `.env` (e.g., switch from `gemini-pro-latest` to `gemini-flash-latest`). Note that Flash has different capabilities, so re-verify results with Pro once quota issues resolve.
-        - **Agent Switching**: Use the harness config to switch the active test agent entirely (e.g., from Gemini CLI to Claude Code).
+        - **Model Fallback**: Temporarily edit the model env var in `.env` (e.g., `ANTIGRAVITY_MODEL` or `ANTHROPIC_MODEL`) to fall back to a faster/higher-quota model while debugging, then re-verify with the primary model once quota issues resolve.
+        - **Agent Switching**: Use the harness config to switch the active test agent entirely (e.g., from Antigravity CLI to Claude Code).
 
 ## 4. Self-Improvement
 After completion of an investigation, **you MUST update this skill** if you discover a new failure pattern or a more efficient investigation technique... or if anything about the investigation process was difficult or resulted in dead-ends. Use a ‘skill-creator’ skill to make effective updates.

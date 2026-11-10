@@ -420,7 +420,10 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/dashboard.html?testId=example-result&mode=a11y&sort=a11y-desc');
     await expect(page.locator('.eval-col-sort-btn[data-sort="uplift"]')).toHaveAttribute('aria-sort', 'descending');
+    await expect(page.locator('.eval-col-dumbbell')).toContainText('A11y pass rate');
     await page.goto('/dashboard.html?testId=example-result');
+    await expect(page.locator('.eval-col-dumbbell')).toContainText('Pass rate');
+    await expect(page.locator('.eval-col-dumbbell')).not.toContainText('A11y pass rate');
     const firstCatSection = page.locator('.eval-category-section').first();
     await expect(firstCatSection).toBeVisible();
     await firstCatSection.locator('.eval-category-header').click();
@@ -428,5 +431,63 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.locator('#dumbbell-chart .dc-hit').first().click();
     await expect(firstCatSection).not.toHaveClass(/collapsed/);
     await expect(firstCatSection.locator('.task-accordion').first()).toHaveClass(/open/);
+  });
+  test('shows agent sample counts, check denominators, hover tooltip details, and multi-night toggle', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
+    await page.goto('/');
+    // Single-night manifest keeps the window toggle hidden and shows uneven task counts as a range
+    await expect(page.locator('#agents-window-toggle')).toBeHidden();
+    await expect(page.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 197–198 tasks');
+    const agentRows = page.locator('#agent-table-body tr');
+    await expect(agentRows).toHaveCount(3);
+    const firstRow = agentRows.first();
+    await expect(firstRow.locator('td[data-label="Pass rate"]')).toContainText('1,646 checks');
+    await expect(firstRow.locator('td[data-label="Accessibility"]')).toContainText('202 checks');
+    await expect(firstRow.locator('td[data-label="Sample"]')).toContainText('198 tasks · ×1/task');
+    await expect(firstRow.locator('td[data-label="Pass rate"] a.agent-rate-trigger[interestfor="barbell-tooltip"]')).toHaveAttribute('href', /dashboard\.html\?testId=/);
+    await firstRow.locator('td[data-label="Pass rate"] .agent-rate-trigger').focus();
+    const barbellTooltip = page.locator('#barbell-tooltip');
+    await expect(barbellTooltip).toBeVisible();
+    await expect(barbellTooltip).toContainText('Pass-rate lift');
+    await expect(barbellTooltip).toContainText('/1,646 checks');
+    await page.keyboard.press('Escape');
+    await expect(barbellTooltip).toBeHidden();
+
+    // Multi-night manifest reveals the toggle, pooled sample/check counts, and warnings without horizontal overflow
+    const multiNightSuites = ['2026-10-28', '2026-10-27', '2026-10-26', '2026-10-25', '2026-10-24'].flatMap((day, idx) => [
+      {
+        ...NIGHTLY_FIXTURE.suites[1],
+        testId: `nightly-${day}_01-55-42-claude_code`,
+        timestamp: `${day}T01:55:42Z`,
+        taskCount: 200,
+        pairedTaskCount: idx === 0 ? 197 : 200,
+        maxRuns: idx === 1 ? 3 : 1,
+        earlyFailureRate: idx === 0 ? 2 : 0,
+        earlyFailureCount: idx === 0 ? 3 : 0,
+        unguidedLeakRate: idx === 0 ? 2 : 0,
+      },
+      {
+        ...NIGHTLY_FIXTURE.suites[2],
+        testId: `nightly-${day}_02-10-00-codex_cli`,
+        timestamp: `${day}T02:10:00Z`,
+        taskCount: 200,
+        pairedTaskCount: 200,
+      },
+    ]);
+    await page.unroute('**/api/suites*');
+    await page.route('**/api/suites*', route => route.fulfill({ json: { suites: multiNightSuites } }));
+    await page.goto('/');
+    const windowToggle = page.locator('#agents-window-toggle');
+    await expect(windowToggle).toBeVisible();
+    await expect(page.locator('#agents-window-multi-label')).toHaveText('Last 5 nights');
+    await expect(agentRows).toHaveCount(2);
+    await expect(agentRows.first().locator('td[data-label="Sample"]')).toContainText('197/200 tasks · ×1/task · 3 err · 2% leak');
+    await windowToggle.locator('label', { hasText: 'Last 5 nights' }).click();
+    await expect(page.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 1,997 task runs');
+    await expect(agentRows.first().locator('td[data-label="Sample"]')).toContainText('5 nights · 997/1,000 tasks · ×1–3/task · 3 err');
+    await expect(agentRows.first().locator('td[data-label="Pass rate"] button.agent-rate-trigger')).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 });

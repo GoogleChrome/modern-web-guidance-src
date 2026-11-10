@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -25,32 +25,47 @@ export interface PlaywrightOptions {
   pageLoadOutputName?: string;
   serverPidsOutputName?: string;
   patchFile?: string;
-  stdio?: 'inherit' | 'ignore' | 'pipe';
+  stdio?: StdioOptions;
   baselineTarget?: string;
   prebuiltTargetUrl?: string;
   prebuiltTargetError?: string;
 }
 
-async function stageGradingWorkspace(
+export class PatchApplyError extends Error {
+  patchPath: string;
+  constructor(patchPath: string, details?: string) {
+    super(`Failed to apply ${path.basename(patchPath)}: ${details || 'unknown patch error'}`);
+    this.name = 'PatchApplyError';
+    this.patchPath = patchPath;
+  }
+}
+
+export async function stageGradingWorkspace(
   baseApp: string,
   patchFile: string,
   zeroPassrateFile?: string
 ): Promise<{ workDir: string; cleanup: () => void }> {
   const tempHome = createIsolatedHome('grade-run');
   const workDir = path.join(tempHome, baseApp);
+  const cleanup = () => { try { cleanupIsolatedHome(tempHome); } catch {} };
 
-  await copyBaseAppToWorkspace(baseApp, workDir);
+  try {
+    await copyBaseAppToWorkspace(baseApp, workDir);
 
-  for (const file of [zeroPassrateFile, patchFile]) {
-    if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim()) {
-      applyPatchSync(workDir, file);
+    for (const file of [zeroPassrateFile, patchFile]) {
+      if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim()) {
+        const res = applyPatchSync(workDir, file);
+        if (!res.success) {
+          throw new PatchApplyError(file, res.error);
+        }
+      }
     }
-  }
 
-  return {
-    workDir,
-    cleanup: () => { try { cleanupIsolatedHome(tempHome); } catch {} }
-  };
+    return { workDir, cleanup };
+  } catch (err) {
+    cleanup();
+    throw err;
+  }
 }
 
 export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
@@ -122,7 +137,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 }
 
 export interface RunPlaywrightOptions {
-  stdio?: 'inherit' | 'ignore' | 'pipe';
+  stdio?: StdioOptions;
   patchFile?: string;
   zeroPassrateFile?: string;
   testResultsDir?: string;
@@ -138,17 +153,18 @@ function graderUsesTargetServer(graderPath: string): boolean {
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  optionsOrStdio: RunPlaywrightOptions | 'inherit' | 'ignore' | 'pipe' = 'inherit',
+  optionsOrStdio: RunPlaywrightOptions | StdioOptions = 'inherit',
   maybePatchFile?: string,
   maybeTestResultsDir?: string,
 ): Promise<any> {
-  const options: RunPlaywrightOptions = typeof optionsOrStdio === 'object' && optionsOrStdio !== null
-    ? optionsOrStdio
-    : {
-        stdio: optionsOrStdio,
-        patchFile: maybePatchFile,
-        testResultsDir: maybeTestResultsDir,
-      };
+  const options: RunPlaywrightOptions =
+    typeof optionsOrStdio === 'object' && optionsOrStdio !== null && !Array.isArray(optionsOrStdio)
+      ? optionsOrStdio
+      : {
+          stdio: optionsOrStdio,
+          patchFile: maybePatchFile,
+          testResultsDir: maybeTestResultsDir,
+        };
 
   const stdio = options.stdio ?? 'inherit';
   const patchFile = options.patchFile;
@@ -208,11 +224,13 @@ export async function runPlaywright(
       pageLoadOutputName: tmpPageLoadJson,
       serverPidsOutputName: tmpServerPidsFile,
       patchFile: patchFile,
-      stdio: stdio === 'ignore' ? 'pipe' : stdio,
+      stdio: stdio === 'ignore' || stdio === 'pipe' ? ['ignore', 'ignore', 'pipe'] : stdio,
       baselineTarget,
       prebuiltTargetUrl,
       prebuiltTargetError,
     });
+
+    child.stdout?.resume();
 
     if (child.stderr) {
       child.stderr.on('data', (data) => {
