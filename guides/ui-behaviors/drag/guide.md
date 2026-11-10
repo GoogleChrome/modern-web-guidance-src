@@ -106,6 +106,7 @@ Update the region when the draggable element is moved:
 </div>
 ```
 
+Do not display raw coordinates for the position, prefer a descriptive name (e.g. "docked left") or omit it if there is no meaningful description.
 The message can be removed after a second, as it will be announced and no longer relevant.
 
 As the keyboard interaction may not be obvious for some users, provide a help button in the draggable element that reveals the keystrokes to perform the operation.
