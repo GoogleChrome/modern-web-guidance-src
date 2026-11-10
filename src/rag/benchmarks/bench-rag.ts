@@ -89,6 +89,12 @@ export function computeEmbedderHash(worktreePath = rootDir): string {
   const hash = crypto.createHash("sha256");
   const candidateFiles = [
     path.join(ragDir, "static-embedder.ts"),
+    path.join(ragDir, "gen/query-words.json"),
+    path.join(ragDir, "gen/query-words.i8"),
+    path.join(ragDir, "gen/query-words.scale.f32"),
+    path.join(ragDir, "static-model/query-words.json"),
+    path.join(ragDir, "static-model/query-words.i8"),
+    path.join(ragDir, "static-model/query-words.scale.f32"),
     path.join(ragDir, "static-model/words.json"),
     path.join(ragDir, "static-model/words.i8"),
     path.join(ragDir, "static-model/words.scale.f32"),
