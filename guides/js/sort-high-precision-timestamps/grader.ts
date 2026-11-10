@@ -16,10 +16,34 @@ const demoUrl = `http://localhost/${demoName}`;
 
 const htmlContent = fs.readFileSync(filePath, 'utf-8');
 const inlineScripts = htmlContent.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/g)?.join('\n') || '';
-const externalScripts = fs.readdirSync(targetDir)
-  .filter((f) => /\.(m?js|cjs)$/i.test(f))
-  .map((f) => fs.readFileSync(path.join(targetDir, f), 'utf-8'))
-  .join('\n');
+const HARNESS_RUNNER_FILES = new Set(['grade.mjs', 'run.mjs']);
+const excludedDirs = new Set(['node_modules', 'dist', 'build', 'vendor', 'lib', 'test-results', 'grade-report', '.git']);
+
+const externalScripts = (() => {
+  const results: string[] = [];
+  const walk = (dir: string) => {
+    try {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          if (!excludedDirs.has(entry.name) && !entry.name.startsWith('.')) {
+            walk(path.join(dir, entry.name));
+          }
+        } else if (
+          entry.isFile() &&
+          /\.(m?js|cjs)$/i.test(entry.name) &&
+          !HARNESS_RUNNER_FILES.has(entry.name) &&
+          !entry.name.includes('.test.') &&
+          !entry.name.includes('.spec.') &&
+          !entry.name.includes('.config.')
+        ) {
+          results.push(fs.readFileSync(path.join(dir, entry.name), 'utf-8'));
+        }
+      }
+    } catch {}
+  };
+  walk(targetDir);
+  return results.join('\n');
+})();
 const scriptContent = `${inlineScripts}\n${externalScripts}`;
 const allSourceContent = `${htmlContent}\n${externalScripts}`;
 
