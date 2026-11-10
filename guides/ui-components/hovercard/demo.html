@@ -196,8 +196,6 @@
       // Explicit ARIA until browsers and the polyfill expose interestfor semantics consistently. Runs before the
       // polyfill loads: the polyfill wires ARIA only on `load`, too late for some screen readers, and adds no
       // `role="tooltip"` to plain hints.
-      const native = "interestForElement" in HTMLButtonElement.prototype;
-
       const managed = new WeakSet();
       const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
 
@@ -243,17 +241,16 @@
 
       wireInterestHints();
 
-      if (native) {
-        // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
-        document.addEventListener("toggle", ({ target, newState }) => {
-          for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
-            if (managed.has(trigger)) {
-              trigger.ariaExpanded = newState === "open";
-            }
+      // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
+      document.addEventListener("toggle", ({ target, newState }) => {
+        for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
+          if (managed.has(trigger)) {
+            trigger.ariaExpanded = newState === "open";
           }
-        }, true);
-      } else {
-        // The polyfill keeps aria-expanded in sync itself.
+        }
+      }, true);
+
+      if (!("interestForElement" in HTMLButtonElement.prototype)) {
         await import("https://unpkg.com/interestfor@latest");
       }
     </script>

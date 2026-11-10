@@ -10,6 +10,7 @@
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
   <title>Guide Performance Trend</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
@@ -146,6 +147,14 @@
         <p>No historical runs found for this guide.</p>
       </div>
     </main>
+
+    <footer class="site-legal-footer">
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <div id="tooltip-container" class="tooltip-container" popover="hint" role="tooltip">
@@ -173,6 +182,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="guide.js"></script>
 </body>
 </html>

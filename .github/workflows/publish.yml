@@ -2,8 +2,8 @@ name: Publish Skills
 
 on:
   schedule:
-    # Every 12 hours: 14:50 UTC (6:50 AM PST) and 02:50 UTC (6:50 PM PST)
-    - cron: '50 2,14 * * *'
+    # Weekly on Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT) - publishes @latest
+    - cron: '50 14 * * 1'
   workflow_dispatch:
     inputs:
       dist_tag:
@@ -44,7 +44,7 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DIST_TAG: ${{ inputs.dist_tag || 'next' }}
+          DIST_TAG: ${{ inputs.dist_tag || 'latest' }}
           RELEASE_VERSION: ${{ inputs.version || '' }}
         run: |
           if [ -n "${RELEASE_VERSION}" ]; then
@@ -89,7 +89,7 @@ jobs:
     if: needs.check.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     env:
-      DIST_TAG: ${{ inputs.dist_tag || 'next' }}
+      DIST_TAG: ${{ inputs.dist_tag || 'latest' }}
       RELEASE_VERSION: ${{ inputs.version || '' }}
     permissions:
       contents: write

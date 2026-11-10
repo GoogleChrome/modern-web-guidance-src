@@ -1,0 +1,778 @@
+diff --git a/index.html b/index.html
+index 66c9173..733df16 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,219 @@
+       background: #3e2723;
+     }
+ 
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Reorderable row (Seasonal Favorites) */
++    .reorder-intro {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #5d4037;
++      margin-top: 0.25rem;
++    }
++
++    .reorder-intro[hidden] {
++      display: none;
++    }
++
++    .reorder-row {
++      /* Themeable drag-and-drop tokens */
++      --reorder-gap: 20px;
++      --reorder-focus-color: var(--primary);
++      --drop-marker-color: #bf360c;
++      --drop-marker-line: 4px;
++      --drop-marker-ring: 14px;
++      --lifted-opacity: 0.94;
++      --lifted-scale: 1.02;
++      --lifted-shadow: 0 12px 28px rgba(62, 39, 35, 0.28);
++
++      list-style: none;
++      display: flex;
++      gap: var(--reorder-gap);
++      position: relative;
++      overflow-x: auto;
++      overscroll-behavior-inline: contain;
++      /* Space for focus rings and the lifted item's scale/shadow.
++         The inline-end space lives on the last item's margin. */
++      padding-block: 1rem;
++      padding-inline-start: 1rem;
++      margin: 4px -1rem 0;
++    }
++
++    .reorder-item {
++      flex: 1 0 min(250px, 80%);
++      min-width: 0;
++      position: relative;
++      scroll-margin: 1rem;
++      transition: scale 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
++    }
++
++    .reorder-item:last-child {
++      margin-inline-end: 1rem;
++    }
++
++    .reorder-row.is-reorderable>.reorder-item {
++      padding-top: 3.25rem;
++    }
++
++    .reorder-item.is-dragging,
++    .reorder-item.is-settling,
++    .reorder-item.is-grabbed {
++      z-index: 2;
++      scale: var(--lifted-scale);
++      box-shadow: var(--lifted-shadow);
++    }
++
++    .reorder-item.is-dragging {
++      pointer-events: none;
++      opacity: var(--lifted-opacity);
++    }
++
++    .reorder-item.is-grabbed {
++      opacity: 1;
++    }
++
++    .reorder-item:has(.drag-handle:focus-visible) {
++      outline: 3px solid var(--reorder-focus-color);
++      outline-offset: 2px;
++    }
++
++    .drag-handle {
++      position: absolute;
++      inset-block-start: 0.625rem;
++      inset-inline-start: 0.625rem;
++      inline-size: 2.25rem;
++      block-size: 2.25rem;
++      display: grid;
++      place-items: center;
++      border: 0;
++      border-radius: 6px;
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      opacity: 0.7;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++      transition: background-color 0.15s, opacity 0.15s;
++    }
++
++    .drag-handle[hidden] {
++      display: none;
++    }
++
++    .drag-handle:is(:hover, :focus-visible) {
++      background: var(--secondary);
++      opacity: 1;
++    }
++
++    .drag-handle:focus-visible {
++      /* The focus ring is drawn on the whole item instead. */
++      outline: none;
++    }
++
++    @supports not selector(:has(*)) {
++      .drag-handle:focus-visible {
++        outline: 3px solid var(--reorder-focus-color);
++        outline-offset: 2px;
++      }
++    }
++
++    .drag-handle:active {
++      cursor: grabbing;
++    }
++
++    .drag-handle[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      opacity: 1;
++    }
++
++    .key-hint {
++      position: absolute;
++      inset-block-start: 0.625rem;
++      inset-inline: 3.25rem 0.75rem;
++      min-block-size: 2.25rem;
++      display: none;
++      align-items: center;
++      font-size: 0.72rem;
++      line-height: 1.25;
++      text-align: start;
++      color: #5d4037;
++    }
++
++    .drag-handle:focus-visible~.key-hint {
++      display: flex;
++    }
++
++    .key-hint-grabbed,
++    .drag-handle[aria-pressed="true"]~.key-hint .key-hint-rest {
++      display: none;
++    }
++
++    .drag-handle[aria-pressed="true"]~.key-hint .key-hint-grabbed {
++      display: inline;
++    }
++
++    /* Keep the grabbing cursor for the whole drag, even off the handle */
++    :root.is-reorder-dragging,
++    :root.is-reorder-dragging * {
++      cursor: grabbing !important;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    /* Drop marker: a ring and a line centred in the gap */
++    .reorder-row[data-drop]::before,
++    .reorder-row[data-drop]::after {
++      content: "";
++      position: fixed;
++      pointer-events: none;
++      z-index: 3;
++    }
++
++    .reorder-row[data-drop]::after {
++      left: calc(var(--drop-x) + (var(--drop-w) - var(--drop-marker-line)) / 2);
++      top: var(--drop-y);
++      width: var(--drop-marker-line);
++      height: var(--drop-h);
++      border-radius: var(--drop-marker-line);
++      background: var(--drop-marker-color);
++    }
++
++    .reorder-row[data-drop]::before {
++      left: calc(var(--drop-x) + (var(--drop-w) - var(--drop-marker-ring)) / 2);
++      top: calc(var(--drop-y) - var(--drop-marker-ring) / 2);
++      width: var(--drop-marker-ring);
++      height: var(--drop-marker-ring);
++      border-radius: 50%;
++      border: var(--drop-marker-line) solid var(--drop-marker-color);
++      background: var(--light);
++    }
++
++    @media (forced-colors: active) {
++      .reorder-row {
++        --drop-marker-color: Highlight;
++        --reorder-focus-color: Highlight;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      .reorder-item,
++      .drag-handle {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,24 +389,63 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p class="reorder-intro" data-reorder-js hidden>Drag a card by its handle to rearrange, or focus the handle and press Space.</p>
++      <p id="seasonal-reorder-help" class="visually-hidden">Press Space or Enter to pick up the card, Left and Right arrows to move it, Space or Enter to drop it, and Escape to cancel.</p>
++      <ul id="seasonal-list" class="reorder-row" aria-labelledby="seasonal-heading">
++        <li class="card reorder-item">
++          <button type="button" class="drag-handle" aria-pressed="false" aria-label="Reorder Maple Oat Latte"
++            aria-describedby="seasonal-reorder-help" data-reorder-js hidden>
++            <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
++              <circle cx="6" cy="4" r="1.6" /><circle cx="12" cy="4" r="1.6" />
++              <circle cx="6" cy="9" r="1.6" /><circle cx="12" cy="9" r="1.6" />
++              <circle cx="6" cy="14" r="1.6" /><circle cx="12" cy="14" r="1.6" />
++            </svg>
++          </button>
++          <span class="key-hint" aria-hidden="true">
++            <span class="key-hint-rest">Space to reorder</span>
++            <span class="key-hint-grabbed">Arrows to move · Space to drop · Esc to cancel</span>
++          </span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </li>
++        <li class="card reorder-item">
++          <button type="button" class="drag-handle" aria-pressed="false" aria-label="Reorder Dark Roast Espresso"
++            aria-describedby="seasonal-reorder-help" data-reorder-js hidden>
++            <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
++              <circle cx="6" cy="4" r="1.6" /><circle cx="12" cy="4" r="1.6" />
++              <circle cx="6" cy="9" r="1.6" /><circle cx="12" cy="9" r="1.6" />
++              <circle cx="6" cy="14" r="1.6" /><circle cx="12" cy="14" r="1.6" />
++            </svg>
++          </button>
++          <span class="key-hint" aria-hidden="true">
++            <span class="key-hint-rest">Space to reorder</span>
++            <span class="key-hint-grabbed">Arrows to move · Space to drop · Esc to cancel</span>
++          </span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </li>
++        <li class="card reorder-item">
++          <button type="button" class="drag-handle" aria-pressed="false" aria-label="Reorder Cold Brew"
++            aria-describedby="seasonal-reorder-help" data-reorder-js hidden>
++            <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
++              <circle cx="6" cy="4" r="1.6" /><circle cx="12" cy="4" r="1.6" />
++              <circle cx="6" cy="9" r="1.6" /><circle cx="12" cy="9" r="1.6" />
++              <circle cx="6" cy="14" r="1.6" /><circle cx="12" cy="14" r="1.6" />
++            </svg>
++          </button>
++          <span class="key-hint" aria-hidden="true">
++            <span class="key-hint-rest">Space to reorder</span>
++            <span class="key-hint-grabbed">Arrows to move · Space to drop · Esc to cancel</span>
++          </span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++        </li>
++      </ul>
++      <div id="seasonal-live" class="visually-hidden" role="status" aria-live="polite"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +459,480 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const list = document.getElementById('seasonal-list');
++      const live = document.getElementById('seasonal-live');
++      if (!list || !live) return;
++
++      const supportsMoveBefore = 'moveBefore' in Element.prototype;
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const DURATION = 220;
++      const EASING = 'cubic-bezier(0.2, 0, 0, 1)';
++      const SCROLL_SPEED = 0.6; // px per ms at the inner edge of the zone
++      const SCROLL_MAX_INTENSITY = 2.5; // keeps growing past the edge, up to this cap
++
++      // Progressive enhancement: reveal the reorder affordances only when JS runs.
++      list.classList.add('is-reorderable');
++      document.querySelectorAll('[data-reorder-js]').forEach((el) => { el.hidden = false; });
++
++      /** @returns {HTMLElement[]} */
++      const getItems = () => Array.from(list.children).filter(
++        (el) => el instanceof HTMLElement && el.classList.contains('reorder-item')
++      );
++      const isRtl = () => getComputedStyle(list).direction === 'rtl';
++      const nameOf = (item) => item.querySelector('h3')?.textContent?.trim() || 'Item';
++      const positionOf = (item) => getItems().indexOf(item) + 1;
++      const reveal = (item) => item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
++
++      // ---------- Live region ----------
++      let announceTimer = 0;
++      const announce = (message) => {
++        window.clearTimeout(announceTimer);
++        live.textContent = '';
++        announceTimer = window.setTimeout(() => { live.textContent = message; }, 500);
++      };
++
++      // ---------- Moving & animating ----------
++      /** Move the existing node so its state is preserved. */
++      const moveItem = (item, ref) => {
++        if (supportsMoveBefore) {
++          list.moveBefore(item, ref);
++        } else if (ref) {
++          ref.before(item);
++        } else {
++          list.append(item);
++        }
++      };
++
++      const captureRects = (exclude) => {
++        const rects = new Map();
++        for (const el of getItems()) {
++          if (el === exclude) continue;
++          el.getAnimations().forEach((animation) => animation.finish());
++          rects.set(el, el.getBoundingClientRect());
++        }
++        return rects;
++      };
++
++      /** FLIP: animate every element from its recorded rect to its current one. */
++      const playFlip = (rects) => {
++        if (reducedMotion.matches) return;
++        rects.forEach((before, el) => {
++          const after = el.getBoundingClientRect();
++          const dx = before.left - after.left;
++          const dy = before.top - after.top;
++          if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
++          el.animate(
++            [{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }],
++            { duration: DURATION, easing: EASING }
++          );
++        });
++      };
++
++      // Per-item drag generation, so a stale settle callback can't clear a new drag.
++      const dragGeneration = new WeakMap();
++
++      /** Animate the released item from where it was let go to its slot, keeping it raised. */
++      const settle = (item, fromRect) => {
++        const generation = dragGeneration.get(item);
++        const done = () => {
++          if (dragGeneration.get(item) === generation) item.classList.remove('is-settling');
++        };
++        item.getAnimations().forEach((animation) => animation.finish());
++        const to = item.getBoundingClientRect();
++        const dx = fromRect.left - to.left;
++        const dy = fromRect.top - to.top;
++        if (reducedMotion.matches || (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5)) {
++          done();
++          return;
++        }
++        const animation = item.animate(
++          [{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }],
++          { duration: DURATION, easing: EASING }
++        );
++        animation.finished.then(done, done);
++      };
++
++      // ---------- Drop marker ----------
++      const clearMarker = () => {
++        list.removeAttribute('data-drop');
++        ['--drop-x', '--drop-y', '--drop-w', '--drop-h'].forEach((prop) => list.style.removeProperty(prop));
++      };
++
++      const placeMarker = (ref, rtl) => {
++        const prev = ref ? ref.previousElementSibling : list.lastElementChild;
++        const prevRect = prev ? prev.getBoundingClientRect() : null;
++        const nextRect = ref ? ref.getBoundingClientRect() : null;
++        const leftRect = rtl ? nextRect : prevRect;
++        const rightRect = rtl ? prevRect : nextRect;
++        const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
++
++        let x0 = leftRect ? leftRect.right : rightRect.left - gap;
++        let x1 = rightRect ? rightRect.left : leftRect.right + gap;
++        const width = Math.max(x1 - x0, 0);
++
++        // Keep the marker within the visible part of the row.
++        const listRect = list.getBoundingClientRect();
++        const minX = listRect.left + list.clientLeft;
++        const maxX = minX + list.clientWidth;
++        const centre = clamp((x0 + x1) / 2, minX, maxX);
++        x0 = centre - width / 2;
++
++        const rects = [prevRect, nextRect].filter(Boolean);
++        const top = Math.min(...rects.map((r) => r.top));
++        const bottom = Math.max(...rects.map((r) => r.bottom));
++
++        list.style.setProperty('--drop-x', `${x0}px`);
++        list.style.setProperty('--drop-y', `${top}px`);
++        list.style.setProperty('--drop-w', `${width}px`);
++        list.style.setProperty('--drop-h', `${bottom - top}px`);
++        list.setAttribute('data-drop', '');
++      };
++
++      // ---------- Pointer dragging ----------
++      /**
++       * @type {null | {
++       *   pointerId: number, item: HTMLElement, handle: HTMLElement,
++       *   startX: number, startScroll: number, lastX: number,
++       *   ref: Element | null, raf: number, lastTime: number, scrollRemainder: number
++       * }}
++       */
++      let drag = null;
++
++      const updateTranslate = () => {
++        if (!drag) return;
++        const dx = drag.lastX - drag.startX + (list.scrollLeft - drag.startScroll);
++        drag.item.style.translate = `${dx}px 0`;
++      };
++
++      /** Find the drop spot from layout midpoints, never from event.target. */
++      const updateDrop = () => {
++        if (!drag) return;
++        const { item } = drag;
++        const listRect = list.getBoundingClientRect();
++        const left = listRect.left + list.clientLeft;
++        const x = clamp(drag.lastX, left, left + list.clientWidth);
++        const px = x - left + list.scrollLeft;
++        const rtl = isRtl();
++
++        let ref = null;
++        for (const sibling of getItems()) {
++          if (sibling === item) continue;
++          const mid = sibling.offsetLeft + sibling.offsetWidth / 2;
++          if (rtl ? px > mid : px < mid) {
++            ref = sibling;
++            break;
++          }
++        }
++        drag.ref = ref;
++
++        if (ref === item.nextElementSibling) {
++          clearMarker(); // dropping here would be a no-op
++        } else {
++          placeMarker(ref, rtl);
++        }
++      };
++
++      const autoScroll = (time) => {
++        if (!drag) return;
++        const elapsed = drag.lastTime ? Math.min(time - drag.lastTime, 64) : 16;
++        drag.lastTime = time;
++
++        if (list.scrollWidth > list.clientWidth) {
++          const rect = list.getBoundingClientRect();
++          const zone = Math.min(drag.item.offsetWidth, list.clientWidth / 3);
++          let intensity = 0;
++          if (drag.lastX < rect.left + zone) {
++            intensity = -(rect.left + zone - drag.lastX) / zone;
++          } else if (drag.lastX > rect.right - zone) {
++            intensity = (drag.lastX - (rect.right - zone)) / zone;
++          }
++          intensity = clamp(intensity, -SCROLL_MAX_INTENSITY, SCROLL_MAX_INTENSITY);
++
++          if (intensity !== 0) {
++            drag.scrollRemainder += intensity * SCROLL_SPEED * elapsed;
++            const step = Math.trunc(drag.scrollRemainder);
++            if (step !== 0) {
++              drag.scrollRemainder -= step;
++              const before = list.scrollLeft;
++              list.scrollLeft += step;
++              if (list.scrollLeft !== before) {
++                updateTranslate();
++                updateDrop();
++              } else {
++                drag.scrollRemainder = 0;
++              }
++            }
++          } else {
++            drag.scrollRemainder = 0;
++          }
++        }
++        drag.raf = requestAnimationFrame(autoScroll);
++      };
++
++      /** Tear down the drag state and return it. */
++      const endDrag = () => {
++        const d = drag;
++        if (!d) return null;
++        drag = null;
++        cancelAnimationFrame(d.raf);
++        clearMarker();
++        d.item.style.translate = '';
++        d.item.classList.remove('is-dragging');
++        d.item.classList.add('is-settling');
++        document.documentElement.classList.remove('is-reorder-dragging');
++        if (d.handle.hasPointerCapture(d.pointerId)) d.handle.releasePointerCapture(d.pointerId);
++        return d;
++      };
++
++      const commitDrag = () => {
++        if (!drag) return;
++        const fromRect = drag.item.getBoundingClientRect();
++        const siblingRects = captureRects(drag.item);
++        const hadFocus = document.activeElement === drag.handle;
++        const d = endDrag();
++        if (!d) return;
++
++        const moved = d.ref !== d.item.nextElementSibling;
++        if (moved) moveItem(d.item, d.ref);
++        reveal(d.item);
++        if (hadFocus && document.activeElement !== d.handle) d.handle.focus({ preventScroll: true });
++        playFlip(siblingRects);
++        settle(d.item, fromRect);
++
++        if (moved) {
++          announce(`${nameOf(d.item)} moved to position ${positionOf(d.item)} of ${getItems().length}.`);
++        }
++      };
++
++      const cancelDrag = () => {
++        if (!drag) return;
++        const fromRect = drag.item.getBoundingClientRect();
++        const d = endDrag();
++        if (!d) return;
++        reveal(d.item);
++        settle(d.item, fromRect);
++        announce(`Reorder cancelled. ${nameOf(d.item)} stays at position ${positionOf(d.item)} of ${getItems().length}.`);
++      };
++
++      list.addEventListener('pointerdown', (event) => {
++        const target = event.target;
++        if (!(target instanceof Element)) return;
++        const handle = target.closest('.drag-handle');
++        if (!(handle instanceof HTMLElement) || !list.contains(handle)) return;
++        // Primary button only, and only one pointer at a time.
++        if (event.button !== 0 || drag) return;
++        const item = handle.closest('.reorder-item');
++        if (!(item instanceof HTMLElement)) return;
++
++        if (keyboard) dropKeyboard();
++        event.preventDefault();
++
++        // Quick re-grab: invalidate any pending settle and finish its animation.
++        dragGeneration.set(item, (dragGeneration.get(item) || 0) + 1);
++        item.classList.remove('is-settling');
++        item.getAnimations().forEach((animation) => animation.finish());
++
++        handle.setPointerCapture(event.pointerId);
++        drag = {
++          pointerId: event.pointerId,
++          item,
++          handle,
++          startX: event.clientX,
++          startScroll: list.scrollLeft,
++          lastX: event.clientX,
++          ref: item.nextElementSibling,
++          raf: 0,
++          lastTime: 0,
++          scrollRemainder: 0,
++        };
++        item.classList.add('is-dragging');
++        document.documentElement.classList.add('is-reorder-dragging');
++        drag.raf = requestAnimationFrame(autoScroll);
++      });
++
++      // Listeners live on document so captured events are still seen after a DOM move.
++      document.addEventListener('pointermove', (event) => {
++        if (!drag || event.pointerId !== drag.pointerId) return;
++        drag.lastX = event.clientX;
++        updateTranslate();
++        updateDrop();
++      });
++
++      document.addEventListener('pointerup', (event) => {
++        if (!drag || event.pointerId !== drag.pointerId) return;
++        commitDrag();
++      });
++
++      document.addEventListener('pointercancel', (event) => {
++        if (!drag || event.pointerId !== drag.pointerId) return;
++        cancelDrag();
++      });
++
++      list.addEventListener('lostpointercapture', (event) => {
++        // The DOM move happens only after the drag state is torn down on release, so
++        // any capture loss while a drag is still active is unexpected: cancel it.
++        if (!drag || event.pointerId !== drag.pointerId) return;
++        cancelDrag();
++      });
++
++      document.addEventListener('keydown', (event) => {
++        if (drag && event.key === 'Escape') {
++          event.preventDefault();
++          cancelDrag();
++        }
++      });
++
++      list.addEventListener('scroll', () => {
++        updateTranslate();
++        updateDrop();
++      }, { passive: true });
++
++      window.addEventListener('scroll', () => {
++        if (drag) updateDrop();
++      }, { passive: true });
++
++      // ---------- Keyboard: grab – move – drop ----------
++      /**
++       * @type {null | {
++       *   item: HTMLElement, handle: HTMLElement,
++       *   originalNext: Element | null, startPosition: number, moving: boolean
++       * }}
++       */
++      let keyboard = null;
++
++      const keyboardMove = (ref) => {
++        if (!keyboard) return;
++        const { item, handle } = keyboard;
++        const rects = captureRects(null);
++        keyboard.moving = true;
++        moveItem(item, ref);
++        reveal(item);
++        if (document.activeElement !== handle) handle.focus({ preventScroll: true });
++        keyboard.moving = false;
++        playFlip(rects);
++      };
++
++      const grabKeyboard = (item, handle) => {
++        keyboard = {
++          item,
++          handle,
++          originalNext: item.nextElementSibling,
++          startPosition: positionOf(item),
++          moving: false,
++        };
++        handle.setAttribute('aria-pressed', 'true');
++        item.classList.add('is-grabbed');
++        const total = getItems().length;
++        announce(
++          `${nameOf(item)} grabbed, position ${keyboard.startPosition} of ${total}. ` +
++          'Use the Left and Right arrow keys to move, Space or Enter to drop, Escape to cancel.'
++        );
++      };
++
++      function dropKeyboard() {
++        if (!keyboard) return;
++        const { item, handle, startPosition } = keyboard;
++        keyboard = null;
++        handle.setAttribute('aria-pressed', 'false');
++        item.classList.remove('is-grabbed');
++        const position = positionOf(item);
++        if (position !== startPosition) {
++          announce(`${nameOf(item)} dropped at position ${position} of ${getItems().length}.`);
++        }
++      }
++
++      const cancelKeyboard = () => {
++        if (!keyboard) return;
++        const { item, handle, originalNext } = keyboard;
++        if (item.nextElementSibling !== originalNext) {
++          keyboardMove(originalNext);
++        } else {
++          reveal(item);
++        }
++        keyboard = null;
++        handle.setAttribute('aria-pressed', 'false');
++        item.classList.remove('is-grabbed');
++        announce(`Reorder cancelled. ${nameOf(item)} returned to position ${positionOf(item)} of ${getItems().length}.`);
++      };
++
++      list.addEventListener('keydown', (event) => {
++        const target = event.target;
++        if (!(target instanceof HTMLElement) || !target.classList.contains('drag-handle')) return;
++        if (drag) return;
++        const item = target.closest('.reorder-item');
++        if (!(item instanceof HTMLElement)) return;
++
++        if (event.key === ' ' || event.key === 'Enter') {
++          event.preventDefault();
++          if (event.repeat) return;
++          if (keyboard && keyboard.handle === target) {
++            dropKeyboard();
++          } else {
++            if (keyboard) dropKeyboard();
++            grabKeyboard(item, target);
++          }
++          return;
++        }
++
++        if (!keyboard || keyboard.handle !== target) return;
++
++        if (event.key === 'Escape') {
++          event.preventDefault();
++          cancelKeyboard();
++          return;
++        }
++
++        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
++          event.preventDefault();
++          // Arrow keys follow the visual direction, so they flip in right-to-left rows.
++          const later = (event.key === 'ArrowRight') !== isRtl();
++          let ref;
++          if (later) {
++            const next = item.nextElementSibling;
++            if (!next) return; // already at the end
++            ref = next.nextElementSibling;
++          } else {
++            const prev = item.previousElementSibling;
++            if (!prev) return; // already at the start
++            ref = prev;
++          }
++          keyboardMove(ref);
++          const direction = event.key === 'ArrowRight' ? 'right' : 'left';
++          announce(`${nameOf(item)} moved ${direction} to position ${positionOf(item)} of ${getItems().length}.`);
++        }
++        // ArrowUp / ArrowDown are ignored: this row moves on the inline axis only.
++      });
++
++      // Drop when the handle itself loses focus, ignoring blurs caused by our own moves.
++      list.addEventListener('focusout', (event) => {
++        if (!keyboard || event.target !== keyboard.handle || keyboard.moving) return;
++        const handle = keyboard.handle;
++        window.setTimeout(() => {
++          if (keyboard && keyboard.handle === handle && document.activeElement !== handle) dropKeyboard();
++        }, 0);
++      });
++
++      // Reveal the whole item (and its focus ring) when keyboard focus enters it.
++      list.addEventListener('focusin', (event) => {
++        const target = event.target;
++        if (!(target instanceof Element)) return;
++        let focusVisible = true;
++        try {
++          focusVisible = target.matches(':focus-visible');
++        } catch {
++          /* :focus-visible unsupported; assume keyboard focus */
++        }
++        if (!focusVisible || keyboard?.moving || drag) return;
++        const item = target.closest('.reorder-item');
++        if (!(item instanceof HTMLElement) || item.getAnimations().length > 0) return;
++        reveal(item);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -19,7 +19,11 @@ import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
 import { CATEGORIES } from "../core/categories.ts";
-import { toDevsiteMarkdown } from "./devsite-markdown.ts";
+import {
+  escapeHtml,
+  formatDevsiteGateNotices,
+  toDevsiteMarkdown,
+} from "./devsite-markdown.ts";
 import type { UseCase } from "../rag/guides.ts";
 import type { EmbedderLike } from "../rag/search.ts";
 import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
@@ -239,15 +243,6 @@ export function loadGitFileDates(): GitInfo {
     // If not in git or command fails, return fallback
   }
   return { fileDates, sourceCommit };
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function formatCardDescription(desc: string): string {
@@ -616,6 +611,12 @@ export async function processDevsiteGuide(
   }
 
   headerParts.push('{% include "/docs/modern-web-guidance/_guide-promo.html" %}');
+  headerParts.push(
+    ...formatDevsiteGateNotices({
+      originTrials: getGuideOriginTrials(rawFeatureIds),
+      volatileFeatures: getGuideVolatileFeatures(rawFeatureIds),
+    })
+  );
 
   const sourceFooter = [
     '<footer class="guidance-source nocontent" data-nosnippet>',

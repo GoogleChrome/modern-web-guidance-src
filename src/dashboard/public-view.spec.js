@@ -165,7 +165,21 @@ test.describe('Public view', () => {
     await expect(row.locator('a.suite-link')).toHaveAttribute('href', /source=public/);
     await expect(page.locator('.suite-table-row', { hasText: 'example-result' })).toHaveCount(0);
     await expect(page.locator('#auth-btn')).toBeHidden();
+    await expect(page.locator('#scheduled-only-label')).toBeHidden();
+    await expect(page.locator('#scheduled-only-check')).toBeHidden();
     expect(googleRequests).toEqual([]);
+  });
+
+  test('Scheduled only toggle is hidden on public dashboard but visible on internal', async ({ page }) => {
+    await servePublicCopy(page);
+    await page.goto('/?source=public');
+    await expect(page.locator('#scheduled-only-label')).toBeHidden();
+    await expect(page.locator('#scheduled-only-check')).toBeHidden();
+
+    // On local/internal server it is visible
+    await page.goto('/');
+    await expect(page.locator('#scheduled-only-label')).toBeVisible();
+    await expect(page.locator('#scheduled-only-check')).toBeVisible();
   });
 
   test('Sign in with Google button is hidden by default and revealed by ?show_login=true', async ({ page }) => {

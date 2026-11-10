@@ -131,8 +131,10 @@ async function publishBranchToDistributionRepo(
   message: string,
   tag?: string,
 ) {
-  // Use a branch-specific cache dir so gh-pages doesn't collide when pushing main + next in one run
-  const cacheBase = path.join(ROOT_DIR, 'node_modules/.cache/gh-pages', branch);
+  // gh-pages keeps one clone per repo URL (it has no per-branch clone option) and that clone
+  // is single-branch, so a second publish to another branch in the same run pushes a commit
+  // based on the wrong branch and gets rejected. Start every publish from a fresh clone.
+  ghpages.clean();
   await new Promise<void>((resolve, reject) => {
     ghpages.publish(
       publishCliDir,
@@ -142,7 +144,6 @@ async function publishBranchToDistributionRepo(
         dotfiles: true,
         message,
         ...(tag ? { tag } : {}),
-        clone: cacheBase,
         src: GH_PUBLISH_PATTERNS,
       },
       (err) => {

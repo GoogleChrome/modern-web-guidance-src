@@ -294,6 +294,14 @@ const __dirname = __dirnameFunction(__filename);
         define: {
           "__MWG_DIST_TAG__": JSON.stringify(distTag),
         },
+        banner: {
+          js: `const [__mwg_major] = process.versions.node.split('.').map(Number);
+if (__mwg_major < 22) {
+  console.error(\`modern-web-guidance requires Node.js >= 22 (current: \${process.version}). Please upgrade: https://nodejs.org/\`);
+  process.exit(1);
+}
+`,
+        },
         plugins: [{
           name: 'external-cli-modules',
           setup(build) {
