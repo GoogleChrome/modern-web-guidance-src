@@ -391,6 +391,7 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .suites-table td::before { font-weight: 600; color: var(--text-secondary); text-align: left; flex-shrink: 0; }
 .suites-table.hide-source td:nth-child(8) { display: none; }
 .suites-table td.agent-cell, .suites-table td.model-cell { max-inline-size: none; text-align: right; }
+.suites-table td.model-cell .model-cell-inner { align-items: flex-end; }
 .suites-table td.metric-cell { flex-direction: column; align-items: stretch; gap: 4px; text-align: left; min-inline-size: 0; }
 .suites-table td.metric-cell::before { text-align: left; }
 .suites-table td.uplift-cell, .suites-table td.a11y-cell { padding: 8px 12px; }
