@@ -58,7 +58,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 
 * Keep the master's label stable ("Select all ..."). Do not list checked or unchecked items in it.
 * Optionally add `aria-controls` on the master listing the option IDs; screen reader support is limited, so never rely on it.
-* Include an `<output>` (a live region) with a short summary such as "2 of 4 available units active" whenever the group has a master checkbox. Without it, a bulk change from select-all is silent to screen reader users. Update its text in `sync()`.
+* Include an `<output>` (a live region) with a short summary such as "2 of 4 available units active" whenever the group has a master checkbox. Without it, a bulk change from select-all is silent to screen reader users. Update its text whenever the master's state is re-derived.
 
 ## 2. Master checkbox behavior
 
