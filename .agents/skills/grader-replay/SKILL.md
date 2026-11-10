@@ -4,15 +4,14 @@ description: >-
   Validates changes to graders, grading fixtures, and CSS/DOM/AST helpers by
   replaying saved agent solutions from historical eval suites and triaging
   before/after diffs. Use when modifying grader.ts, test-fixture.ts,
-  run-grader.ts, or parser helpers used by graders. Don't use for debugging
-  low guided pass rates in live evals (use eval-investigation), flagging
-  nightly suites (nightly-eval-investigation), or validating gd dev prompt
-  generation (dev-prompt-canary).
+  run-grader.ts, or parser helpers used by graders. Don't use for flagging or
+  investigating eval suites (use nightly-eval-investigation) or validating gd
+  dev prompt generation (dev-prompt-canary).
 ---
 
 # Historical Eval Replay for Grader Changes
 
-Golden calibration (`gd dev <guide> --test-grader`) only tests three locked solution patches and `zero-passrate.patch`. Historical eval runs contain diverse, imperfect agent implementations that expose broken assumptions, parser edge cases, and false positives.
+Golden calibration (`gd dev <guide> --test-grader`) only tests three locked solution patches and `zero-passrate.patch` (which is empty on almost every guide, i.e., the untouched starting app). Historical eval runs contain diverse, imperfect agent implementations that expose broken assumptions, parser edge cases, and false positives.
 
 Because replay applies today's graders against yesterday's saved outputs, before/after mismatches are expected — treat them as signals to triage, not an automatic pass/fail gate.
 
@@ -65,10 +64,10 @@ node .agents/skills/grader-replay/scripts/replay.ts \
 
 Inspect the saved `agent.patch` (or `index.html` for Gen 1 tasks), the modified `grader.ts`, and `expectations.md` to classify each mismatch:
 
-- **Real regression (fix required):** Saved `pass -> fail` where the saved output legitimately satisfies `expectations.md`, or an assertion stopped matching valid syntax after a refactor.
+- **Real regression (fix required):** Saved `pass -> fail` where the saved output legitimately satisfies `guide.md` and `expectations.md`, or an assertion stopped matching valid syntax after a refactor.
 - **Intentional grader fix (expected diff):**
   - `pass -> fail` when tightening a check that previously false-passed on unrelated CSS/markup. Confirm in `agent.patch` that the saved solution missed the requirement.
-  - `fail -> pass` when loosening an overly brittle check. Confirm in `agent.patch` that the saved solution satisfied `expectations.md` in spirit.
+  - `fail -> pass` when fixing an overly strict check that rejected a pattern `guide.md` allows. Confirm in `agent.patch` that the saved solution complies with `guide.md` and `expectations.md`; never loosen a check speculatively when the rejected pattern is not allowed by the guide (or when no valid solution failed it).
 - **Timeout flakiness:** Specs involving `timedOut` (`pass -> timedOut` or `timedOut -> pass`) point to worker contention rather than grader changes — re-run at lower `--concurrency`.
 - **Title or structure drift (expected diff):** Spec titles appear as `saved -> <missing>` and `<missing> -> now` because tests were renamed or consolidated on `main`. Check `git log -p -n 3 -- <grader>` and compare pass/fail totals.
 - **Base-app drift (`PATCH_CONFLICT`):** An older `agent.patch` fails to apply against current `src/harness/base-apps/` or `zero-passrate.patch`. Not a grader bug — re-run against a newer nightly suite from GCS.
