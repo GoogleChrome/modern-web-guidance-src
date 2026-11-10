@@ -43,7 +43,8 @@ With pointer capture, the movement listeners can remain on the handle:
 
 ```js
 handle.addEventListener('pointerdown', (event) => {
-  if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
+  const control = event.target.closest('button, input, select, textarea, a');
+  if (event.button !== 0 || (control && control !== handle)) return;
 
   const rect = draggable.getBoundingClientRect();
   offsetX = event.clientX - rect.left;
