@@ -9,7 +9,7 @@ web-feature-ids:
 
 A custom element is a class registered against a tag name via `customElements.define()`. Registration and basic lifecycle are well understood; the rules below target the parts routinely implemented incorrectly.
 
-A custom element has no role or keyboard behavior of its own. Build it from native elements such as `<button>` inside its template, or give it a role, ARIA state and focus handling as described in {{ GUIDE_REF("accessible-web-components") }}.
+A custom element has no role or keyboard behavior of its own. If it needs semantics or keyboard support, build it from native elements such as `<button>` inside its template, or give it a role and ARIA state through `ElementInternals`, and focus handling, as described in {{ GUIDE_REF("accessible-web-components") }}. If its content is purely decorative, hide it from assistive technologies with `aria-hidden="true"`.
 
 ## Lifecycle: the parts that get implemented wrong
 
