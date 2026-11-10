@@ -1,0 +1,1 @@
+- Add a way for visitors to sort the Seasonal Favorites cards (for example by name), with the cards animating into their new positions.
