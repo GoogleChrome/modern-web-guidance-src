@@ -20,7 +20,7 @@ For page-level responsive techniques (dynamic viewport units, aspect ratios, and
 
 ### Size targets for the input method
 
-Make every control at least 24×24 CSS pixels (WCAG 2.5.8), and at least 44×44 on touch screens (WCAG 2.5.5). Links inside sentences are exempt. For checkboxes and radios, wrap the input in its `<label>` and size the label. To keep small icons visually compact, extend their hit area with a pseudo-element. Leave enough space around controls so extended hit areas do not overlap each other or reach past the edge of the screen.
+Make every control at least 24×24 CSS pixels (WCAG 2.5.8), and at least 44×44 on touch screens, where a fingertip is less precise than a mouse pointer (WCAG 2.5.5). Links inside sentences are exempt. For checkboxes and radios, wrap the input in its `<label>` and size the label. To keep small icons visually compact, extend their hit area with a pseudo-element. Leave enough space around controls so extended hit areas do not overlap each other or reach past the edge of the screen.
 
 ```css
 :root { --target-size: 24px; }
@@ -78,6 +78,14 @@ When drawing edge to edge with `<meta name="viewport" content="width=device-widt
 
 Pad UI anchored to the top edge the same way with `safe-area-inset-top`.
 
+Fixed bars cover the content that scrolls under them, so a focused element can end up hidden behind one. Set `scroll-padding-bottom` (or `scroll-padding-top` for a top bar) on the scroll container to at least the bar's height, including its safe-area padding, so the browser scrolls focused elements clear of the bar (WCAG 2.4.11 Focus Not Obscured (Minimum) requires a focused element to be at least partly visible).
+
+```css
+html {
+  scroll-padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+}
+```
+
 ### Balance headings and prettify body text
 
 Apply `text-wrap: balance` to short headings (`h1, h2, h3`) and `text-wrap: pretty` to body text (`p, li`) to prevent typographic orphans. For full text-wrapping rules, see {{ GUIDE_REF("improve-text-layout-and-legibility") }}. DO NOT apply either property to `*`: both incur layout overhead, and `balance` only helps short blocks of text.
@@ -88,13 +96,15 @@ Give every icon-only button an accessible name using `aria-label`, an `<img alt>
 
 ### Keep content inside its box
 
-Ensure text and controls are never clipped, squished to zero dimensions, or overflowing at any viewport width down to 320 CSS pixels (WCAG 1.4.10).
+Ensure text and controls are never clipped, squished to zero dimensions, or overflowing at any viewport width down to 320 CSS pixels (WCAG 1.4.10). Content that needs a two-dimensional layout to be understood, such as data tables, maps, and diagrams, may scroll horizontally inside its own container while the page doesn't. Make that container keyboard-scrollable with `tabindex="0"`, and give it `role="region"` and an accessible name. For data tables, see {{ GUIDE_REF("responsive-table") }}.
 
 ```css
 /* Media never overflows its column. */
 img, video { max-inline-size: 100%; block-size: auto; }
 /* Long words and URLs wrap instead of widening the page. */
-body { overflow-wrap: anywhere; }
+body { overflow-wrap: break-word; }
+/* Long URLs and code also wrap inside flex items and table cells. */
+:where(a, code) { overflow-wrap: anywhere; }
 /* Flex and grid items don't shrink below their content by default. Let non-control items shrink so controls keep their minimum size. */
 :where(.toolbar > :not(button, input, select, textarea, a, [role="button"], label)) { min-inline-size: 0; }
 .toolbar { display: flex; }
@@ -103,7 +113,9 @@ body { overflow-wrap: anywhere; }
 ```
 
 - Use `min-block-size` instead of a fixed `height` on anything that contains text.
+- Use `overflow-wrap: break-word` for text, and `anywhere` only on elements that hold long unbroken strings, such as links and code: `anywhere` also lets flex items and table cells shrink below their longest word, which breaks ordinary words mid-word.
 - DO NOT truncate headings with `text-overflow: ellipsis`, and do not clip controls with `overflow: hidden` on their parents.
+- DO NOT set `overflow-x: hidden` or `clip` on `html` or `body` to stop the page scrolling sideways: content past the edge is cut off and users can't scroll to it. Make the element that is too wide fit instead.
 - To allow text and layouts to scale with operating system accessibility settings, see {{ GUIDE_REF("respect-os-text-scale") }}. To size form controls dynamically as users type, see {{ GUIDE_REF("form-fields-automatically-fit-contents") }}.
 
 ## Fallback strategies
