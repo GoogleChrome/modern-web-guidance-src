@@ -1,6 +1,6 @@
 ---
 name: schedule-tasks-by-priority
-description: Schedule tasks across priority levels with scheduler.postTask() and abort or reprioritize queued work with TaskController so critical user input runs ahead of background work.
+description: Schedule, reprioritize, or abort queued tasks across priority levels so critical user input runs ahead of background work.
 web-feature-ids:
   - scheduler
 ---
