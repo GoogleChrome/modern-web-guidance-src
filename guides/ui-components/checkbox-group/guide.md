@@ -43,12 +43,12 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
   <div class="options">
     <label for="robot-1">
       <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
-      <span>Clockwork Courier</span>
+      Clockwork Courier
     </label>
     <!-- A disabled option is excluded from select-all -->
     <label for="robot-2">
       <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="rustbucket" disabled />
-      <span>Rust Bucket (offline)</span>
+      Rust Bucket (offline)
     </label>
   </div>
 
@@ -176,7 +176,7 @@ For a de-emphasized hint under the main label, place it outside `<label>` as a `
 <label for="robot-1">
   <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork"
          aria-describedby="robot-1-hint" />
-  <span>Clockwork Courier</span>
+  Clockwork Courier
 </label>
 <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 ```
