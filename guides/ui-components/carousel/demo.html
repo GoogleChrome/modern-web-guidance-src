@@ -315,6 +315,11 @@
       mark(item);
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
+      if (prevBtn.disabled) {
+        nextBtn.focus();
+      } else if (nextBtn.disabled) {
+        prevBtn.focus();
+      }
     }
 
     onSettled(sync);
