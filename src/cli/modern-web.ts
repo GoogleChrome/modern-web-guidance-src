@@ -291,7 +291,7 @@ async function main() {
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["skills", "remove", ...skills], {
+    const result = spawnSync("npx", ["-y", "skills", "remove", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });
