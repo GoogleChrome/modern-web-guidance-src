@@ -83,7 +83,9 @@ const FALSE_POSITIVE_SUBSTRINGS = [
     'clicking a closed trigger opens its menu with focus on the trigger'
 ];
 /** @param {string | undefined | null} msg */
-export function normalizeCheckMessage(msg) { return (msg || '').replace(/\s+/g, ' ').trim(); }
+export function normalizeCheckMessage(msg) {
+    return (msg || '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
+}
 /** @param {string | undefined | null} discipline
  * @param {string | undefined | null} guideName
  * @param {string | undefined | null} message
@@ -108,12 +110,16 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('prefers-contrast') ||
         ml.includes('high-contrast') ||
         ml.includes('high contrast') ||
+        ml.includes('forced-colors') ||
         ml.includes('non-color indicator') ||
         ml.includes('multiple visual indicators') ||
         ml.includes('multiple visual state indicators') ||
         ml.includes('multiple visual cues') ||
+        ml.includes('sufficiently contrasting') ||
         ml.includes('contrast ratio') ||
-        /\b\d+(?:\.\d+)?:1\s+contrast\b/.test(ml) ||
+        /\bcontrast\b.*?\b\d+(?:\.\d+)?:1\b/.test(ml) ||
+        /\b\d+(?:\.\d+)?:1\b.*?\bcontrast\b/.test(ml) ||
+        /\b\d+(?:\.\d+)?:1\s+boundary\b/.test(ml) ||
         ml.includes('tap targets must be at least 48px') ||
         ml.includes('interactive targets meet a minimum size of 24px')
     ) {
@@ -127,6 +133,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         (ml.includes('arrowleft') && ml.includes('arrowright') && ml.includes('keyboard')) ||
         ml.includes('repositionable with keyboard arrow keys') ||
         ml.includes('keyboard arrow key navigation prevents default') ||
+        (ml.includes('rather than non-semantic') && ml.includes('tabindex')) ||
         ml.includes('use semantic html elements rather than non-semantic elements with click handlers or tabindex') ||
         ml.includes('use <button> instead of <a>') ||
         ml.includes('semantic tags like <button type="submit">') ||
@@ -152,6 +159,8 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('assistive technolog') ||
         ml.includes('accessibility tree') ||
         ml.includes('accessibility attributes') ||
+        ml.includes('screen reader') ||
+        ml.includes('alt attribute') ||
         ml.includes('heading hierarchy') ||
         ml.includes('landmark') ||
         ml.includes('<search> element') ||
@@ -167,6 +176,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     if (
         /\bfocus(?:ed|able|ing|es)?\b|:focus-visible/.test(ml) ||
         ml.includes('tab order') ||
+        ml.includes('reading order') ||
         (ml.includes('inert') &&
             (gName === 'navigation-drawer' ||
                 gName.endsWith('/navigation-drawer') ||
@@ -186,7 +196,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('semantic <label>') ||
         ml.includes('labels must be visible') ||
         ml.includes('<fieldset> and <legend> to group related controls') ||
-        (ml.includes('"for" attribute matching') && ml.includes('label')) ||
+        (/\b["']?for["']?\s+attribute matching\b/.test(ml) && ml.includes('label')) ||
         ml.includes('explicitly set the for attribute matching the inputs id')
     ) {
         return { isAccessibility: true, subCategory: 'labels_forms' };
