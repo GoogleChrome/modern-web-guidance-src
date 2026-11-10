@@ -180,17 +180,6 @@
         background-color: #d2d5ed;
       }
 
-      [focusgroup~="menu"] hr {
-        margin: 0.25rem 0;
-        border: none;
-        border-top: 1px solid #eee;
-      }
-
-      /* Submenu indicator fallback (not used in this demo yet) */
-      [focusgroup~="menu"] .hint {
-        margin-inline-start: auto;
-        color: #888;
-      }
     </style>
   </head>
   <body>
@@ -249,27 +238,10 @@
         <div focusgroup="menu nomemory" aria-labelledby="trigger2">
           <button type="button">Download</button>
           <button type="button">Copy Link</button>
-          <hr />
-          <button
-            id="trigger2-submenu"
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded="false"
-            commandfor="menu2-submenu"
-            command="toggle-popover"
-          >
-            More Options <span class="hint" aria-hidden="true">›</span>
-          </button>
-          <div id="menu2-submenu" popover="auto">
-            <div focusgroup="menu nomemory" aria-labelledby="trigger2-submenu">
-              <button type="button">Report</button>
-              <button type="button">Block User</button>
-            </div>
-          </div>
         </div>
       </div>
       <img
-        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300"
+        src="https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=300"
         alt="Card Image"
       />
       <h2>Second Card</h2>
@@ -282,18 +254,6 @@
       const menuFor = (trigger) => {
         const id = trigger.getAttribute("commandFor");
         return id ? document.getElementById(id) : null;
-      };
-
-      // Focus the element that opened this menu (only used when arrow closing submenu - is there a better way?)
-      const closeAndRestore = (menu) => {
-        const triggerId = menu
-          .querySelector("[aria-labelledby]")
-          ?.getAttribute("aria-labelledby");
-        const trigger = document.getElementById(triggerId);
-        if (trigger) {
-          trigger.focus({ focusVisible: true });
-        }
-        menu.hidePopover();
       };
 
       // Toggle Handler (Focus & ARIA)
@@ -328,7 +288,6 @@
             }
             menu.addEventListener("pointermove", handlePointerMove);
           } else {
-            // TODO: Not getting removed
             if (trigger) trigger.setAttribute("aria-expanded", "false");
             menu.removeEventListener("pointermove", handlePointerMove);
           }
@@ -337,14 +296,13 @@
         menu.addEventListener("beforetoggle", (event) => {
           if (event.newState === "open") {
             // Differentiate between sources, and make it styleable
-
             menu.setAttribute("source", event.source?.tagName ?? "");
           }
         });
       });
 
       // When the trigger button is clicked, add it to `enterOnOpen`.
-      // Then, if the menu `toggle`, it checks if the first element should be opened.
+      // Then, in the menu `toggle`, it checks if the first element should be focused.
       const buttonTriggers = document.querySelectorAll("button[commandFor]");
       buttonTriggers.forEach((buttonTrigger) => {
         buttonTrigger.addEventListener("click", (event) => {
@@ -355,47 +313,26 @@
         });
       });
 
-      // Add non-native keyboard handling. Does not include focusgroup fallbacks
+      // Add non-native keyboard handling.
       // ArrowDown on trigger opens and enters the menu
-      // ArrowRight on submenu trigger enters the submenu
-      // ArrowLeft in submenu closes only that level (Escape does this natively)
       document.addEventListener("keydown", (event) => {
         const trigger = event.target.closest("button[commandFor]");
         const currentMenu = event.target.closest("[popover]");
 
-        // Arrow Down is not a natively supported method of opening a popover
+        // Arrow Down is not a natively supported method of opening or navigating into a popover
         if (event.key === "ArrowDown" && trigger && !currentMenu) {
           const menu = menuFor(trigger);
           if (menu) {
             event.preventDefault();
             if (!menu.matches(":popover-open")) {
+              // If popover is closed, open and focus the first
               enterOnOpen.add(menu);
               menu.showPopover({ source: trigger });
             } else {
+              // If popover is open, focus the first item
               const firstItem = menu.querySelector("button:not([disabled])");
               if (firstItem) firstItem.focus({ focusVisible: true });
             }
-          }
-        }
-
-        // Open Submenu with ArrowRight
-        if (event.key === "ArrowRight" && trigger && currentMenu) {
-          const menu = menuFor(trigger);
-          if (menu && !menu.matches(":popover-open")) {
-            event.preventDefault();
-            enterOnOpen.add(menu);
-            menu.showPopover({ source: trigger });
-          }
-        }
-
-        // Close Submeny with ArrowLeft.
-        // The Popover API does not store the previously focused element when opening a nested popover, so focus restoration is required.
-        if (event.key === "ArrowLeft" && currentMenu) {
-          const parentMenu = currentMenu.parentElement?.closest("[popover]");
-          if (parentMenu) {
-            event.preventDefault();
-            event.stopPropagation();
-            closeAndRestore(currentMenu);
           }
         }
       });
@@ -422,13 +359,9 @@
 
         card.addEventListener("contextmenu", (event) => {
           event.preventDefault();
-        });
-
-        card.addEventListener("mouseup", (event) => {
-          // Only open context menu if button = 2 (right click) or ctrlKey enabled
-          if (!(event.button === 2 || event.ctrlKey)) return;
           openContextMenu(event);
         });
+
       });
 
       // Clicking a menu item performs action and closes menu.
@@ -439,7 +372,7 @@
             // If this button has a commandFor, it's a submenu trigger, not an action
             if (btn.hasAttribute("commandFor")) return;
 
-            // Close root popover in the chain
+            // Close root popover in the chain. No submenus in this demo, but worth being robust
             let current = btn.closest("[popover]");
             while (current) {
               const root = current.parentElement?.closest("[popover]");

@@ -516,7 +516,7 @@
 
           popover.showPopover({ source: anchor });
         };
-
+        // Popovers can not be shown from within a `contextmenu` event, except in Chrome > 153. See https://github.com/whatwg/html/issues/10905
         card.addEventListener("contextmenu", (event) => {
           event.preventDefault();
           // If triggered by Shift+F10/ContextMeny, event.button === -1
