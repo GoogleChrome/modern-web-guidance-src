@@ -58,7 +58,7 @@ E.g. this will not work:
 ```
 
 For many types of container queries, you can use `container-type` with a suitable value.
-E.g. `@supports (container-type: scroll-state)` for scroll-state queries or `@supports (container-type: size)`container-type: anchored` for `anchored()` queries.
+E.g. `@supports (container-type: scroll-state)` for scroll-state queries, or `@supports (container-type: size)` / `@supports (container-type: anchored)` for `anchored()` queries.
 
 However, there is no `container-type` for style queries.
 IMPORTANT: Do NOT try `@supports (container-type: style)` to detect support for style queries, as this will not work.
