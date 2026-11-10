@@ -147,15 +147,15 @@ done
 # checkout (which run-agent.sh has just fast-forwarded): a --local run or a
 # feature branch would push a local allowlist and scrubber to the live site.
 publish_public_evals() {
-  if [ "$RUN_LOCAL" = "true" ] || [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
-    printf "Public evals not published: requires a main checkout without --local.\n\n" >> "$SUMMARY_FILE"
+  if [ "$RUN_LOCAL" = "true" ] || [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ] || [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null)" ]; then
+    printf "Public evals not published: requires a clean main checkout synced with origin/main without --local.\n\n" >> "$SUMMARY_FILE"
     return
   fi
   local out status=0
   out=$(timeout 30m pnpm public:publish 2>&1) || status=$?
   printf '%s\n' "$out"
   local summary
-  summary=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | grep -Ev '^(skipped|FAILED) ' || true)
+  summary=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | grep -Ev '^(skipped|FAILED| ) ' || true)
   if [ "$status" -eq 0 ]; then
     printf "Public evals published.\n%s\n\n" "$(echo "$summary" | tail -2)" >> "$SUMMARY_FILE"
   else
