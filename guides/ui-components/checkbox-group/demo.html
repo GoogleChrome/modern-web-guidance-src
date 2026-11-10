@@ -67,35 +67,8 @@
       margin: 0;
     }
 
-    /* Secondary column: the container is the grid; each label subgrids so columns align across rows. */
-    .options.has-columns {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      column-gap: 0.75rem;
-    }
-
-    .options.has-columns label {
-      display: grid;
-      grid-template-columns: subgrid;
-      grid-column: 1 / -1;
-      align-items: center;
-      padding: 0;
-      min-block-size: 44px;
-      line-height: normal;
-    }
-
-    .options.has-columns label > .checkbox {
-      position: static;
-    }
-
     .options label:not(:first-of-type) {
       border-block-start: 1px solid #ececee;
-    }
-
-    .model {
-      color: var(--text-muted);
-      font-family: ui-monospace, monospace;
-      font-size: 0.85rem;
     }
 
     .hint {
@@ -105,13 +78,9 @@
       font-size: 0.875em;
     }
 
-    .options:not(.has-columns) .hint {
+    .options .hint {
       display: block;
-      margin-inline-start: 2rem; /* checkbox width + column gap */
-    }
-
-    .has-columns .hint {
-      grid-column: 2;
+      margin-inline-start: 2rem; /* checkbox width + gap */
     }
 
     .master {
@@ -184,7 +153,6 @@
     .scroll-list::after {
       content: "";
       display: block;
-      grid-column: 1 / -1;
       position: sticky;
       inset-block-end: 0;
       block-size: 1.5rem;
@@ -244,50 +212,6 @@
         <output aria-live="polite"></output>
       </fieldset>
     </form>
-    <h2>A few options: labeled checkboxes with a secondary column</h2>
-    <p>The rarer case. A subgrid keeps the checkbox, name, and model columns aligned across rows.</p>
-    <form>
-      <fieldset>
-        <legend>Active automatons</legend>
-
-        <label class="master" for="select-all">
-          <input type="checkbox" id="select-all" class="checkbox" aria-controls="robot-1 robot-2 robot-3 robot-4" />
-          Select all automatons
-        </label>
-
-        <div class="options has-columns" id="options">
-          <label for="robot-1">
-            <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" aria-describedby="robot-1-hint" />
-            <span>Clockwork Courier</span>
-            <span class="model">CW-01</span>
-          </label>
-          <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
-          <label for="robot-2">
-            <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="brass" aria-describedby="robot-2-hint" checked />
-            <span>Brass Barista</span>
-            <span class="model">BB-220</span>
-          </label>
-          <small class="hint" id="robot-2-hint">Brews tea and coffee on request.</small>
-          <label for="robot-3">
-            <input type="checkbox" class="checkbox" id="robot-3" name="robot" value="sentinel" />
-            <span>Sentinel Gatekeeper</span>
-            <span class="model">SG-7</span>
-          </label>
-          <label for="robot-4">
-            <input type="checkbox" class="checkbox" id="robot-4" name="robot" value="gardener" checked />
-            <span>Gardener Drone</span>
-            <span class="model">GD-3000</span>
-          </label>
-          <label for="robot-5">
-            <input type="checkbox" class="checkbox" id="robot-5" name="robot" value="rustbucket" disabled />
-            <span>Rust Bucket (offline)</span>
-            <span class="model">RB-0</span>
-          </label>
-        </div>
-
-        <output id="status" aria-live="polite"></output>
-      </fieldset>
-    </form>
     <h2>Many options: scrollable checkbox list</h2>
     <p>For long lists. The same labeled checkboxes in a height-bounded, scrollable container keep the form compact and render identically in every browser.</p>
     <form>
@@ -299,71 +223,58 @@
           Select all crew
         </label>
 
-        <div class="options has-columns scroll-list" id="crew">
+        <div class="options scroll-list" id="crew">
           <label for="crew-ada">
             <input type="checkbox" class="checkbox" id="crew-ada" name="crew" value="ada" checked />
-            <span>Ada Navigator</span>
-            <span class="model">AN-01</span>
+            Ada Navigator
           </label>
           <label for="crew-bolt">
             <input type="checkbox" class="checkbox" id="crew-bolt" name="crew" value="bolt" />
-            <span>Bolt Engineer</span>
-            <span class="model">BE-02</span>
+            Bolt Engineer
           </label>
           <label for="crew-cog">
             <input type="checkbox" class="checkbox" id="crew-cog" name="crew" value="cog" checked />
-            <span>Cog Mechanic</span>
-            <span class="model">CM-03</span>
+            Cog Mechanic
           </label>
           <label for="crew-dial">
             <input type="checkbox" class="checkbox" id="crew-dial" name="crew" value="dial" />
-            <span>Dial Pilot</span>
-            <span class="model">DP-04</span>
+            Dial Pilot
           </label>
           <label for="crew-echo">
             <input type="checkbox" class="checkbox" id="crew-echo" name="crew" value="echo" />
-            <span>Echo Radio Operator</span>
-            <span class="model">ER-05</span>
+            Echo Radio Operator
           </label>
           <label for="crew-flux">
             <input type="checkbox" class="checkbox" id="crew-flux" name="crew" value="flux" />
-            <span>Flux Technician</span>
-            <span class="model">FT-06</span>
+            Flux Technician
           </label>
           <label for="crew-gear">
             <input type="checkbox" class="checkbox" id="crew-gear" name="crew" value="gear" />
-            <span>Gear Quartermaster</span>
-            <span class="model">GQ-07</span>
+            Gear Quartermaster
           </label>
           <label for="crew-hex">
             <input type="checkbox" class="checkbox" id="crew-hex" name="crew" value="hex" />
-            <span>Hex Analyst</span>
-            <span class="model">HA-08</span>
+            Hex Analyst
           </label>
           <label for="crew-ion">
             <input type="checkbox" class="checkbox" id="crew-ion" name="crew" value="ion" />
-            <span>Ion Gunner</span>
-            <span class="model">IG-09</span>
+            Ion Gunner
           </label>
           <label for="crew-jolt">
             <input type="checkbox" class="checkbox" id="crew-jolt" name="crew" value="jolt" />
-            <span>Jolt Medic</span>
-            <span class="model">JM-10</span>
+            Jolt Medic
           </label>
           <label for="crew-kilo">
             <input type="checkbox" class="checkbox" id="crew-kilo" name="crew" value="kilo" />
-            <span>Kilo Cook</span>
-            <span class="model">KC-11</span>
+            Kilo Cook
           </label>
           <label for="crew-lathe">
             <input type="checkbox" class="checkbox" id="crew-lathe" name="crew" value="lathe" />
-            <span>Lathe Fabricator</span>
-            <span class="model">LF-12</span>
+            Lathe Fabricator
           </label>
           <label for="crew-mono">
             <input type="checkbox" class="checkbox" id="crew-mono" name="crew" value="mono" disabled />
-            <span>Mono Cadet (on leave)</span>
-            <span class="model">MC-13</span>
+            Mono Cadet (on leave)
           </label>
         </div>
 
@@ -404,9 +315,8 @@
       return sync;
     }
 
-    const [notifyGroup, automatonsGroup, crewGroup] = document.querySelectorAll('fieldset');
+    const [notifyGroup, crewGroup] = document.querySelectorAll('fieldset');
     setupGroup({ group: notifyGroup, noun: 'notifications on' });
-    setupGroup({ group: automatonsGroup, noun: 'units active' });
     setupGroup({ group: crewGroup, noun: 'crew members on duty' });
   </script>
 </body>

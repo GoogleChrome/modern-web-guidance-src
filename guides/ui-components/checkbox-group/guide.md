@@ -2,7 +2,6 @@
 name: checkbox-group
 description: Build a checkbox group for non-mutually exclusive multiple-choice selections with a master checkbox to (un)select all and brand-consistent styling.
 web-feature-ids:
-  - subgrid
   - indeterminate
   - accent-color
   # - tmp-customizable-select-listbox # pending a11y SME
@@ -20,7 +19,6 @@ A checkbox group lets users pick any number of options, and a master checkbox se
 MANDATORY: Default to a `<fieldset>` of `<label>`s with nested `<input type="checkbox">`, as described below. It has the best assistive technology support, needs no ARIA, works without JavaScript, and is the only pattern with native indeterminate support for a master checkbox. Use it when:
 
 * The group has a master checkbox.
-* Options carry secondary metadata that should align in columns.
 * The list is long. Keep the checkboxes and bound the list's height in a scroll container (see section 4) instead of switching patterns.
 
 {# Customizable `<select multiple>` listbox (`tmp-customizable-select-listbox`) guidance is pending a11y SME review (#1092 / #1237). #}
@@ -144,30 +142,6 @@ MANDATORY: The checkbox must stay at the inline-start of all label text, includi
 }
 ```
 
-### Secondary column (the rarer case)
-
-When rows have a secondary column (such as a trailing `<span class="model">CW-01</span>` inside each `<label>`), make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and secondary column align across all rows. Wrap each column's content in a single `<span>`:
-
-```css
-.options {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  column-gap: 0.75rem;
-}
-
-.options label {
-  display: grid;
-  grid-template-columns: subgrid;
-  grid-column: 1 / -1;
-  align-items: center;
-  padding: 0;
-  min-block-size: 44px;
-  cursor: pointer;
-}
-
-.options label > .checkbox { position: static; }
-```
-
 ### Hint text
 
 For a de-emphasized hint under the main label, place it outside `<label>` as a `<small>` with an `id`, and reference it from `<input>` with `aria-describedby` (putting a hint inside `<label>` includes it in the input's accessible name, causing `aria-describedby` to announce it twice). Keep the hint's contrast at 4.5:1 or better.
@@ -181,7 +155,7 @@ For a de-emphasized hint under the main label, place it outside `<label>` as a `
 <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 ```
 
-Align the hint with the label text, not the checkbox: use `display: block` and `margin-inline-start: 2rem` (checkbox width plus column gap) for label-only rows, or `grid-column: 2` when `.options` is a grid. Style it smaller and muted with at least 4.5:1 contrast.
+Align the hint with the label text, not the checkbox: use `display: block` and `margin-inline-start: 2rem` (checkbox width plus gap). Style it smaller and muted with at least 4.5:1 contrast.
 
 ### Radio groups
 
@@ -206,21 +180,5 @@ Pad the scroll container's inline-start edge by at least the focus ring's outlin
 Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it.
 
 ## Fallback strategies
-
-### Subgrid
-
-{{ BASELINE_STATUS("subgrid") }}
-
-Without subgrid, give each label the same fixed column widths so rows still align:
-
-```css
-@supports not (grid-template-columns: subgrid) {
-  .options,
-  .options label {
-    grid-template-columns: 1.25rem 1fr 6rem; /* checkbox, name, secondary column */
-    column-gap: 0.75rem;
-  }
-}
-```
 
 {{ FEATURE_FALLBACKS("accent-color") }}
