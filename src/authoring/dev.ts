@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync, execFileSync } from 'child_process';
 import matter from '@11ty/gray-matter';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
+import { gitExec } from '../core/git-utils.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
@@ -17,6 +17,8 @@ import {
 } from './dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
+import { findGraderFiles } from '../core/grader-lint.ts';
+import { replaceMacros } from '../core/macros.ts';
 import {
   type GuideInventory,
   GUIDE_FILE,
@@ -66,23 +68,21 @@ export function extractGuideDescription(rawGuideContent: string): string {
   return desc;
 }
 
+function runGitInDir(cwd: string, args: readonly string[]): string {
+  return gitExec(args, { cwd, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+}
+
 export const devCli = {
   commitStepArtifacts(guideDir: string, commitMessage: string): boolean {
     try {
-      const branch = execSync('git branch --show-current', {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
+      const branch = runGitInDir('.', ['branch', '--show-current']);
       if (!branch.startsWith('gd-dev/')) return false;
 
-      const status = execSync(`git status --porcelain "${guideDir}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
+      const status = runGitInDir('.', ['status', '--porcelain', '--', guideDir]);
       if (!status) return false;
 
-      execSync(`git add "${guideDir}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
-      execSync(`git commit -m "${commitMessage}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      runGitInDir('.', ['add', '--', guideDir]);
+      runGitInDir('.', ['commit', '-m', commitMessage]);
       return true;
     } catch {
       return false;
@@ -95,44 +95,206 @@ export const devCli = {
  * ordered by git history (so merges count); uncommitted inputs count as changed when `outputs` are
  * committed and unmodified. Uncommitted `outputs`, or no git repo, fall back to modification times.
  */
-function changedSince(inputs: string[], outputs: string[]): boolean {
+export function changedSince(inputs: string[], outputs: string[]): boolean {
   const ins = inputs.filter(p => fs.existsSync(p));
   const outs = outputs.filter(p => fs.existsSync(p));
   if (ins.length === 0 || outs.length === 0) return false;
 
   const byMtime = () =>
     Math.max(...ins.map(p => fs.statSync(p).mtimeMs)) > Math.max(...outs.map(p => fs.statSync(p).mtimeMs));
-  const git = (args: string[]): string =>
-    execFileSync('git', args, { cwd: path.dirname(outs[0]), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const cwd = path.dirname(outs[0]);
 
   try {
-    const isDirty = (p: string) => git(['status', '--porcelain', '--', p]) !== '';
+    const isDirty = (p: string) => runGitInDir(cwd, ['status', '--porcelain', '--', p]) !== '';
     if (outs.some(isDirty)) return byMtime();
     if (ins.some(isDirty)) return true;
-    const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
+    const lastOutputCommit = runGitInDir(cwd, ['log', '-1', '--format=%H', '--', ...outs]);
     if (!lastOutputCommit) return byMtime();
-    return git(['rev-list', '--count', `${lastOutputCommit}..HEAD`, '--', ...ins]) !== '0';
+    return runGitInDir(cwd, ['rev-list', '--count', `${lastOutputCommit}..HEAD`, '--', ...ins]) !== '0';
   } catch {
     return byMtime();
   }
 }
 
 /**
+ * Batched equivalent of `changedSince([expectationsPath], [targetGraderPath])` across all guides.
+ * Returns normalized repo-relative paths (`guides/<cat>/<name>/targets/<app>/grader.ts`).
+ */
+export function findStaleTargets(repoRootDir: string): Set<string> {
+  const guidesRoot = path.join(repoRootDir, 'guides');
+  const pairs: Array<{ expRel: string; graderRel: string; expAbs: string; graderAbs: string }> = [];
+  for (const graderAbs of findGraderFiles(repoRootDir)) {
+    const relParts = path.relative(guidesRoot, graderAbs).split(path.sep);
+    if (relParts.length !== 5 || relParts[2] !== TARGETS_DIR || relParts.some(p => p.startsWith('.'))) continue;
+    const [cat, guide, , app] = relParts;
+    const expAbs = path.join(guidesRoot, cat, guide, EXPECTATIONS_FILE);
+    if (!fs.existsSync(expAbs)) continue;
+    pairs.push({
+      expRel: `guides/${cat}/${guide}/${EXPECTATIONS_FILE}`,
+      graderRel: `guides/${cat}/${guide}/${TARGETS_DIR}/${app}/${GRADER_FILE}`,
+      expAbs,
+      graderAbs,
+    });
+  }
+  if (pairs.length === 0) return new Set();
+
+  const isNewerMtime = (p: { expAbs: string; graderAbs: string }) =>
+    fs.statSync(p.expAbs).mtimeMs > fs.statSync(p.graderAbs).mtimeMs;
+
+  try {
+    const statusRaw = gitExec(['status', '--porcelain', '-z', '--', 'guides/'], {
+      cwd: repoRootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const dirtyPaths = new Set<string>();
+    const entries = statusRaw.split('\0');
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.length < 4) continue;
+      const xy = entry.slice(0, 2);
+      dirtyPaths.add(entry.slice(3));
+      if (xy.includes('R') || xy.includes('C')) {
+        const orig = entries[++i];
+        if (orig) dirtyPaths.add(orig);
+      }
+    }
+
+    const revLines = gitExec(['rev-list', '--topo-order', '--parents', 'HEAD'], {
+      cwd: repoRootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .reverse();
+
+    const shaToIdx = new Map<string, number>();
+    for (let i = 0; i < revLines.length; i++) {
+      shaToIdx.set(revLines[i].slice(0, 40), i);
+    }
+    const words = Math.ceil(revLines.length / 32);
+    const ancestors: Uint32Array[] = [];
+    for (let i = 0; i < revLines.length; i++) {
+      const bs = new Uint32Array(words);
+      bs[i >>> 5] |= 1 << (i & 31);
+      const line = revLines[i];
+      for (let pos = 41; pos < line.length; pos += 41) {
+        const pIdx = shaToIdx.get(line.slice(pos, pos + 40));
+        if (pIdx !== undefined) {
+          const pBs = ancestors[pIdx];
+          for (let w = 0; w < words; w++) bs[w] |= pBs[w];
+        }
+      }
+      ancestors[i] = bs;
+    }
+
+    const logRaw = gitExec(['log', '--topo-order', '--cc', '--format=COMMIT|%H', '--name-only', '--', 'guides/'], {
+      cwd: repoRootDir,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const latestGraderCommit = new Map<string, number>();
+    const expCommits = new Map<string, number[]>();
+    for (const block of logRaw.split('\nCOMMIT|')) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+      const lines = trimmed.split('\n');
+      const header = lines[0].startsWith('COMMIT|') ? lines[0].slice('COMMIT|'.length) : lines[0];
+      const cIdx = shaToIdx.get(header.slice(0, 40));
+      if (cIdx === undefined) continue;
+      for (let i = 1; i < lines.length; i++) {
+        const file = lines[i].trim();
+        if (!file) continue;
+        if (file.endsWith(`/${GRADER_FILE}`)) {
+          if (!latestGraderCommit.has(file)) latestGraderCommit.set(file, cIdx);
+        } else if (file.endsWith(`/${EXPECTATIONS_FILE}`)) {
+          let list = expCommits.get(file);
+          if (!list) {
+            list = [];
+            expCommits.set(file, list);
+          }
+          list.push(cIdx);
+        }
+      }
+    }
+
+    const stale = new Set<string>();
+    for (const p of pairs) {
+      if (dirtyPaths.has(p.graderRel)) {
+        if (isNewerMtime(p)) stale.add(p.graderRel);
+        continue;
+      }
+      if (dirtyPaths.has(p.expRel)) {
+        stale.add(p.graderRel);
+        continue;
+      }
+      const gIdx = latestGraderCommit.get(p.graderRel);
+      if (gIdx === undefined) {
+        if (isNewerMtime(p)) stale.add(p.graderRel);
+        continue;
+      }
+      const gAnc = ancestors[gIdx];
+      const eList = expCommits.get(p.expRel);
+      if (eList && eList.some(eIdx => (gAnc[eIdx >>> 5] & (1 << (eIdx & 31))) === 0)) {
+        stale.add(p.graderRel);
+      }
+    }
+    return stale;
+  } catch {
+    return new Set(pairs.filter(p => changedSince([p.expAbs], [p.graderAbs])).map(p => p.graderRel));
+  }
+}
+
+function descriptionChangedSince(guidePath: string, outputs: string[]): 'changed' | 'unchanged' | 'unknown' {
+  const outs = outputs.filter(p => fs.existsSync(p));
+  if (outs.length === 0) return 'unknown';
+  const cwd = path.dirname(guidePath);
+
+  try {
+    if (outs.some(p => runGitInDir(cwd, ['status', '--porcelain', '--', p]) !== '')) return 'unknown';
+    const lastOutputCommit = runGitInDir(cwd, ['log', '-1', '--format=%H', '--', ...outs]);
+    if (!lastOutputCommit) return 'unknown';
+    const prevGuide = runGitInDir(cwd, ['show', `${lastOutputCommit}:./${path.basename(guidePath)}`]);
+    return extractGuideDescription(prevGuide) !== extractGuideDescription(fs.readFileSync(guidePath, 'utf-8'))
+      ? 'changed'
+      : 'unchanged';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
  * Deletes the stale artifacts of a target capsule so `devGuide` (which skips files that already
  * exist) regenerates them, based on what changed since its golden solution patches were generated:
- * - `guide.md` / `expectations.md`: wipe the target and regenerate everything.
+ * - `guide.md` `description` (or undetermined history): wipe the target and regenerate everything.
+ * - Other `guide.md` / `expectations.md` edits: regenerate all patches (`*-solution.patch` and
+ *   `zero-passrate.patch`) and `grader.ts` (keep `task.md`).
  * - `task.md`: regenerate the solution patches and `grader.ts` (keep `task.md` and `zero-passrate.patch`).
  * - Otherwise (e.g. only `grader.ts`): nothing; calibration and evals still run.
  * Comparing against the solution patches keeps reruns idempotent: once they are regenerated, an
  * earlier input change no longer counts.
  */
-export function applyTargetRerun(guideDir: string, targetCapsuleDir: string): 'regenerate-all' | 'regenerate-solutions' | 'none' {
+export function applyTargetRerun(
+  guideDir: string,
+  targetCapsuleDir: string
+): 'regenerate-all' | 'regenerate-patches' | 'regenerate-solutions' | 'none' {
   const solutionPatches = Object.values(SOLUTION_PATCH_FILES).map(f => path.join(targetCapsuleDir, f));
   const target = path.basename(targetCapsuleDir);
-  if (changedSince([GUIDE_FILE, EXPECTATIONS_FILE].map(f => path.join(guideDir, f)), solutionPatches)) {
-    console.log(cYellow(`\n${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated; regenerating all ${target} artifacts.`));
-    fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
-    return 'regenerate-all';
+  const guidePath = path.join(guideDir, GUIDE_FILE);
+  if (changedSince([guidePath, path.join(guideDir, EXPECTATIONS_FILE)], solutionPatches)) {
+    const descStatus = descriptionChangedSince(guidePath, solutionPatches);
+    if (descStatus !== 'unchanged') {
+      const reason = descStatus === 'changed'
+        ? `${GUIDE_FILE} description changed since ${target} was generated`
+        : `${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated (description history unavailable)`;
+      console.log(cYellow(`\n${reason}; regenerating all ${target} artifacts.`));
+      fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
+      return 'regenerate-all';
+    }
+    console.log(cYellow(`\n${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated; keeping ${TASK_FILE} and regenerating ${target} patches and ${GRADER_FILE}.`));
+    for (const f of [...Object.values(SOLUTION_PATCH_FILES), ZERO_PASSRATE_PATCH_FILE, GRADER_FILE]) {
+      fs.rmSync(path.join(targetCapsuleDir, f), { force: true });
+    }
+    return 'regenerate-patches';
   }
   if (changedSince([path.join(targetCapsuleDir, TASK_FILE)], solutionPatches)) {
     console.log(cYellow(`\n${TASK_FILE} changed since the ${target} solution patches were generated; regenerating solution patches and ${GRADER_FILE}.`));
@@ -330,6 +492,13 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   return overallSuccess;
 }
 
+export function prepareTargetGuide(guideDirAbs: string, workDir: string): void {
+  const guidePath = path.join(guideDirAbs, GUIDE_FILE);
+  const rawGuide = fs.readFileSync(guidePath, 'utf-8');
+  const expandedGuide = replaceMacros(rawGuide, guidePath, { target: 'skills-cli' });
+  fs.writeFileSync(path.join(workDir, GUIDE_FILE), expandedGuide);
+}
+
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
   if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -337,7 +506,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    prepareTargetGuide(guideDirAbs, workDir);
 
     let prompt: string;
     if (patchType === 'zero-passrate') {
@@ -472,7 +641,17 @@ async function runAgentTest(
         return;
       }
 
-      const results: Record<string, { passed: number; total: number }> = {};
+      const taskVariants = Array.from(taskMap.entries())
+        .filter(([key, info]) => key.startsWith(`${guideName}/`) && info.baseApp === baseApp && info.guideDir === targetDir)
+        .map(([key, info]) => ({
+          taskKey: key,
+          taskName: key.split('/')[1]!,
+          baselineTarget: info.baselineTarget || 'widely',
+        }));
+
+      const tasksToRun = taskVariants.length > 0
+        ? taskVariants
+        : [{ taskKey, taskName: baseApp, baselineTarget: taskInfo.baselineTarget || 'widely' }];
 
       // 1. Grade base app (with zero-passrate baseline applied)
       const relGuidePath = path.relative(guidesDir, targetDir);
@@ -483,18 +662,19 @@ async function runAgentTest(
         baseApp,
         targetsDir,
         targetGraderPath,
-        zeroPassratePatch
+        zeroPassratePatch,
+        undefined,
+        'widely'
       );
-      if (preResults) results['pre'] = preResults;
 
-      // 2. Run agent suite
+      // 2. Run agent suite across all baseline variants for this target
       const { runSuite } = await import('../harness/run-suite.ts');
       const testOutputDir = path.join(guideResultsDir, baseApp);
       const agent = getDefaultSolutionAgent();
       await runSuite({
         name: `${guideName}-${baseApp}`,
         outputDir: testOutputDir,
-        tasks: [taskKey],
+        tasks: tasksToRun.map(v => v.taskKey),
         numRuns: 1,
         guidedOnly,
         suiteConfig: {
@@ -503,30 +683,40 @@ async function runAgentTest(
         },
       });
 
-      // 3. Grade agent output (unguided + guided)
+      // 3. Grade agent output (unguided + guided) across variants
       const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
-      for (const runType of runTypes) {
-        const resultDir = path.join(testOutputDir, '1', guideName, baseApp, runType);
-        if (!fs.existsSync(resultDir)) continue;
-        const patchFile = path.join(resultDir, 'agent.patch');
-        const gradeResults = await gradeOutput(
-          runType,
-          resultDir,
-          targetGraderPath,
-          patchFile,
-          zeroPassratePatch
-        );
-        if (gradeResults) results[runType] = gradeResults;
-      }
+      for (const variant of tasksToRun) {
+        const isDefaultVariant = variant.taskName === baseApp;
+        const variantResults: Record<string, { passed: number; total: number }> =
+          isDefaultVariant && preResults ? { pre: preResults } : {};
 
-      let guidesConsumed: string[] = [];
-      const guidedDir = path.join(testOutputDir, '1', guideName, baseApp, 'guided');
-      if (fs.existsSync(guidedDir)) {
-        const usage = await collectGuidesUsed(guidedDir);
-        guidesConsumed = [...new Set([...usage.retrievedGuides, ...usage.fileReadGuides])];
-      }
+        for (const runType of runTypes) {
+          const resultDir = path.join(testOutputDir, '1', guideName, variant.taskName, runType);
+          if (!fs.existsSync(resultDir)) continue;
+          const patchFile = path.join(resultDir, 'agent.patch');
+          const label = isDefaultVariant ? runType : `${variant.taskName} (${runType})`;
+          const gradeResults = await gradeOutput(
+            label,
+            resultDir,
+            targetGraderPath,
+            patchFile,
+            zeroPassratePatch,
+            variant.baselineTarget
+          );
+          if (gradeResults) {
+            variantResults[runType] = gradeResults;
+          }
+        }
 
-      printTestComparison(results, guidesConsumed, baseApp);
+        const guidedDir = path.join(testOutputDir, '1', guideName, variant.taskName, 'guided');
+        let guidesConsumed: string[] = [];
+        if (fs.existsSync(guidedDir)) {
+          const usage = await collectGuidesUsed(guidedDir);
+          guidesConsumed = Array.from(new Set([...usage.retrievedGuides, ...usage.fileReadGuides]));
+        }
+
+        printTestComparison(variantResults, guidesConsumed, variant.taskName);
+      }
     })
   );
 }
@@ -536,12 +726,18 @@ async function gradeOutput(
   appDir: string,
   graderPath: string,
   patchFile?: string,
-  zeroPassrateFile?: string
+  zeroPassrateFile?: string,
+  baselineTarget?: string
 ): Promise<{ passed: number; total: number } | null> {
   console.log(cYellow(`\nGrading ${label}...`));
 
   try {
-    const gradeResults = await runPlaywright(appDir, graderPath, 'pipe', patchFile, zeroPassrateFile);
+    const gradeResults = await runPlaywright(appDir, graderPath, {
+      stdio: 'pipe',
+      patchFile,
+      zeroPassrateFile,
+      baselineTarget,
+    });
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;

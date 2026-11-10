@@ -134,7 +134,7 @@ export function handleSandboxedWidgetMessage(event, expectedWidgetWindow) {
 
 ## Fallback strategy
 
-{{ FEATURE_FALLBACKS("origin") }}
+{{ BASELINE_STATUS("origin") }}
 
 If your Baseline target includes browsers that do not yet support the `Origin` interface, feature-detect `'Origin' in globalThis` and fall back to parsing URLs with `new URL()`:
 

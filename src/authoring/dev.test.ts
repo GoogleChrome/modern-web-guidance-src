@@ -1,80 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { parsePassRates } from '../harness/lib/utils.ts';
-
-test('parsePassRates parses multi-dimensional base-app scores correctly', () => {
-  const output = `
-Some generation logs...
-Running agent test for target: daily-grind
-=== Test Suite Starting with ID: size-aware-styling-daily-grind ===
-...
-Grading unguided...
-  unguided: 1/4 checks passed (25%)
-Grading guided...
-  guided: 3/4 checks passed (75%)
-Agent test results:
-  Base app (zero-passrate): 0/4 checks passed (0%)
-  Unguided:                 1/4 checks passed (25%)
-  Guided:                   3/4 checks passed (75%)
-  Guide impact:             +50% (vs unguided)
-  Guides consumed:          [size-aware-styling, container-queries]
-
-Running agent test for target: devtools-times
-=== Test Suite Starting with ID: size-aware-styling-devtools-times ===
-...
-Grading unguided...
-  unguided: 2/4 checks passed (50%)
-Grading guided...
-  guided: 4/4 checks passed (100%)
-Agent test results:
-  Base app (zero-passrate): 0/4 checks passed (0%)
-  Unguided:                 2/4 checks passed (50%)
-  Guided:                   4/4 checks passed (100%)
-  Guide impact:             +50% (vs unguided)
-  Guides consumed:          [size-aware-styling]
-`;
-
-  const parsed = parsePassRates(output);
-  assert.deepStrictEqual(parsed, {
-    'daily-grind': {
-      unguided: '25',
-      guided: '75',
-      guidesConsumed: ['size-aware-styling', 'container-queries']
-    },
-    'devtools-times': {
-      unguided: '50',
-      guided: '100',
-      guidesConsumed: ['size-aware-styling']
-    }
-  });
-});
-
-test('parsePassRates parses legacy single-page outputs correctly (fallback to demo)', () => {
-  const output = `
-Some generation logs...
-=== Test Suite Starting with ID: legacy-same-document-transitions ===
-...
-Grading unguided...
-  unguided: 0/4 checks passed (0%)
-Grading guided...
-  guided: 2/4 checks passed (50%)
-Agent test results:
-  Base app (zero-passrate): 0/4 checks passed (0%)
-  Unguided:                 0/4 checks passed (0%)
-  Guided:                   2/4 checks passed (50%)
-  Guide impact:             +50% (vs unguided)
-  Guides consumed:          [same-document-transitions]
-`;
-
-  const parsed = parsePassRates(output);
-  assert.deepStrictEqual(parsed, {
-    'demo': {
-      unguided: '0',
-      guided: '50',
-      guidesConsumed: ['same-document-transitions']
-    }
-  });
-});
+import { gitExec } from '../core/git-utils.ts';
+import { initGitRepo } from '../core/patch-utils.ts';
 
 test('setupGuideDevWorkDir conditionally copies credentials based on GD_DEV_USE_JETSKI', async (t) => {
   const fs = await import('node:fs');
@@ -247,12 +174,27 @@ test('exciseOldEvalArtifacts handles directory when old artifacts do not exist',
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true);
 });
 
+const NULL_GIT_CONFIG = process.platform === 'win32' ? 'NUL' : '/dev/null';
+
+function isolateGitEnv(t: import('node:test').TestContext): void {
+  const prevNoSystem = process.env.GIT_CONFIG_NOSYSTEM;
+  const prevGlobal = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_NOSYSTEM = '1';
+  process.env.GIT_CONFIG_GLOBAL = NULL_GIT_CONFIG;
+  t.after(() => {
+    if (prevNoSystem === undefined) delete process.env.GIT_CONFIG_NOSYSTEM;
+    else process.env.GIT_CONFIG_NOSYSTEM = prevNoSystem;
+    if (prevGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = prevGlobal;
+  });
+}
+
 test('devCli.commitStepArtifacts commits modified guide files when on a feature branch', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
-  const { execSync } = await import('node:child_process');
   const { devCli } = await import('./dev.ts');
+  isolateGitEnv(t);
 
   const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-step-repo-'));
   const origCwd = process.cwd();
@@ -263,9 +205,8 @@ test('devCli.commitStepArtifacts commits modified guide files when on a feature 
   });
 
   process.chdir(tmpRepo);
-  execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { stdio: 'ignore' });
-  execSync('git commit --allow-empty -m "initial commit"', { stdio: 'ignore' });
-  execSync('git checkout -b gd-dev/sample-guide', { stdio: 'ignore' });
+  initGitRepo(tmpRepo);
+  gitExec(['checkout', '-q', '-b', 'gd-dev/sample-guide'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
 
   const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');
   fs.mkdirSync(guideDir, { recursive: true });
@@ -275,7 +216,7 @@ test('devCli.commitStepArtifacts commits modified guide files when on a feature 
   const committed = devCli.commitStepArtifacts(guideDir, 'feat(guide): generate sample-guide evaluations and artifacts');
   assert.strictEqual(committed, true);
 
-  const log = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim();
+  const log = gitExec(['log', '-1', '--pretty=%B'], { cwd: tmpRepo, isolated: true }).trim();
   assert.strictEqual(log, 'feat(guide): generate sample-guide evaluations and artifacts');
 
   // Does not create empty commit when nothing changed
@@ -287,7 +228,7 @@ test('devCli.commitStepArtifacts commits modified guide files when on a feature 
   const committedEdits = devCli.commitStepArtifacts(guideDir, 'fix(guide): apply post-evaluation report recommendations for sample-guide');
   assert.strictEqual(committedEdits, true);
 
-  const secondLog = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim();
+  const secondLog = gitExec(['log', '-1', '--pretty=%B'], { cwd: tmpRepo, isolated: true }).trim();
   assert.strictEqual(secondLog, 'fix(guide): apply post-evaluation report recommendations for sample-guide');
 });
 
@@ -295,8 +236,8 @@ test('devCli.commitStepArtifacts returns false when not on a gd-dev/ branch', as
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
-  const { execSync } = await import('node:child_process');
   const { devCli } = await import('./dev.ts');
+  isolateGitEnv(t);
 
   const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-step-non-dev-repo-'));
   const origCwd = process.cwd();
@@ -307,9 +248,8 @@ test('devCli.commitStepArtifacts returns false when not on a gd-dev/ branch', as
   });
 
   process.chdir(tmpRepo);
-  execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { stdio: 'ignore' });
-  execSync('git commit --allow-empty -m "initial commit"', { stdio: 'ignore' });
-  execSync('git checkout -b feat/my-feature', { stdio: 'ignore' });
+  initGitRepo(tmpRepo);
+  gitExec(['checkout', '-q', '-b', 'feat/my-feature'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
 
   const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');
   fs.mkdirSync(guideDir, { recursive: true });
@@ -359,12 +299,14 @@ async function setupRerunRepo(t: import('node:test').TestContext) {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
-  const { execSync } = await import('node:child_process');
+  isolateGitEnv(t);
 
   const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-rerun-repo-'));
   t.after(() => fs.rmSync(tmpRepo, { recursive: true, force: true }));
-  const run = (cmd: string) => execSync(cmd, { cwd: tmpRepo, stdio: 'ignore' });
-  run('git init -q -b main && git config user.name "Test" && git config user.email "test@example.com"');
+  const run = (args: string[]) => gitExec(args, { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
+  run(['init', '-q', '-b', 'main']);
+  run(['config', 'user.name', 'Test']);
+  run(['config', 'user.email', 'test@example.com']);
 
   const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');
   const targetDir = path.join(guideDir, 'targets', 'daily-grind');
@@ -373,15 +315,16 @@ async function setupRerunRepo(t: import('node:test').TestContext) {
   const write = (rel: string, content: string) => fs.writeFileSync(path.join(guideDir, rel), content);
   const exists = (rel: string) => fs.existsSync(path.join(guideDir, rel));
 
-  write('guide.md', '# Guide\n');
+  write('guide.md', '---\ndescription: Original description.\n---\n# Guide\n');
   write('expectations.md', '- Expectation one\n');
   write('targets/daily-grind/task.md', '- original task\n');
   write('targets/daily-grind/grader.ts', '// grader\n');
   write('targets/daily-grind/patches/zero-passrate.patch', '');
   for (const p of patches) write(p, `${p}\n`);
-  run('git add -A && git commit -q -m "feat(guide): generate sample-guide evaluations and artifacts"');
+  run(['add', '-A']);
+  run(['commit', '-q', '-m', 'feat(guide): generate sample-guide evaluations and artifacts']);
 
-  return { run, write, exists, patches, guideDir, targetDir };
+  return { run, write, exists, patches, tmpRepo, guideDir, targetDir };
 }
 
 test('applyTargetRerun does nothing when nothing changed or only grader.ts changed', async (t) => {
@@ -390,7 +333,7 @@ test('applyTargetRerun does nothing when nothing changed or only grader.ts chang
 
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'none');
   write('targets/daily-grind/grader.ts', '// hand-tuned grader\n');
-  run('git commit -q -am "fix: tune grader"');
+  run(['commit', '-q', '-am', 'fix: tune grader']);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'none');
   assert.ok(patches.every(exists) && exists('targets/daily-grind/grader.ts'));
 });
@@ -400,7 +343,7 @@ test('applyTargetRerun regenerates solutions and grader after a task.md edit, on
   const { run, write, exists, patches, guideDir, targetDir } = await setupRerunRepo(t);
 
   write('targets/daily-grind/task.md', '- task with more scope\n');
-  run('git commit -q -am "fix: revise task"');
+  run(['commit', '-q', '-am', 'fix: revise task']);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-solutions');
   assert.ok(exists('targets/daily-grind/task.md') && exists('targets/daily-grind/patches/zero-passrate.patch'));
   assert.ok(!exists('targets/daily-grind/grader.ts') && !patches.some(exists));
@@ -408,43 +351,131 @@ test('applyTargetRerun regenerates solutions and grader after a task.md edit, on
   // Once the rerun regenerates and commits them, the earlier task edit no longer counts.
   write('targets/daily-grind/grader.ts', '// new grader\n');
   for (const p of patches) write(p, `${p} v2\n`);
-  run('git add -A && git commit -q -m "feat(guide): regenerate"');
+  run(['add', '-A']);
+  run(['commit', '-q', '-m', 'feat(guide): regenerate']);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'none');
 });
 
-test('applyTargetRerun wipes the target after a guide.md or expectations.md edit', async (t) => {
+test('applyTargetRerun keeps task.md and regenerates patches and grader after a guide body or expectations.md edit', async (t) => {
+  const { applyTargetRerun } = await import('./dev.ts');
+  const { run, write, exists, patches, guideDir, targetDir } = await setupRerunRepo(t);
+
+  write('guide.md', '---\ndescription: Original description.\n---\n# Guide with updated body\n');
+  run(['commit', '-q', '-am', 'content: clarify guide body']);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-patches');
+  assert.ok(exists('targets/daily-grind/task.md'));
+  assert.ok(!exists('targets/daily-grind/grader.ts') && !exists('targets/daily-grind/patches/zero-passrate.patch') && !patches.some(exists));
+
+  write('targets/daily-grind/grader.ts', '// new grader\n');
+  write('targets/daily-grind/patches/zero-passrate.patch', 'v2\n');
+  for (const p of patches) write(p, `${p} v2\n`);
+  run(['add', '-A']);
+  run(['commit', '-q', '-m', 'feat(guide): regenerate']);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'none');
+
+  write('expectations.md', '- Expectation one\n- Expectation two\n');
+  run(['commit', '-q', '-am', 'content: add expectation']);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-patches');
+  assert.ok(exists('targets/daily-grind/task.md'));
+  assert.ok(!exists('targets/daily-grind/grader.ts') && !exists('targets/daily-grind/patches/zero-passrate.patch') && !patches.some(exists));
+});
+
+test('applyTargetRerun wipes the target when guide.md description changes', async (t) => {
   const { applyTargetRerun } = await import('./dev.ts');
   const { run, write, exists, guideDir, targetDir } = await setupRerunRepo(t);
 
-  write('expectations.md', '- Expectation one\n- Expectation two\n');
-  run('git commit -q -am "content: add expectation"');
+  write('guide.md', '---\ndescription: Updated description with new scope.\n---\n# Guide\n');
+  run(['commit', '-q', '-am', 'content: revise description']);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
   assert.ok(!exists('targets/daily-grind') && exists('guide.md') && exists('expectations.md'));
 });
 
-test('applyTargetRerun detects task.md edits merged in from main', async (t) => {
+test('applyTargetRerun detects edits merged in from main', async (t) => {
   const { applyTargetRerun } = await import('./dev.ts');
-  const { run, write, guideDir, targetDir } = await setupRerunRepo(t);
+  const { run, write, exists, patches, guideDir, targetDir } = await setupRerunRepo(t);
 
-  run('git checkout -q -b gd-dev/sample-guide && git checkout -q main');
+  run(['checkout', '-q', '-b', 'gd-dev/sample-guide']);
+  run(['checkout', '-q', 'main']);
   write('targets/daily-grind/task.md', '- grounded task\n');
-  run('git commit -q -am "guides: ground task prompts"');
-  run('git checkout -q gd-dev/sample-guide && git merge -q --no-edit main');
+  run(['commit', '-q', '-am', 'guides: ground task prompts']);
+  run(['checkout', '-q', 'gd-dev/sample-guide']);
+  run(['merge', '-q', '--no-edit', 'main']);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-solutions');
+
+  write('targets/daily-grind/grader.ts', '// grader v2\n');
+  for (const p of patches) write(p, `${p} v2\n`);
+  run(['add', '-A']);
+  run(['commit', '-q', '-m', 'feat(guide): regenerate solutions']);
+
+  run(['checkout', '-q', 'main']);
+  write('guide.md', '---\ndescription: Original description.\n---\n# Guide body edit on main\n');
+  run(['commit', '-q', '-am', 'guides: format guide body']);
+  run(['checkout', '-q', 'gd-dev/sample-guide']);
+  run(['merge', '-q', '--no-edit', 'main']);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-patches');
+  assert.ok(exists('targets/daily-grind/task.md'));
+
+  write('targets/daily-grind/grader.ts', '// grader v3\n');
+  write('targets/daily-grind/patches/zero-passrate.patch', 'v3\n');
+  for (const p of patches) write(p, `${p} v3\n`);
+  run(['add', '-A']);
+  run(['commit', '-q', '-m', 'feat(guide): regenerate patches']);
+
+  run(['checkout', '-q', 'main']);
+  write('guide.md', '---\ndescription: Description edit on main.\n---\n# Guide body edit on main\n');
+  run(['commit', '-q', '-am', 'guides: revise description']);
+  run(['checkout', '-q', 'gd-dev/sample-guide']);
+  run(['merge', '-q', '--no-edit', 'main']);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
+  assert.ok(!exists('targets/daily-grind'));
 });
 
-test('applyTargetRerun detects uncommitted task.md edits even when patches were rewritten with newer mtimes', async (t) => {
+test('applyTargetRerun detects uncommitted review-feedback edits even when patches were rewritten with newer mtimes', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
   const { applyTargetRerun } = await import('./dev.ts');
-  const { write, patches, guideDir, targetDir } = await setupRerunRepo(t);
+  const { run, write, exists, patches, guideDir, targetDir } = await setupRerunRepo(t);
 
   // Mirrors the review-feedback step: task.md is edited, then targets/ is copied back, rewriting
   // the unchanged patches with fresh mtimes.
   write('targets/daily-grind/task.md', '- edited from review feedback\n');
   for (const p of patches) write(p, `${p}\n`);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-solutions');
+
+  write('targets/daily-grind/grader.ts', '// grader v2\n');
+  for (const p of patches) write(p, `${p}\n`);
+  run(['add', '-A']);
+  run(['commit', '-q', '-m', 'feat(guide): regenerate solutions']);
+
+  // Uncommitted guide.md body edit with clean committed patches -> keep task.md, regenerate patches + grader.
+  write('guide.md', '---\ndescription: Original description.\n---\n# Guide body edited from review feedback\n');
+  for (const p of patches) write(p, `${p}\n`);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-patches');
+  assert.ok(exists('targets/daily-grind/task.md'));
+  assert.ok(!exists('targets/daily-grind/grader.ts') && !exists('targets/daily-grind/patches/zero-passrate.patch') && !patches.some(exists));
+
+  write('targets/daily-grind/grader.ts', '// grader v2\n');
+  write('targets/daily-grind/patches/zero-passrate.patch', '');
+  for (const p of patches) write(p, `${p}\n`);
+
+  // Uncommitted guide.md description edit with clean committed patches -> wipe target.
+  write('guide.md', '---\ndescription: Description edited from review feedback.\n---\n# Guide\n');
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
+  assert.ok(!exists('targets/daily-grind'));
+
+  // Restore committed target artifacts, then make a solution patch dirty -> description history cannot be trusted -> wipe target.
+  run(['checkout', '-q', '--', '.']);
+  const past = new Date(Date.now() - 60_000);
+  for (const p of patches) {
+    write(p, `${p} dirty\n`);
+    fs.utimesSync(path.join(guideDir, p), past, past);
+  }
+  write('expectations.md', '- Expectation one\n- Expectation two\n');
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
+  assert.ok(!exists('targets/daily-grind'));
 });
 
-test('applyTargetRerun falls back to modification times outside a git repo', async (t) => {
+test('applyTargetRerun falls back to modification times and full target wipe outside a git repo', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
@@ -455,10 +486,98 @@ test('applyTargetRerun falls back to modification times outside a git repo', asy
   const targetDir = path.join(guideDir, 'targets', 'daily-grind');
   fs.mkdirSync(path.join(targetDir, 'patches'), { recursive: true });
   const past = new Date(Date.now() - 60_000);
-  for (const f of ['guide.md', 'expectations.md', 'targets/daily-grind/patches/claude-solution.patch']) {
+  fs.writeFileSync(path.join(guideDir, 'guide.md'), '---\ndescription: Same description.\n---\n# Guide\n');
+  for (const f of ['expectations.md', 'targets/daily-grind/patches/claude-solution.patch']) {
     fs.writeFileSync(path.join(guideDir, f), 'x\n');
+  }
+  for (const f of ['guide.md', 'expectations.md', 'targets/daily-grind/patches/claude-solution.patch']) {
     fs.utimesSync(path.join(guideDir, f), past, past);
   }
   fs.writeFileSync(path.join(targetDir, 'task.md'), '- edited task\n');
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-solutions');
+
+  // When guide.md or expectations.md is newer outside git, description history cannot be determined -> wipe target.
+  fs.writeFileSync(path.join(guideDir, 'targets/daily-grind/patches/claude-solution.patch'), 'x\n');
+  fs.utimesSync(path.join(guideDir, 'targets/daily-grind/patches/claude-solution.patch'), past, past);
+  fs.utimesSync(path.join(targetDir, 'task.md'), past, past);
+  fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- Updated expectation\n');
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
+  assert.strictEqual(fs.existsSync(targetDir), false);
 });
+
+test('changedSince and findStaleTargets detect when expectations.md is modified after grader.ts', async (t) => {
+  const { changedSince, findStaleTargets } = await import('./dev.ts');
+  const { run, write, tmpRepo, guideDir } = await setupRerunRepo(t);
+  const expPath = `${guideDir}/expectations.md`;
+  const graderPath = `${guideDir}/targets/daily-grind/grader.ts`;
+  const graderRel = 'guides/css/sample-guide/targets/daily-grind/grader.ts';
+
+  // Initially committed together -> not stale
+  assert.strictEqual(changedSince([expPath], [graderPath]), false);
+  assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), false);
+
+  // Content author commits a new expectation without touching grader.ts -> stale
+  write('expectations.md', '- Expectation one\n- Expectation two\n');
+  run(['commit', '-q', '-am', 'content: add second expectation']);
+  assert.strictEqual(changedSince([expPath], [graderPath]), true);
+  assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), true);
+
+  // Grader is subsequently updated -> no longer stale
+  write('targets/daily-grind/grader.ts', '// updated grader\n');
+  run(['commit', '-q', '-am', 'test: update grader']);
+  assert.strictEqual(changedSince([expPath], [graderPath]), false);
+  assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), false);
+});
+
+test('prepareTargetGuide expands build-time macros into workDir so agents see transcluded content without raw macros', async (t) => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const { prepareTargetGuide } = await import('./dev.ts');
+  const { MACRO_PATTERN } = await import('../core/macros.ts');
+  const { rootDir } = await import('../core/paths.ts');
+
+  const tmpWorkDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prepare-target-guide-test-'));
+  t.after(() => fs.rmSync(tmpWorkDir, { recursive: true, force: true }));
+
+  // tabs guide uses {{ FEATURE_FALLBACKS("focusgroup") }}
+  const tabsGuideDir = path.join(rootDir, 'guides', 'ui-components', 'tabs');
+  const rawGuideContent = fs.readFileSync(path.join(tabsGuideDir, 'guide.md'), 'utf-8');
+  assert.ok(
+    rawGuideContent.includes('FEATURE_FALLBACKS("focusgroup")'),
+    'fixture guide must contain raw FEATURE_FALLBACKS macro in source'
+  );
+
+  prepareTargetGuide(tabsGuideDir, tmpWorkDir);
+
+  const stagedGuidePath = path.join(tmpWorkDir, 'guide.md');
+  assert.ok(fs.existsSync(stagedGuidePath), 'guide.md must exist in workDir');
+
+  const stagedContent = fs.readFileSync(stagedGuidePath, 'utf-8');
+
+  // Must preserve frontmatter
+  assert.ok(stagedContent.startsWith('---'), 'staged guide must preserve frontmatter');
+
+  // Must contain transcluded fallback guidance from features/focusgroup.md
+  assert.ok(
+    stagedContent.includes('@microsoft/focusgroup-polyfill'),
+    'staged guide must contain transcluded focusgroup polyfill'
+  );
+  assert.ok(
+    stagedContent.includes('### Fallbacks & browser support for focusgroup'),
+    'staged guide must contain transcluded fallback section heading'
+  );
+
+  // Must have zero unexpanded macros
+  assert.strictEqual(
+    stagedContent.includes('FEATURE_FALLBACKS'),
+    false,
+    'staged guide must not contain raw FEATURE_FALLBACKS macro'
+  );
+  assert.strictEqual(
+    MACRO_PATTERN.test(stagedContent),
+    false,
+    'staged guide must contain no unexpanded macros'
+  );
+});
+

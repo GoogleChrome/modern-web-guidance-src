@@ -61,7 +61,12 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('getCssStyleSheet'));
   assert.ok(prompt.includes('CSSOMNom'));
-  assert.ok(prompt.includes('Static Analysis First'));
+  assert.ok(prompt.includes('Right Instrument for the Claim: Parsers vs. Browser'));
+  assert.ok(prompt.includes('Structure and API Usage (Parsers)'));
+  assert.ok(prompt.includes('Runtime Behavior (Browser)'));
+  assert.ok(prompt.includes('One Expectation per Test'));
+  assert.ok(prompt.includes('precondition assertion'));
+  assert.ok(prompt.includes('hooks (`id` or `data-` attributes) that `task.md` names'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Jetski CLI Solution'));
   assert.ok(prompt.includes('Claude Code Solution'));
@@ -70,6 +75,8 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('LOCKED'));
   assert.ok(prompt.includes('No Patch-Specific Identifier Overfitting'));
   assert.ok(prompt.includes('No Vacuous Guards or `test.skip()`'));
+  assert.ok(prompt.includes('Fallback Expectations (`skipUnless`)'));
+  assert.ok(prompt.includes('skipUnless'));
   assert.ok(prompt.includes('npx oxlint'));
 });
 
@@ -241,6 +248,7 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions without 
   assert.ok(prompt.includes('Grounded in the Application'));
   assert.ok(prompt.includes('Never Copy Description Verbatim'));
   assert.ok(prompt.includes('Preserve High-Level Capability Boundary'));
+  assert.ok(prompt.includes('neutral hook (an `id` or `data-` attribute)'));
   assert.ok(prompt.includes('Apply fluid typography using modern CSS clamp() units across article cards'));
   assert.ok(!prompt.includes('guide.md'));
   assert.ok(!prompt.includes('expectations.md'));
@@ -272,6 +280,7 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('HIGH_UNGUIDED_PASS_RATE'));
   assert.ok(prompt.includes('CALIBRATION_FAILED'));
   assert.ok(prompt.includes('Treat `guide.md` as Authoritative over `expectations.md`'));
+  assert.ok(prompt.includes('do NOT hand-edit `targets/<target>/grader.ts` in the same pass'));
   assert.ok(prompt.includes('presume `targets/<target>/grader.ts` or `targets/<target>/task.md` is at fault'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Evaluation Results'));
@@ -318,6 +327,7 @@ test('buildApplyReviewFeedbackPrompt explains needs-dev-rerun regeneration', () 
     rerunMode: 'needs-dev-rerun',
   });
   assert.ok(prompt.includes('`needs-dev-rerun` mode'));
+  assert.ok(prompt.includes('`targets/<target>/task.md` is kept'));
   assert.ok(prompt.includes('the solution patches and `grader.ts` are regenerated from the new task'));
   assert.ok(!prompt.includes('will be wiped'));
 });
@@ -332,7 +342,7 @@ test('all reference files and type definitions referenced in grader generation e
     path.resolve(rootDir, 'src/grading/playwright-pattern-library.grader.ts'),
     path.resolve(rootDir, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
     path.resolve(rootDir, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
-    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'index.d.ts'),
   ];
 
   for (const filePath of requiredSandboxFiles) {

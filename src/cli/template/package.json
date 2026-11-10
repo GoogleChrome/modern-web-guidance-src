@@ -5,12 +5,17 @@
   "license": "Apache-2.0",
   "version": "0.0.26",
   "publisher": "GoogleChrome",
+  "homepage": "https://developer.chrome.com/docs/modern-web-guidance",
   "repository": {
-    "url": "https://github.com/GoogleChrome/modern-web-guidance-src"
+    "type": "git",
+    "url": "https://github.com/GoogleChrome/modern-web-guidance-src.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GoogleChrome/modern-web-guidance-src/issues"
   },
   "engines": {
     "vscode": "^1.90.0",
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "categories": [
     "AI",

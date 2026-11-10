@@ -8,14 +8,17 @@ import {
   collectCodexGuidesFromTrajectory,
   collectCodexToolsFromTrajectory,
   extractCodexCliModel,
-  extractCodexCliTokenUsage
+  extractCodexCliTokenUsage,
+  writeTrajectorySummary
 } from '../lib/trajectory-normalizer.ts';
+import { hasTrajectoryGuideLeak } from '../lib/guide-usage.ts';
 import {
   ensureFreshHostCodexAuth,
   extractCommandsFromCodexItem,
+  extractWebRunsFromCodexItem,
   parseCodexTrajectory
 } from './codex-cli-agent.ts';
-import { extractModelFromResults } from '../lib/collection.ts';
+import { extractModelFromResults, extractReasoningEffortFromResults } from '../lib/collection.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -684,6 +687,290 @@ test('ensureFreshHostCodexAuth skips fresh tokens and rotates expiring tokens in
       id_token: 'id_new',
       account_id: 'acc_1'
     });
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('parseCodexTrajectory preserves tools.web__run calls when batched with exec_command', () => {
+  const input = [
+    'text(await tools.web__run({search_query:[{q:"CSS @supports at-rule() syntax @layer"}],response_length:"short"}));',
+    'text(await tools.exec_command({cmd:"git status --short","max_output_tokens":1000}));',
+    'text(await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"}],response_length:"short"}));'
+  ].join(' ');
+
+  const item = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_batched_1',
+      name: 'exec',
+      input
+    }
+  };
+
+  const webRuns = extractWebRunsFromCodexItem(item);
+  assert.deepStrictEqual(webRuns, [
+    'tools.web__run({search_query:[{q:"CSS @supports at-rule() syntax @layer"}],response_length:"short"})',
+    'tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"}],response_length:"short"})'
+  ]);
+
+  const summary = parseCodexTrajectory([item]);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.name, 'git status --short');
+  assert.deepStrictEqual(summary.steps[0].action?.params, {
+    command: 'git status --short',
+    webRuns
+  });
+
+  const multiCmdItem = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_batched_2',
+      name: 'exec',
+      input: [
+        'text(await tools.exec_command({cmd:"pwd"}));',
+        'text(await tools.exec_command({cmd:"ls -la"}));'
+      ].join(' ')
+    }
+  };
+  const multiSummary = parseCodexTrajectory([multiCmdItem]);
+  assert.deepStrictEqual(multiSummary.steps[0].action?.params, {
+    command: 'pwd',
+    commands: ['pwd', 'ls -la']
+  });
+
+  // Standalone tools.web__run call (no exec_command) also attaches params.webRuns
+  const standaloneWebItem = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_standalone_web',
+      name: 'exec',
+      input: 'text(await tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"}));\n'
+    }
+  };
+  const standaloneSummary = parseCodexTrajectory([standaloneWebItem]);
+  assert.strictEqual(standaloneSummary.steps.length, 1);
+  assert.strictEqual(standaloneSummary.steps[0].action?.type, 'other');
+  assert.deepStrictEqual(standaloneSummary.steps[0].action?.params, {
+    value: 'text(await tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"}));\n',
+    webRuns: ['tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"})']
+  });
+
+  // Non-code_mode web_search_call items are recorded in trajectory steps
+  const webSearchItem = {
+    type: 'response_item',
+    payload: {
+      type: 'web_search_call',
+      id: 'ws_1',
+      status: 'completed',
+      action: {
+        type: 'open_page',
+        url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
+      }
+    }
+  };
+  const wsSummary = parseCodexTrajectory([webSearchItem]);
+  assert.strictEqual(wsSummary.steps.length, 1);
+  assert.strictEqual(wsSummary.steps[0].action?.name, 'web_search');
+  assert.deepStrictEqual(wsSummary.steps[0].action?.params, {
+    type: 'open_page',
+    url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
+  });
+
+  // Failed open calls ("Failed to fetch <url>" or "URL <url> is not accessible") keep action.params intact,
+  // record failedOpenUrls, and do not trigger hasTrajectoryGuideLeak end-to-end (including when batched with search_query)
+  const failedOpenCall = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_failed_open',
+      name: 'exec',
+      input: 'text(await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}],response_length:"long"}));'
+    }
+  };
+  const failedOpenOutput = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call_output',
+      call_id: 'call_failed_open',
+      output: [
+        {
+          type: 'input_text',
+          text: 'Internal Error ()\nSource: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems","lineno":null}); \nFailed to fetch https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems: Cache miss'
+        }
+      ]
+    }
+  };
+  const failedOpenSummary = parseCodexTrajectory([failedOpenCall, failedOpenOutput]);
+  assert.strictEqual(failedOpenSummary.steps.length, 1);
+  assert.deepStrictEqual(failedOpenSummary.steps[0].action?.params?.webRuns, [
+    'tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}],response_length:"long"})'
+  ]);
+  assert.deepStrictEqual(failedOpenSummary.steps[0].action?.params?.failedOpenUrls, [
+    'https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems'
+  ]);
+
+  const tempDir = createTempDir();
+  try {
+    writeTrajectorySummary(tempDir, failedOpenSummary);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'support-global-calendar-systems'), false);
+
+    // Batched step combining a search_query with a failed open on the target guide
+    const batchedCall = {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call',
+        call_id: 'call_batched_failed_open',
+        name: 'exec',
+        input: [
+          'const s = await tools.web__run({search_query:[{q:"Intl Temporal calendars"}]});',
+          'const p = await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}]});',
+          'text(s + p);'
+        ].join('\n')
+      }
+    };
+    const batchedOutput = {
+      type: 'response_item',
+      payload: {
+        type: 'custom_tool_call_output',
+        call_id: 'call_batched_failed_open',
+        output: [
+          {
+            type: 'input_text',
+            text: [
+              'Support global calendar systems | Modern Web Guidance (https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems)\n\uE200cite\uE202turn0search0\uE201Snippet text',
+              'Internal Error ()\nSource: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems","lineno":null}); \nURL https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems is not accessible'
+            ].join('\n')
+          }
+        ]
+      }
+    };
+    const batchedSummary = parseCodexTrajectory([batchedCall, batchedOutput]);
+    writeTrajectorySummary(tempDir, batchedSummary);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'support-global-calendar-systems'), false);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('parseCodexTrajectory extracts observed reasoning_effort from main turn_context and ignores subagent overrides', () => {
+  const mainEntries = [
+    {
+      type: 'turn_context',
+      timestamp: '2026-10-01T12:00:00.000Z',
+      payload: {
+        cwd: '/tmp/work',
+        approval_policy: 'never',
+        sandbox_policy: 'danger-full-access',
+        model: 'gpt-6.1-sol',
+        reasoning_effort: 'High',
+      },
+    },
+    {
+      type: 'response_item',
+      timestamp: '2026-10-01T12:00:01.000Z',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_main_1',
+        name: 'exec_command',
+        arguments: JSON.stringify({ cmd: 'ls' }),
+      },
+    },
+  ];
+  const subagentEntries = [
+    {
+      type: 'turn_context',
+      timestamp: '2026-10-01T12:00:02.000Z',
+      payload: {
+        cwd: '/tmp/work',
+        approval_policy: 'never',
+        sandbox_policy: 'danger-full-access',
+        model: 'gpt-6.1-mini',
+        reasoning_effort: 'low',
+      },
+    },
+    {
+      type: 'response_item',
+      timestamp: '2026-10-01T12:00:03.000Z',
+      payload: {
+        type: 'function_call',
+        call_id: 'call_sub_1',
+        name: 'exec_command',
+        arguments: JSON.stringify({ cmd: 'cat README.md' }),
+      },
+    },
+  ];
+
+  const summary = parseCodexTrajectory(mainEntries, { 'worker-1': subagentEntries });
+  assert.deepStrictEqual(summary.reasoningEffort, { level: 'high', source: 'observed' });
+
+  // Also supports nested collaboration_mode.settings.reasoning_effort
+  const collabSummary = parseCodexTrajectory([
+    {
+      type: 'turn_context',
+      payload: {
+        cwd: '/tmp/work',
+        approval_policy: 'never',
+        sandbox_policy: 'danger-full-access',
+        model: 'gpt-6.1-sol',
+        collaboration_mode: {
+          mode: 'default',
+          settings: { reasoning_effort: 'xhigh' },
+        },
+      },
+    },
+  ]);
+  assert.deepStrictEqual(collabSummary.reasoningEffort, { level: 'xhigh', source: 'observed' });
+});
+
+test('extractReasoningEffortFromResults upgrades historical v4 Codex summaries using raw rollout logs', () => {
+  const tempDir = createTempDir();
+  try {
+    writeTrajectorySummary(tempDir, {
+      normalizerVersion: 4,
+      agent: Agents.CODEX_CLI,
+      model: 'gpt-6.1-sol',
+      steps: [
+        {
+          stepNumber: 1,
+          action: { type: 'run_command', name: 'ls', params: { command: 'ls' } },
+        },
+      ],
+    });
+    fs.writeFileSync(
+      path.join(tempDir, 'session-rollout.jsonl'),
+      [
+        JSON.stringify({
+          type: 'turn_context',
+          timestamp: '2026-10-01T12:00:00.000Z',
+          payload: {
+            cwd: '/tmp/work',
+            approval_policy: 'never',
+            sandbox_policy: 'danger-full-access',
+            model: 'gpt-6.1-sol',
+            reasoning_effort: 'high',
+          },
+        }),
+        JSON.stringify({
+          type: 'response_item',
+          timestamp: '2026-10-01T12:00:01.000Z',
+          payload: {
+            type: 'function_call',
+            call_id: 'call_1',
+            name: 'exec_command',
+            arguments: JSON.stringify({ cmd: 'ls' }),
+          },
+        }),
+      ].join('\n') + '\n',
+      'utf8',
+    );
+
+    const extracted = extractReasoningEffortFromResults(tempDir);
+    assert.deepStrictEqual(extracted, { level: 'high', source: 'observed' });
   } finally {
     removeTempDir(tempDir);
   }

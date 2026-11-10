@@ -83,7 +83,7 @@ LCP measures the time required to render the largest visible text or image block
 <!-- Preloading a CSS-based LCP background -->
 <link rel="preload" as="image" href="/images/bg-hero.webp" fetchpriority="high" type="image/webp">
 
-<!-- Demoting an above-the-fold non-LCP carousel image -->
+<!-- Demoting an offscreen non-LCP carousel image -->
 <img src="/images/carousel-2.webp" fetchpriority="low" loading="lazy" alt="Slide 2">
 ```
 

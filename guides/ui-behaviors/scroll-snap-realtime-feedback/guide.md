@@ -102,7 +102,20 @@ if (document.readyState === 'complete') {
 }
 ```
 
-### Fallback strategies
+## Accessibility considerations
+
+If creating a carousel or gallery pattern, which has associated controls for navigation:
+
+1. Ensure that parity is maintained between the controls that relate to the scroll container, and the content displayed in the scroll container. The correct state of the associated controls must be updated (using `aria-current="true"`) as the scroll container updates, so that people can determine the current content.
+2. Wrap the entire component in a `<section>` element, with an accessible name. Give the element a `focusgroup="toolbar wrap"` property, updating the value to match the visual design used. This will manage focus and provide a roving tabindex behaviour for the controls.
+3. Ensure that the name for the button matches the text/description in the scroll-container that it controls. This way, people reading through the content can understand the relationship between the control and the content it displays.
+
+> [!NOTE]
+> This pattern does not represent a traditional carousel component in which slides typically automatically change, in a way that doesn't allow people to pause or stop the transition, or accurately communicate the visible information to people using screen readers. If the intended use case is a carousel that only presents a single slide at any time and automatically transitions between slides, then do not use this technique, as it lacks the accessibility information required for such a component. Instead, opt for a tab-like implementation, ensuring that the carousel can be operated using a keyboard alone, that the carousel can be paused or stopped, and that the semantic information including the name, role, and state, is accurately conveyed to people using screen readers. Making carousel components accessible to everyone is highly nuanced and context-dependent; be sure to refer to established accessibility standards and perform thorough user testing for production environments.
+
+To ensure consistent operability across different browsers and assistive technology combinations, ensure that the scrollable container can receive focus (by applying `tabindex="0"`), and has an accessible name that describes the content, along with an appropriate role (such as `role="region"`).
+
+## Fallback strategies
 {{ BASELINE_STATUS("scroll-snap-events") }}
 {{ BASELINE_STATUS("scroll-snap") }}
 
@@ -158,3 +171,53 @@ if ('onscrollsnapchanging' in Element.prototype) {
 ```
 
 The geometric `scroll` + `requestAnimationFrame` fallback closely emulates the behavior of native snap prediction, including handling programmatic scrolling correctly. Because functions like `scrollIntoView` naturally fire `scroll` events during their execution, the UI will stay smoothly synchronized throughout the scroll animation without requiring additional custom logic.
+
+### Fallbacks & browser support for focusgroup
+
+{{ BASELINE_STATUS("focusgroup") }}
+
+{# Maintainer note: Use a small capture-phase fallback instead of @microsoft/focusgroup-polyfill, which skips elements inside closed [popover] ancestors, retains references to detached DOM nodes, and misses preventDefault() on arrow keys in older Safari viewports. #}
+
+Keep `focusgroup="toolbar wrap"` in the markup. If `'focusGroup' in HTMLElement.prototype` is false, implement a roving tabindex pattern on the gallery controls, and manually apply a `role="toolbar"` to the container. Never install it when native focusgroup is present.
+
+```js
+if (!('focusGroup' in HTMLElement.prototype)) {
+  document.querySelectorAll('[focusgroup~="toolbar"]').forEach(group => {
+    group.setAttribute('role', 'toolbar');
+
+    const items = () => [...group.querySelectorAll('button')]
+      .filter(item => item.closest('[focusgroup]') === group)
+      .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+
+    const syncTabIndex = () => {
+      const list = items();
+      let current = list.indexOf(document.activeElement);
+
+      if (current < 0) {
+        current = list.indexOf(list.find(item => item.getAttribute('aria-current') === 'true'));
+      }
+
+      list.forEach((item, index) => {
+        item.tabIndex = current === index ? 0 : -1;
+      });
+    };
+
+    group.addEventListener('focusin', syncTabIndex);
+    group.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      const list = items();
+      const current = list.indexOf(document.activeElement);
+      if (current < 0) return;
+      const next = (current + (event.key === 'ArrowLeft' ? -1 : 1) + list.length) % list.length;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      list.forEach((item, index) => {
+        item.tabIndex = index === next ? 0 : -1;
+      });
+      list[next].focus({ preventScroll: true });
+    }, true);
+
+    syncTabIndex();
+  });
+}
+```

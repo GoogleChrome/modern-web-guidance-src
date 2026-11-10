@@ -1,79 +1,117 @@
 diff --git a/index.html b/index.html
-index 66c9173..bbd0a5d 100644
+index 66c9173..22fc4a8 100644
 --- a/index.html
 +++ b/index.html
-@@ -38,6 +38,8 @@
-       position: sticky;
-       top: 0;
-       z-index: 1000;
-+      /* MANDATORY: The container of the scrollspy markers must opt in to tracking. */
+@@ -20,6 +20,18 @@
+       padding: 0;
+     }
+ 
++    html {
++      /* Keep anchored sections clear of the sticky navigation bar */
++      scroll-padding-top: 72px;
++      scroll-behavior: smooth;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -48,9 +60,15 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
++    /* Scrollspy: the container of the section links tracks their targets */
++    .nav-sections {
 +      scroll-target-group: auto;
++    }
++
+     nav ul li {
+       margin-left: 20px;
      }
- 
-     .logo {
-@@ -59,13 +61,34 @@
-       color: white;
-       text-decoration: none;
-       font-size: 0.9rem;
--      transition: color 0.3s;
-+      padding-bottom: 4px;
-+      border-bottom: 2px solid transparent;
-+      transition: color 0.3s, border-color 0.3s;
-     }
- 
-     nav a:hover {
+@@ -66,6 +84,23 @@
        color: var(--accent);
      }
  
-+    /* MANDATORY: highlight the link whose target section is in view.
-+       :is() combines the native pseudo-class with the IntersectionObserver
-+       fallback class so a browser that doesn't understand :target-current
-+       doesn't throw out the whole rule. */
-+    nav .nav-links a:is(:target-current, .\:target-current) {
++    .nav-sections a[href^="#"] {
++      display: inline-block;
++      padding-bottom: 2px;
++      border-bottom: 2px solid transparent;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    /* Active section link. :is() keeps the fallback class working in browsers
++       that don't recognise :target-current (an unknown pseudo-class would
++       otherwise invalidate the whole rule). Not relying on colour alone:
++       bold text plus an underline indicator. */
++    .nav-sections a[href^="#"]:is(:target-current, .target-current) {
 +      color: var(--accent);
-+      font-weight: bold;
 +      border-bottom-color: var(--accent);
-+    }
-+
-+    .nav-account {
-+      display: flex;
-+      align-items: center;
-+    }
-+
-+    .nav-account a {
-+      margin-left: 20px;
++      font-weight: bold;
 +    }
 +
      .logout-link {
        border: 1px solid var(--accent);
        padding: 5px 12px;
-@@ -100,6 +123,25 @@
-       padding: 0 20px;
+@@ -135,6 +170,49 @@
+       background: #3e2723;
      }
  
-+    section {
-+      /* Offset anchored scrolling so content isn't hidden behind the sticky nav. */
-+      scroll-margin-top: 90px;
-+      min-height: 70vh;
-+      padding: 40px 0;
++    /* Page sections targeted by the navigation */
++    .page-section {
++      min-height: 80vh;
++      padding: 60px 0;
++      border-bottom: 1px solid var(--secondary);
 +    }
 +
-+    section h2 {
-+      text-align: center;
-+      margin-bottom: 10px;
++    .page-section:last-child {
++      border-bottom: none;
 +    }
 +
-+    .section-intro {
-+      max-width: 650px;
-+      margin: 0 auto 20px;
++    .page-section > h2 {
 +      text-align: center;
 +      color: var(--primary);
 +    }
 +
-     .grid {
-       display: grid;
-       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-@@ -159,13 +201,18 @@
++    .section-intro {
++      text-align: center;
++      max-width: 650px;
++      margin: 10px auto 0;
++    }
++
++    .card .price {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 10px;
++    }
++
++    .card address {
++      font-style: normal;
++    }
++
++    .tiers {
++      list-style: none;
++    }
++
++    .points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -159,11 +237,11 @@
  
    <nav>
      <div class="logo">THE DAILY GRIND</div>
@@ -82,134 +120,167 @@ index 66c9173..bbd0a5d 100644
 -      <li><a href="/locations">Locations</a></li>
 -      <li><a href="/rewards">Rewards</a></li>
 -      <li><a href="/account">My Account</a></li>
--      <li><a href="/logout" class="logout-link">Logout</a></li>
-+    <ul class="nav-links">
-+      <!-- Fragment links whose hrefs match the section ids in <main>. -->
++    <ul class="nav-sections" aria-label="Page sections">
 +      <li><a href="#menu">Menu</a></li>
 +      <li><a href="#locations">Locations</a></li>
 +      <li><a href="#rewards">Rewards</a></li>
-+      <li><a href="#story">Our Story</a></li>
-+      <li><a href="#contact">Contact</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
-+    <div class="nav-account">
-+      <a href="/account">My Account</a>
-+      <a href="/logout" class="logout-link">Logout</a>
-+    </div>
    </nav>
- 
-   <header class="hero">
-@@ -175,8 +222,9 @@
+@@ -175,8 +253,11 @@
    </header>
  
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+    <section id="menu">
-+      <h2>Seasonal Favorites</h2>
-+      <p class="section-intro">Small-batch drinks crafted around what's fresh this season.</p>
++    <section id="menu" class="page-section" aria-labelledby="menu-heading">
++      <h2 id="menu-heading">Menu</h2>
++      <p class="section-intro">Every drink is made to order with beans roasted in-house each week.</p>
++
++      <h3 style="text-align: center; margin-top: 30px;">Seasonal Favorites</h3>
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
-@@ -195,6 +243,62 @@
+@@ -194,6 +275,98 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>
++
++      <h3 style="text-align: center; margin-top: 40px;">Everyday Classics</h3>
++      <div class="grid">
++        <div class="card">
++          <h3>House Drip</h3>
++          <p>Our signature medium roast, brewed fresh every 30 minutes.</p>
++          <span class="price">$2.75</span>
++        </div>
++        <div class="card">
++          <h3>Cappuccino</h3>
++          <p>Double espresso with velvety steamed milk and a thick cap of foam.</p>
++          <span class="price">$4.25</span>
++        </div>
++        <div class="card">
++          <h3>Butter Croissant</h3>
++          <p>Flaky, golden, and baked every morning by our pastry team.</p>
++          <span class="price">$3.50</span>
++        </div>
++      </div>
++    </section>
++
++    <section id="locations" class="page-section" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Locations</h2>
++      <p class="section-intro">Find a Daily Grind café near you. All locations offer free Wi-Fi and mobile order pickup.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <address>120 Main Street<br>Springfield</address>
++          <p>Mon–Fri 6am–7pm<br>Sat–Sun 7am–5pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <address>48 Water Lane<br>Springfield</address>
++          <p>Daily 7am–6pm</p>
++        </div>
++        <div class="card">
++          <h3>University Square</h3>
++          <address>9 College Avenue<br>Springfield</address>
++          <p>Mon–Fri 6:30am–10pm<br>Sat–Sun 8am–8pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="page-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Rewards</h2>
++      <p class="section-intro">Earn one bean for every dollar you spend and redeem them for free drinks, pastries, and more.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Bronze</h3>
++          <ul class="tiers">
++            <li>Free birthday drink</li>
++            <li>Member-only offers</li>
++          </ul>
++        </div>
++        <div class="card">
++          <h3>Silver</h3>
++          <ul class="tiers">
++            <li>Everything in Bronze</li>
++            <li>Free refills on drip coffee</li>
++          </ul>
++        </div>
++        <div class="card">
++          <h3>Gold</h3>
++          <ul class="tiers">
++            <li>Everything in Silver</li>
++            <li>A free drink every month</li>
++          </ul>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="page-section" aria-labelledby="account-heading">
++      <h2 id="account-heading">My Account</h2>
++      <p class="section-intro">Welcome back! Manage your profile, orders, and rewards balance.</p>
++      <div class="grid">
++        <div class="card">
++          <h3>Rewards Balance</h3>
++          <p class="points">240 beans</p>
++          <p>60 beans until your next free drink.</p>
++        </div>
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <p>Maple Oat Latte &middot; Oct 31</p>
++          <p>Cold Brew &middot; Oct 28</p>
++          <a href="/account/orders" class="btn">View Order History</a>
++        </div>
++        <div class="card">
++          <h3>Profile</h3>
++          <p>Update your contact details, payment methods, and preferences.</p>
++          <a href="/account/settings" class="btn">Edit Profile</a>
++        </div>
++      </div>
      </section>
-+
-+    <section id="locations">
-+      <h2>Find Us</h2>
-+      <p class="section-intro">Stop by one of our roasteries for a cup made just for you.</p>
-+      <div class="grid">
-+        <div class="card">
-+          <h3>Downtown Roastery</h3>
-+          <p>128 Main Street<br>Open daily, 6am &ndash; 7pm</p>
-+        </div>
-+        <div class="card">
-+          <h3>Riverside Café</h3>
-+          <p>42 Riverside Drive<br>Open daily, 7am &ndash; 6pm</p>
-+        </div>
-+        <div class="card">
-+          <h3>Uptown Bar</h3>
-+          <p>900 Highland Ave<br>Open daily, 6:30am &ndash; 8pm</p>
-+        </div>
-+      </div>
-+    </section>
-+
-+    <section id="rewards">
-+      <h2>Daily Grind Rewards</h2>
-+      <p class="section-intro">Earn a free drink for every ten you buy, plus early access to seasonal releases.</p>
-+      <div class="grid">
-+        <div class="card">
-+          <h3>Earn Points</h3>
-+          <p>Collect a star with every purchase, in-store or online.</p>
-+        </div>
-+        <div class="card">
-+          <h3>Free Refills</h3>
-+          <p>Members get complimentary drip coffee refills while in-café.</p>
-+        </div>
-+        <div class="card">
-+          <h3>Birthday Treat</h3>
-+          <p>A free drink of your choice during your birthday month.</p>
-+        </div>
-+      </div>
-+    </section>
-+
-+    <section id="story">
-+      <h2>Our Story</h2>
-+      <p class="section-intro">
-+        The Daily Grind started in 2011 as a single cart in a farmers market. Today we roast
-+        our own beans, source directly from growers we know by name, and still believe the
-+        best cup of coffee is the one shared with someone else.
-+      </p>
-+    </section>
-+
-+    <section id="contact">
-+      <h2>Get In Touch</h2>
-+      <p class="section-intro">
-+        Questions, catering requests, or just want to say hi? Reach us at
-+        <a href="mailto:hello@dailygrind.example">hello@dailygrind.example</a>
-+        or call (555) 018-2024.
-+      </p>
-+    </section>
    </main>
  
-   <footer>
-@@ -207,6 +311,42 @@
+@@ -207,6 +380,45 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script type="module">
-+    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
-+    const navLinks = document.querySelectorAll('.nav-links a');
++    // Scrollspy: keep aria-current in sync with the highlighted section link.
++    const sectionLinks = Array.from(
++      document.querySelectorAll('.nav-sections a[href^="#"]')
++    );
 +
-+    if (supportsScrollTargetGroup) {
++    if (CSS.supports('scroll-target-group: auto')) {
++      // Native support: :target-current handles the visual state; mirror it
++      // with aria-current for assistive technologies.
 +      const syncAriaCurrent = () => {
-+        const currentLink = document.querySelector('.nav-links a:target-current');
-+        navLinks.forEach(link => {
++        const currentLink = document.querySelector('.nav-sections a:target-current');
++        sectionLinks.forEach((link) => {
 +          link.setAttribute('aria-current', link === currentLink ? 'true' : 'false');
 +        });
 +      };
-+      // Sync on initial load (this script is a module, so it already runs after parsing).
 +      syncAriaCurrent();
-+      // Re-sync once scrolling has settled.
 +      document.addEventListener('scrollend', syncAriaCurrent);
-+    } else {
-+      // Fallback for browsers without native scroll-target-group support.
-+      const sections = document.querySelectorAll('main section');
++    } else if ('IntersectionObserver' in window) {
++      // Fallback: track the section crossing the middle of the viewport.
++      const sections = sectionLinks
++        .map((link) => document.getElementById(link.getAttribute('href').slice(1)))
++        .filter((section) => section !== null);
 +
 +      const observer = new IntersectionObserver((entries) => {
-+        entries.forEach(entry => {
-+          if (entry.isIntersecting) {
-+            const id = entry.target.getAttribute('id');
-+            navLinks.forEach(link => {
-+              const isActive = link.getAttribute('href') === `#${id}`;
-+              link.classList.toggle('\:target-current', isActive);
-+              link.setAttribute('aria-current', isActive ? 'true' : 'false');
-+            });
-+          }
++        entries.forEach((entry) => {
++          if (!entry.isIntersecting) return;
++          const id = entry.target.getAttribute('id');
++          sectionLinks.forEach((link) => {
++            const isActive = link.getAttribute('href') === `#${id}`;
++            link.classList.toggle('target-current', isActive);
++            link.setAttribute('aria-current', isActive ? 'true' : 'false');
++          });
 +        });
 +      }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
 +
-+      sections.forEach(section => observer.observe(section));
++      sections.forEach((section) => observer.observe(section));
 +    }
 +  </script>
 +

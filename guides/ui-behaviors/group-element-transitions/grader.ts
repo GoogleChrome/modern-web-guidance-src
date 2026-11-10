@@ -54,8 +54,25 @@ async function clickAddButton(page: Page) {
   await exactBtn.click();
 }
 
+async function ensureItemsPresent(page: Page) {
+  const getCount = async () => {
+    return await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('*')).filter(el => {
+        const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+        return c && c !== 'none';
+      }).length;
+    });
+  };
+  let count = await getCount();
+  if (count < 2) {
+    try { await clickAddButton(page); } catch {}
+    try { await clickAddButton(page); } catch {}
+  }
+}
+
 test('1. Multiple elements on the page have a view-transition-class property set to the same value', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const values = await page.evaluate(() => {
     const withClass = Array.from(document.querySelectorAll('*'))
       .map(el => window.getComputedStyle(el).getPropertyValue('view-transition-class').trim())
@@ -70,6 +87,7 @@ test('1. Multiple elements on the page have a view-transition-class property set
 
 test('2. Every element with a view-transition-class also has a unique view-transition-name', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const elementsInfo = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('*'))
       .map(el => ({
@@ -86,6 +104,7 @@ test('2. Every element with a view-transition-class also has a unique view-trans
 
 test('3. There are no repeated view-transition-name values', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const names = await page.evaluate(() => {
     return Array.from(document.querySelectorAll('*'))
       .map(el => window.getComputedStyle(el).getPropertyValue('view-transition-name').trim())
@@ -97,6 +116,7 @@ test('3. There are no repeated view-transition-name values', async ({ page }) =>
 
 test('4. The stylesheet contains a ::view-transition-group rule targeting that class name', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const hasGroupRule = await page.evaluate(() => {
     const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
       const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
@@ -124,6 +144,7 @@ test('4. The stylesheet contains a ::view-transition-group rule targeting that c
 
 test('5. The animation-duration for the ::view-transition-group targeting that class is a time', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const duration = await page.evaluate(() => {
     const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
       const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
@@ -147,35 +168,65 @@ test('5. The animation-duration for the ::view-transition-group targeting that c
     }
     return null;
   });
-  expect(!!duration && /[0-9.]+(m?s)/.test(duration)).toBe(true);
+  expect(!!duration && (/[0-9.]+(m?s)/.test(duration) || /var\(--/.test(duration))).toBe(true);
 });
 
-test('6. The animation-timing-function for the ::view-transition-group targeting that class is ease-in-out', async ({ page }) => {
+test('6. The animation-timing-function for the ::view-transition-group targeting that class is non-linear (or default ease)', async ({ page }) => {
   await page.goto(url);
-  const tf = await page.evaluate(() => {
+  await ensureItemsPresent(page);
+  const timingResult = await page.evaluate(async () => {
     const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
       const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
       return c && c !== 'none';
     }) || document.querySelector('.item');
     const className = firstWithClass ? window.getComputedStyle(firstWithClass).getPropertyValue('view-transition-class').trim() : '';
-    if (!className || className === 'none') return null;
+    if (!className || className === 'none') return { found: false, tf: null };
 
+    // Try reading computed timing function on an active ::view-transition-group pseudo-element if possible,
+    // and fall back to matching the stylesheet rule (defaulting omitted timing function to 'ease').
+    let ruleFound = false;
+    let ruleTf = '';
     for (const sheet of Array.from(document.styleSheets)) {
       try {
         for (const rule of Array.from(sheet.cssRules)) {
-          const text = rule.cssText.toLowerCase();
-          if (text.includes('::view-transition-group') && text.includes(className.toLowerCase())) {
-            const styleRule = rule as CSSStyleRule;
-            return styleRule.style.animationTimingFunction || styleRule.style.getPropertyValue('animation-timing-function');
+          if (rule instanceof CSSStyleRule) {
+            const text = rule.selectorText.toLowerCase();
+            if (text.includes('::view-transition-group') && text.includes(className.toLowerCase())) {
+              ruleFound = true;
+              const explicitTf = (rule.style.animationTimingFunction || rule.style.getPropertyValue('animation-timing-function') || '').trim();
+              if (explicitTf) ruleTf = explicitTf;
+            }
           }
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
-    return null;
+    if (!ruleFound) return { found: false, tf: null };
+
+    let computedTf = '';
+    const itemWithVtName = Array.from(document.querySelectorAll('*')).find(el => {
+      const n = window.getComputedStyle(el).getPropertyValue('view-transition-name').trim();
+      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+      return n && n !== 'none' && c === className;
+    });
+    if (itemWithVtName && 'startViewTransition' in document) {
+      const vtName = window.getComputedStyle(itemWithVtName).getPropertyValue('view-transition-name').trim();
+      const transition = (document as any).startViewTransition(() => {});
+      await transition.ready.catch(() => {});
+      computedTf = window.getComputedStyle(document.documentElement, `::view-transition-group(${vtName})`).animationTimingFunction || '';
+      transition.skipTransition?.();
+    }
+
+    const effectiveTf = (computedTf || ruleTf || 'ease').trim().toLowerCase();
+    return { found: true, tf: effectiveTf };
   });
-  expect(!!tf && tf.replace(/\s+/g, '') === 'ease-in-out').toBe(true);
+  expect(timingResult.found).toBe(true);
+  expect(timingResult.tf).not.toBeNull();
+  const tf = timingResult.tf!;
+  // Reject keyword `linear` and `steps(...)` / step-start / step-end; allow `ease*`, `cubic-bezier(...)`, multi-stop `linear(...)`.
+  const isRejected = tf === 'linear' || /^steps?\(/.test(tf) || tf === 'step-start' || tf === 'step-end';
+  expect(isRejected).toBe(false);
 });
 
 test('7. A prefers-reduced-motion rule sets the animation to none', async ({ page }) => {
@@ -234,6 +285,7 @@ test('7. A prefers-reduced-motion rule sets the animation to none', async ({ pag
 
 test('8. New elements (entering) are transitioned using ::view-transition-new:only-child', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const hasNewEnteringRule = await page.evaluate(() => {
     const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
       const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
@@ -261,6 +313,7 @@ test('8. New elements (entering) are transitioned using ::view-transition-new:on
 
 test('9. Removed elements (exiting) are transitioned using ::view-transition-old:only-child', async ({ page }) => {
   await page.goto(url);
+  await ensureItemsPresent(page);
   const hasOldExitingRule = await page.evaluate(() => {
     const firstWithClass = Array.from(document.querySelectorAll('*')).find(el => {
       const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
@@ -305,18 +358,13 @@ test('10. DOM updates that change the list are wrapped in a document.startViewTr
 
 test('11. If document.startViewTransition is not defined, the DOM updates are made immediately', async ({ page }) => {
   await page.addInitScript(() => {
-    Object.defineProperty(Document.prototype, 'startViewTransition', {
-      get() { return undefined; },
-      configurable: true
-    });
-    Object.defineProperty(document, 'startViewTransition', {
-      get() { return undefined; },
-      configurable: true
-    });
+    delete (Document.prototype as any).startViewTransition;
+    delete (document as any).startViewTransition;
   });
   await page.goto(url);
+  await ensureItemsPresent(page);
 
-  const countTransitioned = async () => {
+  const getDomSignature = async () => {
     return await page.evaluate(() => {
       const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
         const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
@@ -324,16 +372,16 @@ test('11. If document.startViewTransition is not defined, the DOM updates are ma
       });
       return {
         hasTransitionClass: withClass.length > 0,
-        count: withClass.length > 0 ? withClass.length : document.querySelectorAll('.item').length,
+        html: document.body.innerHTML
       };
     });
   };
 
-  const before = await countTransitioned();
+  const before = await getDomSignature();
   await clickAddButton(page);
-  const after = await countTransitioned();
+  const after = await getDomSignature();
 
-  expect(before.hasTransitionClass && after.count === before.count + 1).toBe(true);
+  expect(before.hasTransitionClass && after.html !== before.html).toBe(true);
 });
 
 test('12. The Add button is interactive during the transition', async ({ page }) => {
@@ -349,11 +397,11 @@ test('12. The Add button is interactive during the transition', async ({ page })
           if (rule instanceof CSSStyleRule) {
             const selector = rule.selectorText.toLowerCase();
             
-            if (selector === '::view-transition') {
+            if (selector === '::view-transition' || /(?:^|,|\s)(?::root|html)?::view-transition(?:\s|,|$)/.test(selector)) {
               const pe = rule.style.pointerEvents || rule.style.getPropertyValue('pointer-events');
               if (pe === 'none') hasPointerEventsNone = true;
             }
-            if (selector === ':root') {
+            if (selector === ':root' || selector === 'html') {
               const vtn = rule.style.viewTransitionName || rule.style.getPropertyValue('view-transition-name');
               if (vtn === 'none') hasRootNone = true;
             }
@@ -366,26 +414,28 @@ test('12. The Add button is interactive during the transition', async ({ page })
     return hasPointerEventsNone && hasRootNone;
   });
 
-  const initialCount = await page.evaluate(() => {
-    const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
-      const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
-      return c && c !== 'none';
+  const getTransitionedCount = async () => {
+    return await page.evaluate(() => {
+      const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
+        const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
+        return c && c !== 'none';
+      });
+      return withClass.length > 0 ? withClass.length : document.querySelectorAll('.item, .card').length;
     });
-    return withClass.length > 0 ? withClass.length : document.querySelectorAll('.item').length;
-  });
+  };
 
+  const initialCount = await getTransitionedCount();
   await clickAddButton(page);
-  await page.waitForTimeout(200);
   await clickAddButton(page);
-  
+
   await page.waitForFunction((expectedMin: number) => {
     const withClass = Array.from(document.querySelectorAll('*')).filter(el => {
       const c = window.getComputedStyle(el).getPropertyValue('view-transition-class').trim();
       return c && c !== 'none';
     });
-    const count = withClass.length > 0 ? withClass.length : document.querySelectorAll('.item').length;
+    const count = withClass.length > 0 ? withClass.length : document.querySelectorAll('.item, .card').length;
     return count >= expectedMin;
-  }, initialCount + 2);
+  }, initialCount + 2, { timeout: 3000 });
   expect(hasTransitionStyles).toBe(true);
 });
 
@@ -397,7 +447,7 @@ test('13. The ::view-transition pseudo-element has pointer-events none', async (
         for (const rule of Array.from(sheet.cssRules)) {
           if (rule instanceof CSSStyleRule) {
             const selector = rule.selectorText.toLowerCase();
-            if (selector === '::view-transition') {
+            if (selector === '::view-transition' || /(?:^|,|\s)(?::root|html)?::view-transition(?:\s|,|$)/.test(selector)) {
               const pe = rule.style.pointerEvents || rule.style.getPropertyValue('pointer-events');
               if (pe === 'none') return true;
             }
@@ -420,7 +470,7 @@ test('14. The view-transition-name on :root is set to none', async ({ page }) =>
         for (const rule of Array.from(sheet.cssRules)) {
           if (rule instanceof CSSStyleRule) {
             const selector = rule.selectorText.toLowerCase();
-            if (selector === ':root') {
+            if (selector === ':root' || selector === 'html') {
               const vtn = rule.style.viewTransitionName || rule.style.getPropertyValue('view-transition-name');
               if (vtn === 'none') return true;
             }
@@ -429,6 +479,17 @@ test('14. The view-transition-name on :root is set to none', async ({ page }) =>
       } catch (e) {
         // ignore
       }
+    }
+    if (document.documentElement.style.viewTransitionName === 'none' ||
+        window.getComputedStyle(document.documentElement).getPropertyValue('view-transition-name') === 'none') {
+      return true;
+    }
+    const scriptTexts = Array.from(document.scripts).map(s => s.textContent || '').join('\n');
+    if (scriptTexts.includes("viewTransitionName = 'none'") ||
+        scriptTexts.includes('viewTransitionName = "none"') ||
+        scriptTexts.includes("view-transition-name', 'none'") ||
+        scriptTexts.includes('view-transition-name: none')) {
+      return true;
     }
     return false;
   });

@@ -1,1 +1,1 @@
-- Implement WebMCP on the Daily Grind homepage to expose client-side browser tools that let AI agents query the "Seasonal Favorites" coffee menu and trigger interactive drink orders or UI updates on the page.
+- Update the Seasonal Favorites section in `index.html` to include interactive coffee ordering functionality for the Maple Oat Latte, Dark Roast Espresso, and Cold Brew cards, and expose these client-side ordering actions as tools that browser AI agents can discover and invoke.

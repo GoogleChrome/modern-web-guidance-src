@@ -1,38 +1,123 @@
 diff --git a/index.html b/index.html
-index 66c9173..561226e 100644
+index 66c9173..5df980d 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,47 @@
+@@ -152,6 +152,132 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
-+    /* Scoped view transitions */
-+    .controls {
-+      display: flex;
-+      gap: 10px;
-+      justify-content: center;
-+      margin-top: 15px;
++    /* Seasonal Favorites (scoped view transitions) */
++    .favorites-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
 +    }
 +
-+    .controls button,
-+    .card .remove-btn {
-+      font: inherit;
-+      cursor: pointer;
-+      border: 1px solid var(--primary);
++    ul.favorites-grid {
++      list-style: none;
++    }
++
++    .favorites-grid .card-wrapper {
++      display: flex;
++      /* Captured by the grid-scoped transition (reorder/remove cards) */
++      view-transition-name: match-element;
++    }
++
++    .favorites-grid .card {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      /* Clip so the card's own scoped transition keeps children inside its bounds */
++      overflow: clip;
++      /* Keep internal names out of the grid-level (outer) transition */
++      view-transition-scope: all;
++    }
++
++    .customizations {
++      list-style: none;
++      margin: 12px 0 0;
++      text-align: left;
++    }
++
++    .customization {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 8px;
++      padding: 6px 10px;
++      margin-bottom: 6px;
++      background: #f5efec;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      /* Captured by the card-scoped transition (customize add-ons) */
++      view-transition-name: match-element;
++    }
++
++    .classic-note {
++      margin-top: 12px;
++      font-size: 0.85rem;
++      font-style: italic;
++      color: #6d4c41;
++    }
++
++    .card-actions {
++      margin-top: auto;
++      view-transition-name: match-element;
++    }
++
++    .card-controls,
++    .item-controls {
++      display: flex;
++      justify-content: center;
++      gap: 6px;
++    }
++
++    .card-controls {
++      margin-top: 12px;
++    }
++
++    .icon-btn {
++      min-width: 32px;
++      height: 32px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
 +      background: white;
 +      color: var(--primary);
-+      padding: 6px 14px;
-+      border-radius: 5px;
++      font-size: 1rem;
++      cursor: pointer;
 +    }
 +
-+    .card .remove-btn {
-+      margin-top: 15px;
-+      margin-left: 8px;
++    .customization .icon-btn {
++      min-width: 26px;
++      height: 26px;
++      font-size: 0.85rem;
 +    }
 +
-+    .grid .card {
-+      view-transition-name: match-element;
++    .icon-btn:hover:not(:disabled) {
++      background: var(--secondary);
++    }
++
++    .icon-btn:focus-visible,
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .icon-btn:disabled {
++      opacity: 0.35;
++      cursor: default;
++    }
++
++    .favorites-footer {
++      text-align: center;
++      margin-top: 10px;
++    }
++
++    .btn-secondary {
++      border: none;
++      font: inherit;
++      cursor: pointer;
 +    }
 +
 +    ::view-transition-group(*) {
@@ -50,89 +135,367 @@ index 66c9173..561226e 100644
    </style>
  </head>
  
-@@ -177,21 +218,28 @@
+@@ -177,22 +303,126 @@
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
-+      <div class="controls">
-+        <button type="button" id="sort-btn">Sort A–Z</button>
-+        <button type="button" id="reset-btn">Reset order</button>
-+      </div>
-+      <div class="grid" id="favorites">
-         <div class="card">
-           <h3>Maple Oat Latte</h3>
-           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-           <a href="/menu/seasonal" class="btn">View Details</a>
-+          <button type="button" class="remove-btn">Remove</button>
-         </div>
-         <div class="card">
-           <h3>Dark Roast Espresso</h3>
-           <p>Bold, smokey, and perfect for a morning boost.</p>
-           <a href="/menu/espresso" class="btn">View Details</a>
-+          <button type="button" class="remove-btn">Remove</button>
-         </div>
-         <div class="card">
-           <h3>Cold Brew</h3>
-           <p>Steeped for 18 hours for maximum smoothness.</p>
-           <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <button type="button" class="remove-btn">Remove</button>
-         </div>
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <p class="favorites-hint">Rearrange your favorites, drop the ones you skip, or tweak each drink&rsquo;s add-ons.</p>
++      <ul class="grid favorites-grid" id="favorites-grid" aria-label="Seasonal favorite drinks">
++        <li class="card-wrapper" data-id="maple-oat-latte">
++          <article class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <ul class="customizations" aria-label="Maple Oat Latte add-ons">
++              <li class="customization" data-id="oat-milk">
++                <span>Oat milk</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Oat milk up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Oat milk">&times;</button>
++                </span>
++              </li>
++              <li class="customization" data-id="maple-syrup">
++                <span>Vermont maple syrup</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Vermont maple syrup up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Vermont maple syrup">&times;</button>
++                </span>
++              </li>
++              <li class="customization" data-id="cinnamon">
++                <span>Cinnamon dusting</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Cinnamon dusting up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Cinnamon dusting">&times;</button>
++                </span>
++              </li>
++            </ul>
++            <p class="classic-note" hidden>Served classic &mdash; no add-ons.</p>
++            <div class="card-actions">
++              <a href="/menu/seasonal" class="btn">View Details</a>
++              <div class="card-controls">
++                <button type="button" class="icon-btn" data-action="card-left" aria-label="Move Maple Oat Latte earlier">&larr;</button>
++                <button type="button" class="icon-btn" data-action="card-right" aria-label="Move Maple Oat Latte later">&rarr;</button>
++                <button type="button" class="icon-btn" data-action="card-remove" aria-label="Remove Maple Oat Latte">&times;</button>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li class="card-wrapper" data-id="dark-roast-espresso">
++          <article class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <ul class="customizations" aria-label="Dark Roast Espresso add-ons">
++              <li class="customization" data-id="double-shot">
++                <span>Double shot</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Double shot up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Double shot">&times;</button>
++                </span>
++              </li>
++              <li class="customization" data-id="lemon-twist">
++                <span>Lemon twist</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Lemon twist up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Lemon twist">&times;</button>
++                </span>
++              </li>
++              <li class="customization" data-id="raw-sugar">
++                <span>Raw sugar</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Raw sugar up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Raw sugar">&times;</button>
++                </span>
++              </li>
++            </ul>
++            <p class="classic-note" hidden>Served classic &mdash; no add-ons.</p>
++            <div class="card-actions">
++              <a href="/menu/espresso" class="btn">View Details</a>
++              <div class="card-controls">
++                <button type="button" class="icon-btn" data-action="card-left" aria-label="Move Dark Roast Espresso earlier">&larr;</button>
++                <button type="button" class="icon-btn" data-action="card-right" aria-label="Move Dark Roast Espresso later">&rarr;</button>
++                <button type="button" class="icon-btn" data-action="card-remove" aria-label="Remove Dark Roast Espresso">&times;</button>
++              </div>
++            </div>
++          </article>
++        </li>
++        <li class="card-wrapper" data-id="cold-brew">
++          <article class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <ul class="customizations" aria-label="Cold Brew add-ons">
++              <li class="customization" data-id="sweet-cream">
++                <span>Vanilla sweet cream</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Vanilla sweet cream up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Vanilla sweet cream">&times;</button>
++                </span>
++              </li>
++              <li class="customization" data-id="extra-ice">
++                <span>Extra ice</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Extra ice up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Extra ice">&times;</button>
++                </span>
++              </li>
++              <li class="customization" data-id="salted-caramel">
++                <span>Salted caramel drizzle</span>
++                <span class="item-controls">
++                  <button type="button" class="icon-btn" data-action="item-up" aria-label="Move Salted caramel drizzle up">&uarr;</button>
++                  <button type="button" class="icon-btn" data-action="item-remove" aria-label="Remove Salted caramel drizzle">&times;</button>
++                </span>
++              </li>
++            </ul>
++            <p class="classic-note" hidden>Served classic &mdash; no add-ons.</p>
++            <div class="card-actions">
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++              <div class="card-controls">
++                <button type="button" class="icon-btn" data-action="card-left" aria-label="Move Cold Brew earlier">&larr;</button>
++                <button type="button" class="icon-btn" data-action="card-right" aria-label="Move Cold Brew later">&rarr;</button>
++                <button type="button" class="icon-btn" data-action="card-remove" aria-label="Remove Cold Brew">&times;</button>
++              </div>
++            </div>
++          </article>
++        </li>
++      </ul>
++      <div class="favorites-footer">
++        <p class="favorites-empty" id="favorites-empty" hidden>You&rsquo;ve cleared all seasonal favorites.</p>
++        <button type="button" class="btn btn-secondary" id="favorites-reset">Restore favorites</button>
        </div>
      </section>
-@@ -207,6 +255,56 @@
+   </main>
+@@ -207,6 +437,221 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++    (() => {
++      'use strict';
 +
-+    function runWithTransition(scopeEl, updateDOM) {
-+      if (!supportsScopedTransition) {
-+        updateDOM();
-+        return;
++      // Feature detect element-scoped view transitions specifically (not document.startViewTransition).
++      const supportsScopedTransition =
++        typeof Element !== 'undefined' && 'startViewTransition' in Element.prototype;
++
++      /**
++       * Run a DOM update as a view transition scoped to `scopeEl`, so the sticky nav and
++       * the rest of the page stay interactive and other scopes can transition concurrently.
++       * @param {HTMLElement} scopeEl
++       * @param {() => void} updateDOM
++       */
++      function runScopedTransition(scopeEl, updateDOM) {
++        if (!supportsScopedTransition) {
++          // Fallback: apply the update immediately, without animation.
++          updateDOM();
++          return;
++        }
++        const transition = scopeEl.startViewTransition(() => {
++          updateDOM();
++        });
++        // Rapid re-triggers on the same scope skip the active transition and reject `ready`.
++        transition.ready.catch(() => {});
 +      }
-+      const transition = scopeEl.startViewTransition(() => {
-+        updateDOM();
-+      });
-+      transition.ready.catch(() => {});
-+    }
 +
-+    const grid = document.getElementById('favorites');
-+    const originalOrder = Array.from(grid.children);
++      const grid = document.getElementById('favorites-grid');
++      const emptyNote = document.getElementById('favorites-empty');
++      const resetBtn = document.getElementById('favorites-reset');
++      if (!(grid instanceof HTMLUListElement) || !(resetBtn instanceof HTMLButtonElement)) return;
 +
-+    // Reorder by moving existing nodes (required for match-element)
-+    function reorder(cards) {
-+      runWithTransition(grid, () => {
-+        for (const card of cards) {
-+          if (card.isConnected) grid.appendChild(card);
++      // Keep the original nodes (and order) so "Restore" can re-insert the same DOM nodes,
++      // preserving identity for `view-transition-name: match-element`.
++      /** @type {HTMLElement[]} */
++      const originalCards = Array.from(grid.children).filter(
++        (el) => el instanceof HTMLElement,
++      );
++      /** @type {Map<HTMLElement, HTMLElement[]>} */
++      const originalItems = new Map();
++      for (const wrapper of originalCards) {
++        const list = wrapper.querySelector('.customizations');
++        if (list) {
++          originalItems.set(
++            wrapper,
++            Array.from(list.children).filter((el) => el instanceof HTMLElement),
++          );
++        }
++      }
++
++      /** @param {HTMLElement} card */
++      function syncCardState(card) {
++        const list = card.querySelector('.customizations');
++        const note = card.querySelector('.classic-note');
++        if (!(list instanceof HTMLElement)) return;
++        const items = Array.from(list.children);
++        items.forEach((item, index) => {
++          const up = item.querySelector('[data-action="item-up"]');
++          if (up instanceof HTMLButtonElement) up.disabled = index === 0;
++        });
++        list.hidden = items.length === 0;
++        if (note instanceof HTMLElement) note.hidden = items.length !== 0;
++      }
++
++      function syncGridState() {
++        const wrappers = Array.from(grid.children);
++        wrappers.forEach((wrapper, index) => {
++          const left = wrapper.querySelector('[data-action="card-left"]');
++          const right = wrapper.querySelector('[data-action="card-right"]');
++          if (left instanceof HTMLButtonElement) left.disabled = index === 0;
++          if (right instanceof HTMLButtonElement) right.disabled = index === wrappers.length - 1;
++        });
++        if (emptyNote) emptyNote.hidden = wrappers.length !== 0;
++      }
++
++      /**
++       * Moving a node in the DOM drops focus; restore it (or a sensible sibling) afterwards.
++       * @param {Element | null} previous
++       * @param {Element | null} container
++       * @param {string[]} fallbackSelectors
++       */
++      function restoreFocus(previous, container, fallbackSelectors) {
++        if (!(previous instanceof HTMLElement) || document.activeElement === previous) return;
++        if (previous instanceof HTMLButtonElement && previous.disabled && container) {
++          for (const selector of fallbackSelectors) {
++            const candidate = container.querySelector(selector);
++            if (candidate instanceof HTMLButtonElement && !candidate.disabled) {
++              candidate.focus();
++              return;
++            }
++          }
++        }
++        previous.focus();
++      }
++
++      /** @param {HTMLElement} wrapper @param {-1 | 1} direction */
++      function moveCard(wrapper, direction) {
++        const sibling =
++          direction < 0 ? wrapper.previousElementSibling : wrapper.nextElementSibling;
++        if (!sibling) return;
++        const focused = document.activeElement;
++        // Scope to the grid: only card order changes, so the nav and page stay interactive.
++        runScopedTransition(grid, () => {
++          if (direction < 0) grid.insertBefore(wrapper, sibling);
++          else grid.insertBefore(sibling, wrapper);
++          syncGridState();
++          if (wrapper.contains(focused)) {
++            restoreFocus(focused, wrapper, [
++              '[data-action="card-left"]',
++              '[data-action="card-right"]',
++              '[data-action="card-remove"]',
++            ]);
++          }
++        });
++      }
++
++      /** @param {HTMLElement} wrapper */
++      function removeCard(wrapper) {
++        const hadFocus = wrapper.contains(document.activeElement);
++        const nextFocusTarget =
++          wrapper.nextElementSibling?.querySelector('[data-action="card-remove"]') ??
++          wrapper.previousElementSibling?.querySelector('[data-action="card-remove"]') ??
++          resetBtn;
++        runScopedTransition(grid, () => {
++          wrapper.remove();
++          syncGridState();
++          if (hadFocus && nextFocusTarget instanceof HTMLElement) nextFocusTarget.focus();
++        });
++      }
++
++      /** @param {HTMLElement} card @param {HTMLElement} item */
++      function moveItemUp(card, item) {
++        const list = item.parentElement;
++        const prev = item.previousElementSibling;
++        if (!list || !prev) return;
++        const focused = document.activeElement;
++        // Scope to this card only, so other cards can transition at the same time.
++        runScopedTransition(card, () => {
++          list.insertBefore(item, prev);
++          syncCardState(card);
++          if (item.contains(focused)) {
++            restoreFocus(focused, item, ['[data-action="item-remove"]']);
++          }
++        });
++      }
++
++      /** @param {HTMLElement} card @param {HTMLElement} item */
++      function removeItem(card, item) {
++        const hadFocus = item.contains(document.activeElement);
++        const nextFocusTarget =
++          item.nextElementSibling?.querySelector('[data-action="item-remove"]') ??
++          item.previousElementSibling?.querySelector('[data-action="item-remove"]') ??
++          card.querySelector('[data-action="card-remove"]');
++        // Scope to the whole card so its height change animates alongside the list.
++        runScopedTransition(card, () => {
++          item.remove();
++          syncCardState(card);
++          if (hadFocus && nextFocusTarget instanceof HTMLElement) nextFocusTarget.focus();
++        });
++      }
++
++      function restoreFavorites() {
++        runScopedTransition(grid, () => {
++          for (const wrapper of originalCards) {
++            const list = wrapper.querySelector('.customizations');
++            const items = originalItems.get(wrapper);
++            if (list && items) {
++              for (const item of items) list.appendChild(item);
++            }
++            const card = wrapper.querySelector('.card');
++            if (card instanceof HTMLElement) syncCardState(card);
++            grid.appendChild(wrapper);
++          }
++          syncGridState();
++        });
++      }
++
++      grid.addEventListener('click', (event) => {
++        const target = event.target;
++        if (!(target instanceof Element)) return;
++        const button = target.closest('button[data-action]');
++        if (!(button instanceof HTMLButtonElement) || button.disabled) return;
++        const wrapper = button.closest('.card-wrapper');
++        const card = button.closest('.card');
++        if (!(wrapper instanceof HTMLElement) || !(card instanceof HTMLElement)) return;
++        const item = button.closest('.customization');
++
++        switch (button.dataset.action) {
++          case 'card-left':
++            moveCard(wrapper, -1);
++            break;
++          case 'card-right':
++            moveCard(wrapper, 1);
++            break;
++          case 'card-remove':
++            removeCard(wrapper);
++            break;
++          case 'item-up':
++            if (item instanceof HTMLElement) moveItemUp(card, item);
++            break;
++          case 'item-remove':
++            if (item instanceof HTMLElement) removeItem(card, item);
++            break;
 +        }
 +      });
-+    }
 +
-+    document.getElementById('sort-btn').addEventListener('click', () => {
-+      const sorted = Array.from(grid.children).sort((a, b) =>
-+        a.querySelector('h3').textContent.localeCompare(b.querySelector('h3').textContent));
-+      reorder(sorted);
-+    });
++      resetBtn.addEventListener('click', restoreFavorites);
 +
-+    document.getElementById('reset-btn').addEventListener('click', () => {
-+      reorder(originalOrder);
-+    });
-+
-+    grid.addEventListener('click', (e) => {
-+      const btn = e.target.closest('.remove-btn');
-+      if (!btn) return;
-+      const card = btn.closest('.card');
-+      const next = card.nextElementSibling?.querySelector('button') ??
-+        card.previousElementSibling?.querySelector('button') ??
-+        document.getElementById('sort-btn');
-+      const hadFocus = card.contains(document.activeElement);
-+      runWithTransition(grid, () => {
-+        card.remove();
-+        if (hadFocus) next.focus();
-+      });
-+    });
++      for (const wrapper of originalCards) {
++        const card = wrapper.querySelector('.card');
++        if (card instanceof HTMLElement) syncCardState(card);
++      }
++      syncGridState();
++    })();
 +  </script>
  </body>
  

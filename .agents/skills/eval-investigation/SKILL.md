@@ -115,10 +115,10 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 - **Explicit Target File (Optional)**: If an ambiguous prompt causes the agent to create new files instead of modifying existing ones, explicitly name the target file (e.g., `"in index.html"`) to guide it correctly. This is only necessary if the grader is strictly locked to that specific file.
 - **Legacy Fallbacks Are Automatic**: Prompts should almost never need to mandate that legacy fallbacks are applied. If the agent successfully discovers and reads the relevant guide, it will automatically follow any documented fallback requirements.
 - **Base App Alignment**: If the prompt instructs the agent to modify an existing element, confirm that such an element actually exists in the base app template.
-- **Prescriptive Constraints vs Open Solutions**: Update the prompt to prescribe specific validation constraints (such as IDs, class names, or resource filenames) if the grader requires them. However, **never** be prescriptive about the specific web platform mechanism.
+- **Neutral Hooks vs. Open Solutions**: `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs to locate, named after the app content it shows or manages rather than an HTML element, attribute, CSS feature, or API. Do not prescribe class names, resource filenames, or invented routes/endpoints, and **never** be prescriptive about the specific web platform mechanism.
   > [!IMPORTANT]
-  > **Functional Locators vs. Technical Solutions**
-  > It is completely acceptable (and sometimes necessary) to mandate specific DOM IDs or CSS classes (e.g., `"add a .fan-card class"`) if the grader requires them to locate elements. What is strictly banned is mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
+  > **Neutral Hooks vs. Technical Solutions**
+  > It is acceptable to name a neutral `id` or `data-` attribute hook after the app content the element shows or manages (e.g., `id="passkey-list"` or `data-passkey-row`) if the grader requires it to locate a new element. What is strictly banned is naming a hook after an HTML element, attribute, CSS feature, or API (e.g., `id="share-dialog"` or `data-popover`), prescribing CSS classes or new resource filenames, or mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
 - **Mandatory List Formatting**: The `task.md` file **must always be formatted as a markdown list** (`- item`). Even though the file may contain multiple unused prompts for future expansion, remember that the evaluation harness currently **only executes the very first list item**.
 - **No Line Breaks in the Target Prompt**: Anything you want included in the prompt that actually gets evaluated must be entirely contained on the first bullet point line without any line breaks.
 - **Over-Prescription "Smell"**: If both the unguided and guided tests pass at 100%, this is a strong code smell indicating that your prompt may be overly prescriptive and practically giving away the modern solution.
@@ -185,8 +185,6 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 -   **Search Mismatch (Agent Searches Skills but Picks the Wrong Guide)**:
     -   *Investigation*: Verify in the trajectory which guide titles or keywords the agent searched for versus what the metadata returned.
     -   *Solution*: Improve the guide's metadata description, title, or associated search keywords so that it ranks higher or explicitly matches likely agent queries.
--   **Missing Skill Tools (Silent Skip)**: GCLI skips tool discovery in untrusted folders.
-    -   *Solution*: Disable `folderTrust` in the harness `settings.json` or set `GEMINI_CLI_INTEGRATION_TEST=true`.
 -   **Conflicting Image Sourcing**: The prompt specifies a filename but a global instruction causes the agent to use external URLs.
     -   *Solution*: Remove conflicting global instructions.
 -   **Overly Rigid Graders vs Valid Alternatives**: If the agent's `index.html` changes faithfully follow the guide but still fail the checks, the grader is likely too brittle (often due to relying on regular expressions).
@@ -206,8 +204,8 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
     -   *Investigation*: Check standard error logs for explicit rate limit or API quota errors.
     -   *Solution*: Do not waste time debugging the guide or grader. Instead, mitigate the issue using these workarounds:
         - **Execution Batching**: Run the evaluations sequentially or in smaller batches (e.g., 2 at a time) to avoid hammering the API.
-        - **Model Fallback**: Temporarily edit the `GEMINI_MODEL` property in `.env` (e.g., switch from `gemini-pro-latest` to `gemini-flash-latest`). Note that Flash has different capabilities, so re-verify results with Pro once quota issues resolve.
-        - **Agent Switching**: Use the harness config to switch the active test agent entirely (e.g., from Gemini CLI to Claude Code).
+        - **Model Fallback**: Temporarily edit the model env var in `.env` (e.g., `ANTIGRAVITY_MODEL` or `ANTHROPIC_MODEL`) to fall back to a faster/higher-quota model while debugging, then re-verify with the primary model once quota issues resolve.
+        - **Agent Switching**: Use the harness config to switch the active test agent entirely (e.g., from Antigravity CLI to Claude Code).
 
 ## 4. Self-Improvement
 After completion of an investigation, **you MUST update this skill** if you discover a new failure pattern or a more efficient investigation technique... or if anything about the investigation process was difficult or resulted in dead-ends. Use a ‘skill-creator’ skill to make effective updates.

@@ -1,18 +1,435 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..f08e326
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,7 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await Promise.all(['index.html', 'motion.css', 'script.js'].map((file) =>
++  copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url))
++));
++console.log('Built Daily Grind to dist/');
 diff --git a/index.html b/index.html
-index 66c9173..ae6ece3 100644
+index 66c9173..686ac39 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,13 @@
-       text-decoration: none;
+@@ -74,7 +74,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,7 +85,7 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+@@ -129,6 +129,9 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+@@ -153,9 +156,11 @@
        font-size: 0.85rem;
      }
-+
-+    @media (prefers-reduced-motion: reduce) {
-+      nav a,
-+      .btn {
-+        transition: none;
-+      }
-+    }
    </style>
++  <link rel="stylesheet" href="motion.css">
++  <script src="script.js" defer></script>
  </head>
  
+-<body>
++<body data-last-animation-state="idle">
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+@@ -172,6 +177,16 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-banner" aria-label="Daily roast">
++      <div class="roast-window" id="daily-roast">
++        <div class="roast-track">
++          <span>Daily roast · Freshly roasted, ready for your ritual.</span>
++          <span aria-hidden="true">Daily roast · Freshly roasted, ready for your ritual.</span>
++        </div>
++      </div>
++      <button class="roast-toggle" type="button" aria-controls="daily-roast" aria-pressed="false">Pause roast banner</button>
++    </div>
++    <p class="motion-note" hidden>Banner motion is off to match your reduced-motion preference.</p>
+   </header>
+ 
+   <main class="container">
+@@ -181,22 +196,32 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="maple" aria-haspopup="dialog" aria-controls="drink-details">View Details<span class="sr-only">: Maple Oat Latte</span></button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="espresso" aria-haspopup="dialog" aria-controls="drink-details">View Details<span class="sr-only">: Dark Roast Espresso</span></button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="cold-brew" aria-haspopup="dialog" aria-controls="drink-details">View Details<span class="sr-only">: Cold Brew</span></button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-details" aria-labelledby="drink-title" aria-describedby="drink-description">
++    <div class="dialog-content">
++      <p class="eyebrow">Seasonal Favorites</p>
++      <h2 id="drink-title"></h2>
++      <p id="drink-description"></p>
++      <p id="drink-notes"></p>
++      <button type="button" class="btn dialog-close" autofocus>Close details</button>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/motion.css b/motion.css
+new file mode 100644
+index 0000000..da17461
+--- /dev/null
++++ b/motion.css
+@@ -0,0 +1,134 @@
++/* Static styles are the default; spatial motion is opt-in below. */
++:focus-visible {
++  outline: 3px solid var(--accent);
++  outline-offset: 5px;
++}
++
++nav a {
++  display: inline-block;
++  position: relative;
++  transition: color 180ms ease, background-color 180ms ease;
++}
++
++nav a::after {
++  content: '';
++  position: absolute;
++  inset: auto 0 -5px;
++  height: 2px;
++  background: currentColor;
++  opacity: 0;
++  transform: scaleX(0);
++  transform-origin: left;
++  transition: opacity 180ms ease;
++}
++
++nav a:is(:hover, :focus-visible) { color: var(--accent); }
++nav a:is(:hover, :focus-visible)::after { opacity: 1; transform: scaleX(1); }
++.btn { transition: background-color 180ms ease, color 180ms ease; }
++.btn:is(:hover, :focus-visible) { background-color: #3e2723; }
++.hero > .btn { background: var(--accent); color: var(--text); font-weight: 600; }
++.hero > .btn:is(:hover, :focus-visible) { background: #ffc46e; }
++.card { border: 1px solid transparent; transition: border-color 200ms ease; }
++.card:is(:hover, :focus-within) { border-color: var(--secondary); }
++
++.roast-banner {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  width: min(100%, 660px);
++  margin-top: 28px;
++  padding: 10px 14px;
++  border: 1px solid #ffffff70;
++  border-radius: 8px;
++  background: #271812bf;
++}
++.roast-window { flex: 1; min-width: 0; overflow: hidden; }
++.roast-track { display: flex; width: 100%; }
++.roast-track span { flex: 0 0 100%; padding-inline: 12px; }
++.roast-track span[aria-hidden] { display: none; }
++.roast-toggle {
++  flex: 0 0 auto;
++  padding: 7px 10px;
++  border: 1px solid currentColor;
++  border-radius: 4px;
++  background: transparent;
++  color: white;
++  font: inherit;
++  font-size: 0.8rem;
++  cursor: pointer;
++  transition: background-color 180ms ease, color 180ms ease;
++}
++.roast-toggle:is(:hover, :focus-visible) { background: var(--accent); color: var(--text); }
++.roast-banner.is-paused .roast-track { animation-play-state: paused; }
++.motion-note { margin-top: 8px; font-size: 0.8rem; }
++[hidden] { display: none !important; }
++
++body:has(dialog[open]) { overflow: hidden; }
++dialog {
++  margin: auto;
++  width: min(480px, calc(100% - 32px));
++  max-height: calc(100dvh - 48px);
++  padding: 0;
++  border: 0;
++  border-radius: 14px;
++  color: var(--text);
++  background: var(--light);
++  opacity: 0;
++  transition: opacity 200ms ease, display 200ms, overlay 200ms;
++  transition-behavior: allow-discrete;
++}
++dialog[open]:not(.is-closing) { opacity: 1; }
++dialog::backdrop {
++  background: #1d100dcc;
++  opacity: 0;
++  transition: opacity 200ms ease, display 200ms, overlay 200ms;
++  transition-behavior: allow-discrete;
++}
++dialog[open]:not(.is-closing)::backdrop { opacity: 1; }
++@starting-style {
++  dialog[open]:not(.is-closing),
++  dialog[open]:not(.is-closing)::backdrop { opacity: 0; }
++}
++.dialog-content { padding: 32px; }
++.dialog-content p { margin-top: 12px; }
++.dialog-content .eyebrow { margin-top: 0; text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; }
++#drink-notes { color: #70534b; }
++.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
++
++@media (prefers-reduced-motion: no-preference) {
++  nav a::after { transition: opacity 180ms ease, transform 220ms ease; }
++  .btn { transition: background-color 180ms ease, color 180ms ease, transform 220ms ease; }
++  .btn:is(:hover, :focus-visible) { transform: translateY(-3px); }
++  .btn:active { transform: translateY(0); }
++  .card { transition: border-color 200ms ease, transform 260ms cubic-bezier(.2,.7,.3,1); }
++  .card:is(:hover, :focus-within) { transform: translateY(-6px); }
++  .hero h1 { animation: hero-enter 650ms ease-out both; }
++  .hero > p:first-of-type { animation: hero-enter 650ms 100ms ease-out both; }
++  .hero > .btn { animation: hero-enter 650ms 200ms ease-out backwards; }
++  .roast-window { mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); }
++  .roast-track { animation: daily-roast 18s linear infinite; }
++  .roast-track { width: max-content; }
++  .roast-track span { white-space: nowrap; flex-basis: auto; }
++  .roast-track span[aria-hidden] { display: block; }
++  dialog {
++    transform: translateY(18px) scale(.98);
++    transition: opacity 200ms ease, transform 240ms ease, display 240ms, overlay 240ms;
++    transition-behavior: allow-discrete;
++  }
++  dialog[open]:not(.is-closing) { transform: translateY(0) scale(1); }
++  @starting-style {
++    dialog[open]:not(.is-closing) { transform: translateY(18px) scale(.98); }
++  }
++}
++@keyframes hero-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
++@keyframes daily-roast { to { transform: translateX(-50%); } }
++
++@media (max-width: 640px) {
++  nav { flex-direction: column; gap: 12px; }
++  nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++  nav ul li { margin: 0; }
++  .hero h1 { font-size: 2.3rem; }
++  .roast-banner { flex-direction: column; }
++  .roast-window { width: 100%; flex: auto; }
++  .grid { grid-template-columns: minmax(0, 1fr); }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..3c51124 100644
+--- a/package.json
++++ b/package.json
+@@ -2,8 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "tsc --project tsconfig.json && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
++  "devDependencies": {
++    "typescript": "^5.9.3"
++  },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+   }
+diff --git a/script.js b/script.js
+new file mode 100644
+index 0000000..a21427f
+--- /dev/null
++++ b/script.js
+@@ -0,0 +1,135 @@
++// @ts-check
++
++/** @param {Event} event */
++function recordAnimationState(event) {
++  if (!(event instanceof AnimationEvent || event instanceof TransitionEvent)) return;
++  // Read the exact animation from the event, including pseudo-element animations.
++  // Older browsers do not expose this property; keep tracking their event lifecycle.
++  const animation = /** @type {(AnimationEvent | TransitionEvent) & { animation?: Animation }} */ (event).animation;
++  const fallback = event.type.endsWith('cancel') ? 'idle'
++    : event.type.endsWith('end') ? 'finished'
++    : event.type === 'transitionrun' ? 'pending' : 'running';
++  document.body.dataset.lastAnimationState = animation?.playState ?? fallback;
++}
++
++for (const type of [
++  'animationstart', 'animationiteration', 'animationend', 'animationcancel',
++  'transitionrun', 'transitionstart', 'transitionend', 'transitioncancel',
++]) {
++  document.addEventListener(type, recordAnimationState);
++}
++
++const banner = document.querySelector('.roast-banner');
++const toggle = document.querySelector('.roast-toggle');
++const motionNote = document.querySelector('.motion-note');
++const dialog = document.querySelector('#drink-details');
++const title = document.querySelector('#drink-title');
++const description = document.querySelector('#drink-description');
++const notes = document.querySelector('#drink-notes');
++const closeButton = document.querySelector('.dialog-close');
++
++if (!(banner instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)
++  || !(motionNote instanceof HTMLElement) || !(dialog instanceof HTMLDialogElement)
++  || !(title instanceof HTMLElement) || !(description instanceof HTMLElement)
++  || !(notes instanceof HTMLElement) || !(closeButton instanceof HTMLButtonElement)) {
++  throw new Error('Daily Grind UI is missing required elements.');
++}
++
++const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++let paused = false;
++const syncBanner = () => {
++  banner.classList.toggle('is-paused', paused || reducedMotion.matches);
++  toggle.hidden = reducedMotion.matches;
++  motionNote.hidden = !reducedMotion.matches;
++  toggle.setAttribute('aria-pressed', String(paused));
++  toggle.textContent = paused ? 'Resume roast banner' : 'Pause roast banner';
++};
++toggle.addEventListener('click', () => {
++  paused = !paused;
++  syncBanner();
++});
++reducedMotion.addEventListener('change', syncBanner);
++syncBanner();
++
++/** @type {Record<string, {name: string, description: string, notes: string}>} */
++const drinks = {
++  maple: {
++    name: 'Maple Oat Latte',
++    description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++    notes: 'Espresso meets silky oat milk and gentle maple sweetness. A cozy seasonal favorite.',
++  },
++  espresso: {
++    name: 'Dark Roast Espresso',
++    description: 'Bold, smokey, and perfect for a morning boost.',
++    notes: 'A concentrated dark roast with a rich aroma and a lingering, full-bodied finish.',
++  },
++  'cold-brew': {
++    name: 'Cold Brew',
++    description: 'Steeped for 18 hours for maximum smoothness.',
++    notes: 'Slow-steeped coffee served cold for a mellow, refreshing sip.',
++  },
++};
++
++/** @type {number | undefined} */
++let closeTimer;
++/** @type {HTMLButtonElement | null} */
++let detailsOpener = null;
++
++const finishClose = () => {
++  window.clearTimeout(closeTimer);
++  closeTimer = undefined;
++  dialog.close();
++};
++const closeDetails = () => {
++  if (!dialog.open || dialog.classList.contains('is-closing')) return;
++  // Keep the dialog modal and focus trapped throughout its exit transition.
++  dialog.classList.add('is-closing');
++  // Also finish when a transition is unavailable or cancelled by a preference change.
++  closeTimer = window.setTimeout(finishClose, 280);
++};
++
++document.querySelectorAll('button[data-drink]').forEach((button) => {
++  if (!(button instanceof HTMLButtonElement)) return;
++  button.addEventListener('click', () => {
++    const drink = drinks[button.dataset.drink ?? ''];
++    if (!drink || dialog.open) return;
++    detailsOpener = button;
++    title.textContent = drink.name;
++    description.textContent = drink.description;
++    notes.textContent = drink.notes;
++    dialog.classList.remove('is-closing');
++    dialog.showModal();
++  });
++});
++closeButton.addEventListener('click', closeDetails);
++dialog.addEventListener('cancel', (event) => {
++  event.preventDefault();
++  closeDetails();
++});
++dialog.addEventListener('transitionend', (event) => {
++  if (event.target === dialog && event.pseudoElement === ''
++    && event.propertyName === 'opacity' && dialog.classList.contains('is-closing')) {
++    finishClose();
++  }
++});
++dialog.addEventListener('close', () => {
++  window.clearTimeout(closeTimer);
++  dialog.classList.remove('is-closing');
++  detailsOpener?.focus();
++  detailsOpener = null;
++});
++// Dismiss only clicks that both begin and end outside the dialog's bounds.
++/** @param {MouseEvent} event */
++const isOutside = (event) => {
++  const bounds = dialog.getBoundingClientRect();
++  return event.clientX < bounds.left || event.clientX > bounds.right
++    || event.clientY < bounds.top || event.clientY > bounds.bottom;
++};
++let pointerStartedOutside = false;
++dialog.addEventListener('pointerdown', (event) => {
++  pointerStartedOutside = event.target === dialog && isOutside(event);
++});
++dialog.addEventListener('click', (event) => {
++  if (pointerStartedOutside && event.target === dialog && isOutside(event)) closeDetails();
++  pointerStartedOutside = false;
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..d012821
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "types": [],
++    "target": "ES2022",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"]
++  },
++  "include": ["script.js"]
++}

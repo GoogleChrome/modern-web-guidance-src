@@ -78,20 +78,20 @@ describe('replaceMacros (Functional with real data)', () => {
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
         result,
-        "HTML in canvas is not natively supported by any major browser yet."
+        "HTML-in-canvas is not natively supported by any major browser yet."
       );
     });
 
-    it('preserves macro syntax for static-site target', () => {
+    it('formats BaselineStatus macro for devsite target', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
-      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-      assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}');
+      const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+      assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}");
     });
 
-    it('preserves macro syntax with BCD key for static-site target', () => {
+    it('falls back to text status with BCD key for devsite target', () => {
       const content = '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
-      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-      assert.strictEqual(result, '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}');
+      const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+      assert.ok(result.includes('css.properties.grid-template-columns') && result.includes('Widely available'));
     });
 
     it('throws error for non-existent feature', () => {
@@ -191,7 +191,7 @@ describe('replaceMacros (Functional with real data)', () => {
 
     it('strips comments for all build targets', () => {
       const content = 'Visible {# secret #} text';
-      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'static-site' }), 'Visible text');
+      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'devsite' }), 'Visible text');
       assert.strictEqual(replaceMacros(content, 'test.md', { target: 'skills-cli' }), 'Visible text');
     });
 
@@ -344,29 +344,29 @@ describe('replaceMacros (Functional with real data)', () => {
     });
 
     describe('build targets', () => {
-      describe('static-site', () => {
+      describe('devsite', () => {
         it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+          const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+          assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}\n\n{{ macros.BaselineStatus('popover') }}");
         });
 
         it('normalizes consecutive BASELINE_STATUS with 1 blank line', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+          const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+          assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}\n\n{{ macros.BaselineStatus('popover') }}");
         });
 
         it('normalizes consecutive BASELINE_STATUS with multiple blank lines', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+          const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+          assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}\n\n{{ macros.BaselineStatus('popover') }}");
         });
 
         it('normalizes consecutive GUIDE_REF calls', () => {
           const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
-          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
-          assert.strictEqual(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)\n\n[Forms](../forms/forms.md)');
+          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'devsite' });
+          assert.strictEqual(result, '[Break Up Long Tasks](/docs/modern-web-guidance/guides/performance/break-up-long-tasks)\n\n[Forms](/docs/modern-web-guidance/guides/forms/forms)');
         });
       });
 
@@ -630,6 +630,48 @@ describe('INCLUDE', () => {
       );
     });
 
+    it('throws MacroError when features/<id>.md does not exist', () => {
+      assert.throws(
+        () => replaceMacros('{{ FEATURE_FALLBACKS("subgrid") }}', 'test.md'),
+        (err: unknown) =>
+          err instanceof MacroError &&
+          /File not found: "features\/subgrid\.md"/.test(err.message) &&
+          /BASELINE_STATUS\("subgrid"\)/.test(err.message)
+      );
+    });
+
+    it('throws MacroError when features/<id>.md has no ## Fallbacks section', () => {
+      assert.throws(
+        () => replaceMacros('{{ FEATURE_FALLBACKS("tmp-cross-origin-storage") }}', 'test.md'),
+        (err: unknown) =>
+          err instanceof MacroError &&
+          /Section "#fallbacks" not found in "features\/tmp-cross-origin-storage\.md"/.test(err.message) &&
+          /BASELINE_STATUS\("tmp-cross-origin-storage"\)/.test(err.message)
+      );
+    });
+
+    it('throws MacroError when ## Fallbacks section is empty', () => {
+      const tempFeaturePath = path.join(rootDir, 'features', 'grid.md');
+      fs.writeFileSync(tempFeaturePath, '## Fallbacks\n\n{# only a comment #}\n', 'utf8');
+      try {
+        assert.throws(
+          () => replaceMacros('{{ FEATURE_FALLBACKS("grid") }}', 'test.md'),
+          (err: unknown) =>
+            err instanceof MacroError &&
+            /Empty "#fallbacks" section in "features\/grid\.md"/.test(err.message) &&
+            /BASELINE_STATUS\("grid"\)/.test(err.message)
+        );
+      } finally {
+        fs.unlinkSync(tempFeaturePath);
+      }
+    });
+
+    it('emits heading, baseline status, and fallback content when features/<id>.md#fallbacks exists', () => {
+      const result = replaceMacros('{{ FEATURE_FALLBACKS("popover") }}', 'test.md');
+      assert.match(result, /^### Fallbacks & browser support for Popover\n\n/);
+      assert.match(result, /@oddbird\/popover-polyfill/);
+    });
+
     it('emits fallbacks without a status line for pending tmp-* features', () => {
       const result = replaceMacros('{{ FEATURE_FALLBACKS("tmp-customizable-select-listbox") }}', 'test.md');
       assert.match(result, /^### Fallbacks & browser support for customizable-select-listbox\n\n[^\n]/);
@@ -671,16 +713,16 @@ describe('INCLUDE', () => {
       assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
     });
 
-    it('replaces macro with relative markdown link for static-site target', () => {
+    it('replaces macro with DevSite link for devsite target', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
-      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
-      assert.equal(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)');
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'devsite' });
+      assert.equal(result, '[Break Up Long Tasks](/docs/modern-web-guidance/guides/performance/break-up-long-tasks)');
     });
 
-    it('throws for unpublished guides on the static-site target', () => {
+    it('throws for unpublished guides on the devsite target', () => {
       const content = '{{ GUIDE_REF("slider-tooltip") }}';
       assert.throws(
-        () => replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' }),
+        () => replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'devsite' }),
         /links to an unpublished guide/,
       );
     });
