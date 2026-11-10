@@ -258,6 +258,16 @@ export function overrideFor(allowlist: PublicAllowlist, suiteId: string): { excl
 }
 
 /**
+ * True when a suite is an explicit non-scheduled (baseline/curated) run admitted by the allowlist.
+ */
+export function isCuratedSuite(suiteId: string, allowlist?: PublicAllowlist): boolean {
+  if (allowlist && !allowlist.include.includes(suiteId)) {
+    return false;
+  }
+  return !/^(nightly|weekly)-/i.test(suiteId);
+}
+
+/**
  * Converts a simple glob to an anchored regular expression. Only `*` (any run
  * of characters) and `?` (one character) are special; everything else is
  * literal. Kept deliberately small so the allowlist stays easy to review.

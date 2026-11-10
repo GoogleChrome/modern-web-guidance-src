@@ -7,7 +7,7 @@ import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
-import { newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge, withinSuiteCaps } from './allowlist.ts';
+import { isCuratedSuite, newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge, withinSuiteCaps } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 import { EXCLUDED_PATH_RE, MAX_PATCH_BYTES, patchFromFiles, preparePatch } from './patch.ts';
 import type { PreparedPatch } from './patch.ts';
@@ -365,11 +365,13 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
     };
     const currentTokens = (): string[] => [...suiteTokens];
 
+    const curated = isCuratedSuite(suiteId, options.allowlist);
     const override = overrideFor(options.allowlist, suiteId);
     const evals = rebuildEvals(raw, {
       releasedModels: options.allowlist.releasedModels,
       excludeGuides: override?.excludeGuides,
       forbiddenTokens: currentTokens(),
+      curated,
     });
 
     const writer = new SuiteWriter(stagingDir, currentTokens);
@@ -389,6 +391,9 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
     fs.mkdirSync(path.dirname(suiteDir), { recursive: true });
     fs.renameSync(stagingDir, suiteDir);
     const summary = extractSuiteSummary(suiteId, evals) ?? undefined;
+    if (summary && curated) {
+      summary.curated = true;
+    }
     return { suiteId, status: 'built', ...writer.totals(), summary };
   } catch (err) {
     if (err instanceof NotPublishableError || err instanceof LeakError || err instanceof OverrideError) {

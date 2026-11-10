@@ -88,6 +88,11 @@ const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 /** @param {string} testId */
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
+/** @param {LandingSuiteSummary} [testInfo] */
+function isScheduledOrCurated(testInfo) {
+    if (!testInfo) return false;
+    return Boolean(testInfo.curated) || isScheduledSuite(testInfo.testId);
+}
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         setupTestFilters();
@@ -790,7 +795,8 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
         if (textQuery) {
             const { label, ldap } = formatSuiteLabel(t);
             const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
-            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap}`.toLowerCase();
+            const curatedKeywords = t.curated ? '1.0 baseline curated' : '';
+            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap} ${curatedKeywords}`.toLowerCase();
             if (!haystack.includes(textQuery)) return false;
         }
         return true;
@@ -800,9 +806,9 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
 /** @returns {string[]} */
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
-    const anyScheduled = filtered.some(k => isScheduledSuite(allTestData[k].testId));
+    const anyScheduled = filtered.some(k => isScheduledOrCurated(allTestData[k]));
     const keys = (scheduledOnly && !currentSearchFilter && anyScheduled)
-        ? filtered.filter(k => isScheduledSuite(allTestData[k].testId))
+        ? filtered.filter(k => isScheduledOrCurated(allTestData[k]))
         : filtered;
     return sortSuiteKeys(keys);
 }
@@ -888,7 +894,7 @@ function renderSuites() {
     syncSortHeaders();
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
-    const anyScheduled = filteredKeys.some(k => isScheduledSuite(allTestData[k].testId));
+    const anyScheduled = filteredKeys.some(k => isScheduledOrCurated(allTestData[k]));
     const scheduledCheck = document.getElementById('scheduled-only-check');
     if (scheduledCheck instanceof HTMLInputElement) {
         scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
@@ -942,10 +948,11 @@ function renderSuites() {
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
         const isFaulty = earlyFailureRate === 100;
         const scheduled = isScheduledSuite(testId);
+        const curated = Boolean(testInfo.curated);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
         const dateDisplay = formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric' });
-        const suiteBarbellTitle = scheduled
+        const suiteBarbellTitle = (scheduled || curated)
             ? `${dateDisplay} · ${agentDisplay}`
             : `${label || testId}${testInfo.agent && testInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
         const modelPart = testInfo.model && testInfo.model !== 'unknown' ? testInfo.model : '';
@@ -980,8 +987,11 @@ function renderSuites() {
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatTokens(tok.guidedUncachedMedian)}</span></div>${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}</div>`
             : renderNotAvailable('Median uncached tokens');
 
-        const badges = [!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : '', isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''].join('');
-        const adhocLabelHtml = !scheduled && label ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
+        const badges = [
+            curated ? '<span class="run-kind-badge curated">1.0 baseline</span>' : (!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : ''),
+            isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''
+        ].join('');
+        const adhocLabelHtml = (!scheduled && !curated && label) ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
         const metaParts = [
             taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
@@ -990,7 +1000,7 @@ function renderSuites() {
         ].filter(Boolean).join(' · ');
 
         html += `
-            <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
+            <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : curated ? ' curated' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
                 <th scope="row" class="suite-cell">
                     <a href="${localLink}" class="suite-link">
                         <span class="suite-title-row"><time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}</span>
@@ -1278,9 +1288,9 @@ function getModelInsightKeys() {
     /** @type {string[]} */
     const result = [];
     for (const bucketKeys of byBucket.values()) {
-        const anyScheduled = bucketKeys.some(k => isScheduledSuite(allTestData[k].testId));
+        const anyScheduled = bucketKeys.some(k => isScheduledOrCurated(allTestData[k]));
         let scoped = (scheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
-            ? bucketKeys.filter(k => isScheduledSuite(allTestData[k].testId))
+            ? bucketKeys.filter(k => isScheduledOrCurated(allTestData[k]))
             : bucketKeys;
         if (!showAll && scoped.length > 0) {
             scoped = filterRecentDays(scoped, limit);

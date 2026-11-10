@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   DEFAULT_ALLOWLIST_PATH,
   globToRegExp,
+  isCuratedSuite,
   loadValidatedAllowlist,
   newestFirst,
   overrideFor,
@@ -68,6 +69,22 @@ describe('overrideFor', () => {
       excludeGuides: ['security'],
     });
     assert.equal(overrideFor(allowlist, 'other'), undefined);
+  });
+});
+
+describe('isCuratedSuite', () => {
+  test('returns true for exact non-scheduled suites in the allowlist', () => {
+    assert.equal(isCuratedSuite('one-off-2026-05-13_19-17-28', allowlist), true);
+    assert.equal(isCuratedSuite('opus-medium-1.0-rc-2026-11-08'), true);
+  });
+
+  test('returns false for scheduled nightlies and weeklies', () => {
+    assert.equal(isCuratedSuite('nightly-2026-10-20_20-43-48-codex_cli', allowlist), false);
+    assert.equal(isCuratedSuite('weekly-2026-10-20-codex_cli', allowlist), false);
+  });
+
+  test('returns false when allowlist is passed and suite is not in include', () => {
+    assert.equal(isCuratedSuite('unknown-suite', allowlist), false);
   });
 });
 
