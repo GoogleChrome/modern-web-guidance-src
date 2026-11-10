@@ -22,7 +22,7 @@ describe('modern-web CLI', () => {
 
   it('prints usage when no arguments provided', () => {
     const { stdout } = runCLI([]);
-    assert.ok(stdout.includes('Usage: modern-web <command> [args]'));
+    assert.ok(stdout.includes('Usage: modern-web-guidance <command> [args]'));
     assert.ok(stdout.includes('legacy-scan [path] [options]'));
   });
 

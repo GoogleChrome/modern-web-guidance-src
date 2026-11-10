@@ -58,7 +58,7 @@ function saveRetrievedGuides(content: string): string | null {
 
 function printUsage() {
   console.log(`
-Usage: modern-web <command> [args]
+Usage: modern-web-guidance <command> [args]
 
 Commands:
   search <query>            Search use cases by query
