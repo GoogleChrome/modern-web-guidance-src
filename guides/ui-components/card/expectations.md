@@ -9,5 +9,5 @@
 - When a content card has a primary destination and secondary actions, its heading contains the primary `<a>` link, and secondary actions remain separate native controls outside the link. Any footer "read more" or "learn more" link has a descriptive accessible name that includes its visible text and card context and is distinct from the heading link's accessible name. At most, one link in the card is a stretched link.
 - Choice cards use native radio buttons or checkboxes with associated labels; dropdown choices use a native `<select>` and `<option>` elements.
 - Hovering, focusing, or selecting a card does not change its layout box (no change to `border-width`, `padding`, `font-weight`, or size).
-- Focusing a control inside a card shows a visible focus indicator on that control; only a stretched primary link delegates its indicator to the card.
+- Focusing a control inside a card shows a visible focus indicator on that control; only a stretched primary link or a choice card's direct-child input delegates its focus indicator to the card.
 - The visual order of card regions matches their DOM reading order across container sizes.
