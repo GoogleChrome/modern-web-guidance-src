@@ -169,6 +169,7 @@ test.describe('navbar Target Grader', () => {
         const nestedLists = navs.flatMap((nav) =>
           Array.from(nav.querySelectorAll<HTMLElement>('ul ul, ul ol, ol ul, ol ol')),
         );
+        if (nestedLists.length === 0) return { upgraded: true, valid: false };
         for (const list of nestedLists) {
           const parentLi = list.parentElement;
           const btn = parentLi?.querySelector<HTMLButtonElement>(':scope > button');
@@ -465,50 +466,49 @@ test.describe('navbar Target Grader', () => {
       await expect.poll(async () => (await getSubmenuState()).upgraded).toBe(true);
       const result = await getSubmenuState();
       expect(result.allValid).toBe(true);
+      expect(result.submenuCount).toBeGreaterThan(0);
 
-      if (result.submenuCount > 0) {
-        const styleRules = getRules(targetFiles, CSSStyleRule);
-        const mobileAnchor = result.mobileAnchorProp;
-        const hasSubmenuAnchor = styleRules.some((r) => {
-          if (getPropertyValues(r, 'position-area').length > 0 || getPropertyValues(r, 'inset-area').length > 0) {
-            return true;
-          }
-          return Array.from({ length: r.style.length }, (_, i) => r.style.item(i)).some((prop) =>
-            getPropertyValues(r, prop).some(
-              (v) => v.includes('anchor(') && (!mobileAnchor || !v.includes(mobileAnchor)),
-            ),
-          );
-        });
-        expect(hasSubmenuAnchor).toBe(true);
-
-        // Verify clicking each submenu trigger opens its popover anchored near the trigger
-        const count = result.submenuCount;
-        for (let idx = 0; idx < count; idx++) {
-          await page.evaluate((i) => {
-            const btns = document.querySelectorAll<HTMLButtonElement>('nav ul button, nav ol button');
-            btns[i]?.click();
-          }, idx);
-
-          await expect.poll(() =>
-            page.evaluate((i) => {
-              const btns = document.querySelectorAll<HTMLButtonElement>('nav ul button, nav ol button');
-              const trigger = btns[i];
-              const id = trigger?.getAttribute('popovertarget');
-              const submenu = id ? document.getElementById(id) : null;
-              if (!trigger || !submenu || !submenu.matches(':popover-open')) return false;
-              const tRect = trigger.getBoundingClientRect();
-              const sRect = submenu.getBoundingClientRect();
-              const nearBlock = Math.abs(sRect.top - tRect.bottom) <= 32 || Math.abs(tRect.top - sRect.bottom) <= 32;
-              const overlapsInline = sRect.right >= tRect.left - 16 && sRect.left <= tRect.right + 16;
-              return nearBlock && overlapsInline;
-            }, idx),
-          ).toBe(true);
-
-          await page.evaluate((i) => {
-            const btns = document.querySelectorAll<HTMLButtonElement>('nav ul button, nav ol button');
-            btns[i]?.click();
-          }, idx);
+      const styleRules = getRules(targetFiles, CSSStyleRule);
+      const mobileAnchor = result.mobileAnchorProp;
+      const hasSubmenuAnchor = styleRules.some((r) => {
+        if (getPropertyValues(r, 'position-area').length > 0 || getPropertyValues(r, 'inset-area').length > 0) {
+          return true;
         }
+        return Array.from({ length: r.style.length }, (_, i) => r.style.item(i)).some((prop) =>
+          getPropertyValues(r, prop).some(
+            (v) => v.includes('anchor(') && (!mobileAnchor || !v.includes(mobileAnchor)),
+          ),
+        );
+      });
+      expect(hasSubmenuAnchor).toBe(true);
+
+      // Verify clicking each submenu trigger opens its popover anchored near the trigger
+      const count = result.submenuCount;
+      for (let idx = 0; idx < count; idx++) {
+        await page.evaluate((i) => {
+          const btns = document.querySelectorAll<HTMLButtonElement>('nav ul button, nav ol button');
+          btns[i]?.click();
+        }, idx);
+
+        await expect.poll(() =>
+          page.evaluate((i) => {
+            const btns = document.querySelectorAll<HTMLButtonElement>('nav ul button, nav ol button');
+            const trigger = btns[i];
+            const id = trigger?.getAttribute('popovertarget');
+            const submenu = id ? document.getElementById(id) : null;
+            if (!trigger || !submenu || !submenu.matches(':popover-open')) return false;
+            const tRect = trigger.getBoundingClientRect();
+            const sRect = submenu.getBoundingClientRect();
+            const nearBlock = Math.abs(sRect.top - tRect.bottom) <= 32 || Math.abs(tRect.top - sRect.bottom) <= 32;
+            const overlapsInline = sRect.right >= tRect.left - 16 && sRect.left <= tRect.right + 16;
+            return nearBlock && overlapsInline;
+          }, idx),
+        ).toBe(true);
+
+        await page.evaluate((i) => {
+          const btns = document.querySelectorAll<HTMLButtonElement>('nav ul button, nav ol button');
+          btns[i]?.click();
+        }, idx);
       }
     });
 
@@ -535,43 +535,42 @@ test.describe('navbar Target Grader', () => {
         return { upgraded, hasSubmenu };
       });
       expect(state.upgraded).toBe(true);
+      expect(state.hasSubmenu).toBe(true);
 
-      if (state.hasSubmenu) {
-        const readExpanded = () =>
-          page.evaluate(() =>
-            document.querySelector<HTMLButtonElement>('nav ul button, nav ol button')?.getAttribute('aria-expanded'),
-          );
-        const clickSubmenuTrigger = () =>
-          page.evaluate(() => {
-            document.querySelector<HTMLButtonElement>('nav ul button, nav ol button')?.click();
-          });
-
-        // Wide layout (native popover toggle)
-        await expect.poll(readExpanded).toBe('false');
-        await clickSubmenuTrigger();
-        await expect.poll(readExpanded).toBe('true');
-        await clickSubmenuTrigger();
-        await expect.poll(readExpanded).toBe('false');
-
-        // Narrow layout (inline disclosure click handler)
-        await page.setViewportSize({ width: 360, height: 640 });
-        await expect.poll(() =>
-          page.evaluate(() => {
-            const trigger = document.querySelector<HTMLButtonElement>(
-              'nav button[popovertarget]:not(ul *, ol *)',
-            );
-            return trigger ? window.getComputedStyle(trigger).display !== 'none' : false;
-          }),
-        ).toBe(true);
-        await page.evaluate(() => {
-          document.querySelector<HTMLButtonElement>('nav button[popovertarget]:not(ul *, ol *)')?.click();
+      const readExpanded = () =>
+        page.evaluate(() =>
+          document.querySelector<HTMLButtonElement>('nav ul button, nav ol button')?.getAttribute('aria-expanded'),
+        );
+      const clickSubmenuTrigger = () =>
+        page.evaluate(() => {
+          document.querySelector<HTMLButtonElement>('nav ul button, nav ol button')?.click();
         });
-        await expect.poll(readExpanded).toBe('false');
-        await clickSubmenuTrigger();
-        await expect.poll(readExpanded).toBe('true');
-        await clickSubmenuTrigger();
-        await expect.poll(readExpanded).toBe('false');
-      }
+
+      // Wide layout (native popover toggle)
+      await expect.poll(readExpanded).toBe('false');
+      await clickSubmenuTrigger();
+      await expect.poll(readExpanded).toBe('true');
+      await clickSubmenuTrigger();
+      await expect.poll(readExpanded).toBe('false');
+
+      // Narrow layout (inline disclosure click handler)
+      await page.setViewportSize({ width: 360, height: 640 });
+      await expect.poll(() =>
+        page.evaluate(() => {
+          const trigger = document.querySelector<HTMLButtonElement>(
+            'nav button[popovertarget]:not(ul *, ol *)',
+          );
+          return trigger ? window.getComputedStyle(trigger).display !== 'none' : false;
+        }),
+      ).toBe(true);
+      await page.evaluate(() => {
+        document.querySelector<HTMLButtonElement>('nav button[popovertarget]:not(ul *, ol *)')?.click();
+      });
+      await expect.poll(readExpanded).toBe('false');
+      await clickSubmenuTrigger();
+      await expect.poll(readExpanded).toBe('true');
+      await clickSubmenuTrigger();
+      await expect.poll(readExpanded).toBe('false');
     });
 
     test('When the viewport width changes while the collapsed navigation menu is open and the layout stays collapsed, the menu stays open', async ({
