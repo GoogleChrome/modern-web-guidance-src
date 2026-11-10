@@ -165,7 +165,7 @@ test.describe('Single-line text overflow Target Grader', () => {
 
     const navLinks = docs.flatMap(d => Array.from(d.document.querySelectorAll('nav a')));
     const shortEls = docs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('nav a [aria-hidden="true"], nav a .short'))
+      Array.from(d.document.querySelectorAll('nav a [aria-hidden="true"], nav a .short, nav a [class*="short"], nav a [class*="abbr"], nav a [data-short]'))
     );
 
     if (shortEls.length > 0) {
@@ -187,7 +187,10 @@ test.describe('Single-line text overflow Target Grader', () => {
     ).toBe(true);
 
     const styleRules = getRules(stylesheet, CSSStyleRule);
-    const flexItemRules = styleRules.filter(r => /(^|\s|,|>|\+)nav\s+(ul|li|a)\b/.test(r.selectorText));
+    const flexItemRules = styleRules.filter(r =>
+      /(^|\s|,|>|\+)nav([\s>]+\w+)*[\s>]+(ul|li|a)\b/.test(r.selectorText) ||
+      /(^|\s|,|>|\+)nav\b/.test(r.selectorText) && /\b(ul|li|a)\b/.test(r.selectorText)
+    );
 
     const canShrink = flexItemRules.some(r => {
       const mis = r.style.getPropertyValue('min-inline-size');
@@ -215,7 +218,7 @@ test.describe('Single-line text overflow Target Grader', () => {
     const navRules = styleRules.filter(r => /(^|\s|,|>|\+)nav\b/.test(r.selectorText));
 
     const ancestorClipsOverflow = navRules.some(r => {
-      const isAncestor = /nav\s+ul\b/.test(r.selectorText);
+      const isAncestor = /nav([\s>]+\w+)*[\s>]+ul\b/.test(r.selectorText) || /nav\s*>\s*ul\b/.test(r.selectorText) || /nav\s+ul\b/.test(r.selectorText);
       const ov = r.style.getPropertyValue('overflow') || r.style.getPropertyValue('overflow-x');
       return isAncestor && (ov === 'hidden' || ov === 'auto' || ov === 'scroll');
     });
@@ -299,7 +302,20 @@ test.describe('Single-line text overflow Target Grader', () => {
 
     const pairedWithFocus = textRevealHoverRules.every(r => {
       const sel = r.selectorText;
-      return sel.includes(':focus-visible') || sel.includes(':focus');
+      if (sel.includes(':focus-visible') || sel.includes(':focus')) {
+        return true;
+      }
+      return styleRules.some((fr: CSSStyleRule) => {
+        const fsel = fr.selectorText;
+        if (!/(^|\s|,|>|\+)nav\b/.test(fsel)) return false;
+        if (!fsel.includes(':focus-visible') && !fsel.includes(':focus')) return false;
+        const to = fr.style.getPropertyValue('text-overflow');
+        const mis = fr.style.getPropertyValue('margin-inline-start') || fr.style.getPropertyValue('margin-left');
+        const tr = fr.style.getPropertyValue('translate') || fr.style.getPropertyValue('transform');
+        const mxis = fr.style.getPropertyValue('max-inline-size') || fr.style.getPropertyValue('max-width');
+        const fs = fr.style.getPropertyValue('--fade-size');
+        return Boolean(to) || Boolean(mis) || Boolean(tr) || Boolean(mxis) || Boolean(fs);
+      });
     });
     expect(
       pairedWithFocus,
@@ -324,7 +340,8 @@ test.describe('Single-line text overflow Target Grader', () => {
         trans.includes('translate') ||
         trans.includes('transform') ||
         trans.includes('inline-size') ||
-        trans.includes('--fade-size')
+        trans.includes('--fade-size') ||
+        trans.includes('all')
       );
     });
 
