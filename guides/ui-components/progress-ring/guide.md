@@ -39,9 +39,9 @@ Use a wrapper to hold both the visual ring and the optional center content. The 
 </div>
 ```
 
-If the center content only repeats the progress value (for example, the percentage), hide it from assistive technologies with `aria-hidden="true"`. The `<progress>` element already exposes its value, so screen readers would otherwise announce it twice.
+Hide the center content from assistive technologies with `aria-hidden="true"`. The `<progress>` element already exposes its value, so screen readers would otherwise announce it twice.
 
-If the center content shows the value in another form, such as "3 of 5 files", set the same text in `aria-valuetext` on the `<progress>` element whenever you update it, and hide the center content with `aria-hidden="true"`. Otherwise screen readers only get the number.
+If the center content shows the value in another form, such as "3 of 5 files" or a percentage, set the same text in `aria-valuetext` on the `<progress>` element whenever you update it, otherwise screen readers only get the number.
 
 ### 2. Styles
 
