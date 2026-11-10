@@ -275,7 +275,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-takeaways .takeaway')).toHaveCount(2);
     await expect(hero.locator('.takeaway-figure').first()).toContainText('—');
-    await expect(hero.locator('#hero-status')).toContainText(/no nightly evaluation runs/i);
+    await expect(hero.locator('#hero-status')).toContainText(/no evaluation runs/i);
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('.suite-table-row')).toHaveCount(1);
   });
@@ -291,7 +291,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-qualifier-short')).toContainText('3 agents');
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest nightly run per agent');
+    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest run per model');
     const details = page.locator('#hero-method');
     await details.locator('summary').focus();
     await page.keyboard.press('Enter');

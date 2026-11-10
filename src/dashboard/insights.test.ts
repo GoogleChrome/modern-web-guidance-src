@@ -58,19 +58,26 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
     assert.strictEqual(getSuiteTimestamp({ testId: 'x', timestamp: '2026-01-01T00:00:00.000Z' }), '2026-01-01T00:00:00.000Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'no-date' }), '');
 });
-test('selectRecentSuites defaults to the latest 1 nightly suite per family regardless of model', () => {
+test('selectRecentSuites selects the latest canonical run per model for each family', () => {
     const defaultSelected = selectRecentSuites(manifest);
-    assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId]);
+    assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini1.testId]);
     assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[0]) ?? []).map(s => s.testId), [claude1.testId]);
     assert.deepStrictEqual(defaultSelected.get(AGENT_FAMILIES[1]), []);
     const selected = selectRecentSuites(manifest, { perAgentRecentN: 3 });
-    assert.deepStrictEqual((selected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini2.testId, gemini1.testId]);
+    assert.deepStrictEqual((selected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini2.testId, gemini1.testId, gemini0.testId]);
     assert.deepStrictEqual((selected.get(AGENT_FAMILIES[0]) ?? []).map(s => s.testId), [claude1.testId]);
     assert.deepStrictEqual(selected.get(AGENT_FAMILIES[1]), []);
     const g38 = suite('nightly-2026-10-19_07-00-02-antigravity_cli', 'antigravity_cli', 'gemini-3.8-flash', '2026-10-19T07:00:02Z', [{ name: 'accordion', passed: [1, 2] }]);
     const g4 = suite('nightly-2026-10-20_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-20T18:18:02Z', [{ name: 'accordion', passed: [3, 4] }]);
-    assert.deepStrictEqual((selectRecentSuites([g38, g4]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId]);
+    // Both models selected because they are distinct models in the same family:
+    assert.deepStrictEqual((selectRecentSuites([g38, g4]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId, g38.testId]);
     assert.deepStrictEqual((selectRecentSuites([g38, g4], { before: '2026-10-20' }).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g38.testId]);
+    // Newer run for gemini-4-argon supersedes older run for the same model:
+    const g4Newer = suite('nightly-2026-10-22_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-22T18:18:02Z', [{ name: 'accordion', passed: [4, 4] }]);
+    assert.deepStrictEqual((selectRecentSuites([g38, g4, g4Newer]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4Newer.testId, g38.testId]);
+    // Curated baseline suite is canonical and recognized alongside nightlies:
+    const gCurated = { ...g38, testId: 'flash-medium-1.0-2026-11-08b', curated: true, timestamp: '2026-11-08T00:00:00Z' };
+    assert.deepStrictEqual((selectRecentSuites([gCurated, g4Newer]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gCurated.testId, g4Newer.testId]);
 });
 test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', () => {
     const insights = computeHeadlineInsights(manifest, { perAgentRecentN: 3 });
@@ -79,10 +86,10 @@ test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', 
     assert.deepStrictEqual(insights.missingStats, []);
     const gemini = insights.families.find(f => f.id === 'antigravity_cli');
     assert.ok(gemini);
-    assert.strictEqual(gemini.suiteCount, 3);
+    assert.strictEqual(gemini.suiteCount, 4);
     assert.strictEqual(insights.maxSuitesPerFamily, 4);
-    assert.strictEqual(gemini.sample.attemptedTasks, 6);
-    assert.strictEqual(gemini.sample.pairedTasks, 6);
+    assert.strictEqual(gemini.sample.attemptedTasks, 7);
+    assert.strictEqual(gemini.sample.pairedTasks, 7);
     assert.strictEqual(gemini.sample.excludedTasks, 0);
     assert.strictEqual(gemini.sample.minMaxRuns, 1);
     assert.strictEqual(gemini.sample.maxMaxRuns, 1);
@@ -90,20 +97,20 @@ test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', 
     assert.strictEqual(gemini.sample.earlyFailureRate, 0);
     assert.strictEqual(gemini.sample.pageLoadFailed, 0);
     assert.strictEqual(gemini.overall.unguidedPassed, 10);
-    assert.strictEqual(gemini.overall.unguidedTotal, 24);
+    assert.strictEqual(gemini.overall.unguidedTotal, 28);
     assert.strictEqual(gemini.overall.guidedPassed, 23);
-    assert.strictEqual(gemini.overall.unguidedRate, 41.7);
-    assert.strictEqual(gemini.overall.guidedRate, 95.8);
-    assert.strictEqual(gemini.overall.upliftPp, 54.2);
+    assert.strictEqual(gemini.overall.unguidedRate, 35.7);
+    assert.strictEqual(gemini.overall.guidedRate, 82.1);
+    assert.strictEqual(gemini.overall.upliftPp, 46.4);
     assert.ok(gemini.a11y);
-    assert.strictEqual(gemini.a11y.unguidedTotal, 6);
+    assert.strictEqual(gemini.a11y.unguidedTotal, 7);
     assert.strictEqual(gemini.a11y.unguidedPassed, 5);
     assert.strictEqual(gemini.a11y.guidedPassed, 6);
-    assert.strictEqual(gemini.a11y.upliftPp, 16.7);
+    assert.strictEqual(gemini.a11y.upliftPp, 14.3);
     assert.ok(insights.pooled);
-    assert.strictEqual(insights.pooled.suiteCount, 4);
+    assert.strictEqual(insights.pooled.suiteCount, 5);
     assert.strictEqual(insights.pooled.overall.unguidedPassed, 14);
-    assert.strictEqual(insights.pooled.overall.unguidedTotal, 32);
+    assert.strictEqual(insights.pooled.overall.unguidedTotal, 36);
 });
 test('hydrateMissingStats recomputes summaries for selected suites lacking a11yStats', async () => {
     const bare = {
