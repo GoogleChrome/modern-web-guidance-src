@@ -64,14 +64,21 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
 </button>
 
 <dialog id="confirm-dialog">
-  <p>Are you sure you want to proceed?</p>
+  <form method="dialog">
+    <p>Are you sure you want to proceed?</p>
 
-  <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
-  <button commandfor="confirm-dialog" command="close">
-    Cancel
-  </button>
+    <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
+    <!-- MANDATORY: Inside a <form>, set type="button" on command buttons. Without an explicit type, a commandfor button in a form does nothing. -->
+    <button type="button" commandfor="confirm-dialog" command="close">
+      Cancel
+    </button>
+  </form>
 </dialog>
 ```
+
+MANDATORY: Any button with `commandfor` and `command` that is inside a `<form>` (including the common `<form method="dialog">` wrapper) MUST set an explicit `type`: `type="button"` to only run the command, or `type="submit"` when the form should also submit. The HTML Standard makes a command button with no `type` a no-op when it has a form owner, so that older browsers which don't support commands don't submit the form by accident: it neither submits the form nor runs the command.
+
+{# The HTML Standard's `button` activation behavior returns early for a button in the Auto type state with `command`/`commandfor` and a form owner. Lifting this is tracked in https://github.com/whatwg/html/issues/10832. See https://github.com/GoogleChrome/modern-web-guidance-src/issues/3091. #}
 
 ## Fallback strategies
 
