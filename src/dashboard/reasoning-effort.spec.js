@@ -82,6 +82,30 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await page.keyboard.press('Escape');
     await expect(effortTooltip).toBeHidden();
 
+    // Tabbing away must not leave the fading-out tooltip unanchored at the viewport's top-left.
+    await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur());
+    await provChip.focus();
+    await expect(effortTooltip).toBeVisible();
+    await page.evaluate(() => {
+      const tip = /** @type {HTMLElement} */ (document.getElementById('effort-tooltip'));
+      /** @type {Array<{ x: number, y: number }>} */
+      const frames = [];
+      /** @type {any} */ (window).__effortFrames = frames;
+      const sample = () => {
+        if (getComputedStyle(tip).display !== 'none') {
+          const r = tip.getBoundingClientRect();
+          frames.push({ x: r.x, y: r.y });
+        }
+        if (frames.length < 120) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    await page.keyboard.press('Tab');
+    await expect(effortTooltip).toBeHidden();
+    await page.waitForTimeout(300);
+    const strayFrames = await page.evaluate(() => /** @type {Array<{ x: number, y: number }>} */ (/** @type {any} */ (window).__effortFrames).filter(f => f.x < 8 && f.y < 8));
+    expect(strayFrames).toEqual([]);
+
     // Show all runs (including ad-hoc) to inspect all 4 sources + legacy omitted field
     await page.locator('#scheduled-only-check').uncheck();
     await page.mouse.move(2, 2);

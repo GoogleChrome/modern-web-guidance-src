@@ -446,8 +446,20 @@ export function setupEffortTooltip(tooltipId = 'effort-tooltip') {
             }
         } else {
             shownManually = false;
-            if (!isPopoverOpen(tooltip) && activeAnchor && activeAnchor === closingAnchor) {
-                setAnchor(null);
+            // The .hint-popover exit transition (opacity + display/overlay allow-discrete) keeps the
+            // tooltip painted after it closes. Dropping the anchor now would snap it to the viewport's
+            // top-left corner while it fades out, so wait for the transition to finish first.
+            const anchorAtClose = closingAnchor;
+            const release = () => {
+                if (!isPopoverOpen(tooltip) && activeAnchor && activeAnchor === anchorAtClose) {
+                    setAnchor(null);
+                }
+            };
+            const running = typeof tooltip.getAnimations === 'function' ? tooltip.getAnimations() : [];
+            if (running.length) {
+                Promise.allSettled(running.map(a => a.finished)).then(release);
+            } else {
+                release();
             }
         }
     });
