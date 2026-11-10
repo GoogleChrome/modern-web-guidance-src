@@ -7,7 +7,8 @@
     "opus-medium-1.0-rc-2026-11-08",
     "flash-medium-1.0-2026-11-08b",
     "sonnet-medium-1.0-2026-11-08",
-    "codex-sol-medium-1.0-rc-2026-11-08"
+    "codex-sol-medium-1.0-rc-2026-11-08",
+    "argon-medium-1.0-2026-11-09"
   ],
   "exclude": [],
   "overrides": [
