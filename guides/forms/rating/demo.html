@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Star rating (range and meter)</title>
+  <style>
+    @property --rating {
+      syntax: "<number>";
+      inherits: true;
+      initial-value: 0;
+    }
+
+    :root {
+      color-scheme: light dark;
+      --surface: light-dark(#f4f4f8, #121216);
+      --card: light-dark(#fff, #1d1d24);
+      --border: light-dark(#e2e2ea, #33333d);
+      --muted: light-dark(#5b5b69, #a4a4b3);
+      --accent: light-dark(#4f46e5, #a5b4fc);
+      --star-filled: light-dark(#d97706, #fbbf24);
+      --star-empty: light-dark(#c9c9d4, #4a4a58);
+      --star-size: 3rem; /* each half star is 1.5rem (24px), the minimum touch target */
+      --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+    }
+
+    @layer reset {
+      * {
+        box-sizing: border-box;
+      }
+    }
+
+    body {
+      margin: 0;
+      min-block-size: 100dvh;
+      padding: 2rem 1rem;
+      background: var(--surface);
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      max-inline-size: 36rem;
+      margin-inline: auto;
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    .lede {
+      margin: -0.75rem 0 0;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .card {
+      display: grid;
+      gap: 0.75rem;
+      margin: 0;
+      padding: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.4)),
+        0 8px 24px -12px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.5));
+
+      & h2 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      & p {
+        margin: 0;
+      }
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.875rem;
+      text-wrap: pretty;
+    }
+
+    /* Stars are a row of star-shaped masks over a hard-stop gradient driven by --rating */
+    .stars,
+    .rating::before {
+      inline-size: calc(var(--star-size) * 5);
+      block-size: var(--star-size);
+      background: linear-gradient(to right in oklch,
+          var(--star-filled) calc(var(--rating) / 5 * 100%),
+          var(--star-empty) 0);
+      mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
+    }
+
+    /* A transparent native range (step 0.5) overlays the stars and provides all the behavior */
+    .rating {
+      position: relative;
+      display: inline-block;
+      border-radius: 0.375rem;
+      /* Registered --rating is animatable, so the fill eases to the new value */
+      transition: --rating 0.25s ease-out, scale 0.15s ease;
+
+      &:active {
+        scale: 1.02;
+      }
+
+      /* Painted on a pseudo-element so the focus ring is not clipped by the mask */
+      &::before {
+        content: "";
+        display: block;
+        pointer-events: none;
+      }
+
+      &:has(:focus-visible) {
+        outline: 3px solid var(--accent);
+        outline-offset: 6px;
+      }
+
+      & input[type="range"] {
+        position: absolute;
+        inset: 0;
+        inline-size: 100%;
+        block-size: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+        appearance: none;
+
+        &::-webkit-slider-thumb {
+          appearance: none;
+          inline-size: 0;
+          block-size: 0;
+        }
+
+        &::-moz-range-thumb {
+          inline-size: 0;
+          block-size: 0;
+          border: 0;
+        }
+      }
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1rem;
+    }
+
+    output {
+      padding: 0.125rem 0.625rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Read-only: <meter> painted as stars */
+    meter.stars {
+      appearance: none;
+      display: block;
+      border: 0;
+      --rating: attr(value type(<number>), 0);
+
+      &::-webkit-meter-bar,
+      &::-webkit-meter-optimum-value,
+      &::-webkit-meter-suboptimum-value,
+      &::-webkit-meter-even-less-good-value {
+        appearance: none;
+        border: 0;
+        background: none;
+      }
+
+      &::-webkit-meter-bar {
+        block-size: 100%;
+        inline-size: 100%;
+      }
+    }
+
+    /* Opt-in count-up: the keyframe has no `to`, so it animates to the meter's own value */
+    @keyframes fill-stars {
+      from {
+        --rating: 0;
+      }
+    }
+
+    meter.stars.animate {
+      animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    button {
+      min-block-size: 24px;
+      min-inline-size: 24px;
+      justify-self: start;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        border-color: var(--accent);
+      }
+
+      &:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+    }
+
+    @media (forced-colors: active) {
+      .rating::before,
+      .stars {
+        background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / 5 * 100%), GrayText 0);
+        forced-color-adjust: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .rating {
+        transition: none;
+      }
+
+      meter.stars.animate {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Star rating</h1>
+    <p class="lede">Native range and meter elements, drawn as stars with CSS masks.</p>
+
+    <section class="card">
+      <h2><label for="rate">Rate this product</label></h2>
+      <div class="row">
+        <span class="rating" id="rating-wrap">
+          <input type="range" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated" />
+        </span>
+        <output for="rate" id="rate-out">Not rated</output>
+      </div>
+      <p class="hint">Click, drag, or use the arrow keys. Half stars are supported.</p>
+    </section>
+
+    <section class="card">
+      <h2 id="avg-label">Average rating: 3.5 out of 5 (128 reviews)</h2>
+      <meter class="stars" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label">3.5 out of 5</meter>
+      <button type="button" id="replay">Replay animation</button>
+      <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>. Animates when scrolled into view.</p>
+    </section>
+  </main>
+
+  <script>
+    const range = document.getElementById('rate');
+    const wrap = document.getElementById('rating-wrap');
+    const out = document.getElementById('rate-out');
+
+    function update() {
+      const v = Number(range.value);
+      const text = v === 0 ? 'Not rated' : `${v} out of 5 stars`;
+      wrap.style.setProperty('--rating', v);
+      range.setAttribute('aria-valuetext', text);
+      out.textContent = text;
+    }
+    range.addEventListener('input', update);
+    update();
+
+    // Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
+    let valueBefore = 0;
+    range.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
+    range.addEventListener('click', (event) => {
+      if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
+      const { left, width } = range.getBoundingClientRect();
+      const half = Math.ceil(((event.clientX - left) / width) * 10) / 2; // snap up to the half under the pointer
+      range.value = half === valueBefore ? half - 0.5 : half;
+      update();
+    });
+
+    // Restart the count-up: removing and re-adding the class restarts the CSS animation
+    function replay(el) {
+      el.classList.remove('animate');
+      void el.offsetWidth;
+      el.classList.add('animate');
+    }
+
+    // Trigger: scroll into view. For page load, add class="animate" in the markup instead.
+    const meter = document.getElementById('avg');
+    new IntersectionObserver((entries, observer) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        replay(meter);
+        observer.disconnect();
+      }
+    }, { threshold: 0.6 }).observe(meter);
+
+    document.getElementById('replay').addEventListener('click', () => replay(meter));
+
+    // Mirror the meter's value into --rating where typed attr() is unsupported
+    if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
+      for (const el of document.querySelectorAll('meter.stars')) {
+        el.style.setProperty('--rating', el.getAttribute('value'));
+      }
+    }
+  </script>
+</body>
+
+</html>

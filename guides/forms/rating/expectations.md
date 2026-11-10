@@ -1,0 +1,17 @@
+- The interactive rating is an `<input type="range">` with `min="0"`, `max="5"`, and `step="0.5"`.
+- The range input has an associated `<label>` that gives it an accessible name.
+- Setting the range input to a half-step value such as 2.5 is accepted without being rounded to a whole number.
+- The range input's `aria-valuetext` is a human-readable string that states the scale (such as "2.5 out of 5 stars") and updates when the value changes.
+- The range input is visually transparent and stretched over the stars, with its thumb collapsed to zero size, and remains focusable and operable with the keyboard arrow keys.
+- A visible focus indicator appears on the star rating's wrapper when the range input is focused via the keyboard.
+- `--rating` is registered with `@property` using the `<number>` syntax.
+- The stars are drawn with a CSS `mask` that repeats an SVG data URI icon stored in a custom property, over a `linear-gradient` background whose filled portion is calculated from `--rating`.
+- The interactive stars are painted on a pseudo-element of the range input's wrapper rather than on the input itself, so the focus indicator is not clipped by the mask.
+- The filled portion of the interactive stars follows the range input's value, including half stars, by updating `--rating` when the input changes.
+- The filled and empty star colors each have at least 3:1 contrast against the background in light and dark color schemes.
+- The read-only rating is a `<meter>` with `min="0"`, `max="5"`, and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
+- The read-only `<meter>` has its native appearance removed and renders the same mask-and-gradient stars, with its filled portion matching its `value`.
+- The read-only `<meter>` contains text fallback content stating its value.
+- The read-only `<meter>`'s `--rating` is derived from its `value` attribute, either with `attr(value type(<number>), 0)` or by copying the attribute with script.
+- Under `forced-colors: active`, the stars are redrawn with the system colors `Highlight` and `GrayText` and set `forced-color-adjust: none`.
+- When typed `attr()` is unsupported, the `<meter>`'s `--rating` is set from its `value` attribute by script.
