@@ -1,6 +1,8 @@
-- The application loads a WebAssembly module
-- The browser console contains no unhandled errors or exceptions during module initialization and execution.
-- The WebAssembly module is built with optimizations enabled and debug info stripped
-- A rendered image is present on the page
-- A button exists on the page to render a new image
-- The application remains responsive to user interaction (e.g., hover states or clicks) while the image is being generated
+- The application loads an ES6 WebAssembly module built with -sEXPORT_ES6 and -sSTRICT
+- The Emscripten build targets only browser or worker environments (-sENVIRONMENT=web or worker)
+- The Emscripten build uses release optimizations (-O2, -O3, -Os, or -Oz) with -flto and no -g debug flags
+- The Emscripten command line omits =1 on boolean -s flags, uses comma-separated lists instead of JSON arrays, and omits redundant defaults (-sWASM, -sMODULARIZE)
+- JavaScript exchanges pixel data with WebAssembly via linear memory buffers rather than per-pixel boundary calls
+- The WebAssembly rendering runs off the main thread in a Web Worker so the UI remains responsive
+- The page displays the rendered output on a canvas with a button that triggers a new render
+- The browser console contains no unhandled errors or exceptions during module initialization and execution

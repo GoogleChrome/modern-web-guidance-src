@@ -16,6 +16,18 @@ const demoUrl = `http://localhost/${demoName}`;
 // Helper function
 async function isErrorVisible(locator: Locator) {
   return await locator.evaluate((el) => {
+    if (el.matches(':user-invalid') || el.getAttribute('aria-invalid') === 'true' || el.classList.contains('user-invalid') || el.classList.contains('user-invalid-fallback')) {
+      return true;
+    }
+
+    const errId = el.getAttribute('aria-errormessage');
+    if (errId) {
+      const errEl = document.getElementById(errId);
+      if (errEl && errEl.textContent?.trim().length && errEl.checkVisibility({ opacityProperty: true, visibilityProperty: true })) {
+        return true;
+      }
+    }
+
     const elementsToCheck = [el];
     let parent = el.parentElement;
     while (parent && parent !== document.body && parent !== document.documentElement) {
@@ -26,18 +38,18 @@ async function isErrorVisible(locator: Locator) {
     }
 
     for (const e of elementsToCheck) {
-      if (e.matches(':user-invalid') || e.classList.contains('user-invalid') || e.classList.contains('user-invalid-fallback')) {
+      if (e.matches(':user-invalid') || e.getAttribute('aria-invalid') === 'true' || e.classList.contains('user-invalid') || e.classList.contains('user-invalid-fallback')) {
         return true;
       }
       const styles = window.getComputedStyle(e);
-      const colors = [styles.borderColor, styles.borderLeftColor, styles.outlineColor, styles.backgroundColor];
+      const colors = [styles.borderColor, styles.borderLeftColor, styles.outlineColor];
       for (const color of colors) {
         const match = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
         if (match) {
           const r = parseInt(match[1]);
           const g = parseInt(match[2]);
           const b = parseInt(match[3]);
-          if (r > g + 40 && r > b + 40) return true;
+          if (r > 150 && g < 100 && r > b + 40) return true;
         }
       }
     }
@@ -48,12 +60,12 @@ async function isErrorVisible(locator: Locator) {
 // Tests
 test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
   // Static assertions
-  test(`CSS MUST use :user-invalid pseudo-class for validation styling`, async () => {
+  test(`CSS uses the :user-invalid pseudo-class for validation styling`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(html).toMatch(/:user-invalid/);
   });
 
-  test(`CSS MUST NOT use basic :invalid pseudo-class that triggers immediately`, async () => {
+  test(`CSS does not use the basic :invalid pseudo-class that triggers immediately`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(html).not.toMatch(/select\s*:invalid\s*[,{]/i);
   });
@@ -80,13 +92,13 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
   });
 
   // Browser assertions
-  test(`On page load, the select menu should look neutral`, async ({ page }) => {
+  test(`On page load, the select menu has no error state`, async ({ page }) => {
     const select = page.locator('select').first();
     const isRed = await isErrorVisible(select);
     expect(isRed).toBe(false);
   });
 
-  test(`Selecting a valid option MUST remove the error state`, async ({ page }) => {
+  test(`Selecting a valid option removes the error state`, async ({ page }) => {
     const select = page.locator('select').first();
     
     // Check initial state
@@ -114,6 +126,7 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     
     if (validValue) {
         await select.selectOption(validValue);
+        await select.blur();
     }
     const finalRed = await isErrorVisible(select);
     
@@ -121,7 +134,7 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     expect(`initial:${initialRed}, triggered:${triggeredRed}, final:${finalRed}`).toBe('initial:false, triggered:true, final:false');
   });
 
-  test(`Submitting while empty MUST trigger the error state`, async ({ page }) => {
+  test(`Submitting while empty triggers the error state`, async ({ page }) => {
     const select = page.locator('select').first();
     const initialRed = await isErrorVisible(select);
     

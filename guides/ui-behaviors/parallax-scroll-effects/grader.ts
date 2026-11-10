@@ -30,13 +30,13 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     await page.goto(demoUrl);
   });
 
-  test('MANDATORY: The agent has defined an @keyframes block that animates the transform property to create the parallax effect', async ({ page }) => {
+  test('Defines an @keyframes block animating transform or translation properties to create the parallax effect', async ({ page }) => {
     const hasTransformKeyframes = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {
         if (rule.type === CSSRule.KEYFRAMES_RULE) {
           for (const kr of rule.cssRules) {
-            if (kr.style && kr.style.transform) {
+            if (kr.style && (kr.style.transform || kr.style.translate)) {
               found = true;
             }
           }
@@ -61,7 +61,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasTransformKeyframes).toBe(true);
   });
 
-  test('MANDATORY: The agent has defined a view-timeline on the wrapper element or uses an anonymous view timeline', async ({ page }) => {
+  test('Defines a view-timeline on the wrapper element or uses an anonymous view timeline', async ({ page }) => {
     const hasViewTimeline = await page.evaluate(() => {
       let found = false;
       const elements = document.querySelectorAll('*');
@@ -101,7 +101,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasViewTimeline || hasViewTimelineInCSS).toBe(true);
   });
 
-  test('MANDATORY: The agent has applied the animation-timeline property to the layers to link them to the timeline', async ({ page }) => {
+  test('Applies the animation-timeline property to layers to link them to the timeline', async ({ page }) => {
     const hasAnimationTimeline = await page.evaluate(() => {
       let found = false;
       const elements = document.querySelectorAll('body *');
@@ -144,7 +144,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasAnimationTimeline || hasAnimationTimelineInCSS).toBe(true);
   });
 
-  test('MANDATORY: The agent has staggered the animations across different layers so they move at different rates', async ({ page }) => {
+  test('Staggers animations across different layers so they move at different rates', async ({ page }) => {
     const getPositions = async () => {
       return await page.evaluate(() => {
         const elements = document.querySelectorAll('body *');
@@ -162,8 +162,10 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
 
     const initialPositions = await getPositions();
 
-    await page.evaluate(() => window.scrollBy(0, 500));
-    await page.waitForTimeout(200);
+    await page.evaluate(() => {
+      window.scrollBy(0, 500);
+      return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
 
     const scrolledPositions = await getPositions();
 
@@ -185,7 +187,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(uniqueParallaxDeltas).toBeGreaterThanOrEqual(2);
   });
 
-  test('MANDATORY: The wrapper element has overflow: clip or overflow: hidden', async ({ page }) => {
+  test('Wrapper element has overflow: clip or overflow: hidden', async ({ page }) => {
     const hasWrapper = await page.evaluate(() => {
       const elements = document.querySelectorAll('body *');
       for (let i = 0; i < elements.length; i++) {
@@ -201,7 +203,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasWrapper).toBe(true);
   });
 
-  test('MANDATORY: The implementation includes feature detection using @supports for scroll-driven animations', async ({ page }) => {
+  test('Includes feature detection using @supports for scroll-driven animations', async ({ page }) => {
     const hasSupports = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {
@@ -230,7 +232,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasSupports).toBe(true);
   });
 
-  test('MANDATORY: The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion)', async ({ page }) => {
+  test('Respects user preferences for reduced motion using @media (prefers-reduced-motion)', async ({ page }) => {
     const hasMedia = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {

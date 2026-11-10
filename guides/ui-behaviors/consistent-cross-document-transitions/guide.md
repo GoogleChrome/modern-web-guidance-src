@@ -253,7 +253,7 @@ window.addEventListener('pagereveal', async (event) => {
 
 ## Fallback Strategies
 
-{{ FEATURE_FALLBACKS("cross-document-view-transitions") }}
+{{ BASELINE_STATUS("cross-document-view-transitions") }}
 
 Cross-document view transitions are an excellent candidate for progressive enhancement. In browsers that do not support them, the `@view-transition` rule is ignored and standard same-origin navigations occurs exactly as they would without the feature. Supporting browsers get smooth transitions; all others get standard navigation. Limited browser support is not a reason to avoid adoption.
 

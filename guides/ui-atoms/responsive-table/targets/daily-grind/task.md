@@ -1,0 +1,1 @@
+- Add a nutritional and pricing breakdown table for the drinks in the Seasonal Favorites section of `index.html` (Maple Oat Latte, Dark Roast Espresso, and Cold Brew) with clear row and column headers so it stays easy to read and navigate on narrow mobile screens and with screen readers.

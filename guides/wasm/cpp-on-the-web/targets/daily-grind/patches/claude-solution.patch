@@ -1,247 +1,810 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..1eae0cf
+index 0000000..b13c7b2
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,2 @@
-+dist/
+@@ -0,0 +1,3 @@
 +node_modules/
++# Intermediate Emscripten object files
++build/
 diff --git a/index.html b/index.html
-index 66c9173..afc690f 100644
+index 66c9173..01b1e8e 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,43 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -135,6 +135,53 @@
+       background: #3e2723;
      }
-+
-+    /* Latte Art Generator */
-+    .latte-art {
+ 
++    /* Path tracer */
++    .render-section {
++      margin-top: 60px;
 +      text-align: center;
 +    }
 +
-+    .latte-art canvas {
-+      display: block;
-+      margin: 20px auto;
-+      max-width: 100%;
-+      height: auto;
++    .render-frame {
++      display: inline-block;
++      margin-top: 20px;
++      padding: 10px;
++      background: white;
 +      border-radius: 8px;
-+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-+      background: var(--secondary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +    }
 +
-+    .latte-art .btn {
++    #smallpt-canvas {
++      display: block;
++      width: 100%;
++      max-width: 640px;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      background: #222;
++      image-rendering: auto;
++    }
++
++    button.btn {
 +      border: none;
 +      font: inherit;
 +      cursor: pointer;
 +    }
 +
-+    .latte-art .btn:disabled {
++    button.btn:disabled {
++      opacity: 0.6;
 +      cursor: progress;
-+      opacity: 0.7;
 +    }
 +
-+    .latte-art .btn:hover:not(:disabled) {
-+      background: #3e2723;
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
 +    }
 +
-+    .brew-status {
++    .render-status {
 +      margin-top: 10px;
-+      min-height: 1.2em;
 +      font-size: 0.9rem;
-+      color: var(--primary);
++      min-height: 1.6em;
 +    }
-   </style>
- </head>
- 
-@@ -195,6 +232,14 @@
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +242,21 @@
          </div>
        </div>
      </section>
 +
-+    <section class="latte-art">
-+      <h2>Generative Latte Art</h2>
-+      <p>Every cup gets a one-of-a-kind rosette, poured fresh by WebAssembly.</p>
-+      <canvas id="brew-canvas" width="320" height="320" aria-label="Generated latte art pattern"></canvas>
-+      <button id="brew-button" class="btn" type="button">Brew New Pattern</button>
-+      <p id="brew-status" class="brew-status" role="status" aria-live="polite"></p>
++    <section class="render-section" aria-labelledby="smallpt-heading">
++      <h2 id="smallpt-heading">Path Traced in Your Browser</h2>
++      <p>
++        This image is rendered on your device by
++        <a href="http://www.kevinbeason.com/smallpt/">smallpt</a>, a tiny C++ path tracer
++        compiled to WebAssembly.
++      </p>
++      <div class="render-frame">
++        <canvas id="smallpt-canvas" width="320" height="240" role="img"
++          aria-label="Path traced Cornell box scene with a mirror sphere and a glass sphere"></canvas>
++      </div>
++      <p id="smallpt-status" class="render-status" role="status" aria-live="polite">Loading renderer…</p>
++      <button type="button" id="smallpt-rerender" class="btn" disabled>Render with random colors</button>
 +    </section>
    </main>
  
    <footer>
-@@ -207,6 +252,7 @@
+@@ -207,6 +269,94 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script type="module" src="src/main.js"></script>
++  <script type="module">
++    const WIDTH = 320;
++    const HEIGHT = 240;
++    const SAMPLES_PER_SUBPIXEL = 5; // x 2x2 subpixels = 20 samples per pixel
++
++    // smallpt scene order: left, right, back, front, bottom, top, mirror, glass, light.
++    const DEFAULT_COLORS = new Float32Array([
++      0.75, 0.25, 0.25,
++      0.25, 0.25, 0.75,
++      0.75, 0.75, 0.75,
++      0, 0, 0,
++      0.75, 0.75, 0.75,
++      0.75, 0.75, 0.75,
++      0.999, 0.999, 0.999,
++      0.999, 0.999, 0.999,
++      0, 0, 0,
++    ]);
++    const DIFFUSE_WALLS = [0, 1, 2, 4, 5];
++    const SHINY_SPHERES = [6, 7];
++
++    const canvas = document.getElementById('smallpt-canvas');
++    const ctx = canvas.getContext('2d');
++    const status = document.getElementById('smallpt-status');
++    const button = document.getElementById('smallpt-rerender');
++
++    function randomColors() {
++      const colors = DEFAULT_COLORS.slice();
++      const rand = (min, max) => min + Math.random() * (max - min);
++      for (const i of DIFFUSE_WALLS) {
++        for (let c = 0; c < 3; c++) colors[i * 3 + c] = rand(0.1, 0.9);
++      }
++      for (const i of SHINY_SPHERES) {
++        for (let c = 0; c < 3; c++) colors[i * 3 + c] = rand(0.4, 0.999);
++      }
++      return colors;
++    }
++
++    function randomSeed() {
++      return crypto.getRandomValues(new Uint32Array(1))[0];
++    }
++
++    const worker = new Worker(new URL('./smallpt-worker.js', import.meta.url), { type: 'module' });
++    let nextId = 0;
++    let pendingId = -1;
++
++    function setBusy(busy) {
++      button.disabled = busy;
++      canvas.parentElement.setAttribute('aria-busy', String(busy));
++    }
++
++    function render(colors) {
++      pendingId = nextId++;
++      setBusy(true);
++      status.textContent = 'Rendering…';
++      worker.postMessage({
++        id: pendingId,
++        width: WIDTH,
++        height: HEIGHT,
++        samples: SAMPLES_PER_SUBPIXEL,
++        seed: randomSeed(),
++        colors,
++      });
++    }
++
++    worker.addEventListener('message', (event) => {
++      const { id, error, pixels, width, height, ms } = event.data;
++      if (id !== pendingId) return;
++      setBusy(false);
++      if (error) {
++        status.textContent = `Rendering failed: ${error}`;
++        return;
++      }
++      ctx.putImageData(new ImageData(pixels, width, height), 0, 0);
++      status.textContent = `Rendered ${width}×${height} at ${SAMPLES_PER_SUBPIXEL * 4} samples per pixel in ${(ms / 1000).toFixed(1)} s.`;
++    });
++
++    worker.addEventListener('error', (event) => {
++      event.preventDefault();
++      setBusy(false);
++      button.disabled = true;
++      status.textContent = 'The renderer could not be loaded.';
++    });
++
++    button.addEventListener('click', () => render(randomColors()));
++
++    render(DEFAULT_COLORS);
++  </script>
++
  </body>
  
  </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..750f051 100644
+index 2bd4d77..685144f 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,6 +2,8 @@
+@@ -2,6 +2,9 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "mkdir -p dist && em++ src/generator.cpp -o dist/generator.mjs -sEXPORT_ES6=1 -sENVIRONMENT=worker -sSTRICT=1 -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_FUNCTIONS=_malloc,_free,_generate_image -sEXPORTED_RUNTIME_METHODS=HEAPU8 -Oz -flto -fno-exceptions",
-+    "prestart": "npm run build",
++    "build": "npm run build:wasm",
++    "build:wasm": "mkdir -p build wasm && em++ -c smallpt/smallpt.cpp -o build/smallpt.o -O3 -flto -Werror -Wall && em++ build/smallpt.o -o wasm/smallpt.js -O3 -flto -Werror -Wall -sSTRICT -sEXPORT_ES6 -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH -sEXPORTED_FUNCTIONS=_smallpt_render,_smallpt_sphere_count,_malloc,_free -sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF32 --closure=1",
++    "build:wasm:debug": "mkdir -p build wasm && em++ -c smallpt/smallpt.cpp -o build/smallpt.o -g -Werror -Wall && em++ build/smallpt.o -o wasm/smallpt.js -g -Werror -Wall -sASSERTIONS -sSTRICT -sEXPORT_ES6 -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH -sEXPORTED_FUNCTIONS=_smallpt_render,_smallpt_sphere_count,_malloc,_free -sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF32",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-diff --git a/src/generator.cpp b/src/generator.cpp
+diff --git a/smallpt-worker.js b/smallpt-worker.js
 new file mode 100644
-index 0000000..f90aaab
+index 0000000..044105c
 --- /dev/null
-+++ b/src/generator.cpp
-@@ -0,0 +1,69 @@
-+#include <cstdint>
++++ b/smallpt-worker.js
+@@ -0,0 +1,43 @@
++// Module Web Worker that runs the smallpt path tracer (compiled to
++// WebAssembly with Emscripten) off the main thread.
++//
++// Request:  { id, width, height, samples, seed, colors: Float32Array | null }
++// Response: { id, pixels: Uint8ClampedArray, width, height, ms }
++//        or { id, error: string }
++import initSmallpt from './wasm/smallpt.js';
++
++const wasmReady = initSmallpt();
++
++self.addEventListener('message', async (event) => {
++  const { id, width, height, samples, seed, colors } = event.data;
++  try {
++    const wasm = await wasmReady;
++    const byteLength = width * height * 4;
++    const pixelPtr = wasm._malloc(byteLength);
++    const colorPtr = colors ? wasm._malloc(colors.byteLength) : 0;
++    if (!pixelPtr || (colors && !colorPtr)) {
++      throw new Error('Out of WebAssembly memory');
++    }
++
++    try {
++      if (colors) {
++        // Read HEAPF32 after malloc: memory growth replaces the old view.
++        wasm.HEAPF32.set(colors, colorPtr >> 2);
++      }
++
++      const start = performance.now();
++      // One call renders the whole frame into linear memory.
++      wasm._smallpt_render(pixelPtr, width, height, samples, seed >>> 0, colorPtr);
++      const ms = performance.now() - start;
++
++      // Read HEAPU8 fresh after the call and copy out before freeing.
++      const pixels = new Uint8ClampedArray(wasm.HEAPU8.buffer, pixelPtr, byteLength).slice();
++      self.postMessage({ id, pixels, width, height, ms }, [pixels.buffer]);
++    } finally {
++      wasm._free(pixelPtr);
++      if (colorPtr) wasm._free(colorPtr);
++    }
++  } catch (err) {
++    self.postMessage({ id, error: err instanceof Error ? err.message : String(err) });
++  }
++});
+diff --git a/smallpt/LICENSE b/smallpt/LICENSE
+new file mode 100644
+index 0000000..d3133d4
+--- /dev/null
++++ b/smallpt/LICENSE
+@@ -0,0 +1,24 @@
++smallpt: Global Illumination in 99 lines of C++
++http://www.kevinbeason.com/smallpt/
++
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in
++all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++THE SOFTWARE.
+diff --git a/smallpt/smallpt.cpp b/smallpt/smallpt.cpp
+new file mode 100644
+index 0000000..46dc7f4
+--- /dev/null
++++ b/smallpt/smallpt.cpp
+@@ -0,0 +1,201 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// http://www.kevinbeason.com/smallpt/  (MIT License, see LICENSE in this directory)
++//
++// Adapted for WebAssembly:
++//  - The recursive radiance() is rewritten as an iterative loop so it cannot
++//    overflow Emscripten's small default stack (64 KB).
++//  - Refraction picks a single reflect/refract path via Russian roulette
++//    instead of branching, which is what makes the loop form possible.
++//  - erand48() is replaced by a small self-contained xorshift RNG.
++//  - Instead of writing a PPM file, the whole image is rendered in a single
++//    exported call into a caller-provided RGBA buffer in linear memory, and
++//    sphere colors are supplied by the caller.
++
 +#include <cmath>
++#include <cstddef>
++#include <cstdint>
 +#include <emscripten/emscripten.h>
 +
 +namespace {
 +
-+// Small, fast xorshift32 PRNG so a seed from JS deterministically drives
-+// the pattern's shape without pulling in <random>.
-+uint32_t next_random(uint32_t &state) {
-+  state ^= state << 13;
-+  state ^= state >> 17;
-+  state ^= state << 5;
-+  return state;
++struct Vec {
++  double x, y, z;
++  explicit Vec(double x_ = 0, double y_ = 0, double z_ = 0) : x(x_), y(y_), z(z_) {}
++  Vec operator+(const Vec &b) const { return Vec(x + b.x, y + b.y, z + b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x - b.x, y - b.y, z - b.z); }
++  Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
++  Vec mult(const Vec &b) const { return Vec(x * b.x, y * b.y, z * b.z); }
++  Vec &norm() { return *this = *this * (1 / std::sqrt(x * x + y * y + z * z)); }
++  double dot(const Vec &b) const { return x * b.x + y * b.y + z * b.z; }
++  Vec operator%(const Vec &b) const {
++    return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x);
++  }
++};
++
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_, Vec d_) : o(o_), d(d_) {}
++};
++
++enum Refl_t { DIFF, SPEC, REFR };
++
++struct Sphere {
++  double rad;
++  Vec p, e, c;
++  Refl_t refl;
++  double intersect(const Ray &r) const {
++    Vec op = p - r.o;
++    double t, eps = 1e-4, b = op.dot(r.d), det = b * b - op.dot(op) + rad * rad;
++    if (det < 0) return 0;
++    det = std::sqrt(det);
++    return (t = b - det) > eps ? t : ((t = b + det) > eps ? t : 0);
++  }
++};
++
++constexpr int kNumSpheres = 9;
++
++Sphere spheres[kNumSpheres] = {
++    // Scene: radius, position, emission, color, material
++    {1e5, Vec(1e5 + 1, 40.8, 81.6), Vec(), Vec(.75, .25, .25), DIFF},   // Left
++    {1e5, Vec(-1e5 + 99, 40.8, 81.6), Vec(), Vec(.25, .25, .75), DIFF}, // Right
++    {1e5, Vec(50, 40.8, 1e5), Vec(), Vec(.75, .75, .75), DIFF},         // Back
++    {1e5, Vec(50, 40.8, -1e5 + 170), Vec(), Vec(), DIFF},               // Front
++    {1e5, Vec(50, 1e5, 81.6), Vec(), Vec(.75, .75, .75), DIFF},         // Bottom
++    {1e5, Vec(50, -1e5 + 81.6, 81.6), Vec(), Vec(.75, .75, .75), DIFF}, // Top
++    {16.5, Vec(27, 16.5, 47), Vec(), Vec(1, 1, 1) * .999, SPEC},        // Mirror
++    {16.5, Vec(73, 16.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR},        // Glass
++    {600, Vec(50, 681.6 - .27, 81.6), Vec(12, 12, 12), Vec(), DIFF},    // Light
++};
++
++// xorshift32: tiny, fast and good enough for Monte Carlo sampling.
++struct Rng {
++  uint32_t s;
++  explicit Rng(uint32_t seed) : s(seed ? seed : 0x9E3779B9u) {}
++  double operator()() {
++    s ^= s << 13;
++    s ^= s >> 17;
++    s ^= s << 5;
++    return (s >> 8) * (1.0 / 16777216.0); // [0, 1)
++  }
++};
++
++inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
++inline uint8_t toInt(double x) {
++  return static_cast<uint8_t>(std::pow(clamp(x), 1 / 2.2) * 255 + .5);
++}
++
++inline bool intersect(const Ray &r, double &t, int &id) {
++  double d, inf = t = 1e20;
++  for (int i = kNumSpheres; i--;) {
++    if ((d = spheres[i].intersect(r)) && d < t) {
++      t = d;
++      id = i;
++    }
++  }
++  return t < inf;
++}
++
++constexpr int kMaxDepth = 64;
++
++Vec radiance(Ray r, Rng &rng) {
++  Vec cl(0, 0, 0); // accumulated radiance
++  Vec cf(1, 1, 1); // accumulated throughput
++  for (int depth = 1;; ++depth) {
++    double t;
++    int id = 0;
++    if (!intersect(r, t, id)) return cl;
++    const Sphere &obj = spheres[id];
++    Vec x = r.o + r.d * t, n = (x - obj.p).norm(), nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
++    double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z; // max reflectance
++    cl = cl + cf.mult(obj.e);
++    if (depth > kMaxDepth) return cl; // hard cap as a safety net
++    if (depth > 5) {                  // Russian roulette
++      if (rng() < p) f = f * (1 / p);
++      else return cl;
++    }
++    cf = cf.mult(f);
++    if (obj.refl == DIFF) { // Ideal diffuse reflection
++      double r1 = 2 * M_PI * rng(), r2 = rng(), r2s = std::sqrt(r2);
++      Vec w = nl, u = ((std::fabs(w.x) > .1 ? Vec(0, 1) : Vec(1)) % w).norm(), v = w % u;
++      Vec d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s + w * std::sqrt(1 - r2)).norm();
++      r = Ray(x, d);
++      continue;
++    }
++    Ray reflRay(x, r.d - n * 2 * n.dot(r.d));
++    if (obj.refl == SPEC) { // Ideal specular reflection
++      r = reflRay;
++      continue;
++    }
++    // Ideal dielectric refraction
++    bool into = n.dot(nl) > 0; // Ray from outside going in?
++    double nc = 1, nt = 1.5, nnt = into ? nc / nt : nt / nc, ddn = r.d.dot(nl), cos2t;
++    if ((cos2t = 1 - nnt * nnt * (1 - ddn * ddn)) < 0) { // Total internal reflection
++      r = reflRay;
++      continue;
++    }
++    Vec tdir = (r.d * nnt - n * ((into ? 1 : -1) * (ddn * nnt + std::sqrt(cos2t)))).norm();
++    double a = nt - nc, b = nt + nc, R0 = a * a / (b * b), c = 1 - (into ? -ddn : tdir.dot(n));
++    double Re = R0 + (1 - R0) * c * c * c * c * c, Tr = 1 - Re, P = .25 + .5 * Re,
++           RP = Re / P, TP = Tr / (1 - P);
++    if (rng() < P) {
++      cf = cf * RP;
++      r = reflRay;
++    } else {
++      cf = cf * TP;
++      r = Ray(x, tdir);
++    }
++  }
 +}
 +
 +} // namespace
 +
 +extern "C" {
 +
-+// Renders a swirled "latte art" style raster into a caller-owned RGBA
-+// buffer of size width * height * 4 bytes. Deliberately layers several
-+// trig passes per pixel so the call is heavy enough that it must run off
-+// the main thread (see guide.md, section 2).
-+EMSCRIPTEN_KEEPALIVE
-+void generate_image(uint8_t *out, int width, int height, uint32_t seed) {
-+  uint32_t state = seed ? seed : 0x9e3779b9u;
++// Number of spheres in the scene; the colors buffer passed to smallpt_render
++// must hold 3 floats (r, g, b in [0, 1]) per sphere.
++EMSCRIPTEN_KEEPALIVE int smallpt_sphere_count() { return kNumSpheres; }
 +
-+  const float cx = width * 0.5f;
-+  const float cy = height * 0.5f;
-+  const float max_dist = sqrtf(cx * cx + cy * cy);
-+  const int arms = 4 + static_cast<int>(next_random(state) % 5);
-+  const float freq = 4.0f + static_cast<float>(next_random(state) % 100) / 20.0f;
-+  const float twist = 2.0f + static_cast<float>(next_random(state) % 100) / 40.0f;
-+  const float ripple = 1.5f + static_cast<float>(next_random(state) % 100) / 50.0f;
-+
-+  for (int y = 0; y < height; ++y) {
-+    for (int x = 0; x < width; ++x) {
-+      const float dx = static_cast<float>(x) - cx;
-+      const float dy = static_cast<float>(y) - cy;
-+      const float dist = sqrtf(dx * dx + dy * dy) / max_dist;
-+      const float angle = atan2f(dy, dx);
-+
-+      const float swirl = angle * static_cast<float>(arms) + dist * twist * 6.2831853f;
-+      const float wave = sinf(swirl + freq * dist);
-+      const float fine = 0.35f * sinf(dist * ripple * 20.0f - angle * 3.0f);
-+
-+      float mix = 0.5f + 0.5f * (wave + fine);
-+      if (mix < 0.0f) mix = 0.0f;
-+      if (mix > 1.0f) mix = 1.0f;
-+
-+      float fall = 1.0f - dist;
-+      if (fall < 0.0f) fall = 0.0f;
-+      mix *= fall;
-+
-+      // Blend between espresso (dark) and steamed milk (light) tones.
-+      const uint8_t r = static_cast<uint8_t>(61 + mix * (233 - 61));
-+      const uint8_t g = static_cast<uint8_t>(35 + mix * (198 - 35));
-+      const uint8_t b = static_cast<uint8_t>(23 + mix * (150 - 23));
-+
-+      const int idx = (y * width + x) * 4;
-+      out[idx + 0] = r;
-+      out[idx + 1] = g;
-+      out[idx + 2] = b;
-+      out[idx + 3] = 255;
++// Renders the full w*h image in one call into `rgba` (w*h*4 bytes, top row
++// first). `samples` is the number of samples per subpixel (2x2 subpixels per
++// pixel). `colors` holds kNumSpheres RGB triples, or may be null to keep the
++// current colors.
++EMSCRIPTEN_KEEPALIVE void smallpt_render(uint8_t *rgba, int w, int h, int samples, uint32_t seed,
++                                         const float *colors) {
++  if (!rgba || w <= 0 || h <= 0 || samples <= 0) return;
++  if (colors) {
++    for (int i = 0; i < kNumSpheres; ++i) {
++      spheres[i].c = Vec(clamp(colors[i * 3]), clamp(colors[i * 3 + 1]), clamp(colors[i * 3 + 2]));
++    }
++  }
++  Ray cam(Vec(50, 52, 295.6), Vec(0, -0.042612, -1).norm()); // camera position, direction
++  Vec cx = Vec(w * .5135 / h), cy = (cx % cam.d).norm() * .5135;
++  Rng rng(seed);
++  for (int y = 0; y < h; y++) {
++    for (int x = 0; x < w; x++) {
++      Vec c;
++      for (int sy = 0; sy < 2; sy++) {   // 2x2 subpixel rows
++        for (int sx = 0; sx < 2; sx++) { // 2x2 subpixel cols
++          Vec r;
++          for (int s = 0; s < samples; s++) {
++            double r1 = 2 * rng(), dx = r1 < 1 ? std::sqrt(r1) - 1 : 1 - std::sqrt(2 - r1);
++            double r2 = 2 * rng(), dy = r2 < 1 ? std::sqrt(r2) - 1 : 1 - std::sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
++            // Compute the origin before normalizing: Vec::norm() mutates in
++            // place and argument evaluation order is unspecified.
++            Vec origin = cam.o + d * 140;
++            r = r + radiance(Ray(origin, d.norm()), rng) * (1. / samples);
++          }
++          c = c + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
++        }
++      }
++      uint8_t *px = rgba + (static_cast<std::size_t>(h - y - 1) * w + x) * 4;
++      px[0] = toInt(c.x);
++      px[1] = toInt(c.y);
++      px[2] = toInt(c.z);
++      px[3] = 255;
 +    }
 +  }
 +}
 +
 +} // extern "C"
-diff --git a/src/main.js b/src/main.js
+diff --git a/wasm/smallpt.js b/wasm/smallpt.js
 new file mode 100644
-index 0000000..3db811c
+index 0000000..e9480fc
 --- /dev/null
-+++ b/src/main.js
-@@ -0,0 +1,45 @@
-+const canvas = document.getElementById('brew-canvas');
-+const ctx = canvas.getContext('2d');
-+const button = document.getElementById('brew-button');
-+const status = document.getElementById('brew-status');
-+
-+const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
-+
-+function setBusy(isBusy) {
-+  button.disabled = isBusy;
-+  button.textContent = isBusy ? 'Brewing…' : 'Brew New Pattern';
-+  status.textContent = isBusy ? 'Generating your pattern…' : '';
-+}
-+
-+worker.onmessage = (event) => {
-+  const { ok, width, height, pixels, message } = event.data;
-+
-+  if (!ok) {
-+    console.error('Latte art generation failed:', message);
-+    status.textContent = 'Something went wrong brewing that pattern. Please try again.';
-+    button.disabled = false;
-+    button.textContent = 'Brew New Pattern';
-+    return;
-+  }
-+
-+  const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
-+  ctx.putImageData(imageData, 0, 0);
-+  setBusy(false);
-+};
-+
-+worker.onerror = (error) => {
-+  console.error('Latte art worker error:', error.message || error);
-+  status.textContent = 'Something went wrong brewing that pattern. Please try again.';
-+  button.disabled = false;
-+  button.textContent = 'Brew New Pattern';
-+};
-+
-+function requestPattern() {
-+  setBusy(true);
-+  const seed = Math.floor(Math.random() * 0xffffffff);
-+  worker.postMessage({ width: canvas.width, height: canvas.height, seed });
-+}
-+
-+button.addEventListener('click', requestPattern);
-+
-+requestPattern();
-diff --git a/src/worker.js b/src/worker.js
-new file mode 100644
-index 0000000..237f135
---- /dev/null
-+++ b/src/worker.js
-@@ -0,0 +1,23 @@
-+import createGeneratorModule from '../dist/generator.mjs';
-+
-+const modulePromise = createGeneratorModule();
-+
-+self.onmessage = async (event) => {
-+  const { width, height, seed } = event.data;
-+
-+  try {
-+    const Module = await modulePromise;
-+    const byteLength = width * height * 4;
-+    const ptr = Module._malloc(byteLength);
-+
-+    try {
-+      Module._generate_image(ptr, width, height, seed >>> 0);
-+      const pixels = Module.HEAPU8.slice(ptr, ptr + byteLength);
-+      self.postMessage({ ok: true, width, height, pixels }, [pixels.buffer]);
-+    } finally {
-+      Module._free(ptr);
-+    }
-+  } catch (error) {
-+    self.postMessage({ ok: false, message: error && error.message ? error.message : String(error) });
-+  }
-+};
++++ b/wasm/smallpt.js
+@@ -0,0 +1,5 @@
++async function Module(moduleArg={}){var Module=moduleArg;var e=import.meta.url,f="",g,l;try{f=(new URL(".",e)).href}catch{}l=a=>{var b=new XMLHttpRequest;b.open("GET",a,!1);b.responseType="arraybuffer";b.send(null);return new Uint8Array(b.response)};g=async a=>{a=await fetch(a,{credentials:"same-origin"});if(a.ok)return a.arrayBuffer();throw Error(a.status+" : "+a.url);};var m=console.error.bind(console),n=!1;function p(){if(!q?.buffer?.resizable){var a=r.buffer;q=new Int8Array(a);Module.HEAPU8=t=new Uint8Array(a);Module.HEAPF32=new Float32Array(a)}}function u(a){a=
++`Aborted(${a})`;m(a);n=!0;throw new WebAssembly.RuntimeError(a+". Build with -sASSERTIONS for more info.");}var v;async function w(a){try{var b=await g(a);return new Uint8Array(b)}catch{}if(l)a=l(a);else throw"both async and sync fetching of the wasm failed";return a}async function x(a,b){try{var d=await w(a);return await WebAssembly.instantiate(d,b)}catch(c){m(`failed to asynchronously prepare wasm: ${c}`),u(c)}}async function y(a){var b=v;try{var d=fetch(b,{credentials:"same-origin"});return await WebAssembly.instantiateStreaming(d,
++a)}catch(c){m(`wasm streaming compile failed: ${c}`),m("falling back to ArrayBuffer instantiation")}return x(b,a)}class z{name="ExitStatus";constructor(a){this.message=`Program terminated with exit(${a})`;this.status=a}}var q,A={},t,B,r,C={d:()=>u(""),c:()=>{},a:(a,b)=>{A[a]&&(clearTimeout(A[a].id),delete A[a]);if(!b)return 0;var d=setTimeout(()=>{delete A[a];var c=[a,performance.now()],h=B;if(!n)try{h(...c)}catch(k){if(!(k instanceof z||k=="unwind"))throw k;}finally{}},b);A[a]={id:d,m:b};return 0},
++e:a=>{var b=t.length;a>>>=0;if(a>2147483648)return!1;for(var d=1;d<=4;d*=2){var c=b*(1+.2/d);c=Math.min(c,a+100663296);a:{c=(Math.min(2147483648,Math.ceil(Math.max(a,c)/65536)*65536)-r.buffer.byteLength+65535)/65536|0;try{r.grow(c);p();var h=1;break a}catch(k){}h=void 0}if(h)return!0}return!1},b:a=>{throw new z(a);}},D;D=await (async function(){var a={a:C};v??=Module.locateFile?f+"smallpt.wasm":(new URL("smallpt.wasm",import.meta.url)).href;a=D=(await y(a)).instance.exports;Module._smallpt_sphere_count=
++a.h;Module._smallpt_render=a.i;B=a.j;Module._malloc=a.k;Module._free=a.l;r=a.f;p();return D}());await (async function(){n||D.g()}());;return Module}export default Module;
+diff --git a/wasm/smallpt.wasm b/wasm/smallpt.wasm
+new file mode 100755
+index 0000000000000000000000000000000000000000..9ca925f33a990aa83c1125dd62990356b1abc04e
+GIT binary patch
+literal 27504
+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
+
+literal 0
+HcmV?d00001
+

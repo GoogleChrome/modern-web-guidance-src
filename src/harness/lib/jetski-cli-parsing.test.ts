@@ -14,7 +14,8 @@ import {
   extractJetskiCliTokenUsage
 } from './trajectory-normalizer.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from './collection.ts';
-import { exportTrajectories } from './agent-shared.ts';
+import { extractBase64TrajectoryPayloads } from './secret-guard.ts';
+import { exportTrajectories } from './trajectory-export.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -164,7 +165,7 @@ test('collectJetski metrics from trajectory files', async () => {
   }
 });
 
-test('exportTrajectories copies SQLite WAL and SHM companion files and enables valid parsing', async () => {
+test('exportTrajectories snapshots WAL rows and purges deleted freelist secrets via VACUUM INTO', async () => {
   const sourceDir = createTempDir();
   const destDir = createTempDir();
   try {
@@ -177,24 +178,78 @@ test('exportTrajectories copies SQLite WAL and SHM companion files and enables v
       CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
     `);
 
-    const payload = encodeField(5, 2, Buffer.from('npx -y modern-web-guidance@latest retrieve "translator"'));
+    const deletedSecret = 'freelist-deleted-secret-12345';
     const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
-    insertStep.run(1, 21, 1, null, payload);
+    insertStep.run(1, 21, 1, null, encodeField(5, 2, Buffer.from('npx -y modern-web-guidance@latest retrieve "translator"')));
+    insertStep.run(2, 21, 1, null, Buffer.from(`secret=${deletedSecret}`));
+    db.prepare('DELETE FROM steps WHERE idx = 2').run();
 
-    // Keep WAL open / uncheckpointed and export
-    exportTrajectories(sourceDir, '*.db', destDir);
+    exportTrajectories(sourceDir, '*.db', destDir, [deletedSecret]);
 
-    // Verify companion files were copied
-    assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.db')));
-    if (fs.existsSync(`${dbPath}-wal`)) {
-      assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.db-wal')));
-    }
+    const exportedPath = path.join(destDir, 'session-wal-test.db');
+    assert.ok(fs.existsSync(exportedPath));
+    assert.strictEqual(fs.existsSync(`${exportedPath}-wal`), false);
+    assert.strictEqual(fs.existsSync(`${exportedPath}-shm`), false);
+    assert.strictEqual(fs.readFileSync(exportedPath).includes(deletedSecret), false);
+    assert.ok(fs.existsSync(path.join(destDir, 'session-wal-test.html')));
 
     db.close();
+    assert.deepStrictEqual(parseJetskiCliSession(destDir).retrievedGuides, ['translator']);
+  } finally {
+    removeTempDir(sourceDir);
+    removeTempDir(destDir);
+  }
+});
 
-    // Verify destination DB can be parsed cleanly
-    const parsed = parseJetskiCliSession(destDir);
-    assert.deepStrictEqual(parsed.retrievedGuides, ['translator']);
+test('exportTrajectories rejects leaked credentials in SQLite .db before generating HTML export', () => {
+  const sourceDir = createTempDir();
+  const destDir = createTempDir();
+  try {
+    const dbPath = path.join(sourceDir, 'session-secret.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec('CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);');
+    const fakeSecret = `sk-or-v1-${'a'.repeat(48)}`;
+    db.prepare('INSERT INTO steps VALUES (1, 21, 1, NULL, ?)').run(Buffer.from(fakeSecret));
+    db.close();
+
+    assert.throws(
+      () => exportTrajectories(sourceDir, '*.db', destDir, []),
+      (err: Error) => /Refused to export trajectory session-secret\.db/.test(err.message) && !err.message.includes(fakeSecret),
+    );
+    assert.strictEqual(fs.existsSync(path.join(destDir, 'session-secret.db')), false);
+    assert.strictEqual(fs.existsSync(path.join(destDir, 'session-secret.html')), false);
+  } finally {
+    removeTempDir(sourceDir);
+    removeTempDir(destDir);
+  }
+});
+
+test('exportTrajectories copies raw .pb binaries without UTF-8 corruption and fails closed on leaks', () => {
+  const sourceDir = createTempDir();
+  const destDir = createTempDir();
+  try {
+    const cleanBytes = Buffer.concat([
+      Buffer.from([0x0a, 0xff, 0xfe, 0x80, 0x12, 0x0b]),
+      Buffer.from('clean trace'),
+    ]);
+    fs.writeFileSync(path.join(sourceDir, 'clean.pb'), cleanBytes);
+    exportTrajectories(sourceDir, 'clean.pb', destDir, []);
+
+    const copiedClean = fs.readFileSync(path.join(destDir, 'clean.pb'));
+    assert.strictEqual(Buffer.compare(copiedClean, cleanBytes), 0);
+    const html = fs.readFileSync(path.join(destDir, 'session-clean.html'), 'utf8');
+    assert.deepStrictEqual(extractBase64TrajectoryPayloads(html), [cleanBytes]);
+
+    const fakeSecret = `sk-or-v1-${'b'.repeat(48)}`;
+    const leakyBytes = Buffer.concat([Buffer.from([0x0a, 0xff, 0xfe]), Buffer.from(fakeSecret)]);
+    fs.writeFileSync(path.join(sourceDir, 'leak.pb'), leakyBytes);
+
+    assert.throws(
+      () => exportTrajectories(sourceDir, 'leak.pb', destDir, []),
+      (err: Error) => /Refused to export trajectory leak\.pb/.test(err.message) && !err.message.includes(fakeSecret),
+    );
+    assert.strictEqual(fs.existsSync(path.join(destDir, 'leak.pb')), false);
+    assert.strictEqual(fs.existsSync(path.join(destDir, 'session-leak.html')), false);
   } finally {
     removeTempDir(sourceDir);
     removeTempDir(destDir);
@@ -269,4 +324,53 @@ test('parseJetskiCliSession accumulates cached tokens across turns instead of pe
     removeTempDir(tempDir);
   }
 });
+
+test('parseJetskiCliSession extracts Antigravity CLI ReadFile, FileEdit, WriteFile steps and UTF-8 strings', () => {
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-agy-tools.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    const readJson = JSON.stringify({ Path: '/tmp/base_app/src/index.ts', StartLine: 1, EndLine: 50 });
+    const editJson = JSON.stringify({
+      Path: '/tmp/base_app/src/index.ts',
+      Target: 'const oldVal = 1;',
+      Replacement: 'const newVal = 2; // — UTF-8 dash'
+    });
+    const writeJson = JSON.stringify({
+      Path: '/tmp/base_app/src/new-file.ts',
+      Content: 'export const x = "hello • world";',
+      Overwrite: true
+    });
+    const utf8Cmd = 'echo "— UTF-8 dash" && npx -y modern-web-guidance@latest retrieve "consistent-cross-document-transitions"';
+
+    const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    insertStep.run(1, 15, 1, null, encodeField(5, 2, Buffer.from(readJson)));
+    // Duplicate tool execution row (type 132) should be deduplicated
+    insertStep.run(2, 132, 1, null, encodeField(5, 2, Buffer.from(readJson)));
+    insertStep.run(3, 15, 1, null, encodeField(5, 2, Buffer.from(editJson)));
+    insertStep.run(4, 15, 1, null, encodeField(5, 2, Buffer.from(writeJson)));
+    insertStep.run(5, 21, 1, null, encodeField(5, 2, Buffer.from(utf8Cmd)));
+    db.close();
+
+    const parsed = parseJetskiCliSession(tempDir);
+    assert.strictEqual(parsed.steps.length, 3);
+    assert.strictEqual(parsed.steps[0]?.action?.type, 'read_file');
+    assert.strictEqual(parsed.steps[0]?.action?.params?.path, '/tmp/base_app/src/index.ts');
+    assert.strictEqual(parsed.steps[1]?.action?.type, 'write_file');
+    assert.strictEqual(parsed.steps[1]?.action?.name, 'replace_file_content');
+    assert.strictEqual(parsed.steps[1]?.action?.params?.path, '/tmp/base_app/src/index.ts');
+    assert.strictEqual(parsed.steps[2]?.action?.type, 'write_file');
+    assert.strictEqual(parsed.steps[2]?.action?.name, 'write_to_file');
+    assert.strictEqual(parsed.steps[2]?.action?.params?.path, '/tmp/base_app/src/new-file.ts');
+    assert.deepStrictEqual(parsed.retrievedGuides, ['consistent-cross-document-transitions']);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
 

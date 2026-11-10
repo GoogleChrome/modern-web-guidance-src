@@ -16,7 +16,7 @@ This guide details how to implement returning user authentication using discover
 
 Create an endpoint that generates WebAuthn request parameters using a vetted library per standards.
 
-1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string.
+1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string and include it as `rpId` in the returned request options so the client can pass `publicKey.rpId` directly to Signal API calls.
 2.  **Generate challenge**: Generate a high-entropy, cryptographically secure random buffer, store it securely in the user's session, and encode it as Base64URL.
 3.  **Discoverable Credentials mapping**: Specify an empty array `[]` for `allowCredentials`. This requests discoverable credentials, meaning the user does not need to enter their username first; the passkey provider will present available accounts.
 4.  **User Verification level**: Set `userVerification: "preferred"` (or `"required"` if explicitly mandated by corporate compliance policies).
@@ -48,14 +48,20 @@ Securely verify the assertion returned by the client to authenticate the user:
 
 ### HTML Form Annotation
 
-Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters, and autofocus triggers the browser autofill popup immediately when the input is focused.
+Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters.
+
+Use the `autofocus` attribute on dedicated sign-in pages and sign-in dialogs so that the autofill options are immediately displayed. Do not use the `autofocus` attribute on pages or dialogs that are not dedicated sign-in forms. Do not use the `autofocus` attribute on sign-in forms that are embedded in a larger page. Ensure that pages have a concise but descriptive page title, and that dialogs have a concise but descriptive accessible name when the `autofocus` attribute is used on dedicated sign-in pages and dialogs.
+
+Use the `aria-describedby` attribute on elements with `autofocus` so instructions and context are provided for screen reader users.
 
 ```html
+<h1 id="signin-passkey">Sign In with Passkey</h1>
 <!-- Autocomplete tokens must contain webauthn space-separated -->
 <form id="signin-form">
   <input
     type="text"
     name="username"
+    aria-describedby="signin-passkey" 
     autocomplete="username webauthn"
     autofocus
     data-testid="username-field"
@@ -82,6 +88,7 @@ Activate form autofill suggestions on page load to offer passkey authentication 
 5.  **Call Signal API**: Wrap server verification `fetch()` call in a try/catch block:
     - Show an error message for the user to understand what went wrong.
     - Call `signalUnknownCredential()` ONLY when the server explicitly responds with HTTP status `404` (Credential not found) and the user is unauthenticated.
+    - Always pass `rpId: publicKey.rpId` from the server's request options. **DO NOT** derive `rpId` from `window.location.hostname` on the client, as the server's configured RP ID may be a registrable parent domain (such as `example.com` on `login.example.com`) or use Related Origin Requests.
     - The `credentialId` parameter passed to `signalUnknownCredential()` MUST strictly be the Base64URL-encoded credential ID string (e.g., `encoded.id`), NOT the raw ArrayBuffer object `credential.rawId`.
 6.  **Encode the response**: Encode the credential `AuthenticatorAssertionResponse` with `.toJSON()` before sending it to the server for verification.
 
@@ -114,7 +121,7 @@ async function initializeConditionalAutofill() {
         // Note: this code path runs pre-authentication, satisfying the unauth precondition
         if (PublicKeyCredential.signalUnknownCredential) {
           await PublicKeyCredential.signalUnknownCredential({
-            rpId, // RP ID must match the one defined on the server
+            rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
             credentialId: encoded.id,
           });
         }
@@ -162,10 +169,12 @@ async function triggerButtonAuthentication() {
     const response = await loginVerifyFetch(encoded);
     if (!response.ok && response.status === 404) {
       // Note: this code path runs pre-authentication, satisfying the unauth precondition
-      await PublicKeyCredential.signalUnknownCredential({
-        rpId, // RP ID must match the one defined on the server
-        credentialId: encoded.id, // Base64URL-encoded credential ID
-      });
+      if (PublicKeyCredential.signalUnknownCredential) {
+        await PublicKeyCredential.signalUnknownCredential({
+          rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
+          credentialId: encoded.id, // Base64URL-encoded credential ID
+        });
+      }
     }
   } catch (serverErr) {
     console.error("Verification request error:", serverErr);
@@ -182,12 +191,14 @@ window.addEventListener("DOMContentLoaded", initializeConditionalAutofill);
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
 
-```js 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
-``` 
+```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
 
 ### Signal API Synchronization Fallback
 
@@ -201,9 +212,11 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseRequestOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.parseRequestOptionsFromJSON()` and `PublicKeyCredential.prototype.toJSON()` are available whenever `PublicKeyCredential` is supported:
 
-```js 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
-``` 
+```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.

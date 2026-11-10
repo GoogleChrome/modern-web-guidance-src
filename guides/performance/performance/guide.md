@@ -83,7 +83,7 @@ LCP measures the time required to render the largest visible text or image block
 <!-- Preloading a CSS-based LCP background -->
 <link rel="preload" as="image" href="/images/bg-hero.webp" fetchpriority="high" type="image/webp">
 
-<!-- Demoting an above-the-fold non-LCP carousel image -->
+<!-- Demoting an offscreen non-LCP carousel image -->
 <img src="/images/carousel-2.webp" fetchpriority="low" loading="lazy" alt="Slide 2">
 ```
 
@@ -147,7 +147,7 @@ Third-party scripts (analytics, ads, chat widgets) are the primary source of mai
 **HTML: Third-Party Script Execution**
 ```html
 <!-- 1. Place third-party scripts near the end of the page with the defer attribute -->
-<script defer src="http://www.example.com/third-party.js"></script>
+<script defer src="https://www.example.com/third-party.js"></script>
 ```
 
 ## CSS Rendering & Containment Optimization

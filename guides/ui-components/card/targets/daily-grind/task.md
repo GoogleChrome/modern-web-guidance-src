@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites cards in index.html so each card shows a photo of the drink and lets customers pick a size (small, medium, or large) and add it to their order right from the card, while each card dynamically adjusts its layout and styling based on the space available to the card itself and the content it contains.

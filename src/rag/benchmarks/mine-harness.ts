@@ -6,6 +6,7 @@ import { Storage } from "@google-cloud/storage";
 import { outDir, suitesDir } from "../../core/paths.ts";
 import { Agents } from "../../harness/config.ts";
 import { isEnoent } from "../../harness/lib/agent-shared.ts";
+import { extractRetrievedGuidesFromCommand } from "../../harness/lib/trajectory-normalizer.ts";
 import {
   createPrng,
   createQueryRecord,
@@ -44,7 +45,6 @@ const AGENT_PATTERNS: readonly [pattern: string, agent: Agents][] = [
   // Older nightly suite folders used the `-agy` suffix before standardizing on `jetski_cli`.
   ["jetski", Agents.JETSKI_CLI],
   ["-agy", Agents.JETSKI_CLI],
-  ["gemini", Agents.GEMINI_CLI],
 ];
 
 export function resolveAgentFromSuiteId(suiteId: string): Agents | undefined {
@@ -117,14 +117,7 @@ function parseGuidesFromStep(step: unknown): string[] {
   }
   const commandText = getStepCommandText(step);
   if (commandText.includes("retrieve")) {
-    const match = commandText.match(/(?:--)?retrieve\s+["'\\]*([^"'\s\\]+)["'\\]*/i);
-    if (match?.[1]) {
-      const parts = match[1]
-        .split(",")
-        .map((guideToken) => guideToken.trim().replace(/^["'\\]+|["'\\]+$/g, ""))
-        .filter((guideToken) => Boolean(guideToken) && /^[a-zA-Z0-9_-]+$/.test(guideToken) && guideToken.toLowerCase() !== "id");
-      found.push(...parts);
-    }
+    found.push(...extractRetrievedGuidesFromCommand(commandText));
   }
   return found;
 }

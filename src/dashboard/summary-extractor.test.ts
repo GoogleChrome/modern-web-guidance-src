@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractSuiteSummary } from './summary-extractor.js';
+import {
+    sanitizeReasoningEffort,
+    normalizeReasoningEffort,
+    getEffortLevel,
+    getEffortTooltip,
+    compareEffortLevels,
+    pickHigherPrecedenceEffort,
+    renderEffortChip,
+} from './utils.js';
 
 /**
  * Builds a run whose grader results contain `passed` passes out of `total` checks.
@@ -43,10 +52,7 @@ test('extractSuiteSummary breaks multi-target guides down per task', () => {
 
 test('extractSuiteSummary stores only a name for single-task guides', () => {
     const summary = extractSuiteSummary('run-2', {
-        results: {
-            'task - preload-prerender - guided': [mockRun(3, 4)],
-            'task - preload-prerender - unguided': [mockRun(1, 4)],
-        },
+        results: { 'task - preload-prerender - guided': [mockRun(3, 4)], 'task - preload-prerender - unguided': [mockRun(1, 4)], },
     });
 
     assert.ok(summary);
@@ -58,6 +64,49 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
     assert.strictEqual(guide.guidedRate, 75);
 });
 
+test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and exact unrounded uplift', () => {
+    const summary = extractSuiteSummary('run-3', {
+        results: {
+            'daily-grind - scrollspy - unguided': [{
+                discipline: 'ui-behaviors',
+                runtime: { agentRuntime: 120000, graderRuntime: 9000 },
+                tokenUsage: { total: 500000, cached: 450000 },
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Renders three sections', testId: 's3' },
+                ],
+            }],
+            'daily-grind - scrollspy - guided': [{
+                discipline: 'ui-behaviors',
+                runtime: { agentRuntime: 90000, graderRuntime: 9000 },
+                tokenUsage: { total: 600000, cached: 560000 },
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Renders three sections', testId: 's3' },
+                ],
+            }],
+        },
+    } as never);
+    assert.ok(summary);
+    assert.strictEqual(summary.a11yStats.unguidedPassed, 1);
+    assert.strictEqual(summary.a11yStats.unguidedTotal, 2);
+    assert.strictEqual(summary.a11yStats.guidedPassed, 2);
+    assert.strictEqual(summary.a11yStats.guidedTotal, 2);
+    assert.strictEqual(summary.a11yStats.uplift, 50);
+    assert.strictEqual(summary.a11yStats.guideCount, 1);
+    const scrollspy = summary.guides.scrollspy;
+    assert.strictEqual(scrollspy.unguidedRate, 33);
+    assert.strictEqual(scrollspy.guidedRate, 67);
+    assert.strictEqual(scrollspy.uplift, 33);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 120000);
+    assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
+    assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
+    assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 50000);
+    assert.strictEqual(summary.efficiencyStats.tokens.guidedUncachedMedian, 40000);
+    assert.strictEqual(summary.efficiencyStats.tokens.uncachedMedianDeltaPct, -20);
+});
 test('extractSuiteSummary excludes infra-errored task pairs from guide and suite rollups while counting agent-broken apps as 0/N', () => {
     // daily-grind: guided passed 5/5, unguided broke the app build (0/5 agent failure, not isEarlyFailure)
     // devtools-times: guided had an infra error (isEarlyFailure: true -> 0 valid runs), unguided passed 1/5
@@ -101,7 +150,10 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.strictEqual(summary.unguidedStats.passed, 0);
 
     // 1 out of 4 total runs was an early failure -> 25% (1/2 guided = 50%, 0/2 unguided = 0%)
+    assert.strictEqual(summary.taskCount, 2);
+    assert.strictEqual(summary.pairedTaskCount, 1);
     assert.strictEqual(summary.earlyFailureRate, 25);
+    assert.strictEqual(summary.earlyFailureCount, 1);
     assert.strictEqual(summary.guidedErrorRate, 50);
     assert.strictEqual(summary.unguidedErrorRate, 0);
 
@@ -128,4 +180,201 @@ test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses e
     assert.strictEqual(summary.unguidedLeakRate, 50);
     assert.strictEqual(summary.unguidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
+});
+test('extractSuiteSummary counts distinct task-guide scenarios and excludes early failures from efficiency medians while counting timeouts', () => {
+    const summary = extractSuiteSummary('run-efficiency-hygiene', {
+        results: {
+            'task - preload-prerender - guided': [{
+                ...mockRun(4, 4),
+                runtime: { agentRuntime: 60000, graderRuntime: 5000 },
+                tokenUsage: { total: 100000, cached: 70000 },
+            }],
+            'task - preload-prerender - unguided': [{
+                ...mockRun(2, 4),
+                runtime: { agentRuntime: 90000, graderRuntime: 5000 },
+                tokenUsage: { total: 120000, cached: 70000 },
+            }],
+            'task - responsive-table - guided': [{
+                ...mockRun(4, 4),
+                runtime: { agentRuntime: 80000, graderRuntime: 5000 },
+                tokenUsage: { total: 110000, cached: 70000 },
+            }],
+            'task - responsive-table - unguided': [
+                {
+                    ...mockRun(1, 4),
+                    runtime: { agentRuntime: 110000, graderRuntime: 5000 },
+                    tokenUsage: { total: 130000, cached: 70000 },
+                },
+                {
+                    runNumber: 2,
+                    runtime: { agentRuntime: 2000, graderRuntime: 0 },
+                    tokenUsage: { total: 1500, cached: 0 },
+                    results: [{ id: 'ef-1', passed: false, message: 'TIMEOUT (10m)', isEarlyFailure: true }],
+                },
+            ],
+        },
+    } as never);
+    assert.ok(summary);
+    // Without summary.taskCount, older evals.json files count distinct task names (both scenarios share `task`).
+    assert.strictEqual(summary.taskCount, 1);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 100000);
+    assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 55000);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);
+    assert.strictEqual(summary.efficiencyStats.runtime.guidedTimeouts, 0);
+});
+test('extractSuiteSummary emits Spotlight slices only for featured guides, aligned by check id', () => {
+    const run = (checks: Array<[string, boolean]>, extra: Record<string, unknown> = {}) => ({
+        runNumber: 1,
+        prompt: 'add a search box',
+        discipline: 'ui-behaviors',
+        guidesUsed: ['highlight-text-ranges'],
+        runtime: { agentRuntime: 60000, graderRuntime: 5000 },
+        tokenUsage: { total: 100000, cached: 60000 },
+        results: checks.map(([id, passed]) => ({ id, passed, message: `check ${id}` })),
+        ...extra,
+    });
+    const summary = extractSuiteSummary('nightly-2026-10-28_01-55-42-claude_code', {
+        results: {
+            'task - highlight-text-ranges - guided': [run([['a', true], ['b', true], ['c', false]])],
+            // Unguided lists checks in a different order; slices must align by id, not position.
+            'task - highlight-text-ranges - unguided': [run([['c', false], ['a', true], ['b', false]], { guidesUsed: [] })],
+            'task - not-featured - guided': [run([['x', true]])],
+            'task - not-featured - unguided': [run([['x', false]])],
+        },
+    } as never);
+    assert.ok(summary);
+    assert.deepStrictEqual(Object.keys(summary.showcase), ['highlight-text-ranges']);
+    const slice = summary.showcase['highlight-text-ranges'];
+    assert.strictEqual(slice.prompt, 'add a search box');
+    assert.strictEqual(slice.discipline, 'ui-behaviors');
+    assert.deepStrictEqual([slice.unguided.passed, slice.unguided.total, slice.guided.passed, slice.guided.total], [1, 3, 2, 3]);
+    assert.strictEqual(slice.guided.uncachedTokens, 40000);
+    assert.strictEqual(slice.guided.earlyFailure, false);
+    assert.deepStrictEqual(slice.checks.map(c => [c.message, c.unguidedPassed, c.guidedPassed]), [
+        ['check a', true, true],
+        ['check b', false, true],
+        ['check c', false, false],
+    ]);
+});
+
+test('extractSuiteSummary preserves valid reasoningEffort and omits absent or malformed values', () => {
+    const baseResults = {
+        'task - preload-prerender - guided': [mockRun(4, 4)],
+        'task - preload-prerender - unguided': [mockRun(2, 4)],
+    };
+
+    const legacy = extractSuiteSummary('legacy-suite', { results: baseResults });
+    assert.ok(legacy);
+    assert.strictEqual('reasoningEffort' in legacy, false);
+
+    const observed = extractSuiteSummary('observed-suite', {
+        results: baseResults,
+        reasoningEffort: { level: 'high', source: 'observed' },
+    });
+    assert.ok(observed);
+    assert.deepStrictEqual(observed.reasoningEffort, { level: 'high', source: 'observed' });
+
+    const configured = extractSuiteSummary('configured-suite', {
+        results: baseResults,
+        reasoningEffort: { level: 'medium', source: 'configured' },
+    });
+    assert.ok(configured);
+    assert.deepStrictEqual(configured.reasoningEffort, { level: 'medium', source: 'configured' });
+
+    const modelId = extractSuiteSummary('model-id-suite', {
+        results: baseResults,
+        reasoningEffort: { level: 'low', source: 'model-id' },
+    });
+    assert.ok(modelId);
+    assert.deepStrictEqual(modelId.reasoningEffort, { level: 'low', source: 'model-id' });
+
+    const agentDefault = extractSuiteSummary('agent-default-suite', {
+        results: baseResults,
+        reasoningEffort: { source: 'agent-default' },
+    });
+    assert.ok(agentDefault);
+    assert.deepStrictEqual(agentDefault.reasoningEffort, { source: 'agent-default' });
+
+    for (const bad of [
+        null,
+        'high',
+        { level: 'high', source: 'bogus' },
+        { source: 'observed' },
+        { level: 'MEDIUM', source: 'configured' },
+        { level: '   ', source: 'configured' },
+        { level: '<script>alert(1)</script>', source: 'observed' },
+    ]) {
+        const summary = extractSuiteSummary('malformed-suite', {
+            results: baseResults,
+            reasoningEffort: bad as never,
+        });
+        assert.ok(summary);
+        assert.strictEqual('reasoningEffort' in summary, false);
+    }
+});
+
+test('extractSuiteSummary preserves curated flag when present', () => {
+    const regular = extractSuiteSummary('regular-suite', { results: {} });
+    assert.ok(regular);
+    assert.strictEqual('curated' in regular, false);
+
+    const curated = extractSuiteSummary('curated-suite', {
+        results: {},
+        curated: true,
+    } as never);
+    assert.ok(curated);
+    assert.strictEqual(curated.curated, true);
+});
+
+test('reasoningEffort helpers format provenance tooltips, order levels, and reject unsafe tokens', () => {
+    assert.deepStrictEqual(normalizeReasoningEffort(undefined), { source: 'agent-default' });
+    assert.strictEqual(sanitizeReasoningEffort({ level: 'custom_tier-2', source: 'observed' })?.level, 'custom_tier-2');
+    assert.strictEqual(sanitizeReasoningEffort({ level: ' High ', source: 'observed' }), undefined);
+    assert.strictEqual(getEffortLevel(undefined), 'default');
+    assert.strictEqual(getEffortLevel({ source: 'agent-default' }), 'default');
+    assert.strictEqual(getEffortLevel({ level: 'xhigh', source: 'configured' }), 'xhigh');
+
+    assert.strictEqual(
+        getEffortTooltip({ level: 'high', source: 'observed' }),
+        'Reasoning effort: high (observed from agent logs)'
+    );
+    assert.strictEqual(
+        getEffortTooltip({ level: 'medium', source: 'configured' }),
+        'Reasoning effort: medium (configured by harness)'
+    );
+    assert.strictEqual(
+        getEffortTooltip({ level: 'low', source: 'model-id' }),
+        'Reasoning effort: low (from model ID)'
+    );
+    assert.strictEqual(
+        getEffortTooltip({ source: 'agent-default' }),
+        'Reasoning effort: default (CLI built-in default; not explicitly configured or logged)'
+    );
+    assert.strictEqual(
+        getEffortTooltip(undefined),
+        'Reasoning effort: default (CLI built-in default; not explicitly configured or logged)'
+    );
+
+    const levels = ['default', 'max', 'high', 'low', 'off', 'xhigh', 'medium'];
+    assert.deepStrictEqual(
+        [...levels].sort(compareEffortLevels),
+        ['off', 'low', 'medium', 'high', 'xhigh', 'max', 'default']
+    );
+
+    assert.deepStrictEqual(
+        pickHigherPrecedenceEffort(
+            { level: 'high', source: 'configured' },
+            { level: 'high', source: 'observed' }
+        ),
+        { level: 'high', source: 'observed' }
+    );
+
+    const rejectedMarkup = renderEffortChip({ level: '<img src=x onerror=1>', source: 'configured' }, { interactive: false });
+    assert.ok(!rejectedMarkup.includes('<img'), 'must reject HTML injection in effort level');
+    assert.ok(rejectedMarkup.includes('data-effort-level="default"'));
+
+    const interactiveBtn = renderEffortChip({ level: 'high', source: 'observed' });
+    assert.ok(interactiveBtn.includes('interestfor="effort-tooltip"'));
+    assert.ok(interactiveBtn.includes('data-effort-level="high"'));
+    assert.ok(interactiveBtn.includes('data-effort-source="observed"'));
 });

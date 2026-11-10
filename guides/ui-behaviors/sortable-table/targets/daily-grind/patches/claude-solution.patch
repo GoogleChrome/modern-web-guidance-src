@@ -1,0 +1,338 @@
+diff --git a/index.html b/index.html
+index 66c9173..eae3f75 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,135 @@
+       background: #3e2723;
+     }
+ 
++    /* Sortable seasonal drinks table */
++    .table-scroll {
++      overflow-x: auto;
++      margin-top: 30px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-scroll:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .sortable-table {
++      inline-size: 100%;
++      min-inline-size: 640px;
++      border-collapse: collapse;
++      text-align: start;
++    }
++
++    .sortable-table caption {
++      padding: 12px 16px;
++      font-weight: bold;
++      font-size: 1.1rem;
++      color: var(--primary);
++      text-align: start;
++    }
++
++    .sortable-table th,
++    .sortable-table td {
++      padding: 10px 16px;
++      text-align: start;
++      vertical-align: top;
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    .sortable-table thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .sortable-table tbody th {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .sortable-table .numeric {
++      text-align: end;
++      font-variant-numeric: tabular-nums;
++    }
++
++    /* The button supplies the padding for sortable headers. */
++    .sortable-table th:has(> button) {
++      padding: 0;
++    }
++
++    .sortable-table th > button {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      inline-size: 100%;
++      min-block-size: 24px;
++      padding: 10px 16px;
++      border: 0;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      text-align: inherit;
++      cursor: pointer;
++    }
++
++    .sortable-table th.numeric > button {
++      justify-content: flex-end;
++    }
++
++    .sortable-table th > button:hover {
++      background: rgba(255, 255, 255, 0.1);
++    }
++
++    .sortable-table th > button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .sort-icon {
++      flex: none;
++      inline-size: 1em;
++      block-size: 1em;
++    }
++
++    .sort-icon path {
++      opacity: 0.4;
++    }
++
++    th[aria-sort="ascending"] .sort-icon-up,
++    th[aria-sort="descending"] .sort-icon-down {
++      opacity: 1;
++    }
++
++    th[aria-sort="ascending"] .sort-icon-down,
++    th[aria-sort="descending"] .sort-icon-up {
++      opacity: 0;
++    }
++
++    .sortable-table tbody tr {
++      /* Derives a unique name from each row's identity. */
++      view-transition-name: match-element;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none;
++      }
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +323,89 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="table-scroll" role="region" aria-labelledby="seasonal-drinks-caption" tabindex="0">
++        <table id="seasonal-drinks" class="sortable-table">
++          <caption id="seasonal-drinks-caption">Featured seasonal drinks</caption>
++          <thead>
++            <tr>
++              <th scope="col" data-type="text">
++                <button type="button" commandfor="seasonal-drinks" command="--sort">
++                  Drink
++                  <svg class="sort-icon" aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16">
++                    <path class="sort-icon-up" d="M8 2 12 7H4z" fill="currentColor" />
++                    <path class="sort-icon-down" d="M8 14 4 9h8z" fill="currentColor" />
++                  </svg>
++                </button>
++              </th>
++              <th scope="col" data-type="text">
++                <button type="button" commandfor="seasonal-drinks" command="--sort">
++                  Served
++                  <svg class="sort-icon" aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16">
++                    <path class="sort-icon-up" d="M8 2 12 7H4z" fill="currentColor" />
++                    <path class="sort-icon-down" d="M8 14 4 9h8z" fill="currentColor" />
++                  </svg>
++                </button>
++              </th>
++              <th scope="col" data-type="number" class="numeric">
++                <button type="button" commandfor="seasonal-drinks" command="--sort">
++                  Caffeine
++                  <svg class="sort-icon" aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16">
++                    <path class="sort-icon-up" d="M8 2 12 7H4z" fill="currentColor" />
++                    <path class="sort-icon-down" d="M8 14 4 9h8z" fill="currentColor" />
++                  </svg>
++                </button>
++              </th>
++              <th scope="col" data-type="number" class="numeric">
++                <button type="button" commandfor="seasonal-drinks" command="--sort">
++                  Calories
++                  <svg class="sort-icon" aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16">
++                    <path class="sort-icon-up" d="M8 2 12 7H4z" fill="currentColor" />
++                    <path class="sort-icon-down" d="M8 14 4 9h8z" fill="currentColor" />
++                  </svg>
++                </button>
++              </th>
++              <th scope="col" data-type="number" class="numeric">
++                <button type="button" commandfor="seasonal-drinks" command="--sort">
++                  Price
++                  <svg class="sort-icon" aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16">
++                    <path class="sort-icon-up" d="M8 2 12 7H4z" fill="currentColor" />
++                    <path class="sort-icon-down" d="M8 14 4 9h8z" fill="currentColor" />
++                  </svg>
++                </button>
++              </th>
++              <th scope="col">Tasting Notes</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>Hot</td>
++              <td class="numeric" data-value="130">130&nbsp;mg</td>
++              <td class="numeric" data-value="190">190</td>
++              <td class="numeric" data-value="5.75">$5.75</td>
++              <td>Creamy oat milk with a hint of Vermont maple syrup.</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>Hot</td>
++              <td class="numeric" data-value="75">75&nbsp;mg</td>
++              <td class="numeric" data-value="5">5</td>
++              <td class="numeric" data-value="3.25">$3.25</td>
++              <td>Bold, smokey, and perfect for a morning boost.</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>Iced</td>
++              <td class="numeric" data-value="205">205&nbsp;mg</td>
++              <td class="numeric" data-value="15">15</td>
++              <td class="numeric" data-value="4.5">$4.50</td>
++              <td>Steeped for 18 hours for maximum smoothness.</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p id="seasonal-drinks-status" class="visually-hidden" role="status"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +419,107 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const table = document.getElementById('seasonal-drinks');
++      const status = document.getElementById('seasonal-drinks-status');
++      if (!(table instanceof HTMLTableElement) || !table.tHead || !table.tBodies[0] || !status) return;
++
++      const tbody = table.tBodies[0];
++      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      let activeTransition = null;
++
++      function sortRows(rows, index, type, direction) {
++        const factor = direction === 'ascending' ? 1 : -1;
++        // Read each row's value once before sorting; prefer the raw data-value over formatted text.
++        const keyed = rows.map((row) => {
++          const cell = row.cells[index];
++          const raw = cell ? (cell.dataset.value ?? cell.textContent.trim()) : '';
++          return { row, key: type === 'number' ? Number.parseFloat(raw) : raw };
++        });
++        keyed.sort((a, b) => {
++          if (type === 'number') {
++            const av = Number.isNaN(a.key) ? -Infinity : a.key;
++            const bv = Number.isNaN(b.key) ? -Infinity : b.key;
++            return factor * (av === bv ? 0 : av < bv ? -1 : 1);
++          }
++          return factor * collator.compare(a.key, b.key);
++        });
++        return keyed.map((entry) => entry.row);
++      }
++
++      // Move existing rows to the end in sorted order; never rebuild the tbody.
++      function reorder(container, orderedRows) {
++        for (const row of orderedRows) {
++          if (typeof container.moveBefore === 'function') {
++            container.moveBefore(row, null);
++          } else {
++            container.insertBefore(row, null);
++          }
++        }
++      }
++
++      function reorderWithTransition(rows) {
++        const update = () => reorder(tbody, rows);
++
++        // Rapid clicks: finish any running animation immediately before starting the next.
++        if (activeTransition) activeTransition.skipTransition();
++
++        if (reducedMotion.matches) {
++          update();
++          return;
++        }
++
++        let transition = null;
++        if (typeof table.startViewTransition === 'function') {
++          // Element-scoped: the rest of the page stays interactive during the animation.
++          transition = table.startViewTransition(update);
++        } else if (typeof document.startViewTransition === 'function') {
++          transition = document.startViewTransition(update);
++        } else {
++          update();
++          return;
++        }
++
++        activeTransition = transition;
++        transition.finished.finally(() => {
++          if (activeTransition === transition) activeTransition = null;
++        });
++      }
++
++      function sortBy(button) {
++        const th = button.closest('th');
++        if (!th || th.parentElement !== table.tHead.rows[0]) return;
++
++        const direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
++
++        for (const header of table.tHead.rows[0].cells) header.removeAttribute('aria-sort');
++        th.setAttribute('aria-sort', direction);
++
++        const rows = sortRows([...tbody.rows], th.cellIndex, th.dataset.type, direction);
++        reorderWithTransition(rows);
++        // One message per sort; the status element is already in the DOM.
++        status.textContent = `Sorted by ${button.textContent.trim()}, ${direction}, ${rows.length} rows`;
++      }
++
++      const supportsInvokers =
++        typeof HTMLButtonElement !== 'undefined' && 'commandForElement' in HTMLButtonElement.prototype;
++
++      if (supportsInvokers) {
++        table.addEventListener('command', (event) => {
++          if (event.command !== '--sort' || !(event.source instanceof HTMLButtonElement)) return;
++          sortBy(event.source);
++        });
++      } else {
++        // Fallback for browsers without invoker commands: identical behavior via click.
++        for (const button of table.tHead.querySelectorAll('button[command="--sort"]')) {
++          button.addEventListener('click', () => sortBy(button));
++        }
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

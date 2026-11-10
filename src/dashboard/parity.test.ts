@@ -44,7 +44,7 @@ test('Parity: Static manifests should be correctly generated and accessible', as
     
     // Compare with local results
     const localDirs = fs.readdirSync(targetResultsDir, { withFileTypes: true })
-        .filter(d => d.isDirectory() && fs.existsSync(path.join(targetResultsDir, d.name, 'evals.json')))
+        .filter(d => (d.isDirectory() || d.isSymbolicLink()) && fs.existsSync(path.join(targetResultsDir, d.name, 'evals.json')))
         .map(d => d.name);
         
     const suiteIds = suitesData.map((s: any) => typeof s === 'string' ? s : s.testId);

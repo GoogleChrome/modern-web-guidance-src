@@ -77,6 +77,19 @@ if (STATIC) {
   });
 } else {
 
+const manifestOutDir = path.join(outDir, 'dashboard');
+if (
+  !fs.existsSync(path.join(manifestOutDir, 'features-mapping.gen.js')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'demos.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'grouped-tasks.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'suites.gen.json'))
+) {
+  const resultsSourceDir = process.env.USE_MOCK_RESULTS === 'true'
+    ? path.join(dashboardDir, 'mock-results')
+    : suitesDir;
+  await runAllManifests({ outputDir: manifestOutDir, resultsSourceDir });
+}
+
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -244,7 +257,7 @@ const server = http.createServer(async (req, res) => {
     try {
       if (fs.existsSync(localSuitesDir)) {
         const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
-          .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
+          .filter(dirent => (dirent.isDirectory() || dirent.isSymbolicLink()) && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
@@ -286,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      
+
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         const category = (info && info.guideDir)
@@ -296,7 +309,7 @@ const server = http.createServer(async (req, res) => {
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
       }
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
@@ -430,7 +443,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     let filePath;
-    if (checkPath === 'features-mapping.gen.js' || checkPath === 'features_mapping.gen.js' || checkPath === 'grouped-tasks.gen.json' || checkPath === 'suites.gen.json') {
+    if (
+      checkPath === 'features-mapping.gen.js' ||
+      checkPath === 'features_mapping.gen.js' ||
+      checkPath === 'grouped-tasks.gen.json' ||
+      checkPath === 'suites.gen.json'
+    ) {
       const canonicalCheckPath = checkPath === 'features_mapping.gen.js' ? 'features-mapping.gen.js' : checkPath;
       filePath = path.join(outDir, 'dashboard', canonicalCheckPath);
     } else if (checkPath.startsWith('base_apps/')) {
@@ -467,6 +485,9 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
     filePath = path.join(guidesDir, decodedPath.substring(8));
+  } else if (decodedPath.startsWith('/public-evals/')) {
+    // Built by `pnpm public:build` into out/; never read from the dashboard dir, which is deployed.
+    filePath = path.join(outDir, decodedPath.substring(1));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join(dashboardDir, relativePath);

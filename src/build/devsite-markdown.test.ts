@@ -1,24 +1,33 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { toDevsiteMarkdown } from './devsite-markdown.ts';
+import {
+  toDevsiteMarkdown,
+  moonriseHeadingId,
+  buildHeadingMap,
+  escapeJinjaDelimiters,
+  formatDevsiteGateNotices,
+} from './devsite-markdown.ts';
 
 describe('toDevsiteMarkdown', () => {
   it('converts a single-paragraph GitHub alert to a DevSite notice paragraph', () => {
     const input = `Intro.\n\n> [!NOTE]\n> Line one\n> line two.\n\nOutro.\n`;
-    assert.strictEqual(toDevsiteMarkdown(input), `Intro.\n\nNote: Line one\nline two.\n\nOutro.\n`);
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(res.markdown, `Intro.\n\nNote: Line one\nline two.\n\nOutro.\n`);
   });
 
   it('maps IMPORTANT to the special aside class for multi-block alerts', () => {
     const input = `> [!IMPORTANT]\n> First para.\n>\n> - item a\n> - item b\n`;
+    const res = toDevsiteMarkdown(input);
     assert.strictEqual(
-      toDevsiteMarkdown(input),
+      res.markdown,
       `<aside class="special"><b>Important:</b>\n\nFirst para.\n\n- item a\n- item b\n\n</aside>\n`,
     );
   });
 
   it('leaves plain blockquotes alone', () => {
     const input = `> Just a quote.\n`;
-    assert.strictEqual(toDevsiteMarkdown(input), input);
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(res.markdown, input);
   });
 
   it('throws on unknown alert types', () => {
@@ -45,9 +54,9 @@ describe('toDevsiteMarkdown', () => {
       '',
     ].join('\n');
     const merges: number[] = [];
-    const output = toDevsiteMarkdown(input, n => merges.push(n));
+    const res = toDevsiteMarkdown(input, n => merges.push(n));
     assert.deepStrictEqual(merges, [2, 3]);
-    assert.strictEqual(output, [
+    assert.strictEqual(res.markdown, [
       '1. **First**',
       '',
       '    Explain first.',
@@ -70,14 +79,333 @@ describe('toDevsiteMarkdown', () => {
   it('does not merge lists separated by a heading', () => {
     const input = `1. a\n2. b\n\n## Next\n\nText.\n\n3. c\n`;
     const merges: number[] = [];
-    assert.strictEqual(toDevsiteMarkdown(input, n => merges.push(n)), input);
+    const res = toDevsiteMarkdown(input, n => merges.push(n));
+    assert.strictEqual(res.markdown, input);
     assert.deepStrictEqual(merges, []);
   });
 
   it('leaves already-indented lists untouched', () => {
     const input = `1. a\n\n    \`\`\`js\n    x();\n    \`\`\`\n\n2. b\n`;
     const merges: number[] = [];
-    assert.strictEqual(toDevsiteMarkdown(input, n => merges.push(n)), input);
+    const res = toDevsiteMarkdown(input, n => merges.push(n));
+    assert.strictEqual(res.markdown, input);
     assert.deepStrictEqual(merges, []);
+  });
+});
+
+describe('moonriseHeadingId', () => {
+  it('collapses ampersand and surrounding spaces into a single underscore', () => {
+    assert.strictEqual(moonriseHeadingId('10. Transitions & animations'), '10_transitions_animations');
+  });
+
+  it('handles code tags in headings without leaking angle brackets or tag names', () => {
+    assert.strictEqual(moonriseHeadingId('`code` in heading'), 'code_in_heading');
+    assert.strictEqual(moonriseHeadingId('Using `@property` rules'), 'using_property_rules');
+  });
+
+  it('percent-encodes non-ASCII characters to uppercase hex', () => {
+    assert.strictEqual(moonriseHeadingId('Heading with — em-dash'), 'heading_with_%E2%80%94_em_dash');
+  });
+
+  it('trims leading and trailing underscores and punctuation', () => {
+    assert.strictEqual(moonriseHeadingId('### Overview: '), 'overview');
+  });
+});
+
+describe('explicit heading IDs and anchor resolution (T2 & T3)', () => {
+  it('normalizes explicit heading IDs to Moonrise syntax {: #id } and resolves links to them', () => {
+    const input = [
+      '# Title',
+      '',
+      'See [the guidance below](#detecting-at-rules-without-supports-at-rule).',
+      '',
+      '## Detecting support for at-rules when `@supports at-rule()` isn’t appropriate { #detecting-at-rules-without-supports-at-rule }',
+      '',
+      'Guidance text.',
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.ok(res.markdown.includes('## Detecting support for at-rules when `@supports at-rule()` isn’t appropriate {: #detecting-at-rules-without-supports-at-rule }'));
+    assert.ok(res.markdown.includes('[the guidance below](#detecting-at-rules-without-supports-at-rule)'));
+    assert.ok(res.headingIds.has('detecting-at-rules-without-supports-at-rule'));
+  });
+
+  it('resolves GitHub-style hyphenated anchor slugs to Moonrise underscore IDs', () => {
+    const input = [
+      '# Document Title',
+      '',
+      'Go to [transitions section](#10-transitions--animations).',
+      '',
+      '## 10. Transitions & animations',
+      '',
+      'Content.',
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.ok(res.markdown.includes('[transitions section](#10_transitions_animations)'));
+    assert.ok(res.headingIds.has('10_transitions_animations'));
+  });
+
+  it('resolves duplicate headings with hoedown numeric suffixes', () => {
+    const input = [
+      '# Doc',
+      '',
+      '## Subhead',
+      'First.',
+      '',
+      '## Subhead',
+      'Second.',
+      '',
+      '## Subhead',
+      'Third.',
+    ].join('\n');
+
+    const { headingIds } = buildHeadingMap(input);
+    assert.ok(headingIds.has('subhead'));
+    assert.ok(headingIds.has('subhead_2'));
+    assert.ok(headingIds.has('subhead_3'));
+  });
+
+  it('maps duplicate headings so #sub points to the first heading and #sub-1 points to the second', () => {
+    const input = [
+      '# Doc',
+      '',
+      '[first](#sub)',
+      '[second](#sub-1)',
+      '',
+      '## Sub',
+      'First.',
+      '',
+      '## Sub',
+      'Second.',
+    ].join('\n');
+
+    const { headingMap } = buildHeadingMap(input);
+    assert.strictEqual(headingMap.get('sub'), 'sub');
+    assert.strictEqual(headingMap.get('sub-1'), 'sub_2');
+
+    const res = toDevsiteMarkdown(input);
+    assert.ok(res.markdown.includes('[first](#sub)'));
+    assert.ok(res.markdown.includes('[second](#sub_2)'));
+  });
+
+  it('throws when an anchor cannot be resolved on the page', () => {
+    const input = [
+      '# Document Title',
+      '',
+      'See [missing anchor](#does-not-exist).',
+      '',
+      '## Valid Section',
+      '',
+      'Content.',
+    ].join('\n');
+
+    assert.throws(
+      () => toDevsiteMarkdown(input, { filePath: 'guides/test/test.md' }),
+      /Unresolved anchor "#does-not-exist" in guides\/test\/test\.md/
+    );
+  });
+});
+
+describe('BaselineStatus formatting (T4)', () => {
+  it('strips trailing period and formats spacing around BaselineStatus macro', () => {
+    const input = [
+      '# Guide',
+      '',
+      "{{ macros.BaselineStatus('fetchlater') }}. Therefore, a fallback strategy is typically required.",
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(res.hasBaselineMacro, true);
+    assert.strictEqual(
+      res.markdown,
+      "# Guide\n\n{{ macros.BaselineStatus('fetchlater') }}\n\nTherefore, a fallback strategy is typically required."
+    );
+  });
+});
+
+describe('escapeJinjaDelimiters (T5)', () => {
+  it('wraps raw Jinja delimiters in verbatim tags', () => {
+    const input = 'Pass an object: `{{algorithm: string, value: string}}` or `{% raw %}` or `{# comment #}`';
+    const escaped = escapeJinjaDelimiters(input);
+    assert.ok(escaped.includes('{% verbatim %}{{algorithm: string, value: string}}{% endverbatim %}'));
+    assert.ok(escaped.includes('{% verbatim %}{%{% endverbatim %}'));
+    assert.ok(escaped.includes('{% verbatim %}{#{% endverbatim %}'));
+  });
+
+  it('preserves valid DevSite macros, imports, and includes without double-escaping', () => {
+    const input = [
+      '{% import "/_macros.html" as macros %}',
+      '{% include "/docs/modern-web-guidance/_guide-promo.html" %}',
+      "{{ macros.BaselineStatus('grid') }}",
+      'Stray {{ delimiter }}',
+    ].join('\n');
+
+    const escaped = escapeJinjaDelimiters(input);
+    assert.ok(escaped.includes('{% import "/_macros.html" as macros %}'));
+    assert.ok(escaped.includes('{% include "/docs/modern-web-guidance/_guide-promo.html" %}'));
+    assert.ok(escaped.includes("{{ macros.BaselineStatus('grid') }}"));
+    assert.ok(escaped.includes('{% verbatim %}{{ delimiter }}{% endverbatim %}'));
+  });
+});
+
+describe('closing code fence indentation normalization (T10)', () => {
+  it('normalizes closing fence indentation to match opening fence', () => {
+    const input = [
+      '# Title',
+      '',
+      '```html',
+      '<script type="module">',
+      '</script>',
+      ' ```',
+      '',
+      'Paragraph after code.',
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(
+      res.markdown,
+      [
+        '# Title',
+        '',
+        '```html',
+        '<script type="module">',
+        '</script>',
+        '```',
+        '',
+        'Paragraph after code.',
+      ].join('\n')
+    );
+  });
+
+  it('does not prematurely close outer 4-backtick fence on embedded 3-backtick fences', () => {
+    const input = [
+      '# Title',
+      '',
+      '  ````markdown',
+      '  ```js',
+      '  const x = 1;',
+      '  ```',
+      '   ````',
+      '',
+      'Paragraph after code.',
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(
+      res.markdown,
+      [
+        '# Title',
+        '',
+        '  ````markdown',
+        '  ```js',
+        '  const x = 1;',
+        '  ```',
+        '  ````',
+        '',
+        'Paragraph after code.',
+      ].join('\n')
+    );
+  });
+});
+
+describe('block spacing (T6)', () => {
+  it('ensures blank line between paragraph and following code block or list', () => {
+    const input = [
+      '# Title',
+      '',
+      'Intro paragraph without trailing blank line:',
+      '```css',
+      '.rule { color: red; }',
+      '```',
+      'Another paragraph without trailing blank line:',
+      '- item 1',
+      '- item 2',
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(
+      res.markdown,
+      [
+        '# Title',
+        '',
+        'Intro paragraph without trailing blank line:',
+        '',
+        '```css',
+        '.rule { color: red; }',
+        '```',
+        '',
+        'Another paragraph without trailing blank line:',
+        '',
+        '- item 1',
+        '- item 2',
+      ].join('\n')
+    );
+  });
+});
+
+describe('formatDevsiteGateNotices', () => {
+  it('returns an empty array when neither gate has matching features', () => {
+    assert.deepStrictEqual(
+      formatDevsiteGateNotices({ originTrials: [], volatileFeatures: [] }),
+      []
+    );
+  });
+
+  it('formats a single Origin Trial notice with deduplicated ChromeStatus link and no blank lines', () => {
+    const notices = formatDevsiteGateNotices({
+      originTrials: [
+        { id: 'trial-a', name: 'Trial A', chromestatus_url: 'https://chromestatus.com/feature/111' },
+        { id: 'trial-b', name: 'Trial B', chromestatus_url: 'https://chromestatus.com/feature/111' },
+      ],
+      volatileFeatures: [],
+    });
+
+    assert.strictEqual(notices.length, 1);
+    const notice = notices[0];
+    assert.ok(notice.startsWith('<aside class="caution">\n'));
+    assert.ok(notice.endsWith('\n</aside>'));
+    assert.ok(!notice.includes('\n\n'), 'Must not contain blank lines inside <aside>');
+    assert.ok(notice.includes('<b>Caution: Origin Trial features require explicit project opt-in.</b>'));
+    assert.ok(notice.includes('<a href="https://chromestatus.com/feature/111">ChromeStatus entry</a>'));
+    assert.strictEqual(notice.match(/chromestatus\.com\/feature\/111/g)?.length, 1);
+    assert.ok(notice.includes('<pre class="prettyprint lang-shell">npx modern-web-guidance@latest set-allow-origin-trials</pre>'));
+    assert.ok(notice.includes('<code>{"allowOriginTrials": true}</code>'));
+  });
+
+  it('formats multiple distinct ChromeStatus entries and omits link sentence when URLs are absent', () => {
+    const plural = formatDevsiteGateNotices({
+      originTrials: [
+        { id: 'trial-a', name: 'Alpha <API>', chromestatus_url: 'https://chromestatus.com/feature/111?x=1&y=2' },
+        { id: 'trial-b', name: 'Beta API', chromestatus_url: 'https://chromestatus.com/feature/222' },
+      ],
+      volatileFeatures: [],
+    });
+    assert.strictEqual(plural.length, 1);
+    assert.ok(plural[0].includes('See the ChromeStatus entries for current trial status and timeline:'));
+    assert.ok(plural[0].includes('<a href="https://chromestatus.com/feature/111?x=1&amp;y=2">Alpha &lt;API&gt;</a>'));
+    assert.ok(plural[0].includes('<a href="https://chromestatus.com/feature/222">Beta API</a>'));
+
+    const noUrl = formatDevsiteGateNotices({
+      originTrials: [{ id: 'trial-c' }],
+      volatileFeatures: [],
+    });
+    assert.strictEqual(noUrl.length, 1);
+    assert.ok(!noUrl[0].includes('ChromeStatus'));
+  });
+
+  it('formats volatile notices and emits both notices in order when both gates match', () => {
+    const notices = formatDevsiteGateNotices({
+      originTrials: [
+        { id: 'trial-a', chromestatus_url: 'https://chromestatus.com/feature/111' },
+      ],
+      volatileFeatures: [{ id: 'volatile-a', reason: 'Chrome-only' }],
+    });
+
+    assert.strictEqual(notices.length, 2);
+    assert.ok(notices[0].includes('npx modern-web-guidance@latest set-allow-origin-trials'));
+    assert.ok(notices[1].includes('<b>Caution: Volatile features require explicit project opt-in.</b>'));
+    assert.ok(notices[1].includes('<pre class="prettyprint lang-shell">npx modern-web-guidance@latest set-allow-volatile-features</pre>'));
+    assert.ok(notices[1].includes('<code>{"allowVolatileFeatures": true}</code>'));
   });
 });

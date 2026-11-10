@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, expectNever } from '../../../src/grading/test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -50,23 +50,52 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
 
   test('The :autofill pseudo-class must be applied to a form control', () => {
     const css = getAllCssText();
-    const hasAutofill = /:autofill\b/i.test(css) || /:-webkit-autofill\b/i.test(css);
+    const hasAutofill = /(?<!-):autofill\b/i.test(css);
     expect(hasAutofill).toBe(true);
   });
 
   test('The incorrect spelling :auto-fill must not be used', () => {
     const css = getAllCssText();
-    expect(/:auto-fill\b/i.test(css)).toBe(false);
+    expect(getAutofillRules(css).length).toBeGreaterThan(0);
+    expect(/:(?:-webkit-)?auto-fill\b/i.test(css)).toBe(false);
   });
 
   test('The :autofill pseudo-class must only be applied to <input>, <select>, or <textarea>', () => {
     const css = getAllCssText();
-    const directMatches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:-webkit-)?auto-?fill\b/gi)];
-    const isMatches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:is|where)\([^)]*:(?:-webkit-)?auto-?fill\b/gi)];
-    const matches = [...directMatches, ...isMatches];
-    expect(matches.length).toBeGreaterThan(0);
-    const invalidTags = matches.map(m => m[1].toLowerCase()).filter(t => !['input', 'select', 'textarea'].includes(t));
-    expect(invalidTags).toHaveLength(0);
+    const rules = getAutofillRules(css);
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) {
+      const selectors = rule.selector.split(',').map(s => s.trim());
+      for (const sel of selectors) {
+        if (!/:(?:-webkit-)?auto-?fill\b/i.test(sel)) continue;
+        const match = sel.match(/(?:^|[\s>+~])([a-zA-Z][\w-]*)(?::[a-zA-Z-()]*)?:(?:-webkit-)?auto-?fill\b/i);
+        if (match) {
+          const tag = match[1].toLowerCase();
+          expect(['input', 'select', 'textarea']).toContain(tag);
+        }
+        const isMatch = sel.match(/:(?:is|where)\(([^)]+)\):(?:-webkit-)?auto-?fill\b/i);
+        if (isMatch) {
+          const tags = isMatch[1].split(',').map(t => t.trim().toLowerCase());
+          for (const t of tags) {
+            expect(['input', 'select', 'textarea']).toContain(t);
+          }
+        }
+      }
+    }
+  });
+
+  test('If :-webkit-autofill is used, it must be combined with :autofill inside :is()', () => {
+    const css = getAllCssText();
+    const rules = getAutofillRules(css);
+    expect(rules.length).toBeGreaterThan(0);
+    const webkitRules = rules.filter(r => /:-webkit-autofill\b/i.test(r.selector));
+    for (const r of webkitRules) {
+      const stripped = r.selector.replace(
+        /:is\(\s*(?::autofill\s*,\s*:-webkit-autofill|:-webkit-autofill\s*,\s*:autofill)\s*\)/gi,
+        ''
+      );
+      expect(/:-webkit-autofill\b/i.test(stripped)).toBe(false);
+    }
   });
 
   test.beforeEach(async ({ page }) => {
@@ -85,6 +114,7 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
   });
 
   test('JavaScript must not apply inline styles to form controls', async ({ page }) => {
+    expect(getAutofillRules(getAllCssText()).length).toBeGreaterThan(0);
     let controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
     if (controls.length === 0) {
       await page.evaluate(() => {
@@ -98,36 +128,72 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     for (const control of controls) {
       await control.fill('Test Value').catch(() => {});
     }
-    await page.waitForTimeout(1000);
 
-    const hasInlineStyles = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('input, select, textarea'))
-        .some(el => (el as HTMLElement).style.length > 0);
-    });
-    expect(hasInlineStyles).toBe(false);
+    await expectNever(
+      page,
+      () => Array.from(document.querySelectorAll('input, select, textarea')).some((el: any) => el.style.length > 0),
+      { forMs: 300 }
+    );
   });
 
-  test('Multiple visual state indicators must be used to style the autofilled state', () => {
+  test('The autofilled state must not change layout-affecting properties (border-width, padding, font-size)', () => {
     const rules = getAutofillRules(getAllCssText()).filter(
       r => !/:focus(?:-visible)?\b/i.test(r.selector)
     );
     expect(rules.length).toBeGreaterThan(0);
     const combinedBody = rules.map(r => r.body).join('\n');
-    const hasBorder = /\bborder(?:-width|-style|-color)?\s*:/i.test(combinedBody);
-    const hasBgIndicator = /\bbox-shadow\s*:[^;]*\binset\b|\bbackground(?:-color)?\s*:/i.test(combinedBody);
-    expect(hasBorder && hasBgIndicator).toBe(true);
+    const changesLayout = /\b(?:border-(?:(?:top|right|bottom|left|inline|block)(?:-\w+)?-)?width|padding(?:-[\w-]+)?|font-size)\s*:/i.test(combinedBody);
+    expect(changesLayout).toBe(false);
   });
 
-  test('The focus indicator must be preserved on autofilled elements', () => {
+  test('At least one non-color indicator must be used to style the autofilled state', () => {
+    const rules = getAutofillRules(getAllCssText()).filter(
+      r => !/:focus(?:-visible)?\b/i.test(r.selector)
+    );
+    expect(rules.length).toBeGreaterThan(0);
+    const combinedBody = rules.map(r => r.body).join('\n');
+    const hasInsetBoxShadow = /\bbox-shadow\s*:[^;]*\binset\b/i.test(combinedBody);
+    const hasOutline = /\boutline\s*:\s*(?!none\b|0\b)[^;]+|\boutline-(?:width|style)\s*:/i.test(combinedBody);
+    const hasOtherNonColor = /\b(?:border-style|text-decoration|font-weight|background-image)\s*:/i.test(combinedBody);
+    expect(hasInsetBoxShadow || hasOutline || hasOtherNonColor).toBe(true);
+  });
+
+  test('If a custom fill is applied to the autofilled state, it must use an inset box-shadow, not background-color', () => {
+    const rules = getAutofillRules(getAllCssText()).filter(
+      r => !/:focus(?:-visible)?\b/i.test(r.selector)
+    );
+    expect(rules.length).toBeGreaterThan(0);
+    const combinedBody = rules.map(r => r.body).join('\n');
+    const usesBackgroundColor = /\bbackground(?:-color)?\s*:/i.test(combinedBody);
+    expect(usesBackgroundColor).toBe(false);
+  });
+
+  test('outline: none must not be applied to autofilled elements', () => {
+    const css = getAllCssText();
+    const rules = getAutofillRules(css);
+    expect(rules.length).toBeGreaterThan(0);
+    const removesOutline = rules.some(r => /\boutline\s*:\s*(?:none|0)\b/i.test(r.body));
+    expect(removesOutline).toBe(false);
+  });
+
+  test('If outline is used to style autofilled elements, the :autofill:focus-visible state must have an outline that differs in more than color', () => {
     const rules = getAutofillRules(getAllCssText());
     expect(rules.length).toBeGreaterThan(0);
+    const nonFocusRules = rules.filter(r => !/:focus(?:-visible)?\b/i.test(r.selector));
+    const nonFocusBody = nonFocusRules.map(r => r.body).join('\n');
+    const autofillUsesOutline = /\boutline(?:-(?:width|style|color|offset))?\s*:/i.test(nonFocusBody);
+
     const focusRule = rules.find(
       r =>
         /:(?:-webkit-)?autofill[^,{]*:focus(?:-visible)?\b/i.test(r.selector) ||
         /:focus(?:-visible)?[^,{]*:(?:-webkit-)?autofill\b/i.test(r.selector)
     );
-    expect(focusRule).toBeDefined();
-    expect(/\boutline\s*:\s*(?!none\b|0\b)[^;]+/i.test(focusRule!.body)).toBe(true);
+    const focusHasDistinctOutline = Boolean(
+      focusRule &&
+      (/\boutline-(?:width|style|offset)\s*:/i.test(focusRule.body) ||
+        /\boutline\s*:\s*(?!none\b|0\b)[^;]*\b(?:\d+(?:\.\d+)?(?:px|rem|em)|thin|medium|thick|dashed|dotted|double|solid)\b/i.test(focusRule.body))
+    );
+    expect(!autofillUsesOutline || focusHasDistinctOutline).toBe(true);
   });
 
 });

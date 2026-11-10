@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Modern Web Guidance",
     "shortDescription": "Web platform expertise",
-    "longDescription": "Modern Web Guidance is an agent skill and CLI tool designed to help AI coding agents build web applications using modern, secure, and high-performance APIs rather than outdated workarounds. Supported by the Google Chrome team, it injects expert-curated web platform best practices directly into an agent's context window to prevent the generation of bloated, legacy code.",
+    "longDescription": "Modern Web Guidance is an agent skill and CLI tool designed to help AI coding agents build web applications using modern, secure, and high-performance APIs rather than outdated workarounds. Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, it injects expert-curated web platform best practices directly into an agent's context window to prevent the generation of bloated, legacy code.",
     "developerName": "Google Chrome",
     "category": "Developer Tools",
     "composerIcon": "./assets/logo.png",
@@ -29,6 +29,9 @@
       "Read"
     ],
     "websiteURL": "https://developer.chrome.com/docs/modern-web-guidance",
+    "supportURL": "https://github.com/GoogleChrome/modern-web-guidance-src/issues",
+    "privacyPolicyURL": "https://policies.google.com/privacy",
+    "termsOfServiceURL": "https://policies.google.com/terms",
     "defaultPrompt": [
       "Audit this project for modern web best practices and modernization opportunities",
       "What is the recommended modern way to implement responsive dialogs and popovers?"

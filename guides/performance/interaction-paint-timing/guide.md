@@ -194,9 +194,9 @@ onINP(sendToAnalytics, { reportSoftNavs: true });
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("interaction-contentful-paint") }}
+{{ BASELINE_STATUS("interaction-contentful-paint") }}
 
-{{ FEATURE_FALLBACKS("soft-navigations") }}
+{{ BASELINE_STATUS("soft-navigations") }}
 
 If your Baseline target includes browsers that do not support `InteractionContentfulPaint` or `PerformanceSoftNavigation`, treat these APIs as a progressive enhancement for Real User Monitoring (RUM):
 

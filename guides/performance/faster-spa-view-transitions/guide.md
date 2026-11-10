@@ -49,7 +49,7 @@ Set `content-visibility: hidden` on views that are not currently active.
 
 ### 2. Manage Focus
 
-When swapping views, ensure you manage keyboard focus correctly to preserve accessibility.
+When swapping views, ensure you manage keyboard focus correctly to preserve accessibility. Use the `inert` attribute to ensure interface elements in the hidden content are not included in the keyboard tab order.
 
 ```javascript
 function switchToView(viewId) {
@@ -57,12 +57,14 @@ function switchToView(viewId) {
   document.querySelectorAll('.spa-view').forEach(view => {
     view.classList.add('inactive');
     view.setAttribute('aria-hidden', 'true');
+    view.setAttribute('inert', 'inert');
   });
   
   // Show the target view
   const activeView = document.getElementById(viewId);
   activeView.classList.remove('inactive');
   activeView.setAttribute('aria-hidden', 'false');
+  activeView.removeAttribute('inert');
   
   // MANDATORY: Move focus to the new view to ensure a logical tab-order
   activeView.focus();

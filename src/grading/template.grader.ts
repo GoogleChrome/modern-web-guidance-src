@@ -10,14 +10,26 @@ import {
 // NOTE: Add imports from ts-morph, linkedom, or cssomnom as needed:
 // e.g. import { SyntaxKind, type Project } from 'ts-morph';
 // e.g. import type { Document } from 'linkedom';
-// e.g. import { getCascadedStyle, CSSStyleRule, type CSSStyleSheet } from 'cssomnom';
+// e.g. import {
+//   closestRule,
+//   resolveSelector,
+//   parseSelectorAST,
+//   getDeclaredProperties,
+//   getPropertyValues,
+//   getCascadedStyle,
+//   CSSStyleRule,
+//   CSSMediaRule,
+//   CSSPositionTryRule,
+//   type CSSStyleSheet,
+// } from 'cssomnom';
+// e.g. import { getRules } from '../../../../../src/grading/test-fixture.ts';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('<guide-name> Target Grader', () => {
 
-  // --- STATIC ASSERTIONS (FAST) ---
-  // Use static assertions to query DOM structure, attributes, CSS rules, and JavaScript syntax on the host.
+  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+  // Check structure and API usage (DOM structure, attributes, CSS rules, and JS/TS syntax) with parsers (Linkedom, CSSOMNom, ts-morph), never regex on source.
   // These run instantly and are far more robust for structural verification than starting a browser.
   
   test('Example test containing HTML checks (linkedom)', () => {
@@ -28,10 +40,20 @@ test.describe('<guide-name> Target Grader', () => {
   });
 
   test('Example test containing CSS checks (cssomnom)', () => {
-    // EXAMPLE 1: Static CSS AST parsing across stylesheets, <style> tags, and inline styles:
-    // const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    // const rules = Array.from(stylesheet.cssRules);
-    // const targetRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.target-element');
+    // EXAMPLE 1: Recursive rule lookup across stylesheets and nested rules (pre-order):
+    // const styleRules = getRules(targetFiles, CSSStyleRule);
+    // (Or getCssStyleSheet(targetFiles) if inspecting the stylesheet directly or using getCascadedStyle)
+    // const targetRule = styleRules.find(r => r.selectorText === '.target-element');
+    //
+    // For nested rules and at-rules:
+    // const parentMedia = closestRule(targetRule, CSSMediaRule);
+    // const fullSelector = targetRule ? resolveSelector(targetRule) : null;
+    //
+    // For progressive enhancement fallbacks / multiple values on the same property:
+    // const rowValues = targetRule ? getPropertyValues(targetRule, 'grid-template-rows') : [];
+    //
+    // For fast declaration checks:
+    // const declaredProps = getDeclaredProperties(stylesheet);
     //
     // For utility-first apps (Tailwind), accept either CSS rules or template utility classes:
     // const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
@@ -42,7 +64,7 @@ test.describe('<guide-name> Target Grader', () => {
     // EXAMPLE 2: Resolving cascaded styles against a Linkedom element without a browser:
     // const targetEl = docs.map(d => d.document.querySelector('.target-element')).find(Boolean);
     // if (targetEl) {
-    //   const cascaded = getCascadedStyle(targetEl, rules);
+    //   const cascaded = getCascadedStyle(targetEl, stylesheet);
     //   expect(cascaded.getPropertyValue('display')).toBe('flex');
     // }
   });
@@ -57,9 +79,10 @@ test.describe('<guide-name> Target Grader', () => {
     // expect(hasTargetFunction).toBe(true);
   });
 
-  // --- BROWSER ASSERTIONS (E2E) ---
-  // Use browser assertions ONLY for requirements that cannot be verified statically, such as runtime click events or dynamic state updates.
-  // If browser assertions are not needed, this entire `test.describe('Browser tests', ...)` section should be omitted.
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
+  // Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright.
+  // Locate elements through base-app markup, hooks that task.md names, or platform semantics (element types, ARIA roles, standard attributes); never invented routes, custom REST endpoints/payloads, or IDs/classes that exist only in the golden patches.
+  // If no expectations require runtime browser checks, this entire `test.describe('Browser tests', ...)` section should be omitted.
   
   test.describe('Browser tests', () => {
     
@@ -81,6 +104,12 @@ test.describe('<guide-name> Target Grader', () => {
     //     return { aBottom: a.bottom, bTop: b.top };
     //   });
     //   expect(pos.bTop).toBeGreaterThanOrEqual(pos.aBottom);
+    // });
+
+    // EXAMPLE 3: Interaction and state changes (via task.md hook or platform semantics)
+    // test('Example browser test containing interaction and state check', async ({ page }) => {
+    //   await page.getByRole('button', { name: 'Open' }).click();
+    //   await expect(page.locator('#item-details')).toBeVisible();
     // });
   });
 });

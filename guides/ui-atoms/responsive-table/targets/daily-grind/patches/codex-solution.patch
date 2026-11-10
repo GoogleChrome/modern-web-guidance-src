@@ -1,0 +1,229 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..178135c
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++/dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9b62c40
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++await mkdir(outputDirectory, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
+diff --git a/index.html b/index.html
+index 66c9173..105d84c 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,142 @@
+       color: var(--primary);
+     }
+ 
++    .table-wrapper {
++      margin-block-start: 2rem;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      overflow: auto;
++      container-type: inline-size;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .table-wrapper:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .drink-table {
++      inline-size: 100%;
++      min-inline-size: 48rem;
++      border-collapse: separate;
++      border-spacing: 0;
++      --label-serving: "Serving";
++      --label-calories: "Calories (kcal)";
++      --label-sugar: "Sugar (g)";
++      --label-caffeine: "Caffeine (mg)";
++      --label-price: "Price (USD)";
++    }
++
++    .drink-table caption {
++      padding: 1rem;
++      text-align: start;
++      font-size: 1.2rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .drink-table th,
++    .drink-table td {
++      padding: 0.85rem 1rem;
++      text-align: start;
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    .drink-table thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 2;
++    }
++
++    .drink-table thead th {
++      background: var(--primary);
++      color: white;
++      white-space: nowrap;
++    }
++
++    .drink-table thead th:first-child {
++      position: sticky;
++      inset-inline-start: 0;
++      z-index: 3;
++    }
++
++    .drink-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      z-index: 1;
++      background: var(--light);
++    }
++
++    .table-note {
++      margin-block-start: 0.75rem;
++      font-size: 0.9rem;
++    }
++
++    @container (width < 600px) {
++      .drink-table,
++      .drink-table caption,
++      .drink-table tbody,
++      .drink-table tr,
++      .drink-table th,
++      .drink-table td {
++        display: block;
++      }
++
++      .drink-table {
++        min-inline-size: 0;
++      }
++
++      .drink-table thead {
++        display: none;
++      }
++
++      .drink-table tbody tr {
++        margin: 0 0.75rem 1rem;
++        border: 1px solid var(--secondary);
++      }
++
++      .drink-table tbody th {
++        inset-block-start: 0;
++        z-index: 2;
++        background: var(--secondary);
++        overflow-wrap: anywhere;
++      }
++
++      .drink-table td {
++        overflow-wrap: anywhere;
++      }
++
++      .drink-table td::before {
++        font-weight: bold;
++      }
++
++      .drink-table td:nth-child(2)::before {
++        content: var(--label-serving) ": ";
++      }
++
++      .drink-table td:nth-child(3)::before {
++        content: var(--label-calories) ": ";
++      }
++
++      .drink-table td:nth-child(4)::before {
++        content: var(--label-sugar) ": ";
++      }
++
++      .drink-table td:nth-child(5)::before {
++        content: var(--label-caffeine) ": ";
++      }
++
++      .drink-table td:nth-child(6)::before {
++        content: var(--label-price) ": ";
++      }
++
++      .drink-table td:last-child {
++        border-block-end: 0;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -194,6 +330,51 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="table-wrapper" tabindex="0" role="region"
++        aria-labelledby="drink-table-caption" aria-describedby="drink-table-note">
++        <table class="drink-table" role="table">
++          <caption id="drink-table-caption">Seasonal drinks: nutrition &amp; pricing</caption>
++          <thead role="rowgroup">
++            <tr role="row">
++              <th scope="col" role="columnheader">Drink</th>
++              <th scope="col" role="columnheader">Serving</th>
++              <th scope="col" role="columnheader">Calories (kcal)</th>
++              <th scope="col" role="columnheader">Sugar (g)</th>
++              <th scope="col" role="columnheader">Caffeine (mg)</th>
++              <th scope="col" role="columnheader">Price (USD)</th>
++            </tr>
++          </thead>
++          <tbody role="rowgroup">
++            <tr role="row">
++              <th scope="row" role="rowheader">Maple Oat Latte</th>
++              <td role="cell">12 fl oz</td>
++              <td role="cell">180</td>
++              <td role="cell">18</td>
++              <td role="cell">150</td>
++              <td role="cell">$5.50</td>
++            </tr>
++            <tr role="row">
++              <th scope="row" role="rowheader">Dark Roast Espresso</th>
++              <td role="cell">2 fl oz</td>
++              <td role="cell">5</td>
++              <td role="cell">0</td>
++              <td role="cell">150</td>
++              <td role="cell">$3.00</td>
++            </tr>
++            <tr role="row">
++              <th scope="row" role="rowheader">Cold Brew</th>
++              <td role="cell">12 fl oz</td>
++              <td role="cell">5</td>
++              <td role="cell">0</td>
++              <td role="cell">200</td>
++              <td role="cell">$4.25</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
++      <p id="drink-table-note" class="table-note">Illustrative nutrition estimates and sample prices per serving,
++        before tax. Latte includes oat milk and maple syrup; espresso and cold brew are served plain.
++        Actual values and prices may vary with preparation, customizations, and location.</p>
+     </section>
+   </main>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

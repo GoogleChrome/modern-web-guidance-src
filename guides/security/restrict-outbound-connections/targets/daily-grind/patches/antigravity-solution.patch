@@ -1,0 +1,623 @@
+diff --git a/connection-allowlist.js b/connection-allowlist.js
+new file mode 100644
+index 0000000..6541eec
+--- /dev/null
++++ b/connection-allowlist.js
+@@ -0,0 +1,172 @@
++const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++
++// Normalize a config URL or URLPattern string for Connection-Allowlist:
++// - Rewrites ws:// and wss:// to http:// and https:// (WebSocket matching rule).
++// - Strips a bare trailing slash on origin-only URLs (e.g. from new URL(...).href)
++//   so all subpaths on the origin are permitted instead of only "/".
++export function normalizeAllowlistPattern(rawPattern) {
++  const trimmed = String(rawPattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
++  if (!/^https?:\/\//i.test(trimmed)) {
++    throw new Error(`Pattern must include an http:// or https:// scheme: ${rawPattern}`);
++  }
++  if (/[\s,]/.test(trimmed)) {
++    throw new Error(`Pattern must be a single URLPattern without spaces or commas: ${rawPattern}`);
++  }
++  if (/[()]/.test(trimmed)) {
++    throw new Error(`Custom regex groups are rejected by Connection-Allowlist: ${rawPattern}`);
++  }
++  return trimmed.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
++}
++
++// Build an RFC 9651 Inner List value for Connection-Allowlist or Connection-Allowlist-Report-Only.
++export function buildConnectionAllowlistHeader({
++  allowSelf = true,
++  patterns = [],
++  reportTo,
++  redirects = 'block',
++  webrtc = 'block',
++} = {}) {
++  const items = allowSelf ? ['response-origin'] : [];
++  for (const pattern of patterns) {
++    const raw = String(pattern).trim();
++    if (raw === 'response-origin') {
++      if (!items.includes('response-origin')) items.push('response-origin');
++      continue;
++    }
++    const normalized = normalizeAllowlistPattern(raw);
++    items.push(`"${normalized.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
++  }
++  let header = `(${items.join(' ')})`;
++  if (redirects === 'allow') header += '; redirects=allow';
++  if (webrtc === 'allow') header += '; webrtc=allow';
++  if (reportTo) {
++    const endpointToken = String(reportTo).trim().replace(/^"+|"+$/g, '');
++    header += `; report-to=${endpointToken}`;
++  }
++  return header;
++}
++
++export function buildContentSecurityPolicyHeader({
++  patterns = [],
++  reportTo,
++  inlineStyleHashes = [],
++  inlineScriptHashes = [],
++} = {}) {
++  const origins = new Set(["'self'"]);
++  for (const pattern of patterns) {
++    const normalized = normalizeAllowlistPattern(pattern);
++    const originMatch = normalized.match(/^(https?:\/\/[^/?#]+)/i);
++    if (originMatch) {
++      origins.add(originMatch[1]);
++    }
++  }
++  const allowedList = Array.from(origins).join(' ');
++  const styleSources = ["'self'", ...inlineStyleHashes.map((h) => `'${h}'`)];
++  const scriptSources = ["'self'", ...inlineScriptHashes.map((h) => `'${h}'`)];
++
++  const directives = [
++    "default-src 'self'",
++    `connect-src ${allowedList}`,
++    `img-src ${allowedList} data: blob:`,
++    `style-src ${styleSources.join(' ')}`,
++    `script-src ${scriptSources.join(' ')}`,
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'self'",
++  ];
++
++  if (reportTo) {
++    const endpointToken = String(reportTo).trim().replace(/^"+|"+$/g, '');
++    directives.push(`report-to ${endpointToken}`);
++  }
++
++  return directives.join('; ');
++}
++
++// Server or middleware helper applying Connection-Allowlist, Reporting-Endpoints, and CSP fallback
++// on document and worker responses.
++export function setConnectionAllowlistHeaders(res, options = {}) {
++  const {
++    secFetchDest = 'document',
++    patterns = ['https://images.unsplash.com'],
++    reportOnlyPatterns,
++    reportEndpointName = 'conn-reports',
++    reportEndpointUrl = '/api/security-reports',
++    redirects = 'block',
++    webrtc = 'block',
++    reportOnly = false,
++    includeCsp = true,
++    inlineStyleHashes = [],
++    inlineScriptHashes = [],
++  } = options;
++
++  const setHeader = (name, value) =>
++    typeof res.setHeader === 'function' ? res.setHeader(name, value) : res.headers.set(name, value);
++
++  if (typeof res.appendHeader === 'function') {
++    res.appendHeader('Vary', 'Sec-Fetch-Dest');
++  } else if (typeof res.headers?.append === 'function') {
++    res.headers.append('Vary', 'Sec-Fetch-Dest');
++  } else {
++    setHeader('Vary', 'Sec-Fetch-Dest');
++  }
++
++  if (secFetchDest && !ALLOWLIST_DESTS.has(String(secFetchDest).toLowerCase())) return;
++
++  setHeader('Reporting-Endpoints', `${reportEndpointName}="${reportEndpointUrl}"`);
++  setHeader(
++    reportOnly ? 'Connection-Allowlist-Report-Only' : 'Connection-Allowlist',
++    buildConnectionAllowlistHeader({
++      allowSelf: true,
++      patterns,
++      reportTo: reportEndpointName,
++      redirects,
++      webrtc,
++    }),
++  );
++
++  if (!reportOnly && Array.isArray(reportOnlyPatterns)) {
++    setHeader(
++      'Connection-Allowlist-Report-Only',
++      buildConnectionAllowlistHeader({
++        allowSelf: true,
++        patterns: reportOnlyPatterns,
++        reportTo: reportEndpointName,
++        redirects,
++        webrtc,
++      }),
++    );
++  }
++
++  if (includeCsp) {
++    setHeader(
++      reportOnly ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
++      buildContentSecurityPolicyHeader({
++        patterns,
++        reportTo: reportEndpointName,
++        inlineStyleHashes,
++        inlineScriptHashes,
++      }),
++    );
++  }
++}
++
++// Client-side helper that catches blocked outbound requests gracefully without unhandled rejections.
++export async function fetchWithPolicyHandling(url, { statusElement, ...fetchOptions } = {}) {
++  try {
++    const response = await fetch(url, fetchOptions);
++    if (!response.ok) throw new Error(`HTTP ${response.status}`);
++    const body = await response.text();
++    if (statusElement) {
++      statusElement.textContent = `Allowed: Loaded ${url} (${body.length} bytes).`;
++    }
++    return { ok: true, body, response, error: null };
++  } catch (error) {
++    const message = error instanceof Error ? error.message : String(error);
++    if (statusElement) {
++      statusElement.textContent = `Blocked: Request to ${url} was rejected by the outbound connection policy (${message}).`;
++    }
++    return { ok: false, body: null, response: null, error };
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..3564d7b 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="default-src 'self'; connect-src 'self' https://images.unsplash.com; img-src 'self' https://images.unsplash.com data: blob:; style-src 'self' 'sha256-f3kMrW48CIQa6q0lkSKS1CSw3fOK+POKOQ1zZSBp0YU='; script-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'"
++  />
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -100,6 +104,10 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -129,12 +137,78 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Newsletter Section */
++    .newsletter-section {
++      background: white;
++      padding: 32px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .newsletter-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .newsletter-form {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .newsletter-form input[type="email"] {
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      min-width: 260px;
++    }
++
++    .newsletter-form .btn {
++      margin-top: 0;
++    }
++
++    .status-message {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      max-width: 650px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .status-pending {
++      background: #fff8e1;
++      color: #5d4037;
++      border: 1px solid #ffe082;
++    }
++
++    .status-success {
++      background: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-error {
++      background: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ef9a9a;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,7 +250,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +269,24 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="newsletter-section" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Subscribe to Our Newsletter</h2>
++      <p>Get seasonal roast drops, brewing tips, and exclusive rewards delivered straight from our roastery.</p>
++      <form id="newsletter-form" class="newsletter-form" action="/api/newsletter" method="POST">
++        <label for="newsletter-email" class="sr-only" hidden>Email address</label>
++        <input
++          type="email"
++          id="newsletter-email"
++          name="email"
++          placeholder="you@example.com"
++          required
++          autocomplete="email"
++        />
++        <button type="submit" class="btn">Subscribe</button>
++      </form>
++      <div id="newsletter-status" class="status-message" role="status" aria-live="polite" hidden></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +299,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/newsletter.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/newsletter.js b/newsletter.js
+new file mode 100644
+index 0000000..3e75ed6
+--- /dev/null
++++ b/newsletter.js
+@@ -0,0 +1,67 @@
++import { fetchWithPolicyHandling } from './connection-allowlist.js';
++
++export { fetchWithPolicyHandling };
++
++export function initNewsletterForm() {
++  const form = document.getElementById('newsletter-form');
++  const emailInput = document.getElementById('newsletter-email');
++  const statusEl = document.getElementById('newsletter-status');
++
++  if (!form || !emailInput || !statusEl) return;
++
++  const updateStatus = (text, state) => {
++    statusEl.textContent = text;
++    statusEl.dataset.state = state;
++    statusEl.className = `status-message status-${state}`;
++    statusEl.hidden = false;
++  };
++
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    const email = emailInput.value.trim();
++    if (!email) {
++      updateStatus('Please enter a valid email address.', 'error');
++      return;
++    }
++
++    const endpoint = form.getAttribute('action') || '/api/newsletter';
++    updateStatus('Sending signup request...', 'pending');
++
++    const result = await fetchWithPolicyHandling(endpoint, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++        Accept: 'application/json',
++      },
++      body: JSON.stringify({ email }),
++    });
++
++    if (result.ok) {
++      let successMsg = `Thanks for subscribing, ${email}! Check your inbox for fresh roast updates.`;
++      try {
++        const parsed = JSON.parse(result.body);
++        if (parsed && parsed.message) {
++          successMsg = parsed.message;
++        }
++      } catch {
++        // Use default message if response body is not JSON
++      }
++      updateStatus(successMsg, 'success');
++      form.reset();
++    } else {
++      const reason = result.error instanceof Error ? result.error.message : String(result.error);
++      updateStatus(
++        `Request could not go through: Request to ${endpoint} was blocked or failed (${reason}). Your email was not sent outside our server.`,
++        'error',
++      );
++    }
++  });
++}
++
++if (typeof document !== 'undefined') {
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initNewsletterForm);
++  } else {
++    initNewsletterForm();
++  }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..fb30c86 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,11 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
++  "main": "server.js",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "build": "node --check server.js && node --check connection-allowlist.js && node --check newsletter.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..89c339d
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,202 @@
++import crypto from 'node:crypto';
++import fs from 'node:fs/promises';
++import http from 'node:http';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++import {
++  buildConnectionAllowlistHeader,
++  buildContentSecurityPolicyHeader,
++  normalizeAllowlistPattern,
++  setConnectionAllowlistHeaders,
++} from './connection-allowlist.js';
++
++export {
++  buildConnectionAllowlistHeader,
++  buildContentSecurityPolicyHeader,
++  normalizeAllowlistPattern,
++  setConnectionAllowlistHeaders,
++};
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++
++const ALLOWED_PATTERNS = ['https://images.unsplash.com'];
++const REPORT_ENDPOINT_NAME = 'conn-reports';
++const REPORT_ENDPOINT_PATH = '/api/security-reports';
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'text/javascript; charset=utf-8',
++  '.mjs': 'text/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.ico': 'image/x-icon',
++};
++
++const subscribers = new Set();
++const securityReports = [];
++
++function extractInlineStyleHashes(html) {
++  const hashes = [];
++  const styleRegex = /<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi;
++  let match;
++  while ((match = styleRegex.exec(html)) !== null) {
++    const digest = crypto.createHash('sha256').update(match[1], 'utf8').digest('base64');
++    hashes.push(`sha256-${digest}`);
++  }
++  return hashes;
++}
++
++async function readRequestBody(req) {
++  const chunks = [];
++  for await (const chunk of req) {
++    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
++  }
++  return Buffer.concat(chunks).toString('utf8');
++}
++
++function parseEmailFromBody(rawBody, contentType = '') {
++  if (!rawBody) return '';
++  if (contentType.includes('application/x-www-form-urlencoded')) {
++    const params = new URLSearchParams(rawBody);
++    return (params.get('email') || '').trim();
++  }
++  try {
++    const parsed = JSON.parse(rawBody);
++    return typeof parsed?.email === 'string' ? parsed.email.trim() : '';
++  } catch {
++    const params = new URLSearchParams(rawBody);
++    return (params.get('email') || '').trim();
++  }
++}
++
++export function createAppServer({ rootDir = __dirname } = {}) {
++  return http.createServer(async (req, res) => {
++    try {
++      const host = req.headers.host || `localhost:${process.env.PORT || 11222}`;
++      const protocol = req.headers['x-forwarded-proto'] || 'http';
++      const url = new URL(req.url || '/', `${protocol}://${host}`);
++      const pathname = url.pathname;
++
++      const reportEndpointUrl = `${protocol}://${host}${REPORT_ENDPOINT_PATH}`;
++
++      // Handle violation reports sent by browser Reporting API
++      if (pathname === REPORT_ENDPOINT_PATH && req.method === 'POST') {
++        const bodyText = await readRequestBody(req);
++        try {
++          const parsed = JSON.parse(bodyText);
++          const reports = Array.isArray(parsed) ? parsed : [parsed];
++          securityReports.push(...reports);
++        } catch {
++          // Ignore malformed report payloads
++        }
++        res.statusCode = 204;
++        res.end();
++        return;
++      }
++
++      // Handle newsletter signup endpoint (/api/newsletter or /newsletter)
++      if ((pathname === '/api/newsletter' || pathname === '/newsletter') && req.method === 'POST') {
++        const rawBody = await readRequestBody(req);
++        const contentType = String(req.headers['content-type'] || '');
++        const email = parseEmailFromBody(rawBody, contentType);
++
++        if (!email || !email.includes('@')) {
++          res.statusCode = 400;
++          res.setHeader('Content-Type', 'application/json; charset=utf-8');
++          res.end(JSON.stringify({ ok: false, error: 'Please provide a valid email address.' }));
++          return;
++        }
++
++        subscribers.add(email.toLowerCase());
++        res.statusCode = 200;
++        res.setHeader('Content-Type', 'application/json; charset=utf-8');
++        res.end(
++          JSON.stringify({
++            ok: true,
++            email,
++            message: `Thanks for subscribing, ${email}! You're on the Daily Grind newsletter list.`,
++          }),
++        );
++        return;
++      }
++
++      if (req.method !== 'GET' && req.method !== 'HEAD') {
++        res.statusCode = 405;
++        res.setHeader('Content-Type', 'application/json; charset=utf-8');
++        res.end(JSON.stringify({ ok: false, error: 'Method Not Allowed' }));
++        return;
++      }
++
++      const relativePath = pathname === '/' || pathname === '/index.html' ? 'index.html' : pathname.slice(1);
++      const safePath = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, '');
++      const filePath = path.join(rootDir, safePath);
++
++      if (!filePath.startsWith(rootDir)) {
++        res.statusCode = 403;
++        res.end('Forbidden');
++        return;
++      }
++
++      let content;
++      let ext = path.extname(filePath).toLowerCase();
++      try {
++        content = await fs.readFile(filePath);
++      } catch {
++        res.statusCode = 404;
++        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
++        res.end('Not Found');
++        return;
++      }
++
++      const isHtml = ext === '.html';
++      const isWorkerScript =
++        ['worker', 'sharedworker', 'serviceworker'].includes(
++          String(req.headers['sec-fetch-dest'] || '').toLowerCase(),
++        ) || /(?:^|\/)(?:sw|service-worker|worker)\.m?js$/i.test(pathname);
++
++      // Default Sec-Fetch-Dest to 'document' for HTML document navigation requests when header is absent
++      // (e.g., direct HTTP tests or clients that omit Sec-Fetch-Dest) and 'worker' for worker scripts.
++      const defaultDest = isHtml ? 'document' : isWorkerScript ? 'worker' : 'empty';
++      const secFetchDest = req.headers['sec-fetch-dest'] || defaultDest;
++
++      const inlineStyleHashes = isHtml ? extractInlineStyleHashes(content.toString('utf8')) : [];
++
++      setConnectionAllowlistHeaders(res, {
++        secFetchDest,
++        patterns: ALLOWED_PATTERNS,
++        reportEndpointName: REPORT_ENDPOINT_NAME,
++        reportEndpointUrl,
++        redirects: 'block',
++        webrtc: 'block',
++        inlineStyleHashes,
++      });
++
++      res.statusCode = 200;
++      res.setHeader('Content-Type', MIME_TYPES[ext] || 'application/octet-stream');
++      if (req.method === 'HEAD') {
++        res.end();
++      } else {
++        res.end(content);
++      }
++    } catch (err) {
++      res.statusCode = 500;
++      res.setHeader('Content-Type', 'application/json; charset=utf-8');
++      res.end(JSON.stringify({ ok: false, error: 'Internal Server Error' }));
++    }
++  });
++}
++
++const isMain =
++  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
++
++if (isMain) {
++  const port = Number(process.env.PORT) || 11222;
++  const server = createAppServer();
++  server.listen(port, () => {
++    console.log(`Daily Grind server listening on http://localhost:${port}`);
++  });
++}

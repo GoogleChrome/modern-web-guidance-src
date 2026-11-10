@@ -1,0 +1,209 @@
+diff --git a/icons/app-192.png b/icons/app-192.png
+new file mode 100644
+index 0000000..5cbf04e
+Binary files /dev/null and b/icons/app-192.png differ
+diff --git a/icons/app-512.png b/icons/app-512.png
+new file mode 100644
+index 0000000..ce533a8
+Binary files /dev/null and b/icons/app-512.png differ
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..25b68db
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,4 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
++  <rect width="192" height="192" rx="32" fill="#4e342e"/>
++  <path d="M52 64h72v44c0 19.882-16.118 36-36 36s-36-16.118-36-36V64zm72 12h12c8.837 0 16 7.163 16 16s-7.163 16-16 16h-12V76zM44 152h88v8H44v-8z" fill="#ffab40"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..45ebceb 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.webmanifest">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -93,6 +94,25 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-actions {
++      display: flex;
++      gap: 15px;
++      align-items: center;
++      justify-content: center;
++      flex-wrap: wrap;
++      margin-top: 15px;
++    }
++
++    .hero-actions .btn {
++      margin-top: 0;
++    }
++
++    #install-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++      min-height: 1.4em;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -129,6 +149,18 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn[hidden] {
++      display: none;
++    }
++
++    .btn[aria-disabled="true"] {
++      opacity: 0.6;
++      cursor: not-allowed;
+     }
+ 
+     .btn:hover {
+@@ -171,7 +203,12 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <install></install>
++      <button id="install-app" type="button" class="btn" hidden>Install app</button>
++    </div>
++    <p id="install-status" role="status"></p>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +244,87 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const installElement = document.querySelector("install");
++    const installButton = document.querySelector("#install-app");
++    const installStatus = document.querySelector("#install-status");
++    const supportsWebInstall =
++      typeof Navigator.prototype.install === "function";
++    let deferredInstallPrompt;
++
++    installElement.addEventListener("installresult", (event) => {
++      switch (event.result) {
++        case "success":
++          installStatus.textContent = "The app was installed or opened.";
++          break;
++        case "aborted":
++          installStatus.textContent =
++            "Installation was canceled or could not complete.";
++          break;
++        case "invalid-data":
++          installStatus.textContent =
++            "Installation could not start because the app data is invalid.";
++          break;
++      }
++    });
++
++    if (supportsWebInstall) {
++      installButton.hidden = false;
++    }
++
++    window.addEventListener("beforeinstallprompt", (event) => {
++      event.preventDefault();
++      deferredInstallPrompt = event;
++
++      // Prefer navigator.install() when both mechanisms are available.
++      if (!supportsWebInstall) {
++        installButton.hidden = false;
++      }
++    });
++
++    installButton.addEventListener("click", async () => {
++      if (installButton.getAttribute("aria-disabled") === "true") {
++        return;
++      }
++      // Use aria-disabled instead of disabled so activating the button does not drop focus.
++      installButton.setAttribute("aria-disabled", "true");
++
++      try {
++        if (supportsWebInstall) {
++          // Call directly from this handler to preserve transient user activation.
++          await navigator.install();
++          installStatus.textContent = "The app was installed or opened.";
++          installButton.hidden = true;
++        } else if (deferredInstallPrompt) {
++          // Save and clear the single-use event before awaiting the user's choice.
++          const promptEvent = deferredInstallPrompt;
++          deferredInstallPrompt = undefined;
++          await promptEvent.prompt();
++          const { outcome } = await promptEvent.userChoice;
++
++          installStatus.textContent =
++            outcome === "accepted"
++              ? "The app was installed."
++              : "Installation canceled.";
++          if (!deferredInstallPrompt) {
++            installButton.hidden = true;
++          }
++        }
++      } catch (error) {
++        if (error.name === "AbortError") {
++          // Cancellation is an expected user choice; keep the button available to retry.
++          installStatus.textContent =
++            "Installation was canceled or could not complete.";
++        } else {
++          installStatus.textContent = "Installation could not start.";
++          console.error(error);
++        }
++      } finally {
++        installButton.removeAttribute("aria-disabled");
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..2d0551f
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,26 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icons/app-192.png",
++      "sizes": "192x192",
++      "type": "image/png"
++    },
++    {
++      "src": "/icons/app-512.png",
++      "sizes": "512x512",
++      "type": "image/png"
++    },
++    {
++      "src": "/icons/icon.svg",
++      "sizes": "any",
++      "type": "image/svg+xml"
++    }
++  ]
++}

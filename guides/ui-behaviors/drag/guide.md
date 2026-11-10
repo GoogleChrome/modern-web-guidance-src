@@ -13,9 +13,7 @@ Add dragging to an existing floating element such as a panel, palette, toolbar, 
 
 ## Use a dedicated handle
 
-Start dragging from a dedicated handle when the element contains selectable text, buttons, inputs, or links. This keeps its normal contents usable. Make the handle focusable for keyboard movement and give it an accessible name that mentions the arrow-key interaction.
-
-Do not apply `role="application"` to the handle. It unnecessarily changes assistive-technology interaction.
+Start dragging from a dedicated handle when the element contains selectable text, buttons, inputs, or links. This keeps its normal contents usable. Make the handle focusable for keyboard movement and give it an accessible name that mentions the arrow-key interaction. Ensure the handle exposes a `button` role so that the accessible name is conveyed to screen reader users.
 
 Apply `cursor: grab`/`grabbing`, `touch-action: none`, and both `user-select: none` and `-webkit-user-select: none` to the handle—not the entire draggable element—so text outside it remains selectable and touch gestures retain their usual behavior:
 
@@ -45,7 +43,8 @@ With pointer capture, the movement listeners can remain on the handle:
 
 ```js
 handle.addEventListener('pointerdown', (event) => {
-  if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
+  const control = event.target.closest('button, input, select, textarea, a');
+  if (event.button !== 0 || (control && control !== handle)) return;
 
   const rect = draggable.getBoundingClientRect();
   offsetX = event.clientX - rect.left;
@@ -80,12 +79,47 @@ When the handle has focus, move the element with the arrow keys and call `preven
 
 ## Dialog-specific note
 
-A `<dialog>` or `[popover]` can use this mechanism with its header as the handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behavior, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
+A `<dialog>` or `[popover]` can use this mechanism with its header in addition to a separate drag handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behavior, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
+
+## Accessibility requirements
+
+The drag handle that is exposed to assistive technologies must be a dedicated button, rather than just scripting the header of a dialog to be draggable. This will ensure the button is exposed to screen reader users with an appropriate role and accessible name. For example, using a native button element:
+
+```html
+<button type="button" aria-label="Notes panel handle. Use arrow keys to move.">
+  <!-- handle icon -->
+</button>
+```
+
+Ensure the draggable element can also be moved or operated using a single pointer without dragging (for example, clicks or taps). What the UI for this looks like depends on the use case. A few examples:
+- Kanban boards: a "move to column" menu or buttons
+- Maps: directional pan buttons
+- Sliders: clicking on the track, and sometimes adjusting the value via a linked `<input>`
+- Floating panels and dialogs: a grid in the background where clicking on a cell in the grid moves the element to the new position or their drag handle may be a menu button, with menu items to reposition the element ("Dock left", "Move left", "Dock top", "Move up", "Dock right", "Move right", "Dock bottom", and "Move down")
+
+Provide feedback for screen reader users when the draggable element is moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
+
+```html
+<div class="visually-hidden" aria-live="polite"></div>
+```
+
+Update the region when the draggable element is moved:
+
+```html
+<div class="visually-hidden" aria-live="polite">
+  [Name of element] moved [new position]
+</div>
+```
+
+Do not display raw coordinates for the position, prefer a descriptive name (e.g. "docked left") or omit it if there is no meaningful description.
+The message can be removed after a second, as it will be announced and no longer relevant.
+
+As the keyboard interaction may not be obvious for some users, provide a help button in the draggable element that reveals the keystrokes to perform the operation.
 
 ## Fallback strategies
 
 When dragging only repositions a component, treat it as progressive enhancement: without JavaScript, keep the element, its content, and its controls visible, readable, and functional in a sensible default position. Do not expose a non-functional drag handle: if the handle is a standalone grip control, hide it by default and reveal it when JavaScript initializes; if a header doubles as the handle, attach its drag affordances when JavaScript initializes.
 
-{{ FEATURE_FALLBACKS("user-select") }}
+{{ BASELINE_STATUS("user-select") }}
 
 Include `-webkit-user-select: none` before `user-select: none` so text selection stays suppressed during dragging in Safari.

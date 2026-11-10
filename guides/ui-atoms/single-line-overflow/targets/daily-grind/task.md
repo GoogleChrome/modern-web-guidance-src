@@ -1,0 +1,1 @@
+- Update the navigation bar in index.html so navigation items stay on a single line even when space is limited, ensuring text that doesn't fit doesn't break the layout or get lost, while keeping the full text accessible.
