@@ -9,6 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 4 : '50%',
   reporter: 'list',
+  captureGitInfo: { commit: false, diff: false },
   use: {
     baseURL: 'http://localhost:11432',
     trace: 'on-first-retry',

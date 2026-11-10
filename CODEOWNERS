@@ -15,6 +15,9 @@ package.json @paulirish @micahjo7 @lusayaa
 pnpm-lock.yaml @paulirish @micahjo7 @lusayaa
 .github/atls.json @rviscomi @paulirish @micahjo7 @lusayaa
 
+# Public eval pipeline: scrubs and gates what leaves the private bucket
+src/harness/public/ @paulirish @micahjo7 @TravenReese
+
 # Eval files
 src/grading/ @TravenReese @micahjo7 @lusayaa
 **/targets/ @TravenReese @micahjo7 @lusayaa

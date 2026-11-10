@@ -1,274 +1,217 @@
 diff --git a/index.html b/index.html
-index 66c9173..77db52e 100644
+index 66c9173..3960a7a 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,138 @@
+@@ -152,6 +152,108 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
-+
-+    /* Paged showcase */
-+    .showcase {
-+      text-align: center;
++    /* Seasonal Favorites carousel */
++    .carousel {
++      max-width: 420px;
++      margin: 20px auto 0;
 +    }
 +
-+    .eyebrow {
-+      text-transform: uppercase;
-+      letter-spacing: 2px;
-+      font-size: 0.8rem;
-+      color: var(--primary);
++    .carousel-viewport {
++      /* Scope the view transition to the slide instead of the whole page */
++      view-transition-name: seasonal-slide;
 +    }
 +
-+    .feature {
-+      margin-top: 20px;
-+      padding: 40px 30px;
++    .carousel-viewport .card[hidden] {
++      display: none;
 +    }
 +
-+    .feature h2 {
-+      color: var(--primary);
-+      font-size: 2rem;
-+    }
-+
-+    .feature .tasting-notes {
++    .carousel-controls {
 +      display: flex;
-+      flex-wrap: wrap;
-+      justify-content: center;
-+      gap: 10px;
-+      list-style: none;
-+      margin-top: 20px;
-+    }
-+
-+    .feature .tasting-notes li {
-+      background: var(--secondary);
-+      border-radius: 999px;
-+      padding: 4px 14px;
-+      font-size: 0.8rem;
-+    }
-+
-+    .pager {
-+      display: flex;
-+      justify-content: center;
++      justify-content: space-between;
 +      align-items: center;
-+      gap: 20px;
-+      margin-top: 25px;
++      gap: 12px;
++      margin-top: 16px;
 +    }
 +
-+    .pager button {
-+      font: inherit;
++    .carousel-btn {
++      background: var(--primary);
++      color: white;
 +      border: none;
++      padding: 10px 18px;
++      border-radius: 5px;
++      font: inherit;
 +      cursor: pointer;
++      transition: background 0.3s;
 +    }
 +
-+    .pager-status {
-+      font-size: 0.85rem;
-+      color: var(--primary);
++    .carousel-btn:hover {
++      background: #3e2723;
 +    }
 +
-+    /* --- Directional view transitions --- */
++    .carousel-btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
 +
-+    /* Slide an element out to the left */
++    .carousel-status {
++      font-size: 0.9rem;
++    }
++
++    /* Directional view transitions */
 +    @keyframes slide-to-left {
-+      to {
-+        transform: translateX(-100%);
-+      }
++      to { transform: translateX(-100%); opacity: 0; }
 +    }
 +
-+    /* Slide an element in from the right */
 +    @keyframes slide-from-right {
-+      from {
-+        transform: translateX(100%);
-+      }
++      from { transform: translateX(100%); opacity: 0; }
 +    }
 +
-+    /* Slide an element out to the right */
 +    @keyframes slide-to-right {
-+      to {
-+        transform: translateX(100%);
-+      }
++      to { transform: translateX(100%); opacity: 0; }
 +    }
 +
-+    /* Slide an element in from the left */
 +    @keyframes slide-from-left {
-+      from {
-+        transform: translateX(-100%);
-+      }
++      from { transform: translateX(-100%); opacity: 0; }
 +    }
 +
-+    /* Shared animation settings for every transition */
++    /* Keep the rest of the page static during carousel transitions */
 +    ::view-transition-group(root) {
-+      animation: 0.4s ease-in-out both;
++      animation: none;
 +    }
 +
-+    ::view-transition-old(root),
-+    ::view-transition-new(root) {
++    /* Shared animation settings for the slide */
++    ::view-transition-group(seasonal-slide),
++    ::view-transition-old(seasonal-slide),
++    ::view-transition-new(seasonal-slide) {
 +      animation-duration: 0.4s;
 +      animation-timing-function: ease-in-out;
 +      animation-fill-mode: both;
-+      /* The default plus-lighter blending is meant for cross-fades and washes out sliding content. */
-+      mix-blend-mode: normal;
 +    }
 +
-+    /* Apply forward animations when the 'forward' type is active */
-+    html:active-view-transition-type(forward)::view-transition-old(root) {
++    html:active-view-transition-type(forward)::view-transition-old(seasonal-slide) {
 +      animation-name: slide-to-left;
 +    }
 +
-+    html:active-view-transition-type(forward)::view-transition-new(root) {
++    html:active-view-transition-type(forward)::view-transition-new(seasonal-slide) {
 +      animation-name: slide-from-right;
 +    }
 +
-+    /* Apply backward animations when the 'backward' type is active */
-+    html:active-view-transition-type(backward)::view-transition-old(root) {
++    html:active-view-transition-type(backward)::view-transition-old(seasonal-slide) {
 +      animation-name: slide-to-right;
 +    }
 +
-+    html:active-view-transition-type(backward)::view-transition-new(root) {
++    html:active-view-transition-type(backward)::view-transition-new(seasonal-slide) {
 +      animation-name: slide-from-left;
 +    }
 +
 +    @media (prefers-reduced-motion: reduce) {
-+
 +      ::view-transition-group(root),
-+      ::view-transition-old(root),
-+      ::view-transition-new(root),
-+      ::view-transition-group(*),
-+      ::view-transition-image-pair(*),
-+      ::view-transition-old(*),
-+      ::view-transition-new(*) {
++      ::view-transition-group(seasonal-slide),
++      ::view-transition-old(seasonal-slide),
++      ::view-transition-new(seasonal-slide) {
 +        animation: none !important;
 +      }
 +    }
    </style>
  </head>
  
-@@ -175,24 +307,13 @@
-   </header>
- 
+@@ -177,22 +279,29 @@
    <main class="container">
--    <section>
--      <h2 style="text-align: center;">Seasonal Favorites</h2>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
 -        <div class="card">
--          <h3>Maple Oat Latte</h3>
--          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
--          <a href="/menu/seasonal" class="btn">View Details</a>
--        </div>
++      <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Seasonal Favorites">
++        <div class="carousel-viewport" id="seasonal-slides" aria-live="polite">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="1 of 3">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
 -        <div class="card">
--          <h3>Dark Roast Espresso</h3>
--          <p>Bold, smokey, and perfect for a morning boost.</p>
--          <a href="/menu/espresso" class="btn">View Details</a>
--        </div>
++        <div class="card" role="group" aria-roledescription="slide" aria-label="2 of 3" hidden>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
 -        <div class="card">
--          <h3>Cold Brew</h3>
--          <p>Steeped for 18 hours for maximum smoothness.</p>
--          <a href="/menu/cold-brew" class="btn">View Details</a>
--        </div>
-+    <section class="showcase">
-+      <p class="eyebrow">Seasonal Favorites</p>
-+      <article class="card feature" id="feature"></article>
-+      <div class="pager">
-+        <button type="button" class="btn" id="prev-btn">Previous</button>
-+        <span class="pager-status" id="pager-status" aria-live="polite"></span>
-+        <button type="button" class="btn" id="next-btn">Next</button>
++        <div class="card" role="group" aria-roledescription="slide" aria-label="3 of 3" hidden>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
++        </div>
++        <div class="carousel-controls">
++          <button type="button" class="carousel-btn" data-carousel-prev aria-controls="seasonal-slides">&larr; Previous</button>
++          <span class="carousel-status" data-carousel-status>1 / 3</span>
++          <button type="button" class="carousel-btn" data-carousel-next aria-controls="seasonal-slides">Next &rarr;</button>
++        </div>
        </div>
      </section>
    </main>
-@@ -207,6 +328,100 @@
+@@ -207,6 +316,71 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    const BREWS = [
-+      {
-+        name: 'Maple Oat Latte',
-+        blurb: 'Creamy oat milk with a hint of Vermont maple syrup, finished with a dusting of cinnamon.',
-+        notes: ['Maple', 'Toasted Oat', 'Cinnamon'],
-+        href: '/menu/seasonal'
-+      },
-+      {
-+        name: 'Dark Roast Espresso',
-+        blurb: 'Bold, smokey, and perfect for a morning boost. Pulled as a double shot, every time.',
-+        notes: ['Cocoa', 'Smoke', 'Molasses'],
-+        href: '/menu/espresso'
-+      },
-+      {
-+        name: 'Cold Brew',
-+        blurb: 'Steeped for 18 hours for maximum smoothness, then cut with filtered water over ice.',
-+        notes: ['Caramel', 'Citrus Peel', 'Low Acid'],
-+        href: '/menu/cold-brew'
-+      },
-+      {
-+        name: 'Honey Cardamom Cortado',
-+        blurb: 'Equal parts espresso and steamed milk, sweetened with wildflower honey.',
-+        notes: ['Honey', 'Cardamom', 'Cream'],
-+        href: '/menu/cortado'
-+      }
-+    ];
++    (function () {
++      var carousel = document.querySelector('.carousel');
++      if (!carousel) return;
 +
-+    const feature = document.getElementById('feature');
-+    const pagerStatus = document.getElementById('pager-status');
-+    const prevButton = document.getElementById('prev-btn');
-+    const nextButton = document.getElementById('next-btn');
++      var slides = Array.prototype.slice.call(carousel.querySelectorAll('.carousel-viewport > .card'));
++      var prevBtn = carousel.querySelector('[data-carousel-prev]');
++      var nextBtn = carousel.querySelector('[data-carousel-next]');
++      var status = carousel.querySelector('[data-carousel-status]');
++      var current = 0;
 +
-+    let currentIndex = 0;
-+
-+    function render() {
-+      const brew = BREWS[currentIndex];
-+      feature.replaceChildren();
-+
-+      const heading = document.createElement('h2');
-+      heading.textContent = brew.name;
-+
-+      const blurb = document.createElement('p');
-+      blurb.textContent = brew.blurb;
-+
-+      const notes = document.createElement('ul');
-+      notes.className = 'tasting-notes';
-+      for (const note of brew.notes) {
-+        const item = document.createElement('li');
-+        item.textContent = note;
-+        notes.append(item);
++      function show(index) {
++        slides.forEach(function (slide, i) {
++          slide.hidden = i !== index;
++        });
++        current = index;
++        if (status) status.textContent = (index + 1) + ' / ' + slides.length;
 +      }
 +
-+      const link = document.createElement('a');
-+      link.className = 'btn';
-+      link.href = brew.href;
-+      link.textContent = 'View Details';
++      /**
++       * Navigates to a new slide with a directional transition.
++       * @param {Function} updateDOM - Callback to update the DOM state.
++       * @param {string} direction - Either 'forward' or 'backward'.
++       */
++      function navigate(updateDOM, direction) {
++        // Feature detect for browsers that do not support View Transitions
++        if (!document.startViewTransition) {
++          updateDOM();
++          return;
++        }
 +
-+      feature.append(heading, blurb, notes, link);
-+      pagerStatus.textContent = `${currentIndex + 1} / ${BREWS.length}`;
-+    }
++        // Older implementations only accept a callback and lack transition types;
++        // without types the direction can't be expressed, so update immediately.
++        var supportsTypes = typeof ViewTransition !== 'undefined' &&
++          'types' in ViewTransition.prototype;
++        if (!supportsTypes) {
++          updateDOM();
++          return;
++        }
 +
-+    /**
-+     * Navigates to a new view with a directional transition.
-+     * @param {Function} updateDOM - Callback to update the DOM state.
-+     * @param {string} direction - Either 'forward' or 'backward'.
-+     */
-+    function navigate(updateDOM, direction) {
-+      // Feature detect for browsers that do not support View Transitions
-+      if (!document.startViewTransition) {
-+        updateDOM();
-+        return;
++        // Start transition with the specific navigation type
++        document.startViewTransition({
++          update: updateDOM,
++          types: [direction] // Matches the CSS :active-view-transition-type() selectors
++        });
 +      }
 +
-+      // Start transition with the specific navigation type
-+      document.startViewTransition({
-+        update: updateDOM,
-+        types: [direction] // Matches the CSS :active-view-transition-type() selectors
++      function go(step) {
++        if (slides.length < 2) return;
++        var target = (current + step + slides.length) % slides.length;
++        navigate(function () { show(target); }, step > 0 ? 'forward' : 'backward');
++      }
++
++      if (nextBtn) nextBtn.addEventListener('click', function () { go(1); });
++      if (prevBtn) prevBtn.addEventListener('click', function () { go(-1); });
++
++      carousel.addEventListener('keydown', function (event) {
++        if (event.key === 'ArrowRight') { go(1); }
++        else if (event.key === 'ArrowLeft') { go(-1); }
 +      });
-+    }
 +
-+    function goTo(index, direction) {
-+      navigate(() => {
-+        currentIndex = (index + BREWS.length) % BREWS.length;
-+        render();
-+      }, direction);
-+    }
-+
-+    nextButton.addEventListener('click', () => goTo(currentIndex + 1, 'forward'));
-+    prevButton.addEventListener('click', () => goTo(currentIndex - 1, 'backward'));
-+
-+    render();
++      show(0);
++    })();
 +  </script>
 +
  </body>

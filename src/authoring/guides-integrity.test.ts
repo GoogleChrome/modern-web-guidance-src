@@ -2,7 +2,6 @@ import test, { describe, it } from 'node:test';
 import assert from 'node:assert';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execSync } from 'node:child_process';
 import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
@@ -10,13 +9,15 @@ import { marked } from 'marked';
 import { scanAllGuides, processGuideInventory } from '../core/guide-validation.ts';
 import { replaceMacros, MACRO_PATTERN } from '../core/macros.ts';
 import { validateGraderExpectationCoverage, formatCoverageFailureMessage } from '../core/grader-coverage.ts';
+import { gitExec } from '../core/git-utils.ts';
 import { rootDir } from '../core/paths.ts';
-import { changedSince } from './dev.ts';
+import { findStaleTargets } from './dev.ts';
 
 const REPO_ROOT = rootDir;
 
 describe('Guides Validation (Single Source of Truth)', () => {
   const guides = scanAllGuides();
+  const staleTargets = findStaleTargets(REPO_ROOT);
 
   if (guides.length === 0) {
     test('No guides found', () => {
@@ -133,7 +134,8 @@ describe('Guides Validation (Single Source of Truth)', () => {
 
         it(`validates expectation coverage for target ${relativeDir}/targets/${targetApp}`, async () => {
           // Stale graders (expectations.md modified after grader.ts) are tracked in #1815.
-          if (changedSince([expectationsPath], [targetGraderPath])) return;
+          const relGrader = path.relative(REPO_ROOT, targetGraderPath).split(path.sep).join('/');
+          if (staleTargets.has(relGrader)) return;
 
           const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath);
           if (!result.isComplete) {
@@ -145,7 +147,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
   }
 
   it('checks all tracked files for conflict markers', () => {
-    const files = execSync('git ls-files', { encoding: 'utf8' }).trim().split('\n');
+    const files = gitExec(['ls-files'], { cwd: REPO_ROOT }).trim().split('\n');
     const extensions = ['.md', '.html', '.txt', '.yaml', '.yml'];
     const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
     const failedFiles: string[] = [];

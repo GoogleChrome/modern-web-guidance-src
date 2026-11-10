@@ -1,0 +1,1 @@
+- Update index.html so customers can install The Daily Grind web app directly from the hero section next to the "Order Now" button using the browser's built-in installation consent UI.

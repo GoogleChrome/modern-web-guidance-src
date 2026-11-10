@@ -115,6 +115,10 @@ jobs:
       - name: Playwright E2E Tests
         run: pnpm run test:e2e
 
+      - name: Browser-backed unit tests
+        timeout-minutes: 10
+        run: node --test src/grading/test-fixture.test.ts
+
       - name: Test Grader Calibration
         # Ensuring playwright is happy
         run: node bin/gd.ts dev guides/ui-behaviors/directional-navigation-transitions/ --test-grader

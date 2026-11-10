@@ -270,7 +270,6 @@ describe('runCliAgentCommand', () => {
       PI_CODING_AGENT: 'true',
       PI_CODING_AGENT_DIR: '/tmp/host/.pi/agent',
       CLAUDE_CODE_USE_VERTEX: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       ANTIGRAVITY_GCP_PROJECT: 'eval-gcp-project',
       GPG_AGENT_INFO: '/tmp/gpg-agent',
       PATH: [
@@ -310,7 +309,6 @@ describe('runCliAgentCommand', () => {
         assert.strictEqual(childEnv[stripped], undefined, `Expected ${stripped} to be stripped`);
       }
       assert.strictEqual(childEnv.CLAUDE_CODE_USE_VERTEX, '1');
-      assert.strictEqual(childEnv.GEMINI_CLI_TRUST_WORKSPACE, 'true');
       assert.strictEqual(childEnv.ANTIGRAVITY_GCP_PROJECT, 'eval-gcp-project');
       assert.strictEqual(childEnv.GPG_AGENT_INFO, '/tmp/gpg-agent');
 
@@ -356,11 +354,14 @@ describe('sanitizeAgentChildEnv', () => {
       GROK_PLUGIN_ROOT: '/tmp/grok',
       AMP_CURRENT_THREAD_ID: 't-1',
       GEMINI_CLI: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       CLINE_ACTIVE: 'true',
       CODEX_SANDBOX_NETWORK_DISABLED: '1',
       ANTIGRAVITY_CLI_ALIAS: 'agy',
       ANTIGRAVITY_MODEL: 'gemini-3.8-flash-medium',
+      ANTIGRAVITY_EFFORT: 'high',
+      CLAUDE_EFFORT: 'medium',
+      CODEX_EFFORT: 'xhigh',
+      JETSKI_EFFORT: 'max',
       AUGMENT_AGENT: '1',
       OPENCODE: '1',
       GOOSE_TERMINAL: '1',
@@ -381,8 +382,11 @@ describe('sanitizeAgentChildEnv', () => {
       agent: undefined,
     });
     assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
-    assert.strictEqual(sanitized.GEMINI_CLI_TRUST_WORKSPACE, 'true');
     assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
+    assert.strictEqual(sanitized.ANTIGRAVITY_EFFORT, undefined);
+    assert.strictEqual(sanitized.CLAUDE_EFFORT, undefined);
+    assert.strictEqual(sanitized.CODEX_EFFORT, undefined);
+    assert.strictEqual(sanitized.JETSKI_EFFORT, undefined);
     assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
     assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');
     assert.strictEqual(sanitized.NODE_TEST_CONTEXT, 'child');
@@ -399,6 +403,137 @@ describe('sanitizeAgentChildEnv', () => {
 
     const allDetected = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map(key => [key, '1']));
     assert.deepStrictEqual(sanitizeAgentChildEnv(allDetected), {});
+  });
+
+  test('strips host credentials and arbitrary unknown env vars via allowlist', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      HTTP_PROXY: 'http://proxy.example:8080',
+      ANTHROPIC_MODEL: 'claude-sonnet-4-6',
+      PLAYWRIGHT_BROWSERS_PATH: '/cache/ms-playwright',
+      GEMINI_API_KEY: `AIzaSy${'X'.repeat(33)}`,
+      GITHUB_TOKEN: `ghp_${'A'.repeat(36)}`,
+      GOOGLE_APPLICATION_CREDENTIALS: '/home/user/.config/gcloud/adc.json',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+
+    assert.strictEqual(sanitized.PATH, '/usr/bin');
+    assert.strictEqual(sanitized.HOME, '/tmp/isolated');
+    assert.strictEqual(sanitized.HTTP_PROXY, 'http://proxy.example:8080');
+    assert.strictEqual(sanitized.ANTHROPIC_MODEL, 'claude-sonnet-4-6');
+    assert.strictEqual(sanitized.PLAYWRIGHT_BROWSERS_PATH, '/cache/ms-playwright');
+    for (const dropped of ['GEMINI_API_KEY', 'GITHUB_TOKEN', 'GOOGLE_APPLICATION_CREDENTIALS', 'CUSTOM_ARBITRARY_SECRET']) {
+      assert.strictEqual(sanitized[dropped], undefined);
+    }
+  });
+
+  test('preserves IS_SANDBOX for container environments', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      IS_SANDBOX: '1',
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+    assert.strictEqual(sanitized.IS_SANDBOX, '1');
+    assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
+  });
+
+  test('preserves AGY_ADC_AUTH and GOOGLE_CLOUD_PROJECT for container environments', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      AGY_ADC_AUTH: 'true',
+      GOOGLE_CLOUD_PROJECT: 'my-eval-project',
+      PATH: '/usr/bin',
+      HOME: '/tmp/isolated',
+      CUSTOM_ARBITRARY_SECRET: 'do-not-leak',
+    });
+    assert.strictEqual(sanitized.AGY_ADC_AUTH, 'true');
+    assert.strictEqual(sanitized.GOOGLE_CLOUD_PROJECT, 'my-eval-project');
+    assert.strictEqual(sanitized.CUSTOM_ARBITRARY_SECRET, undefined);
+  });
+});
+
+describe('getAgentCommandAndArgs reasoning effort flags', () => {
+  const EFFORT_TEST_KEYS = [
+    'ANTIGRAVITY_MODEL',
+    'ANTIGRAVITY_EFFORT',
+    'ANTHROPIC_MODEL',
+    'CLAUDE_EFFORT',
+    'CODEX_MODEL',
+    'CODEX_EFFORT',
+    'JETSKI_MODEL',
+    'JETSKI_EFFORT',
+    'PI_MODEL',
+  ] as const;
+
+  test('injects adapter effort CLI args and enforces conflict checks on tiered model IDs', () => {
+    const saved: Record<string, string | undefined> = {};
+    for (const k of EFFORT_TEST_KEYS) {
+      saved[k] = process.env[k];
+      delete process.env[k];
+    }
+
+    try {
+      process.env.ANTIGRAVITY_MODEL = 'gemini-4-argon';
+      process.env.ANTIGRAVITY_EFFORT = 'High';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.ANTIGRAVITY_CLI, 'build app').commandArgs, [
+        '-p',
+        'build app',
+        '--dangerously-skip-permissions',
+        '--model',
+        'gemini-4-argon',
+        '--effort',
+        'high',
+      ]);
+
+      process.env.ANTHROPIC_MODEL = 'claude-sonnet-5-5';
+      process.env.CLAUDE_EFFORT = 'medium';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.CLAUDE_CODE, 'build app').commandArgs, [
+        '-p',
+        'build app',
+        '--dangerously-skip-permissions',
+        '--model',
+        'claude-sonnet-5-5',
+        '--effort',
+        'medium',
+      ]);
+
+      process.env.CODEX_MODEL = 'gpt-6.1-sol';
+      process.env.CODEX_EFFORT = 'xhigh';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.CODEX_CLI, 'build app').commandArgs, [
+        'exec',
+        'build app',
+        '--yolo',
+        '--model',
+        'gpt-6.1-sol',
+        '-c',
+        'model_reasoning_effort=xhigh',
+      ]);
+
+      process.env.JETSKI_MODEL = 'gemini-4-argon';
+      process.env.JETSKI_EFFORT = 'max';
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.JETSKI_CLI, 'build app').commandArgs, [
+        '-p',
+        'build app',
+        '--dangerously-skip-permissions',
+        '--model',
+        'gemini-4-argon',
+        '--effort',
+        'max',
+      ]);
+
+      process.env.ANTIGRAVITY_MODEL = 'gemini-3.8-flash-medium';
+      process.env.ANTIGRAVITY_EFFORT = 'high';
+      assert.throws(
+        () => getAgentCommandAndArgs(Agents.ANTIGRAVITY_CLI, 'build app'),
+        /ANTIGRAVITY_EFFORT=high conflicts with model 'gemini-3\.8-flash-medium'/,
+      );
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
   });
 });
 

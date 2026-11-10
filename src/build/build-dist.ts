@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import * as esbuild from "esbuild";
 import { config } from "../core/skills-config.ts";
+import { gitExec } from "../core/git-utils.ts";
 import { rootDir } from "../core/paths.ts";
 import { processGuides } from "./build-guides.ts";
 import { replaceMacros } from "../core/macros.ts";
@@ -17,20 +17,35 @@ interface BuildResult {
 }
 
 async function acquireLock(lockFilePath: string) {
-  while (fs.existsSync(lockFilePath)) {
+  while (true) {
     try {
-      const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8'), 10);
-      process.kill(pid, 0);
-    } catch (e: any) {
-      if (e.code === 'ESRCH') {
-        fs.unlinkSync(lockFilePath);
-        break;
-      }
+      fs.writeFileSync(lockFilePath, String(process.pid), { flag: 'wx' });
+      return;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
     }
-    console.log(" Another build is in progress. Waiting...");
-    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    let stale = false;
+    try {
+      const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8').trim(), 10);
+      if (Number.isInteger(pid) && pid > 0) process.kill(pid, 0);
+      else stale = true;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'ESRCH' || code === 'ENOENT') stale = true;
+    }
+
+    if (!stale) {
+      console.log(" Another build is in progress. Waiting...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      continue;
+    }
+    try {
+      fs.unlinkSync(lockFilePath);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    }
   }
-  fs.writeFileSync(lockFilePath, process.pid.toString());
 }
 
 function updateVersionsInDir(publishCliDir: string, newVersion: string) {
@@ -142,9 +157,9 @@ export function processSkills(publishRoot: string, distTag: DistTag = 'latest') 
     // - If they differ, the CLI tool logs a warning to stderr with instructions on how
     //   to update.
     // - --abbrev=8 keeps the short SHA a stable length as the repo grows.
-    const skillVersion = execSync(
-      'git log -1 --abbrev=8 --date=format:"%Y_%m_%d" --pretty=format:"%cd-%h" SKILL.md',
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
+    const skillVersion = gitExec(
+      ['log', '-1', '--abbrev=8', '--date=format:%Y_%m_%d', '--pretty=format:%cd-%h', 'SKILL.md'],
+      { stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
     ).trim();
     fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
 
@@ -167,34 +182,34 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
   // 2. Use better function names (e.g. prepareGuidesAndEmbeddings, isCacheValid).
   // 3. Avoid the double-call pattern to processGuides.
 
-  // Wipe publishRoot completely to ensure a clean build.
-  fs.rmSync(publishRoot, { recursive: true, force: true });
-  fs.mkdirSync(publishRoot, { recursive: true });
-
-  // Restore the fresh vectors/guides from .cache/ into DIST_DIR.
-  await processGuides({
-    outputDir: DIST_DIR,
-    target: 'skills-cli',
-    failOnMissingVectors,
-  });
-
-  // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
-  const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
-  const categoryDir = path.dirname(promptApiLink);
-  if (fs.existsSync(categoryDir)) {
-    if (fs.existsSync(promptApiLink)) {
-      fs.unlinkSync(promptApiLink);
-    }
-    fs.copyFileSync(path.join(categoryDir, "language-model.md"), promptApiLink);
-    console.log("Created prompt-api.md copy of language-model.md in distribution guides");
-  }
-
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
   await acquireLock(lockFilePath);
 
   try {
+    // Wipe publishRoot completely to ensure a clean build.
+    fs.rmSync(publishRoot, { recursive: true, force: true });
+    fs.mkdirSync(publishRoot, { recursive: true });
+
+    // Restore the fresh vectors/guides from .cache/ into DIST_DIR.
+    await processGuides({
+      outputDir: DIST_DIR,
+      target: 'skills-cli',
+      failOnMissingVectors,
+    });
+
+    // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
+    const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
+    const categoryDir = path.dirname(promptApiLink);
+    if (fs.existsSync(categoryDir)) {
+      if (fs.existsSync(promptApiLink)) {
+        fs.unlinkSync(promptApiLink);
+      }
+      fs.copyFileSync(path.join(categoryDir, "language-model.md"), promptApiLink);
+      console.log("Created prompt-api.md copy of language-model.md in distribution guides");
+    }
+
     fs.cpSync(path.join(rootDir, "src/cli/template"), publishRoot, { recursive: true });
     fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
 
@@ -209,12 +224,12 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       updateVersionsInDir(publishRoot, version);
     }
 
-    const staticModelDir = path.join(rootDir, "src/rag/static-model");
-    const destStaticModelDir = path.join(DIST_DIR, "static-model");
-    if (fs.existsSync(staticModelDir)) {
-      fs.mkdirSync(destStaticModelDir, { recursive: true });
-      for (const file of ["words.json", "words.i8", "words.scale.f32"]) {
-        fs.copyFileSync(path.join(staticModelDir, file), path.join(destStaticModelDir, file));
+    const ragGenDir = path.join(rootDir, "src/rag/gen");
+    const destGenDir = path.join(DIST_DIR, "gen");
+    if (fs.existsSync(ragGenDir)) {
+      fs.mkdirSync(destGenDir, { recursive: true });
+      for (const file of ["query-words.json", "query-words.i8", "query-words.scale.f32"]) {
+        fs.copyFileSync(path.join(ragGenDir, file), path.join(destGenDir, file));
       }
     }
 
@@ -238,7 +253,6 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         path.join(ROOT_DIST_DIR, "search.meta.json"),
         JSON.stringify(resultSearch.metafile)
       );
-
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/cli/modern-web.ts")],
@@ -248,6 +262,14 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
         define: {
           "__MWG_DIST_TAG__": JSON.stringify(distTag),
+        },
+        banner: {
+          js: `const [__mwg_major] = process.versions.node.split('.').map(Number);
+if (__mwg_major < 22) {
+  console.error(\`modern-web-guidance requires Node.js >= 22 (current: \${process.version}). Please upgrade: https://nodejs.org/\`);
+  process.exit(1);
+}
+`,
         },
         plugins: [{
           name: 'external-cli-modules',
@@ -282,7 +304,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
 
     } catch (error) {
       console.error("Failed to bundle with esbuild:", error);
-      process.exit(1);
+      throw error;
     }
 
     const { skillsCount, skillNames } = processSkills(publishRoot, distTag);
@@ -355,8 +377,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const output = execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname', {
-    encoding: 'utf8',
+  const output = gitExec(['tag', '-l', 'v*.*.*', '--merged', 'HEAD', '--sort=-v:refname'], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });
   const [tag = ''] = output.trim().split('\n');

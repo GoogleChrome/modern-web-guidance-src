@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { ensureNodeVersion } from "./node-version.ts";
+
+ensureNodeVersion();
+
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
@@ -57,7 +61,7 @@ function saveRetrievedGuides(content: string): string | null {
 
 function printUsage() {
   console.log(`
-Usage: modern-web <command> [args]
+Usage: modern-web-guidance <command> [args]
 
 Commands:
   search <query>            Search use cases by query
@@ -87,6 +91,7 @@ async function main() {
   const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
 
   const command = positionals[0];
+
 
   if (values.help || positionals.length === 0) {
     printUsage();
@@ -265,7 +270,7 @@ async function main() {
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["skills", "remove", ...skills], {
+    const result = spawnSync("npx", ["-y", "skills", "remove", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });

@@ -1,13 +1,20 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { spawn, spawnSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { baseAppsDir, suitesDir } from '../core/paths.ts';
+import { baseAppsDir, rootDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import {
+  ALLOWED_ENV_PREFIXES,
+  ALLOWED_GRADER_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  filterAllowedEnv,
+  loadAllowedEnvFile,
+} from './lib/secret-guard.ts';
 import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
 import { determineAgent } from '../cli/telemetry/detect-agent.ts';
@@ -77,6 +84,7 @@ export interface RunSuiteOptions {
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
+  loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
   const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
 
   // Create results directory if it doesn't exist
@@ -322,12 +330,18 @@ function restoreLogging(originals: any) {
 }
 
 async function runCommand(command: string, args: string[] = [], envOverrides?: Record<string, string>, cwd?: string) {
+  const sanitizedEnv = filterAllowedEnv(
+    process.env,
+    ALLOWED_WRAPPER_ENV_KEYS,
+    ALLOWED_ENV_PREFIXES,
+    envOverrides,
+  );
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: 'inherit',
       shell: process.platform === 'win32',
       cwd,
-      env: envOverrides ? { ...process.env, ...envOverrides } : process.env
+      env: sanitizedEnv,
     });
 
     childProcess.on('close', (code) => {
@@ -435,10 +449,17 @@ export function generateTransientPackage(
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
+  const secretGuardModuleUrl = pathToFileURL(path.join(rootDir, 'src/harness/lib/secret-guard.ts')).href;
   const runnerContent = `import { spawnSync } from 'child_process';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import {
+  ALLOWED_ENV_PREFIXES,
+  ALLOWED_GRADER_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  filterAllowedEnv,
+} from ${JSON.stringify(secretGuardModuleUrl)};
 
 const args = [
 ...${JSON.stringify([
@@ -450,7 +471,12 @@ const args = [
 ])}
 ];
 
-const env = { ...process.env${baselineTarget ? `, BASELINE_TARGET: ${JSON.stringify(baselineTarget)}` : ''} };
+const env = filterAllowedEnv(
+  process.env,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  ALLOWED_ENV_PREFIXES,
+  ${baselineTarget ? `{ BASELINE_TARGET: ${JSON.stringify(baselineTarget)} }` : 'undefined'},
+);
 
 const start = Date.now();
 let result;
@@ -504,7 +530,12 @@ let graderStatus = null;
 
 if (result.status === 0) {
   const gradeStart = Date.now();
-  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeEnv = filterAllowedEnv(
+    process.env,
+    ALLOWED_GRADER_ENV_KEYS,
+    ALLOWED_ENV_PREFIXES,
+    { PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') },
+  );
   const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status ?? 1;
@@ -573,7 +604,9 @@ function reuseUnguidedRunForBaselineVariant(opts: {
 
   if (!fs.existsSync(path.join(variantUnguidedDir, 'generation_failed.json'))) {
     const gradeStart = Date.now();
-    const gradeEnv = { ...process.env, PATCH_FILE: path.join(variantUnguidedDir, 'agent.patch') };
+    const gradeEnv = filterAllowedEnv(process.env, ALLOWED_GRADER_ENV_KEYS, ALLOWED_ENV_PREFIXES, {
+      PATCH_FILE: path.join(variantUnguidedDir, 'agent.patch'),
+    });
     const gradeResult = spawnSync(process.execPath, ['grade.mjs'], {
       stdio: 'inherit',
       cwd: variantUnguidedDir,
@@ -599,7 +632,6 @@ const AGENT_SCRIPTS: Record<string, string> = {
   [Agents.JETSKI_CLI]: 'jetski-cli-agent.ts',
   [Agents.PI]: 'pi-agent.ts',
   [Agents.ANTIGRAVITY_CLI]: 'antigravity-cli-agent.ts',
-  [Agents.GEMINI_CLI]: 'gemini-cli-agent.ts',
 };
 
 function getAgentScript(agent: string): string {

@@ -1,0 +1,16 @@
+{
+  "agent": "antigravity_cli",
+  "model": "gemini-4-argon",
+  "reasoningEffort": {
+    "level": "high",
+    "source": "observed"
+  },
+  "steps": [
+    {
+      "index": 1,
+      "type": "tool_call",
+      "tool": "read_file",
+      "summary": "Read guide content-vis"
+    }
+  ]
+}

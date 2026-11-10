@@ -1,4 +1,8 @@
 - The implementation MUST provide high-contrast fallbacks using `@media (forced-colors: active)` for components that rely on `box-shadow` or `background-image` to convey boundaries or state.
-- The implementation MUST maintain a minimum color contrast ratio of 4.5:1 for normal body text and 3:1 for large text and UI component boundaries.
+- Text smaller than 24px, other than bold text of at least 18.66px and text in disabled controls, has a contrast ratio of at least 4.5:1 against its background in each supported color scheme.
+- Text of at least 24px, or bold text of at least 18.66px, other than text in disabled controls, has a contrast ratio of at least 3:1 against its background in each supported color scheme.
+- Each form field has a visible boundary (its border, underline or background fill) with a contrast ratio of at least 3:1 against the adjacent background in each supported color scheme.
+- Each custom `:focus-visible` indicator on a link, button or form field has a contrast ratio of at least 3:1 against the adjacent colors in each supported color scheme.
+- The checkmark or thumb that shows the state of each checkbox or switch whose indicator the page draws itself (for example with `appearance: none`, rather than a native control colored with `accent-color`) has a contrast ratio of at least 3:1 against the adjacent colors in each supported color scheme.
 - The implementation MUST NOT rely on color alone to communicate status or validation states (must pair color with icons or text labels).
 - The implementation MUST support light and dark color schemes using the `color-scheme` CSS property paired with `@media (prefers-color-scheme: dark)` or `light-dark()`.
