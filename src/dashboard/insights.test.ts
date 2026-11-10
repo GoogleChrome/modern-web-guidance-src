@@ -59,11 +59,11 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
     assert.strictEqual(getSuiteTimestamp({ testId: 'no-date' }), '');
 });
 test('selectRecentSuites selects the latest canonical run per model for each family', () => {
-    const defaultSelected = selectRecentSuites(manifest);
+    const defaultSelected = selectRecentSuites(manifest, { modelRecencyDays: 30 });
     assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini1.testId]);
     assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[0]) ?? []).map(s => s.testId), [claude1.testId]);
     assert.deepStrictEqual(defaultSelected.get(AGENT_FAMILIES[1]), []);
-    const selected = selectRecentSuites(manifest, { perAgentRecentN: 3 });
+    const selected = selectRecentSuites(manifest, { perAgentRecentN: 3, modelRecencyDays: 30 });
     assert.deepStrictEqual((selected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini2.testId, gemini1.testId, gemini0.testId]);
     assert.deepStrictEqual((selected.get(AGENT_FAMILIES[0]) ?? []).map(s => s.testId), [claude1.testId]);
     assert.deepStrictEqual(selected.get(AGENT_FAMILIES[1]), []);
@@ -76,11 +76,19 @@ test('selectRecentSuites selects the latest canonical run per model for each fam
     const g4Newer = suite('nightly-2026-10-22_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-22T18:18:02Z', [{ name: 'accordion', passed: [4, 4] }]);
     assert.deepStrictEqual((selectRecentSuites([g38, g4, g4Newer]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4Newer.testId, g38.testId]);
     // Curated baseline suite is canonical and recognized alongside nightlies:
-    const gCurated = { ...g38, testId: 'flash-medium-1.0-2026-11-08b', curated: true, timestamp: '2026-11-08T00:00:00Z' };
+    const gCurated = { ...g38, testId: 'flash-medium-1.0-2026-11-08b', curated: true, timestamp: '2026-10-23T00:00:00Z' };
     assert.deepStrictEqual((selectRecentSuites([gCurated, g4Newer]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gCurated.testId, g4Newer.testId]);
 });
+test('selectRecentSuites drops stale retired models older than modelRecencyDays', () => {
+    // gemini-y from Sept 25 is > 7 days older than gemini-x from Oct 9:
+    const recent = selectRecentSuites(manifest);
+    assert.deepStrictEqual((recent.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId]);
+    // Wide window includes gemini-y:
+    const wide = selectRecentSuites(manifest, { modelRecencyDays: 30 });
+    assert.deepStrictEqual((wide.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini1.testId]);
+});
 test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', () => {
-    const insights = computeHeadlineInsights(manifest, { perAgentRecentN: 3 });
+    const insights = computeHeadlineInsights(manifest, { perAgentRecentN: 3, modelRecencyDays: 30 });
     assert.deepStrictEqual(insights.families.map(f => f.id), ['claude_code', 'antigravity_cli']);
     assert.strictEqual(insights.latestTimestamp, '2026-10-09T11:12:49.000Z');
     assert.deepStrictEqual(insights.missingStats, []);

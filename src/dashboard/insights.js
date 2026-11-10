@@ -68,8 +68,16 @@ export { AGENT_FAMILIES };
  * @property {number} [perAgentRecentN=1]
  * @property {boolean} [canonicalOnly=true]
  * @property {boolean} [nightlyOnly=true]
+ * @property {number} [modelRecencyDays=7]
  * @property {string | null} [before=null]
  * @property {AgentFamilyDef[]} [families] */
+
+/**
+ * Maximum days between a model's newest run and the newest run for that agent family.
+ * Prevents retired or one-off experimental models (e.g. Fable from weeks ago) from lingering
+ * in the headline numbers forever alongside active evaluation models.
+ */
+export const MODEL_RECENCY_WINDOW_DAYS = 7;
 /** @param {number} value @param {number} [digits=1] */
 function round(value, digits = 1) { const f = 10 ** digits; return Math.round(value * f) / f; }
 /** @param {number} numerator @param {number} denominator */
@@ -123,17 +131,26 @@ function collectFamilySuites(suites, options = {}) {
  * When a model has multiple runs (e.g. rolling nightly vs 1.0 baseline), the newest run wins.
  * Grouping is keyed by model name so new nightly runs naturally supersede baseline runs for
  * the same model without hiding sibling models (e.g. Sonnet does not hide Opus).
+ * Only models evaluated within `modelRecencyDays` (default: 7) of the family's newest run
+ * are included, preventing stale or retired one-off models from lingering in headline metrics.
  * @param {ManifestSuite[]} list
  * @param {number} [n=1]
+ * @param {Pick<InsightOptions, 'modelRecencyDays'>} [options={}]
  * @returns {ManifestSuite[]}
  */
-export function selectFamilySuites(list, n = 1) {
+export function selectFamilySuites(list, n = 1, options = {}) {
+    const recencyDays = options.modelRecencyDays ?? MODEL_RECENCY_WINDOW_DAYS;
+    const newestFamilyMs = list.length > 0 ? Date.parse(getSuiteTimestamp(list[0])) : NaN;
+    const cutoffMs = Number.isNaN(newestFamilyMs) ? 0 : newestFamilyMs - recencyDays * 24 * 60 * 60 * 1000;
+
     /** @type {Map<string, ManifestSuite[]>} */
     const byModel = new Map();
     for (const suite of list) {
         const model = suite.model || 'unknown';
         let modelList = byModel.get(model);
         if (!modelList) {
+            const modelNewestMs = Date.parse(getSuiteTimestamp(suite));
+            if (!Number.isNaN(cutoffMs) && modelNewestMs < cutoffMs) continue;
             modelList = [];
             byModel.set(model, modelList);
         }
@@ -154,7 +171,7 @@ export function selectRecentSuites(suites, options = {}) {
     const { perAgentRecentN = 1 } = options;
     const byFamily = collectFamilySuites(suites, options);
     byFamily.forEach((list, family) => {
-        byFamily.set(family, selectFamilySuites(list, perAgentRecentN));
+        byFamily.set(family, selectFamilySuites(list, perAgentRecentN, options));
     });
     return byFamily;
 }
@@ -294,7 +311,7 @@ export function computeHeadlineInsights(suites, options = {}) {
     const allSelected = [];
     allByFamily.forEach((fullList, family) => {
         maxSuitesPerFamily = Math.max(maxSuitesPerFamily, fullList.length);
-        const list = selectFamilySuites(fullList, perAgentRecentN);
+        const list = selectFamilySuites(fullList, perAgentRecentN, options);
         if (list.length === 0) return;
         allSelected.push(...list);
         const acc = accumulate(list);

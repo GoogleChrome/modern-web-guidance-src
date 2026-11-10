@@ -160,7 +160,7 @@ function renderPending() {
         body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Sample">${naCell()}</td></tr>`;
     }
     const eyebrow = document.getElementById('hero-eyebrow');
-    if (eyebrow) eyebrow.textContent = 'Latest runs per model (nightly or 1.0 baseline)';
+    if (eyebrow) eyebrow.textContent = 'Latest runs per model (last 7 days; nightly or 1.0 baseline)';
 }
 /** @param {HeadlineInsights} insights */
 function renderEyebrow(insights) {
@@ -175,7 +175,7 @@ function renderEyebrow(insights) {
     if (!el) return;
     const latest = latestDateOf(insights);
     const recentN = insights.options.perAgentRecentN;
-    const label = recentN === 1 ? 'Latest run per model (nightly or 1.0 baseline)' : `Most recent ${recentN} runs per model`;
+    const label = recentN === 1 ? 'Latest run per model (last 7 days; nightly or 1.0 baseline)' : `Most recent ${recentN} runs per model`;
     el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>${escapeHtml(label)}${latest ? ` · <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
 /** @param {number | null} uRate @param {number | null} gRate */
@@ -275,12 +275,12 @@ function renderAgentTable(insights) {
     const n = insights.options.perAgentRecentN;
     if (caption) {
         caption.textContent = n === 1
-            ? 'Latest run per model (nightly or 1.0 baseline) by agent family. Unguided → guided; change in percentage points (pp).'
+            ? 'Latest run per model (last 7 days; nightly or 1.0 baseline) by agent family. Unguided → guided; change in percentage points (pp).'
             : `Most recent ${n} runs per model by agent family, pooled. Unguided → guided; change in percentage points (pp).`;
     }
     if (windowNote) {
         windowNote.textContent = n === 1
-            ? 'Latest run per model (nightly or 1.0 baseline).'
+            ? 'Latest run per model (models run in the last 7 days; nightly or 1.0 baseline).'
             : `Last ${n} runs per model pooled.`;
     }
     body.innerHTML = insights.families.map(f => {
