@@ -1,0 +1,1 @@
+- Refactor the top navigation bar into an application menu bar for Menu, Locations, and Rewards.

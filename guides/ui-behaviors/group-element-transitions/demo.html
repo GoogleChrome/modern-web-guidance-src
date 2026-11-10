@@ -33,10 +33,12 @@
       ::view-transition-new(.list-item):only-child {
         animation-name: slide-in;
         animation-duration: 1s;
+        animation-timing-function: ease-out;
       }
       ::view-transition-old(.list-item):only-child {
         animation-name: slide-out;
         animation-duration: 1s;
+        animation-timing-function: ease-in;
       }
 
       @keyframes slide-in {

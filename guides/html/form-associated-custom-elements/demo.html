@@ -37,13 +37,55 @@
         super();
         this.#internals = this.attachInternals();
         this.attachShadow({ mode: 'open', delegatesFocus: true });
+        this.#internals.role = 'group';
+        this.#internals.ariaLabel = "Star rating";
         this.shadowRoot.innerHTML = [1, 2, 3, 4, 5]
-          .map(n => `<button type="button" part="star" data-value="${n}" tabindex="${n === 1 ? 0 : -1}">★</button>`)
+          .map(n => `<button aria-label="${n} star${n === 1 ? '' : 's'}" aria-pressed="false" type="button" part="star" data-value="${n}" tabindex="${n === 1 ? 0 : -1}">★</button>`)
           .join('');
         this.shadowRoot.addEventListener('click', (e) => {
           if (this.#disabled) return;
           const star = e.target.closest('[data-value]');
-          if (star) this.value = star.dataset.value;
+          if (!star) return;
+          this.value = star.dataset.value;
+          updatePressedState(star);
+        });
+
+        const updatePressedState = (selectedButton) => {
+          const buttons = this.shadowRoot.querySelectorAll('button[data-value]');
+          buttons.forEach((button) => {
+            const isSelected = button === selectedButton;
+            button.setAttribute('aria-pressed', String(isSelected));
+          });
+        };
+
+        this.shadowRoot.addEventListener('keydown', (e) => {
+          const current = e.target.closest('[data-value]');
+          if (!current) return;
+          const buttons = [...this.shadowRoot.querySelectorAll('[data-value]')];
+          const index = buttons.indexOf(current);
+          let nextIndex = index;
+          switch (e.key) {
+            case 'ArrowRight':
+            case 'ArrowDown':
+              if (index < (buttons.length - 1)) {
+                nextIndex = (index + 1);
+              }
+              break;
+            case 'ArrowLeft':
+            case 'ArrowUp':
+              if (index >= 1) {
+                nextIndex = (index - 1);
+              }
+              break;
+            default:
+              return;
+          }
+          e.preventDefault();
+          const next = buttons[nextIndex];
+          current.setAttribute("tabindex", "-1");
+          buttons[nextIndex].setAttribute("tabindex", "0");
+          this.value = next.dataset.value;
+          next.focus();
         });
       }
 

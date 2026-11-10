@@ -2,7 +2,7 @@
   "version": "v1",
   "createdAt": "2026-10-26T22:28:43.398Z",
   "sourceSuites": [
-    "harness-pre-2056 (2026-07-22..2026-10-09)",
+    "harness (2026-07-22..2026-10-09)",
     "nightly-2026-10-19_07-00-02-antigravity_cli",
     "nightly-2026-10-19_17-02-55-claude_code",
     "nightly-2026-10-19_17-28-30-codex_cli",

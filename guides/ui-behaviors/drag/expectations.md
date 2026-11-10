@@ -8,6 +8,5 @@
 - The drag handle MUST be keyboard-focusable without using `role="application"`.
 - The element MUST be repositionable with keyboard arrow keys when the drag handle is focused, using the same viewport constraints as pointer movement.
 - When dragging only repositions a component, without JavaScript the element, its content, and its controls MUST remain visible, readable, and functional in a sensible default position.
-- A draggable `<dialog>` or `[popover]` implementation MUST set `margin: 0` before assigning `left` and `top`, but the generic draggable-element implementation MUST NOT require either control.
 - A `pointerdown` event with a non-primary button MUST NOT start a drag.
 - The drag handle SHOULD provide a visual grab indicator (such as transitioning from `cursor: grab` to `cursor: grabbing` on drag) to communicate drag state.

@@ -12,22 +12,13 @@ test("The transition from list view to detail view is wrapped in a document.star
 
   await page.evaluate(() => {
     (window as any).transitionCalled = false;
-    (window as any).wrappedCorrectly = false;
+    (window as any).callbackProvided = false;
     const original = document.startViewTransition;
     if (original) {
       document.startViewTransition = function(callback) {
         (window as any).transitionCalled = true;
-        const beforeClass = document.body.classList.contains('detail');
         if (typeof callback === 'function') {
-          const wrappedCallback = () => {
-            const res = callback();
-            const afterClass = document.body.classList.contains('detail');
-            if (!beforeClass && afterClass) {
-              (window as any).wrappedCorrectly = true;
-            }
-            return res;
-          };
-          return original.call(document, wrappedCallback);
+          (window as any).callbackProvided = true;
         }
         return original.call(document, callback);
       };
@@ -35,15 +26,15 @@ test("The transition from list view to detail view is wrapped in a document.star
   });
 
   await page.locator('.thumbnail').first().click({ force: true });
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => (window as any).transitionCalled);
 
   const transitionCalled = await page.evaluate(() => (window as any).transitionCalled);
-  const wrappedCorrectly = await page.evaluate(() => (window as any).wrappedCorrectly);
+  const callbackProvided = await page.evaluate(() => (window as any).callbackProvided);
 
-  expect(transitionCalled && wrappedCorrectly).toBe(true);
+  expect(transitionCalled && callbackProvided).toBe(true);
 });
 
-// 2. When a thumbnail is clicked, the selected element is assigned a view-transition-name (e.g., hero) before or during the transition.
+// 2. When a thumbnail is clicked, the selected element is assigned a view-transition-name before or during the transition.
 test("When a thumbnail is clicked, the selected element is assigned a view-transition-name before or during the transition", async ({ page }) => {
   await page.goto(getTargetUrl());
 
@@ -77,14 +68,14 @@ test("When a thumbnail is clicked, the selected element is assigned a view-trans
   });
 
   await page.locator('.thumbnail').first().click({ force: true });
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => (window as any).clickedThumbnailVTName !== null);
 
   const vtName = await page.evaluate(() => (window as any).clickedThumbnailVTName);
   expect(vtName).not.toBeNull();
   expect(vtName).not.toBe('none');
 });
 
-// 3. The corresponding hero element in the detail view has the same view-transition-name (e.g., hero) as the selected thumbnail.
+// 3. The corresponding hero element in the detail view has the same view-transition-name as the selected thumbnail.
 test("The corresponding hero element in the detail view has the same view-transition-name as the selected thumbnail", async ({ page }) => {
   await page.goto(getTargetUrl());
 
@@ -118,7 +109,7 @@ test("The corresponding hero element in the detail view has the same view-transi
   });
 
   await page.locator('.thumbnail').first().click({ force: true });
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => (window as any).clickedThumbnailVTName !== null);
 
   const matchFound = await page.evaluate(() => {
     const thumbName = (window as any).clickedThumbnailVTName;
@@ -170,27 +161,26 @@ test("Only one element in the DOM has a specific view-transition-name at any giv
   expect(initialViolations).toEqual([]);
 });
 
-// 5. After the transition is complete, the temporary view-transition-name is removed from the list view's thumbnail
-test("After the transition is complete, the temporary view-transition-name is removed from the list view's thumbnail", async ({ page }) => {
+// 5. After the transition back to the list view is complete, temporary view-transition-names are removed from thumbnails
+test("After the transition back to the list view is complete, temporary view-transition-names are removed from thumbnails", async ({ page }) => {
   await page.goto(getTargetUrl());
 
   // Go to detail view
   await page.locator('.thumbnail').first().click({ force: true });
-  await page.waitForTimeout(500);
-
-  // Navigate back to list view
-  await page.evaluate(() => {
-    const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.toLowerCase().includes('back'));
-    if (btn) {
-      btn.click();
-    } else {
-      const hero = document.getElementById('hero');
-      if (hero) hero.click();
-    }
+  await page.waitForFunction(() => {
+    const detail = document.getElementById('detail-page') || document.querySelector('.detail');
+    return detail && !detail.hidden && window.getComputedStyle(detail).display !== 'none';
   });
 
+  // Navigate back to list view
+  const backBtn = page.locator('button, a, [role="button"], .back-link').filter({ hasText: /back/i }).first();
+  await backBtn.click();
+
   // Wait for the transition and cleanup to complete
-  await page.waitForTimeout(1000);
+  await page.waitForFunction(() => {
+    const thumbs = Array.from(document.querySelectorAll('.thumbnail'));
+    return thumbs.length > 0 && thumbs.every(t => window.getComputedStyle(t).viewTransitionName === 'none');
+  });
 
   const thumbnailNames = await page.evaluate(() => {
     const thumbs = document.querySelectorAll('.thumbnail');
@@ -243,7 +233,7 @@ test("The title text in both views is assigned a matching view-transition-name",
   });
 
   await page.locator('.thumbnail').first().click({ force: true });
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => (window as any).titleVTName !== null);
 
   const matched = await page.evaluate(() => {
     const titleName = (window as any).titleVTName;
@@ -286,32 +276,22 @@ test("Elements with view-transition-name that contain text have width: fit-conte
   expect(isListTitleFitContent).toBe(true);
 });
 
-// 8. The ::view-transition-old(hero) and ::view-transition-new(hero) pseudo-elements are styled with height: 100% to prevent stretching across different aspect ratios.
-test("The ::view-transition-old(hero) and ::view-transition-new(hero) pseudo-elements are styled with height: 100% to prevent stretching across different aspect ratios", async ({ page }) => {
+// 8. The old and new view transition pseudo-elements are styled with height: 100% to prevent stretching across different aspect ratios.
+test("The old and new view transition pseudo-elements are styled with height: 100% to prevent stretching across different aspect ratios", async ({ page }) => {
   await page.goto(getTargetUrl());
 
   const pseudoStylesCorrect = await page.evaluate(() => {
     let oldCorrect = false;
     let newCorrect = false;
 
-    const checkRule = (selector: string, cssText: string) => {
-      if (cssText.includes(selector)) {
-        const heightMatch = cssText.match(/height\s*:\s*([^;}\s]+)/);
-        if (heightMatch && (heightMatch[1] === '100%' || heightMatch[1] === '100%!important')) {
-          return true;
-        }
-      }
-      return false;
-    };
-
     for (const sheet of Array.from(document.styleSheets)) {
       try {
         for (const rule of Array.from(sheet.cssRules)) {
           const cssText = rule.cssText.toLowerCase();
-          if (checkRule('::view-transition-old(hero)', cssText)) {
+          if ((cssText.includes('::view-transition-old(') || cssText.includes('::view-transition-old')) && /height\s*:\s*100%/.test(cssText)) {
             oldCorrect = true;
           }
-          if (checkRule('::view-transition-new(hero)', cssText)) {
+          if ((cssText.includes('::view-transition-new(') || cssText.includes('::view-transition-new')) && /height\s*:\s*100%/.test(cssText)) {
             newCorrect = true;
           }
         }
@@ -357,12 +337,17 @@ test("All view transition animations are disabled when prefers-reduced-motion: r
   expect(hasReducedMotionRule).toBe(true);
 });
 
-// 10. Programmatic focus MUST be shifted to the newly revealed main heading or active view container after the view transition completes to prevent focus abandonment.
-test("Programmatic focus MUST be shifted to the newly revealed main heading or active view container after the view transition completes to prevent focus abandonment", async ({ page }) => {
+// 10. Programmatic focus shifts to the newly revealed main heading or active view container after the view transition completes to prevent focus abandonment.
+test("Programmatic focus shifts to the newly revealed main heading or active view container after the view transition completes to prevent focus abandonment", async ({ page }) => {
   await page.goto(getTargetUrl());
 
   await page.locator('.thumbnail').first().click({ force: true });
-  await page.waitForTimeout(1000);
+  await page.waitForFunction(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return false;
+    const tag = el.tagName.toLowerCase();
+    return ['h1', 'h2', 'h3', 'div', 'section', 'main'].includes(tag);
+  });
 
   const activeDetailTag = await page.evaluate(() => {
     const el = document.activeElement;

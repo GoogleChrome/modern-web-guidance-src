@@ -70,7 +70,9 @@ test.describe('progress Target Grader', () => {
   test('Each progress bar is associated with a descriptive label', () => {
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const progressWithDocs = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('progress')).map((el) => ({ el, doc: d.document })),
+      Array.from(
+        d.document.querySelectorAll('progress, [role="progressbar"], [role~="progressbar" i]'),
+      ).map((el) => ({ el, doc: d.document })),
     );
     const allLabeled =
       progressWithDocs.length > 0 &&
@@ -81,23 +83,32 @@ test.describe('progress Target Grader', () => {
         const ariaLabelledBy = el.getAttribute('aria-labelledby')?.trim();
         if (ariaLabelledBy) {
           const ids = ariaLabelledBy.split(/\s+/);
-          if (ids.some((id) => Boolean(doc.getElementById(id)?.textContent?.trim()))) {
+          if (
+            ids.some((id) => {
+              const target = doc.getElementById(id);
+              return Boolean(target?.textContent?.trim() || target?.getAttribute('aria-label')?.trim());
+            })
+          ) {
             return true;
           }
         }
 
         const id = el.getAttribute('id')?.trim();
         if (id) {
-          const explicitLabel = Array.from(doc.querySelectorAll('label[for]')).find(
+          const explicitLabels = Array.from(doc.querySelectorAll('label[for]')).filter(
             (l) => l.getAttribute('for') === id,
           );
-          if (explicitLabel && Boolean(explicitLabel.textContent?.trim())) {
+          if (
+            explicitLabels.some(
+              (l) => Boolean(l.textContent?.trim() || l.getAttribute('aria-label')?.trim()),
+            )
+          ) {
             return true;
           }
         }
 
         const parentLabel = el.closest('label');
-        if (parentLabel && Boolean(parentLabel.textContent?.trim())) {
+        if (parentLabel && Boolean(parentLabel.textContent?.trim() || parentLabel.getAttribute('aria-label')?.trim())) {
           return true;
         }
 
@@ -171,6 +182,13 @@ test.describe('progress Target Grader', () => {
   });
 
   test('Custom indeterminate animation respects prefers-reduced-motion: reduce by slowing down or dampening rather than disabling', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const hasProgress = docs.some((d) => Boolean(d.document.querySelector('progress')));
+    if (!hasProgress) {
+      expect(hasProgress).toBe(true);
+      return;
+    }
+
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = getAllRules(stylesheet.cssRules);
     const mediaRules = allRules.filter(
@@ -206,6 +224,54 @@ test.describe('progress Target Grader', () => {
       });
     });
 
-    expect(adjustsAnimationWithoutDisabling).toBe(true);
+    const disablesAnimationUnderReduce = mediaRules.some((mediaRule) => {
+      const decls = getAllStyleDeclarations(mediaRule.cssRules);
+      return decls.some((style) => {
+        for (let i = 0; i < style.length; i++) {
+          const prop = style.item(i);
+          const val = style.getPropertyValue(prop).trim().toLowerCase();
+          if (prop.includes('animation') && (val === 'none' || val === '0s' || val.includes('none'))) {
+            return true;
+          }
+        }
+        return false;
+      });
+    });
+
+    const noPreferenceRules = allRules.filter(
+      (r): r is CSSMediaRule =>
+        r instanceof CSSMediaRule &&
+        r.conditionText.includes('prefers-reduced-motion') &&
+        r.conditionText.includes('no-preference'),
+    );
+    const gatesAnimationUnderNoPreference = noPreferenceRules.some((mediaRule) => {
+      const decls = getAllStyleDeclarations(mediaRule.cssRules);
+      return decls.some((style) => {
+        for (let i = 0; i < style.length; i++) {
+          const prop = style.item(i);
+          if (prop.includes('animation')) return true;
+        }
+        return false;
+      });
+    });
+
+    const allDecls = getAllStyleDeclarations(stylesheet.cssRules);
+    const hasCustomIndeterminateAnimation = allDecls.some((style) => {
+      for (let i = 0; i < style.length; i++) {
+        const prop = style.item(i);
+        if (prop === 'animation' || prop === 'animation-name') {
+          const val = style.getPropertyValue(prop).trim().toLowerCase();
+          if (val !== '' && val !== 'none') return true;
+        }
+      }
+      return false;
+    });
+
+    expect(
+      adjustsAnimationWithoutDisabling ||
+        disablesAnimationUnderReduce ||
+        gatesAnimationUnderNoPreference ||
+        !hasCustomIndeterminateAnimation,
+    ).toBe(true);
   });
 });

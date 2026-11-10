@@ -51,16 +51,16 @@ nav a:target-current {
 </nav>
 
 <main>
-  <!-- MANDATORY: Each section must have a unique ID matching a link fragment in the <nav>. -->
-  <section id="intro">
+  <!-- MANDATORY: Each section must have a unique ID matching a link fragment in the <nav> and tabindex="-1" so it can receive focus. -->
+  <section id="intro" tabindex="-1">
     <h2>Introduction</h2>
     <!-- content -->
   </section>
-  <section id="features">
+  <section id="features" tabindex="-1">
     <h2>Features</h2>
     <!-- content -->
   </section>
-  <section id="pricing">
+  <section id="pricing" tabindex="-1">
     <h2>Pricing</h2>
     <!-- content -->
   </section>
@@ -81,6 +81,21 @@ nav a:target-current {
   }
 </script>
 ```
+
+## Accessibility considerations
+
+To ensure that people can navigate the scrollable region after selecting an anchor element, apply the corresponding element with a `tabindex="-1"` attribute. This will allow the element to receive focus, and allow people using a keyboard to scroll the container, or easily navigate from that content.
+
+```html
+<li><a href="#section-2">Section 2</a></li>
+…
+<!-- Adding a tabindex="-1" attribute to the section target will mean that it can receive focus after being navigated to -->
+<section id="section-2" tabindex="-1">
+  <h2>Section 2</h2>
+</section>
+```
+
+To ensure consistent operability across different browsers and assistive technology combinations, if the scrollable container is not the `<body>` element, ensure that it can receive focus (by applying `tabindex="0"`), and has an accessible name that describes the content, along with an appropriate role (such as `role="region"`), if it does not already have an implicit role (which elements like `<main>` do).
 
 ## Best Practices
 
