@@ -257,6 +257,13 @@ Let the element grow to its text, and transition the growth. Set `interpolate-si
   max-inline-size: 12rem;
   interpolate-size: allow-keywords;
 
+  & > span {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &:is(:hover, :focus-visible) {
     max-inline-size: var(--expanded-max-inline-size, max-content);
   }
