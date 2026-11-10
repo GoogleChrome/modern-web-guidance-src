@@ -62,42 +62,16 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 
 ## 2. Master checkbox behavior
 
-MANDATORY: Derive the master's state from the options whenever any option changes, and apply the master's state to the options when it changes. The `indeterminate` state has no HTML attribute; set the DOM property in JavaScript.
+Derive the master's state from the options whenever any option changes, and apply the master's state to the options when the master checkbox is directly interacted with.
 
-```js
-const master = document.querySelector('#select-all');
-const group = master.closest('fieldset');
-const summary = group.querySelector('output');
-const options = [...group.querySelectorAll('input[name="robot"]')];
-
-function sync() {
-  // Filter dynamically so options disabled or enabled at runtime stay in sync.
-  const enabled = options.filter((item) => !item.disabled);
-  const total = enabled.length;
-  // With no enabled options, mirror the disabled options' state.
-  const { on = [], off = [] } = Object.groupBy(
-    total ? enabled : options,
-    (item) => (item.checked ? 'on' : 'off'),
-  );
-  master.disabled = total === 0;
-  master.checked = on.length > 0 && off.length === 0;
-  // Mixed only when some, but not all, options in scope are checked.
-  master.indeterminate = on.length > 0 && off.length > 0;
-  // Announce the running count so bulk changes are not silent.
-  summary.textContent = `${total ? on.length : 0} of ${total} available units active`;
-}
-
-master.addEventListener('change', () => {
-  for (const item of options) {
-    if (!item.disabled) item.checked = master.checked;
-  }
-  sync();
-});
-options.forEach((item) => item.addEventListener('change', sync));
-sync(); // Reflect options that are checked on page load.
-```
-
-Clicking an indeterminate master resolves to checked (all options selected), because the browser clears `indeterminate` and toggles `checked`.
+* On load and whenever any option changes, derive the master from the **enabled** options only:
+  * All checked: `checked = true`, `indeterminate = false`.
+  * Some checked: `checked = false`, `indeterminate = true`. There is no HTML attribute for this; set the DOM property.
+  * None checked: both `false`.
+* When the master is directly toggled by the user, copy its `checked` value onto every enabled option. Do not re-derive the master afterwards; the options now match it. No special case is needed for the mixed state: clicking an indeterminate checkbox clears `indeterminate` and toggles `checked` before `change` fires, so a mixed master becomes checked and selects all options.
+* Never read or write disabled options. If no option is enabled, disable the master and give it the state the disabled options would produce (unchecked when the list is empty).
+* After each derive, update the `<output>` text with the count of checked versus enabled options, for example "2 of 4 available units active".
+* Compute the enabled set at derive time, not once at setup, so options disabled or enabled at runtime stay in sync.
 
 ### When and how to include a master checkbox
 
