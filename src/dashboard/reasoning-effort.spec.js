@@ -133,19 +133,18 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
       await expect(effortTooltip).toBeHidden();
     }
 
-    // Mathematical vertical centering between model text and effort chip
-    const alignment = await page.locator('.suite-table-row[data-test-id="nightly-2026-10-27_23-00-02-antigravity_cli"] .model-cell-inner').evaluate(el => {
-      const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
+    // Effort chip sits underneath the model name
+    const chipBelowModel = await page.locator('.suite-table-row[data-test-id="nightly-2026-10-27_23-00-02-antigravity_cli"] .model-cell-inner').evaluate(el => {
+      const modelEl = el.querySelector('.model-name') || Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
       const range = document.createRange();
-      if (textNode) range.selectNodeContents(textNode);
+      if (modelEl instanceof Element) range.selectNode(modelEl);
+      else if (modelEl) range.selectNodeContents(modelEl);
       const textRect = range.getBoundingClientRect();
       const chipRect = el.querySelector('.effort-chip')?.getBoundingClientRect();
-      if (!chipRect) return Infinity;
-      const textCenter = textRect.top + textRect.height / 2;
-      const chipCenter = chipRect.top + chipRect.height / 2;
-      return Math.abs(textCenter - chipCenter);
+      if (!chipRect) return -Infinity;
+      return chipRect.top - textRect.bottom;
     });
-    expect(alignment).toBeLessThanOrEqual(2);
+    expect(chipBelowModel).toBeGreaterThanOrEqual(-1);
     expect(errors).toEqual([]);
   });
 

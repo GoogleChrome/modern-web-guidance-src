@@ -106,6 +106,7 @@ const TIMEOUT_MS = 900000;
  * @property {string} serving
  * @property {string} model
  * @property {import('./evals.d.ts').ReasoningEffort} [reasoningEffort]
+ * @property {boolean} [curated]
  * @property {number} taskCount
  * @property {number} [pairedTaskCount] valid task-guide pairs included in pass rates
  * @property {number} maxRuns
@@ -126,7 +127,7 @@ const TIMEOUT_MS = 900000;
 /**
  * Extracts a compact summary object from an evals.json payload.
  * @param {string} testId
- * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean }} evalsData
+ * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean, curated?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
  * @returns {SuiteSummary|null}
  */
@@ -486,6 +487,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         serving: serving,
         model: evalsData.model || 'unknown',
         ...(reasoningEffort ? { reasoningEffort } : {}),
+        ...(evalsData.curated ? { curated: true } : {}),
         taskCount: taskCount,
         pairedTaskCount: eligibleScenarios.size,
         maxRuns: maxRuns,
