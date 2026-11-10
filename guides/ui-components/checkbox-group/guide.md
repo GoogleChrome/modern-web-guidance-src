@@ -123,22 +123,24 @@ Style `.master` with a 44px minimum hit target and a visual separator:
 
 ### Label-only rows (the common case)
 
-MANDATORY: The checkbox must stay to the left of all label text, including wrapped lines and hints. Do not use a flex label: the text becomes flex items beside the checkbox, so a long label can wrap underneath it. Instead make the label a two-column grid (checkbox, text) and wrap the label text in a single `<span>`, because every direct child of the label becomes its own grid item:
+MANDATORY: The checkbox must stay at the inline-start of all label text, including wrapped lines and hints. Do not use a flex label: the text becomes flex items beside the checkbox, so a long label can wrap underneath it. Instead position the label (`position: relative`), reserve space with `padding-inline-start` (checkbox width plus gap), and pin the checkbox into that space with `position: absolute` and `inset-inline-start: 0`. Checkbox dimensions are uniform, so no wrapper `<span>` is needed, and logical properties keep it correct in RTL:
 
 ```css
 .options label {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 0.75rem;
-  align-items: start;
+  position: relative;
+  display: block;
   padding-block: 10px; /* 24px line + 20px = 44px hit target */
+  padding-inline-start: 2rem; /* checkbox width + gap */
   line-height: 1.5rem;
   cursor: pointer;
 }
 
 /* Center the checkbox on the first line of text */
 .options label > .checkbox {
-  margin-block-start: calc((1.5rem - 1.25em) / 2);
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: calc(10px + (1.5rem - 1.25em) / 2);
+  margin: 0;
 }
 ```
 
@@ -158,11 +160,12 @@ When rows have a secondary column (such as a trailing `<span class="model">CW-01
   grid-template-columns: subgrid;
   grid-column: 1 / -1;
   align-items: center;
+  padding: 0;
   min-block-size: 44px;
   cursor: pointer;
 }
 
-.options label > .checkbox { margin-block-start: 0; }
+.options label > .checkbox { position: static; }
 ```
 
 ### Hint text

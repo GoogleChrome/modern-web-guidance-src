@@ -49,20 +49,22 @@
       font-weight: 600;
     }
 
-    /* Label-only rows: the checkbox sits in its own column, so wrapped text stays beside it. */
+    /* Label-only rows: the checkbox is pinned to the inline-start edge, so wrapped text stays beside it. */
     .options label {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      column-gap: 0.75rem;
-      align-items: start;
+      position: relative;
+      display: block;
       padding-block: 10px;
+      padding-inline-start: 2rem; /* checkbox width + gap */
       line-height: 1.5rem;
       cursor: pointer;
       user-select: none;
     }
 
     .options label > .checkbox {
-      margin-block-start: calc((1.5rem - 1.25em) / 2);
+      position: absolute;
+      inset-inline-start: 0;
+      inset-block-start: calc(10px + (1.5rem - 1.25em) / 2);
+      margin: 0;
     }
 
     /* Secondary column: the container is the grid; each label subgrids so columns align across rows. */
@@ -73,16 +75,17 @@
     }
 
     .options.has-columns label {
+      display: grid;
       grid-template-columns: subgrid;
       grid-column: 1 / -1;
       align-items: center;
-      padding-block: 0;
+      padding: 0;
       min-block-size: 44px;
       line-height: normal;
     }
 
     .options.has-columns label > .checkbox {
-      margin-block-start: 0;
+      position: static;
     }
 
     .options label:not(:first-of-type) {
@@ -208,7 +211,7 @@
 
   <main>
     <h2>Label-only options</h2>
-    <p>The common case. The checkbox stays to the left of all label text, including wrapped lines and hints.</p>
+    <p>The common case. The checkbox stays at the inline-start of all label text, including wrapped lines and hints.</p>
     <form>
       <fieldset>
         <legend>Notifications</legend>
