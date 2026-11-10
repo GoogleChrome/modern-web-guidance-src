@@ -1,0 +1,21 @@
+- The data is presented in a `<table>` with a `<caption>`, a `<thead>` containing the column headers as `<th scope="col">`, and a `<tbody>` containing the rows.
+- The first cell of each body row is a `<th scope="row">`.
+- The table is wrapped in a scroll container (`overflow: auto` or `scroll`) that has `role="region"`, an accessible name, and `tabindex="0"`.
+- The column header `<th>` cells compute `position: sticky` with a block-start inset of `0`.
+- The row header `<th>` cells in `<tbody>` compute `position: sticky` with an inline-start inset of `0`.
+- The table does not compute `border-collapse: collapse`.
+- The sticky `<th>` cells compute an opaque background color.
+- Scrolling the wrapper vertically keeps the column header cells at the top edge of the wrapper.
+- Scrolling the wrapper horizontally keeps the row header cells at the inline-start edge of the wrapper.
+- The sticky header cells set `container-type` to `scroll-state` and a `container-name`.
+- A stylesheet rule uses an `@container` query with `scroll-state(stuck: ...)` to style the stuck header cells.
+- The table is filtered with an `<input type="search">` that has an associated `<label>`, and the input is outside the scroll container.
+- Typing in the filter input sets the `hidden` attribute on body rows whose text does not contain the query, case-insensitively.
+- Typing in the filter input leaves body rows whose text contains the query visible.
+- Typing in the filter input does not remove rows from the DOM.
+- Typing in the filter input does not hide the header row.
+- Clearing the filter input makes every body row visible again.
+- After filtering, a `role="status"` element that exists before the input event contains the number of visible rows and the total number of rows.
+- No `aria-live` attribute is set on the table, its wrapper, or its rows.
+- When no row matches the filter, an empty-state message is visible and the status element reports that no rows match.
+- When `container-scroll-state-queries` is unsupported, the header cells remain `position: sticky` and the filter still works.
