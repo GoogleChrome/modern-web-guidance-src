@@ -73,7 +73,8 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .reveal-layer {
-          transition-duration: 0;
+          /* <time> values need a unit: a unitless 0 is invalid and silently dropped */
+          transition-duration: 0s;
         }
       }
 
