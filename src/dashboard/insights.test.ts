@@ -69,7 +69,9 @@ test('selectRecentSuites defaults to the latest 1 nightly suite per family regar
     assert.deepStrictEqual(selected.get(AGENT_FAMILIES[1]), []);
     const g38 = suite('nightly-2026-10-19_07-00-02-antigravity_cli', 'antigravity_cli', 'gemini-3.8-flash', '2026-10-19T07:00:02Z', [{ name: 'accordion', passed: [1, 2] }]);
     const g4 = suite('nightly-2026-10-20_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-20T18:18:02Z', [{ name: 'accordion', passed: [3, 4] }]);
+    const curated = { ...suite('argon-medium-1.0-2026-11-09', 'antigravity_cli', 'gemini-4-argon', '2026-11-09T09:12:48Z', [{ name: 'accordion', passed: [4, 4] }]), curated: true };
     assert.deepStrictEqual((selectRecentSuites([g38, g4]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId]);
+    assert.deepStrictEqual((selectRecentSuites([g38, g4, curated]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [curated.testId]);
     assert.deepStrictEqual((selectRecentSuites([g38, g4], { before: '2026-10-20' }).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g38.testId]);
 });
 test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', () => {

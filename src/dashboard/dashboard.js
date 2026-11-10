@@ -719,11 +719,8 @@ function renderSummary(data) {
     const exactRate = (/** @type {{ passed: number, total: number }} */ st) => st.total > 0 ? (st.passed / st.total) * 100 : 0;
     const unguidedPassRate = Math.round(exactRate(unguidedStats));
     const guidedPassRate = Math.round(exactRate(guidedStats));
-    const upliftDelta = Math.round(exactRate(guidedStats) - exactRate(unguidedStats));
-    const a11yUpliftPp = Math.round(
-        exactRate({ passed: a11yStats.guidedPassed, total: a11yStats.guidedTotal }) -
-        exactRate({ passed: a11yStats.unguidedPassed, total: a11yStats.unguidedTotal })
-    );
+    const upliftDelta = guidedPassRate - unguidedPassRate;
+    const a11yUpliftPp = a11yStats.guidedRate - a11yStats.unguidedRate;
     const fraction = (/** @type {number} */ passed, /** @type {number} */ total) => `${passed.toLocaleString()}/${total.toLocaleString()}`;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
@@ -739,7 +736,7 @@ function renderSummary(data) {
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
         if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
-        const dimPp = Math.round(exactRate({ passed: sc.guidedPassed, total: sc.guidedTotal }) - exactRate({ passed: sc.unguidedPassed, total: sc.unguidedTotal }));
+        const dimPp = sc.guidedRate - sc.unguidedRate;
         const deltaSign = dimPp >= 0 ? '+' : '';
         return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
     }).join('');
@@ -969,20 +966,19 @@ async function computeScenarios(data) {
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {{ rate: number | null, exact: number | null }}
+             * @returns {number | null}
              */
             const getAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null };
+                if (!runs || runs.length === 0) return null;
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runs.reduce((acc, run) => acc + getRunStats(run.results).total, 0);
-                if (totalChecks <= 0) return { rate: null, exact: null };
-                const exact = (totalPassed / totalChecks) * 100;
-                return { rate: Math.round(exact), exact };
+                if (totalChecks <= 0) return null;
+                return Math.round((totalPassed / totalChecks) * 100);
             };
             /** @param {DashboardRunResult[] | undefined} runs
- * @returns {{ rate: number | null, exact: number | null, count: number }} */
+ * @returns {{ rate: number | null, count: number }} */
             const getA11yAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null, count: 0 };
+                if (!runs || runs.length === 0) return { rate: null, count: 0 };
                 let passed = 0;
                 let total = 0;
                 let validRuns = 0;
@@ -996,10 +992,9 @@ async function computeScenarios(data) {
                     if (s.total > maxChecksInRun) maxChecksInRun = s.total;
                 });
                 if (validRuns === 0 || total === 0) {
-                    return { rate: null, exact: null, count: maxChecksInRun };
+                    return { rate: null, count: maxChecksInRun };
                 }
-                const exact = (passed / total) * 100;
-                return { rate: Math.round(exact), exact, count: maxChecksInRun };
+                return { rate: Math.round((passed / total) * 100), count: maxChecksInRun };
             };
 
             /** @param {DashboardRunResult[] | undefined} runs
@@ -1028,20 +1023,18 @@ async function computeScenarios(data) {
                 });
                 return count > 0 ? Math.round(sum / count) : 0;
             };
-            const uAvgObj = getAvg(unguidedRuns);
-            const gAvgObj = getAvg(guidedRuns);
-            const unguidedAvg = uAvgObj.rate;
-            const guidedAvg = gAvgObj.rate;
-            const uplift = (uAvgObj.exact !== null && gAvgObj.exact !== null)
-                ? Math.round(gAvgObj.exact - uAvgObj.exact)
+            const unguidedAvg = getAvg(unguidedRuns);
+            const guidedAvg = getAvg(guidedRuns);
+            const uplift = (unguidedAvg !== null && guidedAvg !== null)
+                ? guidedAvg - unguidedAvg
                 : null;
             const uA11y = getA11yAvg(unguidedRuns);
             const gA11y = getA11yAvg(guidedRuns);
             const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
             const a11yUnguidedAvg = uA11y.rate;
             const a11yGuidedAvg = gA11y.rate;
-            const a11yUplift = (uA11y.exact !== null && gA11y.exact !== null)
-                ? Math.round(gA11y.exact - uA11y.exact)
+            const a11yUplift = (a11yUnguidedAvg !== null && a11yGuidedAvg !== null)
+                ? a11yGuidedAvg - a11yUnguidedAvg
                 : null;
             const uRuntimeMs = getAvgRuntime(unguidedRuns);
             const gRuntimeMs = getAvgRuntime(guidedRuns);

@@ -745,7 +745,7 @@ function toRate(stats) {
 
 /** @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
-function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? Math.round(toRateExact(gStats) - toRateExact(uStats)) : null; }
+function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? toRate(gStats) - toRate(uStats) : null; }
 /** A side with no checks has no rate, so uplift against it would be fabricated.
  * @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
@@ -834,8 +834,8 @@ function getSortValue(t, key) {
         case 'date':
             return getSuiteDate(t).getTime();
         case 'uplift':
-            return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
-        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
+            return upliftPp(t.unguidedStats, t.guidedStats);
+        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair ? upliftPp(pair.u, pair.g) : null; }
         case 'time': { const rt = t.efficiencyStats?.runtime; return rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0) ? rt.medianDeltaPct : null; }
         case 'tokens': {
             const tok = t.efficiencyStats?.tokens;
@@ -1352,10 +1352,12 @@ function buildModelPivotItem(testInfo, onlyA11y) {
         return null;
     }
     if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
+        const uRate = toRate(testInfo.unguidedStats);
+        const gRate = toRate(testInfo.guidedStats);
         return {
-            uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
-            uRate: toRate(testInfo.unguidedStats),
-            gRate: toRate(testInfo.guidedStats),
+            uplift: gRate - uRate,
+            uRate,
+            gRate,
             uErr,
             gErr,
             rtDeltaPct,

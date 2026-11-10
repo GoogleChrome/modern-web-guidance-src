@@ -203,9 +203,9 @@ function renderTaskPills(currentTask) {
     const sameTasks = existingPills.length === list.length &&
         existingPills.every((el, idx) => el.getAttribute('data-task-id') === list[idx].id);
     if (!sameTasks) {
-        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + list.map(t => {
+        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend><div class="ab-task-pills-track">` + list.map(t => {
             return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(t.label)}</span><span class="ab-task-delta-slot"></span></label>`;
-        }).join('');
+        }).join('') + `</div>`;
     }
     container.querySelectorAll('.ab-task-pill').forEach(pill => {
         const taskId = pill.getAttribute('data-task-id');

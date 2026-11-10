@@ -356,8 +356,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             unguidedPassed: t.unguided.passed,
             unguidedTotal: t.unguided.total,
             unguidedRate,
-            // A side with no checks has no rate, so there is nothing to compare against.
-            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? Math.round(gExact - uExact) : null
+            // Derive uplift from the rounded rates so displayed percentages and deltas always reconcile.
+            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? (guidedRate - unguidedRate) : null
         };
     };
 
