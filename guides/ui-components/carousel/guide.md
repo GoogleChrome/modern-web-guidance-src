@@ -27,7 +27,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 - Ensure that all of the carousel's interactive elements have a minimum target size of 24 by 24 CSS pixels to adhere to WCAG 2.5.8 Target Size. This can be achieved by making the elements have a sufficient minimum size, or ensuring that there is sufficient spacing between elements, so that undersized targets have a CSS pixels diameter circle amount of space, and would not intersect with other targets, or other undersized targets with the same amount of space.
 - Ensure that all controls have sufficient contrast, with non-text elements requiring a contrast ratio of at least 3:1 between the non-text content and adjacent colors, in order to adhere to WCAG 1.4.11 Non-text Contrast.
 - Ensure that when a previous/next control becomes disabled, causing focus to be lost, that focus is redirected elsewhere, such as the opposite control (e.g. move focus to "Next" if previous becomes disabled and has focus, or move focus to "Previous" if next becomes disabled and has focus).
-- The active slide's control must not communicate that it is active through color alone. There must be another visual affordance, such as an outline, or use of a larger height/width, to convey that the control is active.
+- The active slide's control must not communicate that it is active through color alone, in order to adhere to WCAG 1.4.1 Use of Color. There must be another visual affordance, such as an outline, or use of a larger height/width, to convey that the control is active.
 
 ## Scrolling and controls
 
