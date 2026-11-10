@@ -57,6 +57,15 @@ describe('scrubString', () => {
     assert.equal(scrubString(`${LINUX_HOME}/.cache/ms-playwright`), '~/.cache/ms-playwright');
   });
 
+  test('strips repo checkout path and rewrites cloudtop home even when leading slash is missing', () => {
+    const slashless = CLOUDTOP_HOME.slice(1);
+    assert.equal(scrubString(`${slashless}/modern-web-guidance-src/src/harness/x.ts`), 'src/harness/x.ts');
+    assert.equal(scrubString(`cwd: "${slashless}/code/guidance"`), 'cwd: ""');
+    assert.equal(scrubString(`in '${slashless}/code/guidance/guides/passkeys/grader.ts'`), "in 'guides/passkeys/grader.ts'");
+    assert.equal(scrubString(`${slashless}/.npm/_npx/abc/node_modules`), '~/.npm/_npx/abc/node_modules');
+    assert.equal(scrubString(`path: "${slashless}/.cache/test"`), 'path: "~/.cache/test"');
+  });
+
   test('leaves URL routes and mounted drives alone', () => {
     assert.equal(scrubString('http://localhost:3000/home/settings'), 'http://localhost:3000/home/settings');
     assert.equal(scrubString('/mnt/c/Users/x/y'), '/mnt/c/Users/x/y');
@@ -267,6 +276,14 @@ describe('findLeaks', () => {
     assert.equal(findLeaks(`${CLOUDTOP_HOME}/x`).length, 1);
   });
 
+  test('flags cloudtop home paths when the leading slash is missing', () => {
+    const slashless = CLOUDTOP_HOME.slice(1);
+    assert.equal(findLeaks(`${slashless}/x`).length, 1);
+    assert.equal(findLeaks(`${slashless}/x`)[0].name, 'home path');
+    assert.equal(findLeaks(`cwd: "${slashless}"`)[0].name, 'home path');
+    assert.equal(findLeaks(`Error: in ${slashless}/run.mjs`)[0].name, 'home path');
+  });
+
   test('returns nothing for scrubbed output', () => {
     const scrubbed = scrubValue({ e: `${REPO_CHECKOUT}/a.ts`, h: `/home/${OTHER_FAKE_LDAP}/.npm` });
     assert.deepEqual(findLeaks(scrubbed), []);
@@ -296,6 +313,11 @@ describe('harvestUserSegments', () => {
       harvestUserSegments('/home/runner/.npm /home/node/.cache /home/web_user/x /Users/ubuntu/x /home/ab/x /Users/42/x ./home/Home http://h/home/settings'),
       [],
     );
+  });
+
+  test('collects user segment from cloudtop path even without leading slash', () => {
+    const slashless = CLOUDTOP_HOME.slice(1);
+    assert.deepEqual(harvestUserSegments(`failed at ${slashless}/run.mjs`), [FAKE_LDAP]);
   });
 });
 
