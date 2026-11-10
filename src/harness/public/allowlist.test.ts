@@ -215,6 +215,21 @@ describe('retention helpers', () => {
     assert.deepEqual(ids({ maxSuitesPerAgent: 2 }), ['x1', 'x2', 'c1', 'c2', 'n1'], 'per-agent cap skips the surplus and keeps scanning');
     assert.deepEqual(ids({ maxSuitesPerAgent: 2, maxSuites: 3 }), ['x1', 'x2', 'c1'], 'per-agent first, then the global cap');
   });
+
+  test('withinSuiteCaps preserves curated baseline suites regardless of rolling nightly caps', () => {
+    const curatedAllowlist: PublicAllowlist = {
+      ...allowlist,
+      include: [...allowlist.include, 'curated-baseline-run'],
+      retention: { maxSuitesPerAgent: 1, maxSuites: 2 },
+    };
+    const ranked = [
+      { id: 'nightly-recent-1', agent: 'codex_cli' },
+      { id: 'nightly-recent-2', agent: 'codex_cli' },
+      { id: 'curated-baseline-run', agent: 'codex_cli' },
+    ];
+    const kept = withinSuiteCaps(curatedAllowlist, ranked).map(s => s.id);
+    assert.deepEqual(kept, ['nightly-recent-1', 'curated-baseline-run']);
+  });
 });
 
 describe('suiteCreatedAt', () => {
@@ -222,6 +237,10 @@ describe('suiteCreatedAt', () => {
 
   test('reads the run time out of a nightly id', () => {
     assert.equal(suiteCreatedAt('nightly-2026-10-20_20-43-48-codex_cli', fallback).toISOString(), '2026-10-20T20:43:48.000Z');
+  });
+
+  test('reads date out of a date-only suite id', () => {
+    assert.equal(suiteCreatedAt('opus-medium-1.0-rc-2026-11-08', fallback).toISOString(), '2026-11-08T00:00:00.000Z');
   });
 
   test('falls back for ids without a timestamp', () => {

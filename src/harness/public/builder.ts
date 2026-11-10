@@ -391,9 +391,6 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
     fs.mkdirSync(path.dirname(suiteDir), { recursive: true });
     fs.renameSync(stagingDir, suiteDir);
     const summary = extractSuiteSummary(suiteId, evals) ?? undefined;
-    if (summary && curated) {
-      summary.curated = true;
-    }
     return { suiteId, status: 'built', ...writer.totals(), summary };
   } catch (err) {
     if (err instanceof NotPublishableError || err instanceof LeakError || err instanceof OverrideError) {
