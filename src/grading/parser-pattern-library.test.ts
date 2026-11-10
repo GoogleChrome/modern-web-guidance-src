@@ -2,7 +2,22 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
-import { parse, getCascadedStyle, CSSMediaRule, CSSViewTransitionRule, CSSStyleRule, CSSSupportsRule, CSSContainerRule } from 'cssomnom';
+import {
+  parse,
+  getRules,
+  closestRule,
+  resolveSelector,
+  parseSelectorAST,
+  getDeclaredProperties,
+  getPropertyValues,
+  getCascadedStyle,
+  CSSMediaRule,
+  CSSViewTransitionRule,
+  CSSStyleRule,
+  CSSSupportsRule,
+  CSSContainerRule,
+  CSSPositionTryRule,
+} from 'cssomnom';
 
 describe('Parser Pattern Library (Best Practices)', () => {
   
@@ -41,10 +56,20 @@ describe('Parser Pattern Library (Best Practices)', () => {
         }
       }
 
+      @position-try --below {
+        inset-area: block-end;
+      }
+
       @container (min-width: 400px) {
         .card {
+          grid-template-rows: auto;
+          grid-template-rows: subgrid;
+          width: 300px;
           display: flex;
           color: blue;
+          & > .title {
+            color: darkblue;
+          }
         }
       }
 
@@ -56,36 +81,61 @@ describe('Parser Pattern Library (Best Practices)', () => {
     `;
     
     const stylesheet = parse(css);
-    const rules = Array.from(stylesheet.cssRules);
 
-    // 1. Verify @media rule and nested @view-transition rule
-    const mediaRule = rules.find((r): r is CSSMediaRule => r instanceof CSSMediaRule && r.conditionText.includes('no-preference'));
+    // 1. Recursive rule collection via getRules() across all grouping rules and @at-rules
+    const mediaRules = getRules(stylesheet, CSSMediaRule);
+    const mediaRule = mediaRules.find(r => r.conditionText.includes('no-preference'));
     assert.ok(mediaRule, 'Should find media rule with prefers-reduced-motion: no-preference');
     
-    const viewTransitionRule = Array.from(mediaRule.cssRules).find((r): r is CSSViewTransitionRule => r instanceof CSSViewTransitionRule);
-    assert.ok(viewTransitionRule, 'Should find @view-transition rule nested inside media query');
-    assert.strictEqual(viewTransitionRule.navigation, 'auto');
+    const viewTransitionRules = getRules(stylesheet, CSSViewTransitionRule);
+    assert.strictEqual(viewTransitionRules.length, 1);
+    assert.strictEqual(viewTransitionRules[0].navigation, 'auto');
+    // Nearest enclosing rule traversal via closestRule()
+    const enclosingMedia = closestRule(viewTransitionRules[0], CSSMediaRule);
+    assert.strictEqual(enclosingMedia, mediaRule);
 
     // 2. Verify @supports rule and nested declarations
-    const supportsRule = rules.find((r): r is CSSSupportsRule => r instanceof CSSSupportsRule && r.conditionText.includes('anchor-name'));
+    const supportsRules = getRules(stylesheet, CSSSupportsRule);
+    const supportsRule = supportsRules.find(r => r.conditionText.includes('anchor-name'));
     assert.ok(supportsRule, 'Should find @supports rule for anchor-name');
-    const tooltipRule = Array.from(supportsRule.cssRules).find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.tooltip');
+    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const tooltipRule = styleRules.find(r => r.selectorText === '.tooltip');
     assert.ok(tooltipRule, 'Should find .tooltip rule inside @supports');
     assert.strictEqual(tooltipRule.style.getPropertyValue('position-anchor'), '--my-anchor');
 
     // 3. Verify @container rule
-    const containerRule = rules.find((r): r is CSSContainerRule => r instanceof CSSContainerRule && r.conditionText.includes('min-width: 400px'));
+    const containerRules = getRules(stylesheet, CSSContainerRule);
+    const containerRule = containerRules.find(r => r.conditionText.includes('min-width: 400px'));
     assert.ok(containerRule, 'Should find @container rule');
 
-    // 4. Verify style rules and declarations
-    const cardRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.card');
+    // 4. Verify style rules, nested selector resolution, and AST inspection
+    const cardRule = styleRules.find(r => r.selectorText === '.card');
     assert.ok(cardRule, 'Should find .card style rule');
-    assert.strictEqual(cardRule.style.getPropertyValue('view-transition-name'), 'card-item');
-    assert.strictEqual(cardRule.style.getPropertyValue('contain'), 'layout');
+    const titleRule = styleRules.find(r => r.selectorText === '& > .title');
+    assert.ok(titleRule, 'Should find nested & > .title style rule');
+    assert.strictEqual(resolveSelector(titleRule), ':is(.card) > .title');
+    const titleAst = parseSelectorAST(titleRule);
+    assert.strictEqual(titleAst?.type, 'selector-list');
 
-    // 5. Utility CSS flexibility: Accept either standard CSS declarations or template utility classes
+    // 5. Multiple property values (progressive enhancement fallback) and logical/physical mapping
+    const rowValues = getPropertyValues(cardRule, 'grid-template-rows');
+    assert.deepStrictEqual(rowValues, ['auto', 'subgrid']);
+    const inlineSizeValues = getPropertyValues(cardRule, 'inline-size');
+    assert.deepStrictEqual(inlineSizeValues, ['300px']);
+
+    // 6. Inspecting declared properties across the entire stylesheet
+    const declaredProps = getDeclaredProperties(stylesheet);
+    assert.ok(declaredProps.has('grid-template-rows'));
+    assert.ok(declaredProps.has('view-transition-name'));
+
+    // 7. Verify @position-try rules via CSSPositionTryRule
+    const tryRules = getRules(stylesheet, CSSPositionTryRule);
+    assert.strictEqual(tryRules.length, 1);
+    assert.strictEqual(tryRules[0].name, '--below');
+
+    // 8. Utility CSS flexibility: Accept either standard CSS declarations or template utility classes
     const { document } = parseHTML('<div class="@container card @md:flex-row">Item</div>');
-    const hasContainer = rules.some(r => r instanceof CSSStyleRule && /\b(inline-size|size)\b/.test(r.style.getPropertyValue('container-type')))
+    const hasContainer = styleRules.some(r => /\b(inline-size|size)\b/.test(r.style.getPropertyValue('container-type')))
       || Boolean(document.querySelector('[class*="@container"]'));
     assert.strictEqual(hasContainer, true);
   });
@@ -97,6 +147,9 @@ describe('Parser Pattern Library (Best Practices)', () => {
     const css = `
       .card { color: red; display: block; }
       .card.highlight { color: blue; }
+      @media (prefers-color-scheme: dark) {
+        .card.highlight { color: white; }
+      }
     `;
 
     const { document } = parseHTML(html);
@@ -104,11 +157,15 @@ describe('Parser Pattern Library (Best Practices)', () => {
     assert.ok(cardEl);
 
     const stylesheet = parse(css);
-    const cascaded = getCascadedStyle(cardEl, Array.from(stylesheet.cssRules));
 
-    // getCascadedStyle computes the winning cascade declaration without a browser
-    assert.strictEqual(cascaded.getPropertyValue('color'), 'rgb(0, 0, 255)');
-    assert.strictEqual(cascaded.getPropertyValue('display'), 'block');
+    // getCascadedStyle computes the winning cascade declaration directly from stylesheet
+    const defaultCascaded = getCascadedStyle(cardEl, stylesheet);
+    assert.strictEqual(defaultCascaded.getPropertyValue('color'), 'rgb(0, 0, 255)');
+    assert.strictEqual(defaultCascaded.getPropertyValue('display'), 'block');
+
+    // getCascadedStyle also supports media environments (e.g. prefersColorScheme, forcedColors)
+    const darkCascaded = getCascadedStyle(cardEl, stylesheet, undefined, { prefersColorScheme: 'dark' });
+    assert.strictEqual(darkCascaded.getPropertyValue('color'), 'rgb(255, 255, 255)');
   });
 
   test('Pattern 4: Handling Advanced Selectors with Linkedom (:has)', () => {

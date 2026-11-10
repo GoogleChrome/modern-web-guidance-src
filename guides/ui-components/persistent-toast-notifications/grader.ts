@@ -31,35 +31,27 @@ test.describe(`persistent-toast-notifications Expectations: ${demoName}`, () => 
     });
   });
 
-  test(`1. Toasts must appear on top of all other page content`, async ({ page }) => {
+  test('Toasts appear on top of all other page content', async ({ page }) => {
     await page.locator('.toast-trigger').first().evaluate((btn: HTMLElement) => btn.click());
     
     const toast = page.locator('.toast').first();
     await toast.waitFor({ state: 'visible' });
 
-    // Give time for any entry animations to finish
-    await page.waitForTimeout(500);
-
-    const isTopLayer = await toast.evaluate((el) => el.matches(':popover-open'));
-    expect(isTopLayer).toBe(true);
+    await expect.poll(async () => toast.evaluate((el) => el.matches(':popover-open'))).toBe(true);
   });
 
-  test(`2. Clicking on the DOM content outside of the popover must not dismiss the toast notification.`, async ({ page }) => {
+  test('Clicking on DOM content outside of the popover does not dismiss the toast notification', async ({ page }) => {
     await page.locator('.toast-trigger').first().evaluate((btn: HTMLElement) => btn.click());
     const toast = page.locator('.toast').first();
     await toast.waitFor({ state: 'visible' });
 
     await page.mouse.click(0, 0);
-    await page.waitForTimeout(300);
-
     await expect(toast).toBeVisible();
   });
 
-  test(`3. Multiple toasts must be able to be open at the same time without closing one another.`, async ({ page }) => {
+  test('Multiple toasts can be open at the same time without closing one another', async ({ page }) => {
     await page.locator('.toast-trigger').first().evaluate((btn: HTMLElement) => btn.click());
-    await page.waitForTimeout(100);
     await page.locator('.toast-trigger').first().evaluate((btn: HTMLElement) => btn.click());
-    await page.waitForTimeout(100);
     
     const toasts = page.locator('.toast');
     await expect(toasts).toHaveCount(2);
@@ -71,7 +63,7 @@ test.describe(`persistent-toast-notifications Expectations: ${demoName}`, () => 
     expect(hasManual).toBe(true);
   });
 
-  test(`4. The toast must correctly remove itself from the Top Layer once dismissed.`, async ({ page }) => {
+  test('The toast correctly removes itself from the Top Layer once dismissed', async ({ page }) => {
     await page.locator('.toast-trigger').first().evaluate((btn: HTMLElement) => btn.click());
     const toast = page.locator('.toast').first();
     await toast.waitFor({ state: 'visible' });

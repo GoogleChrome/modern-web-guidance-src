@@ -6,14 +6,13 @@ import config, { Agents } from '../config.ts';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  exportTrajectories,
   runCliAgentCommand,
-  createTrustedFolders,
   copyFileIfExists,
   setupIsolatedWorkDir,
   isEnoent,
   type GuideUsage
 } from '../lib/agent-shared.ts';
+import { exportTrajectories } from '../lib/trajectory-export.ts';
 import {
   type StandardizedStep,
   type TrajectorySummary,
@@ -25,9 +24,11 @@ import {
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { defaultLevelFromModelId, resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 
 const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
 const MAX_PAYLOAD_PREVIEW_LENGTH = 200;
+const GEN_METADATA_DISPLAY_EFFORT_RE = /^(?:Gemini|Claude|GPT)\b.*\((Low|Medium|High|XHigh|Max)\)$/i;
 
 const PROTO_WIRE_TYPE = {
   VARINT: 0,
@@ -42,6 +43,24 @@ const USAGE_TAG_OUTPUT = 3;
 const USAGE_TAG_CACHED = 5;
 
 const TRAJECTORY_GLOB = '*.db';
+
+function createTrustedFolders(contentsDir: string, folders: string[]): void {
+  const trustedFolders: Record<string, string> = {};
+  for (const folder of folders) {
+    trustedFolders[folder] = 'TRUST_FOLDER';
+  }
+
+  try {
+    fs.mkdirSync(contentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(contentsDir, 'trustedFolders.json'),
+      JSON.stringify(trustedFolders, null, 2)
+    );
+    console.log(`Created trustedFolders.json in ${contentsDir}`);
+  } catch (e) {
+    console.error('Failed to create trustedFolders.json:', e);
+  }
+}
 
 export function setupJetskiCliCredentials(tempHome: string): string {
   const originalHome = process.env.HOME || process.cwd();
@@ -83,7 +102,8 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
   const commandArgs = [
     '-p', prompt,
     '--dangerously-skip-permissions',
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.JETSKI_CLI, model)
   ];
   return { command, commandArgs };
 }
@@ -178,60 +198,95 @@ export function findJsonObjectsInString(str: string): any[] {
   return results;
 }
 
-export function parseProtobuf(buffer: Buffer): Record<number, any[]> {
+function isCleanUtf8Text(str: string): boolean {
+  if (str.length === 0 || str.includes('\uFFFD')) return false;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if ((code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function parseProtobuf(buffer: Buffer, exact: boolean = false): Record<number, any[]> {
   let pos = 0;
   const fields: Record<number, any[]> = {};
 
   while (pos < buffer.length) {
     let tagHeader = 0;
     let shift = 0;
+    let tagTerminated = false;
     while (pos < buffer.length) {
       const b = buffer[pos++];
       tagHeader |= (b & 0x7f) << shift;
       shift += 7;
-      if ((b & 0x80) === 0) break;
+      if ((b & 0x80) === 0) {
+        tagTerminated = true;
+        break;
+      }
+      if (exact && shift > 28) return {};
     }
+    if (exact && !tagTerminated) return {};
     const wireType = tagHeader & 0x07;
-    const fieldNum = tagHeader >> 3;
-    if (fieldNum === 0) break;
+    const fieldNum = tagHeader >>> 3;
+    if (fieldNum === 0 || (exact && fieldNum > 100)) {
+      if (exact) return {};
+      break;
+    }
 
     let value: any;
     if (wireType === PROTO_WIRE_TYPE.VARINT) {
       let val = 0;
       let valShift = 0;
+      let terminated = false;
       while (pos < buffer.length) {
         const b = buffer[pos++];
         val += (b & 0x7f) * Math.pow(2, valShift);
         valShift += 7;
-        if ((b & 0x80) === 0) break;
+        if ((b & 0x80) === 0) {
+          terminated = true;
+          break;
+        }
+        if (exact && valShift > 63) return {};
       }
+      if (exact && !terminated) return {};
       value = val;
     } else if (wireType === PROTO_WIRE_TYPE.LENGTH_DELIMITED) {
       let len = 0;
       let lenShift = 0;
+      let terminated = false;
       while (pos < buffer.length) {
         const b = buffer[pos++];
         len += (b & 0x7f) * Math.pow(2, lenShift);
         lenShift += 7;
-        if ((b & 0x80) === 0) break;
+        if ((b & 0x80) === 0) {
+          terminated = true;
+          break;
+        }
+        if (exact && lenShift > 28) return {};
       }
+      if (exact && (!terminated || len < 0 || pos + len > buffer.length)) return {};
       const data = buffer.subarray(pos, pos + len);
       pos += len;
 
-      let nested: Record<number, any[]> | null = null;
-      try {
-        nested = parseProtobuf(data);
-        if (Object.keys(nested).length === 0) nested = null;
-      } catch {}
-
       const str = data.toString('utf8');
-      const isClean = /^[\x20-\x7E\t\r\n]+$/.test(str) && str.length > 0;
+      const isClean = isCleanUtf8Text(str);
+      let nested: Record<number, any[]> | null = null;
+      if (data.length > 0) {
+        try {
+          nested = parseProtobuf(data, true);
+          if (Object.keys(nested).length === 0) nested = null;
+        } catch {}
+      }
+
       value = nested || (isClean ? str : data);
-    } else if (wireType === PROTO_WIRE_TYPE.FIXED64) {
+    } else if (!exact && wireType === PROTO_WIRE_TYPE.FIXED64) {
       pos += 8;
-    } else if (wireType === PROTO_WIRE_TYPE.FIXED32) {
+    } else if (!exact && wireType === PROTO_WIRE_TYPE.FIXED32) {
       pos += 4;
     } else {
+      if (exact) return {};
       break;
     }
 
@@ -313,6 +368,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   const seenJsonHashes = new Set<string>();
   let modelName = 'unknown';
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let totalCached = 0;
   let hasTokens = false;
@@ -358,17 +414,35 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           const objs = findJsonObjectsInString(payloadStr);
           const isErr = row.status !== undefined && JETSKI_ERROR_STATUS_CODES.has(row.status);
           for (const obj of objs) {
-            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
-            const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
+            const isFileWrite = Boolean(
+              obj.TargetFile ||
+              (obj.Path && (obj.Content !== undefined || obj.Target !== undefined || obj.Replacement !== undefined)) ||
+              (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))
+            );
+            const isFileRead = Boolean(
+              !isFileWrite &&
+              (obj.AbsolutePath || obj.Path || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading'))))
+            );
+            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !isFileWrite && !isFileRead && !obj.DirectoryPath && !obj.SearchDirectory) continue;
+            const key = JSON.stringify({
+              cmd: obj.CommandLine,
+              file: obj.AbsolutePath || obj.TargetFile || obj.Path || obj.DirectoryPath || obj.SearchDirectory,
+              act: obj.toolAction || obj.toolSummary || (isFileWrite ? 'write' : isFileRead ? 'read' : ''),
+              start: obj.StartLine,
+              end: obj.EndLine,
+              target: typeof obj.Target === 'string' ? obj.Target.slice(0, 64) : undefined,
+            });
             if (seenJsonHashes.has(key)) continue;
             seenJsonHashes.add(key);
 
             const timestamp = extractTimestamp(obj) || rowTimestamp;
             const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
 
-            if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
-              const targetFile = obj.TargetFile || 'target_file';
-              const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
+            if (isFileWrite) {
+              const targetFile = obj.TargetFile || obj.Path || 'target_file';
+              const toolName = obj.ReplacementChunks
+                ? 'multi_replace_file_content'
+                : (obj.CodeContent !== undefined || obj.Content !== undefined ? 'write_to_file' : 'replace_file_content');
               steps.push({
                 stepNumber: 0,
                 timestamp,
@@ -377,7 +451,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 action: standardizeAction('write_file', toolName, {
                   path: targetFile,
                   targetFile,
-                  content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
+                  content: truncateMessage(obj.CodeContent ?? obj.Content ?? obj.Replacement ?? obj.ReplacementChunks ?? '', MAX_PAYLOAD_PREVIEW_LENGTH)
                 }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
@@ -394,8 +468,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 action: standardizeAction(actType, actName, params),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
-            } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
-              const filePath = obj.AbsolutePath || obj.path || obj.file_path || '';
+            } else if (isFileRead) {
+              const filePath = obj.AbsolutePath || obj.Path || obj.path || obj.file_path || '';
               steps.push({
                 stepNumber: 0,
                 timestamp,
@@ -440,16 +514,51 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
         }
       }
 
+      // Check CortexStepGeneratorMetadata model fields (`1.21` model_display_name, `3.28` planner_config.model_name,
+      // `1.19` chat_model.response_model) before walking generic proto strings so `1.1` / `1.2` prompts cannot shadow
+      // `1.19`, and fall back to `defaultLevelFromModelId` when `1.21` is omitted (e.g. `3.28` = `gemini-3.8-flash-high`).
       try {
         const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
+        let foundModel = false;
         for (const row of genRows) {
           if (!row.data) continue;
           const genDataBuffer = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
           const proto = parseProtobuf(genDataBuffer);
           const strings = getProtoStrings(proto);
-          const modelCandidate = strings.find(s => /^gemini/i.test(s));
-          if (modelCandidate) {
-            modelName = modelCandidate.split('|')[0].trim();
+          const chatModel = typeof proto[1]?.[0] === 'object' ? proto[1][0] : undefined;
+          const plannerConfig = typeof proto[3]?.[0] === 'object' ? proto[3][0] : undefined;
+          if (!foundModel) {
+            const modelCandidates = [
+              chatModel?.[19]?.[0], // chat_model.response_model
+              chatModel?.[21]?.[0], // chat_model.model_display_name
+              plannerConfig?.[28]?.[0], // planner_config.model_name
+              ...strings,
+            ].filter((s): s is string => typeof s === 'string');
+            const modelCandidate = modelCandidates.find(s => /^gemini/i.test(s));
+            if (modelCandidate) {
+              modelName = modelCandidate.split('|')[0].trim();
+              foundModel = true;
+            }
+          }
+          if (!observedEffort) {
+            const metaCandidates = [
+              chatModel?.[21]?.[0], // chat_model.model_display_name
+              plannerConfig?.[28]?.[0], // planner_config.model_name
+              chatModel?.[19]?.[0], // chat_model.response_model
+              ...strings,
+            ].filter((s): s is string => typeof s === 'string');
+
+            for (const str of metaCandidates) {
+              const candidate = str.split('|')[0].trim();
+              const effortMatch = GEN_METADATA_DISPLAY_EFFORT_RE.exec(candidate);
+              const tier = effortMatch?.[1]?.toLowerCase() ?? defaultLevelFromModelId(candidate);
+              if (tier) {
+                observedEffort = tier;
+                break;
+              }
+            }
+          }
+          if (foundModel && observedEffort) {
             break;
           }
         }
@@ -468,6 +577,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
     fileReadGuides: [...new Set(fileReadGuides)],
     toolsUsed: [...new Set(toolsUsed)],
     model: modelName,
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokens ? { total: totalTokens, cached: totalCached } : undefined
   };
 }

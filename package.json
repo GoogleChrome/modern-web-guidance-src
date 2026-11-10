@@ -31,6 +31,8 @@
     "task": "node src/harness/run-suite.ts",
     "report": "node src/harness/evaluate.ts",
     "upload": "node src/harness/upload-suite.ts",
+    "public:build": "node src/harness/public/build.ts",
+    "public:publish": "node src/harness/public/publish-cli.ts",
     "dashboard": "node src/dashboard/generate-manifests.js && node src/dashboard/server.js",
     "build:dashboard": "node src/dashboard/generate-manifests.js --stage-pages",
     "deploy:dashboard": "pnpm run build:dashboard && gh-pages --nojekyll --add --dist out/dashboard-pages",
@@ -45,39 +47,24 @@
   "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@github/keytar",
       "esbuild",
-      "keytar",
-      "node-pty",
       "onnxruntime-node",
       "protobufjs",
       "sharp",
-      "tree-sitter-bash",
       "@anthropic-ai/claude-code"
     ],
     "overrides": {
-      "@opentelemetry/otlp-transformer>protobufjs": "^8.0.1",
-      "@tootallnate/once": "^3.0.1",
-      "simple-git": "^3.36.0",
-      "ip-address": "^10.1.1"
-    },
-    "packageExtensions": {
-      "@google/gemini-cli": {
-        "dependencies": {
-          "semver": "*"
-        }
-      }
+      "@tootallnate/once": "^3.0.1"
     }
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.1.316",
-    "@google/gemini-cli-core": "0.61.0",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
     "@types/gh-pages": "^6.1.0",
     "@types/node": "^25.6.0",
     "@types/omelette": "^0.4.5",
-    "cssomnom": "^0.1.9",
+    "cssomnom": "^0.1.11",
     "diff": "^9.0.0",
     "esbuild": "^0.28.1",
     "gh-pages": "^6.3.0",
@@ -85,20 +72,16 @@
     "minimatch": "^11.0.1",
     "oxlint": "1.55.0",
     "playwright": "^1.58.2",
+    "statikk": "^3.1.0",
     "ts-morph": "^27.0.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "@11ty/gray-matter": "^3.0.0",
     "@google-cloud/storage": "^7.22.0",
-    "@google/gemini-cli": "0.65.0",
-    "@huggingface/tokenizers": "^0.2.0",
     "@huggingface/transformers": "^4.3.1",
     "@mdn/browser-compat-data": "^8.1.7",
     "@openai/codex": "0.166.0",
-    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
-    "@tensorflow/tfjs-converter": "^4.22.0",
-    "@tensorflow/tfjs-core": "^4.22.0",
     "@webref/css": "^8.7.0",
     "@webref/elements": "^2.7.1",
     "@webref/idl": "^3.82.0",
@@ -108,6 +91,6 @@
     "marked": "^18.0.3",
     "mdn-data": "2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.44.0"
+    "web-features": "^3.45.0"
   }
 }

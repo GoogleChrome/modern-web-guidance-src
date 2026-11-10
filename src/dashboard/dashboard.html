@@ -9,7 +9,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, accessibility subscores, completion time, and token usage.">
+  <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
   <title>Suite Results</title>
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
@@ -56,9 +56,9 @@
             <fieldset class="metric-mode-toggle">
               <legend class="visually-hidden">Evaluation check filter</legend>
               <label class="mode-toggle-btn" id="dash-mode-all-btn"><input type="radio" name="dash-mode" value="all" checked>All checks</label>
-              <label class="mode-toggle-btn" id="dash-mode-a11y-btn"><input type="radio" name="dash-mode" value="a11y">Accessibility subscore</label>
+              <label class="mode-toggle-btn" id="dash-mode-a11y-btn"><input type="radio" name="dash-mode" value="a11y">Accessibility checks</label>
             </fieldset>
-            <button type="button" class="info-hint-btn anchor-dash-a11y" interestfor="dash-tooltip-a11y" aria-label="About the accessibility subscore">?</button>
+            <button type="button" class="info-hint-btn anchor-dash-a11y" interestfor="dash-tooltip-a11y" aria-label="About automated accessibility checks">?</button>
           </div>
           <div class="chart-toolbar-right">
             <span class="meta-label">Hover or focus bars for runtime &amp; uncached token deltas</span>
@@ -85,22 +85,28 @@
       </section>
     </main>
 
-    <footer class="dashboard-footer">
+    <footer class="dashboard-footer site-legal-footer">
       <a href="./" class="secondary-btn">← Back to results</a>
       <button id="view-gcs-artifacts-btn" class="secondary-btn" hidden>View source</button>
       <button id="view-log-btn" class="secondary-btn">View full run log</button>
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
     </footer>
   </div>
 
   <div id="dash-tooltip-a11y" popover="hint" class="hint-popover">
-    <strong>Cross-cutting accessibility subscore</strong><br>
-    Aggregates the deterministic grader assertions that test accessibility requirements across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of six dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; Keyboard &amp; non-gesture operability; and checks from dedicated <code>accessibility/</code> guides. Graded-check counts differ between modes when a run fails before grading (counted as one failed check).
+    <strong>Automated accessibility checks</strong><br>
+    Aggregates deterministic browser assertions that verify foundational platform accessibility mechanics across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of five dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; and Keyboard &amp; non-gesture operability. Automated checks catch common AI omissions in code but do not measure full WCAG compliance or replace manual and assistive-technology testing.
   </div>
   <div id="dash-tooltip-tokens" popover="hint" class="hint-popover">
     <strong>Uncached vs. total token accounting</strong><br>
     <code>Uncached tokens = total − cached</code> (fresh input + output + thinking tokens). Multi-turn agents re-read cached prompt prefixes on every tool turn (roughly 85–96% cached for Claude Code and Codex CLI, ~20% for Antigravity CLI), so both uncached tokens and totals with cache share are shown.
   </div>
   <div id="dumbbell-tooltip" popover="hint" class="chart-tooltip" role="tooltip"></div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
   <dialog id="modal" aria-labelledby="modal-title" closedby="any">
     <div class="modal-content">
       <form method="dialog" class="close-modal-form">
@@ -129,6 +135,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="dashboard.js"></script>
 </body>
 

@@ -3,7 +3,7 @@ import { parseSuiteDateInfo } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 export { AGENT_FAMILIES };
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
-/** @typedef {Partial<SuiteSummary> & { testId: string }} ManifestSuite */
+/** @typedef {Partial<SuiteSummary> & { testId: string, source?: import('./api.js').DataSource, pageLoadStats?: { guidedFailed?: number, unguidedFailed?: number } }} ManifestSuite */
 /** @typedef {import('./agents.js').AgentFamilyDef} AgentFamilyDef */
 /** @typedef {Object} RateComparison
  * @property {number | null} unguidedRate null when that side ran no checks
@@ -19,8 +19,24 @@ export { AGENT_FAMILIES };
  * @property {string} timestamp
  * @property {string} agent
  * @property {string} model
+ * @property {import('./api.js').DataSource | null} source
  * @property {number} taskCount
- * @property {number} earlyFailureRate */
+ * @property {number | null} pairedTaskCount
+ * @property {number} maxRuns
+ * @property {number} earlyFailureRate
+ * @property {number | null} earlyFailureCount
+ * @property {number} unguidedLeakRate
+ * @property {number} pageLoadFailed */
+/** @typedef {Object} FamilySample
+ * @property {number} attemptedTasks
+ * @property {number} pairedTasks
+ * @property {number} excludedTasks
+ * @property {number} minMaxRuns
+ * @property {number} maxMaxRuns
+ * @property {number | null} earlyFailureCount
+ * @property {number} earlyFailureRate
+ * @property {number} unguidedLeakRate
+ * @property {number} pageLoadFailed */
 /** @typedef {Object} FamilyInsight
  * @property {string} id
  * @property {string} label
@@ -30,6 +46,7 @@ export { AGENT_FAMILIES };
  * @property {SuiteRef[]} suites
  * @property {number} suiteCount
  * @property {SuiteRef} latest
+ * @property {FamilySample} sample
  * @property {RateComparison} overall
  * @property {A11yComparison | null} a11y */
 /** @typedef {Object} PooledInsight
@@ -43,6 +60,7 @@ export { AGENT_FAMILIES };
  * @property {PooledInsight | null} pooled
  * @property {string[]} suiteIds
  * @property {string | null} latestTimestamp
+ * @property {number} maxSuitesPerFamily
  * @property {string[]} missingStats */
 /** @typedef {Object} InsightOptions
  * @property {number} [perAgentRecentN=1]
@@ -70,8 +88,8 @@ export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStat
 /** @param {ManifestSuite[]} suites
  * @param {InsightOptions} [options]
  * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */
-export function selectRecentSuites(suites, options = {}) {
-    const { perAgentRecentN = 1, nightlyOnly = true, before = null, families = AGENT_FAMILIES } = options;
+function collectFamilySuites(suites, options = {}) {
+    const { nightlyOnly = true, before = null, families = AGENT_FAMILIES } = options;
     const beforeMs = before ? Date.parse(before) : NaN;
     /** @type {Map<AgentFamilyDef, ManifestSuite[]>} */
     const byFamily = new Map();
@@ -85,10 +103,20 @@ export function selectRecentSuites(suites, options = {}) {
         if (!ts) return;
         if (!Number.isNaN(beforeMs) && Date.parse(ts) >= beforeMs) return;
         /** @type {ManifestSuite[]} */
-(byFamily.get(family)).push(suite);
+        (byFamily.get(family)).push(suite);
     });
-    byFamily.forEach((list, family) => {
+    byFamily.forEach((list) => {
         list.sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
+    });
+    return byFamily;
+}
+/** @param {ManifestSuite[]} suites
+ * @param {InsightOptions} [options]
+ * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */
+export function selectRecentSuites(suites, options = {}) {
+    const { perAgentRecentN = 1 } = options;
+    const byFamily = collectFamilySuites(suites, options);
+    byFamily.forEach((list, family) => {
         byFamily.set(family, list.slice(0, perAgentRecentN));
     });
     return byFamily;
@@ -125,13 +153,45 @@ export async function hydrateMissingStats(suites, fetchEvals, options = {}) {
 /** @param {ManifestSuite} suite @returns {SuiteRef} */
 function toSuiteRef(suite) {
     const timestamp = getSuiteTimestamp(suite);
+    const taskCount = suite.taskCount || 0;
+    const pairedTaskCount = typeof suite.pairedTaskCount === 'number' ? suite.pairedTaskCount : null;
+    const pageLoadFailed = (suite.pageLoadStats?.guidedFailed || 0) + (suite.pageLoadStats?.unguidedFailed || 0);
     return {
         testId: suite.testId,
         timestamp,
         agent: suite.agent || 'unknown',
         model: suite.model || 'unknown',
-        taskCount: suite.taskCount || 0,
-        earlyFailureRate: suite.earlyFailureRate || 0
+        source: suite.source || null,
+        taskCount,
+        pairedTaskCount,
+        maxRuns: suite.maxRuns || 1,
+        earlyFailureRate: suite.earlyFailureRate || 0,
+        earlyFailureCount: typeof suite.earlyFailureCount === 'number' ? suite.earlyFailureCount : null,
+        unguidedLeakRate: suite.unguidedLeakRate || 0,
+        pageLoadFailed
+    };
+}
+/** @param {SuiteRef[]} refs @returns {FamilySample} */
+function summarizeSample(refs) {
+    const attemptedTasks = refs.reduce((sum, r) => sum + Math.max(r.taskCount, r.pairedTaskCount ?? 0), 0);
+    const pairedTasks = refs.reduce((sum, r) => sum + (r.pairedTaskCount ?? r.taskCount), 0);
+    const excludedTasks = Math.max(0, attemptedTasks - pairedTasks);
+    const runCounts = refs.map(r => r.maxRuns);
+    const hasEarlyCounts = refs.every(r => r.earlyFailureCount !== null);
+    const earlyFailureCount = hasEarlyCounts ? refs.reduce((sum, r) => sum + (r.earlyFailureCount || 0), 0) : null;
+    const earlyFailureRate = Math.round(refs.reduce((sum, r) => sum + r.earlyFailureRate, 0) / refs.length);
+    const unguidedLeakRate = Math.round(refs.reduce((sum, r) => sum + r.unguidedLeakRate, 0) / refs.length);
+    const pageLoadFailed = refs.reduce((sum, r) => sum + r.pageLoadFailed, 0);
+    return {
+        attemptedTasks,
+        pairedTasks,
+        excludedTasks,
+        minMaxRuns: Math.min(...runCounts),
+        maxMaxRuns: Math.max(...runCounts),
+        earlyFailureCount,
+        earlyFailureRate,
+        unguidedLeakRate,
+        pageLoadFailed
     };
 }
 /** @param {{ unguidedPassed: number, unguidedTotal: number, guidedPassed: number, guidedTotal: number }} c @returns {RateComparison} */
@@ -186,12 +246,15 @@ function accumulate(suites) {
  * @returns {HeadlineInsights} */
 export function computeHeadlineInsights(suites, options = {}) {
     const { perAgentRecentN = 1, nightlyOnly = true, before = null } = options;
-    const selected = selectRecentSuites(suites, options);
+    const allByFamily = collectFamilySuites(suites, options);
+    let maxSuitesPerFamily = 0;
     /** @type {FamilyInsight[]} */
     const families = [];
     /** @type {ManifestSuite[]} */
     const allSelected = [];
-    selected.forEach((list, family) => {
+    allByFamily.forEach((fullList, family) => {
+        maxSuitesPerFamily = Math.max(maxSuitesPerFamily, fullList.length);
+        const list = fullList.slice(0, perAgentRecentN);
         if (list.length === 0) return;
         allSelected.push(...list);
         const acc = accumulate(list);
@@ -205,6 +268,7 @@ export function computeHeadlineInsights(suites, options = {}) {
             suites: refs,
             suiteCount: refs.length,
             latest: refs[0],
+            sample: summarizeSample(refs),
             overall: toRateComparison(acc.overall),
             a11y: acc.a11ySuites > 0 ? { ...toRateComparison(acc.a11y), guideCount: acc.a11yGuideCount } : null
         });
@@ -227,6 +291,7 @@ export function computeHeadlineInsights(suites, options = {}) {
         pooled,
         suiteIds: sortedAll.map(s => s.testId),
         latestTimestamp: sortedAll.length ? getSuiteTimestamp(sortedAll[0]) : null,
+        maxSuitesPerFamily,
         missingStats: sortedAll.filter(s => !hasHeadlineStats(s)).map(s => s.testId)
     };
 }
