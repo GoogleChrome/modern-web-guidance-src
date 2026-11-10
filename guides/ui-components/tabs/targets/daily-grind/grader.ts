@@ -41,6 +41,9 @@ function findPanels(doc: Document): any[] {
 }
 
 async function ensureKeyboardNavigationSupport(page: Page): Promise<void> {
+  if ((process.env.BASELINE_TARGET || 'widely').trim().toLowerCase() !== 'limited') {
+    return;
+  }
   await page.evaluate(() => {
     const menu = document.getElementById('coffee-menu') || document;
     const tablist = (menu.querySelector('[focusgroup~="tablist"]') ||
@@ -368,68 +371,124 @@ test.describe('tabs Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
     expect(sourceFiles.length).toBeGreaterThan(0);
 
+    const isFocusGroupHasOwnCall = (node: any): boolean => {
+      if (!node || node.getKind() !== SyntaxKind.CallExpression) return false;
+      if (node.getExpression().getText().trim() !== 'Object.hasOwn') return false;
+      const args = node.getArguments();
+      if (args.length < 2) return false;
+      return (
+        /^(?:(?:window|globalThis)\.)?HTMLElement\.prototype$/.test(
+          args[0].getText().replace(/\s+/g, '')
+        ) && /^['"`]focusGroup['"`]$/.test(args[1].getText().trim())
+      );
+    };
+
     let hasFeatureDetection = false;
-    let hasFallbackOrPolyfill = false;
+    let hasUnconditionalStaticImport = false;
+    let hasGuardedPolyfillLoad = false;
 
     for (const sf of sourceFiles) {
-      // Check Object.hasOwn(HTMLElement.prototype, 'focusGroup' | 'focusgroup') or HTMLElement.prototype.hasOwnProperty(...)
-      const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      for (const call of callExprs) {
-        const exprText = call.getExpression().getText();
-        const args = call.getArguments();
-        if (
-          (exprText === 'Object.hasOwn' || exprText.endsWith('.hasOwnProperty')) &&
-          args.some((a) => a.getText().includes('HTMLElement.prototype')) &&
-          args.some((a) => /^['"`]focus[Gg]roup['"`]$/.test(a.getText().trim()))
-        ) {
-          hasFeatureDetection = true;
-        }
-        // Check addEventListener('keydown', ...) or dynamic import('@microsoft/focusgroup-polyfill')
-        if (
-          exprText.endsWith('addEventListener') &&
-          args.length >= 1 &&
-          /^['"`]keydown['"`]$/.test(args[0].getText().trim())
-        ) {
-          hasFallbackOrPolyfill = true;
-        }
-        if (
-          args.some((a) => a.getText().includes('focusgroup-polyfill')) ||
-          call.getText().includes('focusgroup-polyfill')
-        ) {
-          hasFallbackOrPolyfill = true;
-        }
-      }
-
-      // Also check `'focusgroup' in HTMLElement.prototype` or `'focusGroup' in HTMLElement.prototype`
-      const binExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-      for (const bin of binExprs) {
-        if (bin.getOperatorToken().getText() === 'in') {
-          const left = bin.getLeft().getText().trim();
-          const right = bin.getRight().getText().trim();
-          if (
-            /^['"`]focus[Gg]roup['"`]$/.test(left) &&
-            right.includes('HTMLElement.prototype')
-          ) {
-            hasFeatureDetection = true;
-          }
-        }
-      }
-
-      // Also check if polyfill is imported or referenced in script
       const importDecls = sf.getDescendantsOfKind(SyntaxKind.ImportDeclaration);
-      if (importDecls.some((imp) => imp.getModuleSpecifierValue().includes('focusgroup-polyfill'))) {
-        hasFallbackOrPolyfill = true;
+      if (
+        importDecls.some((imp) => imp.getModuleSpecifierValue().includes('focusgroup-polyfill'))
+      ) {
+        hasUnconditionalStaticImport = true;
       }
 
-      // Or if focusgroupstart / ariaSelected is managed with scrollIntoView / keyboard listeners
-      const propAccesses = sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
-      if (propAccesses.some((p) => p.getName() === 'scrollIntoView' || p.getName() === 'scrollBy')) {
-        hasFallbackOrPolyfill = true;
+      const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      if (callExprs.some(isFocusGroupHasOwnCall)) {
+        hasFeatureDetection = true;
+      }
+
+      const guardVarNames = new Set<string>();
+      for (const vd of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        const init = vd.getInitializer();
+        if (
+          init &&
+          (isFocusGroupHasOwnCall(init) ||
+            init.getDescendantsOfKind(SyntaxKind.CallExpression).some(isFocusGroupHasOwnCall))
+        ) {
+          guardVarNames.add(vd.getName());
+        }
+      }
+
+      const exprReferencesDetection = (expr: any): boolean => {
+        if (!expr) return false;
+        if (
+          isFocusGroupHasOwnCall(expr) ||
+          expr.getDescendantsOfKind(SyntaxKind.CallExpression).some(isFocusGroupHasOwnCall)
+        ) {
+          return true;
+        }
+        if (expr.getKind() === SyntaxKind.Identifier && guardVarNames.has(expr.getText())) {
+          return true;
+        }
+        return expr
+          .getDescendantsOfKind(SyntaxKind.Identifier)
+          .some((id: any) => guardVarNames.has(id.getText()));
+      };
+
+      const polyfillLiterals = [
+        ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+        ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+      ].filter(
+        (lit) =>
+          lit.getLiteralValue().includes('focusgroup-polyfill') &&
+          !lit.getFirstAncestorByKind(SyntaxKind.ImportDeclaration)
+      );
+
+      for (const ref of polyfillLiterals) {
+        let curr: any = ref.getParent();
+        let guarded = false;
+        while (curr) {
+          const kind = curr.getKind();
+          if (kind === SyntaxKind.IfStatement && exprReferencesDetection(curr.getExpression())) {
+            guarded = true;
+            break;
+          }
+          if (
+            kind === SyntaxKind.ConditionalExpression &&
+            exprReferencesDetection(curr.getCondition()) &&
+            !curr.getCondition().containsRange(ref.getPos(), ref.getEnd())
+          ) {
+            guarded = true;
+            break;
+          }
+          if (
+            kind === SyntaxKind.BinaryExpression &&
+            ['&&', '||'].includes(curr.getOperatorToken().getText()) &&
+            exprReferencesDetection(curr.getLeft()) &&
+            curr.getRight().containsRange(ref.getPos(), ref.getEnd())
+          ) {
+            guarded = true;
+            break;
+          }
+          if (kind === SyntaxKind.Block || kind === SyntaxKind.SourceFile) {
+            const hasEarlyExitGuard = curr
+              .getStatements()
+              .some(
+                (stmt: any) =>
+                  stmt.getEnd() <= ref.getPos() &&
+                  stmt.getKind() === SyntaxKind.IfStatement &&
+                  exprReferencesDetection(stmt.getExpression()) &&
+                  stmt.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0
+              );
+            if (hasEarlyExitGuard) {
+              guarded = true;
+              break;
+            }
+          }
+          curr = curr.getParent();
+        }
+        if (guarded) {
+          hasGuardedPolyfillLoad = true;
+        }
       }
     }
 
-    expect(hasFeatureDetection || hasFallbackOrPolyfill).toBe(true);
-    // Ensure a tablist with focusgroup is actually present as precondition
+    expect(hasFeatureDetection).toBe(true);
+    expect(hasUnconditionalStaticImport).toBe(false);
+    expect(hasGuardedPolyfillLoad).toBe(true);
     const docs = getHtmlDocuments(targetFiles);
     const tablists = docs.map((d) => findTablist(d.document)).filter(Boolean);
     expect(tablists.length).toBeGreaterThan(0);
