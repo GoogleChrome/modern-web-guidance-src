@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { ensureNodeVersion } from "./node-version.ts";
+
+ensureNodeVersion();
+
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
