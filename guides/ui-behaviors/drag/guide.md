@@ -90,7 +90,11 @@ The drag handle that is exposed to assistive technologies must be a dedicated bu
 </button>
 ```
 
-Ensure the draggable element can be moved using a single pointer without requiring dragging movements. When the drag handle is clicked, show a grid in the background where clicking on a cell in the grid moves the element to the new position. Alternatively, make the drag handle a menu button, with menu items to reposition the element ("Dock left", "Move left", "Dock top", "Move up", "Dock right", "Move right", "Dock bottom", and "Move down").
+Ensure the draggable element can also be moved or operated using a single pointer without dragging (for example, clicks or taps). What the UI for this looks like depends on the use case. A few examples:
+- Kanban boards: a "move to column" menu or buttons
+- Maps: directional pan buttons
+- Sliders: clicking on the track, and sometimes adjusting the value via a linked `<input>`
+- Floating panels and dialogs: a grid in the background where clicking on a cell in the grid moves the element to the new position or their drag handle may be a menu button, with menu items to reposition the element ("Dock left", "Move left", "Dock top", "Move up", "Dock right", "Move right", "Dock bottom", and "Move down")
 
 Provide feedback for screen reader users when the draggable element is moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
 
