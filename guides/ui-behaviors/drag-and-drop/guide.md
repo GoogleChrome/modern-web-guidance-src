@@ -22,6 +22,7 @@ When items contain interactive controls or selectable text, provide a dedicated 
 - Start pointer drags only for the primary button, and record the initial pointer offset.
 - Apply `cursor: grab`/`grabbing`, `touch-action: none`, and `user-select: none` to the handle so item text remains selectable and page scrolling works outside the handle. Scope `touch-action: none` to the handle only: it disables touch scrolling over the element, which is acceptable on a small dedicated handle (the rest of the item and the page still scroll) but would trap scrolling if applied to the whole item or list.
 - Because the pointer leaves the handle as soon as the drag moves, `:active` on the handle isn't enough to keep the grabbing cursor. Toggle a class on the root element for the length of the drag (removed in the drag-end cleanup) and set `cursor: grabbing` on it and its descendants.
+- Ensure the draggable element can be moved using a single pointer without requiring dragging movements.
 
 ## Keep movement active while reordering
 
