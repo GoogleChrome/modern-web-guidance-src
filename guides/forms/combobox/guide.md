@@ -107,7 +107,33 @@ Add this when the value is a record users build up over time (tags, destinations
 
 Wrap the matched substring of each option label in `<mark>`. Reset its default yellow background and use weight or underline so the match is not conveyed by color alone. Worth adding when options are long or similar.
 
-### 7. Styling the popup
+### 7. Optional: Rich option content
+
+Options can hold a styled title plus smaller secondary text (a description, a code, a hint). Keep the option itself as the single `role="option"` and put the content in plain inline/block children, with no nested interactive elements or extra roles. Store the value that goes into the input in a `data-value` attribute (or your options data), because the option's text content now includes the secondary text.
+
+```html
+<li role="option" id="opt-ams" data-value="Amsterdam">
+  <span class="title">Amsterdam</span>
+  <span class="meta">Netherlands · AMS</span>
+</li>
+```
+
+```css
+[role="option"] {
+  display: grid;
+  padding: 0.5rem 0.75rem;
+
+  & .title { font-weight: 600; }
+  & .meta { font-size: 0.8125rem; color: light-dark(#5f6368, #bdc1c6); }
+}
+```
+
+* Screen readers read the whole option text, so keep secondary text short and meaningful. Do not hide it with `aria-hidden` if it helps users choose.
+* Filter against both the title and the secondary text if users may search by either, and apply `<mark>` highlighting per child rather than to the whole option.
+* Fill the input from `data-value` on selection, not from `textContent`.
+* Group headings inside the list use `role="group"` with `aria-labelledby` pointing at a heading element; the heading is not an option.
+
+### 8. Styling the popup
 
 * Highlight the active option with a background plus an `outline` so it remains visible in forced-colors mode and does not rely on color alone.
 * Give options enough padding for a comfortable touch target.
