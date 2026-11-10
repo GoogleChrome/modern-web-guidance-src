@@ -50,7 +50,7 @@ To support these browsers, use the token only when its usage is safe by defining
   --in-oklch: ;
 }
 
-@supports (linear-gradient(in oklab, white, black)) {
+@supports (background: linear-gradient(in oklab, white, black)) {
   :root {
     --in-oklab: in oklab;
     --in-oklch: in oklch;
@@ -116,4 +116,4 @@ Simple pie chart:
 }
 ```
 
-**Important:** When using gradients to render charts, ensure there is a textual fallback for screen readers. MANDATORY: You MUST provide a semantic data table as an accessible alternative, as detailed in {{ GUIDE_REF("accessibility") }} under the alternate text and media guidelines.
+**Important:** Because CSS backgrounds are not exposed to assistive technologies, always pair gradient charts with an accessible textual representation of the data — for example, visible percentage text or an accessible label for a simple proportion, or a semantic `<table>` or `<dl>` for multi-part breakdowns.

@@ -4,7 +4,7 @@
  * - Expectation 2: TESTED - At least one element's box-shadow has two or more comma-separated shadow layers to create depth.
  * - Expectation 3: TESTED - A lighting or texture overlay uses background-blend-mode, or uses mix-blend-mode on an element inside an isolation: isolate stacking context.
  * - Expectation 4: TESTED - Decorative patterns (stripes, dots, checkerboards) are drawn with CSS gradients that use hard color stops, not with image or SVG files.
- * - Expectation 5: TESTED - A chart drawn with a CSS gradient (such as a conic-gradient() pie) is accompanied by a semantic <table> that exposes the same data.
+ * - Expectation 5: TESTED - A chart drawn with a CSS gradient (such as a conic-gradient() pie) is accompanied by accessible text or markup (such as visible percentage labels, an accessible name or description, or a semantic <table>) that exposes the same data to assistive technologies.
  */
 
 import {
@@ -474,7 +474,7 @@ test.describe('visual-effects Target Grader', () => {
     expect(hasPatternImageUrl).toBe(false);
   });
 
-  test('A chart drawn with a CSS gradient is accompanied by a semantic <table> that exposes the same data', () => {
+  test('A chart drawn with a CSS gradient is accompanied by accessible text or markup that exposes the same data', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const entries = getAllStyleRules(Array.from(stylesheet.cssRules));
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
@@ -511,22 +511,8 @@ test.describe('visual-effects Target Grader', () => {
       }
     }
 
-    // 2. Verify each drink card contains an accessible semantic <table> exposing numeric breakdown data
-    const cards = docs.flatMap((d) => Array.from(d.document.querySelectorAll('.card')));
-    expect(cards.length).toBeGreaterThan(0);
-
-    for (const card of cards) {
-      const table = card.querySelector('table');
-      expect(table).not.toBeNull();
-      const rows = table!.querySelectorAll('tr');
-      expect(rows.length).toBeGreaterThanOrEqual(2);
-      const cells = table!.querySelectorAll('td, th');
-      expect(cells.length).toBeGreaterThanOrEqual(4);
-      const dataCells = Array.from(table!.querySelectorAll('td'));
-      expect(dataCells.some((td) => /\d/.test(td.textContent ?? ''))).toBe(true);
-
-      let isHiddenFromAt = false;
-      let curr: any = table;
+    const isHiddenFromAt = (node: any): boolean => {
+      let curr: any = node;
       while (curr && curr.nodeType === 1) {
         const inlineStyle = (curr.getAttribute?.('style') ?? '').toLowerCase();
         if (
@@ -535,12 +521,54 @@ test.describe('visual-effects Target Grader', () => {
           cssHiddenElements.has(curr) ||
           /\bdisplay\s*:\s*none\b|\bvisibility\s*:\s*hidden\b/.test(inlineStyle)
         ) {
-          isHiddenFromAt = true;
-          break;
+          return true;
         }
         curr = curr.parentElement;
       }
-      expect(isHiddenFromAt).toBe(false);
+      return false;
+    };
+
+    const collectAccessibleText = (node: any): string => {
+      if (!node) return '';
+      if (node.nodeType === 3) {
+        return node.textContent ?? '';
+      }
+      if (node.nodeType !== 1 || isHiddenFromAt(node)) {
+        return '';
+      }
+      const ariaLabel = node.getAttribute?.('aria-label') ?? '';
+      const childText = Array.from(node.childNodes ?? [])
+        .map((child) => collectAccessibleText(child))
+        .join(' ');
+      return `${ariaLabel} ${childText}`.trim();
+    };
+
+    // 2. Verify each drink card exposes accessible chart data (via a semantic <table> or accessible percentage text/labels)
+    const cards = docs.flatMap((d) => Array.from(d.document.querySelectorAll('.card')));
+    expect(cards.length).toBeGreaterThan(0);
+
+    for (const card of cards) {
+      const tables = Array.from(card.querySelectorAll('table'));
+      const hasAccessibleTable = tables.some((table: any) => {
+        if (isHiddenFromAt(table)) return false;
+        const rows = table.querySelectorAll('tr');
+        const cells = table.querySelectorAll('td, th');
+        const dataCells = Array.from(table.querySelectorAll('td'));
+        return (
+          rows.length >= 2 &&
+          cells.length >= 4 &&
+          dataCells.some((td: any) => !isHiddenFromAt(td) && /\d/.test(td.textContent ?? ''))
+        );
+      });
+
+      const accessibleText = collectAccessibleText(card);
+      const hasAccessiblePercentageText = /\d+(?:\.\d+)?\s*%/.test(accessibleText);
+
+      const hasAccessibleMeterOrProgress = Array.from(card.querySelectorAll('meter, progress')).some(
+        (el: any) => !isHiddenFromAt(el) && /\d/.test(el.getAttribute?.('value') ?? '')
+      );
+
+      expect(hasAccessibleTable || hasAccessiblePercentageText || hasAccessibleMeterOrProgress).toBe(true);
     }
   });
 });

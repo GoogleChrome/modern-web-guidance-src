@@ -2,4 +2,4 @@
 - At least one element's `box-shadow` has two or more comma-separated shadow layers to create depth.
 - A lighting or texture overlay uses `background-blend-mode`, or uses `mix-blend-mode` on an element inside an `isolation: isolate` stacking context.
 - Decorative patterns (such as stripes, dots, or checkerboards) are drawn with CSS gradients that use hard color stops, not with image or SVG files.
-- A chart drawn with a CSS gradient (such as a `conic-gradient()` pie) is accompanied by a semantic `<table>` that exposes the same data.
+- A chart drawn with a CSS gradient (such as a `conic-gradient()` pie) is accompanied by accessible text or markup (such as visible percentage labels, an accessible name or description, or a semantic `<table>`) that exposes the same data to assistive technologies.
