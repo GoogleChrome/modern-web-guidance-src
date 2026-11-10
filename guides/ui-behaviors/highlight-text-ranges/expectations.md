@@ -9,7 +9,6 @@
 * A fallback strategy is implemented for browsers that do not support the API (e.g., wrapping text in `<mark>` elements).
 * If the fallback builds matches dynamically, search input is either escaped before use in a `RegExp` or inserted via `textContent` (not `innerHTML`) to avoid injection.
 * The highlight visually changes the appearance of matched text (e.g., different background color or text decoration).
-* Custom highlights are not used for semantically relevant content (e.g., a user-selected passage)
 * There is a contrast of at least 4.5:1 (or 3:1 for large text greater than 18pt or 14pt bold) between the matched text and the highlight color
-* There is a contrast of at least 3:1 between the highlight color and adjacent colors, unless there is a visible change to the matched text that acts as an equivalent to the highlight color
+* There is a contrast of at least 3:1 between the highlight color and adjacent colors OR non-color styling is also applied to the matched text
 * Highlights must not rely on color alone to convey meaning (e.g., highlighted error text must be paired with another visual indicator such as `text-decoration: wavy underline` or an adjacent text label)

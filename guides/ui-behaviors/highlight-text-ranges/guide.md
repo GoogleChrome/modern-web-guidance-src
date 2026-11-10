@@ -91,9 +91,10 @@ Custom highlights are purely presentational and are not exposed to the accessibi
 
 Make sure that there is sufficient contrast between the highlight background color and text color to meeting WCAG 2.2 Success Criterion 1.4.3 Contrast (Minimum) (Level AA). The contrast ratio must be at least 4.5:1 for text with a font size of less than 18 point or 14 point bold, and at least 3:1 for text with a font size of greater than 18 point or 14 point bold.
 
-Make sure that the contrast ratio between the highlight background color and adjacent colors is at least 3:1 to meet WCAG 2.2 Success Criterion 1.4.11 Non-text Content (Level AA). **Caveat:** The contrast can be less than 3:1 if the highlighted text uses another visual indicator (e.g. `text-decoration: underline;` or the inclusion of a subtle `text-shadow` on the text) to further indicate that the text is highlighted.
+Make sure that the contrast ratio between the highlight background color and adjacent colors is at least 3:1 to meet WCAG 2.2 Success Criterion 1.4.11 Non-text Content (Level AA). 
+The contrast can be less than 3:1 if the highlighted text uses another visual indicator (e.g. `text-decoration: underline;` or the inclusion of a subtle `text-shadow` on the text) to further indicate that the text is highlighted.
 
-Highlights must not rely solely on color to convey meaning. If a highlight indicates an error, pair it with another visual indicator such as `text-decoration: wavy underline` or an adjacent text label.
+Highlights must not rely solely on color to convey meaning. For example, if a highlight indicates an error, pair it with another visual indicator such as `text-decoration: wavy underline`, an adjacent text label, or an icon.
 
 ## Fallback strategies
 
