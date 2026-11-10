@@ -263,6 +263,13 @@ function setupTableFilters() {
 function setupScheduledToggle() {
     const check = document.getElementById('scheduled-only-check');
     if (!(check instanceof HTMLInputElement)) return;
+    const label = document.getElementById('scheduled-only-label') || check.closest('label');
+    if (isPublicView()) {
+        if (label) label.style.display = 'none';
+        scheduledOnly = false;
+        return;
+    }
+    if (label) label.style.display = '';
     scheduledOnly = check.checked;
     check.addEventListener('change', () => { scheduledOnly = check.checked; renderSuites(); });
 }
@@ -495,6 +502,11 @@ async function fetchEvalsUncached(testId) {
 function activeDataSource() {
     const resolved = resolveDataSource();
     return resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
+}
+
+/** @returns {boolean} */
+function isPublicView() {
+    return activeDataSource() === 'public';
 }
 
 function syncHero() {
@@ -806,8 +818,9 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
 /** @returns {string[]} */
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
+    const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
     const anyScheduled = filtered.some(k => isScheduledOrCurated(allTestData[k]));
-    const keys = (scheduledOnly && !currentSearchFilter && anyScheduled)
+    const keys = (effectiveScheduledOnly && !currentSearchFilter && anyScheduled)
         ? filtered.filter(k => isScheduledOrCurated(allTestData[k]))
         : filtered;
     return sortSuiteKeys(keys);
@@ -895,10 +908,20 @@ function renderSuites() {
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
     const anyScheduled = filteredKeys.some(k => isScheduledOrCurated(allTestData[k]));
+    const isPublic = isPublicView();
     const scheduledCheck = document.getElementById('scheduled-only-check');
+    const scheduledLabel = document.getElementById('scheduled-only-label') || scheduledCheck?.closest('label');
+    if (scheduledLabel) {
+        scheduledLabel.style.display = isPublic ? 'none' : '';
+    }
     if (scheduledCheck instanceof HTMLInputElement) {
-        scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
-        scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+        if (isPublic) {
+            scheduledCheck.checked = false;
+            scheduledCheck.disabled = true;
+        } else {
+            scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
+            scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+        }
     }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 8;
@@ -1058,7 +1081,7 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
     if (total === 0) return;
     const visibleNow = paged ? Math.min(pageSize, shown) : shown;
     const parts = [`Showing ${visibleNow} of ${total} run${total === 1 ? '' : 's'}`];
-    if (hiddenAdHoc > 0) {
+    if (!isPublicView() && hiddenAdHoc > 0) {
         parts.push(`${hiddenAdHoc} ad-hoc run${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled runs only"`);
     } else if (matching < total) {
         parts.push(`${total - matching} filtered out`);
@@ -1289,7 +1312,8 @@ function getModelInsightKeys() {
     const result = [];
     for (const bucketKeys of byBucket.values()) {
         const anyScheduled = bucketKeys.some(k => isScheduledOrCurated(allTestData[k]));
-        let scoped = (scheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
+        const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
+        let scoped = (effectiveScheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
             ? bucketKeys.filter(k => isScheduledOrCurated(allTestData[k]))
             : bucketKeys;
         if (!showAll && scoped.length > 0) {
