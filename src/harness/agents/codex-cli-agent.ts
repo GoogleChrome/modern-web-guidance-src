@@ -6,8 +6,7 @@ import {
   ISOLATED_HOME_ENV,
   runAgentCliEntrypoint,
   parseJsonlFile,
-  isEnoent,
-  type GuideUsage
+  isEnoent
 } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
 import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
@@ -17,16 +16,13 @@ import {
   type SubagentMetadata,
   type TrajectorySummary,
   extractRetrievedGuidesFromCommand,
-  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  readTrajectorySummary,
-  getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
-import { resolveEffortCliArgs, type ReasoningEffort } from '../lib/reasoning-effort.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
@@ -594,81 +590,6 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
     retrievedGuides: Array.from(retrievedGuides),
     fileReadGuides: Array.from(fileReadGuides)
   });
-}
-
-export function extractCodexMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
-  model: string;
-  reasoningEffort?: ReasoningEffort;
-  tokenUsage?: { total: number; cached: number };
-  toolsUsed: string[];
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-} {
-  const summary = parseCodexTrajectory(logData, subagentsMap);
-  return {
-    model: summary.model || 'unknown',
-    reasoningEffort: summary.reasoningEffort,
-    tokenUsage: summary.tokenUsage,
-    toolsUsed: summary.toolsUsed || [],
-    retrievedGuides: summary.retrievedGuides || [],
-    fileReadGuides: summary.fileReadGuides || []
-  };
-}
-
-export function loadCodexLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
-  const logData: any[] = [];
-  const subagentsMap: Record<string, any[]> = {};
-  const files = getSessionFiles(dir);
-
-  const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
-  const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
-
-  for (const file of mainFiles) {
-    logData.push(...parseJsonlFile(path.join(dir, file)));
-  }
-
-  for (const file of subFiles) {
-    const subId = extractSubagentIdFromFilename(file);
-    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
-  }
-
-  return { logData, subagentsMap };
-}
-
-function getCodexMetadataForDir(dir: string): ReturnType<typeof extractCodexMetadata> {
-  const summary = readTrajectorySummary(dir);
-  if (summary) {
-    return {
-      model: summary.model || 'unknown',
-      reasoningEffort: summary.reasoningEffort,
-      tokenUsage: summary.tokenUsage,
-      toolsUsed: summary.toolsUsed || [],
-      retrievedGuides: summary.retrievedGuides || [],
-      fileReadGuides: summary.fileReadGuides || []
-    };
-  }
-  const { logData, subagentsMap } = loadCodexLogs(dir);
-  return extractCodexMetadata(logData, subagentsMap);
-}
-
-export async function collectCodexGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
-  const meta = getCodexMetadataForDir(dirPath);
-  return {
-    retrievedGuides: meta.retrievedGuides,
-    fileReadGuides: meta.fileReadGuides
-  };
-}
-
-export function extractCodexCliModel(resultsDir: string): string {
-  return getCodexMetadataForDir(resultsDir).model;
-}
-
-export function extractCodexCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  return getCodexMetadataForDir(dir).tokenUsage;
-}
-
-export function collectCodexToolsFromTrajectory(dir: string): string[] {
-  return getCodexMetadataForDir(dir).toolsUsed;
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

@@ -5,12 +5,10 @@ import path from 'path';
 import os from 'os';
 import {
   generateNormalizedTrajectory,
-  readTrajectorySummary,
-  collectClaudeGuidesFromTrajectory,
-  collectClaudeToolsFromTrajectory,
-  extractClaudeCodeModel,
-  extractClaudeCodeTokenUsage
+  loadSessionLogs,
+  readTrajectorySummary
 } from './trajectory-normalizer.ts';
+import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -421,21 +419,13 @@ test('collectClaude metrics and token extraction from trajectory files', async (
 
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
-    // Test Guides
-    const guides = await collectClaudeGuidesFromTrajectory(tempDir);
-    assert.deepStrictEqual(guides.retrievedGuides, ['accessible-error-announcement']);
-    assert.deepStrictEqual(guides.fileReadGuides, ['accessible-error-announcement']);
-
-    // Test Tools
-    const tools = collectClaudeToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web-guidance']);
-
-    // Test Model and Token extraction
-    const model = extractClaudeCodeModel(tempDir);
-    assert.strictEqual(model, 'claude-3-7-sonnet');
-
-    const tokens = extractClaudeCodeTokenUsage(tempDir);
-    assert.deepStrictEqual(tokens, { total: (100 + 50 + 25) + (200 + 80 + 50), cached: 25 + 50 });
+    const { logData, subagentsMap } = loadSessionLogs(tempDir);
+    const parsed = parseClaudeTrajectory(logData, subagentsMap);
+    assert.deepStrictEqual(parsed.retrievedGuides, ['accessible-error-announcement']);
+    assert.deepStrictEqual(parsed.fileReadGuides, ['accessible-error-announcement']);
+    assert.deepStrictEqual(parsed.toolsUsed, ['modern-web-guidance']);
+    assert.strictEqual(parsed.model, 'claude-3-7-sonnet');
+    assert.deepStrictEqual(parsed.tokenUsage, { total: (100 + 50 + 25) + (200 + 80 + 50), cached: 25 + 50 });
 
   } finally {
     removeTempDir(tempDir);
@@ -518,16 +508,14 @@ test('Claude Code token deduplication across streaming chunks and cache_creation
 
     fs.writeFileSync(path.join(tempDir, 'session-dedup.jsonl'), lines.join('\n'));
 
-    const tokens = extractClaudeCodeTokenUsage(tempDir);
-    // Turn 1 (final entry only): 150 + 50 + 100 + 45 = 345 total, 100 cached
-    // Turn 2: 200 + 0 + 250 + 60 = 510 total, 250 cached
-    // Combined: 345 + 510 = 855 total, 100 + 250 = 350 cached
-    assert.deepStrictEqual(tokens, { total: 855, cached: 350 });
-
     await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Run task');
 
     const summary = readTrajectorySummary(tempDir);
     assert.ok(summary, 'trajectory_summary.json should be generated');
+    // Turn 1 (final entry only): 150 + 50 + 100 + 45 = 345 total, 100 cached
+    // Turn 2: 200 + 0 + 250 + 60 = 510 total, 250 cached
+    // Combined: 345 + 510 = 855 total, 100 + 250 = 350 cached
+    assert.deepStrictEqual(summary.tokenUsage, { total: 855, cached: 350 });
     assert.strictEqual(summary.steps.length, 2, 'Should coalesce streaming chunks into exactly 2 steps');
 
     // Step 1: Tool step coalesced from split thinking + tool_use chunks
