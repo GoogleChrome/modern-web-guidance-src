@@ -172,6 +172,7 @@ Loop previous and next navigation from the last slide to the first and back by k
 - Looping needs at least three slides. Because the compensation is measured, slides may differ in size.
 - The previous/next controls and the status calculation must work from visual order, not DOM sibling order. Per-slide labels ("2 of 4") and the status region use each slide's original index, which does not change when slides are parked. Do not renumber slides when `--current` changes.
 - Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the compensating scroll is instant.
+- Markers must travel in sequence order. A parked end slide sits on the opposite side of the track from its place in the sequence, so scrolling straight to it takes the short way round: from the first slide, the last slide's marker scrolls backward one step instead of forward through the slides in between. On a marker click, compare the direction in the sequence (by original index) with the direction on screen (by offset); if they differ, restore DOM order first (remove `--current`, with the same measured compensating scroll as parking), then scroll to the target. Ignore the settle that lands where the unpark left the track, because parking there would cancel the scroll that follows; the next settle parks again.
 
 ```css
 /* The first slide parks after the last while --current is the last or second-to-last index. */

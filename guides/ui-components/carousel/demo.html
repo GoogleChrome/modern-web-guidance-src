@@ -274,19 +274,44 @@
     markers = slides.map((slide, i) => {
       const button = Object.assign(document.createElement("button"), { type: "button" });
       button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-      button.addEventListener("click", () => aim(slide));
+      button.addEventListener("click", () => {
+        // A parked end slide sits on the opposite side of the track from its place in the sequence, so
+        // scrolling straight to it would take the short way round (slide 1 to slide 4 moves backward).
+        // Restore DOM order first so the scroll travels through the slides in between.
+        const from = pending ?? nearest();
+        const sequence = Math.sign(i - slides.indexOf(from));
+        const visual = Math.sign(offsetToCenter(slide) - offsetToCenter(from));
+        if (loops && sequence !== visual) unpark(from);
+        aim(slide);
+      });
       markerNav.append(button);
       return button;
     });
 
     // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
     function park(item) {
+      reorder(item, slides.indexOf(item));
+    }
+
+    // Restore DOM order while keeping `item` in place; the next settled scroll parks again.
+    // The compensating scroll can settle on its own before the scroll that follows moves; remember where to ignore it.
+    let unparkedAt = null;
+    const position = () => [track.scrollLeft, track.scrollTop].join();
+    function unpark(item) {
+      parkedFor = -1;
+      reorder(item, null);
+      unparkedAt = position();
+    }
+
+    // Set `--current` (or clear it for DOM order), keeping `item` where it is on screen.
+    function reorder(item, current) {
       const before = offsetToCenter(item);
       // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
       track.style.scrollSnapType = "none";
       // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker
       if (document.activeElement !== track) track.style.overflowX = "hidden";
-      track.style.setProperty("--current", slides.indexOf(item));
+      if (current === null) track.style.removeProperty("--current");
+      else track.style.setProperty("--current", current);
       track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
       requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
@@ -315,7 +340,12 @@
       nextBtn.disabled = !neighbor(item, 1);
     }
 
-    onSettled(sync);
+    onSettled(() => {
+      // Settling where an unpark left the track is the compensating scroll, not the pending one; parking now would cancel it.
+      const skip = pending && position() === unparkedAt;
+      unparkedAt = null;
+      if (!skip) sync();
+    });
     sync();
   </script>
 </body>

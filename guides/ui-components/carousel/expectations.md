@@ -22,6 +22,7 @@
 - Keyboard users can Tab sequentially through controls without encountering a keyboard trap.
 - The carousel uses HTML Previous and Next `<button>` elements, each with an accessible name, that precede the track in DOM order, and does not use native `::scroll-button()` or `::scroll-marker`.
 - Activating the Previous or Next button moves the carousel to the adjacent slide in visual order.
+- Activating the last slide's marker while the first slide is current scrolls forward through the slides in between, not backward to the parked last slide.
 - The carousel has one HTML marker `<button>` per slide, and activating a marker button navigates to its corresponding slide.
 - Every marker button has an accessible name identifying its destination slide.
 - The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
