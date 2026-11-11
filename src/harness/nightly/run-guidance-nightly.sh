@@ -116,6 +116,17 @@ trap send_summary_email EXIT
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)" || die "Failed to determine repo root"
 cd "$REPO_ROOT" || die "Failed to locate repo root"
 
+# Preflight check: if this run meets the conditions to publish public evals at the end,
+# verify that gh CLI is installed and authenticated upfront, failing fast before evals run.
+if [ "$RUN_LOCAL" != "true" ] && [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] && [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main 2>/dev/null)" ]; then
+  if ! command -v gh >/dev/null 2>&1; then
+    die "gh CLI is required to publish public evals after nightly runs, but is not installed or not in PATH."
+  fi
+  if ! gh auth status >/dev/null 2>&1; then
+    die "gh is not authenticated. Please run 'gh auth login' (with workflow scope) to allow dispatching the Pages deployment after nightly evals."
+  fi
+fi
+
 # Run agents sequentially
 export NIGHTLY_GUIDANCE_RUN=1
 
