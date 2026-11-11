@@ -1,7 +1,7 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
-import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
+import { selectRecentSuites, getSuiteTimestamp, hasHeadlineStats } from './insights.js';
 /** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
 /** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
@@ -74,7 +74,7 @@ function hasUnhydratedRecentSuites(suites) {
     const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
     return AGENT_FAMILIES.some(f => {
         const suite = recent.get(f)?.[0];
-        return Boolean(suite && !suite.showcase);
+        return Boolean(suite && !hasHeadlineStats(suite));
     });
 }
 
@@ -204,9 +204,9 @@ function renderTaskPills(currentTask) {
     const sameTasks = existingPills.length === list.length &&
         existingPills.every((el, idx) => el.getAttribute('data-task-id') === list[idx].id);
     if (!sameTasks) {
-        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + list.map(t => {
+        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend><div class="ab-task-pills-track">` + list.map(t => {
             return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(t.label)}</span><span class="ab-task-delta-slot"></span></label>`;
-        }).join('');
+        }).join('') + `</div>`;
     }
     container.querySelectorAll('.ab-task-pill').forEach(pill => {
         const taskId = pill.getAttribute('data-task-id');

@@ -134,6 +134,25 @@ function announce(message) {
     live.textContent = '';
     requestAnimationFrame(() => { live.textContent = message; });
 }
+/** @param {RateComparison | null | undefined} r
+ * @param {'unguided' | 'guided'} side
+ * @returns {number | null} */
+function roundedRate(r, side) {
+    if (!r) return null;
+    const passed = side === 'guided' ? r.guidedPassed : r.unguidedPassed;
+    const total = side === 'guided' ? r.guidedTotal : r.unguidedTotal;
+    if (total > 0) return Math.round((passed / total) * 100);
+    const rate = side === 'guided' ? r.guidedRate : r.unguidedRate;
+    return rate === null ? null : Math.round(rate);
+}
+
+/** @param {RateComparison | null | undefined} r
+ * @returns {number | null} */
+function displayedUpliftPp(r) {
+    const u = roundedRate(r, 'unguided');
+    const g = roundedRate(r, 'guided');
+    return u === null || g === null ? null : g - u;
+}
 /** @param {HeadlineInsights} insights */
 function renderHero(insights) {
     renderEyebrow(insights);
@@ -144,8 +163,8 @@ function renderHero(insights) {
     if (el) {
         el.textContent = recentN === 1 ? 'latest run per model' : `most recent ${recentN} runs per model`;
     }
-    const o = insights.pooled?.overall;
-    announce(o && o.upliftPp !== null ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
+    const overallUplift = displayedUpliftPp(insights.pooled?.overall);
+    announce(overallUplift !== null ? `Latest results loaded: ${signed(overallUplift, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
 }
 function renderPending() {
     const list = document.getElementById('hero-takeaways');
@@ -197,8 +216,11 @@ function renderTakeaways(insights) {
     const pooled = insights.pooled;
     /** @type {string[]} */
     const cards = [];
-    if (pooled?.overall && pooled.overall.upliftPp !== null) {
+    const overallUplift = displayedUpliftPp(pooled?.overall);
+    if (pooled?.overall && overallUplift !== null) {
         const o = pooled.overall;
+        const uRate = roundedRate(o, 'unguided');
+        const gRate = roundedRate(o, 'guided');
         const recentN = insights.options.perAgentRecentN;
         const mAgents = pooled.familyCount || insights.families.length;
         const statement = taskStatement(insights, recentN);
@@ -208,24 +230,27 @@ function renderTakeaways(insights) {
             metric: 'overall',
             primary: true,
             label: 'Best-practice pass rate',
-            figure: `<span class="figure-val">${signed(o.upliftPp, 0)}</span><span class="unit"> pp</span>`,
-            figureText: `${signed(o.upliftPp, 0)} percentage points`,
+            figure: `<span class="figure-val">${signed(overallUplift, 0)}</span><span class="unit"> pp</span>`,
+            figureText: `${signed(overallUplift, 0)} percentage points`,
             statement,
-            visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
-            short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
+            visual: renderTakeawayDumbbell(uRate, gRate),
+            short: `<span class="visually-hidden">${fmtPct(uRate)} → ${fmtPct(gRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
     } else {
         cards.push(pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true));
     }
-    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)); } else {
+    const a11yUplift = displayedUpliftPp(pooled?.a11y);
+    if (!pooled?.a11y || a11yUplift === null) { cards.push(pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)); } else {
         const a = pooled.a11y;
+        const uRate = roundedRate(a, 'unguided');
+        const gRate = roundedRate(a, 'guided');
         const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} checks${a.guideCount ? ` · ${a.guideCount} ${a.guideCount === 1 ? 'guide' : 'guides'}` : ''} · 5 dimensions`;
         cards.push(takeawayCard({
             metric: 'a11y',
             primary: false,
             label: 'Automated accessibility checks',
-            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(a.unguidedRate)} → <strong>${fmtPct(a.guidedRate)}</strong>)</span>`,
-            figureText: `${signed(a.upliftPp, 0)} percentage points (${fmtPct(a.unguidedRate)} to ${fmtPct(a.guidedRate)})`,
+            figure: `<span class="figure-val">${signed(a11yUplift, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(uRate)} → <strong>${fmtPct(gRate)}</strong>)</span>`,
+            figureText: `${signed(a11yUplift, 0)} percentage points (${fmtPct(uRate)} to ${fmtPct(gRate)})`,
             statement: 'Not a full WCAG audit',
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
@@ -308,15 +333,18 @@ function checksCountText(r) {
 function rateCell(f, r, isA11y) {
     if (!r || (r.guidedTotal === 0 && r.unguidedTotal === 0)) return { attrs: '', html: naCell() };
     const checksText = checksCountText(r);
-    const stackHtml = ` <div class="agent-cell-stack"> <div class="metric-main"> <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span> ${r.upliftPp === null ? naCell() : deltaChip(r.upliftPp)} </div> <span class="metric-sub">${escapeHtml(checksText)}</span> </div>`;
+    const uRate = roundedRate(r, 'unguided');
+    const gRate = roundedRate(r, 'guided');
+    const uplift = displayedUpliftPp(r);
+    const stackHtml = ` <div class="agent-cell-stack"> <div class="metric-main"> <span class="metric-pair">${fmtPct(uRate)} → <strong>${fmtPct(gRate)}</strong></span> ${uplift === null ? naCell() : deltaChip(uplift)} </div> <span class="metric-sub">${escapeHtml(checksText)}</span> </div>`;
     const href = singleSuiteHref(f, isA11y);
     const subParts = isA11y
         ? ['Automated accessibility checks', f.a11y?.guideCount ? `${f.a11y.guideCount} ${f.a11y.guideCount === 1 ? 'guide' : 'guides'}` : '']
         : ['Pass rate', sampleSummaryText(f)];
     const uDetail = r.unguidedTotal > 0 ? `${fmtInt(r.unguidedPassed)}/${fmtInt(r.unguidedTotal)} checks` : '';
     const gDetail = r.guidedTotal > 0 ? `${fmtInt(r.guidedPassed)}/${fmtInt(r.guidedTotal)} checks` : '';
-    const upliftRounded = r.upliftPp === null ? '' : String(Math.sign(r.upliftPp) * Math.round(Math.abs(r.upliftPp)));
-    const attrs = ` data-barbell-title="${escapeHtml(f.label)}" data-barbell-sub="${escapeHtml(subParts.filter(Boolean).join(' · '))}" data-barbell-kind="${isA11y ? 'agent-a11y' : 'agent-overall'}" data-barbell-u="${r.unguidedRate === null ? '' : Math.round(r.unguidedRate)}" data-barbell-g="${r.guidedRate === null ? '' : Math.round(r.guidedRate)}" data-barbell-uplift="${upliftRounded}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}"`;
+    const upliftRounded = uplift === null ? '' : String(uplift);
+    const attrs = ` data-barbell-title="${escapeHtml(f.label)}" data-barbell-sub="${escapeHtml(subParts.filter(Boolean).join(' · '))}" data-barbell-kind="${isA11y ? 'agent-a11y' : 'agent-overall'}" data-barbell-u="${uRate === null ? '' : uRate}" data-barbell-g="${gRate === null ? '' : gRate}" data-barbell-uplift="${upliftRounded}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}"`;
     const html = href
         ? `<a href="${escapeHtml(href)}" class="agent-rate-trigger" interestfor="barbell-tooltip">${stackHtml}</a>`
         : `<button type="button" class="agent-rate-trigger" interestfor="barbell-tooltip">${stackHtml}</button>`;

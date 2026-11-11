@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { computeHeadlineInsights, selectRecentSuites, hydrateMissingStats, getAgentFamily, getSuiteTimestamp, AGENT_FAMILIES, } from './insights.js';
+import { computeHeadlineInsights, selectRecentSuites, hydrateMissingStats, hasHeadlineStats, getAgentFamily, getSuiteTimestamp, AGENT_FAMILIES, } from './insights.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 function mockEvals(agent: string, model: string, timestamp: string, tasks: Array<{ name: string; passed: [number, number] }>) {
     const results: Record<string, unknown[]> = {};
@@ -71,6 +71,9 @@ test('selectRecentSuites selects the latest canonical run per model for each fam
     const g4 = suite('nightly-2026-10-20_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-20T18:18:02Z', [{ name: 'accordion', passed: [3, 4] }]);
     // Both models selected because they are distinct models in the same family:
     assert.deepStrictEqual((selectRecentSuites([g38, g4]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId, g38.testId]);
+    // Curated 1.0 baseline supersedes g4 (same model) and drops g38 outside the 7-day recency window:
+    const curated = { ...suite('argon-medium-1.0-2026-11-09', 'antigravity_cli', 'gemini-4-argon', '2026-11-09T09:12:48Z', [{ name: 'accordion', passed: [4, 4] }]), curated: true };
+    assert.deepStrictEqual((selectRecentSuites([g38, g4, curated]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [curated.testId]);
     assert.deepStrictEqual((selectRecentSuites([g38, g4], { before: '2026-10-20' }).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g38.testId]);
     // Newer run for gemini-4-argon supersedes older run for the same model:
     const g4Newer = suite('nightly-2026-10-22_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-22T18:18:02Z', [{ name: 'accordion', passed: [4, 4] }]);
@@ -195,4 +198,37 @@ test('computeHeadlineInsights summarizes excluded pairs, early failures, page-lo
     assert.strictEqual(claude.sample.earlyFailureRate, 2);
     assert.strictEqual(claude.sample.unguidedLeakRate, 2);
     assert.strictEqual(claude.sample.pageLoadFailed, 3);
+});
+test('hasHeadlineStats handles stale showcase keys and partial-suite guide subsets without re-hydration loops', () => {
+    const base = {
+        testId: 'nightly-2026-10-20_07-00-02-antigravity_cli',
+        a11yStats: { guidedPassed: 1, guidedTotal: 1, guidedRate: 100, unguidedPassed: 0, unguidedTotal: 1, unguidedRate: 0, uplift: 100, guideCount: 1, bySubCategory: {} },
+    };
+    // Stale pre-recalibration spotlight keys must re-hydrate:
+    assert.strictEqual(hasHeadlineStats({ ...base, showcase: { scrollspy: {} } } as never), false);
+    // Partial suite where only 2 of the 6 showcase guides ran, and both are present in showcase:
+    assert.strictEqual(hasHeadlineStats({
+        ...base,
+        guides: { menu: {}, 'progress-ring': {}, accordion: {} },
+        showcase: { menu: {}, 'progress-ring': {} },
+    } as never), true);
+    // Suite that ran passkey-authentication in guides, but showcase is missing it:
+    assert.strictEqual(hasHeadlineStats({
+        ...base,
+        guides: { menu: {}, 'passkey-authentication': {} },
+        showcase: { menu: {} },
+    } as never), false);
+    // Incomplete suite that ran only one side of a featured guide (buildShowcaseSlices omits showcase[id]):
+    const oneSided = extractSuiteSummary('nightly-2026-10-21_07-00-02-antigravity_cli', {
+        agent: 'antigravity_cli',
+        model: 'gemini-x',
+        timestamp: '2026-10-21T07:00:02Z',
+        results: {
+            'task - menu - guided': [{ results: [{ passed: true, message: 'Opens menu', testId: '1' }] }],
+        },
+    } as never);
+    assert.ok(oneSided);
+    assert.ok(oneSided.guides.menu);
+    assert.strictEqual(oneSided.showcase.menu, undefined);
+    assert.strictEqual(hasHeadlineStats(oneSided as never), true);
 });
