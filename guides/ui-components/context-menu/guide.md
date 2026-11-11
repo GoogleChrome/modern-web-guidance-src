@@ -24,7 +24,7 @@ A Right-click Only option is only accessible when the item can first be selected
 
 ### 1. Shared foundation
 
-Use the `popover` attribute to create a container for the menu that can be promoted to the top layer. Ensure items use `:focus` or `:focus-visible` styling so they are clearly highlighted when focused via keyboard. Use `aria-labelledby` pointing to the visible button trigger.
+Follow the {{ GUIDE_REF("menu") }} guide to create the content of the context menu in a popover.
 
 A context menu should not be reused across multiple items, and each must have a unique ID.
 
@@ -69,9 +69,10 @@ To position the menu exactly at the cursor, use an invisible anchor element plac
 }
 ```
 
-Listen for the `contextmenu` event to prevent the browser's default menu, and use `mouseup` (or `pointerup`) to capture the coordinates and open the popover.
+Listen for the `contextmenu` event to prevent the browser's default menu, and use `mouseup` to capture the coordinates and open the popover. Move the focus to the first enabled button.
 
-{# Popovers can not be shown from within a `contextmenu` event, except in Chrome > 153. See https://github.com/whatwg/html/issues/10905 #}
+{# Maintainers note: popovers can not be shown from within a `contextmenu` event, except in Chrome > 153. See https://github.com/whatwg/html/issues/10905 This is not yet tracked in BCD. https://github.com/mdn/browser-compat-data/issues/30848#issuecomment-6776634631. #}
+
 ```js
 const card = document.querySelector('.card');
 const menuAnchor = card.querySelector('.menu-anchor');
@@ -89,7 +90,8 @@ function openContextMenu(e) {
   // Open the popover and associate it with the anchor source.
   // MANDATORY: Use showPopover({source}) to establish the implicit anchor.
   popover.showPopover({ source: menuAnchor });
-  popover.querySelector('button:not([disabled])')?.focus();
+  // In the popover's `toggle` event, check for popover in `enterOnOpen`, and move focus to the first button.
+  enterOnOpen.add(popover);
 }
 
 card.addEventListener('contextmenu', (e) => {
@@ -106,7 +108,11 @@ card.addEventListener('mouseup', (e) => {
 
 ### 3. Method B: Visible Menu Button (Element-Anchored)
 
-For touch users or general discovery, add a visible button that toggles the same popover. Use the `command` and `commandfor` attributes for a declarative approach. Place the popover element immediately after this `<button>`. The button must be a minimum size of 24 by 24 CSS pixels if it is positioned directly on top of interactive content. If the button is not positioned on top of interactive content, there must not be any interactive elements within a 12 pixel radius, and this must not intersect the 24 CSS pixel diameter circle of other undersized targets.
+For touch users or general discovery, add a visible button that toggles the same popover. Use the `command` and `commandfor` attributes for a declarative approach. Place the popover element immediately after this `<button>`. 
+
+The button must be a minimum size of 24 by 24 CSS pixels if it is positioned directly on top of interactive content. If the button is not positioned on top of interactive content, there must not be any interactive elements within a 12 pixel radius, and this must not intersect the 24 CSS pixel diameter circle of other undersized targets.
+
+For optimal discoverability, especially for people who use voice control software or have cognitive disabilities, keep the button always visible. Avoid patterns like only showing the button on hover or focus.
 
 ```html
 <button type="button" 
@@ -118,41 +124,9 @@ For touch users or general discovery, add a visible button that toggles the same
 </button>
 ```
 
-The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. Keep the value of `aria-expanded` in sync with the popover's state.
+The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. In a list of items, include the item's name in the button's `aria-label` so each trigger and `aria-labelledby` menu has a distinct accessible name. Keep the value of `aria-expanded` in sync with the popover's state.
 
-```js
-const trigger = card.querySelector('[commandfor="context-menu"]');
-let enterOnOpen = false;
-
-// If invoked by keyboard (Enter/Space), detail is 0.
-trigger.addEventListener('click', (e) => {
-  if (e.detail === 0) enterOnOpen = true;
-});
-
-// ArrowDown on the trigger should also open and enter the menu.
-trigger.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    if (!popover.matches(':popover-open')) {
-      enterOnOpen = true;
-      popover.showPopover({ source: trigger });
-    } else {
-      popover.querySelector('button:not([disabled])')?.focus();
-    }
-  }
-});
-
-popover.addEventListener('toggle', (event) => {
-  trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
-  if (event.newState === 'open' && enterOnOpen) {
-    popover.querySelector('button:not([disabled])')?.focus();
-    enterOnOpen = false;
-  }
-});
-```
-
-
-### 4. Combining both methods
+### 4. Differentiating between methods
 
 To differentiate between the source, for instance to adjust the positioning, check `event.source` in the popover's `beforetoggle` event, and set an attribute that can be used for styling.
 
