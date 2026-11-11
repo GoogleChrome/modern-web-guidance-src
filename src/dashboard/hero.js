@@ -100,7 +100,7 @@ function syncWindowToggle(maxSuitesPerFamily) {
     if (!canToggle) return;
     const multiN = Math.min(MAX_MULTI_NIGHTS, maxSuitesPerFamily);
     if (multiRadio instanceof HTMLInputElement) multiRadio.value = String(multiN);
-    if (multiLabel) multiLabel.textContent = `Last ${multiN} nights`;
+    if (multiLabel) multiLabel.textContent = `Last ${multiN} runs per model`;
     const activeVal = currentRecentN > 1 ? String(multiN) : '1';
     toggle.querySelectorAll('input[name="agents-window"]').forEach(el => {
         if (el instanceof HTMLInputElement) el.checked = el.value === activeVal;
@@ -337,7 +337,7 @@ function sampleRunsPerTaskLabel(f) {
 }
 /** @param {FamilyInsight} f */
 function sampleSummaryText(f) {
-    const allNightly = f.suites.every(s => !s.curated && s.testId.startsWith('nightly-'));
+    const allNightly = f.models.length <= 1 && f.suites.every(s => !s.curated && s.testId.startsWith('nightly-'));
     return [
         f.suiteCount > 1 ? `${f.suiteCount} ${allNightly ? 'nights' : 'runs'}` : '',
         sampleTasksLabel(f),
@@ -347,7 +347,7 @@ function sampleSummaryText(f) {
 /** @param {FamilyInsight} f */
 function sampleCell(f) {
     const s = f.sample;
-    const allNightly = f.suites.every(suite => !suite.curated && suite.testId.startsWith('nightly-'));
+    const allNightly = f.models.length <= 1 && f.suites.every(suite => !suite.curated && suite.testId.startsWith('nightly-'));
     const countNoun = allNightly ? (f.suiteCount === 1 ? 'night' : 'nights') : (f.suiteCount === 1 ? 'run' : 'runs');
     const primaryParts = [
         f.suiteCount > 1 ? `<span class="sample-nights">${f.suiteCount} ${countNoun}</span>` : '',

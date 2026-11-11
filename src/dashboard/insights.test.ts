@@ -95,7 +95,7 @@ test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', 
     const gemini = insights.families.find(f => f.id === 'antigravity_cli');
     assert.ok(gemini);
     assert.strictEqual(gemini.suiteCount, 4);
-    assert.strictEqual(insights.maxSuitesPerFamily, 4);
+    assert.strictEqual(insights.maxSuitesPerFamily, 2);
     assert.strictEqual(gemini.sample.attemptedTasks, 7);
     assert.strictEqual(gemini.sample.pairedTasks, 7);
     assert.strictEqual(gemini.sample.excludedTasks, 0);

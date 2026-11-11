@@ -310,7 +310,14 @@ export function computeHeadlineInsights(suites, options = {}) {
     /** @type {ManifestSuite[]} */
     const allSelected = [];
     allByFamily.forEach((fullList, family) => {
-        maxSuitesPerFamily = Math.max(maxSuitesPerFamily, fullList.length);
+        const activeCounts = new Map();
+        for (const s of selectFamilySuites(fullList, Infinity, options)) {
+            const m = s.model || 'unknown';
+            activeCounts.set(m, (activeCounts.get(m) || 0) + 1);
+        }
+        for (const count of activeCounts.values()) {
+            maxSuitesPerFamily = Math.max(maxSuitesPerFamily, count);
+        }
         const list = selectFamilySuites(fullList, perAgentRecentN, options);
         if (list.length === 0) return;
         allSelected.push(...list);
