@@ -65,7 +65,7 @@
     }
 
     .trigger::after {
-      content: " ▾";
+      content: " ▾" / "";
       opacity: .7;
     }
 
@@ -236,7 +236,7 @@
     }
 
     [focusgroup~="menu"] button[aria-checked="true"]::before {
-      content: '✓';
+      content: '✓' / "";
     }
 
     [focusgroup~="menu"]>hr {
@@ -290,7 +290,7 @@
             <button type="button">Plain Text</button>
           </div>
         </div>
-        <hr>
+        <hr aria-hidden="true">
         <button type="button">Delete</button>
       </div>
     </div>
@@ -302,7 +302,7 @@
         <!-- Checkable items keep an explicit role: focusgroup only infers menuitem. -->
         <button type="button" role="menuitemcheckbox" aria-checked="true">Show Outline</button>
         <button type="button" role="menuitemcheckbox" aria-checked="false">Show Comments</button>
-        <hr>
+        <hr aria-hidden="true">
         <button id="appearance-trigger" type="button" aria-haspopup="menu" commandfor="appearance-menu" command="toggle-popover" aria-expanded="false">Appearance <span
             class="hint" aria-hidden="true">›</span></button>
         <div id="appearance-menu" popover="auto">
@@ -314,7 +314,7 @@
             </div>
           </div>
         </div>
-        <hr>
+        <hr aria-hidden="true">
         <button type="button">Enter Full Screen</button>
       </div>
     </div>
