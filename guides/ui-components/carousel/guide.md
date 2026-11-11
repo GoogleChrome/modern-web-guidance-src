@@ -187,3 +187,5 @@ Loop previous and next navigation from the last slide to the first and back by k
   order: calc(-1 * clamp(0, 2 - var(--current), 1));
 }
 ```
+
+Parking only changes visual order, so the DOM order stays as the reading and focus order, and no slide is inert or aria-hidden.
