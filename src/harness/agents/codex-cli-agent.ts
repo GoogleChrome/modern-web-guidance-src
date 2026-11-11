@@ -3,11 +3,8 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import {
-  cleanupIsolatedHome,
   ISOLATED_HOME_ENV,
-  parseAgentArgs,
-  runCliAgentCommand,
-  setupIsolatedWorkDir,
+  runAgentCliEntrypoint,
   parseJsonlFile,
   isEnoent,
   type GuideUsage
@@ -25,7 +22,6 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory,
   readTrajectorySummary,
   getSessionFiles,
   standardizeAction
@@ -152,45 +148,6 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
     const logData = parseJsonlFile(destJsonl);
     const htmlContent = sanitizeTextSecrets(generateCodexTrajectoryHtml(logData));
     fs.writeFileSync(path.join(targetDir, `session-${baseName}.html`), htmlContent, 'utf8');
-  }
-}
-
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  if (!process.env[ISOLATED_HOME_ENV]) await ensureFreshHostCodexAuth();
-  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType);
-
-  if (!workDir || !fs.existsSync(workDir)) {
-    throw new Error(`Failed to initialize working directory: ${workDir}`);
-  }
-
-  try {
-    console.log(`Starting Codex agent in: ${workDir}`);
-
-    const { command, commandArgs } = getCodexCliCommandAndArgs(userPrompt);
-
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
-
-    try {
-      await runCliAgentCommand(
-        command,
-        commandArgs,
-        workDir,
-        targetDir,
-        'Codex CLI',
-        runType
-      );
-    } finally {
-      exportCodexTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
-    }
-
-    console.log("Codex agent finished successfully.");
-  } catch (err) {
-    console.error("Error during Codex execution:", err);
-    process.exitCode = 1;
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
@@ -716,6 +673,14 @@ export function collectCodexToolsFromTrajectory(dir: string): string[] {
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  run();
+  runAgentCliEntrypoint({
+    agent: Agents.CODEX_CLI,
+    displayName: 'Codex CLI',
+    scriptName: 'codex-cli-agent.ts',
+    beforeSetup: async () => {
+      if (!process.env[ISOLATED_HOME_ENV]) await ensureFreshHostCodexAuth();
+    },
+    exportTrajectories: exportCodexTrajectories,
+  });
 }
 

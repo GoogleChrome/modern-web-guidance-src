@@ -5,9 +5,13 @@ import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import {
+  copyFileIfExists,
+  copyResultsToTarget,
   createWorkDir,
   getAgentCommandAndArgs,
   getGraderScriptContent,
+  getSuiteConfig,
+  parseJsonlFile,
   runCliAgentCommand,
   sanitizeAgentChildEnv,
 } from './agent-shared.ts';
@@ -536,6 +540,82 @@ describe('getAgentCommandAndArgs reasoning effort flags', () => {
     }
   });
 });
+
+describe('getSuiteConfig, copyFileIfExists, parseJsonlFile, and copyResultsToTarget', () => {
+  test('getSuiteConfig parses inline JSON or file path and throws on missing/invalid config', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-suite-cfg-'));
+    const prev = process.env.GD_SUITE_CONFIG;
+    try {
+      delete process.env.GD_SUITE_CONFIG;
+      assert.throws(() => getSuiteConfig(), /GD_SUITE_CONFIG environment variable is missing/);
+
+      process.env.GD_SUITE_CONFIG = JSON.stringify({ agent: Agents.PI, numRuns: 2, tasks: [], name: 'inline', skillsToEnable: [] });
+      assert.strictEqual(getSuiteConfig().name, 'inline');
+
+      const cfgFile = path.join(tempDir, 'suite_config.json');
+      fs.writeFileSync(cfgFile, JSON.stringify({ agent: Agents.CLAUDE_CODE, numRuns: 1, tasks: [], name: 'from-file', skillsToEnable: [] }));
+      process.env.GD_SUITE_CONFIG = cfgFile;
+      assert.strictEqual(getSuiteConfig().name, 'from-file');
+
+      process.env.GD_SUITE_CONFIG = path.join(tempDir, 'missing.json');
+      assert.throws(() => getSuiteConfig(), /Failed to parse GD_SUITE_CONFIG/);
+    } finally {
+      if (prev === undefined) delete process.env.GD_SUITE_CONFIG;
+      else process.env.GD_SUITE_CONFIG = prev;
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('copyFileIfExists copies existing file and silently ignores missing source', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-copy-'));
+    try {
+      const src = path.join(tempDir, 'src.txt');
+      const dest = path.join(tempDir, 'dest.txt');
+      copyFileIfExists(path.join(tempDir, 'nonexistent.txt'), dest);
+      assert.strictEqual(fs.existsSync(dest), false);
+
+      fs.writeFileSync(src, 'copied-content', 'utf8');
+      copyFileIfExists(src, dest);
+      assert.strictEqual(fs.readFileSync(dest, 'utf8'), 'copied-content');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('parseJsonlFile parses valid JSONL lines, skips malformed/blank lines, and returns [] for missing file', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-jsonl-'));
+    try {
+      assert.deepStrictEqual(parseJsonlFile(path.join(tempDir, 'missing.jsonl')), []);
+      const jsonlPath = path.join(tempDir, 'events.jsonl');
+      fs.writeFileSync(jsonlPath, '{"step":1}\n\nnot-json\n  {"step":2}  \n', 'utf8');
+      assert.deepStrictEqual(parseJsonlFile(jsonlPath), [{ step: 1 }, { step: 2 }]);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('copyResultsToTarget copies legacy task files excluding .git and node_modules', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-legacy-results-'));
+    try {
+      const workDir = path.join(tempDir, 'work');
+      const targetDir = path.join(tempDir, 'task', 'guided');
+      fs.mkdirSync(path.join(workDir, '.git'), { recursive: true });
+      fs.mkdirSync(path.join(workDir, 'node_modules', 'pkg'), { recursive: true });
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(path.join(workDir, 'index.html'), '<h1>Result</h1>');
+      fs.writeFileSync(path.join(workDir, '.git', 'HEAD'), 'ref: refs/heads/main');
+      fs.writeFileSync(path.join(workDir, 'node_modules', 'pkg', 'index.js'), '');
+
+      copyResultsToTarget(workDir, targetDir);
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8'), '<h1>Result</h1>');
+      assert.strictEqual(fs.existsSync(path.join(targetDir, '.git')), false);
+      assert.strictEqual(fs.existsSync(path.join(targetDir, 'node_modules')), false);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
 
 
 
