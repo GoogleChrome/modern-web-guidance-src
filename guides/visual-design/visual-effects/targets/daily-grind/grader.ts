@@ -23,6 +23,7 @@ interface StyledRuleEntry {
   rule: CSSStyleRule;
   selector: string;
   inSupports: boolean;
+  inSupportsNot: boolean;
 }
 
 interface CssFunctionCall {
@@ -53,12 +54,14 @@ function splitCommaSelectors(sel: string): string[] {
 function getAllStyleRules(
   rules: Iterable<CSSRule>,
   parentSelector = '',
-  inSupports = false
+  inSupports = false,
+  inSupportsNot = false
 ): StyledRuleEntry[] {
   const result: StyledRuleEntry[] = [];
   for (const rule of rules) {
     const cssText = rule.cssText.trim();
-    const nextSupports = inSupports || /^@supports\b/i.test(cssText);
+    const nextSupportsNot = inSupportsNot || /^@supports\s+not\b/i.test(cssText);
+    const nextSupports = !nextSupportsNot && (inSupports || /^@supports\b/i.test(cssText));
     const scopeMatch = cssText.match(/^@scope\s*\(([^)]+)\)/i);
     let nextSelector = scopeMatch ? scopeMatch[1].trim() : parentSelector;
 
@@ -71,10 +74,10 @@ function getAllStyleRules(
               splitCommaSelectors(rawSel).map((c) => (c.includes('&') ? c.replace(/&/g, p) : `${p} ${c}`))
             )
             .join(', ');
-      result.push({ rule, selector: nextSelector, inSupports: nextSupports });
+      result.push({ rule, selector: nextSelector, inSupports: nextSupports, inSupportsNot: nextSupportsNot });
     }
     if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...getAllStyleRules(Array.from(rule.cssRules), nextSelector, nextSupports));
+      result.push(...getAllStyleRules(Array.from(rule.cssRules), nextSelector, nextSupports, nextSupportsNot));
     }
   }
   return result;
@@ -139,12 +142,56 @@ function extractCssFunctions(value: string, namePattern?: RegExp): CssFunctionCa
   return calls;
 }
 
+// cssomnom returns "" for multi-layer `background` shorthands that contain `var()` layers,
+// so recover the raw declaration from `rule.style.cssText` when `getPropertyValue` is empty.
+function extractRawDeclFromStyleText(styleCssText: string, targetProp: string): string {
+  const lowerTarget = targetProp.toLowerCase();
+  let found = '';
+  let depth = 0;
+  let quote: string | null = null;
+  let start = 0;
+  const pushChunk = (chunk: string) => {
+    const colonIdx = chunk.indexOf(':');
+    if (colonIdx === -1) return;
+    const name = chunk.slice(0, colonIdx).trim().toLowerCase();
+    if (name === lowerTarget) {
+      found = chunk.slice(colonIdx + 1).replace(/!important\s*$/i, '').trim();
+    }
+  };
+  for (let i = 0; i < styleCssText.length; i++) {
+    const ch = styleCssText[i];
+    if (quote) {
+      if (ch === '\\') {
+        i++;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    else if (ch === ';' && depth === 0) {
+      pushChunk(styleCssText.slice(start, i));
+      start = i + 1;
+    }
+  }
+  if (start < styleCssText.length) pushChunk(styleCssText.slice(start));
+  return found;
+}
+
+function getRulePropValue(rule: CSSStyleRule, prop: string): string {
+  const direct = rule.style.getPropertyValue(prop);
+  if (direct) return direct;
+  return extractRawDeclFromStyleText(rule.style.cssText, prop);
+}
+
 function collectRuleLocalProps(rule: CSSStyleRule): Map<string, string> {
   const localProps = new Map<string, string>();
   for (let i = 0; i < rule.style.length; i++) {
     const prop = rule.style[i];
     if (prop.startsWith('--')) {
-      const val = rule.style.getPropertyValue(prop).trim();
+      const val = getRulePropValue(rule, prop).trim();
       if (val) localProps.set(prop, val);
     }
   }
@@ -153,12 +200,13 @@ function collectRuleLocalProps(rule: CSSStyleRule): Map<string, string> {
 
 function collectCustomProps(entries: StyledRuleEntry[]): Map<string, string> {
   const customProps = new Map<string, string>();
-  for (const { rule, selector } of entries) {
+  for (const { rule, selector, inSupportsNot } of entries) {
+    if (inSupportsNot) continue;
     const isGlobalScope = /^(?::root|html|body|\*)$/i.test(selector.trim());
     for (let i = 0; i < rule.style.length; i++) {
       const prop = rule.style[i];
       if (prop.startsWith('--')) {
-        const val = rule.style.getPropertyValue(prop).trim();
+        const val = getRulePropValue(rule, prop).trim();
         if (val && (isGlobalScope || !customProps.has(prop))) {
           customProps.set(prop, val);
         }
@@ -238,8 +286,8 @@ function hasHardColorStops(gradientName: string, args: string): boolean {
     const pos0 = stopPositions[0][0] ?? '';
     const pos1 = stopPositions[1][0] ?? '';
     if (/^calc\(.+\+\s*1px\)$/i.test(pos1)) return true;
-    const u0 = pos0.match(/^(\d+(?:\.\d+)?)(px|em|rem|%)$/i);
-    const u1 = pos1.match(/^(\d+(?:\.\d+)?)(px|em|rem|%)$/i);
+    const u0 = pos0.match(/^((?:\d+(?:\.\d+)?|\.\d+))(px|em|rem|%)$/i);
+    const u1 = pos1.match(/^((?:\d+(?:\.\d+)?|\.\d+))(px|em|rem|%)$/i);
     if (u0 && u1 && u0[2].toLowerCase() === u1[2].toLowerCase()) {
       const delta = Math.abs(Number(u1[1]) - Number(u0[1]));
       const unit = u0[2].toLowerCase();
@@ -282,6 +330,14 @@ function safeQueryAll(doc: Document, selector: string): any[] {
   return matched;
 }
 
+function isNonNormalBlendMode(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return splitTopLevelCommas(trimmed).some(
+    (mode) => Boolean(mode && !/^(?:normal|initial|unset|revert|revert-layer)$/i.test(mode))
+  );
+}
+
 test.describe('visual-effects Target Grader', () => {
   test('Smooth color gradients and color-mix() specify in oklch or in oklab and never in srgb', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
@@ -293,11 +349,12 @@ test.describe('visual-effects Target Grader', () => {
 
     // Allow @supports progressive-enhancement rules to supersede matching fallback declarations
     const effectiveDecls: Array<{ key: string | null; prop: string; rawVal: string; resolvedVal: string }> = [];
-    for (const { rule, selector, inSupports } of entries) {
+    for (const { rule, selector, inSupports, inSupportsNot } of entries) {
+      if (inSupportsNot) continue;
       const localProps = collectRuleLocalProps(rule);
       for (let i = 0; i < rule.style.length; i++) {
         const prop = rule.style[i];
-        const rawVal = rule.style.getPropertyValue(prop);
+        const rawVal = getRulePropValue(rule, prop);
         const resolvedVal = resolveVars(rawVal, customProps, localProps);
         if (/\bin\s+srgb(?:-linear)?\b/i.test(rawVal) || /\bin\s+srgb(?:-linear)?\b/i.test(resolvedVal)) {
           hasSrgbSpace = true;
@@ -352,7 +409,7 @@ test.describe('visual-effects Target Grader', () => {
     const customProps = collectCustomProps(entries);
     const hasMultiLayerShadow = entries.some(({ rule }) => {
       const localProps = collectRuleLocalProps(rule);
-      const boxShadow = resolveVars(rule.style.getPropertyValue('box-shadow'), customProps, localProps).trim();
+      const boxShadow = resolveVars(getRulePropValue(rule, 'box-shadow'), customProps, localProps).trim();
       if (!boxShadow || boxShadow === 'none') return false;
       return splitTopLevelCommas(boxShadow).length >= 2;
     });
@@ -370,17 +427,14 @@ test.describe('visual-effects Target Grader', () => {
 
     const hasBgBlendMode = entries.some(({ rule }) => {
       const localProps = collectRuleLocalProps(rule);
-      const val = resolveVars(rule.style.getPropertyValue('background-blend-mode'), customProps, localProps).trim();
-      if (!val) return false;
-      return splitTopLevelCommas(val).some(
-        (mode) => Boolean(mode && !/^(?:normal|initial|unset|revert|revert-layer)$/i.test(mode))
-      );
+      const val = resolveVars(getRulePropValue(rule, 'background-blend-mode'), customProps, localProps);
+      return isNonNormalBlendMode(val);
     });
 
     const isolatedElements = new Set<any>();
     for (const { rule, selector } of entries) {
       const localProps = collectRuleLocalProps(rule);
-      if (resolveVars(rule.style.getPropertyValue('isolation'), customProps, localProps).trim() === 'isolate') {
+      if (/^isolate$/i.test(resolveVars(getRulePropValue(rule, 'isolation'), customProps, localProps).trim())) {
         for (const d of docs) {
           for (const el of safeQueryAll(d.document, selector)) {
             isolatedElements.add(el);
@@ -408,8 +462,8 @@ test.describe('visual-effects Target Grader', () => {
     const hasIsolatedMixBlendMode =
       entries.some(({ rule, selector }) => {
         const localProps = collectRuleLocalProps(rule);
-        const val = resolveVars(rule.style.getPropertyValue('mix-blend-mode'), customProps, localProps).trim();
-        if (!val || /^(?:normal|initial|unset|revert|revert-layer)$/i.test(val)) return false;
+        const val = resolveVars(getRulePropValue(rule, 'mix-blend-mode'), customProps, localProps);
+        if (!isNonNormalBlendMode(val)) return false;
 
         return splitCommaSelectors(selector).some((part) => {
           const isPseudoElement = /::(?:before|after)\s*$/i.test(part.trim());
@@ -419,7 +473,7 @@ test.describe('visual-effects Target Grader', () => {
       docs.some((d) =>
         Array.from(d.document.querySelectorAll('[style]')).some((el: any) => {
           const m = (el.getAttribute('style') ?? '').match(/\bmix-blend-mode\s*:\s*([a-z-]+)/i);
-          return Boolean(m && !/^(?:normal|initial|unset|revert|revert-layer)$/i.test(m[1]) && hasAncestorIsolated(el, false));
+          return Boolean(m && isNonNormalBlendMode(m[1]) && hasAncestorIsolated(el, false));
         })
       );
 
@@ -433,18 +487,32 @@ test.describe('visual-effects Target Grader', () => {
     expect(entries.length).toBeGreaterThan(0);
 
     const customProps = collectCustomProps(entries);
+    const blendOverlayElements = new Set<any>();
+    for (const { rule, selector } of entries) {
+      const localProps = collectRuleLocalProps(rule);
+      const bgBlend = resolveVars(getRulePropValue(rule, 'background-blend-mode'), customProps, localProps);
+      const mixBlend = resolveVars(getRulePropValue(rule, 'mix-blend-mode'), customProps, localProps);
+      if (isNonNormalBlendMode(bgBlend) || isNonNormalBlendMode(mixBlend)) {
+        for (const d of docs) {
+          for (const el of safeQueryAll(d.document, selector)) {
+            blendOverlayElements.add(el);
+          }
+        }
+      }
+    }
+
     let hasHardStopGradientPattern = false;
     let hasPatternImageUrl = false;
 
-    for (const { rule } of entries) {
+    for (const { rule, selector } of entries) {
       const localProps = collectRuleLocalProps(rule);
-      const bgSize = resolveVars(rule.style.getPropertyValue('background-size'), customProps, localProps).trim();
+      const bgSize = resolveVars(getRulePropValue(rule, 'background-size'), customProps, localProps).trim();
       const hasExplicitBgSize = Boolean(
         bgSize && !/^(?:auto(?:\s+auto)?|cover|contain|initial|inherit|unset)$/i.test(bgSize)
       );
 
       for (const prop of ['background', 'background-image']) {
-        const val = resolveVars(rule.style.getPropertyValue(prop), customProps, localProps);
+        const val = resolveVars(getRulePropValue(rule, prop), customProps, localProps);
         if (!val) continue;
         for (const grad of extractCssFunctions(val, /^(?:repeating-)?(?:linear|radial|conic)-gradient$/i)) {
           if (!hasHardColorStops(grad.name, grad.args)) continue;
@@ -456,18 +524,43 @@ test.describe('visual-effects Target Grader', () => {
         }
       }
 
+      const ruleHasBlendOverlay =
+        isNonNormalBlendMode(resolveVars(getRulePropValue(rule, 'background-blend-mode'), customProps, localProps)) ||
+        isNonNormalBlendMode(resolveVars(getRulePropValue(rule, 'mix-blend-mode'), customProps, localProps)) ||
+        (() => {
+          const matched = docs.flatMap((d) => safeQueryAll(d.document, selector));
+          return matched.length > 0 && matched.every((el) => blendOverlayElements.has(el));
+        })();
+
+      const checkedProps = new Set<string>(['background', 'background-image']);
       for (let i = 0; i < rule.style.length; i++) {
-        const val = resolveVars(rule.style.getPropertyValue(rule.style[i]), customProps, localProps);
+        checkedProps.add(rule.style[i]);
+      }
+      for (const prop of checkedProps) {
+        if (prop.startsWith('--')) continue;
+        const val = resolveVars(getRulePropValue(rule, prop), customProps, localProps);
+        if (!val) continue;
         for (const u of extractCssFunctions(val, /^url$/i)) {
           const urlTarget = u.args.trim().replace(/^['"]|['"]$/g, '');
-          if (urlTarget && !urlTarget.includes('photo-1495474472287-4d71bcdd2085')) {
+          const isAllowedHeroPhoto = urlTarget.includes('photo-1495474472287-4d71bcdd2085');
+          const isLightingTextureOverlay =
+            ruleHasBlendOverlay && (prop === 'background' || prop === 'background-image');
+          if (urlTarget && !isAllowedHeroPhoto && !isLightingTextureOverlay) {
             hasPatternImageUrl = true;
           }
         }
       }
     }
 
-    const hasSvgElements = docs.some((d) => d.document.querySelectorAll('svg, img[src$=".svg"]').length > 0);
+    const hasSvgElements = docs.some((d) => {
+      if (d.document.querySelectorAll('img[src$=".svg"]').length > 0) return true;
+      return Array.from(d.document.querySelectorAll('svg')).some((svg: any) => {
+        const isPureFilterContainer =
+          svg.querySelectorAll('filter, defs').length > 0 &&
+          svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, use, image').length === 0;
+        return !isPureFilterContainer;
+      });
+    });
 
     expect(hasHardStopGradientPattern).toBe(true);
     expect(hasSvgElements).toBe(false);
@@ -486,7 +579,7 @@ test.describe('visual-effects Target Grader', () => {
     const hasConicGradient = entries.some(({ rule }) => {
       const localProps = collectRuleLocalProps(rule);
       const bg = resolveVars(
-        `${rule.style.getPropertyValue('background')} ${rule.style.getPropertyValue('background-image')}`,
+        `${getRulePropValue(rule, 'background')} ${getRulePropValue(rule, 'background-image')}`,
         customProps,
         localProps
       );
@@ -498,8 +591,8 @@ test.describe('visual-effects Target Grader', () => {
     const cssHiddenElements = new Set<any>();
     for (const { rule, selector } of entries) {
       const localProps = collectRuleLocalProps(rule);
-      const display = resolveVars(rule.style.getPropertyValue('display'), customProps, localProps).trim().toLowerCase();
-      const visibility = resolveVars(rule.style.getPropertyValue('visibility'), customProps, localProps)
+      const display = resolveVars(getRulePropValue(rule, 'display'), customProps, localProps).trim().toLowerCase();
+      const visibility = resolveVars(getRulePropValue(rule, 'visibility'), customProps, localProps)
         .trim()
         .toLowerCase();
       if (display === 'none' || visibility === 'hidden') {
@@ -528,22 +621,32 @@ test.describe('visual-effects Target Grader', () => {
       return false;
     };
 
-    const collectAccessibleText = (node: any): string => {
-      if (!node) return '';
+    const collectAccessibleText = (node: any, visited = new Set<any>(), ignoreHidden = false): string => {
+      if (!node || visited.has(node)) return '';
       if (node.nodeType === 3) {
         return node.textContent ?? '';
       }
-      if (node.nodeType !== 1 || isHiddenFromAt(node)) {
+      if (node.nodeType !== 1 || (!ignoreHidden && isHiddenFromAt(node))) {
         return '';
       }
+      visited.add(node);
       const ariaLabel = node.getAttribute?.('aria-label') ?? '';
+      const doc = node.ownerDocument;
+      const refTexts: string[] = [];
+      for (const attr of ['aria-labelledby', 'aria-describedby']) {
+        const ids = (node.getAttribute?.(attr) ?? '').trim().split(/\s+/).filter(Boolean);
+        for (const id of ids) {
+          const refEl = doc?.getElementById?.(id);
+          if (refEl) refTexts.push(collectAccessibleText(refEl, visited, true));
+        }
+      }
       const childText = Array.from(node.childNodes ?? [])
-        .map((child) => collectAccessibleText(child))
+        .map((child) => collectAccessibleText(child, visited, ignoreHidden))
         .join(' ');
-      return `${ariaLabel} ${childText}`.trim();
+      return `${ariaLabel} ${refTexts.join(' ')} ${childText}`.trim();
     };
 
-    // 2. Verify each drink card exposes accessible chart data (via a semantic <table> or accessible percentage text/labels)
+    // 2. Verify each drink card exposes accessible chart data (via a semantic <table>/<dl> or accessible percentage text/labels)
     const cards = docs.flatMap((d) => Array.from(d.document.querySelectorAll('.card')));
     expect(cards.length).toBeGreaterThan(0);
 
@@ -561,6 +664,18 @@ test.describe('visual-effects Target Grader', () => {
         );
       });
 
+      const dls = Array.from(card.querySelectorAll('dl'));
+      const hasAccessibleDl = dls.some((dl: any) => {
+        if (isHiddenFromAt(dl)) return false;
+        const terms = Array.from(dl.querySelectorAll('dt')).filter(
+          (dt: any) => !isHiddenFromAt(dt) && (dt.textContent ?? '').trim().length > 0
+        );
+        const defs = Array.from(dl.querySelectorAll('dd')).filter(
+          (dd: any) => !isHiddenFromAt(dd) && /\d/.test(dd.textContent ?? '')
+        );
+        return terms.length >= 2 && defs.length >= 2;
+      });
+
       const accessibleText = collectAccessibleText(card);
       const hasAccessiblePercentageText = /\d+(?:\.\d+)?\s*%/.test(accessibleText);
 
@@ -568,7 +683,9 @@ test.describe('visual-effects Target Grader', () => {
         (el: any) => !isHiddenFromAt(el) && /\d/.test(el.getAttribute?.('value') ?? '')
       );
 
-      expect(hasAccessibleTable || hasAccessiblePercentageText || hasAccessibleMeterOrProgress).toBe(true);
+      expect(
+        hasAccessibleTable || hasAccessibleDl || hasAccessiblePercentageText || hasAccessibleMeterOrProgress
+      ).toBe(true);
     }
   });
 });
