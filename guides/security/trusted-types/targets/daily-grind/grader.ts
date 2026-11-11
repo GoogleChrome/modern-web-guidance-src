@@ -390,64 +390,91 @@ test.describe('trusted-types Target Grader', () => {
         }
       });
 
-      await page.goto(TARGET_URL);
+      const evaluateSanitizationState = () =>
+        page.evaluate(() => {
+          const captured =
+            (
+              window as unknown as {
+                __capturedPolicies?: Array<{
+                  name: string;
+                  policy: { createHTML?: (input: string) => unknown };
+                }>;
+              }
+            ).__capturedPolicies || [];
 
-      const sanitizedAndRenderedSafely = await page.evaluate(() => {
-        const captured =
-          (
-            window as unknown as {
-              __capturedPolicies?: Array<{
-                name: string;
-                policy: { createHTML?: (input: string) => unknown };
-              }>;
+          const nonDompurify = captured.filter(
+            (p) => p.name !== 'dompurify' && typeof p.policy?.createHTML === 'function'
+          );
+          const candidatePolicies =
+            nonDompurify.length > 0
+              ? nonDompurify
+              : captured.filter((p) => typeof p.policy?.createHTML === 'function');
+
+          const maliciousPayload =
+            '<div class="card"><h3>Test Drink</h3><img src="x" onerror="alert(1)"><<xss>img src="x" onerror="alert(1)"><script>alert(1)</script><a href="javascript:alert(1)">Link</a></div>';
+
+          const hasSanitizingPolicy = candidatePolicies.some((entry) => {
+            try {
+              const trustedOutput = entry.policy.createHTML!(maliciousPayload);
+              const inertDoc = document.implementation.createHTMLDocument('');
+              const tempContainer = inertDoc.createElement('div');
+              tempContainer.innerHTML = trustedOutput as string;
+
+              const hasScriptInOutput = tempContainer.querySelector('script') !== null;
+              const hasEventHandlersInOutput = Array.from(tempContainer.querySelectorAll('*')).some((el) =>
+                Array.from(el.attributes).some((attr) => attr.name.toLowerCase().startsWith('on'))
+              );
+              const hasJavascriptUrlInOutput = Array.from(
+                tempContainer.querySelectorAll('[href], [src], [action]')
+              ).some((el) =>
+                ['href', 'src', 'action'].some((attr) =>
+                  (el.getAttribute(attr) || '').trim().toLowerCase().startsWith('javascript:')
+                )
+              );
+
+              return !hasScriptInOutput && !hasEventHandlersInOutput && !hasJavascriptUrlInOutput;
+            } catch {
+              return false;
             }
-          ).__capturedPolicies || [];
+          });
 
-        // Find the application policy (prefer non-dompurify internal policy if multiple exist)
-        const appPolicyEntry =
-          captured.find((p) => p.name !== 'dompurify' && typeof p.policy?.createHTML === 'function') ||
-          captured.find((p) => typeof p.policy?.createHTML === 'function');
+          const cards = document.querySelectorAll('.grid .card');
+          const hasAnyInlineEventHandlersInDom = Array.from(document.querySelectorAll('*')).some((el) =>
+            Array.from(el.attributes).some((attr) => attr.name.toLowerCase().startsWith('on'))
+          );
+          const cardsRenderedSafely = cards.length >= 3 && !hasAnyInlineEventHandlersInDom;
 
-        if (!appPolicyEntry || typeof appPolicyEntry.policy.createHTML !== 'function') {
-          return false;
-        }
+          return {
+            hasPolicy: candidatePolicies.length > 0,
+            hasSanitizingPolicy,
+            cardsRenderedSafely,
+            ok: hasSanitizingPolicy && cardsRenderedSafely,
+          };
+        });
 
-        const maliciousPayload =
-          '<div class="card"><h3>Test Drink</h3><img src="x" onerror="alert(1)"><<xss>img src="x" onerror="alert(1)"><script>alert(1)</script><a href="javascript:alert(1)">Link</a></div>';
-        const trustedOutput = appPolicyEntry.policy.createHTML(maliciousPayload);
+      await page.goto(TARGET_URL);
+      const state = await evaluateSanitizationState();
 
-        // Verify the output can be assigned to innerHTML under Trusted Types enforcement
-        const tempContainer = document.createElement('div');
-        tempContainer.innerHTML = trustedOutput as string;
+      // Agents following the Sanitizer API guidance may prefer native element.setHTML()
+      // and only instantiate their Trusted Types fallback policy when setHTML is absent.
+      if (!state.hasPolicy && state.cardsRenderedSafely) {
+        await page.addInitScript(() => {
+          try {
+            delete (Element.prototype as { setHTML?: unknown }).setHTML;
+          } catch {
+            // ignore
+          }
+        });
+        await page.goto(TARGET_URL);
+        await expect
+          .poll(async () => (await evaluateSanitizationState()).ok, { timeout: 4000 })
+          .toBe(true);
+        return;
+      }
 
-        const hasScriptInOutput = tempContainer.querySelector('script') !== null;
-        const hasEventHandlersInOutput = Array.from(tempContainer.querySelectorAll('*')).some((el) =>
-          Array.from(el.attributes).some((attr) => attr.name.toLowerCase().startsWith('on'))
-        );
-        const hasJavascriptUrlInOutput = Array.from(
-          tempContainer.querySelectorAll('[href], [src], [action]')
-        ).some((el) =>
-          ['href', 'src', 'action'].some((attr) =>
-            (el.getAttribute(attr) || '').trim().toLowerCase().startsWith('javascript:')
-          )
-        );
-
-        // Also check the live document body for rendered cards and absence of inline on* attributes
-        const cards = document.querySelectorAll('.grid .card');
-        const hasAnyInlineEventHandlersInDom = Array.from(document.querySelectorAll('*')).some((el) =>
-          Array.from(el.attributes).some((attr) => attr.name.toLowerCase().startsWith('on'))
-        );
-
-        return (
-          !hasScriptInOutput &&
-          !hasEventHandlersInOutput &&
-          !hasJavascriptUrlInOutput &&
-          cards.length >= 3 &&
-          !hasAnyInlineEventHandlersInDom
-        );
-      });
-
-      expect(sanitizedAndRenderedSafely).toBe(true);
+      await expect
+        .poll(async () => (await evaluateSanitizationState()).ok, { timeout: 4000 })
+        .toBe(true);
     });
 
     test('Provides a fallback that allows policy creation and sanitization when window.trustedTypes is not natively supported', async ({

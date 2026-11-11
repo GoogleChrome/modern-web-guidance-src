@@ -206,41 +206,71 @@ test.describe('prerendering-custom-elements Target Grader', () => {
     });
 
     test('Interactive control listener is attached once so moving element in DOM causes exactly one state change per click', async ({ page }) => {
-      const stateChanges = await page.evaluate(async () => {
+      const result = await page.evaluate(async () => {
         const host = Array.from(document.querySelectorAll('*')).find(el => el.tagName.includes('-'));
-        if (!host || !host.shadowRoot) return -1;
+        if (!host || !host.shadowRoot) return { ok: false, reason: 'missing host/shadowRoot' };
         const button = host.shadowRoot.querySelector('button, [id="toggle"]') as HTMLButtonElement | null;
-        if (!button) return -1;
+        if (!button) return { ok: false, reason: 'missing button' };
 
         const parent = host.parentElement;
-        if (!parent) return -1;
+        if (!parent) return { ok: false, reason: 'missing parent' };
+
+        const snapshot = (btn: HTMLButtonElement) => {
+          const hostAttrs = Array.from(host.attributes).map(a => `${a.name}=${a.value}`).sort().join('|');
+          const btnAttrs = Array.from(btn.attributes).map(a => `${a.name}=${a.value}`).sort().join('|');
+          return `${hostAttrs}::${btnAttrs}::${btn.textContent}::${host.shadowRoot!.innerHTML}::${document.body.innerHTML}`;
+        };
+
+        const countClick = async () => {
+          const btn = host.shadowRoot!.querySelector('button, [id="toggle"]') as HTMLButtonElement | null;
+          if (!btn) return { changed: false, recordsCount: 0, bagDelta: null as number | null };
+          const bagCountEl = document.querySelector('#bag-count');
+          const beforeBag = bagCountEl ? Number(bagCountEl.textContent) : null;
+          const before = snapshot(btn);
+          let recordsCount = 0;
+          const observer = new MutationObserver(records => {
+            recordsCount += records.length;
+          });
+          observer.observe(host, { attributes: true, childList: true, characterData: true, subtree: true });
+          observer.observe(host.shadowRoot!, { attributes: true, childList: true, characterData: true, subtree: true });
+          if (document.body) {
+            observer.observe(document.body, { attributes: true, childList: true, characterData: true, subtree: true });
+          }
+          btn.click();
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          observer.disconnect();
+          const after = snapshot(btn);
+          const afterBag = bagCountEl ? Number(bagCountEl.textContent) : null;
+          return {
+            changed: before !== after,
+            recordsCount,
+            bagDelta: beforeBag !== null && afterBag !== null ? afterBag - beforeBag : null,
+          };
+        };
+
+        const firstClick = await countClick();
+        if (!firstClick.changed) return { ok: false, reason: 'first click caused no state change' };
+
+        // Move host 3 times (4 total connections): duplicate listeners either even-toggle back to no net change
+        // or multiply DOM mutations / counters.
         for (let i = 0; i < 3; i++) {
           host.remove();
           parent.appendChild(host);
         }
 
-        let mutations = 0;
-        const observer = new MutationObserver(records => {
-          mutations += records.length;
-        });
-        observer.observe(host, { attributes: true, attributeFilter: ['open', 'favorited'] });
-
-        const beforeExpanded = button.getAttribute('aria-expanded');
-        const bagCountEl = document.querySelector('#bag-count');
-        const beforeBagCount = bagCountEl ? Number(bagCountEl.textContent) : null;
-        button.click();
-        await new Promise(r => setTimeout(r, 50));
-        observer.disconnect();
-
-        if (mutations === 0 && button.getAttribute('aria-expanded') !== beforeExpanded) {
-          return 1;
+        const afterMoveClick = await countClick();
+        if (!afterMoveClick.changed) {
+          return { ok: false, reason: `no net state change after DOM moves (records=${afterMoveClick.recordsCount})` };
         }
-        if (mutations === 0 && bagCountEl && beforeBagCount !== null) {
-          return Number(bagCountEl.textContent) - beforeBagCount;
+        if (afterMoveClick.bagDelta !== null && firstClick.bagDelta === 1 && afterMoveClick.bagDelta !== 1) {
+          return { ok: false, reason: `bag counter incremented by ${afterMoveClick.bagDelta}` };
         }
-        return mutations;
+        if (firstClick.recordsCount > 0 && afterMoveClick.recordsCount >= firstClick.recordsCount * 4) {
+          return { ok: false, reason: `multiplied mutations after DOM moves (${firstClick.recordsCount} -> ${afterMoveClick.recordsCount})` };
+        }
+        return { ok: true, firstClick, afterMoveClick };
       });
-      expect(stateChanges).toBe(1);
+      expect(result.ok).toBe(true);
     });
 
   });

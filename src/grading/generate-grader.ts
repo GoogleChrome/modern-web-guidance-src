@@ -21,6 +21,7 @@ import {
   isDisciplineGuide,
 } from '../core/guide-validation.ts';
 import { cCyan, cGreen } from '../core/colors.ts';
+import { replaceMacros } from '../core/macros.ts';
 
 export async function generateTargetGrader(
   guideDirAbs: string,
@@ -42,7 +43,10 @@ export async function generateTargetGrader(
       recursive: true,
       filter: (src) => !src.includes('node_modules')
     });
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    const guidePath = path.join(guideDirAbs, GUIDE_FILE);
+    const rawGuide = fs.readFileSync(guidePath, 'utf-8');
+    const expandedGuide = replaceMacros(rawGuide, guidePath, { target: 'skills-cli' });
+    fs.writeFileSync(path.join(workDir, GUIDE_FILE), expandedGuide);
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
     fs.copyFileSync(path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE), path.join(workDir, TASK_FILE));
     
@@ -107,7 +111,7 @@ export async function generateTargetGrader(
       path.join(workDir, 'linkedom.d.ts')
     );
     fs.copyFileSync(
-      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+      path.resolve(repoRoot, 'node_modules', 'cssomnom', 'dist', 'index.d.ts'),
       path.join(workDir, 'cssomnom.d.ts')
     );
 

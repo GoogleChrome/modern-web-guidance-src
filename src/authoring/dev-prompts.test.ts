@@ -75,8 +75,6 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('LOCKED'));
   assert.ok(prompt.includes('No Patch-Specific Identifier Overfitting'));
   assert.ok(prompt.includes('No Vacuous Guards or `test.skip()`'));
-  assert.ok(prompt.includes('Fallback Expectations (`skipUnless`)'));
-  assert.ok(prompt.includes('skipUnless'));
   assert.ok(prompt.includes('npx oxlint'));
 });
 
@@ -342,7 +340,7 @@ test('all reference files and type definitions referenced in grader generation e
     path.resolve(rootDir, 'src/grading/playwright-pattern-library.grader.ts'),
     path.resolve(rootDir, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
     path.resolve(rootDir, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
-    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'index.d.ts'),
   ];
 
   for (const filePath of requiredSandboxFiles) {

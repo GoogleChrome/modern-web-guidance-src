@@ -321,7 +321,7 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatche
 export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   id: 'child-state-based-styling/js-parent-class',
   guideId: 'child-state-based-styling',
-  guideHash: '70dc57b74e35',
+  guideHash: '938e4db9a7d7',
   summary:
     'JavaScript form control event listeners toggle classes on parent/closest containers to simulate container state styling; replace with CSS container :has() selectors.',
   matcher: childStateBasedStylingJsMatcher,

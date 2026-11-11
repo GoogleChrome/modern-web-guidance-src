@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 
+import { ensureNodeVersion } from "./node-version.ts";
+
+ensureNodeVersion();
+
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
-import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
+import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
@@ -15,6 +19,8 @@ import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
 import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
+
+declare const __MWG_DIST_TAG__: string | undefined;
 
 const MAX_INLINE_STDOUT_BYTES = 9500;
 
@@ -56,15 +62,15 @@ function saveRetrievedGuides(content: string): string | null {
 
 function printUsage() {
   console.log(`
-Usage: modern-web <command> [args]
+Usage: modern-web-guidance <command> [args]
 
 Commands:
-  search <query>            Search use cases by query
+  search <query>            Search use cases by English query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
-  analyze [path] [options]  Analyze codebase for legacy web platform patterns
-  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
+  legacy-scan [path] [options]  Analyze codebase for legacy web platform patterns
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
+  set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
   update                    Update skills
@@ -87,22 +93,24 @@ async function main() {
 
   const command = positionals[0];
 
-  if (command === "analyze") {
+  if (command === "legacy-scan" || command === "analyze") {
     maybeEmitUpdateMessage(skillVersion);
     // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
     const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
     const args = process.argv.slice(2);
-    const cmdIdx = args.indexOf("analyze");
+    const cmdIdx = args.indexOf(command);
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const startTime = Date.now();
     const result = await runAnalyzeCli(args);
-    if (result.data) {
+    if (result.exitCode === 0 && result.data) {
       logToolResult(
         "analyze",
         result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
       );
     }
-    writeAnalyzeCliResult(result);
-    process.exit(result.exitCode);
+    const logger = new ClearcutLogger({ skillVersion });
+    await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.LEGACY_SCAN);
+    process.exit(writeAnalyzeCliResult(result));
   }
 
   if (values.help || positionals.length === 0) {
@@ -126,6 +134,7 @@ async function main() {
     try {
       // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
       const { searchUseCases } = await import("../rag/search.ts");
+      const { tokenize } = await import("../rag/bm25.ts");
       const results = await searchUseCases(arg);
       const latencyMs = Date.now() - startTime;
 
@@ -138,6 +147,11 @@ async function main() {
       // Compact format: return only id and description to minimize token usage with top-10 results.
       const jsonLines = results.map(({ id, description }) => JSON.stringify({ id, description }));
       console.log("[" + jsonLines.join(",\n") + "]");
+
+      // Non-ASCII letter (Unicode \p{L} intersected with non-ASCII \P{ASCII})
+      if (/[\p{L}&&\P{ASCII}]/v.test(arg) && (results.length === 0 || tokenize(arg).length <= 1)) {
+        console.error('Note: Search queries must be in English (e.g., search "light dismiss dialog").');
+      }
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       await getLogger().logSearchResult(arg, latencyMs, false, []);
@@ -184,7 +198,7 @@ async function main() {
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
-        if (error instanceof OriginTrialGateError) {
+        if (error instanceof FeatureGateError) {
           console.error(error.message);
         } else {
           console.error(`Retrieve failed for ${id}:`, error);
@@ -224,7 +238,11 @@ async function main() {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
     const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
-    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const distTag = typeof __MWG_DIST_TAG__ !== "undefined" ? __MWG_DIST_TAG__ : "latest";
+    const repoSource = distTag === "next"
+      ? "https://github.com/GoogleChrome/modern-web-guidance/tree/next"
+      : "GoogleChrome/modern-web-guidance";
+    const installArgs = `-y skills add ${repoSource} ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
       .concat(extraArgs);
@@ -272,10 +290,13 @@ async function main() {
   } else if (command === "set-allow-origin-trials") {
     const code = await handleSetAllowOriginTrials();
     process.exit(code);
+  } else if (command === "set-allow-volatile-features") {
+    const code = await handleSetAllowVolatileFeatures();
+    process.exit(code);
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["skills", "remove", ...skills], {
+    const result = spawnSync("npx", ["-y", "skills", "remove", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });

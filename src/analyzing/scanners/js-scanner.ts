@@ -21,6 +21,7 @@ import { isProtectedByFeatureGuard } from './ast-helpers.ts';
 export function createInMemoryProject(): Project {
   return new Project({
     useInMemoryFileSystem: true,
+    skipLoadingLibFiles: true,
     compilerOptions: {
       allowJs: true,
       jsx: ts.JsxEmit.Preserve,

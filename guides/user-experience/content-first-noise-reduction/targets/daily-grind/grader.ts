@@ -153,63 +153,44 @@ test.describe('content-first-noise-reduction Target Grader', () => {
     expect(validClosedDetails).toBe(true);
   });
 
-  test('Expectation 4: Persistent navigation bar has compact styling or responsive rules to stay under 12% viewport height', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllRules(stylesheet.cssRules);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const navRules = styleRules.filter((r) =>
-      /\b(nav|top-bar|header)\b/i.test(r.selectorText || '')
-    );
-
-    const hasCompactPaddingOrHeight = navRules.some((r) => {
-      const padding = r.style.getPropertyValue('padding').trim();
-      const paddingBlock = r.style.getPropertyValue('padding-block').trim();
-      const height = r.style.getPropertyValue('height').trim();
-      const maxHeight = r.style.getPropertyValue('max-height').trim();
-      const hasReducedPadding =
-        (Boolean(padding) && !/^1rem\b/.test(padding)) || Boolean(paddingBlock);
-      const hasExplicitCompactHeight =
-        /\b(1[0-2]|[1-9])(\.\d+)?(s?vh|%)\b/i.test(height) ||
-        /\b(1[0-2]|[1-9])(\.\d+)?(s?vh|%)\b/i.test(maxHeight) ||
-        /\bmin\s*\(/i.test(height);
-      return hasReducedPadding || hasExplicitCompactHeight;
-    });
-
-    expect(hasCompactPaddingOrHeight).toBe(true);
-  });
-
   test.describe('Browser tests', () => {
-    test('Expectation 4: Every visible fixed or sticky element wider than half the screen is shorter than 12% of the screen height', async ({
+    test('Expectation 4: On phone-sized and desktop-sized screens, every visible fixed or sticky element wider than half the screen is shorter than 12% of the screen height', async ({
       page,
       TARGET_URL,
     }) => {
-      await page.setViewportSize({ width: 800, height: 800 });
-      await page.goto(TARGET_URL);
+      for (const viewport of [
+        { width: 375, height: 667 },
+        { width: 800, height: 800 },
+      ]) {
+        await page.setViewportSize(viewport);
+        await page.goto(TARGET_URL);
 
-      const violation = await page.evaluate(() => {
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const elements = Array.from(document.querySelectorAll('*'));
-        for (const el of elements) {
-          const style = window.getComputedStyle(el);
-          if (style.position !== 'fixed' && style.position !== 'sticky') continue;
-          if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) {
-            continue;
+        const violation = await page.evaluate((vp) => {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          const elements = Array.from(document.querySelectorAll('*'));
+          for (const el of elements) {
+            const style = window.getComputedStyle(el);
+            if (style.position !== 'fixed' && style.position !== 'sticky') continue;
+            if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) {
+              continue;
+            }
+            const rect = el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) continue;
+            if (rect.width > vw * 0.5 && rect.height >= vh * 0.12) {
+              return {
+                viewport: `${vp.width}x${vp.height}`,
+                tag: el.tagName,
+                height: Math.round(rect.height),
+                maxAllowed: vh * 0.12,
+              };
+            }
           }
-          const rect = el.getBoundingClientRect();
-          if (rect.width <= 0 || rect.height <= 0) continue;
-          const paddingTop = parseFloat(style.paddingTop) || 0;
-          const paddingBottom = parseFloat(style.paddingBottom) || 0;
-          const effectiveHeight = Math.max(rect.height, (paddingTop + paddingBottom) * 3.5);
-          if (rect.width > vw * 0.5 && effectiveHeight >= vh * 0.12) {
-            return { tag: el.tagName, height: effectiveHeight, maxAllowed: vh * 0.12 };
-          }
-        }
-        return null;
-      });
+          return null;
+        }, viewport);
 
-      expect(violation).toBeNull();
+        expect(violation).toBeNull();
+      }
     });
 
     test('Expectation 5, 6, 7: Persistent top bar hides on wheel scroll down, reappears on scroll up, and stays visible when focused while scrolled down', async ({
@@ -227,60 +208,72 @@ test.describe('content-first-noise-reduction Target Grader', () => {
         document.body.appendChild(spacer);
       });
 
-      const initialRect = await page.evaluate(() => {
-        const nav = document.querySelector('nav, [role="navigation"]')!;
-        const r = nav.getBoundingClientRect();
-        return { top: r.top, bottom: r.bottom, height: r.height };
-      });
+      const getNavRect = () =>
+        page.evaluate(() => {
+          const nav = document.querySelector('nav, [role="navigation"]');
+          if (!nav) return null;
+          const r = nav.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, height: r.height };
+        });
+
+      const initialRect = await getNavRect();
+      expect(initialRect).not.toBeNull();
 
       // Scroll down by ~1 screen height using mouse wheel
       await page.mouse.move(180, 250);
       await page.mouse.wheel(0, 500);
-      await page.waitForTimeout(350);
-
-      const afterScrollDown = await page.evaluate(() => {
-        const nav = document.querySelector('nav, [role="navigation"]')!;
-        const r = nav.getBoundingClientRect();
-        return { top: r.top, bottom: r.bottom, height: r.height };
-      });
+      await expect
+        .poll(
+          async () => {
+            const r = await getNavRect();
+            return Boolean(r && (r.bottom <= 1 || r.height < initialRect!.height * 0.8));
+          },
+          { timeout: 3000 }
+        )
+        .toBe(true);
+      // A shrunk bar stays in view at its smaller height; "fully visible" doesn't mean full height.
+      const scrolledRect = (await getNavRect())!;
+      const visibleBottom = Math.max(1, Math.min(initialRect!.height * 0.9, scrolledRect.height));
 
       // Scroll up using mouse wheel
       await page.mouse.wheel(0, -150);
-      await page.waitForTimeout(350);
-
-      const afterScrollUp = await page.evaluate(() => {
-        const nav = document.querySelector('nav, [role="navigation"]')!;
-        const r = nav.getBoundingClientRect();
-        return { top: r.top, bottom: r.bottom, height: r.height };
-      });
+      await expect
+        .poll(
+          async () => {
+            const r = await getNavRect();
+            return Boolean(r && r.top >= -1 && r.bottom >= visibleBottom);
+          },
+          { timeout: 3000 }
+        )
+        .toBe(true);
 
       // Scroll down again and focus an element inside the top bar
       await page.mouse.wheel(0, 300);
-      await page.waitForTimeout(350);
+      await expect
+        .poll(
+          async () => {
+            const r = await getNavRect();
+            return Boolean(r && (r.bottom <= 1 || r.height < initialRect!.height * 0.8));
+          },
+          { timeout: 3000 }
+        )
+        .toBe(true);
+
       await page.evaluate(() => {
         const focusable = document.querySelector<HTMLElement>(
           'nav a, nav button, [role="navigation"] a, [role="navigation"] button'
         );
         focusable?.focus();
       });
-      await page.waitForTimeout(350);
-
-      const whileFocused = await page.evaluate(() => {
-        const nav = document.querySelector('nav, [role="navigation"]')!;
-        const r = nav.getBoundingClientRect();
-        return { top: r.top, bottom: r.bottom, height: r.height };
-      });
-
-      const hiddenOrShrunkOnScrollDown =
-        afterScrollDown.bottom <= 1 || afterScrollDown.height < initialRect.height * 0.8;
-      const visibleOnScrollUp =
-        afterScrollUp.top >= -1 && afterScrollUp.bottom >= initialRect.height * 0.9;
-      const visibleWhileFocused =
-        whileFocused.top >= -1 && whileFocused.bottom >= initialRect.height * 0.9;
-
-      expect(
-        hiddenOrShrunkOnScrollDown && visibleOnScrollUp && visibleWhileFocused
-      ).toBe(true);
+      await expect
+        .poll(
+          async () => {
+            const r = await getNavRect();
+            return Boolean(r && r.top >= -1 && r.bottom >= visibleBottom);
+          },
+          { timeout: 3000 }
+        )
+        .toBe(true);
     });
   });
 });

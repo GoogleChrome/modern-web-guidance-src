@@ -3,7 +3,7 @@ import { parseSuiteDateInfo } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 export { AGENT_FAMILIES };
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
-/** @typedef {Partial<SuiteSummary> & { testId: string }} ManifestSuite */
+/** @typedef {Partial<SuiteSummary> & { testId: string, source?: import('./api.js').DataSource, pageLoadStats?: { guidedFailed?: number, unguidedFailed?: number } }} ManifestSuite */
 /** @typedef {import('./agents.js').AgentFamilyDef} AgentFamilyDef */
 /** @typedef {Object} RateComparison
  * @property {number | null} unguidedRate null when that side ran no checks
@@ -19,8 +19,26 @@ export { AGENT_FAMILIES };
  * @property {string} timestamp
  * @property {string} agent
  * @property {string} model
+ * @property {import('./api.js').DataSource | null} source
  * @property {number} taskCount
- * @property {number} earlyFailureRate */
+ * @property {number | null} pairedTaskCount
+ * @property {number} maxRuns
+ * @property {number} earlyFailureRate
+ * @property {number | null} earlyFailureCount
+ * @property {number} unguidedLeakRate
+ * @property {number} pageLoadFailed
+ * @property {boolean} [curated]
+ * @property {import('./evals.d.ts').ReasoningEffort} [reasoningEffort] */
+/** @typedef {Object} FamilySample
+ * @property {number} attemptedTasks
+ * @property {number} pairedTasks
+ * @property {number} excludedTasks
+ * @property {number} minMaxRuns
+ * @property {number} maxMaxRuns
+ * @property {number | null} earlyFailureCount
+ * @property {number} earlyFailureRate
+ * @property {number} unguidedLeakRate
+ * @property {number} pageLoadFailed */
 /** @typedef {Object} FamilyInsight
  * @property {string} id
  * @property {string} label
@@ -30,6 +48,7 @@ export { AGENT_FAMILIES };
  * @property {SuiteRef[]} suites
  * @property {number} suiteCount
  * @property {SuiteRef} latest
+ * @property {FamilySample} sample
  * @property {RateComparison} overall
  * @property {A11yComparison | null} a11y */
 /** @typedef {Object} PooledInsight
@@ -38,17 +57,27 @@ export { AGENT_FAMILIES };
  * @property {RateComparison} overall
  * @property {A11yComparison | null} a11y */
 /** @typedef {Object} HeadlineInsights
- * @property {{ perAgentRecentN: number, nightlyOnly: boolean, before: string | null }} options
+ * @property {{ perAgentRecentN: number, canonicalOnly?: boolean, nightlyOnly: boolean, before: string | null }} options
  * @property {FamilyInsight[]} families
  * @property {PooledInsight | null} pooled
  * @property {string[]} suiteIds
  * @property {string | null} latestTimestamp
+ * @property {number} maxSuitesPerFamily
  * @property {string[]} missingStats */
 /** @typedef {Object} InsightOptions
  * @property {number} [perAgentRecentN=1]
+ * @property {boolean} [canonicalOnly=true]
  * @property {boolean} [nightlyOnly=true]
+ * @property {number} [modelRecencyDays=7]
  * @property {string | null} [before=null]
- * @property {AgentFamilyDef[]} [families=AGENT_FAMILIES] */
+ * @property {AgentFamilyDef[]} [families] */
+
+/**
+ * Maximum days between a model's newest run and the newest run for that agent family.
+ * Prevents retired or one-off experimental models (e.g. Fable from weeks ago) from lingering
+ * in the headline numbers forever alongside active evaluation models.
+ */
+export const MODEL_RECENCY_WINDOW_DAYS = 7;
 /** @param {number} value @param {number} [digits=1] */
 function round(value, digits = 1) { const f = 10 ** digits; return Math.round(value * f) / f; }
 /** @param {number} numerator @param {number} denominator */
@@ -60,7 +89,11 @@ export function getSuiteTimestamp(suite) {
     return info.dateOnly ? info.date.toISOString().slice(0, 10) : info.date.toISOString();
 }
 /** @param {ManifestSuite} suite */
-export function isNightlySuite(suite) { return typeof suite.testId === 'string' && suite.testId.startsWith('nightly-'); }
+export function isCanonicalSuite(suite) {
+    if (!suite || typeof suite.testId !== 'string') return false;
+    return Boolean(suite.curated) || suite.testId.startsWith('nightly-');
+}
+export const isNightlySuite = isCanonicalSuite;
 /** @param {string | undefined} agent
  * @param {AgentFamilyDef[]} [families=AGENT_FAMILIES] */
 export function getAgentFamily(agent, families = AGENT_FAMILIES) { if (!agent) return null; const needle = agent.toLowerCase(); return families.find(f => f.agents.includes(needle)) || null; }
@@ -70,26 +103,75 @@ export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStat
 /** @param {ManifestSuite[]} suites
  * @param {InsightOptions} [options]
  * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */
-export function selectRecentSuites(suites, options = {}) {
-    const { perAgentRecentN = 1, nightlyOnly = true, before = null, families = AGENT_FAMILIES } = options;
+function collectFamilySuites(suites, options = {}) {
+    const { before = null, families = AGENT_FAMILIES } = options;
+    const filterCanonical = options.canonicalOnly ?? options.nightlyOnly ?? true;
     const beforeMs = before ? Date.parse(before) : NaN;
     /** @type {Map<AgentFamilyDef, ManifestSuite[]>} */
     const byFamily = new Map();
     families.forEach(f => byFamily.set(f, []));
     (suites || []).forEach(suite => {
         if (!suite || !suite.testId || !suite.guidedStats) return;
-        if (nightlyOnly && !isNightlySuite(suite)) return;
+        if (filterCanonical && !isCanonicalSuite(suite)) return;
         const family = getAgentFamily(suite.agent, families);
         if (!family) return;
         const ts = getSuiteTimestamp(suite);
         if (!ts) return;
         if (!Number.isNaN(beforeMs) && Date.parse(ts) >= beforeMs) return;
         /** @type {ManifestSuite[]} */
-(byFamily.get(family)).push(suite);
+        (byFamily.get(family)).push(suite);
     });
-    byFamily.forEach((list, family) => {
+    byFamily.forEach((list) => {
         list.sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
-        byFamily.set(family, list.slice(0, perAgentRecentN));
+    });
+    return byFamily;
+}
+/**
+ * For an agent family, selects the latest N canonical runs per model, sorted newest-first.
+ * When a model has multiple runs (e.g. rolling nightly vs 1.0 baseline), the newest run wins.
+ * Grouping is keyed by model name so new nightly runs naturally supersede baseline runs for
+ * the same model without hiding sibling models (e.g. Sonnet does not hide Opus).
+ * Only models evaluated within `modelRecencyDays` (default: 7) of the family's newest run
+ * are included, preventing stale or retired one-off models from lingering in headline metrics.
+ * @param {ManifestSuite[]} list
+ * @param {number} [n=1]
+ * @param {Pick<InsightOptions, 'modelRecencyDays'>} [options={}]
+ * @returns {ManifestSuite[]}
+ */
+export function selectFamilySuites(list, n = 1, options = {}) {
+    const recencyDays = options.modelRecencyDays ?? MODEL_RECENCY_WINDOW_DAYS;
+    const newestFamilyMs = list.length > 0 ? Date.parse(getSuiteTimestamp(list[0])) : NaN;
+    const cutoffMs = Number.isNaN(newestFamilyMs) ? 0 : newestFamilyMs - recencyDays * 24 * 60 * 60 * 1000;
+
+    /** @type {Map<string, ManifestSuite[]>} */
+    const byModel = new Map();
+    for (const suite of list) {
+        const model = suite.model || 'unknown';
+        let modelList = byModel.get(model);
+        if (!modelList) {
+            const modelNewestMs = Date.parse(getSuiteTimestamp(suite));
+            if (!Number.isNaN(cutoffMs) && modelNewestMs < cutoffMs) continue;
+            modelList = [];
+            byModel.set(model, modelList);
+        }
+        modelList.push(suite);
+    }
+    /** @type {ManifestSuite[]} */
+    const selected = [];
+    for (const modelSuites of byModel.values()) {
+        selected.push(...modelSuites.slice(0, n));
+    }
+    selected.sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
+    return selected;
+}
+/** @param {ManifestSuite[]} suites
+ * @param {InsightOptions} [options]
+ * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */
+export function selectRecentSuites(suites, options = {}) {
+    const { perAgentRecentN = 1 } = options;
+    const byFamily = collectFamilySuites(suites, options);
+    byFamily.forEach((list, family) => {
+        byFamily.set(family, selectFamilySuites(list, perAgentRecentN, options));
     });
     return byFamily;
 }
@@ -125,13 +207,47 @@ export async function hydrateMissingStats(suites, fetchEvals, options = {}) {
 /** @param {ManifestSuite} suite @returns {SuiteRef} */
 function toSuiteRef(suite) {
     const timestamp = getSuiteTimestamp(suite);
+    const taskCount = suite.taskCount || 0;
+    const pairedTaskCount = typeof suite.pairedTaskCount === 'number' ? suite.pairedTaskCount : null;
+    const pageLoadFailed = (suite.pageLoadStats?.guidedFailed || 0) + (suite.pageLoadStats?.unguidedFailed || 0);
     return {
         testId: suite.testId,
         timestamp,
         agent: suite.agent || 'unknown',
         model: suite.model || 'unknown',
-        taskCount: suite.taskCount || 0,
-        earlyFailureRate: suite.earlyFailureRate || 0
+        source: suite.source || null,
+        taskCount,
+        pairedTaskCount,
+        maxRuns: suite.maxRuns || 1,
+        earlyFailureRate: suite.earlyFailureRate || 0,
+        earlyFailureCount: typeof suite.earlyFailureCount === 'number' ? suite.earlyFailureCount : null,
+        unguidedLeakRate: suite.unguidedLeakRate || 0,
+        pageLoadFailed,
+        curated: Boolean(suite.curated),
+        reasoningEffort: suite.reasoningEffort
+    };
+}
+/** @param {SuiteRef[]} refs @returns {FamilySample} */
+function summarizeSample(refs) {
+    const attemptedTasks = refs.reduce((sum, r) => sum + Math.max(r.taskCount, r.pairedTaskCount ?? 0), 0);
+    const pairedTasks = refs.reduce((sum, r) => sum + (r.pairedTaskCount ?? r.taskCount), 0);
+    const excludedTasks = Math.max(0, attemptedTasks - pairedTasks);
+    const runCounts = refs.map(r => r.maxRuns);
+    const hasEarlyCounts = refs.every(r => r.earlyFailureCount !== null);
+    const earlyFailureCount = hasEarlyCounts ? refs.reduce((sum, r) => sum + (r.earlyFailureCount || 0), 0) : null;
+    const earlyFailureRate = Math.round(refs.reduce((sum, r) => sum + r.earlyFailureRate, 0) / refs.length);
+    const unguidedLeakRate = Math.round(refs.reduce((sum, r) => sum + r.unguidedLeakRate, 0) / refs.length);
+    const pageLoadFailed = refs.reduce((sum, r) => sum + r.pageLoadFailed, 0);
+    return {
+        attemptedTasks,
+        pairedTasks,
+        excludedTasks,
+        minMaxRuns: Math.min(...runCounts),
+        maxMaxRuns: Math.max(...runCounts),
+        earlyFailureCount,
+        earlyFailureRate,
+        unguidedLeakRate,
+        pageLoadFailed
     };
 }
 /** @param {{ unguidedPassed: number, unguidedTotal: number, guidedPassed: number, guidedTotal: number }} c @returns {RateComparison} */
@@ -185,13 +301,24 @@ function accumulate(suites) {
  * @param {InsightOptions} [options]
  * @returns {HeadlineInsights} */
 export function computeHeadlineInsights(suites, options = {}) {
-    const { perAgentRecentN = 1, nightlyOnly = true, before = null } = options;
-    const selected = selectRecentSuites(suites, options);
+    const { perAgentRecentN = 1, before = null } = options;
+    const filterCanonical = options.canonicalOnly ?? options.nightlyOnly ?? true;
+    const allByFamily = collectFamilySuites(suites, options);
+    let maxSuitesPerFamily = 0;
     /** @type {FamilyInsight[]} */
     const families = [];
     /** @type {ManifestSuite[]} */
     const allSelected = [];
-    selected.forEach((list, family) => {
+    allByFamily.forEach((fullList, family) => {
+        const activeCounts = new Map();
+        for (const s of selectFamilySuites(fullList, Infinity, options)) {
+            const m = s.model || 'unknown';
+            activeCounts.set(m, (activeCounts.get(m) || 0) + 1);
+        }
+        for (const count of activeCounts.values()) {
+            maxSuitesPerFamily = Math.max(maxSuitesPerFamily, count);
+        }
+        const list = selectFamilySuites(fullList, perAgentRecentN, options);
         if (list.length === 0) return;
         allSelected.push(...list);
         const acc = accumulate(list);
@@ -205,6 +332,7 @@ export function computeHeadlineInsights(suites, options = {}) {
             suites: refs,
             suiteCount: refs.length,
             latest: refs[0],
+            sample: summarizeSample(refs),
             overall: toRateComparison(acc.overall),
             a11y: acc.a11ySuites > 0 ? { ...toRateComparison(acc.a11y), guideCount: acc.a11yGuideCount } : null
         });
@@ -222,11 +350,12 @@ export function computeHeadlineInsights(suites, options = {}) {
     }
     const sortedAll = [...allSelected].sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
     return {
-        options: { perAgentRecentN, nightlyOnly, before },
+        options: { perAgentRecentN, canonicalOnly: filterCanonical, nightlyOnly: filterCanonical, before },
         families,
         pooled,
         suiteIds: sortedAll.map(s => s.testId),
         latestTimestamp: sortedAll.length ? getSuiteTimestamp(sortedAll[0]) : null,
+        maxSuitesPerFamily,
         missingStats: sortedAll.filter(s => !hasHeadlineStats(s)).map(s => s.testId)
     };
 }

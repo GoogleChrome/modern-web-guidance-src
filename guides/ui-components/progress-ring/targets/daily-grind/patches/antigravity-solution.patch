@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..2b01cf3 100644
+index 66c9173..8f3f014 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,150 @@
+@@ -152,6 +152,163 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
@@ -15,16 +15,21 @@ index 66c9173..2b01cf3 100644
 +    }
 +
 +    .rewards-section {
-+      margin-top: 40px;
++      margin-top: 50px;
++      text-align: center;
 +    }
 +
 +    .rewards-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +      max-width: 500px;
 +      margin: 20px auto 0;
 +      display: flex;
 +      flex-direction: column;
 +      align-items: center;
-+      gap: 16px;
++      gap: 20px;
 +    }
 +
 +    /* Hide native bars */
@@ -69,8 +74,8 @@ index 66c9173..2b01cf3 100644
 +    }
 +
 +    progress.progress-ring {
-+      appearance: none;
 +      -webkit-appearance: none;
++      appearance: none;
 +      --size: 160px;
 +      --thickness: 16px;
 +      --track-color: var(--secondary);
@@ -80,6 +85,9 @@ index 66c9173..2b01cf3 100644
 +      height: var(--size);
 +
 +      transition: --value 0s ease-in-out;
++      @media (prefers-reduced-motion: no-preference) {
++        transition-duration: 0.4s;
++      }
 +      border-radius: 50%;
 +
 +      background: conic-gradient(
@@ -91,16 +99,8 @@ index 66c9173..2b01cf3 100644
 +      background-clip: border-area;
 +      border: var(--thickness) solid transparent;
 +      background-origin: border-box;
-+    }
 +
-+    @media (prefers-reduced-motion: no-preference) {
-+      progress.progress-ring {
-+        transition-duration: 0.4s;
-+      }
-+    }
-+
-+    @supports not (background-clip: border-area) {
-+      progress.progress-ring {
++      @supports not (background-clip: border-area) {
 +        mask-image: radial-gradient(
 +          transparent calc(50% - var(--thickness)),
 +          black calc(50% - var(--thickness) + 0.5px)
@@ -109,7 +109,7 @@ index 66c9173..2b01cf3 100644
 +      }
 +    }
 +
-+    /* Change the fill color to primary coffee brown or green when the progress reaches 100% */
++    /* Change the fill color when the progress reaches 100% */
 +    progress.progress-ring[value="100"] {
 +      --fill-color: #10b981;
 +    }
@@ -126,100 +126,116 @@ index 66c9173..2b01cf3 100644
 +      color: var(--primary);
 +    }
 +
-+    .ring-points {
-+      font-size: 1.5rem;
++    .ring-value {
++      font-size: 1.75rem;
 +      font-weight: bold;
-+      line-height: 1.2;
++      line-height: 1.1;
 +    }
 +
 +    .ring-label {
 +      font-size: 0.8rem;
 +      color: var(--text);
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
 +    }
 +
-+    .rewards-actions {
++    .rewards-controls {
 +      display: flex;
 +      gap: 10px;
 +      flex-wrap: wrap;
 +      justify-content: center;
 +    }
 +
-+    button.btn {
++    .rewards-controls .btn {
++      margin-top: 0;
 +      border: none;
 +      cursor: pointer;
-+      font-family: inherit;
-+      font-size: 0.95rem;
++      font-size: 0.9rem;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
 +    }
    </style>
  </head>
  
-@@ -195,6 +339,25 @@
+@@ -195,8 +352,72 @@
          </div>
        </div>
      </section>
 +
-+    <section class="rewards-section">
-+      <h2 style="text-align: center;">Loyalty Rewards</h2>
-+      <div class="card rewards-card">
-+        <h3>Free Drink Progress</h3>
-+        <p id="rewards-status">You're 25 points away from your next free artisanal beverage!</p>
++    <section class="rewards-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Loyalty Rewards</h2>
++      <div class="rewards-card">
++        <h3>Your Next Free Drink</h3>
 +        <div class="progress-ring-wrapper ring-wrapper">
 +          <progress id="loyalty-progress" value="75" max="100" aria-label="Loyalty rewards progress toward next free drink" class="progress-ring"></progress>
-+          <div class="progress-ring-content ring-content">
-+            <span class="ring-points" id="loyalty-percentage">75%</span>
-+            <span class="ring-label" id="loyalty-points">75 / 100 pts</span>
++          <div id="loyalty-ring-content" class="progress-ring-content ring-content">
++            <span class="ring-value" id="loyalty-percentage">75%</span>
++            <span class="ring-label" id="loyalty-points">75 / 100 Beans</span>
 +          </div>
 +        </div>
-+        <div class="rewards-actions">
-+          <button type="button" class="btn" id="add-visit-btn">Log a Visit (+25 pts)</button>
-+          <a href="/rewards" class="btn">View Rewards</a>
++        <p id="loyalty-status-message">You're only <strong>25 Beans</strong> away from a complimentary handcrafted beverage!</p>
++        <div class="rewards-controls">
++          <button type="button" class="btn btn-accent" id="add-beans-btn">+25 Beans (Log Visit)</button>
++          <a href="/rewards" class="btn">Rewards Details</a>
 +        </div>
 +      </div>
 +    </section>
    </main>
  
-   <footer>
-@@ -207,6 +370,43 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
 +  <script>
-+    const progress = document.getElementById("loyalty-progress");
-+    const percentageText = document.getElementById("loyalty-percentage");
-+    const pointsText = document.getElementById("loyalty-points");
-+    const statusText = document.getElementById("rewards-status");
-+    const addVisitBtn = document.getElementById("add-visit-btn");
++    (function () {
++      const progress = document.getElementById('loyalty-progress');
++      const percentageEl = document.getElementById('loyalty-percentage');
++      const pointsEl = document.getElementById('loyalty-points');
++      const statusMessageEl = document.getElementById('loyalty-status-message');
++      const addBeansBtn = document.getElementById('add-beans-btn');
 +
-+    // Initialize --value for fallback before any attribute mutation
-+    if (!CSS.supports("width: attr(value type(<number>))")) {
-+      progress.style.setProperty("--value", progress.getAttribute("value"));
-+      const observer = new MutationObserver(() => {
-+        progress.style.setProperty("--value", progress.getAttribute("value"));
-+      });
-+      observer.observe(progress, {
-+        attributes: true,
-+        attributeFilter: ["value"],
-+      });
-+    }
++      if (!progress) return;
 +
-+    if (addVisitBtn) {
-+      addVisitBtn.addEventListener("click", () => {
-+        let current = Number(progress.getAttribute("value")) || 0;
-+        let next = current >= 100 ? 25 : Math.min(100, current + 25);
-+        progress.setAttribute("value", String(next));
-+        percentageText.textContent = `${next}%`;
-+        pointsText.textContent = `${next} / 100 pts`;
-+        if (next >= 100) {
-+          statusText.textContent = "Congratulations! You've earned a free artisanal beverage!";
-+          addVisitBtn.textContent = "Redeem & Start Next (+25 pts)";
-+        } else {
-+          statusText.textContent = `You're ${100 - next} points away from your next free artisanal beverage!`;
-+          addVisitBtn.textContent = "Log a Visit (+25 pts)";
-+        }
-+      });
-+    }
++      // Fallback for browsers that don't support CSS attr() with type(<number>)
++      if (!CSS.supports('width: attr(value type(<number>))')) {
++        progress.style.setProperty('--value', progress.getAttribute('value'));
++        const observer = new MutationObserver(() => {
++          progress.style.setProperty('--value', progress.getAttribute('value'));
++        });
++        observer.observe(progress, {
++          attributes: true,
++          attributeFilter: ['value'],
++        });
++      }
++
++      if (addBeansBtn) {
++        addBeansBtn.addEventListener('click', () => {
++          const currentVal = Number(progress.getAttribute('value')) || 0;
++          const nextVal = currentVal >= 100 ? 25 : Math.min(100, currentVal + 25);
++          progress.setAttribute('value', String(nextVal));
++
++          if (percentageEl) percentageEl.textContent = `${nextVal}%`;
++          if (pointsEl) pointsEl.textContent = `${nextVal} / 100 Beans`;
++          if (statusMessageEl) {
++            if (nextVal >= 100) {
++              statusMessageEl.innerHTML = '<strong>Congratulations!</strong> Your next handcrafted drink is free!';
++              addBeansBtn.textContent = 'Redeem & Reset';
++            } else {
++              const remaining = 100 - nextVal;
++              statusMessageEl.innerHTML = `You're only <strong>${remaining} Beans</strong> away from a complimentary handcrafted beverage!`;
++              addBeansBtn.textContent = '+25 Beans (Log Visit)';
++            }
++          }
++        });
++      }
++    })();
 +  </script>
 +
- </body>
- 
- </html>
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

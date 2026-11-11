@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
 import { cleanupIsolatedHome, parseAgentArgs, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import {
   type StandardizedStep,
@@ -18,6 +19,7 @@ import {
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
 
 export function setupClaudeCodeCredentials(tempHome: string): void {
@@ -36,7 +38,8 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
     '-p', prompt,
     '--dangerously-skip-permissions',
     ...extraArgs,
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.CLAUDE_CODE, model)
   ];
   return { command, commandArgs };
 }
@@ -80,6 +83,7 @@ export function coalesceClaudeEntries(entries: any[]): any[] {
       }
       if (entry.message.usage) prev.message.usage = entry.message.usage;
       if (entry.message.model && !prev.message.model) prev.message.model = entry.message.model;
+      if (entry.effort && !prev.effort) prev.effort = entry.effort;
     }
   }
 
@@ -105,9 +109,10 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
     const isSubagent = relativePath.includes('subagents/');
     const rawDestName = isSubagent ? `subagent-${baseName}.jsonl` : `session-${baseName}.jsonl`;
-    fs.copyFileSync(src, path.join(targetDir, rawDestName));
+    const destJsonl = path.join(targetDir, rawDestName);
+    fs.writeFileSync(destJsonl, sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
 
-    const logData = coalesceClaudeEntries(parseJsonlFile(src));
+    const logData = coalesceClaudeEntries(parseJsonlFile(destJsonl));
 
     parsedSessions.push({ relativePath, baseName, logData });
 
@@ -121,7 +126,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
   // Step 2: Generate HTML viewers embedding subagent trajectories where referenced (main sessions only)
   for (const session of parsedSessions) {
     if (!session.relativePath.includes('subagents/')) {
-      const htmlContent = generateClaudeTrajectoryHtml(session.logData, subagentsMap);
+      const htmlContent = sanitizeTextSecrets(generateClaudeTrajectoryHtml(session.logData, subagentsMap));
       const destName = `session-${session.baseName}.html`;
       const dest = path.join(targetDir, destName);
       fs.writeFileSync(dest, htmlContent, 'utf8');
@@ -176,6 +181,7 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
   let totalTokens = 0;
   let cachedTokens = 0;
   let hasTokenData = false;
+  let observedEffort: string | undefined;
   const toolsUsed = new Set<string>();
   const retrievedGuides = new Set<string>();
   const fileReadGuides = new Set<string>();
@@ -191,6 +197,17 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
 
       if (rawEntry.message?.model) {
         modelCounts[rawEntry.message.model] = (modelCounts[rawEntry.message.model] || 0) + 1;
+      }
+      if (!subagentId && !rawEntry.isSidechain) {
+        const entryEffort =
+          rawEntry.type === 'api-request'
+            ? rawEntry.params?.output_config?.effort
+            : rawEntry.type === 'assistant'
+              ? rawEntry.effort
+              : undefined;
+        if (typeof entryEffort === 'string' && entryEffort.trim()) {
+          observedEffort = entryEffort.trim().toLowerCase();
+        }
       }
       if (rawEntry.message?.usage) {
         const u = rawEntry.message.usage;
@@ -333,6 +350,7 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
     model: topModel ? topModel[0] : 'unknown',
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' as const } } : {}),
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),

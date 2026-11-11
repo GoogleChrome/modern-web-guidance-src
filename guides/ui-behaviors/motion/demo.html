@@ -132,11 +132,12 @@
 
         /* Transition discrete display and top-layer overlay alongside opacity & transform */
         transition:
-          opacity 0.25s ease-out,
-          translate 0.25s ease-out,
-          clip-path 0.25s ease-out,
-          display 0.25s,
-          overlay 0.25s;
+          opacity ease-out,
+          translate ease-out,
+          clip-path ease-out,
+          display,
+          overlay;
+        transition-duration: 0.25s;
         transition-behavior: allow-discrete;
       }
 
@@ -164,10 +165,11 @@
         opacity: 0;
         scale: 0.95;
         transition:
-          opacity 0.25s ease-out,
-          scale 0.25s ease-out,
-          display 0.25s,
-          overlay 0.25s;
+          opacity ease-out,
+          scale ease-out,
+          display,
+          overlay;
+        transition-duration: 0.25s;
         transition-behavior: allow-discrete;
       }
 
@@ -184,9 +186,10 @@
       dialog.modal-reveal::backdrop {
         background-color: rgb(15 23 42 / 0%);
         transition:
-          background-color 0.25s ease-out,
-          display 0.25s,
-          overlay 0.25s;
+          background-color ease-out,
+          display,
+          overlay;
+        transition-duration: 0.25s;
         transition-behavior: allow-discrete;
       }
 
@@ -324,10 +327,8 @@
         border-radius: 50%;
         border: 3px solid var(--border);
         border-top-color: var(--primary);
-        opacity: 0.5;
         flex-shrink: 0;
         @media (prefers-reduced-motion: no-preference) {
-          opacity: 1;
           animation: spin 1s linear infinite;
         }
       }
@@ -444,7 +445,7 @@
           properties.
         </p>
         <div class="controls">
-          <button type="button" id="toggle-layout-btn" aria-pressed="false">
+          <button type="button" id="toggle-layout-btn">
             Switch to List View
           </button>
         </div>
@@ -526,7 +527,7 @@
           hack.
         </p>
         <div class="controls">
-          <button type="button" id="pause-motion-btn" aria-pressed="false">
+          <button type="button" id="pause-motion-btn">
             Pause Animations
           </button>
         </div>
@@ -560,7 +561,6 @@
         const updateLayout = () => {
           const isGrid = cardsContainer.dataset.layout === 'grid';
           cardsContainer.dataset.layout = isGrid ? 'list' : 'grid';
-          toggleLayoutBtn.setAttribute('aria-pressed', String(isGrid));
           toggleLayoutBtn.textContent = isGrid
             ? 'Switch to Grid View'
             : 'Switch to List View';
@@ -581,7 +581,6 @@
         const isPaused = statusRow.dataset.paused === 'true';
         const nextPaused = !isPaused;
         statusRow.dataset.paused = String(nextPaused);
-        pauseMotionBtn.setAttribute('aria-pressed', String(nextPaused));
         pauseMotionBtn.textContent = nextPaused
           ? 'Resume Animations'
           : 'Pause Animations';

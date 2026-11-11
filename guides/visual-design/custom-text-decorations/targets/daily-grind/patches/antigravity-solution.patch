@@ -1,145 +1,156 @@
 diff --git a/index.html b/index.html
-index 66c9173..1827a15 100644
+index 66c9173..81067cd 100644
 --- a/index.html
 +++ b/index.html
-@@ -55,21 +55,44 @@
-       margin-left: 20px;
-     }
+@@ -57,19 +57,61 @@
  
--    nav a {
-+    :where(nav a:not(.logout-link)) {
+     nav a {
        color: white;
 -      text-decoration: none;
-+      text-decoration: underline solid color-mix(in srgb, currentColor, transparent) max(1px, 0.08em);
-+      text-underline-offset: 0.2em;
        font-size: 0.9rem;
        transition: color 0.3s;
      }
  
 -    nav a:hover {
-+    :where(nav a:not(.logout-link):is(:hover, :focus-visible)) {
++    nav a:is(:hover, :focus-visible) {
        color: var(--accent);
+     }
+ 
++    :where(.decorated, nav a:not(.logout-link), .footer-links a, .section-heading, .card h3) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-underline-offset: 0.2em;
++      text-decoration-color: color-mix(in srgb, currentColor, transparent);
++    }
++
++    :where(.decorated:is(:hover, :focus-visible), nav a:not(.logout-link):is(:hover, :focus-visible), .footer-links a:is(:hover, :focus-visible)) {
 +      text-decoration-color: currentColor;
 +      text-decoration-thickness: max(1px, 0.12em);
 +    }
 +
-+    @media (prefers-reduced-motion: no-preference) {
-+      :where(nav a:not(.logout-link)) {
-+        text-decoration-inset: 0 100%;
-+        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
-+      }
-+
-+      :where(nav a:not(.logout-link):is(:hover, :focus-visible)) {
-+        text-decoration-inset: 0 0;
-+      }
-     }
- 
-     .logout-link {
--      border: 1px solid var(--accent);
--      padding: 5px 12px;
--      border-radius: 4px;
-+      color: white;
-+      text-decoration: none;
-+      font-size: 0.9rem;
-+      padding: 0.2em 0.9em;
-+      border: max(2px, 0.08em) solid var(--accent);
-+      border-radius: 0.4em;
-+      corner-shape: bevel;
-+      transition: color 0.3s, border-color 0.3s;
++    .decorated-over {
++      text-decoration-line: overline;
 +    }
 +
-+    .logout-link:is(:hover, :focus-visible) {
-+      color: var(--accent);
++    .decorated-through {
++      text-decoration-line: line-through;
++    }
++
++    .trimmed {
++      text-decoration-inset: var(--deco-inset, 0.1em);
++    }
++
++    .extended {
++      text-decoration-inset: calc(var(--deco-inset, 0.1em) * -1);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .reveal,
++      nav a:not(.logout-link),
++      .footer-links a {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset var(--reveal-duration, 0.25s) ease-out;
++      }
++
++      .reveal:is(:hover, :focus-visible),
++      nav a:not(.logout-link):is(:hover, :focus-visible),
++      .footer-links a:is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      text-decoration: none;
      }
  
      /* Hero Section */
-@@ -100,6 +123,14 @@
+@@ -100,6 +142,14 @@
        padding: 0 20px;
      }
  
-+    :where(.section-heading) {
++    .section-heading {
 +      text-align: center;
 +      color: var(--primary);
-+      text-decoration: underline overline double var(--accent) max(1px, 0.12em);
-+      text-underline-offset: 0.22em;
++      text-decoration: underline overline solid var(--accent) max(1px, 0.12em);
++      text-underline-offset: 0.25em;
 +      text-decoration-inset: -0.15em;
 +    }
 +
      .grid {
        display: grid;
        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-@@ -115,9 +146,12 @@
-       text-align: center;
-     }
- 
--    .card h3 {
-+    :where(.card h3) {
+@@ -118,6 +168,9 @@
+     .card h3 {
        margin-bottom: 10px;
        color: var(--primary);
-+      text-decoration: underline wavy color-mix(in srgb, var(--accent) 70%, currentColor) max(1px, 0.1em);
-+      text-underline-offset: 0.25em;
++      text-decoration: underline wavy var(--accent) max(1px, 0.1em);
++      text-underline-offset: 0.22em;
 +      text-decoration-inset: 0.1em;
      }
  
      .btn {
-@@ -146,11 +180,50 @@
-       margin-bottom: 20px;
-     }
- 
--    .footer-links a {
-+    :where(.footer-links a) {
-+      position: relative;
-+      display: inline-block;
+@@ -149,7 +202,6 @@
+     .footer-links a {
        margin: 0 10px;
        color: var(--text);
-       text-decoration: none;
+-      text-decoration: none;
        font-size: 0.85rem;
-+      padding-block-end: 0.4em;
-+    }
-+
-+    :where(.footer-links a:focus-visible) {
-+      color: var(--primary);
-+    }
-+
-+    .footer-links a::after {
-+      content: "";
-+      position: absolute;
-+      inset: auto 0 0 0;
-+      pointer-events: none;
-+      border-block-end: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
-+    }
-+
-+    @supports (border-shape: circle(50%)) {
-+      .footer-links a::after {
-+        block-size: 0.4em;
-+        border: var(--deco-thickness, max(1px, 0.08em)) solid var(--deco-color, currentColor);
-+        border-shape: shape(from 0% 50%,
-+          curve to 20% 50% with 5% 0% / 15% 100%,
-+          smooth to 40% 50% with 35% 100%,
-+          smooth to 60% 50% with 55% 100%,
-+          smooth to 80% 50% with 75% 100%,
-+          smooth to 100% 50% with 95% 100%);
-+      }
-+    }
-+
-+    @media (prefers-reduced-motion: no-preference) {
-+      .footer-links a::after {
-+        clip-path: inset(-1em 100% -1em 0);
-+        transition: clip-path var(--draw-duration, 0.6s) ease-out;
-+      }
-+
-+      .footer-links a:is(:hover, :focus-visible)::after {
-+        clip-path: inset(-1em 0 -1em 0);
-+      }
      }
    </style>
- </head>
-@@ -176,7 +249,7 @@
+@@ -160,10 +212,10 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" class="decorated reveal">Menu</a></li>
++      <li><a href="/locations" class="decorated reveal">Locations</a></li>
++      <li><a href="/rewards" class="decorated reveal">Rewards</a></li>
++      <li><a href="/account" class="decorated reveal">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -176,20 +228,20 @@
  
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <h2 class="section-heading">Seasonal Favorites</h2>
++      <h2 class="section-heading decorated extended" style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
          <div class="card">
-           <h3>Maple Oat Latte</h3>
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="decorated trimmed">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="decorated trimmed">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="decorated trimmed">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+@@ -199,10 +251,10 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" class="decorated reveal">Our Story</a> |
++      <a href="/careers" class="decorated reveal">Join the Team</a> |
++      <a href="/contact" class="decorated reveal">Contact Us</a> |
++      <a href="/privacy-policy" class="decorated reveal">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>

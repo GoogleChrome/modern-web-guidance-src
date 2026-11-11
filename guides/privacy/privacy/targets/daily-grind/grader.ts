@@ -23,7 +23,13 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { pathToFileURL } from 'url';
-import { SyntaxKind, type Project } from 'ts-morph';
+import {
+  SyntaxKind,
+  type Node,
+  type NoSubstitutionTemplateLiteral,
+  type Project,
+  type StringLiteral,
+} from 'ts-morph';
 import {
   test,
   expect,
@@ -38,21 +44,104 @@ const currentFileUrl = metaUrl || (typeof __filename !== 'undefined' ? pathToFil
 
 const targetFiles: string[] = getTargetFiles(currentFileUrl);
 
+type HeaderNameLiteral = StringLiteral | NoSubstitutionTemplateLiteral;
+
+const CLEAR_SITE_DATA_VALUE_RE = /["']?(cookies|storage|cache|\*|executioncontexts)["']?/i;
+const PERMISSIONS_POLICY_VALUE_RE = /geolocation=\(\)|camera=\(\)|microphone=\(\)/i;
+const REFERRER_POLICY_VALUE_RE = /\b(strict-origin-when-cross-origin|strict-origin|same-origin|no-referrer)\b(?!-when-downgrade)/i;
+
+function getLoadedProject(files: string[]): Project {
+  const project: Project = getJsProject(files);
+  for (const file of files) {
+    if (/\.(m|c)?js$/i.test(file) && !project.getSourceFile(file) && fs.existsSync(file) && !fs.statSync(file).isDirectory()) {
+      project.createSourceFile(file, fs.readFileSync(file, 'utf8'), { overwrite: true });
+    }
+  }
+  return project;
+}
+
+function resolveValueNodeText(node: Node | undefined): string {
+  if (!node) return '';
+  if (node.isKind(SyntaxKind.Identifier)) {
+    const identName = node.getText();
+    const sf = node.getSourceFile();
+    for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+      if (varDecl.getName() === identName) {
+        const init = varDecl.getInitializer();
+        if (init) {
+          return `${node.getText()} ${init.getText()}`;
+        }
+      }
+    }
+  }
+  return node.getText();
+}
+
+function pairedHeaderValueText(nameLiteral: HeaderNameLiteral): string {
+  const parent: Node | undefined = nameLiteral.getParent();
+  if (!parent) return '';
+
+  if (parent.isKind(SyntaxKind.CallExpression)) {
+    const args = parent.getArguments();
+    if (args.length >= 2 && args[0] === nameLiteral) {
+      return args.slice(1).map(a => resolveValueNodeText(a)).join(' ');
+    }
+    return '';
+  }
+  if (parent.isKind(SyntaxKind.PropertyAssignment)) {
+    if (parent.getNameNode() === nameLiteral) return resolveValueNodeText(parent.getInitializer());
+    const obj = parent.getParentIfKind(SyntaxKind.ObjectLiteralExpression);
+    return obj ? obj.getProperties().filter(p => p !== parent).map(p => resolveValueNodeText(p)).join(' ') : '';
+  }
+  if (parent.isKind(SyntaxKind.ArrayLiteralExpression)) {
+    const els = parent.getElements();
+    if (els.length === 2 && els[0] === nameLiteral) {
+      return resolveValueNodeText(els[1]);
+    }
+    return '';
+  }
+  if (parent.isKind(SyntaxKind.ElementAccessExpression)) {
+    const assignment = parent.getParentIfKind(SyntaxKind.BinaryExpression);
+    return assignment ? resolveValueNodeText(assignment.getRight()) : '';
+  }
+  return '';
+}
+
+function isInsideLogoutHandler(node: Node): boolean {
+  for (const ancestor of node.getAncestors()) {
+    if (ancestor.isKind(SyntaxKind.IfStatement)) {
+      if (/logout/i.test(ancestor.getExpression().getText())) return true;
+    }
+    if (ancestor.isKind(SyntaxKind.CaseClause)) {
+      if (/logout/i.test(ancestor.getExpression().getText())) return true;
+    }
+    if (ancestor.isKind(SyntaxKind.CallExpression)) {
+      const exprText = ancestor.getExpression().getText();
+      const firstArg = ancestor.getArguments()[0]?.getText() ?? '';
+      if (/logout/i.test(firstArg) && !/headers?|writehead/i.test(exprText)) return true;
+    }
+    if (ancestor.isKind(SyntaxKind.FunctionDeclaration) || ancestor.isKind(SyntaxKind.VariableDeclaration)) {
+      const name = ancestor.getName?.();
+      if (name && /logout/i.test(name)) return true;
+    }
+  }
+  return false;
+}
+
 function checkClearSiteDataOnLogout(files: string[]): boolean {
   // Check JS/TS server files via ts-morph AST
-  const project: Project = getJsProject(files);
+  const project: Project = getLoadedProject(files);
   for (const sf of project.getSourceFiles()) {
-    const stringLiterals = sf.getDescendantsOfKind(SyntaxKind.StringLiteral);
-    const literalValues = stringLiterals.map(s => s.getLiteralValue());
-    const hasHeader = literalValues.some(v => v.toLowerCase() === 'clear-site-data');
-    const hasLogout = literalValues.some(v => v.toLowerCase().includes('logout'));
-    const validDirectives = ['cookies', 'storage', 'cache', '*', 'executioncontexts'];
-    const hasDirective = literalValues.some(v => {
-      const lower = v.toLowerCase();
-      return validDirectives.some(d => lower.includes(d));
-    });
-    if (hasHeader && hasLogout && hasDirective) {
-      return true;
+    const literals: HeaderNameLiteral[] = [
+      ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+      ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+    ];
+    for (const literal of literals) {
+      if (literal.getLiteralValue().toLowerCase() !== 'clear-site-data') continue;
+      const valueText = pairedHeaderValueText(literal);
+      if (CLEAR_SITE_DATA_VALUE_RE.test(valueText) && isInsideLogoutHandler(literal)) {
+        return true;
+      }
     }
   }
 
@@ -72,9 +161,7 @@ function checkClearSiteDataOnLogout(files: string[]): boolean {
           continue;
         }
         if (inLogoutBlock && /clear-site-data\s*:/i.test(line)) {
-          const val = line.toLowerCase();
-          const validDirectives = ['cookies', 'storage', 'cache', '*', 'executioncontexts'];
-          if (validDirectives.some(d => val.includes(d))) {
+          if (CLEAR_SITE_DATA_VALUE_RE.test(line)) {
             return true;
           }
         }
@@ -86,29 +173,19 @@ function checkClearSiteDataOnLogout(files: string[]): boolean {
 }
 
 function checkPermissionsPolicy(files: string[]): boolean {
-  // Check HTML documents via Linkedom
-  const docs = getHtmlDocuments(files);
-  for (const { document } of docs) {
-    const meta = document.querySelector('meta[http-equiv="Permissions-Policy" i]');
-    if (meta) {
-      const content = meta.getAttribute('content') || '';
-      if (/geolocation=\(\)|camera=\(\)|microphone=\(\)/i.test(content)) {
+  // Permissions-Policy is HTTP-header-only (browsers ignore <meta http-equiv="Permissions-Policy">).
+  // Check JS/TS server files via ts-morph AST
+  const project: Project = getLoadedProject(files);
+  for (const sf of project.getSourceFiles()) {
+    const literals: HeaderNameLiteral[] = [
+      ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+      ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+    ];
+    for (const literal of literals) {
+      if (literal.getLiteralValue().toLowerCase() !== 'permissions-policy') continue;
+      if (PERMISSIONS_POLICY_VALUE_RE.test(pairedHeaderValueText(literal))) {
         return true;
       }
-    }
-  }
-
-  // Check JS/TS server files via ts-morph AST
-  const project: Project = getJsProject(files);
-  for (const sf of project.getSourceFiles()) {
-    const stringLiterals = sf.getDescendantsOfKind(SyntaxKind.StringLiteral);
-    const literalValues = stringLiterals.map(s => s.getLiteralValue());
-    const hasHeader = literalValues.some(v => v.toLowerCase() === 'permissions-policy');
-    const hasRestrictiveDirective = literalValues.some(v =>
-      /geolocation=\(\)|camera=\(\)|microphone=\(\)/i.test(v)
-    );
-    if (hasHeader && hasRestrictiveDirective) {
-      return true;
     }
   }
 
@@ -120,10 +197,8 @@ function checkPermissionsPolicy(files: string[]): boolean {
       const content = fs.readFileSync(file, 'utf8');
       for (const line of content.split(/\r?\n/)) {
         const trimmed = line.trim();
-        if (/permissions-policy\s*:/i.test(trimmed)) {
-          if (/geolocation=\(\)|camera=\(\)|microphone=\(\)/i.test(trimmed)) {
-            return true;
-          }
+        if (/permissions-policy\s*:/i.test(trimmed) && PERMISSIONS_POLICY_VALUE_RE.test(trimmed)) {
+          return true;
         }
       }
     }
@@ -133,38 +208,30 @@ function checkPermissionsPolicy(files: string[]): boolean {
 }
 
 function checkReferrerPolicy(files: string[]): boolean {
-  const privacyPolicies = [
-    'strict-origin-when-cross-origin',
-    'strict-origin',
-    'same-origin',
-    'no-referrer',
-    'no-referrer-when-downgrade',
-  ];
-
-  // Check HTML documents via Linkedom
+  // Check HTML documents via Linkedom (<meta name="referrer"> is valid HTML; http-equiv is ignored)
   const docs = getHtmlDocuments(files);
   for (const { document } of docs) {
-    const meta = document.querySelector('meta[name="referrer" i], meta[http-equiv="Referrer-Policy" i]');
+    const meta = document.querySelector('meta[name="referrer" i]');
     if (meta) {
-      const content = (meta.getAttribute('content') || '').toLowerCase().trim();
-      if (privacyPolicies.some(p => content === p)) {
+      const content = (meta.getAttribute('content') || '').trim();
+      if (REFERRER_POLICY_VALUE_RE.test(content)) {
         return true;
       }
     }
   }
 
   // Check JS/TS server files via ts-morph AST
-  const project: Project = getJsProject(files);
+  const project: Project = getLoadedProject(files);
   for (const sf of project.getSourceFiles()) {
-    const stringLiterals = sf.getDescendantsOfKind(SyntaxKind.StringLiteral);
-    const literalValues = stringLiterals.map(s => s.getLiteralValue());
-    const hasHeader = literalValues.some(v => v.toLowerCase() === 'referrer-policy');
-    const hasPolicy = literalValues.some(v => {
-      const lower = v.toLowerCase().trim();
-      return privacyPolicies.some(p => lower.includes(p));
-    });
-    if (hasHeader && hasPolicy) {
-      return true;
+    const literals: HeaderNameLiteral[] = [
+      ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+      ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+    ];
+    for (const literal of literals) {
+      if (literal.getLiteralValue().toLowerCase() !== 'referrer-policy') continue;
+      if (REFERRER_POLICY_VALUE_RE.test(pairedHeaderValueText(literal))) {
+        return true;
+      }
     }
   }
 
@@ -176,11 +243,8 @@ function checkReferrerPolicy(files: string[]): boolean {
       const content = fs.readFileSync(file, 'utf8');
       for (const line of content.split(/\r?\n/)) {
         const trimmed = line.trim();
-        if (/referrer-policy\s*:/i.test(trimmed)) {
-          const val = trimmed.toLowerCase();
-          if (privacyPolicies.some(p => val.includes(p))) {
-            return true;
-          }
+        if (/referrer-policy\s*:/i.test(trimmed) && REFERRER_POLICY_VALUE_RE.test(trimmed)) {
+          return true;
         }
       }
     }

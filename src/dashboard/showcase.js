@@ -1,10 +1,10 @@
-import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
+import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
 import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
 /** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
@@ -36,6 +36,9 @@ let activeAgentId = AGENT_ORDER[0];
 let checksExpanded = false;
 let taskPillsListenersBound = false;
 let agentPillsListenersBound = false;
+/** Data source the landing page loaded from; carried on links so they open the same copy. */
+/** @type {import('./data-source.js').DataSource | null} */
+let linkSource = null;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 if (rootEl) {
     ensureGuideCategoriesLoaded();
@@ -47,10 +50,11 @@ if (rootEl) {
  * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
  * match the rest of the page and avoid layout shifts.
  * @param {import('./insights.js').ManifestSuite[]} suites
- * @param {{ hydrated?: boolean }} [options]
+ * @param {{ hydrated?: boolean, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateShowcaseFromSuites(suites, { hydrated = false } = {}) {
+export function updateShowcaseFromSuites(suites, { hydrated = false, source } = {}) {
     if (!rootEl) return;
+    if (source) linkSource = source;
     tasks = buildTasksFromRecentSuites(suites);
     if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
         activeTaskId = tasks[0].id;
@@ -116,8 +120,10 @@ function buildTasksFromRecentSuites(suites) {
                 agentId: family.id,
                 agentLabel: family.label,
                 model: suite?.model || '',
+                reasoningEffort: suite?.reasoningEffort,
                 suiteId: suite?.testId || '',
                 date,
+                curated: Boolean(suite?.curated),
                 unguided: toRun(slice.unguided),
                 guided: toRun(slice.guided),
                 checks
@@ -287,8 +293,9 @@ function renderPromptBar(task, pair) {
         promptEl.textContent = task.prompt ? `“${task.prompt}”` : 'Task prompt unavailable.';
     }
     if (metaEl) {
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}`;
+        const sourceQuery = linkSource ? `&source=${encodeURIComponent(linkSource)}` : '';
+        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
@@ -297,7 +304,11 @@ function renderPromptBar(task, pair) {
             return `<a class="ab-prov-link" href="${ghHref}" target="_blank" rel="noopener">${escapeHtml(slug)}</a>`;
         }).join(', ');
         const guidePrefix = cleanGuides.length > 1 ? 'Guides:' : 'Guide:';
-        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (${escapeHtml(pair.model)})</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
+        const effortChipHtml = pair.model
+            ? renderEffortChip(pair.reasoningEffort)
+            : '';
+        const runTypeLabel = pair.curated ? '1.0 baseline run' : 'nightly run';
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${runTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
 /** @param {string} msg

@@ -29,6 +29,7 @@
         background: #0002;
         font-size: 1.25em;
         font-weight: 400;
+        position: relative;
       }
 
       button {
@@ -75,7 +76,7 @@
     /* Styles required for the swipeable navigation drawer component to work */
     @layer drawer {
       .Drawer {
-        --drawer-width: min(20em, 80dvw);
+        --drawer-width: min(20em, 80dvw, 100dvw - 24px);
         --drawer-backdrop: 0;
 
         position: fixed;
@@ -91,7 +92,7 @@
         overflow: visible;
       }
 
-      /* The popover's top-layer backdrop, faded in over the page content as the
+      /* The dialog's top-layer backdrop, faded in over the page content as the
         drawer opens. */
       .Drawer::backdrop {
         background: #000;
@@ -121,6 +122,16 @@
         content: '';
         scroll-snap-align: end;
         scroll-initial-target: nearest;
+      }
+
+      #drawer-title {
+        margin-top: var(--gap);
+      }
+
+      #drawer-close {
+        position: absolute;
+        top: 1em;
+        right: 1em;
       }
 
       .Drawer-sheet {
@@ -169,16 +180,15 @@
   <!-- JS and CSS for this demo -->
   <script type="module">
     // DOM element references.
-    const main = document.querySelector('main');
-
     const drawer = document.getElementById('drawer');
     const openBtn = document.getElementById('drawer-open');
     const scroller = drawer.querySelector('.Drawer-scroller');
     const sheet = drawer.querySelector('.Drawer-sheet');
+    const closeBtn = document.getElementById('drawer-close');
 
     async function openDrawer() {
       // Promote to the top layer before scrolling.
-      drawer.showPopover();
+      drawer.showModal();
 
       // If the browser doesn't support `scroll-initial-target: nearest` then
       // programmatically scroll the drawer out of view before scrolling it into
@@ -198,19 +208,17 @@
     }
 
     function onDrawerOpened() {
-      main.inert = true;
       openBtn.setAttribute('aria-expanded', 'true');
-      sheet.focus();
     }
 
     function onDrawerClosed() {
-      drawer.hidePopover();
-      main.inert = false;
+      drawer.close();
       openBtn.setAttribute('aria-expanded', 'false');
     }
 
     function observeButtonClicks() {
       openBtn.addEventListener('click', () => openDrawer());
+      closeBtn.addEventListener('click', () => closeDrawer());
     }
 
     function observeLightDismiss() {
@@ -222,8 +230,10 @@
     }
 
     function observeEscKeyDismiss() {
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
+      // Escape fires `cancel` on a modal dialog; slide out instead of closing instantly.
+      drawer.addEventListener('cancel', (event) => {
+        if (event.cancelable) {
+          event.preventDefault();
           closeDrawer();
         }
       });
@@ -275,10 +285,17 @@
   </script>
 </head>
 <body>
-  <div class="Drawer" id="drawer" popover="manual">
+  <dialog class="Drawer" id="drawer" aria-labelledby="drawer-title">
     <div class="Drawer-scroller">
-      <nav class="Drawer-sheet" tabindex="-1">
-        <header>Swipe to close</header>
+      <nav class="Drawer-sheet">
+        <header>
+          <h1 id="drawer-title">Swipe to close</h1>
+          <button id="drawer-close" aria-label="Close menu" autofocus>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="#fff" viewBox="0 -960 960 960" aria-hidden="true">
+              <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+            </svg>
+          </button>
+        </header>
         <ul>
           <li><a href="#">Lorem ipsum est</a></li>
           <li><a href="#">dolor sit amet</a></li>
@@ -297,7 +314,7 @@
         </ul>
       </nav>
     </div>
-  </div>
+  </dialog>
 
   <main>
     <header>

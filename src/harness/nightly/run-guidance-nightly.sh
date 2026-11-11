@@ -143,6 +143,28 @@ for agent in $AGENTS_TO_RUN; do
   run_agent "$agent"
 done
 
+# Mirror the newly uploaded suites to the public dashboard. Only from a clean
+# `main` checkout that matches origin/main: a --local run, a feature branch, or
+# local edits would push a local allowlist and scrubber to the live site.
+publish_public_evals() {
+  if [ "$RUN_LOCAL" = "true" ] || [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ] || [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null)" ]; then
+    printf "Public evals not published: requires a clean main checkout synced with origin/main without --local.\n\n" >> "$SUMMARY_FILE"
+    return
+  fi
+  local out status=0
+  out=$(timeout 30m pnpm public:publish 2>&1) || status=$?
+  printf '%s\n' "$out"
+  local summary
+  summary=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | grep -Ev '^(skipped|FAILED| ) ' || true)
+  if [ "$status" -eq 0 ]; then
+    printf "Public evals published.\n%s\n\n" "$(echo "$summary" | tail -2)" >> "$SUMMARY_FILE"
+  else
+    printf "Public evals publish FAILED (exit %s).\n%s\n\n" "$status" "$(echo "$summary" | tail -10)" >> "$SUMMARY_FILE"
+    FAILED=1
+  fi
+}
+publish_public_evals
+
 echo "Guidance ${PREFIX} run completed."
 if [ "$FAILED" -ne 0 ]; then
   exit 1

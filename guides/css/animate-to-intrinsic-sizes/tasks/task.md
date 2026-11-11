@@ -1,4 +1,1 @@
----
-base_app: daily-grind
----
-- i'm building an accordion for our faq page and i want it to animate smoothly when it opens. use `#faq-trigger` for the button that opens it and `#faq-content` for the content section. i also need a promo alert at the top of the page that can be dismissed and smoothly collapses to zero height. use `#promo-alert` for the alert container and `#alert-dismiss` for its close button. avoid javascript, if possible.
+- Build an accordion for an FAQ section (using #faq-trigger and #faq-content) and a dismissible promo alert at the top of the page (using #promo-alert and #alert-dismiss) that smoothly animates between collapsed dimensions and natural content height when opened or dismissed.

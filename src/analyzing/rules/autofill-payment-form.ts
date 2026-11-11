@@ -5,7 +5,7 @@ import type {
   DomRuleMatcher,
 } from '../schema.ts';
 
-export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = '2548c8a287fc';
+export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = 'b673d8824bbc';
 
 const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
