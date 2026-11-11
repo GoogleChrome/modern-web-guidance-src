@@ -13,6 +13,8 @@ Related environment variables can be set at `<repo_root>/.env`.
 
 Evaluation results are uploaded automatically to the dashboard and can be viewed at `go/guidance-evals`. After all agents finish, the run also calls `pnpm public:publish` to mirror the new suites to the public dashboard (see `src/harness/public/RUNBOOK.md`); its outcome is included in the summary email.
 
+**GitHub CLI requirement for public publishing:** When running on `main`, the post-run publishing step runs `pnpm public:publish` and dispatches the GitHub Pages deployment workflow. This requires `gh` CLI to be installed and authenticated (`gh auth login` with `workflow` scope). The script checks `gh auth status` at startup and will fail fast before running agents if authentication is missing.
+
 ## 2. Generating the Cron Job Entry
 Please run all the following commands from within the `src/harness/nightly/` directory.
 
