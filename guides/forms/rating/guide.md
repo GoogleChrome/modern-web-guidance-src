@@ -57,7 +57,8 @@ Make the input invisible (`opacity: 0`), stretch it over the stars, and collapse
 <span class="rating" id="rating-wrap">
   <input type="range" id="rate" min="0" max="5" step="0.5" value="0" />
 </span>
-<output for="rate" id="rate-out">Not rated</output>
+<!-- Hidden from assistive technology: <output> is a live region, so it would announce every change a second time. The range's aria-valuetext already speaks the value. -->
+<output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
 ```
 
 ```css
