@@ -11,7 +11,10 @@
       --surface: Canvas;
       --ink: CanvasText;
       --line: color-mix(in srgb, CanvasText, transparent 75%);
+      --inactive-button: #666666;
       --accent: #0a5;
+      --minimum-target-size: 24px;
+      --marker-button-diameter: 0.8rem;
     }
 
     * {
@@ -133,18 +136,40 @@
       margin-block-start: 0.75rem;
     }
 
+    /* We hide styling on the button, just using it to ensure that it meets minimum target size for WCAG 2.5.8 Target Size */
     .carousel-markers button {
-      inline-size: 0.8rem;
-      block-size: 0.8rem;
-      padding: 0;
-      border-radius: 50%;
+      background: none;
       border: none;
-      background: var(--line);
       cursor: pointer;
+      min-inline-size: var(--minimum-target-size);
+      min-block-size: var(--minimum-target-size);
+      position: relative;
+      outline: none;
     }
 
-    .carousel-markers button[aria-current="true"] {
+    /* Apply visible styling to the after pseudo element, positioned inside the appropriately sized button */
+    .carousel-markers button::after {
+      background: var(--inactive-button);
+      block-size: var(--marker-button-diameter);
+      border-radius: 50%;
+      border: 0.1rem solid transparent;
+      content: " ";
+      inline-size: var(--marker-button-diameter);
+      left: calc(var(--minimum-target-size) / 2 - var(--marker-button-diameter) / 2);
+      padding: 0;
+      position: absolute;
+      top: calc(var(--minimum-target-size) / 2 - var(--marker-button-diameter) / 2);
+    }
+
+    /* Make the pseudo element also visibly display when it's focused */
+    .carousel-markers button:focus-visible::after {
+      outline: 0.2rem solid #f90;
+      outline-offset: 0.15rem;
+    }
+
+    .carousel-markers button[aria-current="true"]::after {
       background: var(--accent);
+      box-shadow: 0 0 0 0.1em #000, 0 0 0 0.2em #fff;
     }
 
     .carousel-track,
@@ -290,8 +315,6 @@
       track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
       requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
-      // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
-      slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
       // Safari keeps the scroll-driven fade at its old progress after the instant scroll; restart it
       slides.forEach((s) => s.getAnimations().forEach((a) => { a.cancel(); a.play(); }));
     }
@@ -313,6 +336,11 @@
       mark(item);
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
+      if (prevBtn.disabled) {
+        nextBtn.focus();
+      } else if (nextBtn.disabled) {
+        prevBtn.focus();
+      }
     }
 
     onSettled(sync);

@@ -11,6 +11,7 @@
       --surface: Canvas;
       --ink: CanvasText;
       --line: color-mix(in srgb, CanvasText, transparent 75%);
+      --inactive-button: #666666;
       --accent: #0a5;
     }
 
@@ -137,7 +138,7 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 1rem;
     }
 
     .carousel-markers button {
@@ -145,13 +146,14 @@
       block-size: 0.8rem;
       padding: 0;
       border-radius: 50%;
-      border: none;
-      background: var(--line);
+      border: 0.1rem solid transparent;
+      background: var(--inactive-button);
       cursor: pointer;
     }
 
     .carousel-markers button[aria-current="true"] {
       background: var(--accent);
+      box-shadow: 0 0 0 0.1em #000, 0 0 0 0.2em #fff;
     }
 
     .carousel-track,
@@ -316,6 +318,11 @@
       mark(item);
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
+      if (prevBtn.disabled) {
+        nextBtn.focus();
+      } else if (nextBtn.disabled) {
+        prevBtn.focus();
+      }
     }
 
     onSettled(sync);
