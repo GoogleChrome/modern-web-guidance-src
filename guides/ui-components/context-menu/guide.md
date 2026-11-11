@@ -106,7 +106,7 @@ card.addEventListener('mouseup', (e) => {
 
 ### 3. Method B: Visible Menu Button (Element-Anchored)
 
-For touch users or general discovery, add a visible button that toggles the same popover. Use the `command` and `commandfor` attributes for a declarative approach. Place the popover element immediately after this `<button>`.
+For touch users or general discovery, add a visible button that toggles the same popover. Use the `command` and `commandfor` attributes for a declarative approach. Place the popover element immediately after this `<button>`. The button must be a minimum size of 24 by 24 CSS pixels if it is positioned directly on top of interactive content. If the button is not positioned on top of interactive content, there must not be any interactive elements within a 12 pixel radius, and this must not intersect the 24 CSS pixel diameter circle of other undersized targets.
 
 ```html
 <button type="button" 
