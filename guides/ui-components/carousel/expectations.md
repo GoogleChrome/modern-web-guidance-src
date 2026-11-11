@@ -10,7 +10,6 @@
 - While the first slide is current, the last slide has a computed `order` of -1.
 - While the last slide is current, the first slide has a computed `order` of 1.
 - Slides other than a parked end slide have a computed `order` of 0.
-- A parked slide is `inert` while it is parked.
 - Looping does not change the DOM order of the slides.
 - The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
 - Interactive carousel controls and marker buttons have a visible `:focus-visible` indicator.

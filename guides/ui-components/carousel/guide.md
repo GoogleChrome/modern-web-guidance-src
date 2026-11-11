@@ -187,5 +187,3 @@ Loop previous and next navigation from the last slide to the first and back by k
   order: calc(-1 * clamp(0, 2 - var(--current), 1));
 }
 ```
-
-Accessibility trade-offs: only the first and last slides are ever parked and a parked slide is inert, so Tab order and the accessibility tree match what the user can interact with.
