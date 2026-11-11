@@ -122,7 +122,6 @@
       <option value="Montreal" data-region="americas"></option>
       <option value="New York" data-region="americas"></option>
     </datalist>
-    <ul id="city-listbox" popover="manual" role="listbox" aria-labelledby="city-label"></ul>
     <p id="city-status" class="sr-only" role="status"></p>
   </fieldset>
   </search>
@@ -140,7 +139,6 @@
 
   const input = document.getElementById('city');
   const datalist = document.getElementById('cities');
-  const listbox = document.getElementById('city-listbox');
   const status = document.getElementById('city-status');
   const region = document.getElementById('region');
 
@@ -154,6 +152,14 @@
 
     input.removeAttribute('list');
     datalist.remove();
+
+    // Created only when enhanced so browsers without popover support never render an empty list.
+    const listbox = document.createElement('ul');
+    listbox.id = 'city-listbox';
+    listbox.setAttribute('popover', 'manual');
+    listbox.setAttribute('role', 'listbox');
+    listbox.setAttribute('aria-labelledby', 'city-label');
+    input.after(listbox);
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-autocomplete', 'list');
     input.setAttribute('aria-controls', 'city-listbox');

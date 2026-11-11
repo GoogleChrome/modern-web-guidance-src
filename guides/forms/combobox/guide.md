@@ -42,7 +42,7 @@ Use semantic elements, not generic `<div>`/`<span>` wrappers:
 
 * A real `<label>` linked to the `<input>`. Add help text with `aria-describedby`.
 * The `<input type="text">` carries `role="combobox"`, `aria-controls` pointing at the listbox, `aria-expanded` (`true` only while the popup is shown), and `aria-autocomplete="list"`.
-* The popup is a `<ul role="listbox">` with `<li role="option">` children, labeled with `aria-labelledby` pointing at the visible label.
+* The popup is a `<ul role="listbox">` with `<li role="option">` children, labeled with `aria-labelledby` pointing at the visible label. Create it from script only when enhancing, so browsers without popover support never render an empty list.
 * Keep DOM focus on the input at all times. Indicate the highlighted option with `aria-activedescendant` on the input (set to the option's `id`) and `aria-selected="true"` on that option. Never move focus into the list.
 * Remove the `list` attribute when enhancing, so the native datalist popup does not appear on top of the custom one.
 
