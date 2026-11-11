@@ -1,16 +1,26 @@
 diff --git a/index.html b/index.html
-index 66c9173..81a6332 100644
+index 66c9173..d6c8de1 100644
 --- a/index.html
 +++ b/index.html
-@@ -12,6 +12,18 @@
+@@ -12,6 +12,28 @@
        --accent: #ffab40;
        --text: #3e2723;
        --light: #fafafa;
++
++      /* Derived palette (color-mix interpolated in oklch/oklab) */
++      --accent-deep: color-mix(in oklch, var(--accent), #bf360c 45%);
++      --accent-glow: color-mix(in oklab, var(--accent), white 35%);
++      --primary-soft: color-mix(in oklab, var(--primary), white 25%);
++      --shadow-color: 25deg 40% 18%;
++
++      /* Flavor-profile chart colors */
++      --flavor-sweet: var(--accent);
++      --flavor-bold: var(--primary);
++      --flavor-smooth: color-mix(in oklab, var(--secondary), #a1887f 50%);
++
++      /* Gradient interpolation tokens (empty in browsers without support) */
 +      --in-oklab: ;
 +      --in-oklch: ;
-+      --pie-1: #4e342e;
-+      --pie-2: #ffab40;
-+      --pie-3: #8d6e63;
 +    }
 +
 +    @supports (background: linear-gradient(in oklab, white, black)) {
@@ -21,150 +31,278 @@ index 66c9173..81a6332 100644
      }
  
      * {
-@@ -75,10 +87,15 @@
+@@ -74,9 +96,15 @@
+ 
      /* Hero Section */
      .hero {
++      position: relative;
++      isolation: isolate;
        height: 60vh;
 -      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+      isolation: isolate;
-+      background-color: #3e2723;
++      background-color: var(--primary);
 +      background-image:
-+        repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.05) 0 1em, transparent 0 2em),
-+        linear-gradient(to bottom var(--in-oklab), rgba(62, 39, 35, 0.45), rgba(20, 10, 8, 0.8)),
++        linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)),
++        linear-gradient(to bottom right var(--in-oklab), var(--accent-glow), var(--primary)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
--      background-size: cover;
--      background-position: center;
 +      background-blend-mode: normal, multiply, normal;
-+      background-size: auto, auto, cover;
-+      background-position: 0 0, center, center;
+       background-size: cover;
+       background-position: center;
        display: flex;
-       flex-direction: column;
-       justify-content: center;
-@@ -111,8 +128,69 @@
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
--      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      box-shadow:
-+        0 1px 1px rgba(0, 0, 0, 0.08),
-+        0 2px 2px rgba(0, 0, 0, 0.08),
-+        0 4px 4px rgba(0, 0, 0, 0.08),
-+        0 8px 8px rgba(0, 0, 0, 0.08),
-+        0 16px 16px rgba(0, 0, 0, 0.08);
-       text-align: center;
-+      overflow: hidden;
+@@ -88,6 +116,30 @@
+       padding: 0 20px;
+     }
+ 
++    /* Warm lighting overlay, blended only within the hero (isolation above) */
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      background: radial-gradient(circle at 25% 20% var(--in-oklab),
++          color-mix(in oklab, var(--accent), white 20%) 0%,
++          color-mix(in oklab, var(--accent), transparent 60%) 40%,
++          transparent 75%);
++      mix-blend-mode: soft-light;
++      pointer-events: none;
 +    }
 +
-+    .card::before {
++    /* Decorative diagonal stripe band along the bottom edge of the hero */
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0;
++      height: 10px;
++      background: repeating-linear-gradient(-45deg, var(--accent) 0 10px, var(--primary) 0 20px);
++      pointer-events: none;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -107,12 +159,141 @@
+       margin-top: 20px;
+     }
+ 
++    /* Decorative polka-dot accent under the section heading */
++    .section-title {
++      text-align: center;
++    }
++
++    .section-title::after {
++      --distance: 6px;
++      --radius: 2px;
++      --polka: radial-gradient(circle, var(--accent) var(--radius), transparent calc(var(--radius) + 1px));
 +      content: "";
 +      display: block;
-+      height: 14px;
-+      margin: -20px -20px 16px;
-+      background: repeating-conic-gradient(var(--primary) 0 25%, var(--accent) 0 50%) 0 / 14px 14px;
++      width: 120px;
++      height: 12px;
++      margin: 8px auto 0;
++      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
 +    }
 +
-+    .grid {
-+      padding: 20px;
-+      border-radius: 12px;
-+      --dot: radial-gradient(circle, rgba(78, 52, 46, 0.18) 2px, transparent 3px);
-+      background: var(--dot) 0 0, var(--dot) 12px 12px, var(--secondary);
-+      background-size: 24px 24px;
+     .card {
++      position: relative;
++      overflow: hidden;
+       background: white;
+-      padding: 20px;
++      padding: 28px 20px 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      /* Layered shadows for soft, realistic depth */
++      box-shadow:
++        0 1px 1px hsl(var(--shadow-color) / 0.08),
++        0 2px 4px hsl(var(--shadow-color) / 0.08),
++        0 6px 12px hsl(var(--shadow-color) / 0.08),
++        0 14px 28px hsl(var(--shadow-color) / 0.1);
++      transition: transform 0.3s, box-shadow 0.3s;
 +    }
 +
-+    .stripes {
-+      height: 6px;
-+      margin: 12px 0;
-+      background: linear-gradient(to right, var(--accent) 50%, var(--primary) 0) 0 / 12px;
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow:
++        0 1px 2px hsl(var(--shadow-color) / 0.08),
++        0 4px 8px hsl(var(--shadow-color) / 0.08),
++        0 10px 20px hsl(var(--shadow-color) / 0.1),
++        0 24px 48px hsl(var(--shadow-color) / 0.14);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .card {
++        transition: none;
++      }
++
++      .card:hover {
++        transform: none;
++      }
++    }
++
++    /* Decorative checkerboard strip along the top of each card */
++    .card::before {
++      content: "";
++      position: absolute;
++      inset: 0 0 auto;
++      height: 8px;
++      background: repeating-conic-gradient(var(--primary) 0 25%, var(--secondary) 0 50%) 0 / 8px 8px;
++    }
++
++    /* Flavor-profile pie chart */
++    .flavor {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-top: 15px;
++    }
++
++    .flavor figcaption {
++      flex-basis: 100%;
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--primary-soft);
 +    }
 +
 +    .pie {
-+      width: 90px;
++      --sweet: 33%;
++      --bold: 33%;
++      width: 72px;
 +      aspect-ratio: 1;
 +      border-radius: 50%;
-+      margin: 12px auto 8px;
-+      background: conic-gradient(var(--pie-1) 0 var(--a), var(--pie-2) 0 calc(var(--a) + var(--b)), var(--pie-3) 0);
++      background:
++        conic-gradient(var(--flavor-sweet) var(--sweet),
++          var(--flavor-bold) 0 calc(var(--sweet) + var(--bold)),
++          transparent 0%) var(--flavor-smooth);
++      /* drop-shadow follows the circular shape */
++      filter: drop-shadow(0 2px 3px hsl(var(--shadow-color) / 0.3));
 +    }
 +
-+    .flavor {
-+      font-size: 0.8rem;
-+      border-collapse: collapse;
-+      margin: 0 auto;
-+    }
-+
-+    .flavor caption {
-+      font-weight: bold;
-+      margin-bottom: 4px;
-+    }
-+
-+    .flavor th,
-+    .flavor td {
-+      padding: 1px 8px;
++    .flavor-legend {
 +      text-align: left;
++      font-size: 0.85rem;
 +    }
 +
-+    .flavor .sw {
++    .flavor-legend div {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .flavor-legend dt::before {
++      content: "";
 +      display: inline-block;
-+      width: 0.7em;
-+      height: 0.7em;
-+      margin-right: 4px;
-+      border-radius: 50%;
++      width: 0.75em;
++      height: 0.75em;
++      margin-right: 6px;
++      border-radius: 2px;
++      vertical-align: -0.05em;
++      background: var(--swatch);
++    }
++
++    .flavor-legend dt::after {
++      content: ":";
++    }
++
++    .flavor-legend dd {
++      font-weight: bold;
++    }
++
++    .flavor-legend .sweet {
++      --swatch: var(--flavor-sweet);
++    }
++
++    .flavor-legend .bold {
++      --swatch: var(--flavor-bold);
++    }
++
++    .flavor-legend .smooth {
++      --swatch: var(--flavor-smooth);
      }
  
      .card h3 {
-@@ -122,7 +200,8 @@
- 
-     .btn {
-       display: inline-block;
--      background: var(--primary);
-+      background: linear-gradient(to bottom var(--in-oklab), #6d4c41, var(--primary));
-+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
-       color: white;
-       padding: 10px 20px;
-       text-decoration: none;
-@@ -132,7 +211,7 @@
+@@ -135,8 +316,25 @@
+       background: #3e2723;
      }
  
-     .btn:hover {
--      background: #3e2723;
-+      background: linear-gradient(to bottom var(--in-oklab), #5d4037, #3e2723);
-     }
- 
++    .btn-order {
++      color: var(--text);
++      font-weight: bold;
++      background: linear-gradient(135deg var(--in-oklch), var(--accent-glow), var(--accent) 50%, var(--accent-deep));
++      box-shadow:
++        0 1px 2px hsl(var(--shadow-color) / 0.25),
++        0 4px 10px hsl(var(--shadow-color) / 0.3);
++    }
++
++    .btn-order:hover {
++      background: linear-gradient(135deg var(--in-oklch), var(--accent), var(--accent-deep));
++    }
++
      footer {
-@@ -181,16 +260,37 @@
+-      background: var(--secondary);
++      --distance: 14px;
++      --radius: 2px;
++      --polka: radial-gradient(circle, color-mix(in oklab, var(--secondary), var(--primary) 15%) var(--radius), transparent calc(var(--radius) + 1px));
++      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--secondary);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -171,26 +369,53 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+          <div class="pie" style="--a:40%;--b:35%" aria-hidden="true"></div>
-+          <table class="flavor">
-+            <caption>Flavor profile</caption>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-1)"></span>Sweet</th><td>40%</td></tr>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-2)"></span>Creamy</th><td>35%</td></tr>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-3)"></span>Nutty</th><td>25%</td></tr>
-+          </table>
++          <figure class="flavor">
++            <figcaption>Flavor profile</figcaption>
++            <div class="pie" style="--sweet: 45%; --bold: 15%;" aria-hidden="true"></div>
++            <dl class="flavor-legend">
++              <div><dt class="sweet">Sweet</dt><dd>45%</dd></div>
++              <div><dt class="bold">Bold</dt><dd>15%</dd></div>
++              <div><dt class="smooth">Smooth</dt><dd>40%</dd></div>
++            </dl>
++          </figure>
            <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
          <div class="card">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
-+          <div class="pie" style="--a:50%;--b:30%" aria-hidden="true"></div>
-+          <table class="flavor">
-+            <caption>Flavor profile</caption>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-1)"></span>Bold</th><td>50%</td></tr>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-2)"></span>Smoky</th><td>30%</td></tr>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-3)"></span>Bitter</th><td>20%</td></tr>
-+          </table>
++          <figure class="flavor">
++            <figcaption>Flavor profile</figcaption>
++            <div class="pie" style="--sweet: 10%; --bold: 70%;" aria-hidden="true"></div>
++            <dl class="flavor-legend">
++              <div><dt class="sweet">Sweet</dt><dd>10%</dd></div>
++              <div><dt class="bold">Bold</dt><dd>70%</dd></div>
++              <div><dt class="smooth">Smooth</dt><dd>20%</dd></div>
++            </dl>
++          </figure>
            <a href="/menu/espresso" class="btn">View Details</a>
          </div>
          <div class="card">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
-+          <div class="pie" style="--a:45%;--b:35%" aria-hidden="true"></div>
-+          <table class="flavor">
-+            <caption>Flavor profile</caption>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-1)"></span>Smooth</th><td>45%</td></tr>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-2)"></span>Chocolatey</th><td>35%</td></tr>
-+            <tr><th scope="row"><span class="sw" style="background:var(--pie-3)"></span>Acidic</th><td>20%</td></tr>
-+          </table>
++          <figure class="flavor">
++            <figcaption>Flavor profile</figcaption>
++            <div class="pie" style="--sweet: 20%; --bold: 30%;" aria-hidden="true"></div>
++            <dl class="flavor-legend">
++              <div><dt class="sweet">Sweet</dt><dd>20%</dd></div>
++              <div><dt class="bold">Bold</dt><dd>30%</dd></div>
++              <div><dt class="smooth">Smooth</dt><dd>50%</dd></div>
++            </dl>
++          </figure>
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>

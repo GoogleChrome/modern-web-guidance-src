@@ -1,35 +1,35 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..178135c
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1 @@
-+/dist/
 diff --git a/index.html b/index.html
-index 66c9173..5536cb5 100644
+index 66c9173..66a84a6 100644
 --- a/index.html
 +++ b/index.html
-@@ -12,6 +12,19 @@
+@@ -12,6 +12,17 @@
        --accent: #ffab40;
        --text: #3e2723;
        --light: #fafafa;
 +      --in-oklab: ;
-+      --in-oklch: ;
-+      --flavor-sweet: #b76a20;
-+      --flavor-roast: #4e342e;
-+      --flavor-creamy: #ead5b1;
++      --cream: #fff3df;
++      --flavor-sweet: #ad591d;
++      --flavor-creamy: #edc980;
++      --flavor-roasted: #51342b;
 +    }
 +
-+    @supports (background: linear-gradient(to right in oklab, white, black)) {
-+      :root { --in-oklab: in oklab; }
-+    }
-+
-+    @supports (background: linear-gradient(to right in oklch, white, black)) {
-+      :root { --in-oklch: in oklch; }
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++      }
      }
  
      * {
-@@ -74,9 +87,13 @@
+@@ -24,7 +35,7 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: #fbf7f0;
+     }
+ 
+     /* Navigation */
+@@ -74,9 +85,13 @@
  
      /* Hero Section */
      .hero {
@@ -38,252 +38,232 @@ index 66c9173..5536cb5 100644
 +      position: relative;
 +      isolation: isolate;
 +      min-height: 60vh;
-+      background-color: #34231f;
-+      background-image: linear-gradient(to bottom var(--in-oklab), #291a16e6, #513124d9),
++      background-color: var(--primary);
++      background-image: linear-gradient(115deg var(--in-oklab), #684027, #291d1c),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-+      background-blend-mode: multiply, normal;
++      background-blend-mode: multiply;
        background-size: cover;
        background-position: center;
        display: flex;
-@@ -85,12 +102,39 @@
+@@ -85,11 +100,29 @@
        align-items: center;
        color: white;
        text-align: center;
 -      padding: 0 20px;
-+      padding: 70px 20px;
++      padding: 60px 20px;
 +    }
 +
 +    .hero::before {
 +      content: "";
 +      position: absolute;
 +      inset: 0;
-+      z-index: -1;
++      background: radial-gradient(ellipse at 20% 10% var(--in-oklab), #ffce89, transparent 75%);
++      mix-blend-mode: soft-light;
 +      pointer-events: none;
-+      background:
-+        radial-gradient(ellipse at 15% 10% var(--in-oklch), #c97935a6, #c9793500 65%),
-+        linear-gradient(115deg var(--in-oklab), #b5632b33, #56352a00 55%, #d9a26240);
-+      mix-blend-mode: screen;
 +    }
 +
-+    .hero::after {
-+      content: "";
-+      position: absolute;
-+      inset: auto 0 0;
-+      height: 12px;
-+      pointer-events: none;
-+      background: repeating-linear-gradient(135deg, #d4a46b 0 8px, #795137 0 16px);
++    .hero > * {
++      position: relative;
++    }
++
++    .hero h1,
++    .hero p {
++      text-shadow: 0 2px 8px #20130f;
      }
  
      .hero h1 {
-       font-size: 3rem;
+-      font-size: 3rem;
++      font-size: clamp(2.25rem, 6vw, 3.75rem);
        margin-bottom: 1rem;
-+      text-shadow: 0 2px 4px #21140dcc, 0 6px 24px #21140d80;
-+    }
-+
-+    .hero p {
-+      max-width: 42rem;
-+      text-shadow: 0 1px 4px #21140d;
      }
  
-     /* Content Sections */
-@@ -108,13 +152,76 @@
+@@ -100,19 +133,37 @@
+       padding: 0 20px;
+     }
+ 
++    .container h2 {
++      text-align: center;
++      font-size: 2rem;
++    }
++
++    .container h2::after {
++      content: "";
++      display: block;
++      width: 88px;
++      height: 8px;
++      margin: 12px auto 28px;
++      background: repeating-linear-gradient(-45deg var(--in-oklab), #ad591d 0 3px, transparent 0 7px);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      gap: 28px;
+       margin-top: 20px;
      }
  
      .card {
--      background: white;
-+      position: relative;
-+      background: #fffdf8;
-       padding: 20px;
+       background: white;
+-      padding: 20px;
 -      border-radius: 8px;
 -      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      border: 1px solid #ece1d4;
-+      border-radius: 12px;
-+      box-shadow:
-+        0 1px 2px #38231814,
-+        0 4px 8px -2px #3823181a,
-+        0 12px 20px -8px #38231826,
-+        0 24px 36px -18px #38231833;
++      padding: 28px 24px;
++      border: 1px solid #e9ddd0;
++      border-radius: 16px;
++      box-shadow: 0 2px 4px #4e342e0a, 0 8px 16px #4e342e0d, 0 20px 36px -16px #4e342e38;
        text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
      }
  
-+    .card::before {
-+      content: "";
-+      display: block;
-+      height: 24px;
-+      margin-bottom: 12px;
-+      background: radial-gradient(circle, #b48b5659 2px, transparent 3px) center / 12px 12px;
+     .card h3 {
+@@ -135,6 +186,90 @@
+       background: #3e2723;
+     }
+ 
++    .hero .btn {
++      background: linear-gradient(135deg var(--in-oklab), #ffd397, #f0a342);
++      color: #352019;
++      font-weight: 700;
++      padding: 12px 28px;
++      border: 1px solid #ffe1b6;
++      border-radius: 999px;
++      box-shadow: 0 2px 3px #0002, 0 8px 20px #1e120f66;
++    }
++
++    .hero .btn:hover {
++      background: linear-gradient(135deg var(--in-oklab), #ffe2b9, #ffc16f);
++    }
++
++    a:focus-visible {
++      outline: 3px solid #ad591d;
++      outline-offset: 5px;
++    }
++
++    nav a:focus-visible,
++    .hero a:focus-visible {
++      outline-color: var(--cream);
 +    }
 +
 +    .flavor-profile {
-+      display: flex;
-+      align-items: center;
-+      justify-content: center;
-+      gap: 16px;
-+      margin-top: 20px;
++      width: 100%;
++      margin: auto 0 0;
++      padding-top: 24px;
 +    }
 +
-+    .flavor-pie {
-+      flex: 0 0 76px;
++    .flavor-profile figcaption {
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .flavor-chart {
 +      width: 76px;
 +      aspect-ratio: 1;
 +      border-radius: 50%;
-+      background: conic-gradient(from -90deg,
++      margin: 0 auto 14px;
++      background: conic-gradient(from -90deg var(--in-oklab),
 +        var(--flavor-sweet) 0 var(--sweet),
-+        var(--flavor-roast) 0 var(--roast-end),
-+        var(--flavor-creamy) 0 100%);
++        var(--flavor-creamy) 0 var(--creamy-end),
++        var(--flavor-roasted) 0 100%);
++      box-shadow: 0 0 0 4px #fff, 0 3px 10px #4e342e26;
 +    }
 +
-+    .maple { --sweet: 45%; --roast-end: 65%; }
-+    .espresso { --sweet: 10%; --roast-end: 90%; }
-+    .cold-brew { --sweet: 25%; --roast-end: 90%; }
-+
-+    .flavor-profile table {
-+      border-collapse: collapse;
-+      font-size: 0.75rem;
-+      text-align: left;
++    .flavor-breakdown {
++      font-size: 0.8rem;
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 8px 14px;
 +    }
 +
-+    .flavor-profile caption {
-+      font-weight: 700;
-+      text-align: left;
-+      margin-bottom: 4px;
-+    }
-+
-+    .flavor-profile th, .flavor-profile td { padding: 1px 5px; }
-+    .flavor-profile tbody th { font-weight: 400; }
-+    .flavor-profile td { text-align: right; }
-+    .flavor-profile tbody th::before {
++    .flavor-breakdown dt::before {
 +      content: "";
 +      display: inline-block;
 +      width: 8px;
 +      height: 8px;
++      border-radius: 50%;
 +      margin-right: 5px;
 +      background: var(--flavor-sweet);
 +    }
-+    .flavor-profile tbody tr:nth-child(2) th::before { background: var(--flavor-roast); }
-+    .flavor-profile tbody tr:nth-child(3) th::before { background: var(--flavor-creamy); }
 +
-     .card h3 {
-       margin-bottom: 10px;
-       color: var(--primary);
-@@ -122,21 +229,60 @@
- 
-     .btn {
-       display: inline-block;
--      background: var(--primary);
-+      position: relative;
-+      isolation: isolate;
-+      background: linear-gradient(120deg var(--in-oklab), #704332, #4e342e 65%, #38251f);
-       color: white;
-       padding: 10px 20px;
-       text-decoration: none;
-       border-radius: 5px;
-       margin-top: 15px;
--      transition: background 0.3s;
-+      box-shadow: 0 1px 2px #26180d33, 0 4px 8px -3px #26180d40;
-+      transition: box-shadow 0.2s;
++    .flavor-breakdown .creamy dt::before { background: var(--flavor-creamy); }
++    .flavor-breakdown .roasted dt::before { background: var(--flavor-roasted); }
++
++    .profile-note {
++      text-align: center;
++      font-size: 0.8rem;
++      margin-top: 24px;
 +    }
 +
-+    .btn::before {
-+      content: "";
-+      position: absolute;
-+      inset: 0;
-+      border-radius: inherit;
-+      pointer-events: none;
-+      background: linear-gradient(to bottom var(--in-oklab), #ffd5a42e, #ffd5a400 65%);
-+      mix-blend-mode: screen;
-+    }
-+
-+    .btn:hover, .btn:focus-visible {
-+      box-shadow: 0 2px 4px #26180d40, 0 8px 16px -4px #26180d66;
-+    }
-+
-+    a:focus-visible {
-+      outline: 3px solid #b76a20;
-+      outline-offset: 4px;
-+    }
-+
-+    .hero .btn {
-+      color: #302016;
-+      font-weight: 700;
-+      background: linear-gradient(110deg var(--in-oklch), #ffe0a1, #edb55f 55%, #d99a48);
-+    }
-+
-+    nav a:focus-visible, .hero a:focus-visible { outline-color: #ffe0a1; }
-+
-+    @media (prefers-reduced-motion: reduce) {
-+      .btn, nav a { transition: none; }
-     }
- 
--    .btn:hover {
--      background: #3e2723;
 +    @media (max-width: 640px) {
-+      nav { flex-wrap: wrap; gap: 12px; }
-+      nav ul { flex-wrap: wrap; gap: 12px 16px; }
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
 +      nav ul li { margin-left: 0; }
-+      .hero h1 { font-size: 2.4rem; }
-     }
- 
++      .grid { grid-template-columns: minmax(0, 1fr); }
++    }
++
      footer {
        background: var(--secondary);
-+      background-image: repeating-conic-gradient(#c9b8ad45 0 25%, transparent 0 50%);
-+      background-size: 24px 24px;
        text-align: center;
-       padding: 40px 20px;
-       margin-top: 40px;
-@@ -181,16 +327,52 @@
+@@ -176,24 +311,52 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+          <div class="flavor-profile">
-+            <div class="flavor-pie maple" aria-hidden="true"></div>
-+            <table>
-+              <caption>Maple Oat Latte flavor profile</caption>
-+              <thead><tr><th scope="col">Flavor</th><th scope="col">Share</th></tr></thead>
-+              <tbody>
-+                <tr><th scope="row">Sweet</th><td>45%</td></tr>
-+                <tr><th scope="row">Roasted</th><td>20%</td></tr>
-+                <tr><th scope="row">Creamy</th><td>35%</td></tr>
-+              </tbody>
-+            </table>
-+          </div>
++          <figure class="flavor-profile">
++            <figcaption>Flavor profile</figcaption>
++            <div class="flavor-chart" style="--sweet: 40%; --creamy-end: 85%;" aria-hidden="true"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet</dt><dd>40%</dd></div>
++              <div class="creamy"><dt>Creamy</dt><dd>45%</dd></div>
++              <div class="roasted"><dt>Roasted</dt><dd>15%</dd></div>
++            </dl>
++          </figure>
            <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
          <div class="card">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
-+          <div class="flavor-profile">
-+            <div class="flavor-pie espresso" aria-hidden="true"></div>
-+            <table>
-+              <caption>Dark Roast Espresso flavor profile</caption>
-+              <thead><tr><th scope="col">Flavor</th><th scope="col">Share</th></tr></thead>
-+              <tbody>
-+                <tr><th scope="row">Sweet</th><td>10%</td></tr>
-+                <tr><th scope="row">Roasted</th><td>80%</td></tr>
-+                <tr><th scope="row">Creamy</th><td>10%</td></tr>
-+              </tbody>
-+            </table>
-+          </div>
++          <figure class="flavor-profile">
++            <figcaption>Flavor profile</figcaption>
++            <div class="flavor-chart" style="--sweet: 10%; --creamy-end: 20%;" aria-hidden="true"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet</dt><dd>10%</dd></div>
++              <div class="creamy"><dt>Creamy</dt><dd>10%</dd></div>
++              <div class="roasted"><dt>Roasted</dt><dd>80%</dd></div>
++            </dl>
++          </figure>
            <a href="/menu/espresso" class="btn">View Details</a>
          </div>
          <div class="card">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
-+          <div class="flavor-profile">
-+            <div class="flavor-pie cold-brew" aria-hidden="true"></div>
-+            <table>
-+              <caption>Cold Brew flavor profile</caption>
-+              <thead><tr><th scope="col">Flavor</th><th scope="col">Share</th></tr></thead>
-+              <tbody>
-+                <tr><th scope="row">Sweet</th><td>25%</td></tr>
-+                <tr><th scope="row">Roasted</th><td>65%</td></tr>
-+                <tr><th scope="row">Creamy</th><td>10%</td></tr>
-+              </tbody>
-+            </table>
-+          </div>
++          <figure class="flavor-profile">
++            <figcaption>Flavor profile</figcaption>
++            <div class="flavor-chart" style="--sweet: 25%; --creamy-end: 40%;" aria-hidden="true"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet</dt><dd>25%</dd></div>
++              <div class="creamy"><dt>Creamy</dt><dd>15%</dd></div>
++              <div class="roasted"><dt>Roasted</dt><dd>60%</dd></div>
++            </dl>
++          </figure>
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>
++      <p class="profile-note">Flavor percentages illustrate the balance of tasting notes.</p>
+     </section>
+   </main>
+ 
 diff --git a/package.json b/package.json
 index 2bd4d77..43e7284 100644
 --- a/package.json

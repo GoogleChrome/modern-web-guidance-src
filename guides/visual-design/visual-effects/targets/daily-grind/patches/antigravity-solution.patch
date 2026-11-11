@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..08a252a 100644
+index 66c9173..38094d1 100644
 --- a/index.html
 +++ b/index.html
-@@ -12,6 +12,22 @@
+@@ -12,6 +12,15 @@
        --accent: #ffab40;
        --text: #3e2723;
        --light: #fafafa;
@@ -15,137 +15,108 @@ index 66c9173..08a252a 100644
 +        --in-oklab: in oklab;
 +        --in-oklch: in oklch;
 +      }
-+    }
-+
-+    @supports (linear-gradient(in oklab, white, black)) {
-+      :root {
-+        --in-oklab: in oklab;
-+        --in-oklch: in oklch;
-+      }
      }
  
      * {
-@@ -75,10 +91,12 @@
+@@ -75,10 +84,14 @@
      /* Hero Section */
      .hero {
        height: 60vh;
 -      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+      background-image: linear-gradient(to bottom var(--in-oklch), var(--primary), color-mix(in oklab, var(--primary) 60%, var(--accent))),
++      background-image:
++        linear-gradient(to bottom var(--in-oklab), rgba(78, 52, 46, 0.75), rgba(255, 171, 64, 0.45)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
 +      background-blend-mode: soft-light;
        background-size: cover;
        background-position: center;
 +      isolation: isolate;
++      position: relative;
        display: flex;
        flex-direction: column;
        justify-content: center;
-@@ -86,33 +104,85 @@
-       color: white;
-       text-align: center;
-       padding: 0 20px;
-+      position: relative;
-     }
- 
+@@ -91,6 +104,42 @@
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
-+      mix-blend-mode: screen;
-+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
++      mix-blend-mode: hard-light;
 +    }
 +
 +    .hero .btn {
-+      background: linear-gradient(to right var(--in-oklab), var(--primary), var(--accent));
-+      mix-blend-mode: normal;
++      margin-top: 15px;
++      background: linear-gradient(to right var(--in-oklch), var(--primary), var(--accent));
 +      box-shadow:
 +        0 2px 4px rgba(0, 0, 0, 0.15),
-+        0 6px 12px rgba(0, 0, 0, 0.2),
-+        0 12px 24px rgba(0, 0, 0, 0.25);
++        0 6px 16px rgba(0, 0, 0, 0.25);
++    }
++
++    .hero .btn:hover {
++      background: linear-gradient(to right var(--in-oklch), var(--text), var(--primary));
++    }
++
++    /* Decorative Pattern Accents */
++    .pattern-banner {
++      --color-1: var(--primary);
++      --color-2: var(--accent);
++      height: 12px;
++      background: repeating-linear-gradient(-45deg, var(--color-1) 0 1em, var(--color-2) 0 2em);
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .section-accent {
++      --color-1: var(--primary);
++      --color-2: var(--secondary);
++      width: 6em;
++      height: 1em;
++      margin: 8px auto 0;
++      border-radius: 4px;
++      background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%) 0 / 1em 1em;
      }
  
      /* Content Sections */
-     .container {
-       max-width: 1100px;
-       margin: 40px auto;
--      padding: 0 20px;
-+      padding: 30px 20px;
-+      --distance: 2em;
-+      --radius: .5em;
-+      --color-1: color-mix(in oklab, var(--secondary) 35%, transparent);
-+      --color-2: var(--light);
-+      --polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
-+      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
-+      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
-+      border-radius: 12px;
-     }
- 
-     .grid {
-       display: grid;
-       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
--      gap: 20px;
-+      gap: 24px;
-       margin-top: 20px;
+@@ -108,11 +157,17 @@
      }
  
      .card {
-       background: white;
+-      background: white;
 -      padding: 20px;
++      background: linear-gradient(to bottom var(--in-oklab), #ffffff, color-mix(in oklab, var(--secondary) 25%, #ffffff));
 +      padding: 24px 20px;
        border-radius: 8px;
 -      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +      box-shadow:
 +        0 1px 2px rgba(62, 39, 35, 0.06),
-+        0 4px 8px rgba(62, 39, 35, 0.08),
-+        0 12px 24px rgba(62, 39, 35, 0.12),
-+        0 24px 48px rgba(62, 39, 35, 0.08);
++        0 4px 12px rgba(62, 39, 35, 0.1),
++        0 12px 28px rgba(62, 39, 35, 0.12);
        text-align: center;
-+      position: relative;
-+      overflow: hidden;
-+      isolation: isolate;
-+    }
-+
-+    .card::before {
-+      content: "";
-+      display: block;
-+      height: 12px;
-+      margin: -24px -20px 18px -20px;
-+      --color-1: color-mix(in oklab, var(--primary) 18%, white);
-+      --color-2: color-mix(in oklab, var(--secondary) 45%, white);
-+    }
-+
-+    .card-stripes::before {
-+      background: repeating-linear-gradient(-45deg, var(--color-1) 0 1em, var(--color-2) 0 2em);
-+    }
-+
-+    .card-checkerboard::before {
-+      background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%) 0 / 2em 2em;
-+    }
-+
-+    .card-dots::before {
-+      --distance: 2em;
-+      --radius: .5em;
-+      --polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
-+      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
-+      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
-     }
- 
-     .card h3 {
-@@ -120,23 +190,75 @@
-       color: var(--primary);
-     }
- 
-+    .flavor-profile {
-+      margin: 18px 0;
-+      padding: 12px;
-+      background: color-mix(in oklab, var(--secondary) 20%, white);
-+      border-radius: 8px;
 +      display: flex;
 +      flex-direction: column;
 +      align-items: center;
-+      gap: 10px;
+     }
+ 
+     .card h3 {
+@@ -120,23 +175,76 @@
+       color: var(--primary);
+     }
+ 
++    /* Flavor Profile Pie Chart */
++    .flavor-profile {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 16px;
++      margin: 16px 0;
++      padding: 12px;
++      width: 100%;
++      background: rgba(255, 255, 255, 0.7);
++      border-radius: 6px;
 +    }
 +
 +    .pie {
-+      --p: 70%;
++      --p: 75%;
 +      --color-1: var(--primary);
 +      --color-2: var(--accent);
 +      width: 60px;
@@ -153,147 +124,109 @@ index 66c9173..08a252a 100644
 +      border-radius: 50%;
 +      background: conic-gradient(var(--color-1) var(--p), transparent 0%) var(--color-2);
 +      filter: drop-shadow(0 2px 4px rgba(62, 39, 35, 0.2));
++      flex-shrink: 0;
 +    }
 +
-+    .flavor-table {
-+      width: 100%;
-+      border-collapse: collapse;
-+      font-size: 0.8rem;
-+      color: var(--text);
++    .flavor-breakdown {
++      text-align: left;
++      font-size: 0.85rem;
++      line-height: 1.4;
 +    }
 +
-+    .flavor-table caption {
++    .flavor-breakdown div {
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .flavor-breakdown dt {
 +      font-weight: 600;
-+      margin-bottom: 4px;
 +      color: var(--primary);
 +    }
 +
-+    .flavor-table th,
-+    .flavor-table td {
-+      padding: 3px 6px;
-+      border-bottom: 1px solid color-mix(in oklab, var(--secondary) 60%, white);
-+      text-align: left;
-+    }
-+
-+    .flavor-table td:last-child,
-+    .flavor-table th:last-child {
-+      text-align: right;
++    .flavor-breakdown dd {
++      margin: 0;
++      color: var(--text);
 +    }
 +
      .btn {
        display: inline-block;
 -      background: var(--primary);
-+      background: linear-gradient(to bottom var(--in-oklab), var(--primary), color-mix(in oklab, var(--primary) 75%, var(--accent)));
++      background: linear-gradient(to bottom var(--in-oklab), var(--primary), var(--text));
        color: white;
        padding: 10px 20px;
        text-decoration: none;
        border-radius: 5px;
-       margin-top: 15px;
+-      margin-top: 15px;
 -      transition: background 0.3s;
++      margin-top: auto;
 +      transition: background 0.3s, box-shadow 0.3s;
-+      box-shadow:
-+        0 1px 2px rgba(0, 0, 0, 0.12),
-+        0 4px 8px rgba(0, 0, 0, 0.14);
      }
  
      .btn:hover {
 -      background: #3e2723;
-+      background: linear-gradient(to bottom var(--in-oklab), #3e2723, var(--primary));
++      background: var(--text);
      }
  
      footer {
 -      background: var(--secondary);
-+      --color-1: var(--secondary);
-+      --color-2: color-mix(in oklab, var(--secondary) 85%, white);
-+      background: linear-gradient(to right, var(--color-1) 50%, var(--color-2) 0) 0 / 2em;
++      --distance: 2em;
++      --radius: 0.25em;
++      --color-1: color-mix(in oklab, var(--primary) 12%, var(--secondary));
++      --color-2: var(--secondary);
++      --polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
++      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
-@@ -178,19 +300,85 @@
+@@ -173,24 +281,49 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
++  <div class="pattern-banner" aria-hidden="true"></div>
+ 
+   <main class="container">
      <section>
-       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <div class="section-accent" aria-hidden="true"></div>
++      </div>
        <div class="grid">
--        <div class="card">
-+        <div class="card card-stripes">
+         <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 +          <div class="flavor-profile">
-+            <div class="pie" style="--p: 65%; --color-1: var(--primary); --color-2: var(--accent);" aria-hidden="true"></div>
-+            <table class="flavor-table">
-+              <caption>Maple Oat Latte Flavor Profile</caption>
-+              <thead>
-+                <tr>
-+                  <th scope="col">Flavor Note</th>
-+                  <th scope="col">Share</th>
-+                </tr>
-+              </thead>
-+              <tbody>
-+                <tr>
-+                  <td>Rich Espresso &amp; Oat</td>
-+                  <td>65%</td>
-+                </tr>
-+                <tr>
-+                  <td>Maple Sweetness</td>
-+                  <td>35%</td>
-+                </tr>
-+              </tbody>
-+            </table>
++            <div class="pie" style="--p: 65%;" role="img" aria-label="Flavor profile: 65% Sweet & Creamy, 35% Roasted Espresso"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet &amp; Creamy</dt><dd>65%</dd></div>
++              <div><dt>Roasted Espresso</dt><dd>35%</dd></div>
++            </dl>
 +          </div>
            <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
--        <div class="card">
-+        <div class="card card-checkerboard">
+         <div class="card">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 +          <div class="flavor-profile">
-+            <div class="pie" style="--p: 85%; --color-1: var(--primary); --color-2: var(--secondary);" aria-hidden="true"></div>
-+            <table class="flavor-table">
-+              <caption>Dark Roast Espresso Flavor Profile</caption>
-+              <thead>
-+                <tr>
-+                  <th scope="col">Flavor Note</th>
-+                  <th scope="col">Share</th>
-+                </tr>
-+              </thead>
-+              <tbody>
-+                <tr>
-+                  <td>Bold &amp; Smokey Roast</td>
-+                  <td>85%</td>
-+                </tr>
-+                <tr>
-+                  <td>Caramel Finish</td>
-+                  <td>15%</td>
-+                </tr>
-+              </tbody>
-+            </table>
++            <div class="pie" style="--p: 85%;" role="img" aria-label="Flavor profile: 85% Bold & Smokey, 15% Caramel Finish"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Bold &amp; Smokey</dt><dd>85%</dd></div>
++              <div><dt>Caramel Finish</dt><dd>15%</dd></div>
++            </dl>
 +          </div>
            <a href="/menu/espresso" class="btn">View Details</a>
          </div>
--        <div class="card">
-+        <div class="card card-dots">
+         <div class="card">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 +          <div class="flavor-profile">
-+            <div class="pie" style="--p: 75%; --color-1: var(--primary); --color-2: var(--accent);" aria-hidden="true"></div>
-+            <table class="flavor-table">
-+              <caption>Cold Brew Flavor Profile</caption>
-+              <thead>
-+                <tr>
-+                  <th scope="col">Flavor Note</th>
-+                  <th scope="col">Share</th>
-+                </tr>
-+              </thead>
-+              <tbody>
-+                <tr>
-+                  <td>Smooth Cocoa Body</td>
-+                  <td>75%</td>
-+                </tr>
-+                <tr>
-+                  <td>Bright Citrus Notes</td>
-+                  <td>25%</td>
-+                </tr>
-+              </tbody>
-+            </table>
++            <div class="pie" style="--p: 75%;" role="img" aria-label="Flavor profile: 75% Smooth Cocoa, 25% Bright Citrus"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Smooth Cocoa</dt><dd>75%</dd></div>
++              <div><dt>Bright Citrus</dt><dd>25%</dd></div>
++            </dl>
 +          </div>
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
