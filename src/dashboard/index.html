@@ -57,7 +57,7 @@
         <div class="hero-top">
           <h2 id="hero-heading" class="hero-heading"><span class="hero-accent">Measurably better web code</span> with Modern Web Guidance</h2>
           <p class="hero-lede">
-            Nightly A/B runs give <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> identical tasks <strong>with and without Modern Web Guidance</strong>, grading output in a real browser.
+            Nightly and baseline A/B runs give <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> identical tasks <strong>with and without Modern Web Guidance</strong>, grading output in a real browser.
           </p>
         </div>
         <p id="hero-live" class="visually-hidden" role="status" aria-live="polite"></p>
@@ -79,13 +79,13 @@
             <p class="takeaway-qualifier">Loading…</p>
           </li>
         </ul>
-        <p id="hero-eyebrow" class="hero-eyebrow">Latest nightly runs · loading…</p>
+        <p id="hero-eyebrow" class="hero-eyebrow">Latest runs per model · loading…</p>
       </section>
       <section id="ab-spotlight" class="ab-spotlight page-section" aria-labelledby="ab-spotlight-heading" aria-busy="true">
         <div class="ab-spotlight-header">
           <div class="ab-spotlight-titles">
             <h2 id="ab-spotlight-heading" class="ab-spotlight-heading section-heading">Inspect a paired run</h2>
-            <p class="ab-spotlight-sub">Side-by-side browser checks from one nightly run per agent (not an aggregate).</p>
+            <p class="ab-spotlight-sub">Side-by-side browser checks from the latest run per agent (not an aggregate).</p>
           </div>
           <div class="ab-toolbar-controls">
             <fieldset id="ab-agent-pills" class="ab-agent-pills" aria-controls="ab-comparison-frame">
@@ -115,17 +115,17 @@
         <div class="hero-agents-header">
           <div class="hero-agents-intro">
             <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
-            <p class="hero-agents-note"><span id="hero-agents-window-note">Latest nightly suite per agent.</span> Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
+            <p class="hero-agents-note"><span id="hero-agents-window-note">Latest run per model (models run in the last 7 days; nightly or 1.0 baseline).</span> Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
           </div>
           <fieldset id="agents-window-toggle" class="window-pill-toggle" hidden>
             <legend class="visually-hidden">Agent summary window</legend>
-            <label class="window-pill-btn"><input type="radio" name="agents-window" value="1" checked>Latest night</label>
-            <label class="window-pill-btn"><input type="radio" name="agents-window" value="5" id="agents-window-multi"><span id="agents-window-multi-label">Last 5 nights</span></label>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="1" checked>Latest run per model</label>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="5" id="agents-window-multi"><span id="agents-window-multi-label">Last 5 runs per model</span></label>
           </fieldset>
         </div>
         <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
           <table class="agent-table">
-            <caption id="agent-table-caption" class="visually-hidden">Latest nightly suite per agent family. Unguided → guided.</caption>
+            <caption id="agent-table-caption" class="visually-hidden">Latest run per model by agent family. Unguided → guided.</caption>
             <thead>
               <tr>
                 <th scope="col">Agent</th>
@@ -190,8 +190,8 @@
                   <dd>Multi-step agents re-send cached conversation history on every turn, inflating raw totals. We report <strong>uncached tokens</strong> (<code>total − cached</code>) to measure new input and output per task.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Scheduled nightly runs</dt>
-                  <dd>Automated suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run the full task set on a schedule. Headline numbers pool the <span id="method-recent-n">latest nightly suite</span> per agent<span id="method-agents"></span>.</dd>
+                  <dt>Canonical runs (nightly &amp; 1.0 baseline)</dt>
+                  <dd>Automated nightly suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) and curated 1.0 baseline evaluations run the full task set. Headline numbers pool the <span id="method-recent-n">latest run per model</span> across agent families for models run in the last 7 days<span id="method-agents"></span>.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Open-source benchmark</dt>

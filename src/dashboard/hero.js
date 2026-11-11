@@ -100,7 +100,7 @@ function syncWindowToggle(maxSuitesPerFamily) {
     if (!canToggle) return;
     const multiN = Math.min(MAX_MULTI_NIGHTS, maxSuitesPerFamily);
     if (multiRadio instanceof HTMLInputElement) multiRadio.value = String(multiN);
-    if (multiLabel) multiLabel.textContent = `Last ${multiN} nights`;
+    if (multiLabel) multiLabel.textContent = `Last ${multiN} runs per model`;
     const activeVal = currentRecentN > 1 ? String(multiN) : '1';
     toggle.querySelectorAll('input[name="agents-window"]').forEach(el => {
         if (el instanceof HTMLInputElement) el.checked = el.value === activeVal;
@@ -120,8 +120,8 @@ function setStatus(kind) {
     // can reach internal runs, unless a token is already held (clicking it would sign out).
     btn.hidden = kind === 'empty' || Boolean(getAccessToken()) || !isSignInEnabled();
     const messages = {
-        'auth': 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.',
-        'empty': 'No nightly evaluation runs were found for this data source yet.',
+        'auth': 'Results live in a private bucket. Sign in with Google to load the latest numbers.',
+        'empty': 'No evaluation runs were found for this data source yet.',
         'public-empty': 'No published results yet. Googlers can sign in to see internal runs.'
     };
     text.textContent = messages[kind];
@@ -161,7 +161,7 @@ function renderHero(insights) {
     const el = document.getElementById('method-recent-n');
     const recentN = insights.options.perAgentRecentN;
     if (el) {
-        el.textContent = recentN === 1 ? 'latest nightly suite' : `most recent ${recentN} nightly suites`;
+        el.textContent = recentN === 1 ? 'latest run per model' : `most recent ${recentN} runs per model`;
     }
     const overallUplift = displayedUpliftPp(insights.pooled?.overall);
     announce(overallUplift !== null ? `Latest results loaded: ${signed(overallUplift, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
@@ -179,7 +179,7 @@ function renderPending() {
         body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Sample">${naCell()}</td></tr>`;
     }
     const eyebrow = document.getElementById('hero-eyebrow');
-    if (eyebrow) eyebrow.textContent = 'Latest nightly runs';
+    if (eyebrow) eyebrow.textContent = 'Latest runs per model (last 7 days; nightly or 1.0 baseline)';
 }
 /** @param {HeadlineInsights} insights */
 function renderEyebrow(insights) {
@@ -194,7 +194,7 @@ function renderEyebrow(insights) {
     if (!el) return;
     const latest = latestDateOf(insights);
     const recentN = insights.options.perAgentRecentN;
-    const label = recentN === 1 ? 'Latest nightly run per agent' : `Most recent ${recentN} nightly runs per agent`;
+    const label = recentN === 1 ? 'Latest run per model (last 7 days; nightly or 1.0 baseline)' : `Most recent ${recentN} runs per model`;
     el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>${escapeHtml(label)}${latest ? ` · <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
 /** @param {number | null} uRate @param {number | null} gRate */
@@ -224,7 +224,7 @@ function renderTakeaways(insights) {
         const recentN = insights.options.perAgentRecentN;
         const mAgents = pooled.familyCount || insights.families.length;
         const statement = taskStatement(insights, recentN);
-        const suitesSuffix = recentN > 1 ? ` · ${pooled.suiteCount} ${pooled.suiteCount === 1 ? 'suite' : 'suites'}` : '';
+        const suitesSuffix = recentN > 1 || pooled.suiteCount > mAgents ? ` · ${pooled.suiteCount} ${pooled.suiteCount === 1 ? 'suite' : 'suites'}` : '';
         const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${mAgents} ${mAgents === 1 ? 'agent' : 'agents'}${suitesSuffix}`;
         cards.push(takeawayCard({
             metric: 'overall',
@@ -282,8 +282,8 @@ function takeawayCard(c) {
 function taskStatement(insights, recentN) {
     const counts = insights.families.map(f => f.sample.pairedTasks).filter(n => n > 0);
     if (counts.length === 0) return 'pass-rate lift';
-    if (recentN > 1) {
-        const total = counts.reduce((sum, n) => sum + n, 0);
+    const total = counts.reduce((sum, n) => sum + n, 0);
+    if (recentN > 1 || (insights.pooled?.suiteCount || 0) > insights.families.length) {
         return `lift across ${fmtInt(total)} task ${total === 1 ? 'run' : 'runs'}`;
     }
     const min = Math.min(...counts);
@@ -300,13 +300,13 @@ function renderAgentTable(insights) {
     const n = insights.options.perAgentRecentN;
     if (caption) {
         caption.textContent = n === 1
-            ? 'Latest nightly suite per agent family. Unguided → guided; change in percentage points (pp).'
-            : `Most recent ${n} nightly suites per agent family, pooled. Unguided → guided; change in percentage points (pp).`;
+            ? 'Latest run per model (last 7 days; nightly or 1.0 baseline) by agent family. Unguided → guided; change in percentage points (pp).'
+            : `Most recent ${n} runs per model by agent family, pooled. Unguided → guided; change in percentage points (pp).`;
     }
     if (windowNote) {
         windowNote.textContent = n === 1
-            ? 'Latest nightly suite per agent.'
-            : `Last ${n} nightly suites pooled per agent.`;
+            ? 'Latest run per model (models run in the last 7 days; nightly or 1.0 baseline).'
+            : `Last ${n} runs per model pooled.`;
     }
     body.innerHTML = insights.families.map(f => {
         const overall = rateCell(f, f.overall, false);
@@ -365,8 +365,9 @@ function sampleRunsPerTaskLabel(f) {
 }
 /** @param {FamilyInsight} f */
 function sampleSummaryText(f) {
+    const allNightly = f.models.length <= 1 && f.suites.every(s => !s.curated && s.testId.startsWith('nightly-'));
     return [
-        f.suiteCount > 1 ? `${f.suiteCount} nights` : '',
+        f.suiteCount > 1 ? `${f.suiteCount} ${allNightly ? 'nights' : 'runs'}` : '',
         sampleTasksLabel(f),
         sampleRunsPerTaskLabel(f)
     ].filter(Boolean).join(' · ');
@@ -374,8 +375,10 @@ function sampleSummaryText(f) {
 /** @param {FamilyInsight} f */
 function sampleCell(f) {
     const s = f.sample;
+    const allNightly = f.models.length <= 1 && f.suites.every(suite => !suite.curated && suite.testId.startsWith('nightly-'));
+    const countNoun = allNightly ? (f.suiteCount === 1 ? 'night' : 'nights') : (f.suiteCount === 1 ? 'run' : 'runs');
     const primaryParts = [
-        f.suiteCount > 1 ? `<span class="sample-nights">${f.suiteCount} ${f.suiteCount === 1 ? 'night' : 'nights'}</span>` : '',
+        f.suiteCount > 1 ? `<span class="sample-nights">${f.suiteCount} ${countNoun}</span>` : '',
         escapeHtml(sampleTasksLabel(f)),
         escapeHtml(sampleRunsPerTaskLabel(f)),
         s.earlyFailureCount !== null && s.earlyFailureCount > 0
@@ -384,18 +387,14 @@ function sampleCell(f) {
         s.pageLoadFailed > 0 ? `<span class="sample-warn">${escapeHtml(`${fmtInt(s.pageLoadFailed)} page-load`)}</span>` : '',
         s.unguidedLeakRate > 0 ? `<span class="sample-leak">${escapeHtml(`${s.unguidedLeakRate}% leak`)}</span>` : ''
     ].filter(Boolean);
-    const modelsText = f.models.length ? f.models.map(shortModelName).join(', ') : '';
-    const dateText = formatDateRange(f.suites);
-    const metaParts = [modelsText, dateText].filter(Boolean).join(' · ');
-    return ` <div class="agent-cell-stack"> <span class="agent-sample-main">${primaryParts.join(' · ')}</span> ${metaParts ? `<span class="metric-sub">${escapeHtml(metaParts)}</span>` : ''} </div>`;
-}
-/** @param {import('./insights.js').SuiteRef[]} suites */
-function formatDateRange(suites) {
-    if (!suites.length) return '';
-    const newest = suites[0]?.timestamp ? formatDateShort(suites[0].timestamp) : '';
-    const oldest = suites[suites.length - 1]?.timestamp ? formatDateShort(suites[suites.length - 1].timestamp) : '';
-    if (!oldest || oldest === newest) return newest;
-    return `${oldest}–${newest}`;
+    const runsListHtml = f.suites.map(suite => {
+        const model = shortModelName(suite.model);
+        const effort = suite.reasoningEffort?.level ? ` (${suite.reasoningEffort.level})` : '';
+        const date = formatDateShort(suite.timestamp);
+        const badge = suite.curated ? ' <span class="run-kind-badge curated">1.0 baseline</span>' : '';
+        return `<span class="sample-run-pill">${escapeHtml(model)}${escapeHtml(effort)} · <time>${escapeHtml(date)}</time>${badge}</span>`;
+    }).join(' · ');
+    return ` <div class="agent-cell-stack"> <span class="agent-sample-main">${primaryParts.join(' · ')}</span> ${runsListHtml ? `<span class="metric-sub">${runsListHtml}</span>` : ''} </div>`;
 }
 /** @param {number} v */
 function fmtInt(v) { return Math.round(v || 0).toLocaleString('en-US'); }
