@@ -719,8 +719,8 @@ function renderSummary(data) {
     const exactRate = (/** @type {{ passed: number, total: number }} */ st) => st.total > 0 ? (st.passed / st.total) * 100 : 0;
     const unguidedPassRate = Math.round(exactRate(unguidedStats));
     const guidedPassRate = Math.round(exactRate(guidedStats));
-    const upliftDelta = guidedPassRate - unguidedPassRate;
-    const a11yUpliftPp = a11yStats.guidedRate - a11yStats.unguidedRate;
+    const upliftDelta = (unguidedStats.total > 0 && guidedStats.total > 0) ? (guidedPassRate - unguidedPassRate) : null;
+    const a11yUpliftPp = (a11yStats.unguidedTotal > 0 && a11yStats.guidedTotal > 0) ? (a11yStats.guidedRate - a11yStats.unguidedRate) : null;
     const fraction = (/** @type {number} */ passed, /** @type {number} */ total) => `${passed.toLocaleString()}/${total.toLocaleString()}`;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
@@ -751,9 +751,10 @@ function renderSummary(data) {
         if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
         return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
     };
-    /** @param {number} deltaPp
+    /** @param {number | null} deltaPp
  * @param {string} noun */
     const ratePill = (deltaPp, noun) => {
+        if (deltaPp === null) return '';
         const cls = deltaPp > 0 ? 'positive' : (deltaPp < 0 ? 'negative' : 'neutral');
         const glyph = deltaPp > 0 ? '▲ ' : (deltaPp < 0 ? '▼ ' : '');
         return `<span class="efficiency-delta-pill ${cls}"><span aria-hidden="true">${glyph}</span>${deltaPp > 0 ? '+' : ''}${deltaPp} pp<span class="visually-hidden"> ${escapeHtml(noun)}</span></span>`;

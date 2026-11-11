@@ -105,7 +105,12 @@ export function hasHeadlineStats(suite) {
     const keys = Object.keys(suite.showcase);
     if (keys.some(k => !SHOWCASE_GUIDE_IDS.has(k))) return false;
     if (suite.guides) {
-        return SHOWCASE_TASKS.every(t => !suite.guides?.[t.id] || Boolean(suite.showcase?.[t.id]));
+        return SHOWCASE_TASKS.every(t => {
+            const g = suite.guides?.[t.id];
+            if (!g) return true;
+            const expectsSlice = g.guidedTotal === undefined || (g.guidedTotal > 0 && g.unguidedTotal > 0);
+            return !expectsSlice || Boolean(suite.showcase?.[t.id]);
+        });
     }
     return keys.length === 0 || SHOWCASE_TASKS.every(t => Boolean(suite.showcase?.[t.id]));
 }

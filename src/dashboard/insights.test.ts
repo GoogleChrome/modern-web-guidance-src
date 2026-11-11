@@ -218,4 +218,17 @@ test('hasHeadlineStats handles stale showcase keys and partial-suite guide subse
         guides: { menu: {}, 'passkey-authentication': {} },
         showcase: { menu: {} },
     } as never), false);
+    // Incomplete suite that ran only one side of a featured guide (buildShowcaseSlices omits showcase[id]):
+    const oneSided = extractSuiteSummary('nightly-2026-10-21_07-00-02-antigravity_cli', {
+        agent: 'antigravity_cli',
+        model: 'gemini-x',
+        timestamp: '2026-10-21T07:00:02Z',
+        results: {
+            'task - menu - guided': [{ results: [{ passed: true, message: 'Opens menu', testId: '1' }] }],
+        },
+    } as never);
+    assert.ok(oneSided);
+    assert.ok(oneSided.guides.menu);
+    assert.strictEqual(oneSided.showcase.menu, undefined);
+    assert.strictEqual(hasHeadlineStats(oneSided as never), true);
 });
