@@ -137,11 +137,14 @@ describe('publishPublicEvals + checkoutPublished', () => {
     assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', 'suite-1', '.hidden')));
   });
 
-  test('repoFromRemoteUrl parses git and https URLs with fallback', () => {
+  test('repoFromRemoteUrl parses git and https URLs, throwing on non-GitHub URLs', () => {
     assert.equal(repoFromRemoteUrl('git@github.com:GoogleChrome/modern-web-guidance-src.git'), 'GoogleChrome/modern-web-guidance-src');
     assert.equal(repoFromRemoteUrl('https://github.com/GoogleChrome/modern-web-guidance-src.git'), 'GoogleChrome/modern-web-guidance-src');
     assert.equal(repoFromRemoteUrl('https://github.com/GoogleChrome/modern-web-guidance-src'), 'GoogleChrome/modern-web-guidance-src');
-    assert.equal(repoFromRemoteUrl('/tmp/local-repo'), 'GoogleChrome/modern-web-guidance-src');
+    assert.throws(
+      () => repoFromRemoteUrl('/tmp/local-repo'),
+      /cannot determine GitHub \{owner\}\/\{repo\} from remote URL/,
+    );
   });
 
   test('refuses to publish without suites.gen.json or when expectedHead has moved', async () => {

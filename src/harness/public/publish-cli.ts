@@ -37,11 +37,13 @@ function dispatchPagesDeployment(repo: string): void {
     stdio: 'inherit',
     encoding: 'utf8',
   });
+  const manualHint = `gh workflow run deploy-pages.yml -R ${repo} --ref main`;
   if (res.error) {
-    throw new Error(`failed to dispatch Pages deployment workflow on ${repo}: ${res.error.message}`, { cause: res.error });
+    throw new Error(`failed to dispatch Pages deployment workflow on ${repo}: ${res.error.message} (retry with: ${manualHint})`, { cause: res.error });
   }
   if (res.status !== 0) {
-    throw new Error(`failed to dispatch Pages deployment workflow on ${repo}: gh exited with code ${res.status}`);
+    const reason = res.status !== null ? `code ${res.status}` : `signal ${res.signal}`;
+    throw new Error(`failed to dispatch Pages deployment workflow on ${repo}: gh exited with ${reason} (retry with: ${manualHint})`);
   }
   console.log(cBold('dispatched deploy-pages.yml on main'));
 }
@@ -62,6 +64,7 @@ async function main(): Promise<number> {
       dispatch: { type: 'boolean', default: true },
       help: { type: 'boolean', short: 'h', default: false },
     },
+    allowNegative: true,
   });
   if (values.help) {
     console.log('Usage: publish-cli.ts [--dry-run] [--force] [--no-dispatch]');

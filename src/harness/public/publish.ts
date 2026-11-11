@@ -138,11 +138,15 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
 }
 
 /**
- * Extracts `{owner}/{repo}` from a GitHub remote URL, defaulting to `GoogleChrome/modern-web-guidance-src`.
+ * Extracts `{owner}/{repo}` from a GitHub remote URL.
+ * Throws if the URL is not a recognized GitHub URL.
  */
 export function repoFromRemoteUrl(url: string): string {
   const match = /github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/.exec(url);
-  return match ? `${match[1]}/${match[2]}` : 'GoogleChrome/modern-web-guidance-src';
+  if (!match) {
+    throw new Error(`cannot determine GitHub {owner}/{repo} from remote URL: ${url}`);
+  }
+  return `${match[1]}/${match[2]}`;
 }
 
 /**
