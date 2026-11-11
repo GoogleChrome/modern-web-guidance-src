@@ -235,12 +235,23 @@ function getTaskRunContext(
     return null;
   }
 
+  // run-suite pre-creates every task dir (with run.mjs and package.json) before any agent runs.
+  // In a stopped or partial suite, a dir that has no runtime.json, generation_failed.json, or grader results
+  // never had an agent run. Grading it would score the untouched base app.
+  const graderResults = path.join(dir, `${guide}_results.json`);
+  const agentRan = ['runtime.json', 'generation_failed.json'].some(f => fs.existsSync(path.join(dir, f)));
+  if (!agentRan && !fs.existsSync(graderResults)) {
+    if (warnIfMissing) {
+      console.warn(`Skipping ${relPath}: agent never ran`);
+    }
+    return null;
+  }
+
   const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
   const targetPatchFile = path.join(dir, 'agent.patch');
   const graderPath = resolveTaskGraderPath(taskInfo, taskName);
-  const graderResults = path.join(dir, `${guide}_results.json`);
   const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
 
   return {
