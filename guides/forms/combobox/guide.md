@@ -56,7 +56,6 @@ Anchor the popup to the input with CSS so it sizes and flips without JavaScript 
 .combobox { anchor-name: --combobox; }
 
 [role="listbox"] {
-  position: fixed;
   position-anchor: --combobox;
   position-area: block-end span-inline-end;
   position-try-fallbacks: flip-block;   /* open upward when there is no room below */
