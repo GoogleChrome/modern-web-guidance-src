@@ -7,20 +7,20 @@ web-feature-ids:
 
 # Summarizer
 
-The **Summarizer API** allows web developers to offer local, AI-powered text distillation directly within the browser using **Gemini Nano in Chrome or Phi in Edge**. This API supports various formats, including key points, headlines, and TL;DRs, while operating entirely on-device to ensure user privacy.
+The **Summarizer API** allows web developers to offer local, AI-powered text distillation directly within the browser using a language model that the browser provides. This API supports various formats, including key points, headlines, and TL;DRs, while operating entirely on-device to ensure user privacy.
 
 ---
 
 ## Getting Started
 
-The Summarizer API is available starting in **Chrome and Edge 138**. It requires a one-time model download of Gemini Nano or Phi (respectively).
+The Summarizer API typically requires a one-time model download. For current browser support, see [Fallback Strategy](#fallback-strategy).
 
 ### Hardware & Software Requirements
 
-- **OS**: Windows 10/11, macOS 13+, Linux, or ChromeOS (Chromebook Plus).
-- **Storage**: 22GB free space for the profile volume.
-- **RAM/CPU**: 16GB+ RAM and 4+ CPU cores.
-- **VRAM**: 4GB+ (if using GPU).
+Which model a browser bundles, which platforms it supports, and which hardware it requires are **browser-specific implementation details that may change**. For example, at the time of writing, Chrome uses Gemini Nano and Edge uses Phi, each with its own storage, memory, and GPU requirements.
+
+- **Don't** hardcode browser versions, model names, or hardware thresholds, or attempt to detect them yourself.
+- **Do** call `Summarizer.availability(options)` at runtime. It returns `'unavailable'` when the current device can't run the model.
 
 ### Model Download and Availability
 
@@ -129,8 +129,8 @@ for await (const chunk of stream) {
 
 ## Security and Permissions
 
-- **Data Privacy**: No data is sent to Google; processing happens on the local
-  device.
+- **Data Privacy**: No data is sent to the browser vendor or third parties; processing
+  happens on the local device.
 - **Cross-Origin**: Access can be granted to iframes using the Permission
   Policy.
 
@@ -158,8 +158,8 @@ If the `Summarizer` API is unsupported or availability checks return `'unavailab
 
 Recommended options:
 
-1. **Remote API Fallback**: Direct the distillation request to a server endpoint or remote API (such as the Vertex AI Gemini API) so that users still get summaries.
+1. **Remote API Fallback**: Direct the distillation request to a server endpoint or cloud LLM API so that users still get summaries.
 2. **Graceful Degradation**: Visually disable the summarization controls in the UI, or hide the button while displaying a friendly message (e.g., `"Local summarization is currently unsupported in this browser"`). Do not allow interaction to trigger generic unhandled runtime exceptions.
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services with models in the cloud or on-device inference with local models.
 
-> **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud). This completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will incur server-side API usage costs.
+> **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as a cloud LLM API). This completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will incur server-side API usage costs.
