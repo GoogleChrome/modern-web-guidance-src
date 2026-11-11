@@ -869,7 +869,7 @@ function sortSuiteKeys(keys) {
 
 /** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
  * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
- * @param {number | null} delta percentage-point change, computed from unrounded rates; null unless both sides ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran
  * @param {string} label used for the screen-reader sentence
  * @param {number} [uErr=0]
  * @param {number} [gErr=0] */

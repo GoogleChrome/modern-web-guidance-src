@@ -901,7 +901,7 @@
         "unguidedPassed": 105,
         "unguidedTotal": 196,
         "unguidedRate": 54,
-        "uplift": 42,
+        "uplift": 41,
         "guideCount": 74,
         "bySubCategory": {
           "focus_inert": {
@@ -920,7 +920,7 @@
             "unguidedPassed": 21,
             "unguidedTotal": 56,
             "unguidedRate": 38,
-            "uplift": 54
+            "uplift": 53
           },
           "aria_roles_live": {
             "guidedPassed": 57,
@@ -1804,7 +1804,7 @@
             "unguidedPassed": 19,
             "unguidedTotal": 42,
             "unguidedRate": 45,
-            "uplift": 40
+            "uplift": 41
           },
           "motion_contrast_visual": {
             "guidedPassed": 46,

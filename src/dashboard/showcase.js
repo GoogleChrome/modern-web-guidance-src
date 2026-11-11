@@ -1,7 +1,7 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
-import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
+import { selectRecentSuites, getSuiteTimestamp, hasHeadlineStats } from './insights.js';
 /** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
 /** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
@@ -74,7 +74,7 @@ function hasUnhydratedRecentSuites(suites) {
     const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
     return AGENT_FAMILIES.some(f => {
         const suite = recent.get(f)?.[0];
-        return Boolean(suite && !suite.showcase);
+        return Boolean(suite && !hasHeadlineStats(suite));
     });
 }
 

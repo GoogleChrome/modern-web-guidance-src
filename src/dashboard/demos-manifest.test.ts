@@ -83,10 +83,11 @@ test('public dashboard entry points declare Open Graph and Twitter social card m
     const height = String(pngHeader.readUInt32BE(20));
 
     const expectedOgImageUrl = 'https://googlechrome.github.io/modern-web-guidance-src/og-image.png';
-    const pages = [
+    const pages: Array<[string, string | undefined]> = [
         ['index.html', 'https://googlechrome.github.io/modern-web-guidance-src/'],
-        ['dashboard.html', 'https://googlechrome.github.io/modern-web-guidance-src/dashboard.html'],
-        ['guide.html', 'https://googlechrome.github.io/modern-web-guidance-src/guide.html'],
+        // Query-parameterized templates (?testId=, ?guide=) omit static og:url so unfurlers preserve deep links.
+        ['dashboard.html', undefined],
+        ['guide.html', undefined],
         ['search/index.html', 'https://googlechrome.github.io/modern-web-guidance-src/search/'],
         ['demos/index.html', 'https://googlechrome.github.io/modern-web-guidance-src/demos/'],
     ];
@@ -107,6 +108,8 @@ test('public dashboard entry points declare Open Graph and Twitter social card m
         assert.ok((getMeta('property', 'og:description') ?? '').length > 0, `${relPath} og:description`);
         assert.ok((getMeta('property', 'og:image:alt') ?? '').length > 0, `${relPath} og:image:alt`);
         assert.equal(getMeta('name', 'twitter:card'), 'summary_large_image', `${relPath} twitter:card`);
+        assert.ok((getMeta('name', 'twitter:title') ?? '').length > 0, `${relPath} twitter:title`);
+        assert.ok((getMeta('name', 'twitter:description') ?? '').length > 0, `${relPath} twitter:description`);
         assert.equal(getMeta('name', 'twitter:image'), expectedOgImageUrl, `${relPath} twitter:image`);
         assert.ok((getMeta('name', 'twitter:image:alt') ?? '').length > 0, `${relPath} twitter:image:alt`);
     }

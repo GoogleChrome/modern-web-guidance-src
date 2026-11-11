@@ -736,9 +736,13 @@ function renderSummary(data) {
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
         if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
-        const dimPp = sc.guidedRate - sc.unguidedRate;
-        const deltaSign = dimPp >= 0 ? '+' : '';
-        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
+        const uStr = sc.unguidedTotal > 0 ? `${sc.unguidedRate}%` : '—';
+        const gStr = sc.guidedTotal > 0 ? `${sc.guidedRate}%` : '—';
+        const dimPp = (sc.unguidedTotal > 0 && sc.guidedTotal > 0) ? (sc.guidedRate - sc.unguidedRate) : null;
+        const deltaHtml = dimPp !== null
+            ? ` <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : (dimPp === 0 ? 'neutral' : '')}">(${dimPp > 0 ? '+' : ''}${dimPp} pp)</span>`
+            : '';
+        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${uStr} <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${gStr}</strong>${deltaHtml}</span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
     }).join('');
     /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */

@@ -12,13 +12,13 @@
 .ab-task-pills.has-scroll-right:not(.has-scroll-left) { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
 .ab-task-pills.has-scroll-left:not(.has-scroll-right) { mask-image: linear-gradient(to right, transparent, #000 28px); }
 .ab-task-pills.has-scroll-left.has-scroll-right { mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent); }
-.ab-task-pills-track { position: relative; display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: var(--space-4); min-inline-size: 100%; background: linear-gradient(to top, var(--color-outline-variant) 1px, transparent 1px); }
+.ab-task-pills-track { position: relative; anchor-scope: --active-ab-task; display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: var(--space-4); min-inline-size: 100%; background: linear-gradient(to top, var(--color-outline-variant) 1px, transparent 1px); }
 .ab-task-pill { appearance: none; position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; margin-block-end: 0; border: 0; border-block-end: 2px solid transparent; background: transparent; color: var(--color-on-surface-variant); font: inherit; font-size: 0.8125rem; font-weight: 500; line-height: 1.35; white-space: nowrap; cursor: pointer; transition: color 0.15s ease-out, border-color 0.15s ease-out; }
 .ab-task-pill:hover { color: var(--color-on-surface); }
 .ab-task-pill:has(> input[type="radio"]:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: 4px; }
 .ab-task-pill:has(> input[type="radio"]:checked) { color: var(--color-on-surface); anchor-name: --active-ab-task; }
 @supports (position-anchor: auto) {
-.ab-task-pills-track::before { content: ''; position: absolute; position-anchor: --active-ab-task; inset-block-end: anchor(bottom); inset-inline-start: anchor(left); inset-inline-end: anchor(right); border-block-end: 2px solid var(--color-primary); pointer-events: none; }
+.ab-task-pills-track::before { content: ''; position: absolute; position-anchor: --active-ab-task; inset-block-end: anchor(end); inset-inline-start: anchor(start); inset-inline-end: anchor(end); border-block-end: 2px solid var(--color-primary); pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) {
 .ab-task-pills-track::before { transition: inset 0.2s ease-out; }
 }
