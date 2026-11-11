@@ -1,10 +1,10 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
-import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
+import { selectRecentSuites, getSuiteTimestamp, hasHeadlineStats } from './insights.js';
 /** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
@@ -74,7 +74,7 @@ function hasUnhydratedRecentSuites(suites) {
     const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
     return AGENT_FAMILIES.some(f => {
         const suite = recent.get(f)?.[0];
-        return Boolean(suite && !suite.showcase);
+        return Boolean(suite && !hasHeadlineStats(suite));
     });
 }
 
@@ -123,6 +123,7 @@ function buildTasksFromRecentSuites(suites) {
                 reasoningEffort: suite?.reasoningEffort,
                 suiteId: suite?.testId || '',
                 date,
+                curated: Boolean(suite?.curated),
                 unguided: toRun(slice.unguided),
                 guided: toRun(slice.guided),
                 checks
@@ -203,9 +204,9 @@ function renderTaskPills(currentTask) {
     const sameTasks = existingPills.length === list.length &&
         existingPills.every((el, idx) => el.getAttribute('data-task-id') === list[idx].id);
     if (!sameTasks) {
-        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + list.map(t => {
+        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend><div class="ab-task-pills-track">` + list.map(t => {
             return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(t.label)}</span><span class="ab-task-delta-slot"></span></label>`;
-        }).join('');
+        }).join('') + `</div>`;
     }
     container.querySelectorAll('.ab-task-pill').forEach(pill => {
         const taskId = pill.getAttribute('data-task-id');
@@ -306,7 +307,8 @@ function renderPromptBar(task, pair) {
         const effortChipHtml = pair.model
             ? renderEffortChip(pair.reasoningEffort)
             : '';
-        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
+        const runTypeLabel = pair.curated ? '1.0 baseline run' : 'nightly run';
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${runTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
 /** @param {string} msg

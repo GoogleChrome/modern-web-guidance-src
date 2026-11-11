@@ -126,7 +126,9 @@ input[type="range"]::-moz-range-thumb {
 }
 ```
 
-Always provide a visible keyboard focus indicator after removing the native appearance. Do not use color alone:
+Ensure the track color has a contrast of at least `3:1` with the background color.
+
+Always provide a visible keyboard focus indicator after removing the native appearance. Ensure the focus indicator has a contrast of at least `3:1` with the background color or the adjacent track. Do not use color alone:
 
 ```css
 input[type="range"]:focus-visible {
