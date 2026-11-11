@@ -300,8 +300,9 @@ When a row has an icon, label, and shortcut or submenu indicator, reserve a fixe
 
 /* Check mark for checked items. This selector must be at least as specific as the base
    ::before rule above, or the empty content wins and the check mark never shows. */
+/* ARIA conveys the state to screen readers, so provide an empty text alternative for this checkmark to prevent duplicated state announcements */
 [focusgroup~="menu"] button[aria-checked="true"]::before {
-  content: "✓";
+  content: "✓" / "";
 }
 
 /* Shortcut or submenu indicator at the inline end. */
