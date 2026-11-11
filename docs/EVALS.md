@@ -28,7 +28,7 @@ The Claude Code agent (`claude_code`) is implemented with [Claude Code on Vertex
    CLOUD_ML_REGION=global
    ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
    ANTHROPIC_MODEL=<enabled-model-in-vertex>
-   # Optional: reasoning effort (`--effort <level>`); defaults to Claude Code's built-in effort when unset (captured as `observed` from `api-request` logs when present).
+   # Optional: reasoning effort (`--effort <level>`); defaults to Claude Code's built-in effort when unset (captured as `observed` from `api-request` or `assistant` logs when present).
    # Cannot be combined with a model ID that already ends in a level suffix (e.g., `opus-5.5-high`).
    # CLAUDE_EFFORT=high
    ```
