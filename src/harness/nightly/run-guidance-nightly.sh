@@ -116,9 +116,17 @@ trap send_summary_email EXIT
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)" || die "Failed to determine repo root"
 cd "$REPO_ROOT" || die "Failed to locate repo root"
 
-# Preflight check: if this run meets the conditions to publish public evals at the end,
-# verify that gh CLI is installed and authenticated upfront, failing fast before evals run.
-if [ "$RUN_LOCAL" != "true" ] && [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] && [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main 2>/dev/null)" ]; then
+# Check whether this run meets the conditions to mirror suites to the public dashboard:
+# a clean main checkout matching origin/main without --local.
+will_publish() {
+  [ "$RUN_LOCAL" != "true" ] && \
+    [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] && \
+    [ -z "$(git status --porcelain)" ] && \
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main 2>/dev/null)" ]
+}
+
+# Preflight check: verify gh CLI is installed and authenticated upfront, failing fast before evals run.
+if will_publish; then
   if ! command -v gh >/dev/null 2>&1; then
     die "gh CLI is required to publish public evals after nightly runs, but is not installed or not in PATH."
   fi
@@ -158,7 +166,7 @@ done
 # `main` checkout that matches origin/main: a --local run, a feature branch, or
 # local edits would push a local allowlist and scrubber to the live site.
 publish_public_evals() {
-  if [ "$RUN_LOCAL" = "true" ] || [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ] || [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main 2>/dev/null)" ]; then
+  if ! will_publish; then
     printf "Public evals not published: requires a clean main checkout synced with origin/main without --local.\n\n" >> "$SUMMARY_FILE"
     return
   fi
