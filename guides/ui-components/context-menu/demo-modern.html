@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Context Menu Demo</title>
+    <title>Context Menu Demo - Modern</title>
     <style>
       body {
         margin: 0;
@@ -99,7 +99,7 @@
             display 0.15s allow-discrete,
             overlay 0.15s allow-discrete;
         }
-        [popover]:is(:popover-open, .\:popover-open) {
+        [popover]:popover-open {
           opacity: 1;
           translate: 0 0;
           transition-duration: 0.1s;
@@ -149,15 +149,6 @@
         pointer-events: none;
       }
 
-      @media (hover: hover) {
-        .trigger {
-          opacity: 0;
-        }
-        .card:is(:hover, :focus-within, :has(:popover-open)) .trigger {
-          opacity: 1;
-        }
-      }
-
       /* Menu Item Alignment */
       [focusgroup~="menu"] button {
         appearance: none;
@@ -205,7 +196,7 @@
         <div focusgroup="menu nomemory" aria-labelledby="trigger1">
           <button type="button">Edit</button>
           <button type="button">Share</button>
-          <hr />
+          <hr aria-hidden="true"/>
           <button type="button">Delete</button>
         </div>
       </div>
@@ -301,11 +292,11 @@
         });
       });
 
-      // When the trigger button is clicked, add it to `enterOnOpen`.
-      // Then, in the menu `toggle`, it checks if the first element should be focused.
+      // When the button is triggered with a keyboard, add to `enterOnOpen` so focus moves.
       const buttonTriggers = document.querySelectorAll("button[commandFor]");
       buttonTriggers.forEach((buttonTrigger) => {
         buttonTrigger.addEventListener("click", (event) => {
+          // event.detail === 0 when triggered by keyboard
           if (event.detail !== 0) return;
           const menu = menuFor(buttonTrigger);
           if (!menu) return;
@@ -345,7 +336,6 @@
         const button = card.querySelector("button");
 
         const openContextMenu = (event) => {
-          // TODO: are event.clientX/Y always valid?
           const x = event.clientX;
           const y = event.clientY;
 
@@ -356,9 +346,16 @@
           popover.showPopover({ source: anchor });
         };
 
-        card.addEventListener("contextmenu", (event) => {
-          event.preventDefault();
-          openContextMenu(event);
+        card.addEventListener('contextmenu', (e) => {
+          // Prevent the browser's default context menu
+          e.preventDefault();
+          // Context Menu will be opened in `mouseup` event listener.
+        });
+
+        card.addEventListener('mouseup', (e) => {
+          // button 2 = right mouse click
+          if (!(e.button === 2 || e.ctrlKey)) return;
+          openContextMenu(e);
         });
 
       });
