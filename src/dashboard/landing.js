@@ -886,6 +886,21 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
     const gDot = gRate !== null ? `<div class="dot guided" style="left: ${gRate}%;"></div>` : '';
     return `<div class="suite-dumbbell-track" aria-hidden="true"> ${uErrBand} ${gErrBand} ${connector} ${uDot} ${gDot} </div> <div class="rate-text"> <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${fmtRate(uRate)}</span> <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span> <span class="rate-g">${fmtRate(gRate)}</span> ${deltaHtml} </div>`;
 }
+/** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
+ * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran */
+function renderA11yCompact(uRate, gRate, delta) {
+    const fmtRate = (/** @type {number | null} */ r) => r === null ? '—' : `${r}%`;
+    let pillCls = 'eff-pill muted';
+    let pillText = '—';
+    let pillSr = '<span class="visually-hidden"> change not available</span>';
+    if (delta !== null) {
+        if (delta < 0) pillCls = 'eff-pill cost';
+        pillText = `${delta > 0 ? '+' : ''}${delta} pp`;
+        pillSr = '';
+    }
+    return `<div class="a11y-delta-stack"><span class="visually-hidden">Automated accessibility checks: </span><span class="${pillCls}">${pillText}${pillSr}</span><span class="a11y-delta-sub"><span class="visually-hidden">, unguided </span><span>${fmtRate(uRate)}</span><span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span><span>${fmtRate(gRate)}</span></span></div>`;
+}
 /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
 function renderDeltaPill(deltaPct, words) {
@@ -1000,7 +1015,7 @@ function renderSuites() {
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderA11yCompact(a11yURate, a11yGRate, a11yPp)} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
         } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
@@ -1193,7 +1208,7 @@ function getBarbellDataCell(trigger) {
  * @returns {HTMLElement} */
 function getBarbellAnchorElement(trigger) {
     const cell = getBarbellDataCell(trigger);
-    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track');
+    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track, .a11y-delta-stack');
     if (track instanceof HTMLElement && track.getClientRects().length > 0) return track;
     return cell || trigger;
 }
@@ -1243,7 +1258,7 @@ function renderBarbellTooltipContent(cell) {
         note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
     } else if (kind === 'suite-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+        note = 'Automated accessibility checks passed without MWG and with MWG in this suite run; lift is the percentage-point difference.';
     } else if (kind === 'agent-overall') {
         liftLabel = 'Pass-rate lift';
         note = 'Checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
