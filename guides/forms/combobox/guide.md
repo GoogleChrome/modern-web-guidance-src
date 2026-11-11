@@ -36,7 +36,7 @@ Always start from the `<datalist>` markup. It is the baseline and the source of 
 
 ## Custom listbox
 
-### 1. MANDATORY: Markup and roles
+### 1. Markup and roles
 
 Use semantic elements, not generic `<div>`/`<span>` wrappers:
 
@@ -46,7 +46,7 @@ Use semantic elements, not generic `<div>`/`<span>` wrappers:
 * Keep DOM focus on the input at all times. Indicate the highlighted option with `aria-activedescendant` on the input (set to the option's `id`) and `aria-selected="true"` on that option. Never move focus into the list.
 * Remove the `list` attribute when enhancing, so the native datalist popup does not appear on top of the custom one.
 
-### 2. MANDATORY: Popup with the Popover API
+### 2. Popup with the Popover API
 
 Use `popover="manual"` on the listbox and call `showPopover()` / `hidePopover()` from script. `manual` is required because `auto` light-dismiss would steal or close on input focus; you close it yourself on Escape, blur, and selection. The popover renders in the top layer, so no `z-index` is needed.
 
@@ -73,7 +73,7 @@ Anchor the popup to the input with CSS so it sizes and flips without JavaScript 
 input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 ```
 
-### 3. MANDATORY: Filtering and keyboard behavior
+### 3. Filtering and keyboard behavior
 
 ```js
 // Case-insensitive substring match; render only matching options.
@@ -91,11 +91,11 @@ const matches = options.filter(o => o.value.toLowerCase().includes(query));
 * Close on blur.
 * Do not require a match: an unlisted value stays in the input and is submitted as typed.
 
-### 4. MANDATORY: Announce results
+### 4. Announce results
 
 Visible filtering is invisible to screen reader users unless announced. Keep a visually hidden `role="status"` (`aria-live="polite"`) element and update its text after each filter, such as "3 suggestions available" or "No suggestions". When nothing matches, show an in-popup message with `role="presentation"` rather than an option, so it is not counted as a choice.
 
-### 5. Optional: Let users add a new item
+### 5. Let users add a new item
 
 Add this when the value is a record users build up over time (tags, destinations) and typing an unlisted value should make it a reusable choice. Skip it when unlisted values are just submitted as typed.
 
@@ -103,11 +103,11 @@ Add this when the value is a record users build up over time (tags, destinations
 * Selecting it pushes the typed value into your options source and fills the input with it, so it appears in later filters.
 * With this option present, the "no suggestions" message below is only needed when the input is empty and there are no options at all.
 
-### 6. Optional: Match highlighting
+### 6. Match highlighting
 
 Wrap the matched substring of each option label in `<mark>`. Reset its default yellow background and use weight or underline so the match is not conveyed by color alone. Worth adding when options are long or similar.
 
-### 7. Optional: Rich option content
+### 7. Rich option content
 
 Options can hold a styled title plus smaller secondary text (a description, a code, a hint). Keep the option itself as the single `role="option"` and put the content in plain inline/block children, with no nested interactive elements or extra roles. Store the value that goes into the input in a `data-value` attribute (or your options data), because the option's text content now includes the secondary text.
 
