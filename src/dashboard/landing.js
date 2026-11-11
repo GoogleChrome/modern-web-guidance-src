@@ -1246,10 +1246,10 @@ function renderBarbellTooltipContent(cell) {
         note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
     } else if (kind === 'agent-overall') {
         liftLabel = 'Pass-rate lift';
-        note = 'Checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+        note = 'Checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
     } else if (kind === 'agent-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Accessibility checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+        note = 'Accessibility checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
         note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
     } else if (kind === 'dimension') {

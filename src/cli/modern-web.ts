@@ -64,7 +64,7 @@ function printUsage() {
 Usage: modern-web-guidance <command> [args]
 
 Commands:
-  search <query>            Search use cases by query
+  search <query>            Search use cases by English query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
@@ -114,6 +114,7 @@ async function main() {
     try {
       // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
       const { searchUseCases } = await import("../rag/search.ts");
+      const { tokenize } = await import("../rag/bm25.ts");
       const results = await searchUseCases(arg);
       const latencyMs = Date.now() - startTime;
 
@@ -126,6 +127,11 @@ async function main() {
       // Compact format: return only id and description to minimize token usage with top-10 results.
       const jsonLines = results.map(({ id, description }) => JSON.stringify({ id, description }));
       console.log("[" + jsonLines.join(",\n") + "]");
+
+      // Non-ASCII letter (Unicode \p{L} intersected with non-ASCII \P{ASCII})
+      if (/[\p{L}&&\P{ASCII}]/v.test(arg) && (results.length === 0 || tokenize(arg).length <= 1)) {
+        console.error('Note: Search queries must be in English (e.g., search "light dismiss dialog").');
+      }
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       await getLogger().logSearchResult(arg, latencyMs, false, []);
