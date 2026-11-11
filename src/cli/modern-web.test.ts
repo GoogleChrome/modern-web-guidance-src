@@ -167,6 +167,40 @@ describe('modern-web CLI', () => {
     }
   });
 
+  it('discloses the retrieve gate for a gated guide in legacy-scan output', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
+    try {
+      fs.writeFileSync(
+        path.join(tempDir, 'probe.css'),
+        `.probe a {\n  text-decoration: none;\n  padding-bottom: 2px;\n  border-bottom: 1px solid red;\n}`,
+        'utf8',
+      );
+
+      const resJson = runCLI(['legacy-scan', tempDir, '--json']);
+      assert.strictEqual(resJson.status, 0);
+      const data = JSON.parse(resJson.stdout);
+      const guide = data.guides.find((g: { guideId: string }) => g.guideId === 'custom-text-decorations');
+      assert.ok(guide, 'Expected custom-text-decorations guide in legacy-scan output');
+      assert.deepStrictEqual(guide.retrieveGate, {
+        gate: 'volatile-features',
+        features: ['text-decoration-skip-spaces'],
+        unlockCommand: 'npx modern-web-guidance@latest set-allow-volatile-features',
+      });
+
+      const resHuman = runCLI(['legacy-scan', tempDir]);
+      assert.strictEqual(resHuman.status, 0);
+      assert.ok(resHuman.stdout.includes('text-decoration-skip-spaces'));
+      assert.ok(resHuman.stdout.includes('npx modern-web-guidance@latest set-allow-volatile-features'));
+
+      const ungated = data.guides.find((g: { guideId: string }) => g.guideId !== 'custom-text-decorations');
+      if (ungated) {
+        assert.strictEqual(ungated.retrieveGate, undefined);
+      }
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('forwards --help to legacy-scan when --help appears before command', () => {
     const res1 = runCLI(['--help', 'legacy-scan']);
     assert.strictEqual(res1.status, 0);

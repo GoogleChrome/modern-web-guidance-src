@@ -25,11 +25,18 @@ export interface AnalyzeCliRuleGroup {
   readonly findings: readonly AnalyzeCliFinding[];
 }
 
+export interface AnalyzeCliGuideGate {
+  readonly gate: 'origin-trials' | 'volatile-features';
+  readonly features: readonly string[];
+  readonly unlockCommand: string;
+}
+
 export interface AnalyzeCliGuideGroup {
   readonly guideId: string;
   readonly retrieveCommand: string;
   readonly count: number;
   readonly rules: readonly AnalyzeCliRuleGroup[];
+  readonly retrieveGate?: AnalyzeCliGuideGate;
 }
 
 export interface AnalyzeJsonOutput {
@@ -47,6 +54,7 @@ export interface AnalyzeCliExecutionOptions {
   readonly rules?: readonly AnalyzerRule[];
   readonly cwd?: string;
   readonly maxFiles?: number;
+  readonly getGuideGate?: (guideId: string) => AnalyzeCliGuideGate | undefined;
 }
 
 export interface AnalyzeCliResult {
@@ -121,6 +129,15 @@ function joinRubricItems(items: readonly string[]): string {
     items.map((s) => s.trim().replace(/\.+$/, '')).join('; '),
     110,
   );
+}
+
+function formatGuideGateNote(gate: AnalyzeCliGuideGate): string {
+  const featureList = gate.features.join(', ');
+  const plural = gate.features.length === 1 ? '' : 's';
+  if (gate.gate === 'origin-trials') {
+    return `Retrieve is gated: this guide covers Origin Trial feature${plural} ${featureList}. Unlock with '${gate.unlockCommand}' to retrieve the full guide.`;
+  }
+  return `Retrieve is gated: this guide covers volatile feature${plural} ${featureList}. Unlock with '${gate.unlockCommand}' to retrieve the full guide; the rule summaries above describe the stable fix.`;
 }
 
 function appendFindingGroupBlock(
@@ -221,6 +238,9 @@ export function formatHumanReadable(
         appendFindingGroupBlock(lines, rg, '    ', fmt);
       }
     }
+    if (g.retrieveGate) {
+      lines.push(`  ${fmt('dim', formatGuideGateNote(g.retrieveGate))}`);
+    }
     lines.push('');
   }
 
@@ -244,6 +264,7 @@ function errorCliResult(error: string, isJson: boolean, targetDir = '.'): Analyz
 function groupFindingsByGuide(
   findings: readonly AnalyzerFinding[],
   activeRules: readonly AnalyzerRule[],
+  getGuideGate?: (guideId: string) => AnalyzeCliGuideGate | undefined,
 ): AnalyzeCliGuideGroup[] {
   const ruleMap = new Map(activeRules.map((r) => [r.id, r]));
   const findingsByGuide = Map.groupBy(findings, (f) => f.guideId);
@@ -278,11 +299,13 @@ function groupFindingsByGuide(
           };
         });
 
+      const retrieveGate = getGuideGate?.(gid);
       return {
         guideId: gid,
         retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
         count: guideFindings.length,
         rules,
+        ...(retrieveGate ? { retrieveGate } : {}),
       };
     });
 }
@@ -377,7 +400,7 @@ export async function runAnalyzeCli(
   }
   const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
 
-  const guides = groupFindingsByGuide(findings, activeRules);
+  const guides = groupFindingsByGuide(findings, activeRules, options?.getGuideGate);
   const totalFindings = findings.length;
   const data: AnalyzeJsonOutput = {
     targetDir,

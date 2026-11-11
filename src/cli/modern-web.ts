@@ -13,6 +13,8 @@ import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
+import { FEATURE_GATES } from "../core/feature-gates.ts";
+import type { AnalyzeCliGuideGate } from "../analyzing/cli.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
@@ -23,6 +25,36 @@ import { determineAgent } from "./telemetry/detect-agent.ts";
 declare const __MWG_DIST_TAG__: string | undefined;
 
 const MAX_INLINE_STDOUT_BYTES = 9500;
+
+/**
+ * Reports the feature gate blocking `retrieve` for a guide, if any, so
+ * legacy-scan can disclose it instead of pointing at a guide the agent
+ * cannot retrieve without opting in first. Origin Trials are checked first,
+ * matching the order `retrieveUseCase` enforces them.
+ */
+function getGuideGate(guideId: string): AnalyzeCliGuideGate | undefined {
+  const useCase = USE_CASES.find((u) => u.id === guideId);
+  if (!useCase) return undefined;
+  const originTrials = useCase.originTrials ?? [];
+  if (originTrials.length > 0) {
+    const spec = FEATURE_GATES['origin-trials'];
+    return {
+      gate: 'origin-trials',
+      features: originTrials.map((f) => f.id),
+      unlockCommand: `npx modern-web-guidance@latest ${spec.cliCommand}`,
+    };
+  }
+  const volatileFeatures = useCase.volatileFeatures ?? [];
+  if (volatileFeatures.length > 0) {
+    const spec = FEATURE_GATES['volatile-features'];
+    return {
+      gate: 'volatile-features',
+      features: volatileFeatures.map((f) => f.id),
+      unlockCommand: `npx modern-web-guidance@latest ${spec.cliCommand}`,
+    };
+  }
+  return undefined;
+}
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -101,7 +133,7 @@ async function main() {
     const cmdIdx = args.indexOf(command);
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
     const startTime = Date.now();
-    const result = await runAnalyzeCli(args);
+    const result = await runAnalyzeCli(args, { getGuideGate });
     if (result.exitCode === 0 && result.data) {
       logToolResult(
         "analyze",

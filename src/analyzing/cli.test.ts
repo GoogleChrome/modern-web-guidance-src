@@ -278,6 +278,58 @@ describe('runAnalyzeCli', () => {
     });
   });
 
+  it('discloses a gated guide in scan output when a guide-gate resolver is provided', async () => {
+    await withTempDir(async (testDir) => {
+      await writeFile(
+        join(testDir, 'probe.css'),
+        `.probe a {\n  text-decoration: none;\n  padding-bottom: 2px;\n  border-bottom: 1px solid red;\n}`,
+        'utf8',
+      );
+      const getGuideGate = (guideId: string) =>
+        guideId === 'custom-text-decorations'
+          ? {
+              gate: 'volatile-features' as const,
+              features: ['text-decoration-skip-spaces'],
+              unlockCommand: 'npx modern-web-guidance@latest set-allow-volatile-features',
+            }
+          : undefined;
+
+      const resJson = await runAnalyzeCli([testDir, '--json'], { getGuideGate });
+      assert.equal(resJson.exitCode, 0);
+      const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
+      const guide = parsed.guides.find((g) => g.guideId === 'custom-text-decorations');
+      assert.ok(guide, 'Expected custom-text-decorations guide in JSON output');
+      assert.deepEqual(guide.retrieveGate, {
+        gate: 'volatile-features',
+        features: ['text-decoration-skip-spaces'],
+        unlockCommand: 'npx modern-web-guidance@latest set-allow-volatile-features',
+      });
+
+      const resHuman = await runAnalyzeCli([testDir], { getGuideGate });
+      assert.equal(resHuman.exitCode, 0);
+      assert.match(resHuman.output, /text-decoration-skip-spaces/);
+      assert.match(resHuman.output, /set-allow-volatile-features/);
+      assert.match(resHuman.output, /rule summaries above describe the stable fix/);
+    });
+  });
+
+  it('omits retrieveGate when no guide-gate resolver is provided', async () => {
+    await withTempDir(async (testDir) => {
+      await writeFile(
+        join(testDir, 'probe.css'),
+        `.probe a {\n  text-decoration: none;\n  padding-bottom: 2px;\n  border-bottom: 1px solid red;\n}`,
+        'utf8',
+      );
+
+      const resJson = await runAnalyzeCli([testDir, '--json']);
+      assert.equal(resJson.exitCode, 0);
+      const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
+      const guide = parsed.guides.find((g) => g.guideId === 'custom-text-decorations');
+      assert.ok(guide, 'Expected custom-text-decorations guide in JSON output');
+      assert.equal(guide.retrieveGate, undefined);
+    });
+  });
+
   it('filters analysis strictly to specified --guide <guideId>', async () => {
     await withTempDir(async (testDir) => {
       await writeFile(
@@ -487,6 +539,81 @@ describe('runAnalyzeCli', () => {
         color: false,
       });
       assert.ok(!outputNoColor.includes('\u001b['), 'Expected no ANSI escape codes when color=false');
+    });
+
+    it('formatHumanReadable renders a gate note for gated guides and none for ungated guides', () => {
+      const gatedGuides: AnalyzeCliGuideGroup[] = [
+        {
+          guideId: 'custom-text-decorations',
+          retrieveCommand: 'npx modern-web-guidance retrieve custom-text-decorations',
+          count: 1,
+          retrieveGate: {
+            gate: 'volatile-features',
+            features: ['text-decoration-skip-spaces'],
+            unlockCommand: 'npx modern-web-guidance@latest set-allow-volatile-features',
+          },
+          rules: [
+            {
+              ruleId: 'custom-text-decorations',
+              summary: 'Use native CSS text-decoration instead of border-bottom underline hacks.',
+              count: 1,
+              findings: [
+                {
+                  file: 'probe.css',
+                  line: 1,
+                  message: 'Simulating text underline with border-bottom.',
+                  lineContent: '.probe a {',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          guideId: 'autofill-sign-in-form',
+          retrieveCommand: 'npx retrieve autofill-sign-in-form',
+          count: 1,
+          rules: [
+            {
+              ruleId: 'autofill-sign-in-form',
+              summary: 'Autocomplete guidance summary',
+              count: 1,
+              findings: [
+                {
+                  file: 'src/login.html',
+                  line: 10,
+                  message: 'Missing autocomplete',
+                  lineContent: '<input type="password">',
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const output = formatHumanReadable('/workspace', 2, gatedGuides, undefined, {
+        color: false,
+      });
+      assert.match(output, /Retrieve is gated: this guide covers volatile feature text-decoration-skip-spaces\./);
+      assert.match(output, /npx modern-web-guidance@latest set-allow-volatile-features/);
+      assert.match(output, /rule summaries above describe the stable fix/);
+      assert.doesNotMatch(output, /autofill-sign-in-form[\s\S]*Retrieve is gated/);
+
+      const otGuides: AnalyzeCliGuideGroup[] = [
+        {
+          ...gatedGuides[0],
+          retrieveGate: {
+            gate: 'origin-trials',
+            features: ['some-origin-trial'],
+            unlockCommand: 'npx modern-web-guidance@latest set-allow-origin-trials',
+          },
+        },
+      ];
+      const otOutput = formatHumanReadable('/workspace', 1, otGuides, undefined, {
+        color: false,
+      });
+      assert.match(otOutput, /Retrieve is gated: this guide covers Origin Trial feature some-origin-trial\./);
+      assert.match(otOutput, /npx modern-web-guidance@latest set-allow-origin-trials/);
+      assert.doesNotMatch(otOutput, /rule summaries above describe the stable fix/);
     });
 
     it('skips docs, examples, demo, test, spec, and fixtures by default with --include-docs-and-tests opt-in', async () => {
