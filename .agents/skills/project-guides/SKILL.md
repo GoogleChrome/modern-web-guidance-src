@@ -90,7 +90,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 * **Framing:** Frame fallback necessity in terms of Baseline target (e.g., "If your Baseline target does not support X, use...").
 * **Assessment:** Start with a broad assessment of the fallback's robustness. Recommend the modern approach if the fallback is robust; highlight complexity/caveats and suggest alternatives (like userland solutions) if it is not.
 * **Experience:** **MANDATORY:** Explicitly describe the fallback experience (progressive enhancement vs. feature detection/graceful degradation).
-* **Feature Detection:** Checks should be tightly scoped to the interface rather than the instance (e.g. use `Object.hasOwn(HTMLElement.prototype, 'onbeforematch')` over `'onbeforematch' in window`)
+* **Feature Detection:** Use the `in` operator rather than `Object.hasOwn()` or `hasOwnProperty()` so checks work across the prototype chain. Check the target instance when you already have one (e.g. `'moveBefore' in container`, `'startViewTransition' in document`), or the specific Web IDL interface prototype when checking without an instance (e.g. `'onbeforematch' in HTMLElement.prototype` over `'onbeforematch' in window`).
 * **Fallback Options (in order of preference):**
     1.  **Custom Code:** Short, reliable reimplementation (**<50 lines**) using widely available features.
     2.  **Polyfill:** A robust, performant polyfill (see guidelines below).
