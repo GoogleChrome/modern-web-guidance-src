@@ -176,7 +176,7 @@ publish_public_evals() {
   local summary
   summary=$(printf '%s\n' "$out" | sed 's/\x1b\[[0-9;]*m//g' | grep -Ev '^(skipped|FAILED| ) ' || true)
   if [ "$status" -eq 0 ]; then
-    printf "Public evals published.\n%s\n\n" "$(echo "$summary" | tail -2)" >> "$SUMMARY_FILE"
+    printf "Public evals published.\n%s\n\n" "$(echo "$summary" | tail -4)" >> "$SUMMARY_FILE"
   else
     printf "Public evals publish FAILED (exit %s).\n%s\n\n" "$status" "$(echo "$summary" | tail -10)" >> "$SUMMARY_FILE"
     FAILED=1
