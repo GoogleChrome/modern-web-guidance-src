@@ -53,7 +53,7 @@ Use `popover="manual"` on the listbox and call `showPopover()` / `hidePopover()`
 Anchor the popup to the input with CSS so it sizes and flips without JavaScript measurement:
 
 ```css
-.combobox { anchor-name: --combobox; }
+input[role="combobox"] { anchor-name: --combobox; }
 
 [role="listbox"] {
   position-anchor: --combobox;
