@@ -76,7 +76,7 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
 </dialog>
 ```
 
-MANDATORY: Any button with `commandfor` and `command` that is inside a `<form>` (including the common `<form method="dialog">` wrapper) MUST set an explicit `type`: `type="button"` to only run the command, or `type="submit"` when the form should also submit. The HTML Standard makes a command button with no `type` a no-op when it has a form owner, so that older browsers which don't support commands don't submit the form by accident: it neither submits the form nor runs the command.
+MANDATORY: Any button with `commandfor` and `command` that is inside a `<form>` (including the common `<form method="dialog">` wrapper) MUST set an explicit `type`: `type="button"` to run the command. A button with `type="submit"` will submit the form, and not also run the command. A command button with no `type` inside a `<form>` or with a `form` attribute does nothing, so older browsers which don't support commands don't submit the form by accident.
 
 {# The HTML Standard's `button` activation behavior returns early for a button in the Auto type state with `command`/`commandfor` and a form owner. Lifting this is tracked in https://github.com/whatwg/html/issues/10832. See https://github.com/GoogleChrome/modern-web-guidance-src/issues/3091. #}
 

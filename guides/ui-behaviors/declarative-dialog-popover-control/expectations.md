@@ -4,7 +4,7 @@
 - The target element for popover commands has the `popover` attribute.
 - A button used to open a modal dialog has `command="show-modal"` and targets a `<dialog>` element.
 - A button used to close a dialog has `command="close"`.
-- Every button with `commandfor` and `command` attributes inside a `<form>` sets an explicit `type` attribute (`button` or `submit`).
+- Every button with `commandfor` and `command` attributes inside a `<form>` sets an explicit `type="button"` attribute.
 - The fallback strategy MUST feature detect support by checking for `commandForElement` in `HTMLButtonElement.prototype` and `popover` in `HTMLElement.prototype`.
 - Polyfills MUST be loaded via dynamic `import()` only when native support is missing (or forced for testing).
 - The `invokers-polyfill` is dynamically imported (e.g., `import('invokers-polyfill')` with a bundler, or from a CDN such as `https://esm.run/invokers-polyfill`).
