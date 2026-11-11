@@ -34,9 +34,10 @@ web-feature-ids:
 
 ### Gradients and `color-mix()`
 
-Use `in oklch` or `in oklab` to explicitly specify the interpolation color space for gradients or `color-mix()`.
-- `in oklch` preserves chroma better, but can more easily get out of device gamut, especially for bigger differences between colors
-- `in oklab` stays in gamut more easily (assuming in-gamut endpoints) but can create washed out desaturated colors in the middle, especially when interpolating between opposite hues.
+Use `in oklab` or `in oklch` to explicitly specify the interpolation color space for gradients or `color-mix()`.
+- Prefer `in oklab` by default for `color-mix()`, especially when mixing neutrals. Using `oklch` for neutrals provides no benefit, and due to a Chromium bug (565837690) low chroma oklch colors have powerless hue angles (`none`), which resolve to `0deg` (magenta-red) and cause an unintended reddish/pink tint shift when rendered. Cartesian `in oklab` scales `(a, b)` coordinates linearly toward `(0, 0)` without computing a polar hue angle, preserving the exact hue and preventing tint shifts.
+- `in oklab` stays in gamut more easily (assuming in-gamut endpoints) but can create washed out desaturated colors in the middle when interpolating between two opposing saturated hues.
+- `in oklch` preserves chroma better when interpolating gradients between two distinct saturated chromatic hues, but can more easily get out of device gamut, especially for bigger differences between colors. Avoid using `in oklch` for alpha transparency fades or mixing neutral colors.
 - *DON'T* use `in srgb` unless you have a specific reason to do so (e.g. you are building a color picker that needs to interpolate in srgb).
 
 #### Fallback
