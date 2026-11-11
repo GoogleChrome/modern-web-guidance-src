@@ -26,7 +26,8 @@
 - The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
 - The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.
-- All of the carousel's interactive elements must have a minimum target size of 24 by 24 CSS pixels, or sufficient spacing, as to not intersect any elements within a 24 CSS pixel diameter circle.
+- The previous/next buttons have a target size of at least 24×24 CSS pixels.
+- Each slide marker has a target size of at least 24×24 CSS pixels, or enough spacing that a 24px circle centred on it does not overlap neighbouring targets.
 - Non-text elements must have a contrast ratio of at least 3:1 between the non-text content and any adjacent colors.
 - When a previous/next control becomes disabled, causing focus to be lost, focus is redirected to the opposite previous/next control.
 - The active slide's control does not communicate that it is active through color alone. There is another visual affordance present to communicate its active state.
