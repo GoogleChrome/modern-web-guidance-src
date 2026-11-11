@@ -64,15 +64,13 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
 </button>
 
 <dialog id="confirm-dialog">
-  <form method="dialog">
-    <p>Are you sure you want to proceed?</p>
+  <p>Are you sure you want to proceed?</p>
 
-    <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
-    <!-- MANDATORY: Inside a <form>, set type="button" on command buttons. Without an explicit type, a commandfor button in a form does nothing. -->
-    <button type="button" commandfor="confirm-dialog" command="close">
-      Cancel
-    </button>
-  </form>
+  <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
+  <!-- type="button" keeps this working if the dialog content is later wrapped in a <form>. -->
+  <button type="button" commandfor="confirm-dialog" command="close">
+    Cancel
+  </button>
 </dialog>
 ```
 

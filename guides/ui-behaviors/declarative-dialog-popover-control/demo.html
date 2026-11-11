@@ -138,16 +138,13 @@
 
     <!-- The dialog target -->
     <dialog id="my-dialog">
-      <form method="dialog">
-        <h2>Confirmation</h2>
-        <p>Are you sure you want to proceed with this action?</p>
+      <h2>Confirmation</h2>
+      <p>Are you sure you want to proceed with this action?</p>
 
-        <!-- Invoker button inside the dialog to close it. type="button" is required
-             inside a <form>: a command button without an explicit type does nothing there. -->
-        <button type="button" commandfor="my-dialog" command="close">
-          Close Dialog
-        </button>
-      </form>
+      <!-- Invoker button inside the dialog to close it -->
+      <button type="button" commandfor="my-dialog" command="close">
+        Close Dialog
+      </button>
     </dialog>
   </section>
 
