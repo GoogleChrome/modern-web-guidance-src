@@ -243,7 +243,7 @@
     }
 
     [focusgroup~="menu"] button[aria-checked="true"]::before {
-      content: '✓';
+      content: '✓' / "";
     }
 
     [focusgroup~="menu"]>hr {
@@ -320,11 +320,11 @@
           <!-- Checkable items keep an explicit role: focusgroup only infers menuitem. -->
           <button type="button" role="menuitemcheckbox" aria-checked="true">Show Toolbar</button>
           <button type="button" role="menuitemcheckbox" aria-checked="false">Show Status Bar</button>
-          <hr>
+          <hr aria-hidden="true">
           <button id="appearance-trigger" type="button" aria-haspopup="menu" commandfor="appearance-menu" command="toggle-popover" aria-expanded="false">Appearance <span
               class="hint" aria-hidden="true">›</span></button>
           <div id="appearance-menu" popover="auto">
-            <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger">
+            <div focusgroup="menu nomemory" aria-labelledby="appearance-trigger" data-suppress-autoclose="true">
               <div role="group" aria-label="Appearance">
                 <button type="button" role="menuitemradio" aria-checked="false">Light</button>
                 <button type="button" role="menuitemradio" aria-checked="false">Dark</button>
@@ -332,7 +332,7 @@
               </div>
             </div>
           </div>
-          <hr>
+          <hr aria-hidden="true">
           <button type="button">Enter Full Screen</button>
         </div>
       </div>
@@ -428,6 +428,7 @@
         .filter(item => item.closest('[focusgroup]') === group)
         .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
     };
+    const isAutocloseSuppressed = menu => menu.querySelector(':scope > [focusgroup~="menu"]')?.dataset.suppressAutoclose === 'true';
 
     function focusFirst(menu) {
       const first = menuItems(menu)[0];
@@ -583,8 +584,15 @@
       });
 
       // Tab leaves the menu system rather than moving into the previewed menu that follows the trigger.
+      // Escape closes only the trigger's own open menu so a submenu does not dismiss its parent.
       trigger.addEventListener('keydown', event => {
-        if (event.key === 'Tab') closeAllMenus();
+        if (event.key === 'Tab') {
+          closeAllMenus();
+        } else if (event.key === 'Escape' && isOpen(menu)) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeAndRestore(menu);
+        }
       });
     });
 
@@ -729,6 +737,7 @@
           status.textContent = `${item.textContent.trim()} selected`;
         }
         lastKey = null;
+        if (isAutocloseSuppressed(menu)) return;
         // A keyboard-initiated click has detail 0.
         const root = rootMenuOf(menu);
         const fromPointer = event.detail > 0;
