@@ -232,6 +232,15 @@ describe('file-filter vendored and hashed asset exclusions', () => {
       'extensions/cxx_debugging/e2e/OptionsPageTests.ts',
       'src/FooTestRunner.ts',
       'src/foo_test_runner.ts',
+      'TestRunner.js',
+      'BindingsTestRunner.js',
+      'console_test_runner.js',
+      'run-tests.js',
+      'setupTests.js',
+      'keeper.tests.ts',
+      'tests.js',
+      'Scripts/testrunner.ts',
+      'src/DOMTests.ts',
     ];
     for (const f of testRunnerAndTestsFiles) {
       await t.test(`test-runner/tests path: ${f}`, () => {
@@ -270,6 +279,14 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     assert.equal(isDocsOrTestsPath('src/testing.js'), false);
     assert.equal(isDocsOrTestsPath('special.js'), false);
     assert.equal(isDocsOrTestsPath('contest.js'), false);
+    assert.equal(isDocsOrTestsPath('contests.js'), false);
+    assert.equal(isDocsOrTestsPath('src/contests.js'), false);
+    assert.equal(isDocsOrTestsPath('src/protests.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/retests.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/latestrunner.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/fastestrunner.js'), false);
+    assert.equal(isDocsOrTestsPath('src/contestRunner.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/CONTESTS.JS'), false);
 
     // Minified files under docs/test are never scannable even with includeDocsAndTests: true
     assert.equal(

@@ -64,7 +64,8 @@ export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
 ]);
 
 const TEST_OR_SPEC_FILE_RE =
-  /(?:(?:^|\.)(?:test|spec)\.|(?:_test_runner\.(?:js|ts|html)|testrunner\.(?:js|ts)|tests\.(?:js|ts))$)/i;
+  /(?:(?:^|\.)(?:test|spec)\.|_test_runner\.(?:js|ts|html)$|(?:^|[._-])(?:testrunner|tests)\.(?:js|ts)$)/i;
+const CAMEL_TEST_FILE_RE = /[A-Za-z0-9](?:TestRunner|Tests)\.(?:js|ts)$/;
 
 function normalizePath(relPath: string): string {
   return relPath.replace(/\\/g, '/').toLowerCase();
@@ -99,15 +100,19 @@ function hasDotDirSegment(relPath: string): boolean {
  * example, demo, test, spec, testing, e2e, or fixtures path or is a test/spec/test-runner file.
  */
 export function isDocsOrTestsPath(relPath: string): boolean {
-  const segments = splitPathSegments(relPath);
-  if (segments.length === 0) {
+  const rawSegments = relPath
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
+  if (rawSegments.length === 0) {
     return false;
   }
+  const lowerDirs = rawSegments.slice(0, -1).map((s) => s.toLowerCase());
+  const rawBaseName = rawSegments.at(-1) ?? '';
   return (
-    segments
-      .slice(0, -1)
-      .some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg) || seg.endsWith('_test_runner')) ||
-    TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? '')
+    lowerDirs.some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg) || seg.endsWith('_test_runner')) ||
+    TEST_OR_SPEC_FILE_RE.test(rawBaseName) ||
+    CAMEL_TEST_FILE_RE.test(rawBaseName)
   );
 }
 

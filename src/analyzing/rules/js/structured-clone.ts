@@ -105,23 +105,33 @@ const REACTIVE_CALLS = new Set([
   'makeObservable',
 ]);
 const REF_CALLS = new Set(['ref', 'shallowRef', 'computed']);
-const SANITIZE_UNDEFINED_NAME_RE = /(?:clean|strip|omit|prune|remove).*undefined|sanitizeJson/i;
+const SANITIZE_UNDEFINED_NAME_RE = /(?:clean|strip|omit|prune|remove)_?undefined|sanitizeJson/i;
 
 function hasSanitizeUndefinedAncestor(node: Node): boolean {
-  return Boolean(
-    node.getFirstAncestor((ancestor) => {
-      let name: string | undefined;
-      if (Node.isVariableDeclaration(ancestor)) {
-        const nameNode = ancestor.getNameNode();
-        name = Node.isIdentifier(nameNode) ? nameNode.getText() : undefined;
-      } else if (Node.isFunctionDeclaration(ancestor) || Node.isMethodDeclaration(ancestor)) {
-        name = ancestor.getName();
-      } else if (Node.isPropertyAssignment(ancestor)) {
-        name = getStaticString(ancestor.getNameNode()) ?? ancestor.getName();
-      }
-      return Boolean(name && SANITIZE_UNDEFINED_NAME_RE.test(name));
-    }),
-  );
+  for (let ancestor = node.getParent(); ancestor; ancestor = ancestor.getParent()) {
+    let name: string | undefined;
+    if (Node.isVariableDeclaration(ancestor)) {
+      const nameNode = ancestor.getNameNode();
+      name = Node.isIdentifier(nameNode) ? nameNode.getText() : undefined;
+    } else if (
+      Node.isFunctionDeclaration(ancestor) ||
+      Node.isMethodDeclaration(ancestor) ||
+      Node.isFunctionExpression(ancestor)
+    ) {
+      name = ancestor.getName();
+    } else if (Node.isPropertyAssignment(ancestor)) {
+      name = getStaticString(ancestor.getNameNode()) ?? ancestor.getName();
+    }
+    if (name && SANITIZE_UNDEFINED_NAME_RE.test(name)) return true;
+    if (
+      Node.isFunctionDeclaration(ancestor) ||
+      Node.isMethodDeclaration(ancestor) ||
+      (Node.isFunctionExpression(ancestor) && ancestor.getName())
+    ) {
+      return false;
+    }
+  }
+  return false;
 }
 
 function isPostMessageCall(node: CallExpression): boolean {
@@ -130,19 +140,64 @@ function isPostMessageCall(node: CallExpression): boolean {
   return getMemberAccess(callee)?.name === 'postMessage';
 }
 
+function getRootIdentifierName(lhs: Node): string | null {
+  let root = unwrapExpression(lhs);
+  while (Node.isPropertyAccessExpression(root) || Node.isElementAccessExpression(root)) {
+    root = unwrapExpression(root.getExpression());
+  }
+  return Node.isIdentifier(root) ? root.getText() : null;
+}
+
+function getCloneFlowTargetName(node: Node, scope: Node): string | null {
+  for (let cur: Node | undefined = node.getParent(); cur && cur !== scope; cur = cur.getParent()) {
+    if (Node.isVariableDeclaration(cur)) {
+      const nameNode = cur.getNameNode();
+      return Node.isIdentifier(nameNode) ? nameNode.getText() : null;
+    }
+    if (Node.isBinaryExpression(cur) && cur.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+      return getRootIdentifierName(cur.getLeft());
+    }
+    if (isCallableNode(cur) || Node.isStatement(cur)) break;
+  }
+  return null;
+}
+
+function isTargetIdentifierReference(id: Node, targetName: string): boolean {
+  if (id.getText() !== targetName) return false;
+  const parent = id.getParent();
+  if (Node.isPropertyAccessExpression(parent) && parent.getNameNode() === id) return false;
+  if (Node.isPropertyAssignment(parent) && parent.getNameNode() === id) return false;
+  return true;
+}
+
+function referencesIdentifierInArgs(call: CallExpression, targetName: string): boolean {
+  return call.getArguments().some(
+    (arg) =>
+      (Node.isIdentifier(arg) && isTargetIdentifierReference(arg, targetName)) ||
+      arg.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => isTargetIdentifierReference(id, targetName)),
+  );
+}
+
 function hasSubsequentPostMessage(node: Node, sourceFile: SourceFile): boolean {
   if (!sourceFile.getFullText().includes('postMessage')) return false;
-  if (node.getFirstAncestor((ancestor) => Node.isCallExpression(ancestor) && isPostMessageCall(ancestor))) {
-    return true;
-  }
+  const inPostMessageArg = node.getFirstAncestor(
+    (ancestor) =>
+      Node.isCallExpression(ancestor) &&
+      isPostMessageCall(ancestor) &&
+      ancestor.getArguments().some((arg) => node.getStart() >= arg.getStart() && node.getEnd() <= arg.getEnd()),
+  );
+  if (inPostMessageArg) return true;
+
   const enclosingFn = node.getFirstAncestor(isCallableNode);
   const scope = enclosingFn ?? sourceFile;
+  const targetName = getCloneFlowTargetName(node, scope);
+  if (!targetName) return false;
   const nodeEnd = node.getEnd();
 
   return scope.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
     if (call === node || !isPostMessageCall(call)) return false;
     if (call.getFirstAncestor(isCallableNode) !== enclosingFn) return false;
-    return call.getStart() >= nodeEnd;
+    return call.getStart() >= nodeEnd && referencesIdentifierInArgs(call, targetName);
   });
 }
 

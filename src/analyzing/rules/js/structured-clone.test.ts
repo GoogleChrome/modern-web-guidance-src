@@ -391,6 +391,31 @@ void test('js/structured-clone matcher', async (t) => {
         return copy;
       }
 
+      function unrelatedPostMessage(worker, state) {
+        const snapshot = JSON.parse(JSON.stringify(state));
+        snapshot.dirty = true;
+        worker.postMessage({ type: 'SYNC_COMPLETE' });
+        return snapshot;
+      }
+
+      function unrelatedReturnClone(port, data, fallback) {
+        if (!data) return JSON.parse(JSON.stringify(fallback));
+        port.postMessage('ok');
+      }
+
+      function unrelatedPropertyNamePostMessage(worker, state) {
+        const snapshot = JSON.parse(JSON.stringify(state));
+        worker.postMessage({ snapshot: 'done' });
+        return snapshot;
+      }
+
+      function removeUndefinedBehaviorFlag() {
+        function cloneConfig(cfg) {
+          return JSON.parse(JSON.stringify(cfg));
+        }
+        return cloneConfig;
+      }
+
       function unrelatedFunctionPostMessage(data) {
         const copy = JSON.parse(JSON.stringify(data));
         const sendLater = () => self.postMessage('later');
@@ -406,7 +431,7 @@ void test('js/structured-clone matcher', async (t) => {
     `;
     assert.deepEqual(
       matchJsRule(structuredCloneMatcher, 'still-flagged.js', stillFlagged).map((m) => m.line),
-      [4, 10, 16],
+      [4, 10, 17, 22, 29, 35, 41],
     );
   });
 });

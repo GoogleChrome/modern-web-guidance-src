@@ -362,7 +362,14 @@ void test('js/copying-array-methods matcher', async (t) => {
         }
       }
 
-      function docCollections(el, iframe, doc, table, row, select) {
+      function unionSetOrArray(a: Set<string> | Array<number>, b: Array<number> | Set<string>) {
+        return [
+          [...a].sort(),
+          [...b].reverse(),
+        ];
+      }
+
+      function docCollections(el, iframe, doc, typedDoc: Document, domLitDoc: { links: HTMLCollection }, table, row, select) {
         return [
           [...document.scripts].sort(),
           [...window.document.forms].sort(),
@@ -371,6 +378,8 @@ void test('js/copying-array-methods matcher', async (t) => {
           [...doc.embeds].sort(),
           [...Document.applets].reverse(),
           [...doc.anchors].sort(),
+          [...typedDoc.scripts].sort(),
+          [...domLitDoc.links].sort(),
           [...table.tBodies].sort(),
           [...table.rows].reverse(),
           [...row.cells].sort(),
@@ -382,23 +391,26 @@ void test('js/copying-array-methods matcher', async (t) => {
 
     const recoveredPositives = `
       type StringList = string[];
+      interface MarkdownDoc { links: string[]; }
       function getArr(): string[] { return []; }
       class Panel {
         #items(): number[] { return []; }
-        run(list: StringList, loaf, user, page) {
+        run(list: StringList, doc: MarkdownDoc, loaf, user, page, nullableArr: Array<string> | null) {
           const a = [...list].sort();
           const b = [...getArr()].sort();
           const c = [...this.#items()].reverse();
           const d = loaf.scripts.slice().sort((x, y) => y.duration - x.duration);
           const e = [...user.links].sort();
           const f = page.forms.slice().reverse();
-          return [a, b, c, d, e, f];
+          const g = [...doc.links].sort();
+          const h = [...nullableArr].reverse();
+          return [a, b, c, d, e, f, g, h];
         }
       }
     `;
     assert.deepEqual(
       matchJsRule(copyingArrayMethodsMatcher, 'recovered.ts', recoveredPositives).map((m) => m.line),
-      [7, 8, 9, 10, 11, 12],
+      [8, 9, 10, 11, 12, 13, 14, 15],
     );
   });
 });

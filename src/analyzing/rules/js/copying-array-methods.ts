@@ -1,4 +1,4 @@
-import { Node, SyntaxKind, type CallExpression, type SourceFile } from 'ts-morph';
+import { Node, SyntaxKind, type CallExpression, type SourceFile, type TypeNode } from 'ts-morph';
 import {
   areNodesEqual,
   getAssignment,
@@ -84,15 +84,41 @@ function getBindingKey(node: Node): string | null {
   return null;
 }
 
+function splitTopLevelUnion(typeText: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < typeText.length; i++) {
+    const ch = typeText[i];
+    if (ch === '<' || ch === '(' || ch === '[' || ch === '{') {
+      depth++;
+    } else if ((ch === '>' && typeText[i - 1] !== '=') || ch === ')' || ch === ']' || ch === '}') {
+      depth = Math.max(0, depth - 1);
+    } else if (ch === '|' && depth === 0) {
+      parts.push(typeText.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  parts.push(typeText.slice(start).trim());
+  return parts.filter((part) => part && part !== 'null' && part !== 'undefined');
+}
+
 function classifyTypeText(
   typeText: string | undefined,
   sourceFile?: SourceFile,
   seenAliases?: Set<string>,
 ): ReceiverKind {
-  const stripped = typeText
-    ?.replace(/^(?:\s*(?:null|undefined)\s*\|)+|(?:\s*\|\s*(?:null|undefined))+\s*$/g, '')
-    .trim();
-  if (!stripped || /\[\]\s*$|^\s*(?:Readonly)?Array\s*<|^\s*(?:readonly\s+)?\[/.test(stripped)) {
+  const trimmed = typeText?.trim();
+  if (!trimmed) return 'array';
+  const arms = splitTopLevelUnion(trimmed);
+  if (arms.length === 0) return 'array';
+  if (arms.length > 1) {
+    const kinds = arms.map((arm) => classifyTypeText(arm, sourceFile, seenAliases));
+    if (kinds.includes('non-array')) return 'non-array';
+    return kinds.every((kind) => kind === 'typed-array') ? 'typed-array' : 'array';
+  }
+  const stripped = arms[0]!;
+  if (/\[\]\s*$|^\s*(?:Readonly)?Array\s*<|^\s*(?:readonly\s+)?\[/.test(stripped)) {
     return 'array';
   }
   if (NON_ARRAY_TYPE.test(stripped)) return 'non-array';
@@ -196,6 +222,78 @@ function findInScope<T>(scope: Node, key: string, visit: (node: Node) => T | und
   return found;
 }
 
+const DOM_DOCUMENT_TYPE_RE = /^(?:HTML|XML)?Document$/;
+
+function findExplicitTypeNode(node: Node): TypeNode | undefined {
+  const unwrapped = unwrapExpression(node);
+  for (let cur: Node | undefined = node; cur && cur !== unwrapped; cur = cur.getParent()) {
+    if (Node.isAsExpression(cur) || Node.isTypeAssertion(cur) || Node.isSatisfiesExpression(cur)) {
+      const typeNode = cur.getTypeNode();
+      if (typeNode) return typeNode;
+    }
+  }
+  const key = getBindingKey(unwrapped);
+  if (!key) return undefined;
+  const scope =
+    unwrapped.getFirstAncestor((ancestor) => shadowsBindingKey(ancestor, key)) ??
+    unwrapped.getFirstAncestor(isCallableNode) ??
+    unwrapped.getSourceFile();
+  return findInScope<TypeNode>(scope, key, (desc) => {
+    if (Node.isVariableDeclaration(desc) || Node.isParameterDeclaration(desc) || Node.isPropertyDeclaration(desc)) {
+      const declKey = Node.isPropertyDeclaration(desc) ? `this.${desc.getName()}` : desc.getName();
+      if (declKey === key) return desc.getTypeNode();
+    }
+    return undefined;
+  });
+}
+
+function resolveDocumentCollectionKindFromTypeNode(
+  typeNode: TypeNode,
+  memberName: string,
+  seenAliases?: Set<string>,
+): ReceiverKind | 'unknown-type' {
+  const sourceFile = typeNode.getSourceFile();
+  if (Node.isParenthesizedTypeNode(typeNode)) {
+    return resolveDocumentCollectionKindFromTypeNode(typeNode.getTypeNode(), memberName, seenAliases);
+  }
+  if (Node.isUnionTypeNode(typeNode)) {
+    const armKinds = typeNode
+      .getTypeNodes()
+      .filter((arm) => {
+        const text = arm.getText().trim();
+        return text !== 'null' && text !== 'undefined';
+      })
+      .map((arm) => resolveDocumentCollectionKindFromTypeNode(arm, memberName, seenAliases));
+    if (armKinds.includes('non-array')) return 'non-array';
+    if (armKinds.some((k) => k === 'unknown-type')) return 'unknown-type';
+    return armKinds.includes('typed-array') ? 'typed-array' : 'array';
+  }
+  if (Node.isTypeLiteral(typeNode)) {
+    const memberType = typeNode.getProperty(memberName)?.getTypeNode();
+    return memberType ? classifyTypeText(memberType.getText(), sourceFile) : 'array';
+  }
+  if (Node.isTypeReference(typeNode)) {
+    const name = typeNode.getTypeName().getText();
+    if (DOM_DOCUMENT_TYPE_RE.test(name)) return 'non-array';
+    const ifaceMember = sourceFile.getInterface(name)?.getProperty(memberName)?.getTypeNode();
+    if (ifaceMember) return classifyTypeText(ifaceMember.getText(), sourceFile);
+    const clsMember = sourceFile.getClass(name)?.getProperty(memberName)?.getTypeNode();
+    if (clsMember) return classifyTypeText(clsMember.getText(), sourceFile);
+    const aliasTypeNode = !seenAliases?.has(name) ? sourceFile.getTypeAlias(name)?.getTypeNode() : undefined;
+    if (aliasTypeNode) {
+      const nextSeen = new Set(seenAliases);
+      nextSeen.add(name);
+      return resolveDocumentCollectionKindFromTypeNode(aliasTypeNode, memberName, nextSeen);
+    }
+    return 'array';
+  }
+  const kind = typeNode.getKind();
+  if (kind === SyntaxKind.AnyKeyword || kind === SyntaxKind.UnknownKeyword || kind === SyntaxKind.ObjectKeyword) {
+    return 'unknown-type';
+  }
+  return 'array';
+}
+
 function classifyReceiverNode(node: Node | undefined, depth = 0): ReceiverKind {
   if (!node || depth > 3) return 'array';
   const unwrapped = unwrapExpression(node);
@@ -207,15 +305,24 @@ function classifyReceiverNode(node: Node | undefined, depth = 0): ReceiverKind {
     }
   }
 
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    const propName = unwrapped.getName();
+    if (ELEMENT_DOM_PROPERTY.test(propName)) return 'non-array';
+    if (DOCUMENT_COLLECTION_PROPERTY.test(propName)) {
+      const receiverTypeNode = findExplicitTypeNode(unwrapped.getExpression());
+      if (receiverTypeNode) {
+        const resolved = resolveDocumentCollectionKindFromTypeNode(receiverTypeNode, propName);
+        if (resolved !== 'unknown-type') return resolved;
+      }
+      if (isDocumentReceiver(unwrapped.getExpression())) return 'non-array';
+    }
+  }
+
   const key = getBindingKey(unwrapped);
   if (
     Node.isStringLiteral(unwrapped) ||
     Node.isNoSubstitutionTemplateLiteral(unwrapped) ||
     Node.isTemplateExpression(unwrapped) ||
-    (Node.isPropertyAccessExpression(unwrapped) &&
-      (ELEMENT_DOM_PROPERTY.test(unwrapped.getName()) ||
-        (DOCUMENT_COLLECTION_PROPERTY.test(unwrapped.getName()) &&
-          isDocumentReceiver(unwrapped.getExpression())))) ||
     (key === 'arguments' && isUnshadowedGlobal(unwrapped, 'arguments'))
   ) {
     return 'non-array';
