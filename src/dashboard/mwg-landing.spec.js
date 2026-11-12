@@ -109,10 +109,11 @@ async function expectNextToBarbell(page, track) {
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       const a11yLink = page.locator('.a11y-link').first();
+      await expect(a11yLink.locator('.suite-dumbbell-track')).toHaveCount(0);
       await a11yLink.focus();
       await expect(tooltip).toBeVisible();
       await expect(tooltip).toContainText('Accessibility lift');
-      await expectNextToBarbell(page, a11yLink.locator('.suite-dumbbell-track'));
+      await expectNextToBarbell(page, a11yLink.locator('.a11y-delta-stack'));
       await page.keyboard.press('Escape');
       await expect(tooltip).toBeHidden();
     }
@@ -381,6 +382,217 @@ async function expectNextToBarbell(page, track) {
     await page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]').click();
     await expect(page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"] .visually-hidden')).toHaveText(' (sorted low to high)');
     await expect(page.locator('#hint-sort-uplift-model')).toHaveText('Sorted by uplift (low to high) — click to reset to alphabetical sort');
+    expect(errors).toEqual([]);
+  });
+
+  test('reconciles displayed uplift pp with rounded endpoint rates across hero and suites table', async ({ page }) => {
+    const errors = collectErrors(page);
+    // 516/1000 = 51.6% -> 52%, 912/1000 = 91.2% -> 91%; exact diff 39.6 would round to +40 pp,
+    // whereas displayed rounded endpoints 91 - 52 = +39 pp.
+    const roundingFixture = {
+      suites: [{
+        testId: 'nightly-2026-11-09_07-00-00-claude_code',
+        timestamp: '2026-11-09T07:00:00.000Z',
+        agent: 'claude_code',
+        serving: 'skills_cli',
+        model: 'claude-test',
+        taskCount: 200,
+        maxRuns: 1,
+        guidedStats: { passed: 912, total: 1000 },
+        unguidedStats: { passed: 516, total: 1000 },
+        a11yStats: {
+          guidedPassed: 182, guidedTotal: 199, guidedRate: 91,
+          unguidedPassed: 103, unguidedTotal: 199, unguidedRate: 52,
+          uplift: 39, guideCount: 10,
+          bySubCategory: {}
+        },
+        showcase: {},
+        guides: {}
+      }]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: roundingFixture }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const overallCard = page.locator('.takeaway[data-metric="overall"]');
+    await expect(overallCard.locator('.figure-val')).toHaveText('+39');
+    await expect(overallCard.locator('.takeaway-endpoint.unguided .endpoint-rate')).toHaveText('52%');
+    await expect(overallCard.locator('.takeaway-endpoint.guided .endpoint-rate')).toHaveText('91%');
+
+    const a11yCard = page.locator('.takeaway[data-metric="a11y"]');
+    await expect(a11yCard.locator('.figure-val')).toHaveText('+39');
+    await expect(a11yCard.locator('.secondary-pair')).toContainText('52% → 91%');
+
+    const agentOverallCell = page.locator('#agent-table-body tr').first().locator('td[data-label="Pass rate"]');
+    await expect(agentOverallCell).toContainText('52% → 91%');
+    await expect(agentOverallCell.locator('.delta')).toContainText('+39 pp');
+    await expect(agentOverallCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    const agentA11yCell = page.locator('#agent-table-body tr').first().locator('td[data-label="Accessibility"]');
+    await expect(agentA11yCell).toContainText('52% → 91%');
+    await expect(agentA11yCell.locator('.delta')).toContainText('+39 pp');
+    await expect(agentA11yCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    const suiteOverallCell = page.locator('.suite-table-row').first().locator('td.uplift-cell');
+    await expect(suiteOverallCell).toContainText('52%');
+    await expect(suiteOverallCell).toContainText('91%');
+    await expect(suiteOverallCell.locator('.delta')).toContainText('+39 pp');
+    await expect(suiteOverallCell).toHaveAttribute('data-barbell-u', '52');
+    await expect(suiteOverallCell).toHaveAttribute('data-barbell-g', '91');
+    await expect(suiteOverallCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    const suiteA11yCell = page.locator('.suite-table-row').first().locator('td.a11y-cell');
+    await expect(suiteA11yCell).toContainText('52%');
+    await expect(suiteA11yCell).toContainText('91%');
+    await expect(suiteA11yCell.locator('.eff-pill.neutral')).toContainText('+39 pp');
+    await expect(suiteA11yCell).toHaveAttribute('data-barbell-u', '52');
+    await expect(suiteA11yCell).toHaveAttribute('data-barbell-g', '91');
+    await expect(suiteA11yCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('renders compact A11y checks negative, zero, and partial delta states', async ({ page }) => {
+    const errors = collectErrors(page);
+    const edgeFixture = {
+      suites: [
+        {
+          testId: 'nightly-2026-11-11_07-00-00-claude_code',
+          timestamp: '2026-11-11T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-neg',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 50, total: 100 },
+          a11yStats: {
+            guidedPassed: 30, guidedTotal: 100, guidedRate: 30,
+            unguidedPassed: 50, unguidedTotal: 100, unguidedRate: 50,
+            uplift: -20, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        },
+        {
+          testId: 'nightly-2026-11-10_07-00-00-claude_code',
+          timestamp: '2026-11-10T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-zero',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 50, total: 100 },
+          a11yStats: {
+            guidedPassed: 75, guidedTotal: 100, guidedRate: 75,
+            unguidedPassed: 75, unguidedTotal: 100, unguidedRate: 75,
+            uplift: 0, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        },
+        {
+          testId: 'nightly-2026-11-09_07-00-00-claude_code',
+          timestamp: '2026-11-09T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-partial',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 0, total: 0 },
+          a11yStats: {
+            guidedPassed: 8, guidedTotal: 10, guidedRate: 80,
+            unguidedPassed: 0, unguidedTotal: 0, unguidedRate: null,
+            uplift: null, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        }
+      ]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: edgeFixture }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const rows = page.locator('.suite-table-row');
+    await expect(rows).toHaveCount(3);
+
+    const negCell = rows.nth(0).locator('td.a11y-cell');
+    await expect(negCell.locator('.eff-pill.cost')).toHaveText('-20 pp');
+    await expect(negCell.locator('.a11y-delta-sub')).toHaveText(', unguided 50%→, guided 30%');
+
+    const zeroCell = rows.nth(1).locator('td.a11y-cell');
+    await expect(zeroCell.locator('.eff-pill.muted')).toHaveText('0 pp');
+    await expect(zeroCell.locator('.a11y-delta-sub')).toHaveText(', unguided 75%→, guided 75%');
+
+    const partialCell = rows.nth(2).locator('td.a11y-cell');
+    await expect(partialCell.locator('.eff-pill.muted')).toHaveText('— change not available');
+    await expect(partialCell.locator('.a11y-delta-sub')).toHaveText(', unguided —not available→, guided 80%');
+    await expect(partialCell.locator('a.a11y-link')).toHaveAccessibleName(
+      'Automated accessibility checks: change not available , unguided not available , guided 80% (open accessibility check results)'
+    );
+
+    expect(errors).toEqual([]);
+  });
+
+  test('uses anchor positioning for the #ab-task-pills active underline and respects reduced motion', async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
+    await page.goto('/');
+    await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+
+    const track = page.locator('#ab-task-pills .ab-task-pills-track');
+    const pills = page.locator('#ab-task-pills .ab-task-pill');
+    await expect(track).toBeVisible();
+    await expect(pills).toHaveCount(6);
+
+    const inspectUnderline = () => page.evaluate(() => {
+      const t = document.querySelector('#ab-task-pills .ab-task-pills-track');
+      if (!t) throw new Error('Missing .ab-task-pills-track');
+      const cs = getComputedStyle(t, '::before');
+      const active = t.querySelector('.ab-task-pill:has(> input[type="radio"]:checked)');
+      if (!active) throw new Error('Missing checked .ab-task-pill');
+      const activeCs = getComputedStyle(active);
+      const tRect = t.getBoundingClientRect();
+      const aRect = active.getBoundingClientRect();
+      return {
+        anchorName: activeCs.getPropertyValue('anchor-name'),
+        positionAnchor: cs.getPropertyValue('position-anchor'),
+        position: cs.position,
+        borderBottomWidth: cs.borderBottomWidth,
+        transition: cs.transition,
+        pseudoLeft: parseFloat(cs.left),
+        pseudoWidth: parseFloat(cs.width),
+        expectedLeft: aRect.left - tRect.left,
+        expectedWidth: aRect.width,
+      };
+    });
+
+    const initial = await inspectUnderline();
+    expect(initial.anchorName).toBe('--active-ab-task');
+    expect(initial.positionAnchor).toBe('--active-ab-task');
+    expect(initial.position).toBe('absolute');
+    expect(initial.borderBottomWidth).toBe('2px');
+    expect(initial.transition).toContain('inset');
+    await expect.poll(async () => {
+      const s = await inspectUnderline();
+      return Math.max(Math.abs(s.pseudoLeft - s.expectedLeft), Math.abs(s.pseudoWidth - s.expectedWidth));
+    }).toBeLessThanOrEqual(1);
+
+    await pills.nth(2).click();
+    await expect.poll(async () => {
+      const s = await inspectUnderline();
+      return s.expectedLeft > initial.expectedLeft
+        && Math.abs(s.pseudoLeft - s.expectedLeft) <= 1
+        && Math.abs(s.pseudoWidth - s.expectedWidth) <= 1;
+    }).toBe(true);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const reduced = await inspectUnderline();
+    expect(reduced.transition).toContain('none');
+
     expect(errors).toEqual([]);
   });
 });

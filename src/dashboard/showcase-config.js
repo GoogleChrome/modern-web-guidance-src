@@ -4,12 +4,12 @@
  * @type {ReadonlyArray<{ id: string, label: string }>}
  */
 export const SHOWCASE_TASKS = [
-    { id: 'highlight-text-ranges', label: 'Search highlights' },
-    { id: 'animate-to-from-top-layer', label: 'Top-layer motion' },
-    { id: 'flicker-free-client-side-ab-testing', label: 'Flicker-free A/B' },
-    { id: 'faster-spa-view-transitions', label: 'SPA view cache' },
-    { id: 'scrollspy', label: 'CSS scrollspy' },
-    { id: 'interest-triggered-tooltips', label: 'Interest tooltips' }
+    { id: 'menu', label: 'Action menu' },
+    { id: 'passkey-authentication', label: 'Passkey sign-in' },
+    { id: 'progress-ring', label: 'Progress ring' },
+    { id: 'swipe-to-remove', label: 'Swipe to remove' },
+    { id: 'scrollability-affordance-hints', label: 'Scroll shadows' },
+    { id: 'form-fields-automatically-fit-contents', label: 'Auto-sizing inputs' }
 ];
 
 export const SHOWCASE_GUIDE_IDS = new Set(SHOWCASE_TASKS.map(t => t.id));

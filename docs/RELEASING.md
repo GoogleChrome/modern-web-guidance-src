@@ -64,7 +64,7 @@ To build, install, and test the compiled package locally as a global CLI:
 cd "$(git rev-parse --show-cdup)" && node src/build/build-dist.ts && cd dist/skills-cli && npm install --global .
 ```
 
-This registers the package globally and places the binaries (`modern-web`) in your `PATH`.
+This registers the package globally and places the `modern-web-guidance` binary in your `PATH`.
 
 ## Architecture Note: The "Single Bundle" Approach
 

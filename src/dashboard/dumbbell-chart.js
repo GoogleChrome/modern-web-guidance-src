@@ -608,7 +608,7 @@ export class DumbbellChart {
             const tip = this.tooltip;
             const target = { marks: [uTick, gTick], hit: hitRect };
             if (!tip) return target;
-            const delta = Math.round(gVal - uVal);
+            const delta = Math.round(gVal) - Math.round(uVal);
             const deltaSign = delta > 0 ? "+" : "";
             
             const uTokens = item.uTokens || 0;

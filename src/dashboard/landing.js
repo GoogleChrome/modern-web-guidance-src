@@ -88,6 +88,11 @@ const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 /** @param {string} testId */
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
+/** @param {LandingSuiteSummary} [testInfo] */
+function isScheduledOrCurated(testInfo) {
+    if (!testInfo) return false;
+    return Boolean(testInfo.curated) || isScheduledSuite(testInfo.testId);
+}
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         setupTestFilters();
@@ -258,6 +263,13 @@ function setupTableFilters() {
 function setupScheduledToggle() {
     const check = document.getElementById('scheduled-only-check');
     if (!(check instanceof HTMLInputElement)) return;
+    const label = document.getElementById('scheduled-only-label') || check.closest('label');
+    if (isPublicView()) {
+        if (label) label.style.display = 'none';
+        scheduledOnly = false;
+        return;
+    }
+    if (label) label.style.display = '';
     scheduledOnly = check.checked;
     check.addEventListener('change', () => { scheduledOnly = check.checked; renderSuites(); });
 }
@@ -490,6 +502,11 @@ async function fetchEvalsUncached(testId) {
 function activeDataSource() {
     const resolved = resolveDataSource();
     return resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
+}
+
+/** @returns {boolean} */
+function isPublicView() {
+    return activeDataSource() === 'public';
 }
 
 function syncHero() {
@@ -728,7 +745,7 @@ function toRate(stats) {
 
 /** @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
-function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? Math.round(toRateExact(gStats) - toRateExact(uStats)) : null; }
+function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? toRate(gStats) - toRate(uStats) : null; }
 /** A side with no checks has no rate, so uplift against it would be fabricated.
  * @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
@@ -790,7 +807,8 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
         if (textQuery) {
             const { label, ldap } = formatSuiteLabel(t);
             const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
-            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap}`.toLowerCase();
+            const curatedKeywords = t.curated ? '1.0 baseline curated' : '';
+            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap} ${curatedKeywords}`.toLowerCase();
             if (!haystack.includes(textQuery)) return false;
         }
         return true;
@@ -800,9 +818,10 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
 /** @returns {string[]} */
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
-    const anyScheduled = filtered.some(k => isScheduledSuite(allTestData[k].testId));
-    const keys = (scheduledOnly && !currentSearchFilter && anyScheduled)
-        ? filtered.filter(k => isScheduledSuite(allTestData[k].testId))
+    const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
+    const anyScheduled = filtered.some(k => isScheduledOrCurated(allTestData[k]));
+    const keys = (effectiveScheduledOnly && !currentSearchFilter && anyScheduled)
+        ? filtered.filter(k => isScheduledOrCurated(allTestData[k]))
         : filtered;
     return sortSuiteKeys(keys);
 }
@@ -815,8 +834,8 @@ function getSortValue(t, key) {
         case 'date':
             return getSuiteDate(t).getTime();
         case 'uplift':
-            return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
-        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
+            return upliftPp(t.unguidedStats, t.guidedStats);
+        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair ? upliftPp(pair.u, pair.g) : null; }
         case 'time': { const rt = t.efficiencyStats?.runtime; return rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0) ? rt.medianDeltaPct : null; }
         case 'tokens': {
             const tok = t.efficiencyStats?.tokens;
@@ -850,7 +869,7 @@ function sortSuiteKeys(keys) {
 
 /** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
  * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
- * @param {number | null} delta percentage-point change, computed from unrounded rates; null unless both sides ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran
  * @param {string} label used for the screen-reader sentence
  * @param {number} [uErr=0]
  * @param {number} [gErr=0] */
@@ -866,6 +885,23 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
     const uDot = uRate !== null ? `<div class="dot unguided" style="left: ${uRate}%;"></div>` : '';
     const gDot = gRate !== null ? `<div class="dot guided" style="left: ${gRate}%;"></div>` : '';
     return `<div class="suite-dumbbell-track" aria-hidden="true"> ${uErrBand} ${gErrBand} ${connector} ${uDot} ${gDot} </div> <div class="rate-text"> <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${fmtRate(uRate)}</span> <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span> <span class="rate-g">${fmtRate(gRate)}</span> ${deltaHtml} </div>`;
+}
+/** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
+ * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran */
+function renderA11yCompact(uRate, gRate, delta) {
+    const fmtRate = (/** @type {number | null} */ r) =>
+        r === null ? '<span aria-hidden="true">—</span><span class="visually-hidden">not available</span>' : `${r}%`;
+    let pillCls = 'eff-pill muted';
+    let pillText = '<span aria-hidden="true">—</span>';
+    let pillSr = '<span class="visually-hidden"> change not available</span>';
+    if (delta !== null) {
+        if (delta > 0) pillCls = 'eff-pill neutral';
+        else if (delta < 0) pillCls = 'eff-pill cost';
+        pillText = `${delta > 0 ? '+' : ''}${delta} pp`;
+        pillSr = '';
+    }
+    return `<div class="a11y-delta-stack"><span class="visually-hidden">Automated accessibility checks: </span><span class="${pillCls}">${pillText}${pillSr}</span><span class="a11y-delta-sub"><span class="visually-hidden">, unguided </span><span>${fmtRate(uRate)}</span><span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span><span>${fmtRate(gRate)}</span></span></div>`;
 }
 /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -888,11 +924,21 @@ function renderSuites() {
     syncSortHeaders();
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
-    const anyScheduled = filteredKeys.some(k => isScheduledSuite(allTestData[k].testId));
+    const anyScheduled = filteredKeys.some(k => isScheduledOrCurated(allTestData[k]));
+    const isPublic = isPublicView();
     const scheduledCheck = document.getElementById('scheduled-only-check');
+    const scheduledLabel = document.getElementById('scheduled-only-label') || scheduledCheck?.closest('label');
+    if (scheduledLabel) {
+        scheduledLabel.style.display = isPublic ? 'none' : '';
+    }
     if (scheduledCheck instanceof HTMLInputElement) {
-        scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
-        scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+        if (isPublic) {
+            scheduledCheck.checked = false;
+            scheduledCheck.disabled = true;
+        } else {
+            scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
+            scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+        }
     }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 8;
@@ -942,10 +988,11 @@ function renderSuites() {
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
         const isFaulty = earlyFailureRate === 100;
         const scheduled = isScheduledSuite(testId);
+        const curated = Boolean(testInfo.curated);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
         const dateDisplay = formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric' });
-        const suiteBarbellTitle = scheduled
+        const suiteBarbellTitle = (scheduled || curated)
             ? `${dateDisplay} · ${agentDisplay}`
             : `${label || testId}${testInfo.agent && testInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
         const modelPart = testInfo.model && testInfo.model !== 'unknown' ? testInfo.model : '';
@@ -970,7 +1017,7 @@ function renderSuites() {
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderA11yCompact(a11yURate, a11yGRate, a11yPp)} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
         } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
@@ -980,8 +1027,11 @@ function renderSuites() {
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatTokens(tok.guidedUncachedMedian)}</span></div>${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}</div>`
             : renderNotAvailable('Median uncached tokens');
 
-        const badges = [!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : '', isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''].join('');
-        const adhocLabelHtml = !scheduled && label ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
+        const badges = [
+            curated ? '<span class="run-kind-badge curated">1.0 baseline</span>' : (!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : ''),
+            isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''
+        ].join('');
+        const adhocLabelHtml = (!scheduled && !curated && label) ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
         const metaParts = [
             taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
@@ -990,7 +1040,7 @@ function renderSuites() {
         ].filter(Boolean).join(' · ');
 
         html += `
-            <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
+            <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : curated ? ' curated' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
                 <th scope="row" class="suite-cell">
                     <a href="${localLink}" class="suite-link">
                         <span class="suite-title-row"><time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}</span>
@@ -999,7 +1049,7 @@ function renderSuites() {
                     </a>
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td class="model-cell"><span class="model-cell-inner">${escapeHtml(testInfo.model || '')}${testInfo.model ? renderEffortChip(testInfo.reasoningEffort) : ''}</span></td>
+                <td class="model-cell"><span class="model-cell-inner"><span class="model-name">${escapeHtml(testInfo.model || '')}</span>${testInfo.model ? renderEffortChip(testInfo.reasoningEffort, { separator: false }) : ''}</span></td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
@@ -1048,7 +1098,7 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
     if (total === 0) return;
     const visibleNow = paged ? Math.min(pageSize, shown) : shown;
     const parts = [`Showing ${visibleNow} of ${total} run${total === 1 ? '' : 's'}`];
-    if (hiddenAdHoc > 0) {
+    if (!isPublicView() && hiddenAdHoc > 0) {
         parts.push(`${hiddenAdHoc} ad-hoc run${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled runs only"`);
     } else if (matching < total) {
         parts.push(`${total - matching} filtered out`);
@@ -1160,7 +1210,7 @@ function getBarbellDataCell(trigger) {
  * @returns {HTMLElement} */
 function getBarbellAnchorElement(trigger) {
     const cell = getBarbellDataCell(trigger);
-    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track');
+    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track, .a11y-delta-stack');
     if (track instanceof HTMLElement && track.getClientRects().length > 0) return track;
     return cell || trigger;
 }
@@ -1210,13 +1260,13 @@ function renderBarbellTooltipContent(cell) {
         note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
     } else if (kind === 'suite-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+        note = 'Automated accessibility checks passed without MWG and with MWG in this suite run; lift is the percentage-point difference.';
     } else if (kind === 'agent-overall') {
         liftLabel = 'Pass-rate lift';
-        note = 'Checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+        note = 'Checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
     } else if (kind === 'agent-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Accessibility checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+        note = 'Accessibility checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
         note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
     } else if (kind === 'dimension') {
@@ -1278,9 +1328,10 @@ function getModelInsightKeys() {
     /** @type {string[]} */
     const result = [];
     for (const bucketKeys of byBucket.values()) {
-        const anyScheduled = bucketKeys.some(k => isScheduledSuite(allTestData[k].testId));
-        let scoped = (scheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
-            ? bucketKeys.filter(k => isScheduledSuite(allTestData[k].testId))
+        const anyScheduled = bucketKeys.some(k => isScheduledOrCurated(allTestData[k]));
+        const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
+        let scoped = (effectiveScheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
+            ? bucketKeys.filter(k => isScheduledOrCurated(allTestData[k]))
             : bucketKeys;
         if (!showAll && scoped.length > 0) {
             scoped = filterRecentDays(scoped, limit);
@@ -1318,10 +1369,12 @@ function buildModelPivotItem(testInfo, onlyA11y) {
         return null;
     }
     if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
+        const uRate = toRate(testInfo.unguidedStats);
+        const gRate = toRate(testInfo.guidedStats);
         return {
-            uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
-            uRate: toRate(testInfo.unguidedStats),
-            gRate: toRate(testInfo.guidedStats),
+            uplift: gRate - uRate,
+            uRate,
+            gRate,
             uErr,
             gErr,
             rtDeltaPct,
