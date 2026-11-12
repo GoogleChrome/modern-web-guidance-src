@@ -295,8 +295,6 @@
       track.scrollBy({ top: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
       requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowY = ""; }));
-      // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
-      slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
       // Safari keeps the scroll-driven fade at its old progress after the instant scroll; restart it
       slides.forEach((s) => s.getAnimations().forEach((a) => { a.cancel(); a.play(); }));
     }
