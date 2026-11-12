@@ -11,9 +11,14 @@
 - Pressing Enter with an active option puts its value into the input and closes the popup.
 - Pressing Enter with an active option does not submit the form.
 - Pressing Escape while the popup is open closes it.
+- Pressing Escape while the popup is closed clears the input.
 - Clicking an option puts its value into the input and closes the popup.
 - A value typed that matches no option remains in the input and is submitted with the form.
 - A visually hidden element with `role="status"` or `aria-live="polite"` is updated with the suggestion count after filtering.
 - When the combobox offers to add new items and the typed text has no exact match, the last option in the listbox has `role="option"` and text containing the typed text.
 - When the combobox offers to add new items, selecting the add option puts the typed text into the input and the text then appears as an option when the input is filtered again.
+- When the combobox highlights matches and `CSS.highlights` is supported, the matched substring of each option label is registered as a range in `CSS.highlights`.
+- When the combobox highlights matches and `CSS.highlights` is supported, the option label text is not wrapped in a `<mark>` element.
+- When the combobox highlights matches, the match style sets a `text-decoration` in addition to a background color.
+- When the combobox highlights matches and `CSS.highlights` is unsupported, the matched substring of each option label is wrapped in a `<mark>` element.
 - When popover or anchor positioning is unsupported, the `<input>` keeps its `list` attribute and the `<datalist>` supplies suggestions.

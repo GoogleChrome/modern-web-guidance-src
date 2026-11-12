@@ -85,7 +85,7 @@ const matches = options.filter(o => o.value.toLowerCase().includes(query));
 * `ArrowDown` / `ArrowUp` open the popup if closed, then move the active option and wrap at the ends. Call `preventDefault()` so the caret does not move.
 * `Home` / `End` move the active option only while one is active; otherwise they keep editing the text.
 * `Enter` with an active option fills the input, closes the popup, and calls `preventDefault()` so the form does not submit. With no active option, do not call `preventDefault()`: the typed text is kept as the value and the implicit form submission proceeds (close the popup if it is open).
-* `Escape` closes the popup when open.
+* `Escape` closes the popup when open. When the popup is already closed, it clears the input.
 * Space always types a space; never use it to select.
 * Clicking an option selects it. Call `preventDefault()` on the listbox `mousedown` so the input does not blur and close the popup before the click lands.
 * Close on blur.
@@ -105,7 +105,32 @@ Add this when the value is a record users build up over time (tags, destinations
 
 ### 6. Match highlighting
 
-Highlight the matched substring of each option label with the Custom Highlight API instead of wrapping it in `<mark>` (see {{ GUIDE_REF("highlight-text-ranges") }}). Style `::highlight()` with a tinted `background-color` and an explicit `color`, plus `text-decoration: underline`, so the match is not conveyed by color alone. Worth adding when options are long or similar.
+Highlight the matched substring of each option label with the Custom Highlight API instead of wrapping it in `<mark>` (see {{ GUIDE_REF("highlight-text-ranges") }}). Worth adding when options are long or similar.
+
+```js
+// After rendering the options, create one Range per matched substring.
+// Setting the same highlight name again replaces the previous ranges, so there is nothing to clean up.
+const ranges = [];
+for (const option of listbox.children) {
+  const text = option.firstChild;
+  const at = text.data.toLowerCase().indexOf(query.toLowerCase());
+  if (at < 0) continue;
+  const range = new Range();
+  range.setStart(text, at);
+  range.setEnd(text, at + query.length);
+  ranges.push(range);
+}
+CSS.highlights.set('combobox-match', new Highlight(...ranges));
+```
+
+```css
+/* Tinted background plus underline so the match is not conveyed by color alone */
+::highlight(combobox-match) {
+  background-color: light-dark(#d2e3fc, #3b5a8c);
+  color: inherit;
+  text-decoration: underline 2px;
+}
+```
 
 ### 7. Rich option content
 
@@ -148,6 +173,10 @@ Options can hold a styled title plus smaller secondary text (a description, a co
 {{ BASELINE_STATUS("datalist") }}
 
 {{ FEATURE_FALLBACKS("customizable-select") }}
+
+{{ BASELINE_STATUS("highlight") }}
+
+When `CSS.highlights` is unavailable, skip the highlight ranges and wrap the matched substring in `<mark>` instead, reset to a transparent background with an underline. Options are re-rendered on every keystroke, so the extra DOM cost is small.
 
 **Feature detection:** Enhance only when both popover and anchor positioning are available.
 
