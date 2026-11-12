@@ -58,20 +58,26 @@
     }
 
     /*
-     * Looping without clones: at or one step from the first slide, park the last slide before it
-     * (order: -1); at or one step from the last slide, park the first slide after it (order: 1). The
-     * neighbor is already in place before scrolling reaches an end, so the previous and next buttons never
-     * disable. Only the first and last slides ever get `order`.
+     * Looping without clones: the script keeps --start, the slot (slide-sized step along the track) of the
+     * first slide in the rotation. Every slide takes its place after it with `order`, and the first one
+     * carries the empty slots before it as a margin. Moving the slide furthest behind to the front grows
+     * that margin by one slot in the same change, so nothing on screen shifts and the scroll position
+     * never needs correcting.
+     * --start is deliberately not defined here: without JavaScript, DOM order applies.
      * Without support the carousel stays a finite list.
      */
     @supports (order: mod(sibling-index(), 2)) {
-      /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
-      .carousel-track > :first-child {
-        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
-      }
+      .carousel-track {
+        --gap: 1rem;
 
-      .carousel-track > :last-child {
-        order: calc(-1 * clamp(0, 2 - var(--current), 1));
+        > * {
+          /* Kept non-negative inside mod(): both engines return the divisor instead of 0 for negative multiples */
+          --place: mod(sibling-index() - 1 + sibling-count() - mod(var(--start), sibling-count()), sibling-count());
+          order: var(--place);
+          margin-inline-start: calc((1 - min(1, var(--place))) * var(--start) * (100% + var(--gap)));
+          /* The last slide in the rotation carries a lap of empty slots after it, so a scripted scroll has room to aim past the slides */
+          margin-inline-end: calc(max(0, var(--place) - (sibling-count() - 2)) * sibling-count() * (100% + var(--gap)));
+        }
       }
     }
 
@@ -221,42 +227,39 @@
   <script type="module">
     const track = document.querySelector(".carousel-track");
     const slides = [...track.children];
+    const count = slides.length;
     const status = document.querySelector('.carousel [role="status"]');
     const controls = document.querySelector(".carousel-controls");
     const markerNav = document.querySelector(".carousel-markers");
     const [prevBtn, nextBtn] = controls.querySelectorAll("button");
-    let markers = [];
     const loops = CSS.supports("order: mod(sibling-index(), 2)");
-    let parkedFor = -1;
 
-    // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
-    const visual = () => [...slides].sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order);
-    const neighbor = (item, step) => visual()[visual().indexOf(item) + step];
+    // A slot is one slide plus the gap. Slots are numbered from the start of the track; slot s holds slide s mod count.
+    const slot = () => slides[0].offsetWidth + parseFloat(getComputedStyle(track).columnGap);
+    const here = () => Math.round(track.scrollLeft / slot());
+    const slideAt = (s) => slides[((s % count) + count) % count];
+    // Start well into the track so there is room to scroll backward
+    const home = loops ? count * 100 : 0;
 
-    // Inline (x) axis only: distance from the track's center to the slide's center.
-    const offsetToCenter = (s) => {
-      const r = s.getBoundingClientRect();
-      const t = track.getBoundingClientRect();
-      return r.left + r.width / 2 - (t.left + t.width / 2);
-    };
-
-    // Scrolls the track to the slide's snap position without touching ancestor scrollers.
-    const show = (item, behavior = "auto") => {
-      if (item) track.scrollBy({ left: offsetToCenter(item), behavior });
-    };
-
-    const nearest = () => slides.reduce((a, b) => (Math.abs(offsetToCenter(b)) < Math.abs(offsetToCenter(a)) ? b : a));
-
-    const position = () => [track.scrollLeft, track.scrollTop].join();
+    // Keep the slides around the scroll position: one behind the direction of travel, the rest ahead.
+    // Only slides that are off screen change slots, and the margin before the first one changes with them, so nothing visible moves.
+    let start = null;
+    let direction = 1;
+    function rotate() {
+      const first = Math.max(0, here() - (direction > 0 ? 1 : count - 2));
+      if (first === start) return;
+      start = first;
+      track.style.setProperty("--start", start);
+    }
 
     // Run a callback once scrolling settles. Without scrollend, a debounce stands in for it.
     function onSettled(fn) {
       if ("onscrollend" in window) {
         // A scrollend from a scroll that was cut short can arrive after the next one has started; skip it.
         track.addEventListener("scrollend", () => {
-          const at = position();
+          const at = track.scrollLeft;
           requestAnimationFrame(() => requestAnimationFrame(() => {
-            if (position() === at) fn();
+            if (track.scrollLeft === at) fn();
           }));
         });
         return;
@@ -268,10 +271,8 @@
       }, { passive: true });
     }
 
-    // Clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
-    let pending = null;
-    let aimedAt = null;
     // Highlight the active marker right away rather than after scrolling settles.
+    let markers = [];
     let marked = null;
     const mark = (item) => {
       // Writing the same attributes every frame makes Safari stutter, so only write on change
@@ -280,75 +281,58 @@
       const i = slides.indexOf(item);
       markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
     };
-    const aim = (item) => {
-      pending = item;
-      mark(item);
-      show(item);
-      aimedAt = position();
+
+    // The slot being scrolled to. Clicks made mid-scroll build on it, so rapid clicks are not lost.
+    let goal = null;
+    const aim = (s) => {
+      goal = loops ? s : Math.min(Math.max(s, 0), count - 1);
+      mark(slideAt(goal));
+      // Scripted scrolls land exactly on a slot. Snapping is off until they settle: the slide for a far slot is not there yet to snap to.
+      track.style.scrollSnapType = "none";
+      track.scrollTo({ left: goal * slot() });
     };
-    const step = (dir) => {
-      const target = neighbor(pending ?? nearest(), dir);
-      if (target) aim(target);
-    };
+
+    let last = 0;
     let markFrame = 0;
     track.addEventListener("scroll", () => {
-      // A click or key press already marked its target; recomputing every frame makes Safari stutter
-      if (pending) return;
+      if (track.scrollLeft !== last) direction = Math.sign(track.scrollLeft - last);
+      last = track.scrollLeft;
+      if (loops) rotate();
+      // A click already marked its target; recomputing every frame makes Safari stutter
+      if (goal !== null) return;
       cancelAnimationFrame(markFrame);
-      markFrame = requestAnimationFrame(() => mark(pending ?? nearest()));
+      markFrame = requestAnimationFrame(() => mark(slideAt(here())));
     }, { passive: true });
 
-    prevBtn.addEventListener("click", () => step(-1));
-    nextBtn.addEventListener("click", () => step(1));
+    prevBtn.addEventListener("click", () => aim((goal ?? here()) - 1));
+    nextBtn.addEventListener("click", () => aim((goal ?? here()) + 1));
     markers = slides.map((slide, i) => {
       const button = Object.assign(document.createElement("button"), { type: "button" });
       button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
+      // Markers travel in sequence order: by the difference in slide number
       button.addEventListener("click", () => {
-        // A direct scroll to a parked end slide goes the short way round, so travel in DOM order; settling parks again
-        if (loops && slide !== nearest()) park();
-        aim(slide);
+        const from = goal ?? here();
+        aim(from + i - slides.indexOf(slideAt(from)));
       });
       markerNav.append(button);
       return button;
     });
 
-    // Tell CSS the settled slide (or none, for DOM order), then cancel the layout shift with an instant scroll.
-    function park(current = "initial") {
-      parkedFor = current;
-      const item = nearest();
-      const before = offsetToCenter(item);
-      // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
-      track.style.scrollSnapType = "none";
-      // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker.
-      // Not without a settled slide, when a scroll is about to follow: Safari will not start it on a locked track.
-      if (current !== "initial" && document.activeElement !== track) track.style.overflowX = "hidden";
-      track.style.setProperty("--current", current);
-      track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
-      track.style.scrollSnapType = "";
-      requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
-      // Safari keeps the scroll-driven fade at its old progress after the instant scroll; restart it
-      slides.forEach((s) => s.getAnimations().forEach((a) => { a.cancel(); a.play(); }));
-    }
-
     // The single code path for state: controls only scroll; this reflects where scrolling ended.
     let settled = null;
     function sync() {
-      // A settle right where a scroll to another slide was requested is not that scroll ending (it has yet to move), so wait for the real one
-      if (pending && pending !== nearest() && position() === aimedAt) return;
-      pending = null;
-      const item = nearest();
+      goal = null;
+      track.style.scrollSnapType = "";
+      const item = slideAt(here());
       const i = slides.indexOf(item);
-      if (loops && i !== parkedFor) {
-        park(i);
-      }
       if (settled && item !== settled) {
-        status.textContent = `Slide ${i + 1} of ${slides.length}`;
+        status.textContent = `Slide ${i + 1} of ${count}`;
       }
       settled = item;
       mark(item);
       const focused = document.activeElement;
-      prevBtn.disabled = !neighbor(item, -1);
-      nextBtn.disabled = !neighbor(item, 1);
+      prevBtn.disabled = !loops && i === 0;
+      nextBtn.disabled = !loops && i === count - 1;
       // Disabling the focused button drops focus, so hand it to the opposite one. Never move focus the user had elsewhere.
       if (focused === prevBtn && prevBtn.disabled) {
         nextBtn.focus();
@@ -357,6 +341,13 @@
       }
     }
 
+    if (loops) {
+      // Lay the slides out around home, then go there, in one task so the empty track before it is never painted
+      start = home - 1;
+      track.style.setProperty("--start", start);
+      track.scrollTo({ left: home * slot(), behavior: "instant" });
+      last = track.scrollLeft;
+    }
     onSettled(sync);
     sync();
   </script>
