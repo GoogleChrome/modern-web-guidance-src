@@ -109,10 +109,11 @@ async function expectNextToBarbell(page, track) {
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       const a11yLink = page.locator('.a11y-link').first();
+      await expect(a11yLink.locator('.suite-dumbbell-track')).toHaveCount(0);
       await a11yLink.focus();
       await expect(tooltip).toBeVisible();
       await expect(tooltip).toContainText('Accessibility lift');
-      await expectNextToBarbell(page, a11yLink.locator('.suite-dumbbell-track'));
+      await expectNextToBarbell(page, a11yLink.locator('.a11y-delta-stack'));
       await page.keyboard.press('Escape');
       await expect(tooltip).toBeHidden();
     }
@@ -443,10 +444,95 @@ async function expectNextToBarbell(page, track) {
     const suiteA11yCell = page.locator('.suite-table-row').first().locator('td.a11y-cell');
     await expect(suiteA11yCell).toContainText('52%');
     await expect(suiteA11yCell).toContainText('91%');
-    await expect(suiteA11yCell.locator('.delta')).toContainText('+39 pp');
+    await expect(suiteA11yCell.locator('.eff-pill.neutral')).toContainText('+39 pp');
     await expect(suiteA11yCell).toHaveAttribute('data-barbell-u', '52');
     await expect(suiteA11yCell).toHaveAttribute('data-barbell-g', '91');
     await expect(suiteA11yCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('renders compact A11y checks negative, zero, and partial delta states', async ({ page }) => {
+    const errors = collectErrors(page);
+    const edgeFixture = {
+      suites: [
+        {
+          testId: 'nightly-2026-11-11_07-00-00-claude_code',
+          timestamp: '2026-11-11T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-neg',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 50, total: 100 },
+          a11yStats: {
+            guidedPassed: 30, guidedTotal: 100, guidedRate: 30,
+            unguidedPassed: 50, unguidedTotal: 100, unguidedRate: 50,
+            uplift: -20, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        },
+        {
+          testId: 'nightly-2026-11-10_07-00-00-claude_code',
+          timestamp: '2026-11-10T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-zero',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 50, total: 100 },
+          a11yStats: {
+            guidedPassed: 75, guidedTotal: 100, guidedRate: 75,
+            unguidedPassed: 75, unguidedTotal: 100, unguidedRate: 75,
+            uplift: 0, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        },
+        {
+          testId: 'nightly-2026-11-09_07-00-00-claude_code',
+          timestamp: '2026-11-09T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-partial',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 0, total: 0 },
+          a11yStats: {
+            guidedPassed: 8, guidedTotal: 10, guidedRate: 80,
+            unguidedPassed: 0, unguidedTotal: 0, unguidedRate: null,
+            uplift: null, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        }
+      ]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: edgeFixture }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const rows = page.locator('.suite-table-row');
+    await expect(rows).toHaveCount(3);
+
+    const negCell = rows.nth(0).locator('td.a11y-cell');
+    await expect(negCell.locator('.eff-pill.cost')).toHaveText('-20 pp');
+    await expect(negCell.locator('.a11y-delta-sub')).toHaveText(', unguided 50%→, guided 30%');
+
+    const zeroCell = rows.nth(1).locator('td.a11y-cell');
+    await expect(zeroCell.locator('.eff-pill.muted')).toHaveText('0 pp');
+    await expect(zeroCell.locator('.a11y-delta-sub')).toHaveText(', unguided 75%→, guided 75%');
+
+    const partialCell = rows.nth(2).locator('td.a11y-cell');
+    await expect(partialCell.locator('.eff-pill.muted')).toHaveText('— change not available');
+    await expect(partialCell.locator('.a11y-delta-sub')).toHaveText(', unguided —not available→, guided 80%');
+    await expect(partialCell.locator('a.a11y-link')).toHaveAccessibleName(
+      'Automated accessibility checks: change not available , unguided not available , guided 80% (open accessibility check results)'
+    );
 
     expect(errors).toEqual([]);
   });
