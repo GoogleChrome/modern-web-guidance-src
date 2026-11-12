@@ -165,7 +165,7 @@
          transitions do not run from an unrendered state, so this supplies the before-values. */
       [popover]:has(> [focusgroup~="menu"]):is(:popover-open, .\:popover-open) {
         opacity: 1;
-       @supports selector(:popover-open){
+        @supports selector(:popover-open){
           translate: 0 0;
         }
         transition-duration: .1s;
@@ -390,9 +390,7 @@
     const rootTriggers = triggers.filter(trigger => !trigger.closest('[popover]'));
     // Menus that should focus their first item once the native toggle has opened them.
     const enterOnOpen = new WeakSet();
-    // The trigger a pointer is pressing, so a pointer open leaves focus on the trigger
-    // while a keyboard open enters the menu.
-    let pointerTrigger = null;
+
     // The key that produced the current activation, so Space on a checkbox item can keep the menu open.
     let lastKey = null;
 
@@ -531,10 +529,6 @@
           trigger.click(); // One entry point for every intentional open.
         }
       });
-      trigger.addEventListener('click', event=>{
-        const fromPointer = event.detail > 0;
-        if(!fromPointer) enterOnOpen.add(menu);
-      })
     });
 
     // Submenu triggers preview their submenu on focus, whether focus came from an arrow key or
