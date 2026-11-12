@@ -111,3 +111,47 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(litBlocks[0]?.includes('${"red"}'), false);
   });
 });
+
+void test('sfc-extractor: Glimmer .gts/.gjs files', async (t) => {
+  const gts = [
+    "import Component from '@glimmer/component';",
+    'const Row = <template><tr><td>{{@name}}</td></tr></template>;',
+    'export default class List extends Component {',
+    '  onKeydown = (e: KeyboardEvent) => {};',
+    '  <template>',
+    '    <template shadowrootmode="open"><slot></slot></template>',
+    '    {{! <input name="hidden-in-comment"> }}',
+    '    <input {{on "keydown" this.onKeydown}} />',
+    '  </template>',
+    '}',
+  ].join('\n');
+
+  await t.test('blanks templates out of the script and keeps the statement around an expression template', () => {
+    const blocks = extractScriptBlocks('app/components/list.gts', gts);
+    assert.equal(blocks.length, 1);
+    const block = blocks[0];
+    assert.ok(block);
+    assert.equal(block.virtualPath, 'app/components/list.gts.ts');
+    assert.equal(block.blankedContent.length, gts.length);
+    assert.equal(block.blankedContent.split('\n').length, gts.split('\n').length);
+    assert.equal(block.blankedContent.includes('<template>'), false);
+    assert.equal(block.blankedContent.includes('<input'), false);
+    assert.match(block.blankedContent, /const Row = ` +`;/);
+    assert.equal(block.blankedContent.includes('onKeydown = (e: KeyboardEvent) => {};'), true);
+
+    assert.equal(extractScriptBlocks('app/components/list.gjs', gts)[0]?.virtualPath, 'app/components/list.gjs.js');
+  });
+
+  await t.test('keeps only template markup for DOM scanning, including nested HTML <template> content', () => {
+    const prepared = prepareHtmlForDomScan('app/components/list.gts', gts);
+    assert.equal(prepared.length, gts.length);
+    assert.equal(prepared.includes('import Component'), false);
+    assert.equal(prepared.includes('onKeydown = '), false);
+    assert.equal(prepared.includes('<template'), false);
+    assert.equal(prepared.includes('</template>'), false);
+    assert.equal(prepared.includes('hidden-in-comment'), false);
+    assert.equal(prepared.includes('<tr><td>{{@name}}</td></tr>'), true);
+    assert.equal(prepared.includes('<slot></slot>'), true);
+    assert.equal(prepared.includes('<input {{on "keydown" this.onKeydown}} />'), true);
+  });
+});

@@ -86,6 +86,8 @@ const SUPPORTED_EXTENSIONS = [
   '.tsx',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.php',
 ];

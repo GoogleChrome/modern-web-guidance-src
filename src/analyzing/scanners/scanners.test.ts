@@ -699,6 +699,45 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     assert.equal(astroCss.line, 8);
   });
 
+  await t.test('scans .gts and .gjs Glimmer files with exact line numbers', () => {
+    const gtsContent = [
+      "import Component from '@glimmer/component';",
+      '',
+      'const Badge = <template><span>{{@label}}</span></template>;',
+      '',
+      'export default class Clock extends Component {',
+      '  now = Temporal.Now.instant();',
+      '',
+      '  <template>',
+      '    {{!-- <dialog open>commented out</dialog> --}}',
+      '    <dialog open>{{this.now}}</dialog>',
+      '    <style>',
+      '      dialog { anchor-name: --clock; }',
+      '    </style>',
+      '  </template>',
+      '}',
+    ].join('\n');
+
+    const gtsFindings = scanFiles(new Map([['app/components/clock.gts', gtsContent]]), rules);
+    assert.equal(gtsFindings.length, 3);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-js-temporal')?.line, 6);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-dom-dialog')?.line, 10);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-css-anchor')?.line, 12);
+
+    const gjsContent = [
+      'const now = Temporal.Now.instant();',
+      '',
+      '<template>',
+      '  <dialog open>{{now}}</dialog>',
+      '</template>',
+    ].join('\n');
+
+    const gjsFindings = scanFiles(new Map([['app/components/clock.gjs', gjsContent]]), rules);
+    assert.equal(gjsFindings.length, 2);
+    assert.equal(gjsFindings.find((f) => f.ruleId === 'test-js-temporal')?.line, 1);
+    assert.equal(gjsFindings.find((f) => f.ruleId === 'test-dom-dialog')?.line, 4);
+  });
+
   await t.test('scans .html file with inline <script> and <style> with exact line numbers', () => {
     const htmlContent = [
       '<!DOCTYPE html>',
