@@ -113,6 +113,34 @@ table {
 * **DO NOT** set `overflow` (other than `visible`) on any element between the sticky cell and the scroll container, or the cell sticks to the wrong box.
 * If the page has its own sticky header, offset `inset-block-start` by its height and set `scroll-padding-block-start` on the scroll container so focused cells are not hidden beneath the sticky header.
 
+## Stick headers to the page while columns stick to the wrapper
+
+When the table needs horizontal scrolling in a wrapper but the column headers should stick to the page (for example under a sticky page header), the wrapper must not scroll vertically. `overflow-x: auto` alone computes `overflow-y` to `auto`, which makes the wrapper the vertical sticky reference too. Use `overflow: auto clip` so the wrapper is a scroll container on the inline axis only; `position: sticky` then tracks each axis against a different scroller.
+
+```css
+.table-wrapper {
+  /* Baseline: wrapper scrolls on both axes and headers stick inside it. */
+  overflow: auto;
+  max-block-size: 70vh;
+}
+
+@supports named-feature(single-axis-scroll-container) {
+  .table-wrapper {
+    /* Scroll inline only; thead sticks to the page, row headers stick to the wrapper. */
+    overflow: auto clip;
+    max-block-size: none;
+  }
+
+  thead th {
+    inset-block-start: var(--page-header-height, 0px);
+  }
+}
+```
+
+* Feature-detect with `@supports named-feature(single-axis-scroll-container)` or `CSS.supports('named-feature(single-axis-scroll-container)')`. `@supports (overflow: scroll clip)` only checks parsing and is not enough.
+* On the clipped axis, programmatic scrolling (`scrollTo()`) is refused, `overscroll-behavior` no longer applies, and in flex or grid the default `min-width: auto` takes effect and can grow the container.
+* `single-axis-scroll-container` is not a web-features ID, so it has no Baseline status. Treat it as a progressive enhancement.
+
 ## Show when headers are stuck
 
 Optionally add a shadow or border only while a header is stuck, so users can tell content is scrolled beneath it. Set `container-type: scroll-state` on the sticky element itself and style it through `::after` (a container's own pseudo-elements, or its descendants, can be queried; the element itself cannot).
@@ -200,6 +228,7 @@ If the table is also sortable, read rows from `tbody.rows` at filter time instea
 ## Common mistakes
 
 * **DO NOT** put `position: sticky` on `<thead>` when you also need sticky row headers or per-cell effects; use the `<th>` cells.
+* **DO NOT** use `overflow-x: auto` alone when headers must stick to the page; `overflow-y` computes to `auto`. Use `overflow: auto clip` where supported.
 * **DO NOT** leave sticky headers with a transparent background.
 * **DO NOT** use `border-collapse: collapse` with sticky headers; borders scroll away.
 * **DO NOT** hide filtered rows with `display: none` in CSS classes instead of `hidden`, or announce each hidden row.

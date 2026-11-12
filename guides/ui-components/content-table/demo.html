@@ -37,6 +37,13 @@
 		border: 1px solid var(--table-border);
 	}
 
+	@supports named-feature(single-axis-scroll-container) {
+		.table-wrapper {
+			overflow: auto clip;
+			max-block-size: none;
+		}
+	}
+
 	table {
 		border-collapse: separate;
 		border-spacing: 0;
