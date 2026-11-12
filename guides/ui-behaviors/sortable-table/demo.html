@@ -177,11 +177,6 @@
         clip-path: inset(50%);
         white-space: nowrap;
       }
-
-      /* Without invoker commands support the buttons do nothing, so disable pointer interaction. */
-      .no-invokers thead button {
-        pointer-events: none;
-      }
     </style>
   </head>
   <body>
@@ -199,8 +194,8 @@
       <p>
         <strong>Platform features:</strong> Invoker Commands (<code>commandfor</code> +
         custom <code>--sort</code> commands, handled by one <code>command</code> listener on the
-        table), element-scoped View Transitions with <code>view-transition-name: match-element</code>
-        for row animation, and <code>moveBefore()</code> to reorder the existing
+        table, with a <code>click</code> fallback where unsupported), element-scoped View
+        Transitions with <code>view-transition-name: match-element</code> for row animation, and <code>moveBefore()</code> to reorder the existing
         <code>&lt;tr&gt;</code> nodes (falling back to <code>append()</code>). The table scrolls
         horizontally in a wrapper on narrow screens, and the animation is disabled under
         <code>prefers-reduced-motion</code>.
@@ -300,9 +295,20 @@
       }
 
       table.addEventListener('command', (event) => {
-        if (event.command !== '--sort') return;
+        if (event.command === '--sort') sortBy(event.source);
+      });
 
-        const th = event.source.closest('th');
+      // Without Invoker Commands support a click never becomes a `command` event, so run the
+      // same sort on click. Only then: otherwise a click would sort twice and undo itself.
+      if (!('commandForElement' in HTMLButtonElement.prototype)) {
+        for (const button of table.tHead.querySelectorAll('button[command="--sort"]')) {
+          button.addEventListener('click', () => sortBy(button));
+        }
+      }
+
+      // `button` is the header button that was activated.
+      function sortBy(button) {
+        const th = button.closest('th');
         const index = th.cellIndex;
         const type = th.dataset.type;
         const direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
@@ -320,12 +326,9 @@
 
         reorderWithTransition(rows);
 
-        const label = event.source.textContent.trim();
+        const label = button.textContent.trim();
         status.textContent = `Sorted by ${label}, ${direction}, ${rows.length} rows`;
-      });
-
-      // Header buttons are inert without Invoker Commands support.
-      if (!('CommandEvent' in window)) document.documentElement.classList.add('no-invokers');
+      }
     </script>
   </body>
 </html>
