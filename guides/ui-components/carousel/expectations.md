@@ -2,6 +2,7 @@
 
 - The carousel track has `overflow-x: auto` or `overflow-y: auto` (or `overflow: auto`) and uses mandatory scroll snapping (`scroll-snap-type: x mandatory`, `inline mandatory`, `y mandatory`, or `block mandatory`) on its scrolling axis.
 - Every carousel slide has `scroll-snap-align: center` (or start) applied so it acts as a snap target.
+- The carousel track has a computed `overscroll-behavior` of `contain` on its scrolling axis.
 - The carousel container is exposed as a labeled region with `aria-roledescription="carousel"` and an accessible name.
 - Each slide is exposed as a group with `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (such as "2 of 4").
 - Previous and next controls stay enabled at the first and last slides, because the carousel loops.

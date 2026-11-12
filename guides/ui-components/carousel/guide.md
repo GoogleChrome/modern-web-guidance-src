@@ -4,6 +4,7 @@ description: Build a carousel component that displays a set of items in a horizo
 web-feature-ids:
   - scroll-snap
   - scroll-behavior
+  - overscroll-behavior
   - scrollend
   - scroll-snap-events
   - scroll-driven-animations
@@ -32,6 +33,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 ## Scrolling and controls
 
 - Make the track natively scrollable and snap slides on its scrolling axis. For horizontal carousels, arrange slides in a row and use the inline axis; for vertical carousels, use a column and the block axis.
+- Set `overscroll-behavior` to `contain` on the track's scrolling axis (`overscroll-behavior-x` for horizontal, `overscroll-behavior-y` for vertical). A scroll that reaches an end of the track then stays on the carousel instead of scrolling the page or starting a back or forward swipe, which makes repeated swipes at the ends smoother. Do not use the `overscroll-behavior` shorthand: it also contains the other axis, which can stop the page from scrolling while the pointer is over the carousel.
 - Use HTML `<button>` elements for previous/next controls and one marker button per slide for direct navigation, in every browser. Do not use `::scroll-button()` or `::scroll-marker` for now.
 
 {# MAINTAINER: native ::scroll-button() and ::scroll-marker are deliberately not used for now. Chrome drops keyboard focus from native scroll buttons when looping reorders the slides (https://issues.chromium.org/issues/581318163) and from native scroll markers when they are activated (https://issues.chromium.org/issues/582416742 , https://issues.chromium.org/issues/578562502), and markers are Chrome-only. Once these are fixed, re-verify keyboard focus, then re-add native controls in Chrome (infinite looping included) with this HTML implementation kept as the fallback elsewhere. Last implementation with native controls and the first-Tab swap to HTML controls: commit 11c35ea5. Consider a BCD key request. #}
@@ -88,6 +90,8 @@ The track is a flex row that scrolls on the inline axis and snaps to slides. Eac
   overflow-x: auto;
   /* mandatory so the track always rests on a slide, which the settled-scroll status relies on */
   scroll-snap-type: x mandatory;
+  /* keep a scroll that reaches either end on the carousel; only the scrolling axis, so the page still scrolls the other way */
+  overscroll-behavior-x: contain;
 }
 
 .carousel-track > * {
@@ -125,6 +129,10 @@ The controls are plain HTML, so the fallbacks below only cover the platform feat
 {{ BASELINE_STATUS("scroll-behavior") }}
 
 Smooth scrolling is optional. The example enables it only when reduced motion is not requested.
+
+{{ BASELINE_STATUS("overscroll-behavior") }}
+
+Containing overscroll is a progressive enhancement and needs no fallback. Without support, a scroll that reaches an end of the track can scroll the page or start a swipe navigation, and the carousel still works.
 
 {{ BASELINE_STATUS("scrollend") }}
 
