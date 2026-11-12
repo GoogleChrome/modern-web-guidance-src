@@ -7,6 +7,7 @@
 - Each slide is exposed as a group with `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (such as "2 of 4").
 - Previous and next controls stay enabled at the first and last slides, because the carousel loops.
 - Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
+- When `sibling-count()` is unsupported, the carousel still loops: activating Next while the last slide is current brings the first slide into view.
 - Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
 - While the first slide is current, the last slide has a computed `order` of -1.
 - While the last slide is current, the first slide has a computed `order` of 1.

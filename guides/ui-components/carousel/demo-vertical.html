@@ -66,17 +66,15 @@
      * (order: -1); at or one step from the last slide, park the first slide after it (order: 1). The
      * neighbor is already in place before scrolling reaches an end, so the previous and next buttons never
      * disable. Only the first and last slides ever get `order`.
-     * Without support the carousel stays a finite list.
+     * The script sets --children-count only where sibling-count() is unsupported.
      */
-    @supports (order: sibling-count()) {
-      /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
-      .carousel-track > :first-child {
-        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
-      }
+    /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
+    .carousel-track > :first-child {
+      order: clamp(0, var(--current) - (var(--children-count, sibling-count()) - 3), 1);
+    }
 
-      .carousel-track > :last-child {
-        order: calc(-1 * clamp(0, 2 - var(--current), 1));
-      }
+    .carousel-track > :last-child {
+      order: calc(-1 * clamp(0, 2 - var(--current), 1));
     }
 
     @media (prefers-reduced-motion: no-preference) {
@@ -207,7 +205,8 @@
     const markerNav = document.querySelector(".carousel-markers");
     const [prevBtn, nextBtn] = controls.querySelectorAll("button");
     let markers = [];
-    const loops = CSS.supports("order: sibling-count()");
+    // Where sibling-count() is unsupported, give CSS the number of slides instead
+    if (!CSS.supports("order: sibling-count()")) track.style.setProperty("--children-count", slides.length);
     let parkedFor = -1;
 
     // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
@@ -286,7 +285,7 @@
       button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
       button.addEventListener("click", () => {
         // A direct scroll to a parked end slide goes the short way round, so travel in DOM order; settling parks again
-        if (loops && slide !== nearest()) park();
+        if (slide !== nearest()) park();
         aim(slide);
       });
       markerNav.append(button);
@@ -319,7 +318,7 @@
       pending = null;
       const item = nearest();
       const i = slides.indexOf(item);
-      if (loops && i !== parkedFor) {
+      if (i !== parkedFor) {
         park(i);
       }
       if (settled && item !== settled) {

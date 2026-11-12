@@ -8,7 +8,7 @@ web-feature-ids:
   - scrollend
   - scroll-snap-events
   - scroll-driven-animations
-  - sibling-count 
+  - sibling-count
 guides:
   - carousel-slide-effects
   - carousel-snap-highlights
@@ -38,7 +38,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 {# MAINTAINER: native ::scroll-button() and ::scroll-marker are deliberately not used for now. Chrome drops keyboard focus from native scroll buttons when looping reorders the slides (https://issues.chromium.org/issues/581318163) and from native scroll markers when they are activated (https://issues.chromium.org/issues/582416742 , https://issues.chromium.org/issues/578562502), and markers are Chrome-only. Once these are fixed, re-verify keyboard focus, then re-add native controls in Chrome (infinite looping included) with this HTML implementation kept as the fallback elsewhere. Last implementation with native controls and the first-Tab swap to HTML controls: commit 11c35ea5. Consider a BCD key request. #}
 
-- Keep controls visible, operable, and clearly focused with `:focus-visible`. Loop previous/next controls continuously from the last slide to the first and back by default when there are at least three slides (see Looping); disable them at the ends only when finite navigation is requested or `sibling-count()` is unsupported. Preserve native keyboard behavior; do not intercept keys from links, form fields, or buttons. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
+- Keep controls visible, operable, and clearly focused with `:focus-visible`. Loop previous/next controls continuously from the last slide to the first and back by default when there are at least three slides (see Looping); disable them at the ends only when finite navigation is requested. Preserve native keyboard behavior; do not intercept keys from links, form fields, or buttons. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
 
 ## Related patterns
 
@@ -152,7 +152,24 @@ The track remains natively scrollable with touch, pointer, and keyboard input. J
 
 {{ BASELINE_STATUS("sibling-count") }}
 
-Wrap the parking rule in `@supports (order: sibling-count())`, and test the same thing in the script with `CSS.supports("order: sibling-count()")`. Without support, leave the carousel as a finite list: skip the parking and keep disabling the controls at the ends.
+If `sibling-count()` is unsupported, the script supplies the number of slides instead, so the carousel still loops. Set a `--children-count` custom property on the track only when `CSS.supports("order: sibling-count()")` is false, and read the count in CSS as `var(--children-count, sibling-count())` instead of `sibling-count()`.
+Browsers with support never get the property, so they keep counting natively.
+Do not wrap the parking rules in `@supports`.
+
+```css
+.carousel-track > :first-child {
+  /* --children-count is only set where sibling-count() is unsupported */
+  order: clamp(0, var(--current) - (var(--children-count, sibling-count()) - 3), 1);
+}
+```
+
+```js
+if (!CSS.supports("order: sibling-count()")) {
+  track.style.setProperty("--children-count", track.children.length);
+}
+```
+
+If content is not static, update the property when slides are added or removed (e.g. via a `MutationObserver`).
 
 ### Scroll-driven effects
 
