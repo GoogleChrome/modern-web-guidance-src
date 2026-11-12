@@ -104,7 +104,7 @@
 </head>
 
 <body>
-  <div class="scroller" role="region" aria-label="Example scrollable content" tabindex="-1">
+  <div class="scroller" role="region" aria-label="Example scrollable content" tabindex="0">
     <!-- Sentinel at the top of the scroller -->
     <div class="scroll-sentinel"></div>
 
@@ -133,7 +133,7 @@
     }
 
     backToTop.addEventListener('focusout', (event) => {
-      if ((!isBackToTopVisible()) && (document.activeElement === document.body)) {
+      if (!isBackToTopVisible() && !event.relatedTarget) {
         scroller.focus();
       }
     });
