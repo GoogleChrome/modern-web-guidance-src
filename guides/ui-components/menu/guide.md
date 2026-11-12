@@ -350,6 +350,31 @@ if (!('focusGroup' in HTMLElement.prototype)) {
 
 {{ FEATURE_FALLBACKS("popover") }}
 
+The Popover polyfill can not fully emulate the top layer behavior. Avoid making the menus a containing block for any submenus, which can happen when adding a `translate` opening transition. Wrap any properties that create a containing block (`filter`, `translate`, `scale`, `transform`, etc.) in an `@supports selector(:popover-open)` query.
+
+```css
+[popover]:has(> [focusgroup~="menu"]){
+  @supports selector(:popover-open){
+    translate: 0 -.25rem;
+  }
+}
+```
+
+Use a `checkMatches` utility to use `element.matches()` without throwing on unsupported selectors.
+
+```javascript
+const checkMatches = (element, matches) => {
+  for(const match in matches){
+    try {
+      if(element.matches(matches[match])) return true
+    } catch (error) { /* Ignore */ }
+  }
+  return false;
+}
+
+ const isOpen = menu => checkMatches(menu, [':popover-open', '.\:popover-open']);
+```
+
 ### Fallbacks & browser support for Anchor positioning
 
 {{ BASELINE_STATUS("anchor-positioning") }}
@@ -362,19 +387,16 @@ Without CSS Anchor Positioning, a popover falls back to the UA's centered viewpo
 
 {{ BASELINE_STATUS("toggleevent-source") }}
 
-If targeting earlier implementations where `showPopover({ source })` does not establish an implicit anchor (no `source` on `ToggleEvent.prototype`), give each trigger a unique `anchor-name` and each menu a matching `position-anchor` from script, instead of writing per-menu CSS rules.
+{# Note: ToggleEvent.prototype.source and the implicit anchor from `source` have different support, but we can use the named Web Feature as it is later, it matches the feature detection, and the impact is minimal. #}
 
-For browsers without anchor positioning at all, see {{ GUIDE_REF("viewport-aware-dropdowns") }} for the polyfill route.
+If targeting earlier implementations where `showPopover({ source })` does not establish an implicit anchor (no `source` on `ToggleEvent.prototype`), give each trigger a unique `anchor-name` and each menu a matching `position-anchor` from script, instead of writing per-menu CSS rules.
 
 ### Fallbacks & browser support for Invoker commands
 
 {{ BASELINE_STATUS("invoker-commands") }}
 
-Without invokers, `command="toggle-popover"` does nothing, so script must toggle the menu.
+Without invokers, `command="toggle-popover"` does nothing. Use `popovertarget` instead, which has longer support and is supported by the popover polyfill.
 
-* Feature-detect the interface, not an instance: `'commandForElement' in HTMLButtonElement.prototype`.
-* On each trigger `click`, call `preventDefault()` so a browser with invokers cannot toggle twice.
-* If the menu is open, close it with `closeAndRestore(menu)`. Otherwise call `menu.showPopover({ source: trigger })`.
 * Mark the menu in `enterOnOpen` unless the click came from the pressed trigger (`pointerTrigger`), so only keyboard opens enter the menu.
 * `Enter` and `Space` still work because they generate a click on buttons.
 
