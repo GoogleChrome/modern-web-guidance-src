@@ -209,7 +209,7 @@
     if (!CSS.supports("order: sibling-count()")) track.style.setProperty("--children-count", slides.length);
     let parkedFor = -1;
 
-    // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
+    // Slides in visual order. `order` is 0 for every slide on a marker trip, so DOM order applies.
     const visual = () => [...slides].sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order);
     const neighbor = (item, step) => visual()[visual().indexOf(item) + step];
 
