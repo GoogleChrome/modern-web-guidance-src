@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, processGuideInventory, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 import { guidesDir } from './paths.ts';
@@ -677,6 +677,129 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     }
   });
 });
+
+
+describe('scanAllGuides', () => {
+  test('discovers nested guide directories and validates their frontmatter', () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'nested-guide-test-')
+    );
+
+    const scanDir = path.join(tmpDir, 'guides');
+    const categoryDir = path.join(scanDir, 'performance');
+    const parentDir = path.join(categoryDir, 'parent-guide');
+    const nestedDir = path.join(parentDir, 'nested-guide');
+
+    fs.mkdirSync(nestedDir, { recursive: true });
+
+    // Create a parent guide.
+    fs.writeFileSync(
+      path.join(parentDir, 'guide.md'),
+      `---
+name: parent-guide
+description: Parent guide description
+web-feature-ids: []
+---
+
+# Parent Guide
+
+Parent guide content.
+`
+    );
+
+    // Create a nested stub guide with an incorrect name.
+    fs.writeFileSync(
+      path.join(nestedDir, 'guide.md'),
+      `---
+name: parent-guide
+---
+`
+    );
+
+    try {
+      const guides = scanAllGuides(scanDir);
+
+      // Both parent and nested guides should be discovered.
+      assert.strictEqual(guides.length, 2);
+
+      const parentGuide = guides.find(
+        guide => guide.dir === parentDir
+      );
+
+      const nestedGuide = guides.find(
+        guide => guide.dir === nestedDir
+      );
+
+      assert.ok(parentGuide, 'Parent guide should be discovered');
+      assert.ok(nestedGuide, 'Nested guide should be discovered');
+
+      assert.strictEqual(nestedGuide.name, 'nested-guide');
+      assert.strictEqual(nestedGuide.isStub, true);
+
+      // The nested guide should be validated.
+      const result = processGuideInventory([nestedGuide]);
+
+      assert.ok(
+        result.errors.some(error =>
+          error.includes(
+            'does not match directory name "nested-guide"'
+          )
+        ),
+        'Expected validation to detect the incorrect nested guide name'
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('does not inventory nested directories without guide.md', () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'nested-guide-empty-test-')
+    );
+
+    const scanDir = path.join(tmpDir, 'guides');
+    const parentDir = path.join(
+      scanDir,
+      'performance',
+      'parent-guide'
+    );
+
+    const ordinaryNestedDir = path.join(
+      parentDir,
+      'ordinary-folder'
+    );
+
+    fs.mkdirSync(ordinaryNestedDir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(parentDir, 'guide.md'),
+      `---
+name: parent-guide
+description: Parent guide description
+web-feature-ids: []
+---
+
+# Parent Guide
+
+Parent guide content.
+`
+    );
+
+    try {
+      const guides = scanAllGuides(scanDir);
+
+      assert.strictEqual(guides.length, 1);
+
+      assert.strictEqual(
+        guides[0].dir,
+        parentDir
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
 
 describe('guide draft flag (publish control)', () => {
   // Inventory a guide.md with the given body in a throwaway dir.

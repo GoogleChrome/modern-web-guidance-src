@@ -823,27 +823,53 @@ export function classifyGuide(
   return 'complete';
 }
 
+
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   const guides: GuideInventory[] = [];
 
-  if (!fs.existsSync(guidesDir)) return guides;
+  if (!fs.existsSync(scanDir)) return guides;
+
+  const shouldSkip = (entry: fs.Dirent) =>
+    !entry.isDirectory() ||
+    entry.name.startsWith('.') ||
+    entry.name === 'node_modules';
+
+  const findNestedGuides = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (shouldSkip(entry)) continue;
+
+      const nestedDir = path.join(dir, entry.name);
+
+      if (fs.existsSync(path.join(nestedDir, GUIDE_FILE))) {
+        guides.push(inventoryGuide(nestedDir));
+      }
+
+      findNestedGuides(nestedDir);
+    }
+  };
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
-     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-     .map(d => d.name);
+    .filter(entry => !shouldSkip(entry))
+    .map(entry => entry.name);
 
   for (const category of categories) {
     const categoryDir = path.join(scanDir, category);
-    if (!fs.existsSync(categoryDir)) continue;
 
-    // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-      guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
+      if (shouldSkip(entry)) continue;
+
+      const guideDir = path.join(categoryDir, entry.name);
+
+      guides.push(inventoryGuide(guideDir));
+
+      // Discover guide definitions nested inside an existing guide.
+      findNestedGuides(guideDir);
     }
   }
+
   return guides;
 }
+
 
 let cachedGuidesMap: Map<string, GuideInventory> | null = null;
 
