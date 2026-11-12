@@ -136,7 +136,7 @@
     }
 
     /* Target Item Styles */
-    .item.target {
+    .item#target-item {
       scroll-initial-target: nearest;
       background: #fdf6e3;
       border: 2px solid #fbbf24;
@@ -217,7 +217,7 @@
         </div>
 
         <!-- Target Media Item -->
-        <div class="item received target" id="target-item" tabindex="-1">
+        <div class="item received" id="target-item" tabindex="-1">
           <div class="target-indicator">Initial Target</div>
           <p>This is Option C. I think this perfectly captures the "Cybernetic" theme we are going for.</p>
           <div class="media-card large">
@@ -245,7 +245,7 @@
     // Fallback strategy for browsers that don't support scroll-initial-target
     document.addEventListener("DOMContentLoaded", () => {
       if (!CSS.supports('scroll-initial-target', 'nearest')) {
-        const feedTarget = document.querySelector('.feed-container .item.target');
+        const feedTarget = document.querySelector('.feed-container .item#target-item');
         if (feedTarget) {
           feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
         }
