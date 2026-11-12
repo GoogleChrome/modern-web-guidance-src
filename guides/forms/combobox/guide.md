@@ -176,7 +176,7 @@ Options can hold a styled title plus smaller secondary text (a description, a co
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("popover") }}
+{{ BASELINE_STATUS("popover") }}
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
