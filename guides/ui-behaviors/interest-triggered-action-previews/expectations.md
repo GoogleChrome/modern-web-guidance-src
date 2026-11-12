@@ -3,4 +3,3 @@
 - The target element must respond to the `loseinterest` event to revert the preview state.
 - The polyfill for interest invokers should be conditionally installed.
 - The implementation MUST NOT announce interest-driven preview state changes via a live region (e.g. `role="status"` / `aria-live`). Interest is a passive signal and broadcasting every apply/unapply produces noise; reserve announcements for committed actions (e.g. on click).
-- The invoker element references the action preview content via `aria-describedby` and does not have `aria-expanded`.
