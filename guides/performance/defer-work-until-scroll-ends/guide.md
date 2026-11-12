@@ -50,7 +50,7 @@ scroller.addEventListener('scrollend', () => {
 
 ## Strategic Implementation & Best Practices
 
-- **DO** use `scrollend` instead of debounced `scroll` events when firing layout data beacons or fetching new content content layout dynamically. 
+- **DO** use `scrollend` instead of debounced `scroll` events when firing layout data beacons or fetching new content dynamically. 
 - **DO** consider pairing this with `scrollSnapChange` or `scrollSnapChanging` snap interactions if you're building carousels or testimonial galleries slides.
 - **DO NOT** bundle layout-dependent dynamic updates inside dynamic visual scroll callbacks.
 - **DO** consider that visual viewport zooming and scrolling triggers the `scrollend` event correctly.
