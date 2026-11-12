@@ -133,7 +133,7 @@ tbody th {
 }
 ```
 
-Use flow-relative values (`block-start`, `inline-start`) so the shadow follows writing direction. Do not change the stuck cell's size when stuck (it can oscillate), only paint effects such as shadows.
+Use flow-relative values (`block-start`, `inline-start`) so the shadow follows writing direction. Avoid size-affecting changes (padding, border, font-size) in stuck-state rules, since they can change layout and flip the stuck state. Use only paint effects such as `box-shadow`, `background` and `opacity`.
 
 ## Filter rows
 
