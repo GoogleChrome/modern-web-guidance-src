@@ -65,7 +65,7 @@
      * disable. Only the first and last slides ever get `order`.
      * Without support the carousel stays a finite list.
      */
-    @supports (order: mod(sibling-index(), 2)) {
+    @supports (order: sibling-count()) {
       /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
       .carousel-track > :first-child {
         order: clamp(0, var(--current) - (sibling-count() - 3), 1);
@@ -227,7 +227,7 @@
     const markerNav = document.querySelector(".carousel-markers");
     const [prevBtn, nextBtn] = controls.querySelectorAll("button");
     let markers = [];
-    const loops = CSS.supports("order: mod(sibling-index(), 2)");
+    const loops = CSS.supports("order: sibling-count()");
     let parkedFor = -1;
 
     // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.

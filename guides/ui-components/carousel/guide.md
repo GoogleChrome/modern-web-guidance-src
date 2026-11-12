@@ -38,7 +38,7 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 {# MAINTAINER: native ::scroll-button() and ::scroll-marker are deliberately not used for now. Chrome drops keyboard focus from native scroll buttons when looping reorders the slides (https://issues.chromium.org/issues/581318163) and from native scroll markers when they are activated (https://issues.chromium.org/issues/582416742 , https://issues.chromium.org/issues/578562502), and markers are Chrome-only. Once these are fixed, re-verify keyboard focus, then re-add native controls in Chrome (infinite looping included) with this HTML implementation kept as the fallback elsewhere. Last implementation with native controls and the first-Tab swap to HTML controls: commit 11c35ea5. Consider a BCD key request. #}
 
-- Keep controls visible, operable, and clearly focused with `:focus-visible`. Loop previous/next controls continuously from the last slide to the first and back by default when there are at least three slides (see Looping); disable them at the ends only when finite navigation is requested or `sibling-index()` is unsupported. Preserve native keyboard behavior; do not intercept keys from links, form fields, or buttons. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
+- Keep controls visible, operable, and clearly focused with `:focus-visible`. Loop previous/next controls continuously from the last slide to the first and back by default when there are at least three slides (see Looping); disable them at the ends only when finite navigation is requested or `sibling-count()` is unsupported. Preserve native keyboard behavior; do not intercept keys from links, form fields, or buttons. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
 
 ## Related patterns
 
@@ -152,7 +152,7 @@ The track remains natively scrollable with touch, pointer, and keyboard input. J
 
 {{ BASELINE_STATUS("sibling-count") }}
 
-Wrap the parking rule in `@supports` for `sibling-index()`. Without support, leave the carousel as a finite list: skip the parking and keep disabling the controls at the ends.
+Wrap the parking rule in `@supports (order: sibling-count())`, and test the same thing in the script with `CSS.supports("order: sibling-count()")`. Without support, leave the carousel as a finite list: skip the parking and keep disabling the controls at the ends.
 
 ### Scroll-driven effects
 
