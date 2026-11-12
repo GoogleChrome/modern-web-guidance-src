@@ -108,10 +108,14 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
   let localPolyfillLoaded = false;
   const localPolyfillBasenames = new Set<string>();
   const requestedScripts = new Set<string>();
+  let hasUncaughtPageError = false;
   page.on('request', (req: any) => {
     if (req.resourceType() === 'script') {
       requestedScripts.add(req.url());
     }
+  });
+  page.on('pageerror', () => {
+    hasUncaughtPageError = true;
   });
 
   await page.addInitScript(() => {
@@ -347,12 +351,27 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
   await page.goto(url);
   await page.waitForLoadState('load');
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  await expect.poll(async () => page.evaluate(() => (globalThis as any).__grader_stats__)).toBeTruthy();
+  await page
+    .waitForFunction(
+      () => {
+        const text = document.getElementById('islamic-date')?.textContent?.trim() || '';
+        return Boolean(
+          text && !/^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(text)
+        );
+      },
+      undefined,
+      { timeout: 400 }
+    )
+    .catch(() => {});
 
   const pageData = await page.evaluate(() => {
     const stats = (globalThis as any).__grader_stats__;
     const islamic = document.getElementById('islamic-date')?.textContent?.trim() || '';
-    const renderedCalendarOutput = Boolean(islamic && islamic !== 'Loading...' && islamic !== '-');
+    const isPlaceholder = /^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(islamic);
+    const isErrorText =
+      /^(?:null|n\/a)$/i.test(islamic) ||
+      /\b(?:error|failed|unavailable|unsupported|not supported|invalid|undefined|nan|typeerror|referenceerror|rangeerror|syntaxerror|temporal error|cannot read propert(?:y|ies)|is not a function|is not defined)\b/i.test(islamic);
+    const renderedCalendarOutput = Boolean(islamic && !isPlaceholder && !isErrorText);
     return {
       stats,
       hasGlobalTemporal: typeof (globalThis as any).Temporal !== 'undefined',
@@ -370,7 +389,7 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     hasGlobalTemporal: pageData.hasGlobalTemporal,
     polyfillLoaded: cdnPolyfillLoaded || localPolyfillLoaded,
     localPolyfillLoaded,
-    renderedCalendarOutput: pageData.renderedCalendarOutput,
+    renderedCalendarOutput: pageData.renderedCalendarOutput && !hasUncaughtPageError,
     requestedScripts: [...requestedScripts]
   };
 }
@@ -533,7 +552,19 @@ async function setupNativePage(
   await page.goto(url);
   await page.waitForLoadState('load');
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  await expect.poll(async () => page.evaluate(() => (globalThis as any).__grader_stats__)).toBeTruthy();
+  await page
+    .waitForFunction(
+      () => {
+        const text = document.getElementById('islamic-date')?.textContent?.trim() || '';
+        return Boolean(
+          (globalThis as any).__grader_stats__?.temporalUsed ||
+            (text && !/^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(text))
+        );
+      },
+      undefined,
+      { timeout: 400 }
+    )
+    .catch(() => {});
 
   const stats = await page.evaluate(() => (globalThis as any).__grader_stats__);
   return { stats, polyfillRequested, requestedScripts: [...requestedScripts] };
