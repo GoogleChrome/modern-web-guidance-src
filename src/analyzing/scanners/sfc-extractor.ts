@@ -18,7 +18,6 @@ const SCRIPT_TAG_REGEX = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const STYLE_TAG_REGEX = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
 const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
-const TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
 const GLIMMER_COMMENT_REGEX = /\{\{!--[\s\S]*?--\}\}|\{\{![\s\S]*?\}\}/g;
 
 export function isGlimmerPath(relPath: string): boolean {
@@ -31,56 +30,129 @@ interface GlimmerTemplateRange {
   readonly end: number;
   readonly innerStart: number;
   readonly innerEnd: number;
+  readonly isClassMember: boolean;
+}
+
+const TEMPLATE_OPEN_TAG_REGEX = /<template\b(?:"[^"]*"|'[^']*'|[^'">])*>/y;
+const EXPRESSION_PUNCTUATORS = new Set(['=', '(', ',', ':', '?', '[', '!', '&', '|', '>']);
+
+/** The code after the last `class` keyword in `header`, or `null` when there is none. */
+function classHeaderTail(header: string): string | null {
+  const match = /\bclass\b(?![\s\S]*\bclass\b)([\s\S]*)$/.exec(header);
+  return match ? (match[1] ?? '') : null;
+}
+
+/** `<` minus `>` in a class header, so the braces of `extends Base<{ … }>` are not the body. */
+function openTypeArguments(classTail: string): number {
+  const withoutArrows = classTail.replaceAll('=>', '');
+  return (withoutArrows.match(/</g) ?? []).length - (withoutArrows.match(/>/g) ?? []).length;
 }
 
 /**
- * Finds the outermost `<template>…</template>` blocks of a .gts/.gjs file, so HTML
- * `<template>` elements nested inside a Glimmer template stay part of it.
+ * Finds the `<template>…</template>` blocks of a .gts/.gjs file, skipping JS comments and
+ * strings. A template directly in a class body, not after `=` or similar, is a class member.
  */
 function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRange[] {
   const ranges: GlimmerTemplateRange[] = [];
-  let depth = 0;
-  let start = 0;
-  let innerStart = 0;
-  for (const match of content.matchAll(TEMPLATE_TAG_REGEX)) {
-    const tagEnd = match.index + match[0].length;
-    if (!match[0].startsWith('</')) {
-      if (depth === 0) {
-        start = match.index;
-        innerStart = tagEnd;
+  const blockStack: { isClassBody: boolean; outerHeader: string }[] = [];
+  // Code since the last statement boundary at the current brace depth.
+  let header = '';
+  let i = 0;
+  while (i < content.length) {
+    const char = content[i] ?? '';
+    const next = content[i + 1];
+    if (char === '/' && (next === '/' || next === '*')) {
+      const end = next === '/' ? content.indexOf('\n', i) : content.indexOf('*/', i + 2) + 2;
+      if (end < 2) {
+        break;
       }
-      depth++;
-    } else if (depth > 0 && --depth === 0) {
-      ranges.push({ start, end: tagEnd, innerStart, innerEnd: match.index });
+      i = end;
+    } else if (char === '"' || char === "'" || char === '`') {
+      i = skipString(content, i);
+      header += 'x';
+    } else if (char === '<' && isTemplateOpenTagAt(content, i)) {
+      const closeStart = content.indexOf('</template>', i);
+      if (closeStart === -1) {
+        break;
+      }
+      const end = closeStart + '</template>'.length;
+      ranges.push({
+        start: i,
+        end,
+        innerStart: content.indexOf('>', i) + 1,
+        innerEnd: closeStart,
+        isClassMember:
+          blockStack.at(-1)?.isClassBody === true &&
+          !EXPRESSION_PUNCTUATORS.has(header.trimEnd().at(-1) ?? ''),
+      });
+      i = end;
+      header += 'x';
+    } else {
+      if (char === '{') {
+        const classTail = classHeaderTail(header);
+        blockStack.push({
+          isClassBody: classTail !== null && openTypeArguments(classTail) === 0,
+          outerHeader: header,
+        });
+        header = '';
+      } else if (char === '}') {
+        const outerHeader = blockStack.pop()?.outerHeader ?? '';
+        const classTail = classHeaderTail(outerHeader);
+        header = classTail !== null && openTypeArguments(classTail) > 0 ? `${outerHeader}{}` : '';
+      } else if (char === ';') {
+        header = '';
+      } else {
+        header += char;
+      }
+      i++;
     }
   }
   return ranges;
 }
 
+function isTemplateOpenTagAt(content: string, index: number): boolean {
+  TEMPLATE_OPEN_TAG_REGEX.lastIndex = index;
+  return TEMPLATE_OPEN_TAG_REGEX.test(content);
+}
+
+/** Returns the index after the string or template literal that starts at `start`. */
+function skipString(content: string, start: number): number {
+  const quote = content[start];
+  let interpolationDepth = 0;
+  let i = start + 1;
+  while (i < content.length && !(content[i] === quote && interpolationDepth === 0)) {
+    if (content[i] === '\\') {
+      i++;
+    } else if (quote === '`' && content[i] === '$' && content[i + 1] === '{') {
+      interpolationDepth++;
+      i++;
+    } else if (quote === '`' && content[i] === '}' && interpolationDepth > 0) {
+      interpolationDepth--;
+    }
+    i++;
+  }
+  return i + 1;
+}
+
 /**
- * Blanks Glimmer templates out of a .gts/.gjs file. A template in expression position
- * (`const Row = <template>…</template>;`) becomes a same-length template literal so the
- * surrounding statement still parses; one in a class body or at the top level becomes spaces.
+ * Blanks Glimmer templates out of a .gts/.gjs file. A class-member template becomes spaces;
+ * any other becomes a same-length template literal, which is valid as an expression
+ * (`const Row = <template>…</template>;`) and as a statement (`<template>…</template> satisfies T`).
  */
 function blankGlimmerTemplates(content: string): string {
   let result = '';
   let lastIndex = 0;
-  for (const { start, end } of findGlimmerTemplateRanges(content)) {
-    const before = content.slice(lastIndex, start);
-    const precedingChar = (result + before).trimEnd().at(-1);
-    const isStatementPosition =
-      precedingChar === undefined || precedingChar === '{' || precedingChar === '}' || precedingChar === ';';
+  for (const { start, end, isClassMember } of findGlimmerTemplateRanges(content)) {
     const blanked = content.slice(start, end).replace(/[^\r\n]/g, ' ');
-    result +=
-      before + (isStatementPosition ? blanked : `\`${blanked.slice(1, -1)}\``);
+    result += content.slice(lastIndex, start) + (isClassMember ? blanked : `\`${blanked.slice(1, -1)}\``);
     lastIndex = end;
   }
   return result + content.slice(lastIndex);
 }
 
 /**
- * Keeps only the markup inside Glimmer templates, with the `<template>` tags and
- * Handlebars comments blanked, so linkedom sees the elements at their original offsets.
+ * Keeps only the markup inside Glimmer templates, with Handlebars comments and
+ * `<script>`/`<style>` blocks blanked, so linkedom sees the elements at their original offsets.
  */
 function prepareGlimmerForDomScan(content: string): string {
   const templateRanges = findGlimmerTemplateRanges(content);
@@ -94,7 +166,7 @@ function prepareGlimmerForDomScan(content: string): string {
 
   for (const { innerStart, innerEnd } of templateRanges) {
     const inner = content.slice(innerStart, innerEnd);
-    for (const regex of [TEMPLATE_TAG_REGEX, GLIMMER_COMMENT_REGEX, SCRIPT_TAG_REGEX, STYLE_TAG_REGEX]) {
+    for (const regex of [GLIMMER_COMMENT_REGEX, SCRIPT_TAG_REGEX, STYLE_TAG_REGEX]) {
       for (const { start, end } of findTagRanges(inner, regex)) {
         rangesToBlank.push({ start: innerStart + start, end: innerStart + end });
       }

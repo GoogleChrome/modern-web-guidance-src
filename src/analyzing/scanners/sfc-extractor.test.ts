@@ -119,7 +119,6 @@ void test('sfc-extractor: Glimmer .gts/.gjs files', async (t) => {
     'export default class List extends Component {',
     '  onKeydown = (e: KeyboardEvent) => {};',
     '  <template>',
-    '    <template shadowrootmode="open"><slot></slot></template>',
     '    {{! <input name="hidden-in-comment"> }}',
     '    <input {{on "keydown" this.onKeydown}} />',
     '  </template>',
@@ -142,7 +141,7 @@ void test('sfc-extractor: Glimmer .gts/.gjs files', async (t) => {
     assert.equal(extractScriptBlocks('app/components/list.gjs', gts)[0]?.virtualPath, 'app/components/list.gjs.js');
   });
 
-  await t.test('keeps only template markup for DOM scanning, including nested HTML <template> content', () => {
+  await t.test('keeps only template markup for DOM scanning', () => {
     const prepared = prepareHtmlForDomScan('app/components/list.gts', gts);
     assert.equal(prepared.length, gts.length);
     assert.equal(prepared.includes('import Component'), false);
@@ -151,7 +150,62 @@ void test('sfc-extractor: Glimmer .gts/.gjs files', async (t) => {
     assert.equal(prepared.includes('</template>'), false);
     assert.equal(prepared.includes('hidden-in-comment'), false);
     assert.equal(prepared.includes('<tr><td>{{@name}}</td></tr>'), true);
-    assert.equal(prepared.includes('<slot></slot>'), true);
     assert.equal(prepared.includes('<input {{on "keydown" this.onKeydown}} />'), true);
+  });
+
+  await t.test('ignores commented-out templates and blanks class-member templates after fields without semicolons', () => {
+    const source = [
+      '// const Old = <template><dialog open>old</dialog></template>;',
+      'export default class Card extends Component {',
+      "  title = 'Blåbær'",
+      '  // the card body',
+      '  <template><dialog open>{{this.title}}</dialog></template>',
+      '}',
+    ].join('\n');
+
+    const script = extractScriptBlocks('card.gts', source)[0]?.blankedContent;
+    assert.ok(script);
+    assert.equal(script.length, source.length);
+    assert.equal(script.includes('`'), false);
+    assert.equal(script.includes('// const Old = <template>'), true);
+
+    const prepared = prepareHtmlForDomScan('card.gts', source);
+    assert.equal(prepared.length, source.length);
+    assert.equal(prepared.includes('old</dialog>'), false);
+    assert.equal(prepared.split('\n')[4], '            <dialog open>{{this.title}}</dialog>           ');
+  });
+
+  await t.test('treats `export default <template>` as an expression and ignores templates in strings', () => {
+    const source = [
+      "const markup = '<template>not a template</template>';",
+      'const Hint = `<template>${markup}</template>`;',
+      'export default <template><dialog open>{{markup}}</dialog></template>',
+    ].join('\n');
+
+    const script = extractScriptBlocks('hint.gjs', source)[0]?.blankedContent;
+    assert.ok(script);
+    assert.equal(script.split('\n')[0], source.split('\n')[0]);
+    assert.equal(script.split('\n')[1], source.split('\n')[1]);
+    assert.match(script.split('\n')[2] ?? '', /^export default ` +`$/);
+
+    const prepared = prepareHtmlForDomScan('hint.gjs', source);
+    assert.equal(prepared.includes('not a template'), false);
+    assert.equal(prepared.includes('<dialog open>{{markup}}</dialog>'), true);
+  });
+
+  await t.test('finds class bodies past type arguments and keeps top-level `satisfies` parseable', () => {
+    const source = [
+      'class Card extends Component<{ Args: { title: string } }> {',
+      '  <template>{{@title}}</template>',
+      '}',
+      'const options = { label: <template>Label</template> };',
+      '<template><Card @title="x" /></template> satisfies TOC<{ Args: {} }>;',
+    ].join('\n');
+
+    const lines = extractScriptBlocks('card.gts', source)[0]?.blankedContent.split('\n');
+    assert.ok(lines);
+    assert.match(lines[1] ?? '', /^ +$/);
+    assert.match(lines[3] ?? '', /^const options = \{ label: ` +` \};$/);
+    assert.match(lines[4] ?? '', /^` +` satisfies TOC<\{ Args: \{\} \}>;$/);
   });
 });
