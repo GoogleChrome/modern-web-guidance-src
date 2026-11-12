@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   blankOutsideRange,
+  blankPreprocessorLineComments,
   blankRanges,
   extractScriptBlocks,
   extractStyleBlocks,
@@ -87,6 +88,59 @@ void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
     assert.ok(block);
     assert.equal(block.virtualPath, 'src/pages/test.astro.ts');
     assert.equal(block.blankedContent.includes('const x = 42;'), true);
+  });
+});
+
+void test('sfc-extractor: blankPreprocessorLineComments', async (t) => {
+  await t.test('blanks // comments while preserving offsets', () => {
+    const scss = '// header\n.box { color: red; }\n// trailing';
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.equal(blanked.split('\n').length, scss.split('\n').length);
+    assert.equal(blanked.includes('// header'), false);
+    assert.equal(blanked.includes('// trailing'), false);
+    assert.equal(blanked.includes('.box { color: red; }'), true);
+    assert.equal(blanked.split('\n')[1], '.box { color: red; }');
+  });
+
+  await t.test('leaves // inside URLs, strings, and block comments untouched', () => {
+    const scss = [
+      '.a { background: url(https://example.com/a.png); }',
+      '.b { content: "// not a comment"; }',
+      '/* // also not a comment */',
+      '.c { color: blue; }',
+    ].join('\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked, scss);
+  });
+
+  await t.test('blanks // comments inside a range only', () => {
+    const content = '// outside\n.box { color: red; }\n// outside';
+    const start = content.indexOf('.box');
+    const end = start + '.box { color: red; }'.length;
+    const blanked = blankPreprocessorLineComments(content, start, end);
+    assert.equal(blanked.includes('// outside'), true);
+    assert.equal(blanked.includes('.box { color: red; }'), true);
+  });
+});
+
+void test('sfc-extractor: SCSS style blocks blank // comments', async (t) => {
+  await t.test('extracts the rule after a // comment in <style lang="scss">', () => {
+    const vue =
+      '<template><div/></template>\n<style lang="scss">\n// comment\n.box { color: red; }\n</style>';
+    const blocks = extractStyleBlocks('src/App.vue', vue);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0]?.length, vue.length);
+    assert.equal(blocks[0]?.includes('// comment'), false);
+    assert.equal(blocks[0]?.includes('.box { color: red; }'), true);
+  });
+
+  await t.test('leaves plain <style> blocks untouched', () => {
+    const vue =
+      '<template><div/></template>\n<style>\n.box { color: red; }\n</style>';
+    const blocks = extractStyleBlocks('src/App.vue', vue);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0]?.includes('.box { color: red; }'), true);
   });
 });
 

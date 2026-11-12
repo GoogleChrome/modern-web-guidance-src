@@ -396,6 +396,82 @@ export function isMarkupPath(relPath: string): boolean {
   );
 }
 
+const PREPROCESSOR_STYLE_LANGS: ReadonlySet<string> = new Set(['scss', 'sass', 'less']);
+
+/**
+ * Blanks `//` line comments in SCSS/Sass/Less source between [startOffset, endOffset),
+ * replacing comment characters with spaces so line/column offsets are preserved.
+ * `//` inside `/* ... *\/` block comments or quoted strings is left untouched, as is
+ * `//` immediately after `:` or `(` (e.g. `https://` and protocol-relative URLs),
+ * since those are not line comments.
+ */
+export function blankPreprocessorLineComments(
+  content: string,
+  startOffset = 0,
+  endOffset = content.length,
+): string {
+  const start = Math.max(0, startOffset);
+  const end = Math.min(content.length, endOffset);
+  if (end <= start) {
+    return content;
+  }
+
+  let result = content.slice(0, start);
+  let i = start;
+  while (i < end) {
+    const ch = content[i];
+    const next = content[i + 1];
+    if (ch === '/' && next === '*') {
+      // Block comment: copy through the closing */ unchanged.
+      const close = content.indexOf('*/', i + 2);
+      const blockEnd = close === -1 ? end : Math.min(end, close + 2);
+      result += content.slice(i, blockEnd);
+      i = blockEnd;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      // Quoted string: copy through the closing quote, honoring backslash escapes.
+      let j = i + 1;
+      while (j < end) {
+        if (content[j] === '\\') {
+          j += 2;
+          continue;
+        }
+        if (content[j] === ch) {
+          j++;
+          break;
+        }
+        if (content[j] === '\n') {
+          break;
+        }
+        j++;
+      }
+      result += content.slice(i, j);
+      i = j;
+      continue;
+    }
+    if (
+      ch === '/' &&
+      next === '/' &&
+      content[i - 1] !== ':' &&
+      content[i - 1] !== '('
+    ) {
+      // Line comment: blank through (not including) the newline.
+      let j = i;
+      while (j < end && content[j] !== '\n' && content[j] !== '\r') {
+        j++;
+      }
+      result += ' '.repeat(j - i);
+      i = j;
+      continue;
+    }
+    result += ch;
+    i++;
+  }
+  result += content.slice(end);
+  return result;
+}
+
 /**
  * Extracts style blocks from HTML, Vue, Svelte, and Astro files,
  * or Lit css`...` tagged template literals from JS/TS files.
@@ -408,12 +484,19 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
   const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
   const blocks: string[] = [];
   for (const match of markup.matchAll(STYLE_TAG_REGEX)) {
+    const attrStr = match[1] ?? '';
     const body = match[2] ?? '';
     if (body.trim().length > 0 && match.index !== undefined) {
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      blocks.push(blankOutsideRange(markup, startOffset, endOffset));
+      const blanked = blankOutsideRange(markup, startOffset, endOffset);
+      const lang = parseTagAttributes(attrStr).lang?.toLowerCase();
+      blocks.push(
+        lang !== undefined && PREPROCESSOR_STYLE_LANGS.has(lang)
+          ? blankPreprocessorLineComments(blanked, startOffset, endOffset)
+          : blanked,
+      );
     }
   }
 

@@ -995,6 +995,56 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
   });
 });
 
+void test('scanFiles: SCSS coverage (issue #3553)', () => {
+  const scssRule: AnalyzerRule = {
+    id: 'test-css-scrollbar-thumb',
+    guideId: 'scrollbar-guide',
+    guideHash: '123456789012',
+    summary: 'Find scrollbar thumb rules',
+    verifierRubric: { keepWhen: ['scrollbar thumb'], dropWhen: [] },
+    matcher: {
+      kind: 'css',
+      fastTokens: ['scrollbar-thumb'],
+      matchRule: (styleRule) => {
+        if (styleRule.selectorText.includes('scrollbar-thumb')) {
+          return { message: `found scrollbar thumb in ${styleRule.selectorText}` };
+        }
+        return null;
+      },
+    },
+  };
+
+  const legacyRule = '.box::-webkit-scrollbar-thumb { background: red; }';
+  const files = new Map<string, string>([
+    ['case1.css', legacyRule],
+    ['case2.scss', legacyRule],
+    [
+      'case3_vue_clean.vue',
+      `<template><div/></template><style lang="scss">\n${legacyRule}\n</style>`,
+    ],
+    [
+      'case4_vue_block_comment.vue',
+      `<template><div/></template><style lang="scss">\n/* comment */\n${legacyRule}\n</style>`,
+    ],
+    [
+      'case5_vue_line_comment.vue',
+      `<template><div/></template><style lang="scss">\n// comment\n${legacyRule}\n</style>`,
+    ],
+    ['case6_css_nested.css', '.box { &::-webkit-scrollbar-thumb { background: red; } }'],
+  ]);
+
+  const findings = scanFiles(files, [scssRule]);
+  assert.equal(findings.length, 6);
+
+  const byFile = new Map(findings.map((f) => [f.file, f]));
+  assert.equal(byFile.get('case1.css')?.line, 1);
+  assert.equal(byFile.get('case2.scss')?.line, 1);
+  assert.equal(byFile.get('case3_vue_clean.vue')?.line, 2);
+  assert.equal(byFile.get('case4_vue_block_comment.vue')?.line, 3);
+  assert.equal(byFile.get('case5_vue_line_comment.vue')?.line, 3);
+  assert.equal(byFile.get('case6_css_nested.css')?.line, 1);
+});
+
 void test('slice-c: vendored library whole-file detection & AST matcher suppression', async (testingContext) => {
   const fittextRule: AnalyzerRule = {
     id: 'dependency-jquery-fittext',
