@@ -8,6 +8,7 @@ import { PUBLIC_SECRET_PATTERNS } from '../lib/secret-guard.ts';
  * Two phases:
  *  1. `scrubString` rewrites known-safe shapes (paths inside the repo checkout,
  *     home directories) so only repo-relative or home-relative paths remain.
+ *     The one absolute home kept as written is Emscripten's `/home/web_user`.
  *  2. `findLeaks` / `assertClean` detect anything that still identifies a
  *     person or machine. Callers fail closed on any hit.
  *
@@ -33,12 +34,13 @@ const NOT_INSIDE_URL = String.raw`(?<![\w:.])`;
 const NOT_IN_WORD = String.raw`(?<![\w.])`;
 
 /**
- * What the rewrite treats as a home directory: `/usr/local/google/home/<x>/...`,
- * `/home/<x>/...`, `/Users/<x>/...` with something inside it. The user segment
- * is included in the match; the segment after it is only required (lookahead),
- * so a route such as `/home/about` is not rewritten.
+ * What the rewrite treats as a home directory: cloudtop
+ * (`usr/local/google/home/<x>/...` with or without leading slash), `/home/<x>/...`,
+ * `/Users/<x>/...` with something inside it. The user segment is included in
+ * the match; the segment after it is only required (lookahead), so a route such
+ * as `/home/about` is not rewritten.
  */
-const HOME_DIR = String.raw`/(?:usr/local/google/home|home|Users)/${SEGMENT}+(?=/${SEGMENT})`;
+const HOME_DIR = String.raw`(?:/?usr/local/google/home|/(?:home|Users))/${SEGMENT}+(?=/${SEGMENT})`;
 
 /** A home directory root: `~` or a `HOME_DIR`. */
 const HOME_ROOT = String.raw`(?:~|${HOME_DIR})`;
@@ -61,19 +63,21 @@ const REPO_PREFIX_RE = new RegExp(
   'g',
 );
 
-/** A home directory outside the repo, e.g. `/usr/local/google/home/<ldap>/.npm`. Rewritten to `~`. */
+/** A home directory outside the repo, e.g. `/usr/local/google/home/<ldap>/.npm`. Rewritten to `~` unless it is `VIRTUAL_FS_HOME`. */
 const HOME_DIR_RE = new RegExp(`${NOT_INSIDE_URL}${HOME_DIR}`, 'g');
 
 /**
  * Detection is wider than the rewrite: a bare home directory with nothing
  * after the user (`HOME=/home/<x>`, `"cwd":"/Users/<x>"`) is a leak even
  * though the rewrite, which only trusts shapes it can prove, leaves it alone.
- * Cloudtop homes are flagged wherever they appear; `/home` and `/Users` only
+ * Cloudtop homes are flagged wherever they appear (including without a leading
+ * slash, e.g. after a quote or string start); `/home` and `/Users` only
  * when they start a path (so `./home/Home` and `host/Users/profile` pass, but
  * an app route like `/home/about` fails closed). The user segment is captured
- * so `harvestUserSegments` can turn it into a forbidden token.
+ * so `harvestUserSegments` can turn it into a forbidden token, and so a
+ * `GENERIC_USERS` account can be told apart from a person.
  */
-const CLOUDTOP_HOME_RE = new RegExp(String.raw`/usr/local/google/home/(${SEGMENT}+)`, 'g');
+const CLOUDTOP_HOME_RE = new RegExp(String.raw`${NOT_IN_WORD}/?usr/local/google/home/(${SEGMENT}+)`, 'g');
 const POSIX_HOME_RE = new RegExp(String.raw`${NOT_IN_WORD}/(?:home|Users)/(${SEGMENT}+)`, 'g');
 /** Drive letter or WSL mount, then `\`, `/`, or JSON-escaped `\\`; also inside `file:///C:/Users/...`. */
 const WINDOWS_HOME_RE = /(?:[A-Za-z]:|\/mnt\/[a-z])(?:\\+|\/)users(?:\\+|\/)([^\\/\s"']+)/gi;
@@ -85,18 +89,37 @@ const CITC_PATH_RE = new RegExp(String.raw`/google/(?:src/cloud|cog/cloud)/(${SE
 const USER_SEGMENT_PATTERNS: readonly RegExp[] = [CLOUDTOP_HOME_RE, POSIX_HOME_RE, WINDOWS_HOME_RE, BACKSLASH_HOME_RE, CITC_PATH_RE];
 
 /**
- * Container, CI, and system account names that also appear in ordinary harness
- * or web-app text (`node scripts/build.js`, `Playwright test runner`). Paths
- * under `/home/runner/...` or `/home/node/...` are still rewritten or flagged
- * as paths, but the account name itself is not a person's username.
+ * Container, CI, toolchain, and system account names that also appear in
+ * ordinary harness or web-app text (`node scripts/build.js`, `Playwright test
+ * runner`). The name is never harvested as a forbidden token, and a bare
+ * home directory under it (`HOME=/home/runner`, `C:\Users\runner`) is not an
+ * identity leak. Anything *inside* such a home is still rewritten or flagged,
+ * so `/home/runner/work/<name>/x` keeps failing closed. Cloudtop and CitC
+ * paths are never exempt; those are always a person's.
  */
-const GENERIC_USERS = new Set([
+export const GENERIC_USERS: ReadonlySet<string> = new Set([
   'admin', 'agent', 'app', 'builder', 'chrome', 'chromium', 'codespace',
   'containeradministrator', 'debian', 'default', 'dev', 'devcontainer',
   'docker', 'guest', 'local', 'node', 'playwright', 'public', 'root',
   'runner', 'runneradmin', 'sandbox', 'shared', 'test', 'tester', 'ubuntu',
-  'user', 'users', 'worker',
+  'user', 'users', 'web_user', 'worker',
 ]);
+
+/** Home-path detectors whose match is not a leak when the captured user is in `GENERIC_USERS`. */
+const GENERIC_EXEMPT_PATTERNS: ReadonlySet<RegExp> = new Set([POSIX_HOME_RE, WINDOWS_HOME_RE, BACKSLASH_HOME_RE]);
+
+/**
+ * Emscripten's fixed virtual-filesystem home, which every compiled-to-WASM app
+ * carries in code (`FS.mkdir('/home/web_user/data')`). Unlike other generic
+ * accounts it is kept as written: rewriting it to `~` would corrupt the patch
+ * and then trip the home-relative check.
+ */
+const VIRTUAL_FS_HOME = '/home/web_user';
+
+/** True when a captured user segment names a generic account; prose punctuation after it (`(cwd /home/web_user)`) is ignored. */
+function isGenericUser(segment: string): boolean {
+  return GENERIC_USERS.has(segment.replace(/[^\w-]+$/, '').toLowerCase());
+}
 
 /**
  * Strings that must never appear in published output. Checked after rewriting.
@@ -175,7 +198,7 @@ export class LeakError extends Error {
 export function scrubString(input: string): string {
   return stripVTControlCharacters(input)
     .replace(REPO_PREFIX_RE, '')
-    .replace(HOME_DIR_RE, '~');
+    .replace(HOME_DIR_RE, home => (home === VIRTUAL_FS_HOME ? home : '~'));
 }
 
 /**
@@ -292,10 +315,19 @@ function findLeaksInString(text: string, path: string, patterns: readonly { name
   const leaks: Leak[] = [];
   for (const { name, re } of patterns) {
     for (const match of text.matchAll(re)) {
+      if (GENERIC_EXEMPT_PATTERNS.has(re) && isGenericUser(match[1]) && (match[0] === VIRTUAL_FS_HOME || isBareHome(text, match))) {
+        continue;
+      }
       leaks.push({ name, match: widenToToken(text, match.index, match[0]), path });
     }
   }
   return leaks;
+}
+
+/** True when nothing path-like follows the home directory, so no later segment can name a person. */
+function isBareHome(text: string, match: RegExpExecArray): boolean {
+  const next = text[match.index + match[0].length];
+  return next !== '/' && next !== '\\';
 }
 
 /** Extends a domain match backwards over the local part (`user@`, `host.`) so reports show the whole identifier. */

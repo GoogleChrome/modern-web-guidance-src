@@ -4,19 +4,18 @@
 - The menu trigger button has `aria-expanded="false"` when the drawer is closed.
 - Clicking the menu trigger button makes the drawer visible.
 - When the drawer is open, the menu trigger button's `aria-expanded` attribute is `true`.
-- When the drawer is open, the drawer has `aria-modal="true"`
-- The drawer element uses the popover API with `popover="manual"`.
+- The drawer element has an accessible name (via `aria-label` or `aria-labelledby`).
+- Either the drawer is a `<dialog>` element opened with `showModal()`, or it uses `popover="manual"` with `role="dialog"` while acting as a drawer (and without `role="dialog"` if visible as a sidebar).
+- Either the drawer is a modal `<dialog>` element, or it has `aria-modal="true"` while open and removes `aria-modal` when closed.
 - When the drawer is open, a dimmed backdrop (the `::backdrop` pseudo-element) is visible behind it that covers the rest of the page.
 - The drawer's navigation sheet does not span the full width of the viewport when open, leaving a portion of the dimmed backdrop visible alongside it.
 - Clicking the dimmed backdrop area outside the navigation sheet closes the drawer.
 - Clicking the Close button while the drawer is open closes the drawer.
 - Pressing the Escape key while the drawer is open closes the drawer.
-- The main page content has the `inert` attribute applied while the drawer is open.
-- The main page content no longer has the `inert` attribute after the drawer is closed.
+- While the drawer is open, content outside it cannot be focused or interacted with, and it becomes focusable and interactive again after the drawer closes.
 - The drawer's close button has an `autofocus` attribute so that it receives focus when the drawer is opened.
 - After the drawer is closed, the menu trigger button's `aria-expanded` attribute returns to `false`.
 - After the drawer is closed, focus moves back to the menu trigger button.
-- When the drawer is closed, the `aria-modal="true"` attribute is removed
 - The drawer's horizontal scroll container uses CSS scroll snap with `scroll-snap-type: x mandatory`.
 - The drawer's horizontal scroll container uses `scroll-behavior: smooth` only when the user has not requested reduced motion (e.g., via `@media (prefers-reduced-motion: no-preference)`).
 - Horizontally scrolling the drawer's scroll container all the way to its end position closes the drawer.

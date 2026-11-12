@@ -22,8 +22,40 @@ describe('modern-web CLI', () => {
 
   it('prints usage when no arguments provided', () => {
     const { stdout } = runCLI([]);
-    assert.ok(stdout.includes('Usage: modern-web <command> [args]'));
+    assert.ok(stdout.includes('Usage: modern-web-guidance <command> [args]'));
+    assert.ok(stdout.includes('search <query>            Search use cases by English query'));
     assert.ok(stdout.includes('legacy-scan [path] [options]'));
+  });
+
+  it('hints on stderr when non-English search queries return empty or low results', () => {
+    // Pure Japanese query returns [] on stdout and emits English query hint on stderr
+    const japaneseRes = runCLI(['search', 'ダイアログを外側クリックで閉じる']);
+    assert.strictEqual(japaneseRes.status, 0);
+    assert.deepStrictEqual(JSON.parse(japaneseRes.stdout.trim()), []);
+    assert.ok(
+      japaneseRes.stderr.includes('Note: Search queries must be in English (e.g., search "light dismiss dialog").'),
+      `Expected English query hint in stderr, got: ${japaneseRes.stderr}`
+    );
+
+    // Mixed Japanese + single ASCII acronym query emits English query hint on stderr
+    const mixedRes = runCLI(['search', '信頼できないHTMLをサニタイズ']);
+    assert.strictEqual(mixedRes.status, 0);
+    const mixedResults = JSON.parse(mixedRes.stdout.trim());
+    assert.ok(Array.isArray(mixedResults) && mixedResults.length > 0);
+    assert.ok(
+      mixedRes.stderr.includes('Note: Search queries must be in English (e.g., search "light dismiss dialog").'),
+      `Expected English query hint in stderr for mixed query, got: ${mixedRes.stderr}`
+    );
+
+    // Normal English queries (including typographic punctuation and zero-result queries) do not emit the hint on stderr
+    for (const englishQuery of ['light dismiss dialog', '“light dismiss dialog”', 'light dismiss dialog — popover', 'nonexistent-query-xyz123']) {
+      const res = runCLI(['search', englishQuery]);
+      assert.strictEqual(res.status, 0);
+      assert.ok(
+        !res.stderr.includes('Note: Search queries must be in English'),
+        `Unexpected warning on stderr for "${englishQuery}": ${res.stderr}`
+      );
+    }
   });
 
   it('lists use cases in compact format with id and description', () => {
@@ -225,6 +257,36 @@ describe('modern-web CLI', () => {
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
       fs.rmSync(logDir, { recursive: true, force: true });
+    }
+  });
+
+  it('passes -y to npx when uninstalling skills', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-npx-test-'));
+    const logFile = path.join(tempBinDir, 'npx-args.json');
+    const npxShim = path.join(tempBinDir, 'npx');
+    fs.writeFileSync(
+      npxShim,
+      `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${logFile}" "$@"\n`,
+      { mode: 0o755 }
+    );
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'uninstall'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(logFile), 'Dummy npx should have recorded arguments');
+      const args = JSON.parse(fs.readFileSync(logFile, 'utf8'));
+      assert.deepStrictEqual(args.slice(0, 3), ['-y', 'skills', 'remove']);
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
     }
   });
 });

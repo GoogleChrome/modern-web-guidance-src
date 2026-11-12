@@ -1,0 +1,11 @@
+- The full text of a truncated element remains in the DOM; it is not shortened by string manipulation such as `slice` or a character limit.
+- Text that must stay on one line is kept from wrapping with `white-space: nowrap` (or `text-wrap: nowrap`) and clipped with `overflow: hidden` on the element that directly contains the text.
+- Clipped text is marked with `text-overflow: ellipsis` or an end fade drawn with a mask.
+- When an end fade is used, it is visible only when the text actually overflows.
+- When a shorter version replaces the text, the short version is hidden from assistive technology (`aria-hidden="true"`) and the full version stays in the accessibility tree, visually hidden rather than `display: none`.
+- Flex and grid items that contain truncated text can shrink below their content size, through `min-inline-size: 0` (or `min-width: 0`) on the item or an `overflow` other than `visible` on the item itself.
+- Focus outlines of focusable elements that contain truncated text are not clipped.
+- Whether text is truncated is derived from overflow, through a scroll-driven animation on the element's own inline scroll timeline (with a style query on a custom property it sets, for descendants) or a `scrollWidth` to `clientWidth` comparison, not from character counts or scroll-state queries.
+- When the full text is revealed on hover, it is also revealed on keyboard focus (`:focus-visible` or `:focus`).
+- Motion that reveals the full text is applied only under `prefers-reduced-motion: no-preference`.
+- When an end fade is used and scroll-driven animations are unsupported, the fade is applied through a class toggled from a `scrollWidth` to `clientWidth` comparison.

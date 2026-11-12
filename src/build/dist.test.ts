@@ -240,7 +240,10 @@ test('modern-web CLI search and retrieve', async () => {
   assertSearchResults(searchOutWithVersion);
 
   // 2. Validate retrieve
-  const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  let retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  // Output over the CLI's inline limit is saved to a file, and its path is printed instead
+  const savedPath = retrieveOut.match(/saved to (\S+\.md)/)?.[1];
+  if (savedPath) retrieveOut = await fs.readFile(savedPath, 'utf8');
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 
   // 3. Validate list
@@ -271,6 +274,29 @@ test('modern-web CLI version flags', async () => {
   // 2. Test -v
   const versionOutShort = execSync(`node "${binaryPath}" -v`, { encoding: 'utf8' }).trim();
   assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
+});
+
+test('modern-web CLI fails fast on Node < 22', async () => {
+  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
+  const { spawnSync } = await import('node:child_process');
+  const { pathToFileURL } = await import('node:url');
+  const fileUrl = pathToFileURL(binaryPath).href;
+
+  const spoofCode = `
+    Object.defineProperty(process.versions, 'node', { value: '20.10.0' });
+    Object.defineProperty(process, 'version', { value: 'v20.10.0' });
+    import(${JSON.stringify(fileUrl)});
+  `;
+
+  const res = spawnSync(process.execPath, ['--input-type=module', '-e', spoofCode], {
+    encoding: 'utf8',
+  });
+
+  assert.strictEqual(res.status, 1, 'Expected exit code 1');
+  assert.match(
+    res.stderr,
+    /modern-web-guidance requires Node\.js >= 22 \(current: v20\.10\.0\)\. Please upgrade: https:\/\/nodejs\.org\//
+  );
 });
 
 // TODO: this has been failing locally from publish-skills.ts

@@ -151,7 +151,7 @@ CSS changes the presentation, but JavaScript decides which layout applies and mu
 
 ## Nested Site Navigation
 
-Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nested site navigation, followed immediately by the submenu list. DO NOT use `<details>` and `<summary>`: `<summary>` has no ARIA role mapping, so screen readers announce it inconsistently (for example as a "disclosure triangle") and some do not announce the open state.
+Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nested site navigation, followed immediately by the submenu list. DO NOT use `<details>` and `<summary>`: `<summary>` should map to a `button` role, but has not been consistently implemented in browsers, so screen readers announce it inconsistently (for example as "summary" or "disclosure triangle").
 
 One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. Leave `popover` off the submenu in the markup: without script it stays a nested list inside the menu, matching the narrow layout. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup.
 
@@ -212,8 +212,7 @@ Position the wide submenu below its trigger with CSS Anchor Positioning (`positi
 
 ## Indicating the Current Page
 
-Use `aria-current="page"` to identify the current page. Set it at build time or with JavaScript, and use `[aria-current="page"]` as the CSS styling hook. The visual treatment is a design decision; do not assume a particular pseudo-element, border, or orientation.
-
+Use `aria-current="page"` to identify the current page. Set it at build time or with JavaScript, and use `[aria-current="page"]` as the CSS styling hook. The visual treatment is a design decision; do not assume a particular pseudo-element, border, or orientation. Do not indicate the current page with color alone (WCAG 1.4.1). Ensure the color of the visual indicator has a contrast of at least `3:1` with the background color.
 
 ## Transitions and Accessibility
 

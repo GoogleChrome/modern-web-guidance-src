@@ -1,0 +1,284 @@
+diff --git a/carousel.js b/carousel.js
+new file mode 100644
+index 0000000..57dd514
+--- /dev/null
++++ b/carousel.js
+@@ -0,0 +1,129 @@
++// Native scrolling remains available independently of these controls.
++document.querySelectorAll('.carousel').forEach((carousel) => {
++  const track = carousel.querySelector('.carousel-track');
++  const slides = Array.from(track.children);
++  const markers = Array.from(carousel.querySelectorAll('.carousel-markers button'));
++  const previous = carousel.querySelector('[data-direction="previous"]');
++  const next = carousel.querySelector('[data-direction="next"]');
++  const status = carousel.querySelector('[role="status"]');
++  const layout = carousel.querySelector('select');
++  const looping = slides.length >= 3 && CSS.supports('order', 'sibling-index()')
++    && CSS.supports('order', 'sibling-count()');
++  const nativeEnd = 'onscrollend' in track;
++  let pending = null;
++  let active = -1;
++  let settled = 0;
++  let frame = 0;
++  let timer;
++  let restoring = false;
++  let restoreVersion = 0;
++  const queuedSteps = [];
++  const vertical = () => carousel.dataset.orientation === 'vertical';
++  const center = (element) => {
++    const rect = element.getBoundingClientRect();
++    return vertical() ? rect.top + rect.height / 2 : rect.left + rect.width / 2;
++  };
++  const distance = (slide) => center(slide) - center(track);
++  const nearest = () => slides.reduce((best, slide, index) =>
++    Math.abs(distance(slide)) < Math.abs(distance(slides[best])) ? index : best, 0);
++  const mark = (index) => {
++    if (active === index) return;
++    markers.forEach((marker, i) => marker.setAttribute('aria-current', String(i === index)));
++    active = index;
++  };
++  const scrollBy = (amount, instant = false) => track.scrollBy({
++    [vertical() ? 'top' : 'left']: amount,
++    behavior: instant ? 'instant' : 'auto',
++  });
++
++  // Only the end slides change visual order; original labels and DOM order stay intact.
++  const park = (index) => {
++    if (!looping) return;
++    const version = ++restoreVersion;
++    restoring = true;
++    track.style.scrollSnapType = 'none';
++    track.style[vertical() ? 'overflowY' : 'overflowX'] = 'hidden';
++    const before = center(slides[index]);
++    track.style.setProperty('--current', String(index));
++    slides.forEach((slide, i) => {
++      slide.inert = i !== index && ((i === slides.length - 1 && index <= 1)
++        || (i === 0 && index >= slides.length - 2));
++    });
++    scrollBy(center(slides[index]) - before, true);
++    requestAnimationFrame(() => requestAnimationFrame(() => {
++      if (version !== restoreVersion) return;
++      track.style.removeProperty('overflow-x');
++      track.style.removeProperty('overflow-y');
++      track.style.removeProperty('scroll-snap-type');
++      restoring = false;
++      if (pending !== null) scrollBy(distance(slides[pending]));
++      else if (queuedSteps.length) step(queuedSteps.shift());
++    }));
++  };
++  const settle = (announce = true) => {
++    if (restoring) return;
++    const index = nearest();
++    // A stale scrollend from an interrupted animation must not cancel its successor.
++    if (pending !== null && (index !== pending || Math.abs(distance(slides[pending])) > 2)) return;
++    pending = null;
++    mark(index);
++    previous.disabled = !looping && index === 0;
++    next.disabled = !looping && index === slides.length - 1;
++    if (announce && index !== settled) status.textContent = `Slide ${index + 1} of ${slides.length}`;
++    settled = index;
++    park(index);
++  };
++  const go = (index) => {
++    pending = index;
++    mark(index);
++    if (restoring) return;
++    if (Math.abs(distance(slides[index])) <= 2) settle();
++    else scrollBy(distance(slides[index]));
++  };
++  const step = (direction) => {
++    if (queuedSteps.length) {
++      queuedSteps.push(direction);
++      return;
++    }
++    const order = slides.map((slide, index) => ({ index, position: center(slide) }))
++      .sort((a, b) => a.position - b.position);
++    const position = order.findIndex((slide) => slide.index === (pending ?? nearest()));
++    const target = order[position + direction];
++    if (target) go(target.index);
++    // Wait for the in-flight step to settle before parking a new neighbor.
++    else if (looping && pending !== null) queuedSteps.push(direction);
++  };
++  previous.addEventListener('click', () => step(-1));
++  next.addEventListener('click', () => step(1));
++  markers.forEach((marker, index) => marker.addEventListener('click', () => go(index)));
++  // Direct interaction takes ownership from a scripted smooth scroll.
++  const cancelPending = () => { pending = null; queuedSteps.length = 0; };
++  track.addEventListener('pointerdown', cancelPending);
++  track.addEventListener('wheel', cancelPending, { passive: true });
++  track.addEventListener('keydown', (event) => {
++    if (event.target === track) cancelPending();
++  });
++  track.addEventListener('scroll', () => {
++    if (restoring) return;
++    if (pending === null && !frame) frame = requestAnimationFrame(() => {
++      frame = 0;
++      if (pending === null && !restoring) mark(nearest());
++    });
++    if (!nativeEnd) {
++      clearTimeout(timer);
++      timer = setTimeout(() => settle(), 150);
++    }
++  }, { passive: true });
++  if (nativeEnd) track.addEventListener('scrollend', () => settle());
++  layout.addEventListener('change', () => {
++    const index = pending ?? nearest();
++    pending = null;
++    queuedSteps.length = 0;
++    carousel.dataset.orientation = layout.value;
++    track.scrollTo({ top: 0, left: 0, behavior: 'instant' });
++    scrollBy(distance(slides[index]), true);
++    settle(false);
++  });
++  if (looping) track.setAttribute('data-loop', '');
++  settle(false);
++});
+diff --git a/index.html b/index.html
+index 66c9173..c0228b9 100644
+--- a/index.html
++++ b/index.html
+@@ -100,11 +100,73 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++    .carousel-track {
++      display: flex;
+       gap: 20px;
+       margin-top: 20px;
++      overflow-x: auto;
++      scroll-snap-type: inline mandatory;
++      touch-action: manipulation;
++    }
++
++    .carousel-track > .card {
++      flex: 0 0 100%;
++      scroll-snap-align: center;
++    }
++
++    .carousel[data-orientation="vertical"] .carousel-track {
++      flex-direction: column;
++      height: 260px;
++      overflow-x: hidden;
++      overflow-y: auto;
++      scroll-snap-type: block mandatory;
++    }
++
++    @supports (order: sibling-index()) and (order: sibling-count()) {
++      .carousel-track[data-loop] > :first-child {
++        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
++      }
++      .carousel-track[data-loop] > :last-child {
++        order: calc(-1 * clamp(0, 2 - var(--current), 1));
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .carousel-track { scroll-behavior: smooth; }
++    }
++
++    .carousel-controls, .carousel-markers, .carousel-layout {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .carousel button, .carousel select {
++      font: inherit;
++      padding: 8px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      touch-action: manipulation;
++    }
++
++    .carousel button { cursor: pointer; }
++    .carousel button:disabled { opacity: .45; cursor: default; }
++    .carousel-markers button { width: 16px; height: 16px; padding: 0; border-radius: 50%; }
++    .carousel-markers button[aria-current="true"] { background: var(--primary); }
++    .carousel :focus-visible { outline: 3px solid #9a5700; outline-offset: 4px; }
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
+     }
+ 
+     .card {
+@@ -175,25 +237,41 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section class="carousel" data-orientation="horizontal" role="region" aria-roledescription="carousel" aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" style="text-align: center;">Seasonal Favorites</h2>
++      <label class="carousel-layout" for="seasonal-layout">Layout
++        <select id="seasonal-layout">
++          <option value="horizontal">Horizontal</option>
++          <option value="vertical">Vertical</option>
++        </select>
++      </label>
++      <div class="carousel-controls">
++        <button type="button" data-direction="previous" aria-controls="seasonal-track">Previous slide</button>
++        <button type="button" data-direction="next" aria-controls="seasonal-track">Next slide</button>
++      </div>
++      <div class="carousel-track" id="seasonal-track" tabindex="0" role="group" aria-label="Seasonal coffee slides">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="1 of 3">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="2 of 3">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" role="group" aria-roledescription="slide" aria-label="3 of 3">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="carousel-markers" role="group" aria-label="Choose a seasonal coffee slide">
++        <button type="button" aria-label="Go to slide 1: Maple Oat Latte" aria-controls="seasonal-track" aria-current="true"></button>
++        <button type="button" aria-label="Go to slide 2: Dark Roast Espresso" aria-controls="seasonal-track"></button>
++        <button type="button" aria-label="Go to slide 3: Cold Brew" aria-controls="seasonal-track"></button>
++      </div>
++      <p class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +285,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./carousel.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..9708cbc 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check carousel.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

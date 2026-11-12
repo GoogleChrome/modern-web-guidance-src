@@ -57,6 +57,15 @@ describe('scrubString', () => {
     assert.equal(scrubString(`${LINUX_HOME}/.cache/ms-playwright`), '~/.cache/ms-playwright');
   });
 
+  test('strips repo checkout path and rewrites cloudtop home even when leading slash is missing', () => {
+    const slashless = CLOUDTOP_HOME.slice(1);
+    assert.equal(scrubString(`${slashless}/modern-web-guidance-src/src/harness/x.ts`), 'src/harness/x.ts');
+    assert.equal(scrubString(`cwd: "${slashless}/code/guidance"`), 'cwd: ""');
+    assert.equal(scrubString(`in '${slashless}/code/guidance/guides/passkeys/grader.ts'`), "in 'guides/passkeys/grader.ts'");
+    assert.equal(scrubString(`${slashless}/.npm/_npx/abc/node_modules`), '~/.npm/_npx/abc/node_modules');
+    assert.equal(scrubString(`path: "${slashless}/.cache/test"`), 'path: "~/.cache/test"');
+  });
+
   test('leaves URL routes and mounted drives alone', () => {
     assert.equal(scrubString('http://localhost:3000/home/settings'), 'http://localhost:3000/home/settings');
     assert.equal(scrubString('/mnt/c/Users/x/y'), '/mnt/c/Users/x/y');
@@ -184,6 +193,42 @@ describe('findLeaks', () => {
     }
   });
 
+  test('the Emscripten virtual-FS home is neither rewritten nor a leak', () => {
+    // Emscripten hard-codes `/home/web_user`, so every cpp-on-the-web patch carries it.
+    for (const s of ['/home/web_user', "FS.mkdir('/home/web_user/data')", 'cwd: /home/web_user/src/main.cpp', 'PATH=/opt/bin:/home/web_user/bin']) {
+      assert.equal(scrubString(s), s, s);
+      assert.deepEqual(findLeaks(s), [], s);
+    }
+  });
+
+  test('bare home directories of generic accounts are not leaks, with or without trailing prose punctuation', () => {
+    for (const s of ['HOME=/home/runner', '(cwd /home/web_user)', '{cwd: /home/web_user}', 'C:\\Users\\runner', '\\\\home\\\\web_user']) {
+      assert.deepEqual(findLeaks(scrubString(s)), [], s);
+    }
+  });
+
+  test('anything inside another generic home is rewritten or flagged, so a name after it fails closed', () => {
+    assert.equal(scrubString('npm cache /home/runner/.npm'), 'npm cache ~/.npm');
+    for (const s of [
+      `/home/runner/work/${FAKE_LDAP}/x`,
+      `/Users/user/${FAKE_LDAP}/x`,
+      `/home/web_user)/${FAKE_LDAP}/x`,
+      `PATH=/opt/bin:/home/runner/work/${FAKE_LDAP}/x`,
+      `C:\\Users\\runner\\work\\${FAKE_LDAP}\\x`,
+      `/mnt/c/Users/user/${FAKE_LDAP}/x`,
+      `\\\\home\\\\runner\\\\${FAKE_LDAP}`,
+    ]) {
+      assert.ok(findLeaks(scrubString(s)).length > 0, s);
+    }
+  });
+
+  test('cloudtop and CitC paths are still rewritten or flagged even under a generic account name', () => {
+    assert.equal(scrubString('/usr/local/google/home/runner/x'), '~/x');
+    for (const s of ['/usr/local/google/home/runner/x', '/google/src/cloud/root/ws/x']) {
+      assert.ok(findLeaks(s).length > 0, s);
+    }
+  });
+
   test('a colon before a home directory does not make it safe', () => {
     for (const s of [`PATH=/opt/bin:${LINUX_HOME}/bin`, `scp host:${LINUX_HOME}/x .`]) {
       assert.ok(findLeaks(s).length > 0, s);
@@ -231,6 +276,14 @@ describe('findLeaks', () => {
     assert.equal(findLeaks(`${CLOUDTOP_HOME}/x`).length, 1);
   });
 
+  test('flags cloudtop home paths when the leading slash is missing', () => {
+    const slashless = CLOUDTOP_HOME.slice(1);
+    assert.equal(findLeaks(`${slashless}/x`).length, 1);
+    assert.equal(findLeaks(`${slashless}/x`)[0].name, 'home path');
+    assert.equal(findLeaks(`cwd: "${slashless}"`)[0].name, 'home path');
+    assert.equal(findLeaks(`Error: in ${slashless}/run.mjs`)[0].name, 'home path');
+  });
+
   test('returns nothing for scrubbed output', () => {
     const scrubbed = scrubValue({ e: `${REPO_CHECKOUT}/a.ts`, h: `/home/${OTHER_FAKE_LDAP}/.npm` });
     assert.deepEqual(findLeaks(scrubbed), []);
@@ -257,9 +310,14 @@ describe('harvestUserSegments', () => {
 
   test('ignores generic container accounts, non-token segments, and non-home paths', () => {
     assert.deepEqual(
-      harvestUserSegments('/home/runner/.npm /home/node/.cache /Users/ubuntu/x /home/ab/x /Users/42/x ./home/Home http://h/home/settings'),
+      harvestUserSegments('/home/runner/.npm /home/node/.cache /home/web_user/x /Users/ubuntu/x /home/ab/x /Users/42/x ./home/Home http://h/home/settings'),
       [],
     );
+  });
+
+  test('collects user segment from cloudtop path even without leading slash', () => {
+    const slashless = CLOUDTOP_HOME.slice(1);
+    assert.deepEqual(harvestUserSegments(`failed at ${slashless}/run.mjs`), [FAKE_LDAP]);
   });
 });
 

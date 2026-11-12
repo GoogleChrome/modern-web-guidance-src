@@ -133,6 +133,19 @@ describe('buildSuite', () => {
     assert.match(res2.reason ?? '', /forbidden token/);
   });
 
+  test('publishes a patch that references the Emscripten virtual-FS home', async () => {
+    const options = makeOptions();
+    write(
+      path.join(options.storeRoot, SUITE, SECURITY_RUN, 'agent.patch'),
+      'diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -0,0 +1,2 @@\n+const HOME = "/home/web_user";\n+FS.mkdir("/home/web_user/data");\n',
+    );
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'built', result.status === 'skipped' ? result.reason : '');
+    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN, 'agent.patch'), 'utf8');
+    assert.ok(patch.includes('"/home/web_user"'));
+    assert.ok(patch.includes('"/home/web_user/data"'));
+  });
+
   test('generates a diff against the base app for legacy runs', async () => {
     const options = makeOptions();
     await buildSuite(SUITE, options);
@@ -238,6 +251,30 @@ describe('buildSuite', () => {
     const options = makeOptions();
     const result = await buildSuite('nightly-2026-01-01_00-00-00-codex_cli', options);
     assert.deepEqual([result.status, result.reason], ['skipped', 'no evals.json']);
+  });
+
+  test('marks curated suites with curated: true on summary and evals.json', async () => {
+    const curatedSuiteId = 'opus-medium-1.0-rc-2026-11-08';
+    const { root, baseApps } = makeFixtureStore();
+    const fixtureDir = path.join(root, curatedSuiteId);
+    fs.cpSync(path.join(root, SUITE), fixtureDir, { recursive: true });
+    const options: BuildOptions = {
+      store: new LocalSuiteStore(root),
+      outDir: fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-curated-')),
+      allowlist: {
+        include: [curatedSuiteId],
+        exclude: [],
+        overrides: [],
+        releasedModels: [FIXTURE_MODEL],
+      },
+      baseAppsDir: baseApps,
+      now: NOW,
+    };
+    const result = await buildSuite(curatedSuiteId, options);
+    assert.equal(result.status, 'built');
+    assert.equal(result.summary?.curated, true);
+    const evals = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', curatedSuiteId, 'evals.json'), 'utf8')) as PublicEvals;
+    assert.equal(evals.curated, true);
   });
 });
 

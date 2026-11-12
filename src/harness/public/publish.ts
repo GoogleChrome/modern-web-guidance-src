@@ -82,9 +82,10 @@ function movedError(expectedHead: string | null, head: string | null): Error {
  * Replaces `public-evals/` on the `gh-pages` branch with `<outDir>/public-evals/`.
  * Other files on the branch are untouched. The branch is rewritten as a single
  * commit so its size tracks the live site rather than accumulating history.
- * Does nothing when the published copy already matches.
+ * Does nothing and returns false when the published copy already matches.
+ * Returns true if a commit was created and pushed.
  */
-export async function publishPublicEvals(outDir: string, options: PublishOptions): Promise<void> {
+export async function publishPublicEvals(outDir: string, options: PublishOptions): Promise<boolean> {
   const source = path.join(outDir, PUBLIC_EVALS_DIR);
   if (!fs.existsSync(path.join(source, 'suites.gen.json'))) {
     throw new Error(`${source} has no suites.gen.json; run the builder first`);
@@ -101,9 +102,11 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
   fs.cpSync(source, published, { recursive: true, filter: src => !path.basename(src).startsWith('.') });
   fs.writeFileSync(path.join(clone, '.nojekyll'), '');
 
-  git(clone, ['add', '-A', '--', PUBLIC_EVALS_DIR, '.nojekyll']);
+  // `--force`: a stale `.gitignore` (`*.log`) left on the branch by an earlier deploy would otherwise
+  // silently drop every `modern-web.log`; the dot-prefix filter above is the only junk guard this tree needs.
+  git(clone, ['add', '-A', '--force', '--', PUBLIC_EVALS_DIR, '.nojekyll']);
   if (!indexDiffersFromHead(clone, head)) {
-    return;
+    return false;
   }
 
   const tree = git(clone, ['write-tree']).trim();
@@ -131,6 +134,19 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
   }
   // The index and working tree already hold the new site; only HEAD needs to move.
   git(clone, ['reset', '--quiet', '--soft', commit]);
+  return true;
+}
+
+/**
+ * Extracts `{owner}/{repo}` from a GitHub remote URL.
+ * Throws if the URL is not a recognized GitHub URL.
+ */
+export function repoFromRemoteUrl(url: string): string {
+  const match = /github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/.exec(url);
+  if (!match) {
+    throw new Error(`cannot determine GitHub {owner}/{repo} from remote URL: ${url}`);
+  }
+  return `${match[1]}/${match[2]}`;
 }
 
 /**

@@ -189,11 +189,17 @@ export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAll
  * slot. The per-agent cap runs first so a prolific agent cannot push another
  * agent's older suites out of the global budget.
  */
-export function withinSuiteCaps<T extends { agent?: string }>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
+export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent?: string }>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
   const { maxSuites, maxSuitesPerAgent } = allowlist.retention ?? {};
   const perAgent = new Map<string, number>();
   const kept: T[] = [];
+  const curatedIds = new Set(allowlist.include.filter(id => isCuratedSuite(id, allowlist)));
   for (const suite of newestFirstSuites) {
+    const id = suite.suiteId ?? suite.id ?? '';
+    if (curatedIds.has(id)) {
+      kept.push(suite);
+      continue;
+    }
     if (maxSuites !== undefined && kept.length >= maxSuites) {
       break;
     }
@@ -215,6 +221,7 @@ export function newestFirst<T extends { createdAt: Date }>(suites: readonly T[])
 
 /** The run time embedded in nightly ids, e.g. `nightly-2026-10-20_20-43-48-codex_cli`. */
 const SUITE_ID_TIME_RE = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
+const SUITE_ID_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
 
 /**
  * When a suite was run, for retention. Nightly ids embed the run time
@@ -225,11 +232,16 @@ const SUITE_ID_TIME_RE = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
  */
 export function suiteCreatedAt(suiteId: string, fallback: Date): Date {
   const match = SUITE_ID_TIME_RE.exec(suiteId);
-  if (!match) {
-    return fallback;
+  if (match) {
+    const [, y, mo, d, h, mi, s] = match;
+    return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
   }
-  const [, y, mo, d, h, mi, s] = match;
-  return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+  const dateMatch = SUITE_ID_DATE_RE.exec(suiteId);
+  if (dateMatch) {
+    const [, y, mo, d] = dateMatch;
+    return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  }
+  return fallback;
 }
 
 /**
@@ -255,6 +267,16 @@ export function validateAllowlistPolicy(allowlist: PublicAllowlist): string[] {
 /** The override entry for a suite, if any. */
 export function overrideFor(allowlist: PublicAllowlist, suiteId: string): { excludeGuides: string[] } | undefined {
   return allowlist.overrides.find(entry => entry.id === suiteId);
+}
+
+/**
+ * True when a suite is an explicit non-scheduled (baseline/curated) run admitted by the allowlist.
+ */
+export function isCuratedSuite(suiteId: string, allowlist?: PublicAllowlist): boolean {
+  if (allowlist && !allowlist.include.includes(suiteId)) {
+    return false;
+  }
+  return !/^(nightly|weekly)-/i.test(suiteId);
 }
 
 /**

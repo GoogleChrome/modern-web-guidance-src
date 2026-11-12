@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs, sanitizeReasoningEffort } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
 import { SHOWCASE_GUIDE_IDS } from './showcase-config.js';
 const TIMEOUT_MS = 900000;
@@ -105,6 +105,8 @@ const TIMEOUT_MS = 900000;
  * @property {string} agent
  * @property {string} serving
  * @property {string} model
+ * @property {import('./evals.d.ts').ReasoningEffort} [reasoningEffort]
+ * @property {boolean} [curated]
  * @property {number} taskCount
  * @property {number} [pairedTaskCount] valid task-guide pairs included in pass rates
  * @property {number} maxRuns
@@ -125,7 +127,7 @@ const TIMEOUT_MS = 900000;
 /**
  * Extracts a compact summary object from an evals.json payload.
  * @param {string} testId
- * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean }} evalsData
+ * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean, curated?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
  * @returns {SuiteSummary|null}
  */
@@ -354,8 +356,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             unguidedPassed: t.unguided.passed,
             unguidedTotal: t.unguided.total,
             unguidedRate,
-            // A side with no checks has no rate, so there is nothing to compare against.
-            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? Math.round(gExact - uExact) : null
+            // Derive uplift from the rounded rates so displayed percentages and deltas always reconcile.
+            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? (guidedRate - unguidedRate) : null
         };
     };
 
@@ -476,6 +478,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     const chartData = calculateChartData(results, eligibleScenarios);
     const showcase = buildShowcaseSlices(showcaseRuns);
+    const reasoningEffort = sanitizeReasoningEffort(evalsData.reasoningEffort);
 
     return {
         testId: testId,
@@ -483,6 +486,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         agent: evalsData.agent || 'unknown',
         serving: serving,
         model: evalsData.model || 'unknown',
+        ...(reasoningEffort ? { reasoningEffort } : {}),
+        ...(evalsData.curated ? { curated: true } : {}),
         taskCount: taskCount,
         pairedTaskCount: eligibleScenarios.size,
         maxRuns: maxRuns,

@@ -7,7 +7,7 @@ import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
-import { newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge, withinSuiteCaps } from './allowlist.ts';
+import { isCuratedSuite, newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge, withinSuiteCaps } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 import { EXCLUDED_PATH_RE, MAX_PATCH_BYTES, patchFromFiles, preparePatch } from './patch.ts';
 import type { PreparedPatch } from './patch.ts';
@@ -22,7 +22,7 @@ import {
   rebuildEvals,
 } from './rebuild-evals.ts';
 import type { PublicEvals, SkipCode } from './rebuild-evals.ts';
-import { assertClean, harvestUserSegments, harvestUserSegmentsIn, LEAK_PATTERNS, LeakError, scrubString } from './scrub.ts';
+import { assertClean, GENERIC_USERS, harvestUserSegments, harvestUserSegmentsIn, LEAK_PATTERNS, LeakError, scrubString } from './scrub.ts';
 import type { SuiteRef, SuiteStore } from './suite-store.ts';
 
 /**
@@ -66,6 +66,7 @@ const BUILDER_VERSION = crypto
     assertion: PUBLIC_ASSERTION_FIELDS,
     agents: [...PUBLIC_AGENTS].sort(),
     leaks: LEAK_PATTERNS.map(pattern => pattern.re.source),
+    genericUsers: [...GENERIC_USERS].sort(),
     excludedPaths: EXCLUDED_PATH_RE.source,
     maxPatchBytes: MAX_PATCH_BYTES,
   }))
@@ -364,11 +365,13 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
     };
     const currentTokens = (): string[] => [...suiteTokens];
 
+    const curated = isCuratedSuite(suiteId, options.allowlist);
     const override = overrideFor(options.allowlist, suiteId);
     const evals = rebuildEvals(raw, {
       releasedModels: options.allowlist.releasedModels,
       excludeGuides: override?.excludeGuides,
       forbiddenTokens: currentTokens(),
+      curated,
     });
 
     const writer = new SuiteWriter(stagingDir, currentTokens);

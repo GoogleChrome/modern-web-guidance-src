@@ -13,7 +13,9 @@ src/harness/public/allowlist.json  ──►  pnpm public:publish  ──►  pu
 - `allowlist.json` on `main` is the single source of truth. The dashboard never
   reads it; nothing changes on the live site until `pnpm public:publish` runs.
 - `pnpm public:publish` is the only thing that pushes `public-evals/` to
-  `gh-pages`.
+  `gh-pages`. The nightly run (`src/harness/nightly/run-guidance-nightly.sh`)
+  calls it after the agents finish when its checkout is a clean `main` in sync
+  with `origin/main`; run it by hand to apply an allowlist change sooner.
 - `releasedModels: []` means **nothing publishes**. Every suite is skipped as
   `unreleased-model` until a model is listed.
 - Every allowlist change goes through a pull request (`CODEOWNERS` enforces
@@ -36,12 +38,15 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 ## Publishing
 
 Run from the repo root on a checkout of `main`, with gcloud credentials for
-the bucket and a git identity (`user.name` / `user.email`, as the `gh-pages`
-commit needs an author; a CI runner will have to set one):
+the bucket, a git identity (`user.name` / `user.email`, as the `gh-pages`
+commit needs an author; a CI runner will have to set one), and GitHub CLI (`gh`)
+authenticated (`gh auth login` with `workflow` scope) to dispatch the Actions
+Pages deployment:
 
 ```bash
-pnpm public:publish            # build and push gh-pages
-pnpm public:publish --dry-run  # build and report only
+pnpm public:publish               # build, push gh-pages, and dispatch deployment
+pnpm public:publish --dry-run     # build and report only
+pnpm public:publish --no-dispatch # push gh-pages without dispatching deploy
 ```
 
 Usernames are scrubbed from two sources: the names the builder harvests from
