@@ -167,8 +167,9 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
               const origFn = curr[prop];
               if (typeof origFn === 'function') {
                 curr[prop] = function(...args: any[]) {
+                  const res = origFn.apply(this, args);
                   callback(...args);
-                  return origFn.apply(this, args);
+                  return res;
                 };
                 return;
               }
@@ -244,14 +245,13 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     cdnPolyfillLoaded = true;
     const mockPolyfillEsm = `
       class PlainDate {
-        constructor(calId = 'iso8601', y = 2026, m = 5, d = 15) {
+        constructor(y = 2026, m = 5, d = 15, calId = 'iso8601') {
           this._cal = calId;
           this._y = y;
           this._m = m;
           this._d = d;
         }
         get calendarId() { return this._cal; }
-        get calendar() { return { id: this._cal }; }
         get year() { return this._y; }
         get month() { return this._m; }
         get day() { return this._d; }
@@ -267,15 +267,18 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
         add() { return this; }
         subtract() { return this; }
         withCalendar(newCal) {
-          const id = typeof newCal === 'string' ? newCal : (newCal?.id || 'islamic-umalqura');
-          return new PlainDate(id, this._y, this._m, this._d);
+          if (typeof newCal !== 'string' && !(newCal instanceof PlainDate)) {
+            throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
+          }
+          const id = typeof newCal === 'string' ? newCal : newCal.calendarId;
+          return new PlainDate(this._y, this._m, this._d, id);
         }
         with(fields) {
           return new PlainDate(
-            this._cal,
             fields?.year ?? this._y,
             fields?.month ?? this._m,
-            fields?.day ?? this._d
+            fields?.day ?? this._d,
+            this._cal
           );
         }
         toLocaleString(locales, options) {
@@ -292,18 +295,28 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
 
       const T = {
         Now: {
-          plainDateISO() { return new PlainDate('iso8601', 2026, 5, 15); }
+          plainDateISO() { return new PlainDate(2026, 5, 15, 'iso8601'); }
         },
         PlainDate: Object.assign(PlainDate, {
           from(val) {
+            if (val instanceof PlainDate) {
+              return new PlainDate(val.year, val.month, val.day, val.calendarId);
+            }
             if (typeof val === 'string') {
+              const calMatch = val.match(/\\[u-ca=([^\\]]+)\\]/i);
+              const parsedCal = calMatch ? calMatch[1] : 'iso8601';
               const m = val.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
-              if (m) return new PlainDate('iso8601', +m[1], +m[2], +m[3]);
+              if (m) return new PlainDate(+m[1], +m[2], +m[3], parsedCal);
+            }
+            if (typeof val === 'object' && val !== null && val.calendar !== undefined) {
+              if (typeof val.calendar !== 'string' && !(val.calendar instanceof PlainDate)) {
+                throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
+              }
             }
             const calId = typeof val === 'object' && val?.calendar
-              ? (typeof val.calendar === 'string' ? val.calendar : (val.calendar.id || 'iso8601'))
+              ? (typeof val.calendar === 'string' ? val.calendar : val.calendar.calendarId)
               : 'iso8601';
-            return new PlainDate(calId, val?.year ?? 2026, val?.month ?? 5, val?.day ?? 15);
+            return new PlainDate(val?.year ?? 2026, val?.month ?? 5, val?.day ?? 15, calId);
           },
           compare() { return 0; }
         })
@@ -412,6 +425,7 @@ async function setupNativePage(
         plainDateISO() {
           stats.temporalUsed = true;
           return {
+            calendarId: 'iso8601',
             toString() { return '2026-05-28'; },
             add(_duration: any) {
               return {
@@ -424,10 +438,12 @@ async function setupNativePage(
               };
             },
             withCalendar(cal: string) {
+              if (typeof cal !== 'string') {
+                throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
+              }
               stats.originalWithCalendarCalled = true;
               return {
                 calendarId: cal,
-                calendar: { id: cal },
                 year: 2026,
                 month: 5,
                 monthCode: 'M05',
@@ -450,7 +466,6 @@ async function setupNativePage(
           stats.temporalUsed = true;
           return {
             calendarId: 'iso8601',
-            calendar: { id: 'iso8601' },
             year: 2026,
             month: 5,
             monthCode: 'M05',
@@ -459,10 +474,12 @@ async function setupNativePage(
             add(_duration: any) { return this; },
             subtract(_duration: any) { return this; },
             withCalendar(cal: string) {
+              if (typeof cal !== 'string') {
+                throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
+              }
               stats.originalWithCalendarCalled = true;
               return {
                 calendarId: cal,
-                calendar: { id: cal },
                 year: 2026,
                 month: 5,
                 monthCode: 'M05',
