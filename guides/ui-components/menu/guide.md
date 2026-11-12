@@ -4,6 +4,7 @@ description: Build a menu component that displays a list of options or actions, 
 web-feature-ids:
   - popover
   - invoker-commands
+  - toggleevent-source
   - anchor-positioning
   - focusgroup
   - has
@@ -359,7 +360,7 @@ Without CSS Anchor Positioning, a popover falls back to the UA's centered viewpo
 * Run it in the `toggle` handler when the menu opens, and apply the result as `left` and `top` on the menu. Use `position: fixed` with `inset: auto` and `margin: 0` so the coordinates are viewport-relative.
 * Keep these overrides inside `@supports not (position-area: block-end)`, so browsers with anchor positioning are unaffected.
 
-{{ BASELINE_STATUS("anchor-positioning", "api.HTMLElement.showPopover.options_source_parameter.implicit_anchor_reference") }}
+{{ BASELINE_STATUS("toggleevent-source") }}
 
 If targeting earlier implementations where `showPopover({ source })` does not establish an implicit anchor (no `source` on `ToggleEvent.prototype`), give each trigger a unique `anchor-name` and each menu a matching `position-anchor` from script, instead of writing per-menu CSS rules.
 
