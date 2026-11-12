@@ -6,6 +6,7 @@ web-feature-ids:
   - datalist
   - popover
   - anchor-positioning
+  - highlight
 ---
 
 {# Link to filterable-select if only filtering is needed #}
@@ -83,7 +84,7 @@ const matches = options.filter(o => o.value.toLowerCase().includes(query));
 * Typing (`input` event) re-filters, shows the popup, and resets the active option to none.
 * `ArrowDown` / `ArrowUp` open the popup if closed, then move the active option and wrap at the ends. Call `preventDefault()` so the caret does not move.
 * `Home` / `End` move the active option only while one is active; otherwise they keep editing the text.
-* `Enter` with an active option fills the input, closes the popup, and calls `preventDefault()` so the form does not submit. With no active option, `Enter` behaves normally.
+* `Enter` with an active option fills the input, closes the popup, and calls `preventDefault()` so the form does not submit. With no active option, do not call `preventDefault()`: the typed text is kept as the value and the implicit form submission proceeds (close the popup if it is open).
 * `Escape` closes the popup when open.
 * Space always types a space; never use it to select.
 * Clicking an option selects it. Call `preventDefault()` on the listbox `mousedown` so the input does not blur and close the popup before the click lands.
@@ -104,7 +105,7 @@ Add this when the value is a record users build up over time (tags, destinations
 
 ### 6. Match highlighting
 
-Wrap the matched substring of each option label in `<mark>`. Reset its default yellow background and use weight or underline so the match is not conveyed by color alone. Worth adding when options are long or similar.
+Highlight the matched substring of each option label with the Custom Highlight API instead of wrapping it in `<mark>` (see {{ GUIDE_REF("highlight-text-ranges") }}). Style `::highlight()` with a tinted `background-color` and an explicit `color`, plus `text-decoration: underline`, so the match is not conveyed by color alone. Worth adding when options are long or similar.
 
 ### 7. Rich option content
 
@@ -128,7 +129,7 @@ Options can hold a styled title plus smaller secondary text (a description, a co
 ```
 
 * Screen readers read the whole option text, so keep secondary text short and meaningful. Do not hide it with `aria-hidden` if it helps users choose.
-* Filter against both the title and the secondary text if users may search by either, and apply `<mark>` highlighting per child rather than to the whole option.
+* Filter against both the title and the secondary text if users may search by either, and apply highlight ranges per child rather than to the whole option.
 * Fill the input from `data-value` on selection, not from `textContent`.
 * Group headings inside the list use `role="group"` with `aria-labelledby` pointing at a heading element; the heading is not an option.
 

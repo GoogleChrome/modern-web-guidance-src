@@ -12,6 +12,7 @@
     --surface: light-dark(#fff, #1e1e1e);
     --hover: light-dark(#eef3fb, #2b3442);
     --active: light-dark(#dbe6f8, #3a465a);
+    --match: light-dark(#d2e3fc, #3b5a8c);
     color-scheme: light dark;
     font-family: system-ui, sans-serif;
   }
@@ -83,6 +84,8 @@
     & mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; }
     & .empty { cursor: default; opacity: .7; }
   }
+
+  ::highlight(combobox-match) { background-color: var(--match); color: inherit; text-decoration: underline 2px; }
 
   .sr-only {
     position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden;
@@ -181,20 +184,29 @@
     const render = () => {
       const q = input.value.trim();
       const found = matches();
+      const ranges = [];
       listbox.replaceChildren(...found.map((o, i) => {
         const li = document.createElement('li');
         li.role = 'option';
         li.id = `city-opt-${i}`;
         li.dataset.value = o.value;
         const at = q ? o.value.toLowerCase().indexOf(q.toLowerCase()) : -1;
-        if (at < 0) li.textContent = o.value;
-        else {
-          const mark = document.createElement('mark');
-          mark.textContent = o.value.slice(at, at + q.length);
-          li.append(o.value.slice(0, at), mark, o.value.slice(at + q.length));
+        li.textContent = o.value;
+        if (at >= 0) {
+          if (CSS.highlights) {
+            const range = new Range();
+            range.setStart(li.firstChild, at);
+            range.setEnd(li.firstChild, at + q.length);
+            ranges.push(range);
+          } else {
+            const mark = document.createElement('mark');
+            mark.textContent = o.value.slice(at, at + q.length);
+            li.replaceChildren(o.value.slice(0, at), mark, o.value.slice(at + q.length));
+          }
         }
         return li;
       }));
+      CSS.highlights?.set('combobox-match', new Highlight(...ranges));
       if (q && !found.some(o => o.value.toLowerCase() === q.toLowerCase())) {
         const add = document.createElement('li');
         add.role = 'option';
