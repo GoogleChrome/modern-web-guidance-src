@@ -34,9 +34,11 @@ If you also want “light dismiss” behavior, then you must set `closedby` to `
 
 ```html
 <dialog id="modal-closedby-any" closedby="any" aria-labelledby="example">
+  <button aria-label="Close" command="close" commandfor="modal-closedby-any">
+    <!-- close icon -->
+  </button>
   <h1 id="example">Example</h1>
   <p>Modal that can be dismissed with close requests and light dismiss.</p>
-  <button command="close" commandfor="modal-closedby-any">Close</button>
 </dialog>
 ```
 
