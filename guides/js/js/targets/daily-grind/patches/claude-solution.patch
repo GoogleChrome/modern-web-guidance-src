@@ -1,0 +1,509 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8cafbb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,150 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .menu-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px 18px;
++      align-items: center;
++      justify-content: center;
++      margin-top: 20px;
++      padding: 16px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .menu-toolbar label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .menu-toolbar select,
++    .menu-toolbar button {
++      font: inherit;
++      padding: 6px 12px;
++      border-radius: 4px;
++      border: 1px solid #bcaaa4;
++      background: white;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .menu-toolbar button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .category-summary {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 14px;
++      font-size: 0.85rem;
++    }
++
++    .category-pill {
++      background: #efebe9;
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .card-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin: 10px 0 6px;
++      font-size: 0.85rem;
++      color: #5d4037;
++      font-weight: 600;
++    }
++
++    .card button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .grouped-layout {
++      display: block;
++    }
++
++    .category-group {
++      margin-top: 24px;
++    }
++
++    .category-group > h3 {
++      margin-bottom: 12px;
++      color: var(--primary);
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 4px;
++    }
++
++    .draft-panel {
++      margin-top: 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .draft-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      margin: 14px 0;
++    }
++
++    .draft-controls select,
++    .draft-controls input,
++    .draft-controls button {
++      font: inherit;
++      padding: 8px 12px;
++      border-radius: 4px;
++      border: 1px solid #bcaaa4;
++    }
++
++    .draft-controls button {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .draft-controls button.secondary-btn {
++      background: white;
++      color: var(--primary);
++    }
++
++    .draft-items {
++      list-style: none;
++      margin-top: 12px;
++      display: grid;
++      gap: 8px;
++    }
++
++    .draft-items li {
++      padding: 10px 12px;
++      background: #f7f4f2;
++      border-radius: 6px;
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      font-size: 0.9rem;
++    }
++
++    .snapshot-status {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
+   </style>
+ </head>
+ 
+@@ -177,7 +321,36 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div id="menu-controls" class="menu-toolbar">
++        <label>
++          Category
++          <select id="filter-category">
++            <option value="all">All Drinks</option>
++            <option value="seasonal">Seasonal</option>
++            <option value="espresso">Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <label>
++          Sort
++          <select id="filter-sort">
++            <option value="default">Featured</option>
++            <option value="price-low">Price: Low to High</option>
++            <option value="price-high">Price: High to Low</option>
++            <option value="title">Name (A-Z)</option>
++          </select>
++        </label>
++        <label>
++          <input type="checkbox" id="toggle-reverse">
++          Reverse order
++        </label>
++        <label>
++          <input type="checkbox" id="toggle-grouped">
++          Group by category
++        </label>
++      </div>
++      <div id="menu-counts" class="category-summary"></div>
++      <div id="catalog-container" class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -195,8 +368,34 @@
+         </div>
+       </div>
+     </section>
++
++    <aside id="draft-order" class="draft-panel">
++      <h2>Draft Order</h2>
++      <div class="draft-controls">
++        <label>
++          Milk
++          <select id="order-milk">
++            <option value="Oat">Oat</option>
++            <option value="Whole">Whole</option>
++            <option value="Soy">Soy</option>
++          </select>
++        </label>
++        <label>
++          Notes
++          <input type="text" id="order-notes" placeholder="Optional syrup or temp">
++        </label>
++        <button type="button" id="btn-save-draft">Save Snapshot</button>
++        <button type="button" id="btn-restore-draft" class="secondary-btn">Restore Snapshot</button>
++        <button type="button" id="btn-clear-draft" class="secondary-btn">Clear Order</button>
++      </div>
++      <ul id="order-items" class="draft-items"></ul>
++      <p id="order-empty">No items in your draft order.</p>
++      <p id="order-snapshot-info" class="snapshot-status">No snapshot saved.</p>
++    </aside>
+   </main>
+ 
++  <script type="module" src="./menu.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/menu.js b/menu.js
+new file mode 100644
+index 0000000..1de424e
+--- /dev/null
++++ b/menu.js
+@@ -0,0 +1,275 @@
++const MENU_DRINKS = [
++  {
++    slug: 'maple-oat-latte',
++    title: 'Maple Oat Latte',
++    category: 'seasonal',
++    categoryTitle: 'Seasonal',
++    priceCents: 575,
++    summary: 'Creamy oat milk with a hint of Vermont maple syrup.',
++  },
++  {
++    slug: 'dark-roast-espresso',
++    title: 'Dark Roast Espresso',
++    category: 'espresso',
++    categoryTitle: 'Espresso',
++    priceCents: 350,
++    summary: 'Bold, smokey, and perfect for a morning boost.',
++  },
++  {
++    slug: 'cold-brew',
++    title: 'Cold Brew',
++    category: 'cold-brew',
++    categoryTitle: 'Cold Brew',
++    priceCents: 450,
++    summary: 'Steeped for 18 hours for maximum smoothness.',
++  },
++  {
++    slug: 'honey-lavender-latte',
++    title: 'Honey Lavender Latte',
++    category: 'seasonal',
++    categoryTitle: 'Seasonal',
++    priceCents: 615,
++    summary: 'Wildflower honey and culinary lavender over espresso.',
++  },
++  {
++    slug: 'velvet-americano',
++    title: 'Velvet Americano',
++    category: 'espresso',
++    categoryTitle: 'Espresso',
++    priceCents: 395,
++    summary: 'Rich double shot finished with filtered hot water.',
++  },
++  {
++    slug: 'nitro-cold-brew',
++    title: 'Nitro Cold Brew',
++    category: 'cold-brew',
++    categoryTitle: 'Cold Brew',
++    priceCents: 525,
++    summary: 'Cascading nitrogen-infused cold brew with creamy crema.',
++  },
++];
++
++const CATEGORY_LIST = [
++  { id: 'seasonal', label: 'Seasonal' },
++  { id: 'espresso', label: 'Espresso' },
++  { id: 'cold-brew', label: 'Cold Brew' },
++];
++
++function readQueryState() {
++  const qs = new URLSearchParams(window.location.search);
++  return {
++    cat: qs.get('cat') ?? 'all',
++    sortBy: qs.get('sortBy') ?? 'default',
++    rev: qs.get('rev') === 'true',
++    group: qs.get('group') === 'true',
++  };
++}
++
++function writeQueryState(state) {
++  const qs = new URLSearchParams();
++  if (state.cat !== 'all') qs.set('cat', state.cat);
++  if (state.sortBy !== 'default') qs.set('sortBy', state.sortBy);
++  if (state.rev) qs.set('rev', 'true');
++  if (state.group) qs.set('group', 'true');
++  const encoded = qs.toString();
++  const url = encoded ? `${window.location.pathname}?${encoded}` : window.location.pathname;
++  window.history.replaceState(null, '', url);
++}
++
++const currentFilters = readQueryState();
++let currentOrder = {
++  entries: [],
++  createdAt: new Date(),
++};
++let savedSnapshot = null;
++
++const controlsRoot = document.getElementById('menu-controls');
++const catSelect = document.getElementById('filter-category');
++const sortSelect = document.getElementById('filter-sort');
++const revCheckbox = document.getElementById('toggle-reverse');
++const groupCheckbox = document.getElementById('toggle-grouped');
++const countsBar = document.getElementById('menu-counts');
++const catalogContainer = document.getElementById('catalog-container');
++
++const milkSelect = document.getElementById('order-milk');
++const notesInput = document.getElementById('order-notes');
++const saveBtn = document.getElementById('btn-save-draft');
++const restoreBtn = document.getElementById('btn-restore-draft');
++const clearBtn = document.getElementById('btn-clear-draft');
++const orderItemsEl = document.getElementById('order-items');
++const orderEmptyEl = document.getElementById('order-empty');
++const snapshotInfoEl = document.getElementById('order-snapshot-info');
++
++function computeVisibleDrinks() {
++  const filtered = MENU_DRINKS.filter(
++    (d) => currentFilters.cat === 'all' || d.category === currentFilters.cat,
++  );
++
++  let ordered = filtered;
++  if (currentFilters.sortBy === 'price-low') {
++    ordered = filtered.toSorted((a, b) => a.priceCents - b.priceCents);
++  } else if (currentFilters.sortBy === 'price-high') {
++    ordered = filtered.toSorted((a, b) => b.priceCents - a.priceCents);
++  } else if (currentFilters.sortBy === 'title') {
++    ordered = filtered.toSorted((a, b) => a.title.localeCompare(b.title));
++  }
++
++  return currentFilters.rev ? ordered.toReversed() : ordered;
++}
++
++function buildDrinkCard(drink) {
++  const card = document.createElement('article');
++  card.className = 'card';
++
++  const heading = document.createElement('h3');
++  heading.textContent = drink.title;
++
++  const meta = document.createElement('div');
++  meta.className = 'card-meta';
++  const cat = document.createElement('span');
++  cat.textContent = drink.categoryTitle;
++  const price = document.createElement('span');
++  price.textContent = `$${(drink.priceCents / 100).toFixed(2)}`;
++  meta.replaceChildren(cat, price);
++
++  const summary = document.createElement('p');
++  summary.textContent = drink.summary;
++
++  const btn = document.createElement('button');
++  btn.type = 'button';
++  btn.className = 'btn';
++  btn.textContent = 'Add to Order';
++  btn.addEventListener('click', () => {
++    currentOrder.entries.push({
++      slug: drink.slug,
++      title: drink.title,
++      priceCents: drink.priceCents,
++      options: {
++        milk: milkSelect.value,
++        note: notesInput.value.trim() || 'House standard',
++      },
++      addedAt: new Date(),
++    });
++    renderOrder();
++  });
++
++  card.replaceChildren(heading, meta, summary, btn);
++  return card;
++}
++
++function renderCatalog() {
++  const visible = computeVisibleDrinks();
++  const buckets = Object.groupBy(visible, (item) => item.category);
++
++  const countNodes = CATEGORY_LIST.map((cat) => {
++    const bucket = buckets[cat.id] ?? [];
++    const span = document.createElement('span');
++    span.className = 'category-pill';
++    span.textContent = `${cat.label}: ${bucket.length}`;
++    return span;
++  });
++  countsBar.replaceChildren(...countNodes);
++
++  if (currentFilters.group) {
++    catalogContainer.className = 'grouped-layout';
++    const sections = [];
++    for (const cat of CATEGORY_LIST) {
++      const items = buckets[cat.id] ?? [];
++      if (items.length === 0) continue;
++      const wrapper = document.createElement('div');
++      wrapper.className = 'category-group';
++      const title = document.createElement('h3');
++      title.textContent = `${cat.label} (${items.length})`;
++      const row = document.createElement('div');
++      row.className = 'grid';
++      row.replaceChildren(...items.map(buildDrinkCard));
++      wrapper.replaceChildren(title, row);
++      sections.push(wrapper);
++    }
++    catalogContainer.replaceChildren(...sections);
++  } else {
++    catalogContainer.className = 'grid';
++    catalogContainer.replaceChildren(...visible.map(buildDrinkCard));
++  }
++}
++
++function renderOrder() {
++  if (currentOrder.entries.length === 0) {
++    orderItemsEl.replaceChildren();
++    orderEmptyEl.hidden = false;
++    return;
++  }
++
++  orderEmptyEl.hidden = true;
++  const items = currentOrder.entries.map((entry) => {
++    const li = document.createElement('li');
++    const nameEl = document.createElement('span');
++    nameEl.textContent = `${entry.title} [${entry.options.milk} / ${entry.options.note}]`;
++    const priceEl = document.createElement('span');
++    priceEl.textContent = `$${(entry.priceCents / 100).toFixed(2)} • ${entry.addedAt.toLocaleTimeString()}`;
++    li.replaceChildren(nameEl, priceEl);
++    return li;
++  });
++  orderItemsEl.replaceChildren(...items);
++}
++
++function notifyFilterChange() {
++  const customEvent = new CustomEvent('daily-grind:filter-change', {
++    detail: structuredClone(currentFilters),
++    bubbles: true,
++    composed: true,
++  });
++  controlsRoot.dispatchEvent(customEvent);
++}
++
++function updateMenuAndSync() {
++  writeQueryState(currentFilters);
++  renderCatalog();
++  notifyFilterChange();
++}
++
++catSelect.value = currentFilters.cat;
++sortSelect.value = currentFilters.sortBy;
++revCheckbox.checked = currentFilters.rev;
++groupCheckbox.checked = currentFilters.group;
++
++catSelect.addEventListener('change', () => {
++  currentFilters.cat = catSelect.value;
++  updateMenuAndSync();
++});
++
++sortSelect.addEventListener('change', () => {
++  currentFilters.sortBy = sortSelect.value;
++  updateMenuAndSync();
++});
++
++revCheckbox.addEventListener('change', () => {
++  currentFilters.rev = revCheckbox.checked;
++  updateMenuAndSync();
++});
++
++groupCheckbox.addEventListener('change', () => {
++  currentFilters.group = groupCheckbox.checked;
++  updateMenuAndSync();
++});
++
++saveBtn.addEventListener('click', () => {
++  savedSnapshot = structuredClone(currentOrder);
++  snapshotInfoEl.textContent = `Saved ${savedSnapshot.entries.length} item(s) at ${new Date().toLocaleTimeString()}.`;
++});
++
++restoreBtn.addEventListener('click', () => {
++  if (!savedSnapshot) return;
++  currentOrder = structuredClone(savedSnapshot);
++  renderOrder();
++  snapshotInfoEl.textContent = `Restored ${currentOrder.entries.length} item(s).`;
++});
++
++clearBtn.addEventListener('click', () => {
++  currentOrder.entries = [];
++  orderItemsEl.replaceChildren();
++  orderEmptyEl.hidden = false;
++});
++
++renderCatalog();
++renderOrder();
