@@ -85,6 +85,9 @@
   }
 
   ::highlight(combobox-match) { background-color: var(--match); color: inherit; text-decoration: underline 2px; }
+  @media (forced-colors: active) {
+    ::highlight(combobox-match) { background-color: Highlight; color: HighlightText; }
+  }
 
   .sr-only {
     position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden;

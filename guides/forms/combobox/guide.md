@@ -130,6 +130,14 @@ CSS.highlights.set('combobox-match', new Highlight(...ranges));
   color: inherit;
   text-decoration: underline 2px;
 }
+
+/* Forced colors override author colors, so invert with system colors */
+@media (forced-colors: active) {
+  ::highlight(combobox-match) {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
 ```
 
 ### 7. Rich option content
