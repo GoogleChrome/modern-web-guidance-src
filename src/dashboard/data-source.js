@@ -18,6 +18,9 @@ import { getAccessToken } from './utils.js';
 /** Path, relative to the dashboard, where the builder publishes sanitized suites. */
 export const PUBLIC_EVALS_BASE = 'public-evals';
 
+/** Per-suite file mapping each run artifact's path (`<run>/<guide>/<task>/<mode>/agent.patch`) to its text. */
+export const PUBLIC_ARTIFACTS_FILE = 'artifacts.json';
+
 const VALID_SOURCES = new Set(['local', 'remote', 'static', 'public']);
 
 /**

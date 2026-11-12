@@ -1,5 +1,5 @@
 import { authenticatedFetch, parseResultKey } from './utils.js';
-import { PUBLIC_EVALS_BASE, isLocalServer, resolveDataSource } from './data-source.js';
+import { PUBLIC_ARTIFACTS_FILE, PUBLIC_EVALS_BASE, isLocalServer, resolveDataSource } from './data-source.js';
 
 /** @typedef {import('./data-source.js').DataSource} DataSource */
 
@@ -46,6 +46,8 @@ export class ApiClient {
         /** @type {DataSource} */
         this.source = source;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
+        /** @type {Map<string, Promise<Record<string, string> | null>>} */
+        this._publicArtifacts = new Map();
     }
 
     /**
@@ -401,6 +403,31 @@ export class ApiClient {
         return files;
     }
 
+    /**
+     * A public suite's `PUBLIC_ARTIFACTS_FILE`: the text of every run artifact, keyed by path,
+     * loaded once per page. Null for a suite that has none, whose artifacts are separate files.
+     * No cache-buster: the host's own revalidation answers a repeat visit without a new download.
+     * @private
+     * @param {string} suiteId
+     * @returns {Promise<Record<string, string> | null>}
+     */
+    _getPublicArtifacts(suiteId) {
+        const cached = this._publicArtifacts.get(suiteId);
+        if (cached) return cached;
+        const path = `${suiteId}/${PUBLIC_ARTIFACTS_FILE}`;
+        /** @type {Promise<Record<string, string> | null>} */
+        const artifacts = this._fetch(path).then(res => {
+            if (res.status === 404) return null;
+            if (!res.ok) throw new HttpError(`Failed to load data from ${this._formatUrl(path)}`, res.status);
+            return res.json();
+        });
+        // Only a loaded file is remembered. A failure, or a suite that has none yet, is asked for again on the next click.
+        const forget = () => this._publicArtifacts.delete(suiteId);
+        artifacts.then(loaded => { if (loaded === null) forget(); }, forget);
+        this._publicArtifacts.set(suiteId, artifacts);
+        return artifacts;
+    }
+
     /** 
      * Downloads raw text content for a specific URL Path (e.g. from viewContent modal).
      * @param {string} path
@@ -410,6 +437,18 @@ export class ApiClient {
         // Base apps are never uploaded to GCS. Force them to be fetched locally.
         const isBaseApp = path.startsWith('base_apps/');
         const isTasks = path.startsWith('tasks/');
+
+        if (this.source === 'public' && !isBaseApp && !isTasks) {
+            const [suiteId, ...rest] = path.replace(/^\/+/, '').split('/');
+            const artifacts = await this._getPublicArtifacts(suiteId);
+            // A suite last published one file per artifact has no PUBLIC_ARTIFACTS_FILE and is read
+            // file by file below. Delete that fallback once every published suite has been rebuilt.
+            if (artifacts !== null) {
+                const key = rest.join('/');
+                if (!Object.hasOwn(artifacts, key)) throw new Error('File not found (404).');
+                return artifacts[key];
+            }
+        }
 
         if (this.source === 'remote' && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
