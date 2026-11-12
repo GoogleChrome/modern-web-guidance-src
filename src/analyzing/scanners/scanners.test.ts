@@ -56,6 +56,25 @@ void test('scanFiles: Lit CSS tag whitespace preserves finding locations', async
     }
   }
 
+  for (const extension of ['js', 'mjs', 'ts']) {
+    await t.test(`${extension}, CRLF line endings throughout`, () => {
+      const source = [
+        'import { css } from "lit";',
+        'const styles = css',
+        '`',
+        '.tooltip { anchor-name: --tip; }',
+        '`;',
+        '',
+      ].join('\r\n');
+      const file = `src/card.${extension}`;
+      const findings = scanFiles(new Map([[file, source]]), [rule]);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.file, file);
+      assert.equal(findings[0]?.line, 4);
+      assert.ok(findings[0]?.codeSnippet.includes('.tooltip'));
+    });
+  }
+
   await t.test('does not scan untagged templates or a different identifier as CSS', () => {
     for (const tag of ['', 'notcss ']) {
       const source = `const styles = ${tag}\`.tooltip { anchor-name: --tip; }\`;`;

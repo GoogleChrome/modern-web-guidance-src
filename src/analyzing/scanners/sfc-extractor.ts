@@ -269,7 +269,7 @@ export function isMarkupPath(relPath: string): boolean {
  */
 export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
   if (!isMarkupPath(relPath)) {
-    return extractLitCssBlocks(content);
+    return /\bcss\s*`/.test(content) ? extractLitCssBlocks(content) : [];
   }
 
   const blocks: string[] = [];

@@ -22,6 +22,39 @@ void test('sfc-extractor: Lit CSS tag whitespace preserves source offsets', asyn
   }
 });
 
+void test('sfc-extractor: Lit CSS preserves offsets and CRLF throughout the source', () => {
+  const css = '.card { color: red; }';
+  const source = [
+    'import { css } from "lit";',
+    'const styles = css',
+    '`',
+    css,
+    '`;',
+    '',
+  ].join('\r\n');
+  const blocks = extractStyleBlocks('src/card.ts', source);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0]?.trim(), css);
+  assert.equal(blocks[0]?.length, source.length);
+  assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+  assert.deepEqual(blocks[0]?.match(/\r\n/g), source.match(/\r\n/g));
+});
+
+// Known regex limitations; AST-based tagged-template extraction is a follow-up.
+void test('sfc-extractor: ignores Lit CSS text inside comments', {
+  todo: 'Requires AST-based tagged-template extraction',
+}, () => {
+  const source = '// css `.card { color: red; }`;';
+  assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
+void test('sfc-extractor: ignores Lit CSS text inside strings', {
+  todo: 'Requires AST-based tagged-template extraction',
+}, () => {
+  const source = 'const text = "css `.card { color: red; }`";';
+  assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
 void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
   await t.test('extracts frontmatter containing internal --- comments without premature termination', () => {
     const astro = [
