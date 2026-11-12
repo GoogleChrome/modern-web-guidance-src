@@ -4,28 +4,12 @@ import * as path from 'path';
 const targetFile = process.env.TARGET_FILE || path.join(import.meta.dirname, 'demo.html');
 const fileUrl = `file://${targetFile}`;
 
-async function hasCustomAccentColor(page: any): Promise<boolean> {
-  return await page.evaluate(() => {
-    const elTypes = ['body', 'input[type="checkbox"]', 'input[type="radio"]', 'input[type="range"]', 'progress'];
-    for (const selector of elTypes) {
-      const el = document.querySelector(selector);
-      if (el) {
-        const comp = window.getComputedStyle(el).accentColor;
-        if (comp && comp !== 'auto' && comp !== 'normal') {
-          return true;
-        }
-      }
-    }
-    return false;
-  });
-}
-
 test.describe('Brand-Consistent Forms Grader', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(fileUrl);
   });
 
-  test('The implementation MUST use the accent-color CSS property to apply a custom color to form controls', async ({ page }) => {
+  test('The implementation uses the `accent-color` CSS property to apply a custom color to form controls.', async ({ page }) => {
     const accentColor = await page.evaluate(() => {
       // Find any input, progress, or the body/root and see if accent-color is customized (not auto)
       const elTypes = ['body', 'input[type="checkbox"]', 'input[type="radio"]', 'input[type="range"]', 'progress'];
@@ -44,7 +28,87 @@ test.describe('Brand-Consistent Forms Grader', () => {
     expect(accentColor).not.toEqual('normal');
   });
 
-  test('The implementation MUST target at least one of the following elements with accent-color: checkbox, radio, range, or progress', async ({ page }) => {
+  test('The value for `accent-color` has a contrast of at least `3:1` with the background color.', async ({ page }) => {
+    await page.addStyleTag({
+      content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+    });
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      const results = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) throw new Error('2d context unavailable');
+
+        const srgbToLinear = (c: number) => {
+          const s = c / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        };
+        const luminance = (r: number, g: number, b: number) =>
+          0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+        const contrastRatio = (a: [number, number, number], b: [number, number, number]) => {
+          const l1 = luminance(a[0], a[1], a[2]);
+          const l2 = luminance(b[0], b[1], b[2]);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+
+        const resolveEffectiveBg = (el: Element): [number, number, number] => {
+          const probe = document.createElement('div');
+          probe.style.backgroundColor = 'Canvas';
+          probe.style.display = 'none';
+          const host = el.parentElement ?? document.documentElement;
+          host.appendChild(probe);
+          const canvasBg = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = canvasBg;
+          ctx.fillRect(0, 0, 1, 1);
+
+          const chain: Element[] = [];
+          for (let cur: Element | null = el; cur; cur = cur.parentElement) {
+            chain.unshift(cur);
+          }
+          for (const node of chain) {
+            ctx.fillStyle = getComputedStyle(node).backgroundColor;
+            ctx.fillRect(0, 0, 1, 1);
+          }
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0], data[1], data[2]];
+        };
+
+        const controls = Array.from(
+          document.querySelectorAll('input[type="checkbox"], input[type="radio"], input[type="range"], progress'),
+        );
+        const measured: Array<{ tag: string; accentColor: string; ratio: number }> = [];
+        for (const el of controls) {
+          const accent = getComputedStyle(el).accentColor;
+          if (!accent || accent === 'auto' || accent === 'normal') continue;
+          const bg = resolveEffectiveBg(el);
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = `rgb(${bg[0]}, ${bg[1]}, ${bg[2]})`;
+          ctx.fillRect(0, 0, 1, 1);
+          ctx.fillStyle = accent;
+          ctx.fillRect(0, 0, 1, 1);
+          const fgData = ctx.getImageData(0, 0, 1, 1).data;
+          const ratio = contrastRatio([fgData[0], fgData[1], fgData[2]], bg);
+          measured.push({ tag: el.tagName.toLowerCase(), accentColor: accent, ratio });
+        }
+        return measured;
+      });
+
+      expect(results.length, `No controls with explicit accent-color found in ${colorScheme} mode`).toBeGreaterThan(0);
+      for (const item of results) {
+        expect(
+          item.ratio,
+          `${colorScheme} mode ${item.tag} accent-color (${item.accentColor}) contrast ${item.ratio.toFixed(2)}:1 < 3:1`,
+        ).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  test('The implementation targets at least one of the following elements with `accent-color`: checkbox, radio, range, or progress.', async ({ page }) => {
     const targeted = await page.evaluate(() => {
       const elTypes = ['input[type="checkbox"]', 'input[type="radio"]', 'input[type="range"]', 'progress'];
       for (const selector of elTypes) {
@@ -61,7 +125,7 @@ test.describe('Brand-Consistent Forms Grader', () => {
     expect(targeted).toBe(true);
   });
 
-  test('The implementation MUST use color-scheme: light dark (in CSS or meta tag) to enable appropriate default styling for forms in dark mode', async ({ page }) => {
+  test('The implementation uses `color-scheme: light dark` (in CSS or meta tag) to enable appropriate default styling for forms in dark mode.', async ({ page }) => {
     const colorSchemeValid = await page.evaluate(() => {
       const htmlCS = window.getComputedStyle(document.documentElement).colorScheme;
       const bodyCS = window.getComputedStyle(document.body).colorScheme;
@@ -94,7 +158,7 @@ test.describe('Brand-Consistent Forms Grader', () => {
     expect(colorSchemeValid).toBe(true);
   });
 
-  test('The implementation MUST update the accent-color value for dark mode using a prefers-color-scheme media query', async ({ page }) => {
+  test('The implementation updates the `accent-color` value for dark mode using a `prefers-color-scheme` media query.', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' });
     const lightColor = await page.evaluate(() => {
       const el = document.querySelector('input[type="checkbox"]') || document.body;
@@ -112,8 +176,8 @@ test.describe('Brand-Consistent Forms Grader', () => {
     expect(lightColor).not.toEqual(darkColor);
   });
 
-  test('The implementation MUST provide a fallback for browsers that do not support accent-color using the @supports not rule', async ({ page }) => {
-    const hasSupportsNot = await page.evaluate(() => {
+  test('The implementation provides a fallback for browsers that do not support `accent-color` using the `@supports not` rule.', async ({ page }) => {
+    const hasSupportsNot = await page.evaluate(async () => {
       for (let i = 0; i < document.styleSheets.length; i++) {
         const sheet = document.styleSheets[i];
         try {
@@ -129,57 +193,149 @@ test.describe('Brand-Consistent Forms Grader', () => {
           }
         } catch (e) {}
       }
-      const styles = Array.from(document.querySelectorAll('style'));
-      for (const style of styles) {
-        const text = style.innerHTML.toLowerCase();
+      const linkedTexts = await Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) => {
+          const href = (link as HTMLLinkElement).href;
+          return href ? fetch(href).then((r) => (r.ok ? r.text() : '')).catch(() => '') : '';
+        })
+      );
+      const styles = [...Array.from(document.querySelectorAll('style')).map((s) => s.innerHTML), ...linkedTexts];
+      for (const raw of styles) {
+        const text = raw.toLowerCase();
         if (text.includes('@supports') && text.includes('not') && text.includes('accent-color')) {
           return true;
         }
       }
       return false;
     });
-    // Grader resilience: Since accent-color is supported in 100% of modern target browsers,
-    // a fallback is optional if modern native accent-color capabilities are present and fully supported.
-    const isNativeSupported = await page.evaluate(() => typeof document.body.style.accentColor !== 'undefined');
-    const hasAccent = await hasCustomAccentColor(page);
-    const isPassResilient = isNativeSupported && hasAccent;
-    expect(hasSupportsNot || isPassResilient).toBe(true);
+    expect(hasSupportsNot).toBe(true);
   });
 
-  test('The fallback implementation MUST style checkboxes and radio buttons to match the brand color', async ({ page }) => {
-    const stylesMatchBrandColor = await page.evaluate(() => {
-      const styleTexts = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML.toLowerCase());
+  test('The fallback implementation styles checkboxes and radio buttons to match the brand color.', async ({ page }) => {
+    const stylesMatchBrandColor = await page.evaluate(async () => {
+      const extractSupportsNotBlocks = (css: string): string => {
+        const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+        const lower = clean.toLowerCase();
+        const chunks: string[] = [];
+        let idx = 0;
+        while ((idx = lower.indexOf('@supports', idx)) !== -1) {
+          const brace = clean.indexOf('{', idx);
+          if (brace === -1) break;
+          const cond = lower.slice(idx, brace);
+          let depth = 1;
+          let pos = brace + 1;
+          while (pos < clean.length && depth > 0) {
+            if (clean[pos] === '{') depth++;
+            else if (clean[pos] === '}') depth--;
+            pos++;
+          }
+          if (cond.includes('not') && cond.includes('accent-color')) {
+            chunks.push(clean.slice(brace + 1, pos - 1));
+          }
+          idx = pos;
+        }
+        return chunks.join('\n');
+      };
+
       let hasCheckboxCheckedStyle = false;
       let hasRadioCheckedStyle = false;
 
-      for (const text of styleTexts) {
-        if (text.includes('@supports') && text.includes('not') && text.includes('accent-color')) {
-          if (
-            text.includes('checkbox') &&
-            text.includes('checked') &&
-            (text.includes('brand-color') || text.includes('#6200ee') || text.includes('#bb86fc'))
-          ) {
-            hasCheckboxCheckedStyle = true;
+      const checkRule = (selectorRaw: string, bodyRaw: string) => {
+        const sel = selectorRaw.toLowerCase();
+        const body = bodyRaw.toLowerCase();
+        if (!sel.includes(':checked')) return;
+        const hasColorStyling = /(background|background-color|border|border-color|color|fill)\s*:\s*[^;]*(var\(|#[0-9a-f]{3,8}|rgb|hsl|oklch|oklab|light-dark|[a-z]+)/i.test(body);
+        if (!hasColorStyling) return;
+
+        const targetsCheckbox = sel.includes('checkbox');
+        const targetsRadio = sel.includes('radio');
+        const targetsGenericInput = /\binput\b[^{,]*:checked/.test(sel) && !sel.includes('type=');
+        if (targetsCheckbox || targetsGenericInput) hasCheckboxCheckedStyle = true;
+        if (targetsRadio || targetsGenericInput) hasRadioCheckedStyle = true;
+      };
+
+      const walkRules = (rules: CSSRuleList) => {
+        for (let k = 0; k < rules.length; k++) {
+          const innerRule = rules[k];
+          if (innerRule instanceof CSSStyleRule) {
+            for (const part of innerRule.selectorText.split(',')) {
+              checkRule(part, innerRule.style.cssText);
+            }
+          } else if ('cssRules' in innerRule && (innerRule as CSSGroupingRule).cssRules) {
+            walkRules((innerRule as CSSGroupingRule).cssRules);
           }
-          if (
-            text.includes('radio') &&
-            text.includes('checked') &&
-            (text.includes('brand-color') || text.includes('#6200ee') || text.includes('#bb86fc'))
-          ) {
-            hasRadioCheckedStyle = true;
+        }
+      };
+
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+          const rules = sheet.cssRules || sheet.rules;
+          for (let j = 0; j < rules.length; j++) {
+            const rule = rules[j];
+            if (rule instanceof CSSSupportsRule) {
+              const cond = rule.conditionText.toLowerCase();
+              if (cond.includes('not') && cond.includes('accent-color')) {
+                walkRules(rule.cssRules);
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (hasCheckboxCheckedStyle && hasRadioCheckedStyle) return true;
+
+      const linkedTexts = await Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) => {
+          const href = (link as HTMLLinkElement).href;
+          return href ? fetch(href).then((r) => (r.ok ? r.text() : '')).catch(() => '') : '';
+        })
+      );
+      const styleTexts = [...Array.from(document.querySelectorAll('style')).map((s) => s.innerHTML), ...linkedTexts];
+      for (const raw of styleTexts) {
+        const block = extractSupportsNotBlocks(raw);
+        if (!block) continue;
+        const ruleMatches = block.matchAll(/([^{}]+)\{([^{}]+)\}/g);
+        for (const match of ruleMatches) {
+          for (const part of match[1].split(',')) {
+            checkRule(part, match[2]);
           }
         }
       }
       return hasCheckboxCheckedStyle && hasRadioCheckedStyle;
     });
-    const isNativeSupported = await page.evaluate(() => typeof document.body.style.accentColor !== 'undefined');
-    const hasAccent = await hasCustomAccentColor(page);
-    const isPassResilient = isNativeSupported && hasAccent;
-    expect(stylesMatchBrandColor || isPassResilient).toBe(true);
+    expect(stylesMatchBrandColor).toBe(true);
   });
 
-  test('Visually hidden inputs in the fallback MUST use the canonical accessible utility pattern (clip-path: inset(50%), width: 1px, height: 1px)', async ({ page }) => {
-    const hasVisuallyHiddenFallback = await page.evaluate(() => {
+  test('Visually hidden inputs in the fallback use the canonical accessible utility pattern (`clip-path: inset(50%)`, `width: 1px`, `height: 1px`).', async ({ page }) => {
+    const hasAccessibleFallbackInputs = await page.evaluate(async () => {
+      let hasSupportsNot = false;
+      let hasVisuallyHiddenPattern = false;
+      let hidesInputInaccessibly = false;
+
+      const walkRules = (rules: CSSRuleList) => {
+        for (let k = 0; k < rules.length; k++) {
+          const innerRule = rules[k];
+          if (innerRule instanceof CSSStyleRule) {
+            const sel = innerRule.selectorText.toLowerCase();
+            const cssText = innerRule.cssText.replace(/\s+/g, '').toLowerCase();
+            if (
+              cssText.includes('clip-path:inset(50%)') &&
+              cssText.includes('width:1px') &&
+              cssText.includes('height:1px')
+            ) {
+              hasVisuallyHiddenPattern = true;
+            }
+            const targetsInputItself = sel.split(',').some((s) => /input[^\s>+~]*$/.test(s.trim()) && !s.includes('::'));
+            if (targetsInputItself && /display:none|visibility:hidden|opacity:0(\.0*)?(;|!|$)/.test(cssText)) {
+              hidesInputInaccessibly = true;
+            }
+          } else if ('cssRules' in innerRule && (innerRule as CSSGroupingRule).cssRules) {
+            walkRules((innerRule as CSSGroupingRule).cssRules);
+          }
+        }
+      };
+
       for (let i = 0; i < document.styleSheets.length; i++) {
         const sheet = document.styleSheets[i];
         try {
@@ -189,48 +345,56 @@ test.describe('Brand-Consistent Forms Grader', () => {
             if (rule instanceof CSSSupportsRule) {
               const cond = rule.conditionText.toLowerCase();
               if (cond.includes('not') && cond.includes('accent-color')) {
-                const innerRules = rule.cssRules;
-                for (let k = 0; k < innerRules.length; k++) {
-                  const innerRule = innerRules[k];
-                  if (innerRule instanceof CSSStyleRule) {
-                    const cssText = innerRule.cssText.replace(/\s+/g, '').toLowerCase();
-                    if (
-                      cssText.includes('clip-path:inset(50%)') &&
-                      cssText.includes('width:1px') &&
-                      cssText.includes('height:1px')
-                    ) {
-                      return true;
-                    }
-                  }
-                }
+                hasSupportsNot = true;
+                walkRules(rule.cssRules);
               }
             }
           }
         } catch (e) {}
       }
-      const styleTexts = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML.replace(/\s+/g, '').toLowerCase());
-      for (const text of styleTexts) {
-        if (
-          text.includes('@supports') &&
-          text.includes('not') &&
-          text.includes('accent-color') &&
-          text.includes('clip-path:inset(50%)') &&
-          text.includes('width:1px') &&
-          text.includes('height:1px')
-        ) {
-          return true;
+
+      const linkedTexts = await Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) => {
+          const href = (link as HTMLLinkElement).href;
+          return href ? fetch(href).then((r) => (r.ok ? r.text() : '')).catch(() => '') : '';
+        })
+      );
+      const styleTexts = [...Array.from(document.querySelectorAll('style')).map((s) => s.innerHTML), ...linkedTexts];
+      for (const raw of styleTexts) {
+        const compact = raw.replace(/\s+/g, '').toLowerCase();
+        if (compact.includes('@supports') && compact.includes('not') && compact.includes('accent-color')) {
+          hasSupportsNot = true;
+          if (
+            compact.includes('clip-path:inset(50%)') &&
+            compact.includes('width:1px') &&
+            compact.includes('height:1px')
+          ) {
+            hasVisuallyHiddenPattern = true;
+          }
         }
       }
-      return false;
+      if (!hasSupportsNot || hidesInputInaccessibly) return false;
+      return hasVisuallyHiddenPattern;
     });
-    const isNativeSupported = await page.evaluate(() => typeof document.body.style.accentColor !== 'undefined');
-    const hasAccent = await hasCustomAccentColor(page);
-    const isPassResilient = isNativeSupported && hasAccent;
-    expect(hasVisuallyHiddenFallback || isPassResilient).toBe(true);
+    expect(hasAccessibleFallbackInputs).toBe(true);
   });
 
-  test('Custom fallback controls MUST explicitly style the :focus-visible state to preserve focus indication for keyboard users', async ({ page }) => {
-    const hasFocusVisibleFallback = await page.evaluate(() => {
+  test('Custom fallback controls explicitly style the `:focus-visible` state to preserve focus indication for keyboard users.', async ({ page }) => {
+    const hasFocusVisibleFallback = await page.evaluate(async () => {
+      let hasSupportsNot = false;
+      let hasFocusVisible = false;
+
+      const walkRules = (rules: CSSRuleList) => {
+        for (let k = 0; k < rules.length; k++) {
+          const innerRule = rules[k];
+          if (innerRule instanceof CSSStyleRule && innerRule.selectorText.includes(':focus-visible')) {
+            hasFocusVisible = true;
+          } else if ('cssRules' in innerRule && (innerRule as CSSGroupingRule).cssRules) {
+            walkRules((innerRule as CSSGroupingRule).cssRules);
+          }
+        }
+      };
+
       for (let i = 0; i < document.styleSheets.length; i++) {
         const sheet = document.styleSheets[i];
         try {
@@ -240,90 +404,107 @@ test.describe('Brand-Consistent Forms Grader', () => {
             if (rule instanceof CSSSupportsRule) {
               const cond = rule.conditionText.toLowerCase();
               if (cond.includes('not') && cond.includes('accent-color')) {
-                const innerRules = rule.cssRules;
-                for (let k = 0; k < innerRules.length; k++) {
-                  const innerRule = innerRules[k];
-                  if (innerRule instanceof CSSStyleRule) {
-                    if (innerRule.selectorText.includes(':focus-visible')) {
-                      return true;
-                    }
-                  }
-                }
+                hasSupportsNot = true;
+                walkRules(rule.cssRules);
+              }
+            } else if (rule instanceof CSSStyleRule) {
+              if (rule.selectorText.includes(':focus-visible') && rule.selectorText.toLowerCase().includes('input')) {
+                hasFocusVisible = true;
               }
             }
           }
         } catch (e) {}
       }
-      const styleTexts = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML.toLowerCase());
-      for (const text of styleTexts) {
-        if (
-          text.includes('@supports') &&
-          text.includes('not') &&
-          text.includes('accent-color') &&
-          text.includes(':focus-visible')
-        ) {
-          return true;
+
+      const linkedTexts = await Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) => {
+          const href = (link as HTMLLinkElement).href;
+          return href ? fetch(href).then((r) => (r.ok ? r.text() : '')).catch(() => '') : '';
+        })
+      );
+      const styleTexts = [...Array.from(document.querySelectorAll('style')).map((s) => s.innerHTML), ...linkedTexts];
+      for (const raw of styleTexts) {
+        const text = raw.toLowerCase();
+        if (text.includes('@supports') && text.includes('not') && text.includes('accent-color')) {
+          hasSupportsNot = true;
+        }
+        if (text.includes(':focus-visible') && text.includes('input')) {
+          hasFocusVisible = true;
         }
       }
-      return false;
+      return hasSupportsNot && hasFocusVisible;
     });
-    const isNativeSupported = await page.evaluate(() => typeof document.body.style.accentColor !== 'undefined');
-    const hasAccent = await hasCustomAccentColor(page);
-    const isPassResilient = isNativeSupported && hasAccent;
-    expect(hasFocusVisibleFallback || isPassResilient).toBe(true);
+    expect(hasFocusVisibleFallback).toBe(true);
   });
 
-  test('The fallback implementation for range sliders MUST use vendor prefixes to style the thumb and track, and MUST simulate progress', async ({ page }) => {
-    const hasRangeSliderFallback = await page.evaluate(() => {
-      const styleTexts = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML.toLowerCase());
+  test('The fallback implementation for range sliders uses vendor prefixes to style the thumb and track, and simulates progress.', async ({ page }) => {
+    const hasRangeSliderFallback = await page.evaluate(async () => {
+      const linkedTexts = await Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) => {
+          const href = (link as HTMLLinkElement).href;
+          return href ? fetch(href).then((r) => (r.ok ? r.text() : '')).catch(() => '') : '';
+        })
+      );
+      const styleTexts = [...Array.from(document.querySelectorAll('style')).map((s) => s.innerHTML), ...linkedTexts];
+      let hasSupportsNot = false;
       let hasWebkitTrack = false;
       let hasWebkitThumb = false;
       let hasMozTrack = false;
       let hasMozThumb = false;
       let hasProgressSimulation = false;
 
-      for (const text of styleTexts) {
+      for (const raw of styleTexts) {
+        const text = raw.toLowerCase();
         if (text.includes('@supports') && text.includes('not') && text.includes('accent-color')) {
-          if (text.includes('webkit-slider-runnable-track')) hasWebkitTrack = true;
-          if (text.includes('webkit-slider-thumb')) hasWebkitThumb = true;
-          if (text.includes('moz-range-track')) hasMozTrack = true;
-          if (text.includes('moz-range-thumb')) hasMozThumb = true;
-          if (text.includes('linear-gradient') || text.includes('moz-range-progress')) hasProgressSimulation = true;
+          hasSupportsNot = true;
         }
+        if (text.includes('webkit-slider-runnable-track')) {
+          hasWebkitTrack = true;
+          if (/::-webkit-slider-runnable-track\s*\{[^}]*linear-gradient/i.test(raw)) {
+            hasProgressSimulation = true;
+          }
+        }
+        if (text.includes('webkit-slider-thumb')) hasWebkitThumb = true;
+        if (text.includes('moz-range-track')) hasMozTrack = true;
+        if (text.includes('moz-range-thumb')) hasMozThumb = true;
+        if (text.includes('moz-range-progress')) hasProgressSimulation = true;
       }
 
-      return hasWebkitTrack && hasWebkitThumb && hasMozTrack && hasMozThumb && hasProgressSimulation;
+      return hasSupportsNot && hasWebkitTrack && hasWebkitThumb && hasMozTrack && hasMozThumb && hasProgressSimulation;
     });
-    const isNativeSupported = await page.evaluate(() => typeof document.body.style.accentColor !== 'undefined');
-    const hasAccent = await hasCustomAccentColor(page);
-    const isPassResilient = isNativeSupported && hasAccent;
-    expect(hasRangeSliderFallback || isPassResilient).toBe(true);
+    expect(hasRangeSliderFallback).toBe(true);
   });
 
-  test('The fallback implementation for progress bars MUST use vendor prefixes to style the progress value', async ({ page }) => {
-    const hasProgressBarFallback = await page.evaluate(() => {
-      const styleTexts = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML.toLowerCase());
+  test('The fallback implementation for progress bars uses vendor prefixes to style the progress value.', async ({ page }) => {
+    const hasProgressBarFallback = await page.evaluate(async () => {
+      const linkedTexts = await Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) => {
+          const href = (link as HTMLLinkElement).href;
+          return href ? fetch(href).then((r) => (r.ok ? r.text() : '')).catch(() => '') : '';
+        })
+      );
+      const styleTexts = [...Array.from(document.querySelectorAll('style')).map((s) => s.innerHTML), ...linkedTexts];
+      let hasSupportsNot = false;
       let hasWebkitBar = false;
       let hasWebkitValue = false;
       let hasMozBar = false;
 
-      for (const text of styleTexts) {
+      for (const raw of styleTexts) {
+        const text = raw.toLowerCase();
         if (text.includes('@supports') && text.includes('not') && text.includes('accent-color')) {
-          if (text.includes('webkit-progress-bar')) hasWebkitBar = true;
-          if (text.includes('webkit-progress-value')) hasWebkitValue = true;
-          if (text.includes('moz-progress-bar')) hasMozBar = true;
+          hasSupportsNot = true;
         }
+        if (text.includes('webkit-progress-bar')) hasWebkitBar = true;
+        if (text.includes('webkit-progress-value')) hasWebkitValue = true;
+        if (text.includes('moz-progress-bar')) hasMozBar = true;
       }
 
-      return hasWebkitBar && hasWebkitValue && hasMozBar;
+      return hasSupportsNot && hasWebkitBar && hasWebkitValue && hasMozBar;
     });
-    const isNativeSupported = await page.evaluate(() => typeof document.body.style.accentColor !== 'undefined');
-    const hasAccent = await hasCustomAccentColor(page);
-    const isPassResilient = isNativeSupported && hasAccent;
-    expect(hasProgressBarFallback || isPassResilient).toBe(true);
+    expect(hasProgressBarFallback).toBe(true);
   });
 
-  test('Every <input> control MUST have an explicit id attribute, and its wrapping/associated <label> MUST explicitly set the for attribute matching the inputs ID', async ({ page }) => {
+  test('Every `<input>` control has an explicit `id` attribute, and its associated `<label>` explicitly sets the `for` attribute matching the input id.', async ({ page }) => {
     const inputsValid = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll('input'));
       if (inputs.length === 0) return false;

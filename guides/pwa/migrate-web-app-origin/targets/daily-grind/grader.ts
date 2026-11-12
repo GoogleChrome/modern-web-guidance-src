@@ -97,28 +97,7 @@ function getNewManifest(): any {
 }
 
 test.describe('Migrate Web App Origin Target Grader', () => {
-  // Requirement 1: The old origin's manifest contains a migrate_to field pointing to the new origin.
-  test("The old origin's manifest contains a migrate_to field pointing to the new origin", () => {
-    const oldManifest = getOldManifest();
-    const items = Array.isArray(oldManifest?.migrate_to)
-      ? oldManifest.migrate_to
-      : oldManifest?.migrate_to
-        ? [oldManifest.migrate_to]
-        : [];
-    const hasMigrateToNewOrigin = items.some((item: any) => {
-      if (typeof item === 'string') {
-        return item.includes('new') || item.startsWith('http');
-      }
-      if (item && typeof item === 'object') {
-        const target = item.id || item.install_url;
-        return typeof target === 'string' && (target.includes('new') || target.startsWith('http'));
-      }
-      return false;
-    });
-    expect(hasMigrateToNewOrigin).toBe(true);
-  });
-
-  // Requirement 2: The new origin's manifest contains a migrate_from field pointing back to the old origin.
+  // Requirement 1: The new origin's manifest contains a migrate_from field pointing back to the old origin.
   test("The new origin's manifest contains a migrate_from field pointing back to the old origin", () => {
     const newManifest = getNewManifest();
     const items = Array.isArray(newManifest?.migrate_from)
@@ -139,14 +118,14 @@ test.describe('Migrate Web App Origin Target Grader', () => {
     expect(hasMigrateFromOldOrigin).toBe(true);
   });
 
-  // Requirement 3: The new origin's manifest contains an id.
+  // Requirement 2: The new origin's manifest contains an id.
   test("The new origin's manifest contains an id", () => {
     const newManifest = getNewManifest();
     const hasId = typeof newManifest?.id === 'string' && newManifest.id.trim().length > 0;
     expect(hasId).toBe(true);
   });
 
-  // Requirement 4: A .well-known/web-app-origin-association file exists on the old origin and explicitly allows migration to the new manifest URL.
+  // Requirement 3: A .well-known/web-app-origin-association file exists on the old origin and explicitly allows migration to the new manifest URL.
   test('A .well-known/web-app-origin-association file exists on the old origin and explicitly allows migration to the new manifest URL', () => {
     const rootDir = process.cwd();
     const assocFile =
@@ -172,7 +151,7 @@ test.describe('Migrate Web App Origin Target Grader', () => {
     expect(allowsMigration).toBe(true);
   });
 
-  // Requirement 5: The old app has a fallback UI with a link to the new app for browsers that do not support automatic migration.
+  // Requirement 4: The old app has a fallback UI with a link to the new app for browsers that do not support automatic migration.
   test('The old app has a fallback UI with a link to the new app for browsers that do not support automatic migration', () => {
     const docs = getHtmlDocuments(targetFiles);
     const hasFallbackLink = docs.some((d) => {

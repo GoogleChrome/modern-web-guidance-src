@@ -10,18 +10,18 @@ web-feature-ids:
 
 Users who enable high-contrast modes in their operating system or browser expect UI elements (like scrollbars) to be extremely legible, often relying on stark foreground-background separation rather than subtle grays or theme colors.
 
-This guide provides optional instructions on how to use the `@media (prefers-contrast: more)` CSS media feature to enforce high-contrast scrollbar styling.
+This guide provides instructions on how to use the `@media (prefers-contrast: more)` CSS media feature to enforce high-contrast scrollbar styling.
 
 ## Enhance Legibility
 
-When customizing scrollbars with `scrollbar-color` or custom variables, you can provide an explicit override for high-contrast modes. This is especially helpful if your primary application theme uses low-contrast scrollbars for aesthetic reasons.
+When customizing scrollbars with `scrollbar-color` or custom variables, you can provide an explicit override for high-contrast modes. This is especially helpful if your primary application theme uses lower-contrast scrollbars for aesthetic reasons, although the default thumb still needs at least 3:1 contrast against the track (WCAG 1.4.11 Non-text Contrast).
 
-OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct colors for the thumb and track.
+Use an `@media (prefers-contrast: more)` block to define dark, distinct colors for the thumb and track.
 
 ```css
 /* Define default standard colors as variables */
 .scroller {
-  --scrollbar-thumb: #bbb;
+  --scrollbar-thumb: #707070;
   --scrollbar-track: #f1f1f1;
 
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -29,7 +29,7 @@ OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct
   scrollbar-gutter: stable;
 }
 
-/* OPTIONAL: Provide clear, high-contrast overrides */
+/* Provide clear, high-contrast overrides */
 @media (prefers-contrast: more) {
   .scroller {
     /* Use extremely distinct colors like solid black against white */
@@ -44,4 +44,3 @@ OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct
 ## Fallbacks & Browser Support
 
 {{ FEATURE_FALLBACKS("scrollbar-color") }}
-

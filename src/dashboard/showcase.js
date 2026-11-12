@@ -1,10 +1,10 @@
-import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
+import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
-import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
+import { selectRecentSuites, getSuiteTimestamp, hasHeadlineStats } from './insights.js';
 /** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
@@ -36,6 +36,9 @@ let activeAgentId = AGENT_ORDER[0];
 let checksExpanded = false;
 let taskPillsListenersBound = false;
 let agentPillsListenersBound = false;
+/** Data source the landing page loaded from; carried on links so they open the same copy. */
+/** @type {import('./data-source.js').DataSource | null} */
+let linkSource = null;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 if (rootEl) {
     ensureGuideCategoriesLoaded();
@@ -47,10 +50,11 @@ if (rootEl) {
  * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
  * match the rest of the page and avoid layout shifts.
  * @param {import('./insights.js').ManifestSuite[]} suites
- * @param {{ hydrated?: boolean }} [options]
+ * @param {{ hydrated?: boolean, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateShowcaseFromSuites(suites, { hydrated = false } = {}) {
+export function updateShowcaseFromSuites(suites, { hydrated = false, source } = {}) {
     if (!rootEl) return;
+    if (source) linkSource = source;
     tasks = buildTasksFromRecentSuites(suites);
     if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
         activeTaskId = tasks[0].id;
@@ -70,7 +74,7 @@ function hasUnhydratedRecentSuites(suites) {
     const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
     return AGENT_FAMILIES.some(f => {
         const suite = recent.get(f)?.[0];
-        return Boolean(suite && !suite.showcase);
+        return Boolean(suite && !hasHeadlineStats(suite));
     });
 }
 
@@ -116,8 +120,10 @@ function buildTasksFromRecentSuites(suites) {
                 agentId: family.id,
                 agentLabel: family.label,
                 model: suite?.model || '',
+                reasoningEffort: suite?.reasoningEffort,
                 suiteId: suite?.testId || '',
                 date,
+                curated: Boolean(suite?.curated),
                 unguided: toRun(slice.unguided),
                 guided: toRun(slice.guided),
                 checks
@@ -198,9 +204,9 @@ function renderTaskPills(currentTask) {
     const sameTasks = existingPills.length === list.length &&
         existingPills.every((el, idx) => el.getAttribute('data-task-id') === list[idx].id);
     if (!sameTasks) {
-        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + list.map(t => {
+        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend><div class="ab-task-pills-track">` + list.map(t => {
             return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(t.label)}</span><span class="ab-task-delta-slot"></span></label>`;
-        }).join('');
+        }).join('') + `</div>`;
     }
     container.querySelectorAll('.ab-task-pill').forEach(pill => {
         const taskId = pill.getAttribute('data-task-id');
@@ -287,8 +293,9 @@ function renderPromptBar(task, pair) {
         promptEl.textContent = task.prompt ? `“${task.prompt}”` : 'Task prompt unavailable.';
     }
     if (metaEl) {
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}`;
+        const sourceQuery = linkSource ? `&source=${encodeURIComponent(linkSource)}` : '';
+        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
@@ -297,7 +304,11 @@ function renderPromptBar(task, pair) {
             return `<a class="ab-prov-link" href="${ghHref}" target="_blank" rel="noopener">${escapeHtml(slug)}</a>`;
         }).join(', ');
         const guidePrefix = cleanGuides.length > 1 ? 'Guides:' : 'Guide:';
-        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (${escapeHtml(pair.model)})</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
+        const effortChipHtml = pair.model
+            ? renderEffortChip(pair.reasoningEffort)
+            : '';
+        const runTypeLabel = pair.curated ? '1.0 baseline run' : 'nightly run';
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${runTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
 /** @param {string} msg
@@ -353,8 +364,8 @@ function renderScorecard(task, pair) {
     const gA11yHtml = g.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}${a11yActionHtml}</button>`
         : '';
-    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'run failed before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
-    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">run failed before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
+    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'run failed before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
+    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">run failed before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
     rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => { btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair)); });
 }
 /** @param {ShowcaseTask} task

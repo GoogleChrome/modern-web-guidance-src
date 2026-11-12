@@ -52,9 +52,12 @@ dialog::backdrop {
 
 - **MANDATORY**: Use `closedby="any"` to enable light-dismiss declaratively.
 - **MANDATORY**: Always open modal dialogs with `showModal()`. This ensures the dialog is in the top layer, focus is trapped, and the `Esc` key is handled.
+- **DO**: Ensure that there is always a close button visible to provide people with a clear, alternative way to close the modal dialog.
 - **DO**: Use `aria-labelledby` or `aria-label` to provide an accessible name for the dialog.
 - **DO NOT**: Use `closedby` for non-modal dialogs (opened with `show()`), as they do not have a backdrop and won't trigger light-dismiss.
 - **DO NOT**: Use the `click` event for critical logic that should happen *before* closing; instead, listen for the `close` or `cancel` events.
+
+Ensure that there aren't components in the modal dialog that themselves use the `Esc` key for interaction, as this may lead to the dialog being inadvertently closed. If the modal dialog does include components that use the `Esc` key (e.g. a menu or a combobox), ensure that when these components are focused, they capture the `Esc` key press and use it accordingly, and that the dialog is not closed accidentally.
 
 ## Fallback strategies
 

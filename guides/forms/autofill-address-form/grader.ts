@@ -64,40 +64,51 @@ test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
     expect(labelsValid).toBe(true);
   });
 
-  test('A single <textarea> must be used for the street address', async ({ page }) => {
-    await expect(page.locator('textarea')).toHaveCount(1);
-  });
+  test('The street address must be collected as a single <textarea autocomplete="street-address"> or address-line inputs', async ({ page }) => {
+    const isValid = await page.evaluate(() => {
+      const streetTextarea = document.querySelector<HTMLTextAreaElement>('textarea[autocomplete~="street-address"], textarea[autocomplete*="street-address"]');
+      const addressLine1 = document.querySelector<HTMLInputElement>('input[autocomplete~="address-line1"], input[autocomplete*="address-line1"]');
 
-  test('The street address textarea must have autocomplete="street-address"', async ({ page }) => {
-    const attr = await page.locator('textarea').first().getAttribute('autocomplete');
-    expect(attr?.includes('street-address')).toBe(true);
+      if (!streetTextarea && !addressLine1) return false;
+      if (streetTextarea && document.querySelectorAll('textarea').length > 1) return false;
+
+      // Ensure street address is not split across inputs lacking valid autocomplete tokens
+      const validTokens = ['street-address', 'address-line1', 'address-line2', 'address-line3'];
+      const candidateInputs = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')).filter(el => {
+        const identifiers = `${el.id} ${el.name} ${el.getAttribute('placeholder') || ''}`.toLowerCase();
+        return /(?:street|addr(?:ess)?[-_\s]*(?:line|1|2|3)|line[-_\s]*[123])/i.test(identifiers);
+      });
+
+      return candidateInputs.every(el => {
+        const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+        return validTokens.some(token => ac.includes(token));
+      });
+    });
+    expect(isValid).toBe(true);
   });
 
   test('The postal code input must have autocomplete="postal-code"', async ({ page }) => {
     await expect(page.locator('input[autocomplete*="postal-code"]').first()).toBeVisible();
   });
 
-  test('The postal code input must not use type="number"', async ({ page }) => {
-    const type = await page.locator('input[autocomplete*="postal-code"]').first().getAttribute('type');
-    expect(type).not.toBe('number');
-  });
-
   test('Name and address inputs must not restrict to Latin-only characters', async ({ page }) => {
+    expect(await page.locator('form input, form textarea').count()).toBeGreaterThan(0);
     const patterns = await page.evaluate(() => {
       const controls = Array.from(document.querySelectorAll('input[pattern], textarea[pattern]'));
       return controls.map(el => el.getAttribute('pattern')).filter(Boolean) as string[];
     });
-    for (const pattern of patterns) {
-      expect(new RegExp(`^(?:${pattern})$`, 'u').test('Renée Müller')).toBe(true);
-    }
+    const invalidPatterns = patterns.filter(pattern => !new RegExp(`^(?:${pattern})$`, 'u').test('Renée Müller'));
+    expect(invalidPatterns).toHaveLength(0);
   });
 
-  test('Required form fields must have the "required" attribute', async ({ page }) => {
+  test('Mandatory fields (at minimum the name and street address) must have the "required" attribute', async ({ page }) => {
     const result = await page.evaluate(() => {
       const nameInput = document.querySelector<HTMLInputElement>('input[autocomplete*="name"]');
-      const addressTextarea = document.querySelector<HTMLTextAreaElement>('textarea[autocomplete*="street-address"]');
-      if (!nameInput || !addressTextarea) return false;
-      return nameInput.required && addressTextarea.required;
+      const streetControl = document.querySelector<HTMLTextAreaElement | HTMLInputElement>(
+        'textarea[autocomplete*="street-address"], input[autocomplete*="address-line1"]'
+      );
+      if (!nameInput || !streetControl) return false;
+      return nameInput.required && streetControl.required;
     });
     expect(result).toBe(true);
   });

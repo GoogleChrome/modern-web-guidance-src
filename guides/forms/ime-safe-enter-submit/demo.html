@@ -66,13 +66,16 @@
   <h1>IME-safe enter-to-submit</h1>
   <p>Type a message below. Press <code>Enter</code> to submit, or <code>Shift + Enter</code> for a new line.</p>
 
-  <div class="chat-box" id="chat-box">
+  <div class="chat-box" id="chat-box" role="status" aria-atomic="false">
     <div class="message">Welcome! Type a message below.</div>
   </div>
 
   <form id="chat-form" novalidate>
+    <div>
+      <label for="chat-input">Message</label>
+    </div>
     <div class="input-area">
-      <textarea id="chat-input" placeholder="Type a message..." aria-label="Message text field"></textarea>
+      <textarea id="chat-input" placeholder="Type a message..."></textarea>
       <button type="submit" id="send-btn">Send</button>
     </div>
   </form>

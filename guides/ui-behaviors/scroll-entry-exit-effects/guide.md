@@ -32,8 +32,8 @@ To add entry and exit effects to an element, you need to combine a few CSS prope
     ```css
     .animated-element {
       animation:
-        slide-in 1s linear backwards,
-        slide-out 1s linear forwards;
+        slide-in auto linear backwards,
+        slide-out auto linear forwards;
     }
     ```
 
@@ -57,6 +57,8 @@ To add entry and exit effects to an element, you need to combine a few CSS prope
       animation-range: entry, exit;
     }
     ```
+
+    Alternatively, instead of defining two separate `@keyframes` rules and setting `animation-range: entry, exit`, you can centralize both phases in a **single `@keyframes` block** using `<timeline-range-name>` selectors (`entry 0%`, `entry 100%`, `exit 0%`, `exit 100%`) with `animation-fill-mode: both`. Use separate `@keyframes` when reusing and composing standalone animations (such as shared `fade-in` and `fade-out` keyframes), or a single `@keyframes` rule when keeping an element's entry and exit logic centralized in one place.
 
 ## Example code
 
@@ -89,7 +91,7 @@ This code animates the direct children of the scroller on scroll using an **anon
 
 As the elements enter the scrollport the `grow` animation is played, and as they leave the scrollport the `shrink` animation is played.
 
-The following code has the same visual outcome, but animates the direct children of the scroller on scroll using an **named view-timeline**:
+The following code has the same visual outcome, but animates the direct children of the scroller on scroll using a **named view-timeline**:
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
@@ -117,6 +119,33 @@ The following code has the same visual outcome, but animates the direct children
 }
 ```
 
+You can also express the same entry and exit effect in a **single `@keyframes` rule** using timeline-range selectors (with `both` fill mode and no `animation-range` override needed on the element):
+
+```css
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    @keyframes grow-and-shrink {
+      entry 0% {
+        scale: 0.5; /* Example value */
+      }
+      /* Explicitly set the resting state across the middle (`contain`) phase so the element doesn't interpolate straight from entry 0% to exit 100% */
+      entry 100%,
+      exit 0% {
+        scale: 1;
+      }
+      exit 100% {
+        scale: 0.5;
+      }
+    }
+
+    .scroller > * {
+      animation: grow-and-shrink auto linear both;
+      animation-timeline: view(inline);
+    }
+  }
+}
+```
+
 ## Best Practices
 
 When using scroll-driven animations, it's important to follow a few best practices to ensure a smooth and accessible experience:
@@ -127,12 +156,13 @@ When using scroll-driven animations, it's important to follow a few best practic
   - If the animation is only considered to be decorative, opt for Progressive Enhancement and **DO NOT** provide a fallback.
 - **DO** respect user preferences: Some users prefer to have less motion on the web. Use the `prefers-reduced-motion` media query to disable or reduce your animations for these users.
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
-- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` *after* it to prevent the shorthand from resetting the timeline.
+- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` and `animation-range` *after* it to prevent the shorthand from resetting them.
+
+Use an anonymous `view()` timeline by default when the animated element is the same element being tracked, so you do not have to name every individual timeline. Use a named `view-timeline` instead when multiple elements reuse a single timeline (avoiding duplicate timelines) or when reaching across the DOM (such as animating descendants or non-ancestors via `timeline-scope` when `view()` or `scroll(nearest)` does not suffice).
 
 When using the `view()` function to create a scroll-driven animation:
 
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view(block)` or `view(inline)`.
-- When the animation is not applied to the tracked subject itself, use a named view timeline.
 
 When using the `view-timeline` property to create a scroll-driven animation:
 
@@ -140,11 +170,11 @@ When using the `view-timeline` property to create a scroll-driven animation:
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view-timeline-axis`.
 - **DO** make sure the scope of the lookup works: When the element that is declaring the `view-timeline` is not a flat tree ancestor of the animated element, hoist up the visibility of the `view-timeline`’s name by using `timeline-scope` on a shared ancestor.
 
-Prefer a named `view-timeline` when multiple elements or children of the tracked subject need to animate.
-
 ## Browser support and fallback strategies
 
-{{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
+{{ BASELINE_STATUS("scroll-driven-animations") }}
+
+Therefore, a fallback strategy is typically required.
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
@@ -152,11 +182,13 @@ In browsers with built-in support for scroll-driven animations, ALWAYS use the n
 
 Note that not every effect can be recreated using the fallbacks approach.
 
-For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of the `.wrapper` element and updates the `transform` property of the layers based on the scroll position.
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of each `.scroller > *` element and updates its `scale` property based on `intersectionRatio`. The `prefers-reduced-motion` media query in the CSS doesn't affect the inline styles the script sets, so the script checks the preference with `matchMedia()` and only runs when the user has no reduced-motion preference.
 
 ```html
 <script>
-  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
+  // Like the CSS, the fallback only runs when the user has no reduced-motion preference.
+  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)') &&
+      matchMedia('(prefers-reduced-motion: no-preference)').matches) {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {

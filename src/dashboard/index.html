@@ -8,9 +8,24 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
+  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, automated accessibility check pass rates, completion time, and token efficiency across suites.">
+  <meta property="og:site_name" content="Modern Web Guidance Evals">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance">
+  <meta property="og:description" content="Compare guided vs. unguided AI coding agent pass rates, automated accessibility check pass rates, completion time, and token efficiency across suites.">
+  <meta property="og:url" content="https://googlechrome.github.io/modern-web-guidance-src/">
+  <meta property="og:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="2400">
+  <meta property="og:image:height" content="1260">
+  <meta property="og:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance">
+  <meta name="twitter:description" content="Compare guided vs. unguided AI coding agent pass rates, automated accessibility check pass rates, completion time, and token efficiency across suites.">
+  <meta name="twitter:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta name="twitter:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
   <title>Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
@@ -28,6 +43,7 @@
       <div class="header-actions">
         <nav class="header-links" aria-label="Project links">
           <a href="demos/" class="header-link">Browse Demos</a>
+          <a href="search/" class="header-link">Search Quality</a>
           <a href="https://developer.chrome.com/docs/modern-web-guidance" class="header-link" rel="noopener">Docs</a>
           <a href="https://github.com/GoogleChrome/modern-web-guidance-src" class="header-link" rel="noopener">GitHub</a>
         </nav>
@@ -41,7 +57,7 @@
         <div class="hero-top">
           <h2 id="hero-heading" class="hero-heading"><span class="hero-accent">Measurably better web code</span> with Modern Web Guidance</h2>
           <p class="hero-lede">
-            Same agent, same set of tasks, <strong>with and without Modern Web Guidance</strong>. Every nightly run gives <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> identical feature prompts on starter web apps, then grades the resulting code in a real browser against automated best-practice checks.
+            Nightly and baseline A/B runs give <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> identical tasks <strong>with and without Modern Web Guidance</strong>, grading output in a real browser.
           </p>
         </div>
         <p id="hero-live" class="visually-hidden" role="status" aria-live="polite"></p>
@@ -51,24 +67,25 @@
         </div>
         <ul id="hero-takeaways" class="hero-takeaways" role="list" aria-label="Headline results">
           <li class="takeaway takeaway-primary" data-metric="overall">
-            <h3 class="takeaway-label">Change in aggregate pass rate of using best practices</h3>
+            <h3 class="takeaway-label">Best-practice pass rate</h3>
             <p class="takeaway-figure">…</p>
-            <p class="takeaway-statement">percentage-point lift</p>
+            <p class="takeaway-statement">pass-rate lift</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
           <li class="takeaway takeaway-secondary" data-metric="a11y">
-            <h3 class="takeaway-label">Accessibility</h3>
+            <h3 class="takeaway-label">Automated accessibility checks</h3>
             <p class="takeaway-figure">…</p>
+            <p class="takeaway-statement">Not a full WCAG audit</p>
             <p class="takeaway-qualifier">Loading…</p>
           </li>
         </ul>
-        <p id="hero-eyebrow" class="hero-eyebrow">Nightly evaluations · loading latest results…</p>
+        <p id="hero-eyebrow" class="hero-eyebrow">Latest runs per model · loading…</p>
       </section>
       <section id="ab-spotlight" class="ab-spotlight page-section" aria-labelledby="ab-spotlight-heading" aria-busy="true">
         <div class="ab-spotlight-header">
           <div class="ab-spotlight-titles">
-            <h2 id="ab-spotlight-heading" class="ab-spotlight-heading section-heading">Inspect a single paired run, with and without Modern Web Guidance</h2>
-            <p class="ab-spotlight-sub">Side-by-side grader results from a single nightly run per agent on a synthetic benchmark task. Shows one run rather than an aggregate, including checks the guided run missed.</p>
+            <h2 id="ab-spotlight-heading" class="ab-spotlight-heading section-heading">Inspect a paired run</h2>
+            <p class="ab-spotlight-sub">Side-by-side browser checks from the latest run per agent (not an aggregate).</p>
           </div>
           <div class="ab-toolbar-controls">
             <fieldset id="ab-agent-pills" class="ab-agent-pills" aria-controls="ab-comparison-frame">
@@ -96,22 +113,29 @@
       </section>
       <section id="agents-section" class="hero-agents page-section" aria-labelledby="agents-heading">
         <div class="hero-agents-header">
-          <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
-          <p class="hero-agents-note">Pooled across the latest nightly runs per agent. Time, token, per-model, and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> live in the drawer below.</p>
+          <div class="hero-agents-intro">
+            <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
+            <p class="hero-agents-note"><span id="hero-agents-window-note">Latest run per model (models run in the last 7 days; nightly or 1.0 baseline).</span> Model and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> below.</p>
+          </div>
+          <fieldset id="agents-window-toggle" class="window-pill-toggle" hidden>
+            <legend class="visually-hidden">Agent summary window</legend>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="1" checked>Latest run per model</label>
+            <label class="window-pill-btn"><input type="radio" name="agents-window" value="5" id="agents-window-multi"><span id="agents-window-multi-label">Last 5 runs per model</span></label>
+          </fieldset>
         </div>
         <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
           <table class="agent-table">
-            <caption id="agent-table-caption" class="visually-hidden">Latest nightly runs per agent family, pooled. Unguided → guided.</caption>
+            <caption id="agent-table-caption" class="visually-hidden">Latest run per model by agent family. Unguided → guided.</caption>
             <thead>
               <tr>
                 <th scope="col">Agent</th>
                 <th scope="col">Pass rate</th>
                 <th scope="col">Accessibility</th>
-                <th scope="col">Runs</th>
+                <th scope="col">Sample</th>
               </tr>
             </thead>
             <tbody id="agent-table-body">
-              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Runs">—</td></tr>
+              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Sample">—</td></tr>
             </tbody>
           </table>
         </div>
@@ -120,15 +144,15 @@
             <summary class="insights-summary">Breakdowns by model and guide</summary>
             <div class="insights-controls">
               <div class="insights-window">
-                <label for="insights-limit-input">Most recent</label>
+                <label for="insights-limit-input">Last</label>
                 <input type="number" id="insights-limit-input" value="5" min="1" max="365" autocomplete="off">
-                <span>days of data</span>
-                <label class="toggle-label" for="insights-show-all-check"><input type="checkbox" id="insights-show-all-check"> Show all</label>
+                <span>days</span>
+                <label class="toggle-label" for="insights-show-all-check"><input type="checkbox" id="insights-show-all-check"> All runs</label>
               </div>
               <fieldset class="metric-mode-toggle">
                 <legend class="visually-hidden">Comparison check scope</legend>
                 <label id="insights-mode-all" class="metric-mode-btn"><input type="radio" name="insights-mode" value="all" checked>All checks</label>
-                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility subscore</label>
+                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility checks</label>
               </fieldset>
             </div>
             <div id="insights-container" class="insights-grid"></div>
@@ -139,35 +163,39 @@
               <dl>
                 <div class="method-item">
                   <dt>Controlled A/B tasks</dt>
-                  <dd>Each benchmark task starts with a small starter web app and a synthetic feature prompt (for example, "add search-term highlighting" or "animate this dialog open and closed"). We run the exact same agent, model, and prompt twice: once <strong>without MWG</strong> and once <strong>with MWG</strong> installed as a skill. Nothing else changes between the two runs.</dd>
+                  <dd>Each task pairs a starter web app with a feature prompt (for example, "add search-term highlighting"). Every agent, model, and prompt runs twice: once <strong>without MWG</strong> and once <strong>with MWG</strong> installed as a skill.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Grading &amp; pass rate</dt>
-                  <dd>After the agent finishes editing code, an automated test script opens the app in a headless browser (Playwright) and inspects the code to check each best-practice requirement. Pass rate is total checks passed divided by total checks run. If an agent crashes or times out before tests can run, that run counts as one failed check. Changes are shown in <strong>percentage points (pp)</strong>. Moving from 25% to 90% is +65 pp.</dd>
+                  <dd>Playwright opens the finished app in a real browser and checks the DOM, styles, and source against each requirement. Pass rate is checks passed divided by checks run (runs that crash or time out before grading are left out, along with their paired run). Lift is shown in <strong>percentage points (pp)</strong>: 25% → 90% is +65 pp.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Do graders penalize valid alternative code in "Without MWG"?</dt>
+                  <dd>Graders assert rendered browser behavior and spec-compliant accessibility semantics (such as computed roles, focus movement, and keyboard interaction) rather than guide-specific variable names or markup structure. When an audit finds a grader that rejects a valid alternative implementation, we broaden the assertion in the <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">open-source repository</a> and re-score the suite.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Why isn't "With MWG" 100%?</dt>
-                  <dd>Guidance is documentation an AI agent reads rather than a code generator. Guided runs still miss some checks for three practical reasons: <strong>skipped details</strong> (an agent may follow 15 of 16 steps in a guide and overlook one, such as a fallback for older browsers), <strong>choosing when to consult a guide</strong> (task prompts never mention MWG by name, so the agent must recognize on its own which guide applies), and <strong>strict test edge cases</strong> that nightly runs help us catch and refine.</dd>
+                  <dd>Task prompts never mention MWG, so the agent has to recognize when a guide applies and follow every detail. Misses come from skipped steps (such as an older-browser fallback), missed guide lookups (see <a href="search/">Search Quality</a>), or strict grader edge cases.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Accessibility subscore</dt>
-                  <dd>Pass rate on accessibility checks across all guides, beyond dedicated accessibility guides. Covers keyboard support, focus and <code>inert</code> handling, <code>prefers-reduced-motion</code> and contrast, ARIA roles and announcements, and form labels.</dd>
+                  <dt>Automated accessibility checks</dt>
+                  <dd>Pass rate across automated browser assertions verifying foundational platform mechanics across five dimensions: keyboard support, focus and <code>inert</code>, <code>prefers-reduced-motion</code> and contrast, ARIA roles and states, and form labels. Automated checks catch common AI omissions in code but only cover a subset of accessibility requirements—they do not measure full WCAG compliance or replace manual and assistive-technology testing.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Completion time</dt>
-                  <dd>Median wall-clock time the agent spends coding a task, excluding our browser grading step. Because each agent CLI operates differently, we compare median time per agent rather than combining times across different agents.</dd>
+                  <dt>Task duration</dt>
+                  <dd>Median coding time per task, excluding browser grading. Reported per agent because CLIs run differently.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Token usage (uncached)</dt>
-                  <dd>Tokens measure how much text the AI model reads and writes. As an agent works across multiple steps, it repeatedly re-sends earlier conversation history from a fast cache, which can make up most of the raw token count. We report <strong>uncached tokens</strong> (<code>total − cached</code>) so you see the newly read guides, code edits, and reasoning each task actually required.</dd>
+                  <dd>Multi-step agents re-send cached conversation history on every turn, inflating raw totals. We report <strong>uncached tokens</strong> (<code>total − cached</code>) to measure new input and output per task.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Scheduled nightly runs</dt>
-                  <dd>Automated benchmark suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run against the full task set on a regular schedule. Headline numbers combine the <span id="method-recent-n">latest nightly run</span> from each agent<span id="method-agents"></span>.</dd>
+                  <dt>Canonical runs (nightly &amp; 1.0 baseline)</dt>
+                  <dd>Automated nightly suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) and curated 1.0 baseline evaluations run the full task set. Headline numbers pool the <span id="method-recent-n">latest run per model</span> across agent families for models run in the last 7 days<span id="method-agents"></span>.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Open-source benchmark</dt>
-                  <dd>All guides, starter apps, task prompts, and browser test scripts are public in <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">GoogleChrome/modern-web-guidance-src</a>.</dd>
+                  <dd>Guides, starter apps, prompts, and Playwright graders live in <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">GoogleChrome/modern-web-guidance-src</a>.</dd>
                 </div>
               </dl>
             </div>
@@ -179,43 +207,20 @@
         <div class="browse-header">
           <div class="browse-intro">
             <h2 id="browse-heading" class="browse-title section-heading">Browse all runs</h2>
-            <p class="browse-subtitle">Individual evaluation suites, newest first. Select a run for per-task diffs and logs.</p>
+            <p class="browse-subtitle">Select a suite for per-task diffs and logs.</p>
           </div>
           <div class="browse-controls">
-            <div class="filter-container-nav">
-              <div class="filter-runs-control">
-                <label for="filter-btn" class="filter-runs-label">
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
-                  Filter runs
-                </label>
-                <button id="filter-btn" class="secondary-btn filter-runs-trigger" type="button" popovertarget="filter-menu" aria-expanded="false" aria-controls="filter-menu">
-                  <span id="filter-btn-text">All selected</span>
-                  <svg class="filter-runs-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
-                  </svg>
-                </button>
-              </div>
-              <div id="filter-menu" class="filter-menu" popover>
-                <div class="filter-header">
-                  <span class="filter-header-title">Filter runs</span>
-                  <div class="filter-actions">
-                    <button id="select-all-btn" class="text-btn" type="button">All</button>
-                    <button id="deselect-all-btn" class="text-btn" type="button">None</button>
-                  </div>
-                </div>
-                <div class="filter-scheduled-row">
-                  <label class="toggle-label" for="scheduled-only-check">
-                    <input type="checkbox" id="scheduled-only-check" checked>
-                    Scheduled nightly/weekly runs only
-                  </label>
-                </div>
-                <div class="filter-search-wrap">
-                  <label for="filter-search" class="visually-hidden">Search runs</label>
-                  <input type="search" id="filter-search" class="filter-search" placeholder="Search runs…">
-                </div>
-                <div id="filter-list" class="filter-list"></div>
-              </div>
-            </div>
+            <p class="runs-metric-pill" aria-hidden="true">
+              <span class="runs-metric-item unguided"><span class="legend-dot unguided"></span>Unguided</span>
+              <span class="runs-metric-arrow">→</span>
+              <strong class="runs-metric-item guided"><span class="legend-dot guided"></span>Guided</strong>
+            </p>
+            <label class="toggle-label" for="scheduled-only-check" id="scheduled-only-label">
+              <input type="checkbox" id="scheduled-only-check" checked>
+              Scheduled only
+            </label>
+            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter by ID, model, agent, or effort:high…" autocomplete="off" aria-label="Filter runs by ID, model, agent, or effort">
+            <datalist id="runs-filter-datalist"></datalist>
           </div>
         </div>
         <div class="mobile-suites-controls" aria-label="Sort and filter runs">
@@ -225,7 +230,7 @@
             <option value="date:asc">Sort: Oldest</option>
             <option value="uplift:desc">Sort: Pass-rate lift</option>
             <option value="a11y:desc">Sort: A11y lift</option>
-            <option value="time:asc">Sort: Fastest time</option>
+            <option value="time:asc">Sort: Shortest duration</option>
             <option value="tokens:asc">Sort: Fewest tokens</option>
           </select>
           <label for="mobile-filter-agent" class="visually-hidden">Filter runs by agent</label>
@@ -236,7 +241,7 @@
         </div>
         <div class="suites-table-container">
           <table class="suites-table">
-            <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); time and token change in %, lower is better.</caption>
+            <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); duration and token change in %, lower is better.</caption>
             <thead>
               <tr>
                 <th scope="col" class="col-suite" aria-sort="descending"><button type="button" class="sort-btn" data-sort="date">Suite &amp; date</button></th>
@@ -244,17 +249,13 @@
                   <label for="filter-agent" class="visually-hidden">Filter by agent</label>
                   <select id="filter-agent" class="header-filter-select header-filter-select-left"><option value="all">Agent</option><optgroup label="Select agent" id="filter-agent-group"></optgroup></select>
                 </th>
-                <th scope="col">
-                  <label for="filter-serving" class="visually-hidden">Filter by serving</label>
-                  <select id="filter-serving" class="header-filter-select"><option value="all">Serving</option><optgroup label="Select architecture" id="filter-serving-group"></optgroup></select>
-                </th>
                 <th scope="col" class="col-model">
                   <label for="filter-model" class="visually-hidden">Filter by model</label>
                   <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
                 </th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median time</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y checks</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median duration</button></th>
                 <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button></th>
                 <th scope="col" id="header-source">
                   <label for="filter-source" class="visually-hidden">Filter by source</label>
@@ -272,9 +273,18 @@
         <p>No test runs found yet. Run the test suite to get started.</p>
       </div>
     </main>
+
+    <footer class="site-legal-footer">
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
 
   <script type="module">
     // Conditional polyfills for popover (#filter-menu, #barbell-tooltip, hint popovers), CSS anchor
@@ -294,6 +304,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="hero.js"></script>
   <script type="module" src="showcase.js"></script>
   <script type="module" src="landing.js"></script>

@@ -260,9 +260,12 @@ const NIGHTLY_FIXTURE = {
     },
     // Present (even when empty) on summaries from the current extractor, so the hero doesn't re-hydrate from evals.json.
     showcase: {},
-    guides: {
-      'content-vis': { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
-    }
+    guides: Object.fromEntries(
+      ['content-vis', 'dialog', 'combobox', 'scrollspy', 'popover', 'carousel', 'tabs'].map(slug => [
+        slug,
+        { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
+      ])
+    )
   }))
 };
 test.describe('Hero, Spotlight, and Browse all runs', () => {
@@ -272,7 +275,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-takeaways .takeaway')).toHaveCount(2);
     await expect(hero.locator('.takeaway-figure').first()).toContainText('—');
-    await expect(hero.locator('#hero-status')).toContainText(/no nightly evaluation runs/i);
+    await expect(hero.locator('#hero-status')).toContainText(/no evaluation runs/i);
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('.suite-table-row')).toHaveCount(1);
   });
@@ -283,10 +286,12 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-heading')).toHaveText('Measurably better web code with Modern Web Guidance');
-    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toContainText('across 153 tasks over 3 runs and 3 agents');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toHaveText('Best-practice pass rate');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 153 tasks');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-qualifier-short')).toContainText('3 agents');
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
+    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest run per model');
     const details = page.locator('#hero-method');
     await details.locator('summary').focus();
     await page.keyboard.press('Enter');
@@ -310,13 +315,13 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
     await page.locator('.sort-btn[data-sort="date"]').click();
     await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
-    const filterBtnText = page.locator('#filter-btn-text');
-    await expect(filterBtnText).toHaveText('All selected (3)');
-    await page.locator('#filter-btn').click();
-    await page.locator('#deselect-all-btn').click();
-    await expect(filterBtnText).toHaveText('None selected');
-    await page.locator('#select-all-btn').click();
-    await page.locator('#filter-btn').click();
+    const filterSearch = page.locator('#filter-search');
+    await filterSearch.fill('claude');
+    await expect(suiteRows).toHaveCount(1);
+    await expect(page.locator('#scheduled-only-check')).toBeDisabled();
+    await filterSearch.fill('');
+    await expect(suiteRows).toHaveCount(3);
+    await expect(page.locator('#scheduled-only-check')).toBeEnabled();
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
     await expect(page.locator('#insights-limit-input')).toHaveValue('5');
@@ -332,7 +337,9 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const modelSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
     await modelSortBtn.click();
     await expect(modelSortBtn).toHaveClass(/is-sorted/);
-    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="model"]');
+    await expect(page.locator('.insights-expand-btn[data-expand-panel="model"]')).toHaveCount(0);
+    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="guide"]');
+    await expect(expandBtn).toContainText('Show all 7');
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute('aria-expanded', 'true');
   });
@@ -345,18 +352,18 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(spotlight.locator('.ab-spotlight-sub')).not.toContainText('—');
     const taskPills = spotlight.locator('#ab-task-pills .ab-task-pill');
     await expect(taskPills).toHaveCount(6);
-    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+8 checks');
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+21 checks');
     const checkRows = spotlight.locator('.ab-checks-table tbody tr');
     await expect(checkRows.nth(2)).toBeVisible();
     await expect(checkRows.nth(3)).toBeHidden();
     await spotlight.locator('#ab-checks-toggle').click();
     await expect(checkRows.nth(10)).toBeVisible();
-    await taskPills.nth(1).click();
+    await taskPills.nth(2).click();
     await expect(checkRows.nth(3)).toBeHidden();
     await spotlight.locator('#ab-score-guided .ab-score-a11y').click();
-    await expect(spotlight.locator('tr[data-a11y="true"]')).toBeVisible();
+    await expect(spotlight.locator('tr[data-a11y="true"]').first()).toBeVisible();
     await spotlight.locator('#ab-agent-pills .ab-agent-pill[data-agent-id="antigravity_cli"]').click();
-    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+1 check');
+    await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+11 checks');
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     await page.goto('/dashboard.html?testId=example-result');
@@ -379,6 +386,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(barbellTooltip).toBeHidden();
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell button[interestfor="barbell-tooltip"]').first();
+    await dimBarbell.scrollIntoViewIfNeeded();
     await dimBarbell.focus();
     await expect(barbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
@@ -407,5 +415,79 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(page.locator('#autocomplete-list')).toBeHidden();
     await searchInput.press('Enter');
     await expect(page).toHaveURL(/guide=preload-prerender/);
+  });
+  test('normalizes sort=a11y-desc onto Uplift in a11y mode and uncollapses category on dumbbell click', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/dashboard.html?testId=example-result&mode=a11y&sort=a11y-desc');
+    await expect(page.locator('.eval-col-sort-btn[data-sort="uplift"]')).toHaveAttribute('aria-sort', 'descending');
+    await expect(page.locator('.eval-col-dumbbell')).toContainText('A11y pass rate');
+    await page.goto('/dashboard.html?testId=example-result');
+    await expect(page.locator('.eval-col-dumbbell')).toContainText('Pass rate');
+    await expect(page.locator('.eval-col-dumbbell')).not.toContainText('A11y pass rate');
+    const firstCatSection = page.locator('.eval-category-section').first();
+    await expect(firstCatSection).toBeVisible();
+    await firstCatSection.locator('.eval-category-header').click();
+    await expect(firstCatSection).toHaveClass(/collapsed/);
+    await page.locator('#dumbbell-chart .dc-hit').first().click();
+    await expect(firstCatSection).not.toHaveClass(/collapsed/);
+    await expect(firstCatSection.locator('.task-accordion').first()).toHaveClass(/open/);
+  });
+  test('shows agent sample counts, check denominators, hover tooltip details, and multi-night toggle', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
+    await page.goto('/');
+    // Single-night manifest keeps the window toggle hidden and shows uneven task counts as a range
+    await expect(page.locator('#agents-window-toggle')).toBeHidden();
+    await expect(page.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 197–198 tasks');
+    const agentRows = page.locator('#agent-table-body tr');
+    await expect(agentRows).toHaveCount(3);
+    const firstRow = agentRows.first();
+    await expect(firstRow.locator('td[data-label="Pass rate"]')).toContainText('1,646 checks');
+    await expect(firstRow.locator('td[data-label="Accessibility"]')).toContainText('202 checks');
+    await expect(firstRow.locator('td[data-label="Sample"]')).toContainText('198 tasks · ×1/task');
+    await expect(firstRow.locator('td[data-label="Pass rate"] a.agent-rate-trigger[interestfor="barbell-tooltip"]')).toHaveAttribute('href', /dashboard\.html\?testId=/);
+    await firstRow.locator('td[data-label="Pass rate"] .agent-rate-trigger').focus();
+    const barbellTooltip = page.locator('#barbell-tooltip');
+    await expect(barbellTooltip).toBeVisible();
+    await expect(barbellTooltip).toContainText('Pass-rate lift');
+    await expect(barbellTooltip).toContainText('/1,646 checks');
+    await page.keyboard.press('Escape');
+    await expect(barbellTooltip).toBeHidden();
+
+    // Multi-night manifest reveals the toggle, pooled sample/check counts, and warnings without horizontal overflow
+    const multiNightSuites = ['2026-10-28', '2026-10-27', '2026-10-26', '2026-10-25', '2026-10-24'].flatMap((day, idx) => [
+      {
+        ...NIGHTLY_FIXTURE.suites[1],
+        testId: `nightly-${day}_01-55-42-claude_code`,
+        timestamp: `${day}T01:55:42Z`,
+        taskCount: 200,
+        pairedTaskCount: idx === 0 ? 197 : 200,
+        maxRuns: idx === 1 ? 3 : 1,
+        earlyFailureRate: idx === 0 ? 2 : 0,
+        earlyFailureCount: idx === 0 ? 3 : 0,
+        unguidedLeakRate: idx === 0 ? 2 : 0,
+      },
+      {
+        ...NIGHTLY_FIXTURE.suites[2],
+        testId: `nightly-${day}_02-10-00-codex_cli`,
+        timestamp: `${day}T02:10:00Z`,
+        taskCount: 200,
+        pairedTaskCount: 200,
+      },
+    ]);
+    await page.unroute('**/api/suites*');
+    await page.route('**/api/suites*', route => route.fulfill({ json: { suites: multiNightSuites } }));
+    await page.goto('/');
+    const windowToggle = page.locator('#agents-window-toggle');
+    await expect(windowToggle).toBeVisible();
+    await expect(page.locator('#agents-window-multi-label')).toHaveText('Last 5 runs per model');
+    await expect(agentRows).toHaveCount(2);
+    await expect(agentRows.first().locator('td[data-label="Sample"]')).toContainText('197/200 tasks · ×1/task · 3 err · 2% leak');
+    await windowToggle.locator('label', { hasText: 'Last 5 runs per model' }).click();
+    await expect(page.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 1,997 task runs');
+    await expect(agentRows.first().locator('td[data-label="Sample"]')).toContainText('5 nights · 997/1,000 tasks · ×1–3/task · 3 err');
+    await expect(agentRows.first().locator('td[data-label="Pass rate"] button.agent-rate-trigger')).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 });
