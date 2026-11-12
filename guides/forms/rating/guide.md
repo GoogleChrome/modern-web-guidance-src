@@ -27,9 +27,10 @@ Store the star as an SVG data URI in a custom property (the same icon-token appr
 }
 
 :root {
-  --star-filled: light-dark(#d97706, #fbbf24);
+  --star-filled: #fbbf24;
   --star-empty: light-dark(#c9c9d4, #4a4a58);
-  --star-size: 3rem; /* example value; with half stars each half is 1.5rem (24px), the minimum touch target */
+  --star-outline: light-dark(#3a3a46, #c9c9d4);
+  --star-size: clamp(2.5rem, 14vw, 3rem); /* example values; at 3rem each half star is 1.5rem (24px), the minimum touch target; shrinks only on very narrow screens so five stars fit a phone */
   --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
 }
 
@@ -42,15 +43,25 @@ Store the star as an SVG data URI in a custom property (the same icon-token appr
       var(--star-empty) 0);
   mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
 }
+
+/* A mask keeps only alpha, so the outline is drop-shadows on a wrapper (a filter on the masked element itself would be clipped) */
+.star-frame,
+.rating {
+  filter: drop-shadow(1px 0 0 var(--star-outline)) drop-shadow(-1px 0 0 var(--star-outline)) drop-shadow(0 1px 0 var(--star-outline)) drop-shadow(0 -1px 0 var(--star-outline));
+}
+
+.star-frame {
+  display: inline-block;
+}
 ```
 
-Both colors must have at least 3:1 contrast against the background in light and dark schemes.
+The outline, not the fill, is the star's boundary, so it must have at least 3:1 contrast against the background in light and dark schemes. This is what lets the fill be a bright yellow.
 
 ## 2. Interactive rating: a transparent range input over the stars
 
 MANDATORY: use `<input type="range" min="0" max="5" step="0.5">` with a visible `<label>`. The `step` is what enables half stars; use `step="1"` for whole stars only.
 
-Make the input invisible (`opacity: 0`), stretch it over the stars, and collapse the thumb to zero width so the pointer position maps exactly to the value. Paint the stars on a `::before` of the wrapper, not on the input or the wrapper itself: a `mask` would clip the focus ring.
+Make the input invisible (`opacity: 0`), stretch it over the stars (not the gutters beside them), and collapse the thumb to zero width so the pointer position maps exactly to the value. Paint the stars on a `::before` of the wrapper, not on the input or the wrapper itself: a `mask` would clip the focus ring.
 
 ```html
 <label for="rate">Rate this product</label>
@@ -63,8 +74,10 @@ Make the input invisible (`opacity: 0`), stretch it over the stars, and collapse
 
 ```css
 .rating {
+  --rating-gutter: 0.75rem; /* clickable space either side of the stars, for 0 and 5 */
   position: relative;
   display: inline-block;
+  padding-inline: var(--rating-gutter);
   /* Optional: because --rating is registered, the fill can ease to the new value (example duration) */
   transition: --rating 0.25s ease-out;
 
@@ -89,8 +102,9 @@ Make the input invisible (`opacity: 0`), stretch it over the stars, and collapse
 
   & input[type="range"] {
     position: absolute;
-    inset: 0;
-    inline-size: 100%;
+    inset-block: 0;
+    inset-inline-start: var(--rating-gutter);
+    inline-size: calc(var(--star-size) * 5);
     block-size: 100%;
     margin: 0;
     opacity: 0;
@@ -136,11 +150,12 @@ Optional: a native range snaps a click to the nearest step, so clicking the righ
 ```js
 // Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
 let valueBefore = 0;
-range.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
-range.addEventListener('click', (event) => {
+wrap.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
+wrap.addEventListener('click', (event) => {
   if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
   const { left, width } = range.getBoundingClientRect();
-  const half = Math.ceil(((event.clientX - left) / width) * 10) / 2; // snap up to the half under the pointer
+  // Snap up to the half under the pointer; the gutters beside the stars clamp to 0 and 5
+  const half = Math.min(10, Math.max(0, Math.ceil(((event.clientX - left) / width) * 10))) / 2;
   range.value = half === valueBefore ? half - 0.5 : half;
   update();
 });
@@ -148,7 +163,7 @@ range.addEventListener('click', (event) => {
 
 ## 3. Read-only rating: a meter
 
-For an average or other non-editable score, use `<meter min="0" max="5" value="3.5">` with the `.stars` class and an accessible name (`aria-labelledby` or a label). Put a text value inside the element as fallback content. Remove the native appearance, and make the WebKit bar and value pseudo-elements transparent so only the mask-and-gradient stars show.
+For an average or other non-editable score, use `<meter min="0" max="5" value="3.5">` with the `.stars` class, wrapped in `<span class="star-frame">` for the outline, and an accessible name (`aria-labelledby` or a label). Put a text value inside the element as fallback content. Remove the native appearance, and make the WebKit bar and value pseudo-elements transparent so only the mask-and-gradient stars show.
 
 ```css
 meter.stars {
@@ -226,6 +241,11 @@ In forced-colors mode, background colors are overridden, so the stars would lose
 
 ```css
 @media (forced-colors: active) {
+  .star-frame,
+  .rating {
+    filter: none;
+  }
+
   .rating::before,
   .stars {
     background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / 5 * 100%), GrayText 0);
