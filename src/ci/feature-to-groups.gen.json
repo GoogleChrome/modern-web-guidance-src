@@ -1140,13 +1140,7 @@
   "tmp-email-verification": [
     "security"
   ],
-  "tmp-navigation-source": [
-    "css"
-  ],
   "tmp-path-length": [
-    "css"
-  ],
-  "tmp-polygon-round": [
     "css"
   ],
   "tmp-text-decoration-inset": [
