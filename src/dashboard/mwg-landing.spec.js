@@ -109,10 +109,11 @@ async function expectNextToBarbell(page, track) {
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       const a11yLink = page.locator('.a11y-link').first();
+      await expect(a11yLink.locator('.suite-dumbbell-track')).toHaveCount(0);
       await a11yLink.focus();
       await expect(tooltip).toBeVisible();
       await expect(tooltip).toContainText('Accessibility lift');
-      await expectNextToBarbell(page, a11yLink.locator('.suite-dumbbell-track'));
+      await expectNextToBarbell(page, a11yLink.locator('.a11y-delta-stack'));
       await page.keyboard.press('Escape');
       await expect(tooltip).toBeHidden();
     }
@@ -197,6 +198,8 @@ async function expectNextToBarbell(page, track) {
   });
   test('expand chevron does not animate under reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    const manyGuides = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`guide-${i}`, { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60 }]));
+    await page.route('**/api/suites*', route => route.fulfill({ json: { suites: A11Y_SUITES_FIXTURE.suites.map(s => ({ ...s, guides: manyGuides })) } }));
     await page.goto('/');
     await openBreakdowns(page);
     const duration = await page.locator('.insights-expand-chevron').first().evaluate(el => getComputedStyle(el).transitionDuration);
@@ -381,6 +384,217 @@ async function expectNextToBarbell(page, track) {
     await expect(page.locator('#hint-sort-uplift-model')).toHaveText('Sorted by uplift (low to high) — click to reset to alphabetical sort');
     expect(errors).toEqual([]);
   });
+
+  test('reconciles displayed uplift pp with rounded endpoint rates across hero and suites table', async ({ page }) => {
+    const errors = collectErrors(page);
+    // 516/1000 = 51.6% -> 52%, 912/1000 = 91.2% -> 91%; exact diff 39.6 would round to +40 pp,
+    // whereas displayed rounded endpoints 91 - 52 = +39 pp.
+    const roundingFixture = {
+      suites: [{
+        testId: 'nightly-2026-11-09_07-00-00-claude_code',
+        timestamp: '2026-11-09T07:00:00.000Z',
+        agent: 'claude_code',
+        serving: 'skills_cli',
+        model: 'claude-test',
+        taskCount: 200,
+        maxRuns: 1,
+        guidedStats: { passed: 912, total: 1000 },
+        unguidedStats: { passed: 516, total: 1000 },
+        a11yStats: {
+          guidedPassed: 182, guidedTotal: 199, guidedRate: 91,
+          unguidedPassed: 103, unguidedTotal: 199, unguidedRate: 52,
+          uplift: 39, guideCount: 10,
+          bySubCategory: {}
+        },
+        showcase: {},
+        guides: {}
+      }]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: roundingFixture }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const overallCard = page.locator('.takeaway[data-metric="overall"]');
+    await expect(overallCard.locator('.figure-val')).toHaveText('+39');
+    await expect(overallCard.locator('.takeaway-endpoint.unguided .endpoint-rate')).toHaveText('52%');
+    await expect(overallCard.locator('.takeaway-endpoint.guided .endpoint-rate')).toHaveText('91%');
+
+    const a11yCard = page.locator('.takeaway[data-metric="a11y"]');
+    await expect(a11yCard.locator('.figure-val')).toHaveText('+39');
+    await expect(a11yCard.locator('.secondary-pair')).toContainText('52% → 91%');
+
+    const agentOverallCell = page.locator('#agent-table-body tr').first().locator('td[data-label="Pass rate"]');
+    await expect(agentOverallCell).toContainText('52% → 91%');
+    await expect(agentOverallCell.locator('.delta')).toContainText('+39 pp');
+    await expect(agentOverallCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    const agentA11yCell = page.locator('#agent-table-body tr').first().locator('td[data-label="Accessibility"]');
+    await expect(agentA11yCell).toContainText('52% → 91%');
+    await expect(agentA11yCell.locator('.delta')).toContainText('+39 pp');
+    await expect(agentA11yCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    const suiteOverallCell = page.locator('.suite-table-row').first().locator('td.uplift-cell');
+    await expect(suiteOverallCell).toContainText('52%');
+    await expect(suiteOverallCell).toContainText('91%');
+    await expect(suiteOverallCell.locator('.delta')).toContainText('+39 pp');
+    await expect(suiteOverallCell).toHaveAttribute('data-barbell-u', '52');
+    await expect(suiteOverallCell).toHaveAttribute('data-barbell-g', '91');
+    await expect(suiteOverallCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    const suiteA11yCell = page.locator('.suite-table-row').first().locator('td.a11y-cell');
+    await expect(suiteA11yCell).toContainText('52%');
+    await expect(suiteA11yCell).toContainText('91%');
+    await expect(suiteA11yCell.locator('.eff-pill.neutral')).toContainText('+39 pp');
+    await expect(suiteA11yCell).toHaveAttribute('data-barbell-u', '52');
+    await expect(suiteA11yCell).toHaveAttribute('data-barbell-g', '91');
+    await expect(suiteA11yCell).toHaveAttribute('data-barbell-uplift', '39');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('renders compact A11y checks negative, zero, and partial delta states', async ({ page }) => {
+    const errors = collectErrors(page);
+    const edgeFixture = {
+      suites: [
+        {
+          testId: 'nightly-2026-11-11_07-00-00-claude_code',
+          timestamp: '2026-11-11T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-neg',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 50, total: 100 },
+          a11yStats: {
+            guidedPassed: 30, guidedTotal: 100, guidedRate: 30,
+            unguidedPassed: 50, unguidedTotal: 100, unguidedRate: 50,
+            uplift: -20, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        },
+        {
+          testId: 'nightly-2026-11-10_07-00-00-claude_code',
+          timestamp: '2026-11-10T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-zero',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 50, total: 100 },
+          a11yStats: {
+            guidedPassed: 75, guidedTotal: 100, guidedRate: 75,
+            unguidedPassed: 75, unguidedTotal: 100, unguidedRate: 75,
+            uplift: 0, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        },
+        {
+          testId: 'nightly-2026-11-09_07-00-00-claude_code',
+          timestamp: '2026-11-09T07:00:00.000Z',
+          agent: 'claude_code',
+          serving: 'skills_cli',
+          model: 'claude-partial',
+          taskCount: 100,
+          maxRuns: 1,
+          guidedStats: { passed: 80, total: 100 },
+          unguidedStats: { passed: 0, total: 0 },
+          a11yStats: {
+            guidedPassed: 8, guidedTotal: 10, guidedRate: 80,
+            unguidedPassed: 0, unguidedTotal: 0, unguidedRate: null,
+            uplift: null, guideCount: 5, bySubCategory: {}
+          },
+          showcase: {},
+          guides: {}
+        }
+      ]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: edgeFixture }));
+    await page.goto('/');
+    await expect(page.locator('#hero')).toHaveAttribute('aria-busy', 'false');
+
+    const rows = page.locator('.suite-table-row');
+    await expect(rows).toHaveCount(3);
+
+    const negCell = rows.nth(0).locator('td.a11y-cell');
+    await expect(negCell.locator('.eff-pill.cost')).toHaveText('-20 pp');
+    await expect(negCell.locator('.a11y-delta-sub')).toHaveText(', unguided 50%→, guided 30%');
+
+    const zeroCell = rows.nth(1).locator('td.a11y-cell');
+    await expect(zeroCell.locator('.eff-pill.muted')).toHaveText('0 pp');
+    await expect(zeroCell.locator('.a11y-delta-sub')).toHaveText(', unguided 75%→, guided 75%');
+
+    const partialCell = rows.nth(2).locator('td.a11y-cell');
+    await expect(partialCell.locator('.eff-pill.muted')).toHaveText('— change not available');
+    await expect(partialCell.locator('.a11y-delta-sub')).toHaveText(', unguided —not available→, guided 80%');
+    await expect(partialCell.locator('a.a11y-link')).toHaveAccessibleName(
+      'Automated accessibility checks: change not available , unguided not available , guided 80% (open accessibility check results)'
+    );
+
+    expect(errors).toEqual([]);
+  });
+
+  test('uses anchor positioning for the #ab-task-pills active underline and respects reduced motion', async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
+    await page.goto('/');
+    await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+
+    const track = page.locator('#ab-task-pills .ab-task-pills-track');
+    const pills = page.locator('#ab-task-pills .ab-task-pill');
+    await expect(track).toBeVisible();
+    await expect(pills).toHaveCount(6);
+
+    const inspectUnderline = () => page.evaluate(() => {
+      const t = document.querySelector('#ab-task-pills .ab-task-pills-track');
+      if (!t) throw new Error('Missing .ab-task-pills-track');
+      const cs = getComputedStyle(t, '::before');
+      const active = t.querySelector('.ab-task-pill:has(> input[type="radio"]:checked)');
+      if (!active) throw new Error('Missing checked .ab-task-pill');
+      const activeCs = getComputedStyle(active);
+      const tRect = t.getBoundingClientRect();
+      const aRect = active.getBoundingClientRect();
+      return {
+        anchorName: activeCs.getPropertyValue('anchor-name'),
+        positionAnchor: cs.getPropertyValue('position-anchor'),
+        position: cs.position,
+        borderBottomWidth: cs.borderBottomWidth,
+        transition: cs.transition,
+        pseudoLeft: parseFloat(cs.left),
+        pseudoWidth: parseFloat(cs.width),
+        expectedLeft: aRect.left - tRect.left,
+        expectedWidth: aRect.width,
+      };
+    });
+
+    const initial = await inspectUnderline();
+    expect(initial.anchorName).toBe('--active-ab-task');
+    expect(initial.positionAnchor).toBe('--active-ab-task');
+    expect(initial.position).toBe('absolute');
+    expect(initial.borderBottomWidth).toBe('2px');
+    expect(initial.transition).toContain('inset');
+    await expect.poll(async () => {
+      const s = await inspectUnderline();
+      return Math.max(Math.abs(s.pseudoLeft - s.expectedLeft), Math.abs(s.pseudoWidth - s.expectedWidth));
+    }).toBeLessThanOrEqual(1);
+
+    await pills.nth(2).click();
+    await expect.poll(async () => {
+      const s = await inspectUnderline();
+      return s.expectedLeft > initial.expectedLeft
+        && Math.abs(s.pseudoLeft - s.expectedLeft) <= 1
+        && Math.abs(s.pseudoWidth - s.expectedWidth) <= 1;
+    }).toBe(true);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const reduced = await inspectUnderline();
+    expect(reduced.transition).toContain('none');
+
+    expect(errors).toEqual([]);
+  });
 });
 test.describe('Guide trend page MWG compliance', () => {
   test('autocomplete is an anchored popover listbox with light dismiss synced to the combobox', async ({ page }) => {
@@ -443,5 +657,128 @@ test.describe('Guide trend page MWG compliance', () => {
     await expect(tooltip).toBeHidden();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/dashboard\.html\?testId=/);
+  });
+});
+test.describe('Search quality page MWG compliance', () => {
+  test('links from landing header and renders interactive search benchmarks without third-party requests or console errors', async ({ page }) => {
+    const errors = collectErrors(page);
+    /** @type {string[]} */
+    const thirdParty = [];
+    page.on('request', r => { if (/unpkg\.com|jsdelivr|cdn\.|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(r.url())) thirdParty.push(r.url()); });
+
+    await page.goto('/');
+    const searchLink = page.locator('.header-links a[href="search/"]');
+    await expect(searchLink).toHaveText('Search Quality');
+    await searchLink.click();
+    await expect(page).toHaveURL(/\/search\/$/);
+
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
+    await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
+    await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'light dark');
+    await expect(page.locator('h1')).toContainText('MWG CLI: Search quality over time');
+    await expect(page.locator('.cadence-note')).toContainText('updates when changes land in the search pipeline');
+
+    // Section 1: sparkline metric switching and query/axis controls
+    const svgA = page.locator('#svg-a');
+    await expect(svgA).toHaveAttribute('aria-label', /Right guide shown, Wild-v2 test:.*#3089 95\.4%/);
+    await page.locator('.spark[data-metric="ndcg"]').click();
+    await expect(page.locator('.spark[data-metric="ndcg"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(svgA).toHaveAttribute('aria-label', /Leaf nDCG@K, Wild-v2 test:.*#3089 75%/);
+    await expect(page.locator('#a [data-metric-note="ndcg"]')).toBeVisible();
+
+    await page.locator('#a-view input[value="nightly"]').check({ force: true });
+    await expect(svgA).toHaveAttribute('aria-label', /Leaf nDCG@K, Agent test:.*#3089 91\.3%/);
+
+    await page.locator('#a-x input[value="time"]').check({ force: true });
+    await expect(svgA.locator('text.a-row-label', { hasText: '2026' })).toBeVisible();
+
+    await page.locator('#svg-a .a-pt').first().hover();
+    await expect(page.locator('#tip')).toBeVisible();
+
+    // Section 2: milestones table
+    await expect(page.locator('#m-table tbody tr')).toHaveCount(15);
+
+    // Section 3: K-horizon metric toggle
+    const svgK = page.locator('#svg-k');
+    await expect(svgK).toHaveAttribute('aria-label', /^Signal-to-noise by K\./);
+    await page.locator('#k-metric input[value="hit"]').check({ force: true });
+    await expect(svgK).toHaveAttribute('aria-label', /^Right guide shown by K\./);
+
+    // Mobile viewport check: no document-level horizontal overflow
+    await page.setViewportSize({ width: 390, height: 844 });
+    const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    expect(hasHorizontalOverflow).toBe(false);
+
+    expect(thirdParty).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test('analytics bootstrap scrubs non-allowlisted query params/hashes and renders the themed cookie notification bar when required', async ({ page }) => {
+    const errors = collectErrors(page);
+
+    for (const path of ['/', '/dashboard.html?testId=example-result', '/guide.html?guide=content-vis', '/search/', '/demos/']) {
+      await page.goto(`${path}${path.includes('?') ? '&' : '?'}email=user@example.com&token=secret#oauth_fragment`);
+      await expect(page.locator('.site-legal-footer a[href="https://policies.google.com/privacy"]')).toBeVisible();
+      await expect(page.locator('.site-legal-footer a[href="https://policies.google.com/terms"]')).toBeVisible();
+      const configCall = await page.evaluate(() => {
+        const dl = /** @type {any[]} */ (/** @type {any} */ (window).dataLayer || []);
+        const entry = dl.find(item => item?.[0] === 'config');
+        return entry ? { id: entry[1], opts: entry[2] } : null;
+      });
+      expect(configCall?.id).toBe('G-V48MZB1JQE');
+      expect(configCall?.opts?.allow_google_signals).toBe(false);
+      expect(configCall?.opts?.allow_ad_personalization_signals).toBe(false);
+      expect(configCall?.opts?.page_location).not.toContain('user@example.com');
+      expect(configCall?.opts?.page_location).not.toContain('secret');
+      expect(configCall?.opts?.page_location).not.toContain('oauth_fragment');
+      if (path.includes('testId=example-result')) {
+        expect(configCall?.opts?.page_location).toContain('testId=example-result');
+      }
+      if (path.includes('guide=content-vis')) {
+        expect(configCall?.opts?.page_location).toContain('guide=content-vis');
+      }
+    }
+
+    await page.goto('/?previewCookieBar=1');
+    const cnbScript = page.locator('script[src*="cookienotificationbar.min.js"]');
+    await expect(cnbScript).toHaveAttribute('data-glue-cookie-notification-bar-category', '2B');
+    await expect(cnbScript).toHaveAttribute(
+      'data-glue-cookie-notification-bar-site-id',
+      'Modern Web Guidance Eval Dashboard',
+    );
+    await expect(page.locator('.glue-cookie-notification-bar')).toBeVisible();
+    const isFirstElement = await page.evaluate(
+      () => document.body.firstElementChild?.classList.contains('glue-cookie-notification-bar') ?? false,
+    );
+    expect(isFirstElement).toBe(true);
+
+    for (const colorScheme of /** @type {const} */ (['light', 'dark'])) {
+      await page.emulateMedia({ colorScheme });
+      const acceptBtn = page.locator('.glue-cookie-notification-bar__accept');
+      await acceptBtn.focus();
+      const styles = await acceptBtn.evaluate(el => {
+        const cs = getComputedStyle(el);
+        const barEl = document.querySelector('.glue-cookie-notification-bar');
+        if (!barEl) throw new Error('Missing cookie notification bar');
+        const barCs = getComputedStyle(barEl);
+        const cv = document.createElement('canvas');
+        cv.width = 1;
+        cv.height = 1;
+        const ctx = cv.getContext('2d');
+        if (!ctx) throw new Error('Missing 2d canvas context');
+        ctx.fillStyle = barCs.backgroundColor;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        return { bg: cs.backgroundColor, color: cs.color, barBg: barCs.backgroundColor, barRgb: [r, g, b] };
+      });
+      expect(styles.color).toBe('rgb(255, 255, 255)');
+      expect(styles.bg).not.toBe('rgb(255, 255, 255)');
+      expect(styles.barBg).toContain('oklab(');
+      if (colorScheme === 'dark') {
+        expect(styles.barRgb[2]).toBeGreaterThan(styles.barRgb[0]);
+      }
+    }
+
+    expect(errors).toEqual([]);
   });
 });

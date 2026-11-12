@@ -7,7 +7,7 @@
   <title>Modern CSS Icons (Style Queries & Masks)</title>
   <style>
     :root {
-      --icon-color-default: #444;
+      --icon-color-default: #707070;
       --icon-color-danger: #b00020;
       --icon-color-success: #1a7f37;
 
@@ -85,7 +85,11 @@
 
     button:hover,
     button:focus-visible {
-      color: hotpink;
+      color: #da0090;
+    }
+    
+    button:focus-visible {
+      outline: 2px solid #da0090;
     }
 
     .button--danger {
@@ -93,13 +97,13 @@
     }
 
     .button--danger:hover {
-      color: #ef4444;
+      color: #da0090;
     }
 
     /* Icon-only buttons and standalone icons */
     .icon {
       vertical-align: middle;
-      color: inherit;
+      color: #707070;
     }
 
     .icon--success {

@@ -25,7 +25,16 @@
   <script type="module">
       import aaguids from '/aaguids.json' with { type: 'json' };
 
-    const base64UrlUserId = "M2YPl-KGnA8"; // Base64URL string User ID
+    // Populated from server API responses (never derived from window.location.hostname)
+    let serverRpId = null;
+    let serverUserId = null;
+
+    function isValidBase64Url(value) {
+      return typeof value === 'string' &&
+        value.length > 0 &&
+        value.length % 4 !== 1 &&
+        /^[A-Za-z0-9_-]+$/.test(value);
+    }
 
     async function gateCreatePasskeyButton() {
       const btn = document.getElementById('create-btn');
@@ -37,18 +46,21 @@
       }
     }
 
-    async function syncAcceptedCredentials(currentList) {
+    async function syncAcceptedCredentials(rpId, userId, currentList) {
       if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
+        const credentialIds = currentList.map(c => c.id);
+        if (!rpId || !isValidBase64Url(userId) || !credentialIds.every(isValidBase64Url)) {
+          console.warn('SignalAllAcceptedCredentials skipped: server rpId and valid unpadded Base64URL userId and credential IDs are required.');
+          return;
+        }
         try {
-          // Map Base64URL credential IDs
-          const credentialIds = currentList.map(c => c.id);
           await PublicKeyCredential.signalAllAcceptedCredentials({
-            rpId: window.location.hostname,
-            userId: base64UrlUserId,
+            rpId,
+            userId,
             allAcceptedCredentialIds: credentialIds
           });
         } catch (e) {
-          console.error('Signal AllAcceptedCredentials sync threw:', e);
+          console.warn('SignalAllAcceptedCredentials sync warning:', e);
         }
       }
     }
@@ -61,12 +73,16 @@
       try {
         const response = await fetch('/api/credentials');
         if (!response.ok) throw new Error('Failed to load credentials');
-        const list = await response.json();
+        const payload = await response.json();
+        const list = Array.isArray(payload) ? payload : (payload.credentials || []);
+        if (payload.rpId) serverRpId = payload.rpId;
+        if (payload.userId) serverUserId = payload.userId;
         
         container.innerHTML = '';
         if (list.length === 0) {
           container.innerHTML = '<div class="empty-state" data-testid="empty-state">No passkeys found.</div>';
           statusEl.textContent = 'Idle';
+          await syncAcceptedCredentials(serverRpId, serverUserId, list);
           return;
         }
 
@@ -111,8 +127,8 @@
         });
 
         statusEl.textContent = 'Idle';
-        // Sync on page load
-        await syncAcceptedCredentials(list);
+        // Sync on page load using server-provided rpId and userId
+        await syncAcceptedCredentials(serverRpId, serverUserId, list);
       } catch (e) {
         console.error(e);
         statusEl.textContent = `Error: ${e.message}`;
@@ -160,14 +176,25 @@
         });
 
         if (response.ok) {
+          const updatedUser = await response.json();
+          const rpId = updatedUser.rpId || serverRpId;
+          const userId = updatedUser.userId || serverUserId;
           statusEl.textContent = 'Profile Updated';
           if (window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
-            await PublicKeyCredential.signalCurrentUserDetails({
-              rpId: window.location.hostname,
-              userId: base64UrlUserId,
-              name: 'user@example.com',
-              displayName: updatedDisplayName
-            });
+            if (!rpId || !isValidBase64Url(userId)) {
+              console.warn('SignalCurrentUserDetails skipped: server rpId and valid unpadded Base64URL userId are required.');
+            } else {
+              try {
+                await PublicKeyCredential.signalCurrentUserDetails({
+                  rpId,
+                  userId,
+                  name: updatedUser.name || 'user@example.com',
+                  displayName: updatedDisplayName
+                });
+              } catch (e) {
+                console.warn('SignalCurrentUserDetails sync warning:', e);
+              }
+            }
           }
         } else {
           throw new Error('User profile update failed on server');
@@ -188,9 +215,12 @@
           statusEl.textContent = 'Passkey Deleted';
           // Re-query and Sync AllAcceptedCredentials list
           const updatedResponse = await fetch('/api/credentials');
-          const updatedList = await updatedResponse.json();
+          const payload = await updatedResponse.json();
+          const updatedList = Array.isArray(payload) ? payload : (payload.credentials || []);
+          const rpId = payload.rpId || serverRpId;
+          const userId = payload.userId || serverUserId;
           renderUI(updatedList); // Visual helper
-          await syncAcceptedCredentials(updatedList);
+          await syncAcceptedCredentials(rpId, userId, updatedList);
         } else {
           throw new Error('Delete failed on server');
         }

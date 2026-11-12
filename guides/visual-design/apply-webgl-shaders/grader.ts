@@ -107,7 +107,8 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     });
 
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     expect(hasError).toBe(false);
   });
@@ -153,21 +154,18 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
 
   test('The rendering logic uses texElementSubImage2D to upload HTML elements into a WebGL texture', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
     const code = getScriptContent();
     expect(code.includes('texElementSubImage2D') || code.includes('drawElementImageToTexture')).toBe(true);
   });
 
   test('The WebGL texture is allocated with texImage2D at the element size from captureElementImage, rounded up', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
     const code = getScriptContent();
     expect(code.includes('captureElementImage') && code.includes('Math.ceil') && code.includes('texImage2D')).toBe(true);
   });
 
   test('The WebGL texture is only reallocated with texImage2D when the element size changes', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
     const code = getScriptContent();
     // Look for a size comparison that guards the reallocation, for example: state.width === width
     const comparesSize = /(width|height)\s*[!=]==?[^;\n]*(width|height)/i.test(code);
@@ -176,14 +174,12 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
 
   test('Each drawn HTML element is registered with updateElementGeometry and a canvasTransform', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
     const code = getScriptContent();
     expect(code.includes('updateElementGeometry') && code.includes('canvasTransform')).toBe(true);
   });
 
   test('A ResizeObserver is used to observe the canvas size', async ({ page }) => {
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
     const code = getScriptContent();
     expect(code.includes('ResizeObserver')).toBe(true);
   });
@@ -210,7 +206,8 @@ test.describe('HTML-in-Canvas WebGL Shaders Grader', () => {
     });
 
     await page.goto(targetUrl).catch(() => {});
-    await page.waitForTimeout(500);
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     expect(pageErrors).toEqual([]);
 
