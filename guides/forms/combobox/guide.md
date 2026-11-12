@@ -20,9 +20,9 @@ A combobox pairs a text input with a popup list of suggestions. Typing narrows t
 * **Custom listbox (popover + ARIA combobox pattern):** Use when you need a branded popup, match highlighting, grouped or rich options, or an empty-state message. It costs more code and you own the keyboard and screen reader behavior.
 * **Not a combobox:** If the user must choose only from the list (no freeform value), use a `<select>` styled with `appearance: base-select` instead (see {{ GUIDE_REF("branded-select-styling") }}). A combobox implies that unlisted values are accepted.
 
-Always start from the `<datalist>` markup. It is the baseline and the source of options for the enhanced version.
+## Shared markup for native `<datalist>` and enhanced custom listbox
 
-## Native `<datalist>`
+Always start from this `<datalist>` markup. It is the baseline for both approaches and the source of options for the custom listbox.
 
 ```html
 <label for="city">Destination</label>
@@ -38,7 +38,7 @@ Always start from the `<datalist>` markup. It is the baseline and the source of 
 
 ### 1. Markup and roles
 
-Use semantic elements, not generic `<div>`/`<span>` wrappers:
+Enhance the shared markup above, reading the options from the `<datalist>`. Use semantic elements, not generic `<div>`/`<span>` wrappers:
 
 * A real `<label>` linked to the `<input>`. Add help text with `aria-describedby`.
 * The `<input type="text">` carries `role="combobox"`, `aria-controls` pointing at the listbox, `aria-expanded` (`true` only while the popup is shown), and `aria-autocomplete="list"`.
