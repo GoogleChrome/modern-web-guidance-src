@@ -137,9 +137,9 @@ When the table needs horizontal scrolling in a wrapper but the column headers sh
 }
 ```
 
+* The wrapper only scrolls inline when it is narrower than the table, and the page only scrolls vertically when the table is taller than the viewport. `clip` on the block axis cuts off content if you keep a `max-block-size`, so remove it.
 * Feature-detect with `@supports named-feature(single-axis-scroll-container)` or `CSS.supports('named-feature(single-axis-scroll-container)')`. `@supports (overflow: scroll clip)` only checks parsing and is not enough.
 * On the clipped axis, programmatic scrolling (`scrollTo()`) is refused, `overscroll-behavior` no longer applies, and in flex or grid the default `min-width: auto` takes effect and can grow the container.
-* `single-axis-scroll-container` is not a web-features ID, so it has no Baseline status. Treat it as a progressive enhancement.
 
 ## Show when headers are stuck
 
@@ -240,3 +240,5 @@ If the table is also sortable, read rows from `tbody.rows` at filter time instea
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
 
 The stuck-state shadow is a progressive enhancement. Where scroll-state container queries are unsupported, the headers still stick (via `position: sticky`) and the table is fully usable; they just have no shadow. Use a plain, always-on `border-block-end` on `thead th` and `border-inline-end` on `tbody th` as the baseline look so headers are distinguishable from content either way. Do not add JavaScript to replicate the shadow.
+
+Single-axis scroll containers are also a progressive enhancement. Where `@supports named-feature(single-axis-scroll-container)` fails, keep the baseline `overflow: auto` wrapper with a bounded `max-block-size`: both headers and columns stick inside the wrapper, which is fully usable but does not stick headers to the page. Do not add JavaScript to synchronize scrolling.
