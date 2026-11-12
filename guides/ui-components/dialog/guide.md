@@ -153,7 +153,7 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 - **DO** use a native `<button>` with an accessible name for close controls.
 - **DO** use one consistent heading level for dialog titles.
 - **DO** use a level-1 heading for the main heading in modal dialogs, as it's the first heading in scope.
-- **DO** Ensure that non-modal dialogs are displayed where there is no or minimal content. Temporarily move the non-modal dialog if an element behind the dialog receives focus to ensure the focused element is not obscured.
+- **DO** Ensure that non-modal dialogs are displayed where there is no or minimal content. To adhere to WCAG 2.4.11, ensure that focused elements are completely obscured by the non-modal dialog.
 
 ## Fallback strategies
 
