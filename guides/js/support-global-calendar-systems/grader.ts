@@ -437,8 +437,13 @@ async function setupNativePage(
                 toString() { return '1826-05-28'; }
               };
             },
-            withCalendar(cal: string) {
-              if (typeof cal !== 'string') {
+            withCalendar(calInput: any) {
+              const cal = typeof calInput === 'string'
+                ? calInput
+                : (calInput && typeof calInput === 'object' && typeof calInput.calendarId === 'string'
+                    ? calInput.calendarId
+                    : '');
+              if (!cal) {
                 throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
               }
               stats.originalWithCalendarCalled = true;
@@ -473,8 +478,13 @@ async function setupNativePage(
             daysInMonth: 31,
             add(_duration: any) { return this; },
             subtract(_duration: any) { return this; },
-            withCalendar(cal: string) {
-              if (typeof cal !== 'string') {
+            withCalendar(calInput: any) {
+              const cal = typeof calInput === 'string'
+                ? calInput
+                : (calInput && typeof calInput === 'object' && typeof calInput.calendarId === 'string'
+                    ? calInput.calendarId
+                    : '');
+              if (!cal) {
                 throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
               }
               stats.originalWithCalendarCalled = true;
