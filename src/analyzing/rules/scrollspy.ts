@@ -130,19 +130,8 @@ function isGuardedByScrollTargetGroup(node: Node): boolean {
 
 function getHandlerText(node: Node): string {
   const unwrapped = unwrapExpression(node);
-  if (Node.isIdentifier(unwrapped)) {
-    const resolved = resolveLocalExpression(unwrapped, 3);
-    if (resolved !== unwrapped) {
-      return resolved.getText();
-    }
-    const name = unwrapped.getText();
-    const sourceFile = unwrapped.getSourceFile();
-    const fnDecl = sourceFile.getFunction(name);
-    if (fnDecl) {
-      return fnDecl.getText();
-    }
-  }
-  return unwrapped.getText();
+  const callable = resolveCallableNode(unwrapped, 3);
+  return callable.getText();
 }
 
 function getEnclosingCallable(node: Node): Node | undefined {
