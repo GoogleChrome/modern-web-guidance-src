@@ -1,0 +1,13 @@
+- Before using the GPU path, the implementation verifies that `navigator.gpu.requestAdapter()` resolves to a non-null adapter.
+- `'shader-f16'` is included in the `requiredFeatures` passed to `adapter.requestDevice()` only when `adapter.features.has('shader-f16')` returns `true`.
+- When `shader-f16` is available, weights and inputs are uploaded to GPU storage buffers as 16-bit values.
+- When `shader-f16` is unavailable, weights and inputs are uploaded to GPU storage buffers as 32-bit floats.
+- Every `device.queue.writeBuffer()` call and every storage buffer binding uses a byte size that is a multiple of 4.
+- Model loading and inference run in a dedicated Web Worker rather than on the main thread.
+- Model weights are not downloaded until the user triggers the inference feature.
+- Model weights are stored with the Cache API and read from the cache when they are requested again.
+- A `device.lost` handler switches inference to the CPU fallback.
+- When GPU device creation, pipeline creation, or a GPU inference call throws, inference still returns a result from the CPU fallback.
+- When `webgpu` is unsupported, inference returns a result from the CPU fallback.
+- When `navigator.gpu.requestAdapter()` resolves to `null`, inference returns a result from the CPU fallback.
+- When `float16array` is unsupported, 16-bit data is uploaded as a `Uint16Array`.
