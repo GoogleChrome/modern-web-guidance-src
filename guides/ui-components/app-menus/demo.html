@@ -273,7 +273,7 @@
     <!-- Keep each focusgroup inside its popover: popover can otherwise clobber its semantics. -->
     <div class="bar" role="menubar" aria-label="Document commands">
       <button id="file-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="file-menu" command="toggle-popover"
-        aria-expanded="false">File</button>
+        aria-expanded="false" role="menuitem">File</button>
       <div id="file-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
           <button type="button">New file</button>
@@ -302,7 +302,7 @@
       </div>
 
       <button id="edit-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="edit-menu" command="toggle-popover" aria-expanded="false"
-        tabindex="-1">Edit</button>
+        tabindex="-1" role="menuitem">Edit</button>
       <div id="edit-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="edit-trigger">
           <button type="button">Undo</button>
@@ -314,7 +314,7 @@
       </div>
 
       <button id="view-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="view-menu" command="toggle-popover" aria-expanded="false"
-        tabindex="-1">View</button>
+        tabindex="-1" role="menuitem">View</button>
       <div id="view-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="view-trigger">
           <!-- Checkable items keep an explicit role: focusgroup only infers menuitem. -->
@@ -338,7 +338,7 @@
       </div>
 
       <button id="help-trigger" class="trigger" type="button" aria-haspopup="menu" commandfor="help-menu" command="toggle-popover" aria-expanded="false"
-        tabindex="-1">Help</button>
+        tabindex="-1" role="menuitem">Help</button>
       <div id="help-menu" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="help-trigger">
           <button type="button">Search Documentation</button>
