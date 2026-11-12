@@ -764,17 +764,18 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
       .map((f) => `${f.ruleId}:${f.line}`)
       .sort();
 
-  await t.test('.gts: platform-native <template> nested in a Glimmer template', () => {
+  await t.test('.gts: a template ends at the first </template>, as in content-tag', () => {
+    // content-tag does not support a platform-native <template> nested inside, so Ember
+    // cannot build this file. The markup after the inner </template> is not a template.
     const gts = [
       'export default class Modal extends Component {',
       '  <template>',
-      '    <template id="row"><span>Temporal</span></template>',
+      '    <template id="row"><span>x</span></template>',
       '    <dialog open>After</dialog>',
       '  </template>',
-      '  now = Temporal.Now.instant();',
       '}',
     ].join('\n');
-    assert.deepEqual(glimmerFindings(gts), ['test-dom-dialog:4', 'test-js-temporal:6']);
+    assert.equal(glimmerFindings(gts).includes('test-dom-dialog:4'), false);
   });
 
   await t.test('.gts: comment before `class` and braces in `extends`', () => {

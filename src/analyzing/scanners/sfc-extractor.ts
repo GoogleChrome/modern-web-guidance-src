@@ -55,12 +55,10 @@ const VALUE_END_TOKENS: ReadonlySet<SyntaxKind> = new Set([
   SyntaxKind.FalseKeyword,
 ]);
 
-const TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/g;
-
 /**
  * Finds the `<template>…</template>` blocks of a .gts/.gjs file. The TypeScript scanner
- * skips strings, comments, template literals and regex literals; only the `<template>`
- * tags are matched by hand.
+ * skips strings, comments, template literals and regex literals. Like content-tag, a block
+ * opens on exactly `<template>` and ends at the first `</template>`.
  */
 function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRange[] {
   const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard, content);
@@ -70,13 +68,15 @@ function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRan
   let previous = SyntaxKind.Unknown;
   for (let token = scanner.scan(); token !== SyntaxKind.EndOfFileToken; token = scanner.scan()) {
     const start = scanner.getTokenStart();
-    if (token === SyntaxKind.LessThanToken && /^template[\s>]/.test(content.slice(start + 1, start + 10))) {
-      const range = matchGlimmerTemplate(content, start);
-      if (range === null) {
+    if (token === SyntaxKind.LessThanToken && content.startsWith('<template>', start)) {
+      const innerStart = start + '<template>'.length;
+      const innerEnd = content.indexOf('</template>', innerStart);
+      if (innerEnd === -1) {
         break;
       }
-      ranges.push(range);
-      scanner.resetTokenState(range.end);
+      const end = innerEnd + '</template>'.length;
+      ranges.push({ start, end, innerStart, innerEnd });
+      scanner.resetTokenState(end);
       previous = SyntaxKind.CloseBracketToken;
       continue;
     }
@@ -96,26 +96,6 @@ function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRan
     previous = token;
   }
   return ranges;
-}
-
-/**
- * Matches the `<template>…</template>` that starts at `start`, counting platform-native
- * `<template>` elements nested inside it.
- */
-function matchGlimmerTemplate(content: string, start: number): GlimmerTemplateRange | null {
-  let depth = 0;
-  let innerStart = 0;
-  for (const match of content.slice(start).matchAll(TEMPLATE_TAG_REGEX)) {
-    const index = start + match.index;
-    if (!match[0].startsWith('</')) {
-      if (depth++ === 0) {
-        innerStart = index + match[0].length;
-      }
-    } else if (--depth === 0) {
-      return { start, end: index + match[0].length, innerStart, innerEnd: index };
-    }
-  }
-  return null;
 }
 
 /**
