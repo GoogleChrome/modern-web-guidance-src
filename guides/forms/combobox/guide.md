@@ -17,7 +17,7 @@ A combobox pairs a text input with a popup list of suggestions. Typing narrows t
 
 ## Choose an approach
 
-* **Native `<datalist>`:** Use when plain text suggestions are enough. The browser supplies the popup, filtering, keyboard handling, and form integration. You cannot style the popup, highlight matches, or show an empty state.
+* **Native `<datalist>`:** Use when plain text suggestions are enough. The browser supplies the popup, filtering, keyboard handling, and form integration. You cannot style the popup, highlight matches, or show an empty state. A customizable `<datalist>` (the Open UI combobox explainer) is not shipped in any browser yet, so build the custom listbox below when you need those.
 * **Custom listbox (popover + ARIA combobox pattern):** Use when you need a branded popup, match highlighting, grouped or rich options, or an empty-state message. It costs more code and you own the keyboard and screen reader behavior.
 * **Not a combobox:** If the user must choose only from the list (no freeform value), use a `<select>` styled with `appearance: base-select` instead (see {{ GUIDE_REF("branded-select-styling") }}). A combobox implies that unlisted values are accepted.
 
