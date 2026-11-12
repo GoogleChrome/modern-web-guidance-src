@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo: Recognize handwritten digits with a custom model on WebGPU</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    .layout { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-start; }
+    canvas {
+      width: 200px;
+      height: 200px;
+      background: #000;
+      border-radius: 8px;
+      touch-action: none; /* Drawing with touch shouldn't scroll the page */
+      cursor: crosshair;
+    }
+    .controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-block: 0.75rem; }
+    button {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    button.secondary { background: #475569; }
+    button[aria-disabled="true"] { background: #64748b; cursor: progress; }
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Recognize handwritten digits with a custom model</h1>
+    <p>
+      A small neural network (64 &rarr; 25 &rarr; 10, about 1,900 weights in
+      <code>digits-mlp.bin</code>) classifies 8&times;8 digit images. When you press
+      <b>Recognize</b>, a Web Worker downloads the weights (from the Cache API on later runs), creates
+      a WebGPU device, uploads the weights as <code>f16</code> when <code>shader-f16</code> is supported,
+      and runs both layers in compute shaders. Without WebGPU, or after a GPU error or device loss, the
+      worker runs the same layers on the CPU.
+    </p>
+
+    <div class="layout">
+      <div>
+        <canvas id="pad" width="160" height="160"
+          role="img" aria-label="Drawing area for a digit, shown as an 8 by 8 grid"></canvas>
+        <div class="controls">
+          <button id="recognize-btn" type="button">Recognize</button>
+          <button id="clear-btn" type="button" class="secondary">Clear</button>
+        </div>
+      </div>
+      <div>
+        <p>Draw a large digit that fills the box, or load a sample from the test set:</p>
+        <div class="controls" id="samples" aria-label="Sample digits" role="group"></div>
+      </div>
+    </div>
+
+    <pre id="result" role="status">The model loads when you press Recognize for the first time.</pre>
+  </main>
+
+  <script type="module">
+    // digits-mlp.bin: a 64-25-10 ReLU network trained on the UCI "Optical Recognition of
+    // Handwritten Digits" dataset (CC BY 4.0), about 96% test accuracy. Layout, as
+    // little-endian f32: W1[25][64], b1[25], W2[10][25], b2[10].
+    const workerSource = `
+      const IN = 64, HIDDEN = 25, OUT = 10; // HIDDEN is odd: the f16 bias array needs padding
+      const WORKGROUP_SIZE = 64;
+
+      async function loadWeights(url) {
+        const cache = 'caches' in self ? await caches.open('model-weights-v1') : null;
+        let response = await cache?.match(url);
+        const source = response ? 'Cache API' : 'download';
+        if (!response) {
+          response = await fetch(url);
+          if (!response.ok) throw new Error('Weight download failed: ' + response.status);
+          try {
+            await cache?.put(url, response.clone());
+          } catch {
+            // Storage quota exceeded: keep working without caching.
+          }
+        }
+        const all = new Float32Array(await response.arrayBuffer());
+        let offset = 0;
+        const take = (n) => all.subarray(offset, (offset += n));
+        return {
+          source,
+          layers: [
+            { weights: take(HIDDEN * IN), bias: take(HIDDEN), inSize: IN, outSize: HIDDEN, relu: true },
+            { weights: take(OUT * HIDDEN), bias: take(OUT), inSize: HIDDEN, outSize: OUT, relu: false },
+          ],
+        };
+      }
+
+      // f32 -> IEEE 754 half-precision bits, for environments without Float16Array.
+      function toHalfBits(float32Values, length) {
+        const bits = new Uint16Array(length);
+        const u32 = new Uint32Array(new Float32Array(float32Values).buffer);
+        for (let i = 0; i < u32.length; i++) {
+          const x = u32[i];
+          const sign = (x >>> 16) & 0x8000;
+          const exp = ((x >>> 23) & 0xff) - 112;
+          if (exp <= 0) bits[i] = sign;
+          else if (exp >= 31) bits[i] = sign | 0x7c00;
+          else bits[i] = sign | (exp << 10) | ((x >>> 13) & 0x3ff);
+        }
+        return bits;
+      }
+
+      // Converts to the GPU storage format, padded to a multiple of 4 bytes.
+      function toGpuArray(float32Values, supportsF16) {
+        if (!supportsF16) return float32Values;
+        const length = float32Values.length + (float32Values.length % 2);
+        if (typeof Float16Array !== 'function') return toHalfBits(float32Values, length);
+        const half = new Float16Array(length);
+        half.set(float32Values);
+        return half;
+      }
+
+      function denseLayerOnCpu({ weights, bias, inSize, outSize, relu }, input) {
+        const out = new Float32Array(outSize);
+        for (let row = 0; row < outSize; row++) {
+          let sum = bias[row];
+          for (let col = 0; col < inSize; col++) sum += weights[row * inSize + col] * input[col];
+          out[row] = relu ? Math.max(0, sum) : sum;
+        }
+        return out;
+      }
+
+      async function createInferenceDevice() {
+        if (!('gpu' in navigator)) return null;
+        try {
+          const adapter = await navigator.gpu.requestAdapter(); // New adapter per device
+          if (!adapter) return null;
+          const supportsF16 = adapter.features.has('shader-f16');
+          const device = await adapter.requestDevice({
+            requiredFeatures: supportsF16 ? ['shader-f16'] : [],
+            requiredLimits: {
+              maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
+              maxBufferSize: adapter.limits.maxBufferSize,
+            },
+          });
+          return { device, supportsF16 };
+        } catch {
+          return null;
+        }
+      }
+
+      // Dense layer: weights and bias in wtype (f16 or f32), accumulation in f32.
+      // inType is wtype for the network input, and f32 for the hidden activations.
+      function denseLayerShader(supportsF16, inType) {
+        const header = supportsF16 ? 'enable f16;\\nalias wtype = f16;' : 'alias wtype = f32;';
+        return header + \`
+          struct Dims { inSize: u32, outSize: u32, relu: u32, _pad: u32 };
+          @group(0) @binding(0) var<uniform> dims: Dims;
+          @group(0) @binding(1) var<storage, read> weights: array<wtype>;
+          @group(0) @binding(2) var<storage, read> inputVec: array<\${inType}>;
+          @group(0) @binding(3) var<storage, read> biasVec: array<wtype>;
+          @group(0) @binding(4) var<storage, read_write> outputVec: array<f32>;
+
+          @compute @workgroup_size(\${WORKGROUP_SIZE})
+          fn main(@builtin(global_invocation_id) id: vec3u) {
+            let row = id.x;
+            if (row >= dims.outSize) { return; }
+            var sum = f32(biasVec[row]);
+            let rowOffset = row * dims.inSize;
+            for (var col = 0u; col < dims.inSize; col++) {
+              sum += f32(weights[rowOffset + col]) * f32(inputVec[col]);
+            }
+            outputVec[row] = select(sum, max(0.0, sum), dims.relu == 1u);
+          }
+        \`;
+      }
+
+      let gpu = null; // GPU resources; null means "use the CPU fallback"
+
+      function useCpuFallback(reason) {
+        gpu?.device.destroy();
+        gpu = null;
+        self.postMessage({ type: 'backend', label: 'CPU (' + reason + ')' });
+      }
+
+      async function initGpu(model) {
+        const created = await createInferenceDevice();
+        if (!created) return null;
+        const { device, supportsF16 } = created;
+        try {
+          const storage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
+          const maxBytes = Math.min(device.limits.maxBufferSize, device.limits.maxStorageBufferBindingSize);
+          device.pushErrorScope('out-of-memory');
+
+          const inputBuffer = device.createBuffer({
+            size: toGpuArray(new Float32Array(IN), supportsF16).byteLength,
+            usage: storage,
+          });
+          let layerInput = inputBuffer;
+          const passes = [];
+          for (const [index, layer] of model.layers.entries()) {
+            const weightData = toGpuArray(layer.weights, supportsF16);
+            const biasData = toGpuArray(layer.bias, supportsF16);
+            if (weightData.byteLength > maxBytes) throw new Error('weights exceed device limits');
+
+            const module = device.createShaderModule({
+              code: denseLayerShader(supportsF16, index === 0 ? 'wtype' : 'f32'),
+            });
+            const pipeline = await device.createComputePipelineAsync({
+              layout: 'auto',
+              compute: { module, entryPoint: 'main' },
+            });
+            const dimsBuffer = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+            const weightsBuffer = device.createBuffer({ size: weightData.byteLength, usage: storage });
+            const biasBuffer = device.createBuffer({ size: biasData.byteLength, usage: storage });
+            const outputBuffer = device.createBuffer({
+              size: layer.outSize * 4,
+              usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+            });
+
+            // Static data is uploaded once; only the input changes per inference call.
+            device.queue.writeBuffer(dimsBuffer, 0, new Uint32Array([layer.inSize, layer.outSize, layer.relu ? 1 : 0, 0]));
+            device.queue.writeBuffer(weightsBuffer, 0, weightData);
+            device.queue.writeBuffer(biasBuffer, 0, biasData);
+
+            const bindGroup = device.createBindGroup({
+              layout: pipeline.getBindGroupLayout(0),
+              entries: [dimsBuffer, weightsBuffer, layerInput, biasBuffer, outputBuffer]
+                .map((buffer, binding) => ({ binding, resource: { buffer } })),
+            });
+            passes.push({ pipeline, bindGroup, workgroups: Math.ceil(layer.outSize / WORKGROUP_SIZE), outputBuffer });
+            layerInput = outputBuffer; // The next layer reads this layer's f32 output
+          }
+          const stagingBuffer = device.createBuffer({ size: OUT * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+          if (await device.popErrorScope()) throw new Error('out of GPU memory');
+
+          device.lost.then((info) => {
+            if (info.reason !== 'destroyed' && gpu?.device === device) useCpuFallback('GPU device lost');
+          });
+
+          return { device, supportsF16, inputBuffer, passes, stagingBuffer };
+        } catch {
+          device.destroy(); // Release the device when setup fails after creating it
+          return null;
+        }
+      }
+
+      async function runOnGpu(input) {
+        const { device, supportsF16, inputBuffer, passes, stagingBuffer } = gpu;
+        device.queue.writeBuffer(inputBuffer, 0, toGpuArray(input, supportsF16));
+        const encoder = device.createCommandEncoder();
+        const pass = encoder.beginComputePass();
+        for (const { pipeline, bindGroup, workgroups } of passes) {
+          pass.setPipeline(pipeline);
+          pass.setBindGroup(0, bindGroup);
+          pass.dispatchWorkgroups(workgroups); // Each dispatch sees the previous one's writes
+        }
+        pass.end();
+        encoder.copyBufferToBuffer(passes.at(-1).outputBuffer, 0, stagingBuffer, 0, OUT * 4);
+        device.queue.submit([encoder.finish()]);
+        await stagingBuffer.mapAsync(GPUMapMode.READ);
+        const scores = new Float32Array(stagingBuffer.getMappedRange().slice(0));
+        stagingBuffer.unmap();
+        return scores;
+      }
+
+      const runOnCpu = (model, input) => model.layers.reduce((x, layer) => denseLayerOnCpu(layer, x), input);
+
+      async function loadModel(weightsUrl) {
+        const model = await loadWeights(weightsUrl);
+        gpu = await initGpu(model);
+        const label = gpu
+          ? 'WebGPU in a Worker (' + (gpu.supportsF16 ? 'f16 storage' : 'f32, no shader-f16') + ')'
+          : 'CPU in a Worker (WebGPU unavailable)';
+        self.postMessage({ type: 'backend', label, source: model.source });
+        return model;
+      }
+
+      let modelPromise = null;
+
+      // The main thread allows one request at a time, so the staging buffer is never
+      // mapped twice.
+      self.addEventListener('message', async ({ data }) => {
+        if (data.type !== 'infer') return;
+        modelPromise ??= loadModel(data.weightsUrl); // Load on the first request only
+        try {
+          const model = await modelPromise;
+          const start = performance.now();
+          let scores;
+          if (gpu) {
+            try {
+              scores = await runOnGpu(data.input);
+            } catch {
+              useCpuFallback('GPU inference failed');
+            }
+          }
+          scores ??= runOnCpu(model, data.input);
+          self.postMessage({ type: 'result', scores, ms: performance.now() - start }, [scores.buffer]);
+        } catch (err) {
+          modelPromise = null; // Allow a retry after a failed load
+          self.postMessage({ type: 'error', message: err.message });
+        }
+      });
+
+      self.postMessage({ type: 'ready' });
+    `;
+
+    // One correctly classified test-set image per digit, 0 to 9. Each character is one
+    // 8x8 pixel value from 0 to 16, written in base 17.
+    const SAMPLES = [
+      '005d910000dfaf5003f20b8004c008800580098004b01c7002e5ac00006da000',
+      '000cd500000bg900003fg60007fgg200001gg300001gg600001gg600000bga00',
+      '005c100000fe700000d1c00002a0e0000020g1000006f000009gf982003b8dc4',
+      '007fd10008d6f400021dd000002fb1000001cc1000001a8000845e90007dd900',
+      '0001b00000078000001d6220007f098005ga0g6004fgdg100003fa000002g400',
+      '05cdgg200bgf840008eb100008gge0000166g0000005g300015fd00004fg2000',
+      '000cd000005g800000dg300000ed000000fc720000dgdg30007gbf800019fb30',
+      '0078dgf100774bc000008d100488ff6002bff400000g5000009f100000d50000',
+      '009e810000ceec00009a0f40003gce20004gg20003g8ad2001f13g8000bgfb10',
+      '00bc000002gggd0003gcae0001g1cf0000dg9f20000309b000009f40009cd300',
+    ];
+
+    const pad = document.getElementById('pad');
+    const ctx = pad.getContext('2d', { willReadFrequently: true });
+    const recognizeBtn = document.getElementById('recognize-btn');
+    const resultEl = document.getElementById('result');
+    const CELL = pad.width / 8;
+    let backendLabel = '';
+    let busy = false;
+
+    function clearPad() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, pad.width, pad.height);
+    }
+    clearPad();
+
+    // Drawing: thick white strokes on black.
+    let drawing = false;
+    function strokeTo(event) {
+      const rect = pad.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * pad.width;
+      const y = ((event.clientY - rect.top) / rect.height) * pad.height;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    pad.addEventListener('pointerdown', (event) => {
+      drawing = true;
+      pad.setPointerCapture(event.pointerId);
+      Object.assign(ctx, { strokeStyle: '#fff', lineWidth: 16, lineCap: 'round', lineJoin: 'round' });
+      ctx.beginPath();
+      strokeTo(event);
+    });
+    pad.addEventListener('pointermove', (event) => drawing && strokeTo(event));
+    pad.addEventListener('pointerup', () => { drawing = false; });
+
+    // Samples are drawn as 8x8 gray blocks, so they go through the same input path.
+    SAMPLES.forEach((sample, digit) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'secondary';
+      button.textContent = String(digit);
+      button.setAttribute('aria-label', `Load sample digit ${digit}`);
+      button.addEventListener('click', () => {
+        [...sample].forEach((char, i) => {
+          const level = Math.round((parseInt(char, 17) / 16) * 255);
+          ctx.fillStyle = `rgb(${level} ${level} ${level})`;
+          ctx.fillRect((i % 8) * CELL, Math.floor(i / 8) * CELL, CELL, CELL);
+        });
+      });
+      document.getElementById('samples').append(button);
+    });
+
+    // Downsamples the drawing to the model input: 64 values from 0 to 1, the average
+    // brightness of each cell, which matches the dataset's 0-16 pixel counts divided by 16.
+    function readInput() {
+      const { data } = ctx.getImageData(0, 0, pad.width, pad.height);
+      const input = new Float32Array(64);
+      for (let y = 0; y < pad.height; y++) {
+        for (let x = 0; x < pad.width; x++) {
+          input[Math.floor(y / CELL) * 8 + Math.floor(x / CELL)] += data[(y * pad.width + x) * 4] / 255;
+        }
+      }
+      return input.map((sum) => sum / (CELL * CELL));
+    }
+
+    const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+    const worker = new Worker(workerUrl, { type: 'module' });
+
+    function setBusy(value) {
+      busy = value;
+      // aria-disabled keeps the button focusable, unlike the disabled attribute.
+      recognizeBtn.setAttribute('aria-disabled', String(value));
+    }
+
+    worker.addEventListener('error', () => {
+      setBusy(false);
+      resultEl.textContent = 'The inference worker failed to start.';
+    });
+
+    worker.addEventListener('message', ({ data }) => {
+      if (data.type === 'ready') {
+        URL.revokeObjectURL(workerUrl); // The worker script has loaded
+      } else if (data.type === 'backend') {
+        backendLabel = data.label + (data.source ? `; weights from ${data.source}` : '');
+      } else if (data.type === 'result') {
+        const scores = Array.from(data.scores);
+        const max = Math.max(...scores);
+        const exp = scores.map((s) => Math.exp(s - max));
+        const total = exp.reduce((a, b) => a + b, 0);
+        const digit = scores.indexOf(max);
+        resultEl.textContent =
+          `Predicted digit: ${digit} (${Math.round((exp[digit] / total) * 100)}% confidence)\n` +
+          `Backend: ${backendLabel}\nInference: ${data.ms.toFixed(2)} ms`;
+        setBusy(false);
+      } else if (data.type === 'error') {
+        resultEl.textContent = `Recognition failed: ${data.message}`;
+        setBusy(false);
+      }
+    });
+
+    recognizeBtn.addEventListener('click', () => {
+      if (busy) return; // One request at a time
+      setBusy(true);
+      resultEl.textContent = 'Recognizing...';
+      const input = readInput();
+      const weightsUrl = new URL('digits-mlp.bin', location.href).href;
+      worker.postMessage({ type: 'infer', input, weightsUrl }, [input.buffer]);
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', clearPad);
+  </script>
+</body>
+</html>
