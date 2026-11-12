@@ -80,13 +80,13 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card:has(a.card-link) {
- position: relative;
+  position: relative;
 }
 
 .card a.card-link::after {
- content: "";
- position: absolute;
- inset: 0;
+  content: "";
+  position: absolute;
+  inset: 0;
 }
 ```
 
@@ -95,11 +95,11 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card:has(a.card-link) {
- /* Keep other interactive elements above the overlay */
- a:not(.card-link), button, input, x-button {
-     position: relative;
-     z-index: 1;
- }
+  /* Keep other interactive elements above the overlay */
+  a:not(.card-link), button, input, x-button {
+    position: relative;
+    z-index: 1;
+  }
 }
 ```
 
@@ -107,22 +107,22 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card {
- a.card-link {
-  &:focus-visible {
-   outline: none; /* Draw it on the card instead */
+  a.card-link {
+    &:focus-visible {
+      outline: none; /* Draw it on the card instead */
+    }
   }
- }
  
- &:has(a.card-link:focus-visible) {
-  /* focus ring drawn on the card itself */
-  outline: 2px solid var(--focus-ring-color);
-  outline-offset: 4px;
- }
+  &:has(a.card-link:focus-visible) {
+    /* focus ring drawn on the card itself */
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: 4px;
+  }
 
- &:has(a.card-link:hover) {
-  background: var(--btn-bg-hover);
-  color: var(--btn-text-hover);
- }
+  &:has(a.card-link:hover) {
+    background: var(--btn-bg-hover);
+    color: var(--btn-text-hover);
+  }
 }
 
 ```
