@@ -484,6 +484,19 @@ Configure Origin Trial and volatile feature opt-ins for a repository with an opt
 ```shell
 npx skills add GoogleChrome/modern-web-guidance
 ```
+
+For a repository with both web and non-web projects, run the installer from
+the web project's directory. For example, to install only the general web skill
+for Codex and pin it to version 1.0.0:
+
+```shell
+cd apps/web
+npx skills add https://github.com/GoogleChrome/modern-web-guidance/tree/v1.0.0 --agent codex --skill modern-web-guidance --copy --yes
+```
+
+This installs the skill under `apps/web/.agents/skills/modern-web-guidance`.
+If you work from the repository root, check how your agent discovers nested
+skills or link to the installed skill from your repository instructions.
 </details>
 
 <details>
