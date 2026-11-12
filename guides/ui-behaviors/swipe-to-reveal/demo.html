@@ -447,7 +447,8 @@
     for (const reveal of document.querySelectorAll('.SwipeReveal')) {
       setActionTabIndexes(reveal, false);
 
-      if ('onscrollsnapchanging' in Element.prototype) {
+      // Scroll snap event handlers live on HTMLElement, not Element, so check the scroller itself.
+      if ('onscrollsnapchanging' in reveal) {
         reveal.addEventListener('scrollsnapchanging', () => syncRevealStateFromScroll(reveal));
         reveal.addEventListener('scrollsnapchange', () => syncRevealStateFromScroll(reveal));
       } else {
