@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Context Menu Demo - Modern</title>
+    <script type="module">
+      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+        await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+      }
+    </script>
     <style>
       body {
         margin: 0;
@@ -82,24 +87,18 @@
         max-inline-size: calc(100% - 1rem);
       }
 
-      /* Submenu Positioning */
-      [popover] [popover] {
-        position-area: inline-end span-block-end;
-        position-try-fallbacks: flip-inline, flip-block, --below;
-      }
-
       /* Animation */
       @media (prefers-reduced-motion: no-preference) {
         [popover] {
           opacity: 0;
           translate: 0 -0.25rem;
-          transition:
-            opacity 0.15s,
-            translate 0.15s,
-            display 0.15s allow-discrete,
-            overlay 0.15s allow-discrete;
+          transition-property: opacity, transform, display, overlay;
+          transition-duration: 0.3s;
+          transition-timing-function: ease-out;
+          /* Separate after transition so a shorthand doesn't reset it or fail in older browsers */
+          transition-behavior: allow-discrete;
         }
-        [popover]:popover-open {
+        [popover]:is(:popover-open, .\:popover-open) {
           opacity: 1;
           translate: 0 0;
           transition-duration: 0.1s;
@@ -170,7 +169,6 @@
       [focusgroup~="menu"] button:focus {
         background-color: #d2d5ed;
       }
-
     </style>
   </head>
   <body>
@@ -182,8 +180,7 @@
         type="button"
         aria-haspopup="menu"
         aria-expanded="false"
-        commandfor="menu1"
-        command="toggle-popover"
+        popovertarget="menu1"
         aria-label="Actions for First Card"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -196,7 +193,7 @@
         <div focusgroup="menu nomemory" aria-labelledby="trigger1">
           <button type="button">Edit</button>
           <button type="button">Share</button>
-          <hr aria-hidden="true"/>
+          <hr aria-hidden="true" />
           <button type="button">Delete</button>
         </div>
       </div>
@@ -215,8 +212,7 @@
         type="button"
         aria-haspopup="menu"
         aria-expanded="false"
-        commandfor="menu2"
-        command="toggle-popover"
+        popovertarget="menu2"
         aria-label="Actions for Second Card"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -243,7 +239,7 @@
 
       // Helpers
       const menuFor = (trigger) => {
-        const id = trigger.getAttribute("commandFor");
+        const id = trigger.getAttribute("popovertarget");
         return id ? document.getElementById(id) : null;
       };
 
@@ -293,7 +289,7 @@
       });
 
       // When the button is triggered with a keyboard, add to `enterOnOpen` so focus moves.
-      const buttonTriggers = document.querySelectorAll("button[commandFor]");
+      const buttonTriggers = document.querySelectorAll("button[popovertarget]");
       buttonTriggers.forEach((buttonTrigger) => {
         buttonTrigger.addEventListener("click", (event) => {
           // event.detail === 0 when triggered by keyboard
@@ -307,7 +303,7 @@
       // Add non-native keyboard handling.
       // ArrowDown on trigger opens and enters the menu
       document.addEventListener("keydown", (event) => {
-        const trigger = event.target.closest("button[commandFor]");
+        const trigger = event.target.closest("button[popovertarget]");
         const currentMenu = event.target.closest("[popover]");
 
         // Arrow Down is not a natively supported method of opening or navigating into a popover
@@ -346,18 +342,17 @@
           popover.showPopover({ source: anchor });
         };
 
-        card.addEventListener('contextmenu', (e) => {
+        card.addEventListener("contextmenu", (e) => {
           // Prevent the browser's default context menu
           e.preventDefault();
           // Context Menu will be opened in `mouseup` event listener.
         });
 
-        card.addEventListener('mouseup', (e) => {
+        card.addEventListener("mouseup", (e) => {
           // button 2 = right mouse click
           if (!(e.button === 2 || e.ctrlKey)) return;
           openContextMenu(e);
         });
-
       });
 
       // Clicking a menu item performs action and closes menu.
@@ -366,7 +361,7 @@
         .forEach((btn) => {
           btn.addEventListener("click", (event) => {
             // If this button has a commandFor, it's a submenu trigger, not an action
-            if (btn.hasAttribute("commandFor")) return;
+            if (btn.hasAttribute("popovertarget")) return;
 
             // Close root popover in the chain. No submenus in this demo, but worth being robust
             let current = btn.closest("[popover]");
@@ -381,6 +376,48 @@
             console.log(`Activated: ${btn.textContent}`);
           });
         });
+
+      // Native focusgroup supplies menu navigation and inferred roles where supported.
+      // Only install the local navigation and semantic fallback when it is unavailable.
+      if (!("focusGroup" in HTMLElement.prototype)) {
+
+        document.querySelectorAll('[focusgroup~="menu"]').forEach((group) => {
+          group.setAttribute("role", "menu");
+          group.querySelectorAll("button:not([role])").forEach((item) => {
+            item.setAttribute("role", "menuitem");
+          });
+          group.addEventListener(
+            "keydown",
+            (event) => {
+              if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
+                return;
+              // Own items only: a nested submenu has its own focusgroup, a role="group" wrapper does not.
+              const items = [...group.querySelectorAll("button")]
+                .filter((item) => item.closest("[focusgroup]") === group)
+                .filter(
+                  (item) =>
+                    !item.disabled &&
+                    item.getAttribute("aria-disabled") !== "true",
+                );
+              const current = items.indexOf(document.activeElement);
+              if (current < 0) return;
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? items.length - 1
+                    : (current +
+                        (event.key === "ArrowUp" ? -1 : 1) +
+                        items.length) %
+                      items.length;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              items[next].focus({ preventScroll: true });
+            },
+            true,
+          );
+        });
+      }
     </script>
   </body>
 </html>
