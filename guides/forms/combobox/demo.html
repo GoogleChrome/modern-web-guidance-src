@@ -184,7 +184,6 @@
     const render = () => {
       const q = input.value.trim();
       const found = matches();
-      const ranges = [];
       listbox.replaceChildren(...found.map((o, i) => {
         const li = document.createElement('li');
         li.role = 'option';
@@ -192,21 +191,28 @@
         li.dataset.value = o.value;
         const at = q ? o.value.toLowerCase().indexOf(q.toLowerCase()) : -1;
         li.textContent = o.value;
-        if (at >= 0) {
-          if (CSS.highlights) {
-            const range = new Range();
-            range.setStart(li.firstChild, at);
-            range.setEnd(li.firstChild, at + q.length);
-            ranges.push(range);
-          } else {
-            const mark = document.createElement('mark');
-            mark.textContent = o.value.slice(at, at + q.length);
-            li.replaceChildren(o.value.slice(0, at), mark, o.value.slice(at + q.length));
-          }
+        if (at >= 0 && !CSS.highlights) {
+          const mark = document.createElement('mark');
+          mark.textContent = o.value.slice(at, at + q.length);
+          li.replaceChildren(o.value.slice(0, at), mark, o.value.slice(at + q.length));
         }
         return li;
       }));
-      CSS.highlights?.set('combobox-match', new Highlight(...ranges));
+      if (CSS.highlights) {
+        const ranges = [];
+        const lowerQ = q.toLowerCase();
+        const walker = document.createTreeWalker(listbox, NodeFilter.SHOW_TEXT);
+        for (let text = lowerQ && walker.nextNode(); text; text = walker.nextNode()) {
+          const lower = text.data.toLowerCase();
+          for (let at = lower.indexOf(lowerQ); at >= 0; at = lower.indexOf(lowerQ, at + lowerQ.length)) {
+            const range = new Range();
+            range.setStart(text, at);
+            range.setEnd(text, at + lowerQ.length);
+            ranges.push(range);
+          }
+        }
+        CSS.highlights.set('combobox-match', new Highlight(...ranges));
+      }
       if (q && !found.some(o => o.value.toLowerCase() === q.toLowerCase())) {
         const add = document.createElement('li');
         add.role = 'option';

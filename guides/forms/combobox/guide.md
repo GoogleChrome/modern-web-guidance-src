@@ -108,17 +108,19 @@ Add this when the value is a record users build up over time (tags, destinations
 Highlight the matched substring of each option label with the Custom Highlight API instead of wrapping it in `<mark>` (see {{ GUIDE_REF("highlight-text-ranges") }}). Worth adding when options are long or similar.
 
 ```js
-// After rendering the options, create one Range per matched substring.
+// After rendering the options, create one Range per match, across every text node and every occurrence.
 // Setting the same highlight name again replaces the previous ranges, so there is nothing to clean up.
 const ranges = [];
-for (const option of listbox.children) {
-  const text = option.firstChild;
-  const at = text.data.toLowerCase().indexOf(query.toLowerCase());
-  if (at < 0) continue;
-  const range = new Range();
-  range.setStart(text, at);
-  range.setEnd(text, at + query.length);
-  ranges.push(range);
+const q = query.toLowerCase();
+const walker = document.createTreeWalker(listbox, NodeFilter.SHOW_TEXT);
+for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+  const lower = text.data.toLowerCase();
+  for (let at = lower.indexOf(q); at >= 0; at = lower.indexOf(q, at + q.length)) {
+    const range = new Range();
+    range.setStart(text, at);
+    range.setEnd(text, at + q.length);
+    ranges.push(range);
+  }
 }
 CSS.highlights.set('combobox-match', new Highlight(...ranges));
 ```
