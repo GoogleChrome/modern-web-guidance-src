@@ -21,6 +21,9 @@ import {
 import { MAX_SOURCE_FILE_BYTES } from './scanners/index.ts';
 import type { AnalyzerRule } from './schema.ts';
 
+// Ensure consistent output without ANSI escape codes in tests (https://no-color.org)
+process.env.NO_COLOR = '1';
+
 async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), 'analyzer-cli-test-'));
   try {

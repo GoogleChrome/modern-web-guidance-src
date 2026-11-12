@@ -102,6 +102,7 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
         encoding: 'utf8',
         stdio: 'pipe',
         maxBuffer: MAX_BUFFER,
+        env: { ...process.env, LC_ALL: 'C' },
       });
       return { success: true };
     } catch (patchErr: unknown) {
