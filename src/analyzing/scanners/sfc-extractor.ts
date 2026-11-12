@@ -198,12 +198,21 @@ function sanitizeLitExpressions(rawSlice: string): string {
 }
 
 /**
- * Extracts Lit css`...` tagged template literal blocks from JS/TS content.
+ * Tagged templates whose body is a full stylesheet: Lit/Emotion `css` and
+ * styled-components `createGlobalStyle`. Most other CSS-in-JS bodies are bare
+ * declarations with no selector, which CSS rulesets cannot match, so they are
+ * deliberately not extracted.
+ */
+const CSS_TAG_TEMPLATE_RE = /\b(?:css|createGlobalStyle)\s*`/;
+
+/**
+ * Extracts `css` and `createGlobalStyle` tagged template literal blocks from
+ * JS/TS content.
  */
 function extractLitCssBlocks(content: string): readonly string[] {
   const blocks: string[] = [];
 
-  for (const match of content.matchAll(/\bcss\s*`/g)) {
+  for (const match of content.matchAll(/\b(?:css|createGlobalStyle)\s*`/g)) {
     if (match.index === undefined) {
       continue;
     }
@@ -264,12 +273,12 @@ export function isMarkupPath(relPath: string): boolean {
 }
 
 /**
- * Extracts style blocks from HTML, Vue, Svelte, and Astro files,
- * or Lit css`...` tagged template literals from JS/TS files.
+ * Extracts style blocks from HTML, Vue, Svelte, and Astro files, or `css` /
+ * `createGlobalStyle` tagged template literals from JS/TS files.
  */
 export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
   if (!isMarkupPath(relPath)) {
-    return content.includes('css`') ? extractLitCssBlocks(content) : [];
+    return CSS_TAG_TEMPLATE_RE.test(content) ? extractLitCssBlocks(content) : [];
   }
 
   const blocks: string[] = [];

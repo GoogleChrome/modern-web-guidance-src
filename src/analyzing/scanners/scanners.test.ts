@@ -761,6 +761,40 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     assert.equal(litCss.line, 8);
     assert.ok(litCss.codeSnippet.includes('>    8 |     .tooltip {'));
   });
+
+  await t.test('scans createGlobalStyle template literals with exact line numbers', () => {
+    const globalStyleContent = [
+      "import { createGlobalStyle } from 'styled-components';",
+      '',
+      'export const GlobalStyle = createGlobalStyle`',
+      '  body {',
+      '    anchor-name: --page-anchor;',
+      '  }',
+      '`;',
+    ].join('\n');
+
+    const globalStyleFindings = scanFiles(
+      new Map([['src/global-style.js', globalStyleContent]]),
+      rules,
+    );
+    assert.equal(globalStyleFindings.length, 1);
+    assert.equal(globalStyleFindings[0]?.ruleId, 'test-css-anchor');
+    assert.equal(globalStyleFindings[0]?.file, 'src/global-style.js');
+    assert.equal(globalStyleFindings[0]?.line, 4);
+  });
+
+  await t.test('does not scan stylesheet-shaped literals without a CSS tag', () => {
+    const untaggedContent = [
+      'const styles = `',
+      '  body {',
+      '    anchor-name: --untagged-anchor;',
+      '  }',
+      '`;',
+    ].join('\n');
+
+    const untaggedFindings = scanFiles(new Map([['src/theme.mjs', untaggedContent]]), rules);
+    assert.equal(untaggedFindings.length, 0);
+  });
 });
 
 void test('slice-c: vendored library whole-file detection & AST matcher suppression', async (testingContext) => {

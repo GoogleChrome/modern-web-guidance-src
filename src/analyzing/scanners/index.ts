@@ -383,7 +383,7 @@ export function scanFiles(
       if (JS_EXTENSIONS.has(ext)) {
         const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
         findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, project));
-        if (content.includes('css`')) {
+        if (content.includes('css`') || content.includes('createGlobalStyle')) {
           findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
         }
       }
