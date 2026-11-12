@@ -8,6 +8,20 @@ import {
   prepareHtmlForDomScan,
 } from './sfc-extractor.ts';
 
+void test('sfc-extractor: Lit CSS tag whitespace preserves source offsets', async (t) => {
+  for (const separator of ['', ' ', '\t', '\n', '\r\n']) {
+    await t.test(`separator ${JSON.stringify(separator)}`, () => {
+      const css = '.card { color: red; }';
+      const source = `const styles = css${separator}\`\n${css}\n\`;`;
+      const blocks = extractStyleBlocks('src/card.ts', source);
+      assert.equal(blocks.length, 1);
+      assert.equal(blocks[0]?.trim(), css);
+      assert.equal(blocks[0]?.length, source.length);
+      assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+    });
+  }
+});
+
 void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
   await t.test('extracts frontmatter containing internal --- comments without premature termination', () => {
     const astro = [
