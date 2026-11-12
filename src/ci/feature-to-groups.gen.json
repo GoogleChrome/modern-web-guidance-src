@@ -947,6 +947,9 @@
   "scroll-snap-events": [
     "scrolling"
   ],
+  "scroll-snap-type-pair": [
+    "scrolling"
+  ],
   "scroll-target-group": [
     "scrolling"
   ],
@@ -1137,13 +1140,7 @@
   "tmp-email-verification": [
     "security"
   ],
-  "tmp-navigation-source": [
-    "css"
-  ],
   "tmp-path-length": [
-    "css"
-  ],
-  "tmp-polygon-round": [
     "css"
   ],
   "tmp-text-decoration-inset": [
