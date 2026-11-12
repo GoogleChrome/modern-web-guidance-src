@@ -91,12 +91,6 @@
 
     /* Legacy WebKit/Blink styling hidden from modern browsers */
     @supports not (scrollbar-color: auto) {
-      .scroller.adaptive-contrast {
-        /* Reset scrollbar-width: thin (if set) so it does not disable
-           ::-webkit-scrollbar in browsers without scrollbar-color */
-        scrollbar-width: auto;
-      }
-
       .scroller.adaptive-contrast::-webkit-scrollbar {
         /* Must be sized for the custom colors to show up in WebKit */
         width: 14px;
