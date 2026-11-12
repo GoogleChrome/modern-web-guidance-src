@@ -77,7 +77,7 @@ const TIMEOUT_MS = 900000;
  * @property {number} uncachedTokens
  * @property {number} totalTokens
  * @property {string[]} guidesUsed
- * @property {boolean} earlyFailure true when the run failed before grading
+ * @property {boolean} earlyFailure true when the trial encountered an infra error before grading
  */
 /**
  * @typedef {Object} ShowcaseCheck

@@ -47,7 +47,7 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/dashboard.html?testId=example-result');
 
     // Check title
-    await expect(page).toHaveTitle('Suite Results');
+    await expect(page).toHaveTitle('Job Results');
 
     // Check header info
     await expect(page.locator('#test-header')).toContainText('example-result');
@@ -275,7 +275,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-takeaways .takeaway')).toHaveCount(2);
     await expect(hero.locator('.takeaway-figure').first()).toContainText('—');
-    await expect(hero.locator('#hero-status')).toContainText(/no evaluation runs/i);
+    await expect(hero.locator('#hero-status')).toContainText(/no evaluation jobs/i);
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('.suite-table-row')).toHaveCount(1);
   });
@@ -291,7 +291,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-qualifier-short')).toContainText('3 agents');
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest run per model');
+    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest job per model');
     const details = page.locator('#hero-method');
     await details.locator('summary').focus();
     await page.keyboard.press('Enter');
@@ -480,11 +480,11 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.goto('/');
     const windowToggle = page.locator('#agents-window-toggle');
     await expect(windowToggle).toBeVisible();
-    await expect(page.locator('#agents-window-multi-label')).toHaveText('Last 5 runs per model');
+    await expect(page.locator('#agents-window-multi-label')).toHaveText('Last 5 jobs per model');
     await expect(agentRows).toHaveCount(2);
     await expect(agentRows.first().locator('td[data-label="Sample"]')).toContainText('197/200 tasks · ×1/task · 3 err · 2% leak');
-    await windowToggle.locator('label', { hasText: 'Last 5 runs per model' }).click();
-    await expect(page.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 1,997 task runs');
+    await windowToggle.locator('label', { hasText: 'Last 5 jobs per model' }).click();
+    await expect(page.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 1,997 tasks');
     await expect(agentRows.first().locator('td[data-label="Sample"]')).toContainText('5 nights · 997/1,000 tasks · ×1–3/task · 3 err');
     await expect(agentRows.first().locator('td[data-label="Pass rate"] button.agent-rate-trigger')).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });

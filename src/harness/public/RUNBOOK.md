@@ -16,7 +16,7 @@ src/harness/public/allowlist.json  ──►  pnpm public:publish  ──►  pu
   `gh-pages`. The nightly run (`src/harness/nightly/run-guidance-nightly.sh`)
   calls it after the agents finish when its checkout is a clean `main` in sync
   with `origin/main`; run it by hand to apply an allowlist change sooner.
-- `releasedModels: []` means **nothing publishes**. Every suite is skipped as
+- `releasedModels: []` means **nothing publishes**. Every job is skipped as
   `unreleased-model` until a model is listed.
 - Every allowlist change goes through a pull request (`CODEOWNERS` enforces
   review). There is no fast path around review.
@@ -29,10 +29,10 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 | I want to… | Do |
 |---|---|
 | Release a model | Add it to `releasedModels` |
-| Publish a suite the patterns do not cover | Add its exact id to `include` |
-| Hide a whole suite | Add its id to `exclude` |
-| Hide one guide inside a suite | Add `{ "id": "<suite-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per suite; list several guides in it) |
-| Restore a hidden suite or guide | Remove the `exclude` entry or the override |
+| Publish a job the patterns do not cover | Add its exact id to `include` |
+| Hide a whole job | Add its id to `exclude` |
+| Hide one guide inside a job | Add `{ "id": "<suite-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per job; list several guides in it) |
+| Restore a hidden job or guide | Remove the `exclude` entry or the override |
 | Keep the site small | Set `retention.maxSuitesPerAgent` / `retention.maxSuites` / `retention.maxAgeDays` |
 
 ## Publishing
@@ -50,15 +50,15 @@ pnpm public:publish --no-dispatch # push gh-pages without dispatching deploy
 ```
 
 Usernames are scrubbed from two sources: the names the builder harvests from
-each suite's own paths, plus your OS user. To add more (other operators whose
+each job's own paths, plus your OS user. To add more (other operators whose
 runs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
 where the OS user is just `runner`, that variable is required.
 
 It checks out the published `public-evals/` from `gh-pages`, rebuilds it from
 the checked-out allowlist (incrementally, so an unchanged site costs one
-listing call), prints the per-suite summary, and pushes. It refuses to push
+listing call), prints the per-job summary, and pushes. It refuses to push
 when `PUBLIC_EVALS_FORBIDDEN_TOKENS` is malformed, when `gh-pages` moved while
-it was building, or when any suite `FAILED` (transient storage error): fix the
+it was building, or when any job FAILED (transient storage error): fix the
 cause and rerun. The publisher does not check which branch is checked out, so
 run it from `main` or the site will reflect a local allowlist.
 
@@ -81,10 +81,10 @@ Edit `/tmp/al.json`, rerun, and watch the summary line:
 |---|---|
 | add an id to `exclude` | `1 removed`, directory gone, manifest shorter |
 | remove it again | `1 built` |
-| add `{ "id": …, "excludeGuides": ["webmcp"] }` to `overrides` | that suite `built` again; no `*/webmcp/` folder; `grep -c webmcp …/evals.json` → 0 |
-| an unknown guide in `excludeGuides` | suite `skipped  override: …` and removed (fail closed) |
-| empty `releasedModels` | every suite `skipped  unreleased-model`, published ones removed |
-| `retention.maxSuites: 1` | oldest suite `removed` |
+| add `{ "id": …, "excludeGuides": ["webmcp"] }` to `overrides` | that job `built` again; no `*/webmcp/` folder; `grep -c webmcp …/evals.json` → 0 |
+| an unknown guide in `excludeGuides` | job `skipped  override: …` and removed (fail closed) |
+| empty `releasedModels` | every job `skipped  unreleased-model`, published ones removed |
+| `retention.maxSuites: 1` | oldest job `removed` |
 | `include: ["*"]` | refused: wildcards must start with `nightly-` |
 | an unknown key | refused by the schema |
 | rerun with no edit | all `unchanged`, about two seconds |
@@ -97,20 +97,20 @@ To see it in the dashboard, build into `out/` instead (`--out out`), run
 
 | Line | Meaning |
 |---|---|
-| `built` | suite written (files, size, truncated patches) |
+| `built` | job written (files, size, truncated patches) |
 | `unchanged` | inputs identical to last build; nothing fetched |
 | `removed` | no longer selected (exclude, pattern, retention); directory deleted |
 | `skipped  <code>: <reason>` | policy rejection; remembered, retried only when the relevant input changes. Codes: `unreleased-model`, `non-public-agent`, `no-evals`, `leak`, `override`, `suite-id`. Under `CI` only the code is printed, since a reason may quote what was rejected |
 | `FAILED` | transient error (storage, parse); previously published copy kept and still listed; retried next run; exit code 1 (and `public:publish` does not push) |
 
-`--force` rebuilds every selected suite regardless of state.
+`--force` rebuilds every selected job regardless of state.
 
 ## Environment
 
 | Variable | Purpose |
 |---|---|
-| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | extra operator LDAPs that must not appear in output, beyond the OS user and the names harvested from each suite; required in CI |
-| `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | non-negative integer; bump after changing the list so published suites are rescanned |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | extra operator LDAPs that must not appear in output, beyond the OS user and the names harvested from each job; required in CI |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | non-negative integer; bump after changing the list so published jobs are rescanned |
 | `CI` | when set, the OS user is not added to the token list |
 
 ## Where things live

@@ -153,7 +153,7 @@ export class ApiClient {
     // --- High-level API Methods ---
 
     /** 
-     * Fetches the overall array of test suites/runs listed for the dashboard.
+     * Fetches the overall array of test jobs/runs listed for the dashboard.
      * @returns {Promise<{ suites: { id: string, source: string }[] }>}
      */
     async getSuites() {
