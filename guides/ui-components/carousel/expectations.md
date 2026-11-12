@@ -22,6 +22,7 @@
 - The carousel uses HTML Previous and Next `<button>` elements, each with an accessible name, that precede the track in DOM order, and does not use native `::scroll-button()` or `::scroll-marker`.
 - Activating the Previous or Next button moves the carousel to the adjacent slide in visual order.
 - The carousel has one HTML marker `<button>` per slide, and activating a marker button navigates to its corresponding slide.
+- Activating a marker button scrolls the track in the direction of the target slide's position in the slide sequence, passing the slides in between, including when the target is a parked end slide (for example, from the first slide, the last slide's marker scrolls forward).
 - Every marker button has an accessible name identifying its destination slide.
 - The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.

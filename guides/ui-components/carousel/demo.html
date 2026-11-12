@@ -247,14 +247,16 @@
 
     const nearest = () => slides.reduce((a, b) => (Math.abs(offsetToCenter(b)) < Math.abs(offsetToCenter(a)) ? b : a));
 
+    const position = () => [track.scrollLeft, track.scrollTop].join();
+
     // Run a callback once scrolling settles. Without scrollend, a debounce stands in for it.
     function onSettled(fn) {
       if ("onscrollend" in window) {
         // A scrollend from a scroll that was cut short can arrive after the next one has started; skip it.
         track.addEventListener("scrollend", () => {
-          const at = [track.scrollLeft, track.scrollTop].join();
+          const at = position();
           requestAnimationFrame(() => requestAnimationFrame(() => {
-            if ([track.scrollLeft, track.scrollTop].join() === at) fn();
+            if (position() === at) fn();
           }));
         });
         return;
@@ -268,6 +270,7 @@
 
     // Clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
     let pending = null;
+    let aimedAt = null;
     // Highlight the active marker right away rather than after scrolling settles.
     let marked = null;
     const mark = (item) => {
@@ -281,6 +284,7 @@
       pending = item;
       mark(item);
       show(item);
+      aimedAt = position();
     };
     const step = (dir) => {
       const target = neighbor(pending ?? nearest(), dir);
@@ -299,19 +303,26 @@
     markers = slides.map((slide, i) => {
       const button = Object.assign(document.createElement("button"), { type: "button" });
       button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-      button.addEventListener("click", () => aim(slide));
+      button.addEventListener("click", () => {
+        // A direct scroll to a parked end slide goes the short way round, so travel in DOM order; settling parks again
+        if (loops && slide !== nearest()) park();
+        aim(slide);
+      });
       markerNav.append(button);
       return button;
     });
 
-    // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
-    function park(item) {
+    // Tell CSS the settled slide (or none, for DOM order), then cancel the layout shift with an instant scroll.
+    function park(current = "initial") {
+      parkedFor = current;
+      const item = nearest();
       const before = offsetToCenter(item);
       // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
       track.style.scrollSnapType = "none";
-      // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker
-      if (document.activeElement !== track) track.style.overflowX = "hidden";
-      track.style.setProperty("--current", slides.indexOf(item));
+      // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker.
+      // Not without a settled slide, when a scroll is about to follow: Safari will not start it on a locked track.
+      if (current !== "initial" && document.activeElement !== track) track.style.overflowX = "hidden";
+      track.style.setProperty("--current", current);
       track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
       requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
@@ -322,12 +333,13 @@
     // The single code path for state: controls only scroll; this reflects where scrolling ended.
     let settled = null;
     function sync() {
+      // A settle right where a scroll to another slide was requested is not that scroll ending (it has yet to move), so wait for the real one
+      if (pending && pending !== nearest() && position() === aimedAt) return;
       pending = null;
       const item = nearest();
       const i = slides.indexOf(item);
       if (loops && i !== parkedFor) {
-        parkedFor = i;
-        park(item);
+        park(i);
       }
       if (settled && item !== settled) {
         status.textContent = `Slide ${i + 1} of ${slides.length}`;
