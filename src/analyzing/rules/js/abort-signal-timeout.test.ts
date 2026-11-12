@@ -11,12 +11,12 @@ import {
 
 void test('js/abort-signal-timeout matcher', async (t) => {
   await t.test('wires js/abort-signal-timeout in src/rules/js.ts with the locked guideHash', () => {
-    assert.strictEqual(JS_GUIDE_HASH, '8ad03eec26ab');
+    assert.strictEqual(JS_GUIDE_HASH, '78d968c460dd');
     const matchingRules = jsDefaultRules.filter((rule) => rule.id === 'js/abort-signal-timeout');
     assert.strictEqual(matchingRules.length, 1);
     const [rule] = matchingRules;
     assert.strictEqual(rule?.guideId, 'js');
-    assert.strictEqual(rule?.guideHash, '8ad03eec26ab');
+    assert.strictEqual(rule?.guideHash, '78d968c460dd');
     assert.strictEqual(rule, exportedJsRule);
   });
 

@@ -7,12 +7,12 @@ import { JS_GUIDE_HASH, structuredCloneMatcher, structuredCloneRule } from './st
 
 void test('js/structured-clone matcher', async (t) => {
   await t.test('wires js/structured-clone in src/rules/js.ts with the locked guideHash', () => {
-    assert.strictEqual(JS_GUIDE_HASH, '8ad03eec26ab');
+    assert.strictEqual(JS_GUIDE_HASH, '78d968c460dd');
     const matchingRules = jsDefaultRules.filter((rule) => rule.id === 'js/structured-clone');
     assert.strictEqual(matchingRules.length, 1);
     const [rule] = matchingRules;
     assert.strictEqual(rule?.guideId, 'js');
-    assert.strictEqual(rule?.guideHash, '8ad03eec26ab');
+    assert.strictEqual(rule?.guideHash, '78d968c460dd');
     assert.strictEqual(rule, exportedJsRule);
   });
 

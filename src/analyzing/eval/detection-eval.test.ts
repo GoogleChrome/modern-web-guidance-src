@@ -9,6 +9,7 @@ import {
   computeExplainerContextHash,
   computeJudgeInputProvenance,
   computePromptGuideHash,
+  computeRuleHash,
   deriveJudgeVerdictFromFacts,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
@@ -33,6 +34,7 @@ import {
   type JudgeResult,
   type JudgeVerdict,
 } from './detection-eval.ts';
+import { jsUrlSearchParamsRule } from '../rules/js/url-search-params.ts';
 
 const mockGeminiResponse = (p: unknown, status = 200) =>
   new Response(typeof p === 'string' ? p : JSON.stringify(p), {
@@ -541,6 +543,41 @@ describe('code snippet slicing, blind cards prep, and direct judge runner', () =
     assert.deepStrictEqual(consensusRow.facts.provenance, expectedProvenance);
     assert.equal('rawResponse' in consensusRow, false);
     assert.equal('error' in consensusRow, false);
+  });
+
+  it('requires explicit ruleId for multi-rule guides like js instead of collapsing onto structured-clone', () => {
+    const jsSummary: GuideSummaryInfo = {
+      guideId: 'js',
+      problem: 'JavaScript discipline guide.',
+      markdownBody: '# JavaScript\n\nUse URLSearchParams and structuredClone.',
+    };
+
+    const withoutRuleId = computeJudgeInputProvenance({
+      cardId: 'card-js-no-rule',
+      repo: 'sample-repo',
+      file: 'src/query.js',
+      line: 10,
+      guideId: 'js',
+      guideSummary: jsSummary,
+      codeSnippet: "location.search.slice(1).split('&');",
+    });
+    assert.equal(withoutRuleId.ruleId, 'js');
+    assert.equal(withoutRuleId.ruleGuideHash, 'unregistered');
+    assert.equal(withoutRuleId.ruleHash, 'unregistered');
+
+    const withExplicitRuleId = computeJudgeInputProvenance({
+      cardId: 'card-js-explicit-rule',
+      repo: 'sample-repo',
+      file: 'src/query.js',
+      line: 10,
+      guideId: 'js',
+      ruleId: 'js/url-search-params',
+      guideSummary: jsSummary,
+      codeSnippet: "location.search.slice(1).split('&');",
+    });
+    assert.equal(withExplicitRuleId.ruleId, 'js/url-search-params');
+    assert.equal(withExplicitRuleId.ruleGuideHash, jsUrlSearchParamsRule.guideHash);
+    assert.equal(withExplicitRuleId.ruleHash, computeRuleHash(jsUrlSearchParamsRule));
   });
 });
 

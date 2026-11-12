@@ -7,12 +7,12 @@ import { JS_GUIDE_HASH, objectGroupByMatcher, objectGroupByRule } from './object
 
 void test('js/object-group-by matcher', async (t) => {
   await t.test('wires js/object-group-by in src/rules/js.ts with the locked guideHash', () => {
-    assert.strictEqual(JS_GUIDE_HASH, '8ad03eec26ab');
+    assert.strictEqual(JS_GUIDE_HASH, '78d968c460dd');
     const matching = jsDefaultRules.filter((rule) => rule.id === 'js/object-group-by');
     assert.strictEqual(matching.length, 1);
     const [rule] = matching;
     assert.strictEqual(rule?.guideId, 'js');
-    assert.strictEqual(rule?.guideHash, '8ad03eec26ab');
+    assert.strictEqual(rule?.guideHash, '78d968c460dd');
     assert.strictEqual(rule, exportedJsRule);
   });
 

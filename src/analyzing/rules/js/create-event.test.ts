@@ -7,12 +7,12 @@ import { JS_GUIDE_HASH, jsCreateEventMatcher, jsCreateEventRule } from './create
 
 void test('js/create-event matcher', async (t) => {
   await t.test('wires js/create-event in src/rules/js.ts with the locked guideHash and rubric', () => {
-    assert.strictEqual(JS_GUIDE_HASH, '8ad03eec26ab');
+    assert.strictEqual(JS_GUIDE_HASH, '78d968c460dd');
     const matchingRules = jsDefaultRules.filter((rule) => rule.id === 'js/create-event');
     assert.strictEqual(matchingRules.length, 1);
     const [rule] = matchingRules;
     assert.strictEqual(rule?.guideId, 'js');
-    assert.strictEqual(rule?.guideHash, '8ad03eec26ab');
+    assert.strictEqual(rule?.guideHash, '78d968c460dd');
     assert.strictEqual(rule, exportedJsRule);
     assert.ok(rule.verifierRubric.keepWhen.length > 0);
     assert.ok(rule.verifierRubric.dropWhen.length >= 4);

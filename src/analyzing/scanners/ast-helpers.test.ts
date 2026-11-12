@@ -891,6 +891,12 @@ test('shared AST helpers: static literals, member/method/assignment unwrapping, 
       const same2 = (arr[idx + 1]);
       const quote1 = obj['key'];
       const quote2 = obj["key"];
+      const pos = +a;
+      const neg = -a;
+      const pos2 = +a;
+      const inc = i++;
+      const dec = i--;
+      const inc2 = i++;
       `,
       { overwrite: true },
     );
@@ -908,6 +914,10 @@ test('shared AST helpers: static literals, member/method/assignment unwrapping, 
     assert.equal(areNodesEqual(decls[1]!.getInitializer(), decls[2]!.getInitializer()), true);
     assert.equal(areNodesEqual(decls[3]!.getInitializer(), decls[4]!.getInitializer()), true);
     assert.equal(areNodesEqual(decls[1]!.getInitializer(), decls[3]!.getInitializer()), false);
+    assert.equal(areNodesEqual(decls[5]!.getInitializer(), decls[6]!.getInitializer()), false);
+    assert.equal(areNodesEqual(decls[5]!.getInitializer(), decls[7]!.getInitializer()), true);
+    assert.equal(areNodesEqual(decls[8]!.getInitializer(), decls[9]!.getInitializer()), false);
+    assert.equal(areNodesEqual(decls[8]!.getInitializer(), decls[10]!.getInitializer()), true);
   });
 
   await t.test('isGlobalMember, isCallableNode, hasBindingName, findImportBinding, isIdentifierReference, resolvesToBinding', () => {

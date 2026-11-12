@@ -1,142 +1,22 @@
-import {
-  Node,
-  SyntaxKind,
-  type ExpressionStatement,
-  type ParameterDeclaration,
-  type PropertyDeclaration,
-  type VariableDeclaration,
-} from 'ts-morph';
+import { Node, SyntaxKind, type ExpressionStatement } from 'ts-morph';
 import {
   areNodesEqual,
-  getMemberAccess,
   getSemanticParent,
   getStaticString,
-  resolveLocalExpression,
+  isGlobalReference,
   unwrapExpression,
-  unwrapMethodCall,
   unwrapPropertyAccess,
 } from '../../scanners/ast-helpers.ts';
 import { createJsAstMatcher } from '../../scanners/js-scanner.ts';
 import type { AnalyzerRule, JsRuleMatcher } from '../../schema.ts';
 
-import { JS_GUIDE_HASH } from './shared.ts';
+import { JS_GUIDE_HASH, isTemplateReceiver } from './shared.ts';
 export const JS_REPLACE_CHILDREN_GUIDE_HASH = JS_GUIDE_HASH;
 
-const TEMPLATE_NAME_RE = /(?:^|_|[a-z0-9])(?:template|tpl|tmpl)(?:El|Elem|Element|Node|Ref)?$/i;
-const DOM_TYPE_RE = new RegExp(
-  '\\b(?:Element|ShadowRoot|DocumentFragment|(?:HTML|XML)?Document|' +
-    '(?:SVG|MathML)[A-Z]\\w*Element|HTML(?!Template\\b)[A-Z]\\w*Element|HTMLElement)\\b',
-);
 const HTML_READ_PROPS = new Set(['innerHTML', 'outerHTML', 'textContent']);
 const CLEAR_MSG =
   'Assigning empty innerHTML invokes the HTML parser and fails under Trusted Types; ' +
   'use element.replaceChildren() (or element.replaceChildren(newContent)) instead.';
-
-type ReceiverDomKind = 'template' | 'non-template' | null;
-type ReceiverDecl = VariableDeclaration | ParameterDeclaration | PropertyDeclaration;
-
-function classifyDomTypeText(typeText: string | undefined): ReceiverDomKind {
-  if (!typeText) return null;
-  if (/\bHTMLTemplateElement\b/.test(typeText)) return 'template';
-  return DOM_TYPE_RE.test(typeText) ? 'non-template' : null;
-}
-
-function getCastDomKind(node: Node | undefined): ReceiverDomKind {
-  let current = node;
-  while (current) {
-    if (
-      Node.isAsExpression(current) ||
-      Node.isTypeAssertion(current) ||
-      Node.isSatisfiesExpression(current)
-    ) {
-      const kind = classifyDomTypeText(current.getTypeNode()?.getText());
-      if (kind) return kind;
-      current = current.getExpression();
-      continue;
-    }
-    if (Node.isParenthesizedExpression(current) || Node.isNonNullExpression(current)) {
-      current = current.getExpression();
-      continue;
-    }
-    break;
-  }
-  return null;
-}
-
-function getCallDomKind(node: Node | undefined): ReceiverDomKind {
-  if (!node) return null;
-  const unwrapped = unwrapExpression(node);
-  const callNode = Node.isElementAccessExpression(unwrapped)
-    ? unwrapExpression(unwrapped.getExpression())
-    : unwrapped;
-  if (!Node.isCallExpression(callNode)) return null;
-
-  const typeArgKind = classifyDomTypeText(callNode.getTypeArguments()[0]?.getText());
-  if (typeArgKind) return typeArgKind;
-
-  const callInfo = unwrapMethodCall(callNode);
-  if (!callInfo) return null;
-  const { methodName, args } = callInfo;
-  let tagHint: string | undefined;
-  if (methodName === 'createElement' || methodName === 'createElementNS') {
-    tagHint = getStaticString(methodName === 'createElementNS' ? args[1] : args[0]) ?? undefined;
-  } else if (methodName === 'querySelector' || methodName === 'querySelectorAll') {
-    tagHint =
-      getStaticString(args[0])?.match(/^\s*([a-zA-Z][a-zA-Z0-9-]*)(?=$|[.#[:\s>,+~])/)?.[1];
-  }
-  if (!tagHint) return null;
-  return tagHint.trim().toLowerCase() === 'template' ? 'template' : 'non-template';
-}
-
-function findReceiverDeclaration(expr: Node): ReceiverDecl | undefined {
-  const member = getMemberAccess(expr);
-  if (member && Node.isThisExpression(unwrapExpression(member.expression))) {
-    const cls = expr.getFirstAncestor((a) => Node.isClassDeclaration(a) || Node.isClassExpression(a));
-    return cls?.getProperty(member.name) ?? cls?.getConstructors()[0]?.getParameter(member.name);
-  }
-  if (!Node.isIdentifier(expr)) return undefined;
-  const name = expr.getText();
-  for (let scope: Node | undefined = expr.getParent(); scope; scope = scope.getParent()) {
-    if (Node.isFunctionLikeDeclaration(scope)) {
-      const param = scope.getParameter(name);
-      if (param) return param;
-    }
-    if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
-      const varDecl = scope.getVariableDeclaration(
-        (decl) => decl.getName() === name && decl.getStart() < expr.getStart(),
-      );
-      if (varDecl) return varDecl;
-    }
-  }
-  return undefined;
-}
-
-function isTemplateReceiver(rawNode: Node): boolean {
-  const outerCast = getCastDomKind(rawNode);
-  if (outerCast) return outerCast === 'template';
-
-  const expr = unwrapExpression(rawNode);
-  const resolved = Node.isIdentifier(expr) ? resolveLocalExpression(expr, 2) : expr;
-  if (unwrapPropertyAccess(expr, 'content')) return false;
-  if (resolved !== expr && unwrapPropertyAccess(resolved, 'content')) return false;
-
-  const decl = findReceiverDeclaration(expr);
-  const initializer = decl?.getInitializer();
-  if (initializer && unwrapPropertyAccess(initializer, 'content')) return false;
-
-  const inferredKind =
-    getCallDomKind(expr) ??
-    classifyDomTypeText(decl?.getTypeNode()?.getText()) ??
-    getCastDomKind(initializer) ??
-    getCallDomKind(initializer) ??
-    getCallDomKind(resolved);
-  if (inferredKind) return inferredKind === 'template';
-
-  const label = Node.isIdentifier(expr)
-    ? expr.getText()
-    : (getMemberAccess(expr)?.name.replace(/^#/, '') ?? '');
-  return TEMPLATE_NAME_RE.test(label);
-}
 
 function isEmptyHtmlValue(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -232,6 +112,7 @@ export const jsReplaceChildrenInnerHtmlMatcher: JsRuleMatcher = createJsAstMatch
     if (!stmt) return null;
 
     const receiver = lhs.getExpression();
+    if (isGlobalReference(receiver, 'document')) return null;
     if (isTemplateReceiver(receiver)) return null;
     if (hasRedundantNextInnerHtmlWrite(stmt, receiver)) return null;
     return CLEAR_MSG;

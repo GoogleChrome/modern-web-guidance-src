@@ -7,12 +7,12 @@ import { JS_GUIDE_HASH, jsTextDecoderMatcher, jsTextDecoderRule } from './text-d
 
 void test('js/text-decoder matcher', async (t) => {
   await t.test('wires js/text-decoder in src/rules/js.ts and src/rules/index.ts with locked guideHash', () => {
-    assert.strictEqual(JS_GUIDE_HASH, '8ad03eec26ab');
+    assert.strictEqual(JS_GUIDE_HASH, '78d968c460dd');
     const matchingRules = jsDefaultRules.filter((rule) => rule.id === 'js/text-decoder');
     assert.strictEqual(matchingRules.length, 1);
     const [rule] = matchingRules;
     assert.strictEqual(rule?.guideId, 'js');
-    assert.strictEqual(rule?.guideHash, '8ad03eec26ab');
+    assert.strictEqual(rule?.guideHash, '78d968c460dd');
     assert.strictEqual(rule, exportedJsRule);
     assert.match(jsTextDecoderRule.verifierRubric.keepWhen.join(' '), /value-returning.*try\/catch.*fatal:\s*true/);
     assert.match(jsTextDecoderRule.verifierRubric.dropWhen[0] ?? '', /non-UTF-8 raw 8-bit binary protocols/);

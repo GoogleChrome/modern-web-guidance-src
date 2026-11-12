@@ -501,17 +501,33 @@ void test('js/url-search-params: negative / false-positive / modern / guarded ca
 
   await t.test('exempts URLSearchParams polyfills (function, class, or window.URLSearchParams assignment)', () => {
     const polyfillFn = `
-      function URLSearchParams(search) {
-        return String(search || location.search).replace(/^\\?/, '').split('&');
+      function URLSearchParams() {
+        const vars = location.search.slice(1).split('&');
+        return vars.map((pair) => pair.split('='));
+      }
+    `;
+    const polyfillClass = `
+      class URLSearchParams {
+        constructor() {
+          this.pairs = location.search.slice(1).split('&').map((pair) => pair.split('='));
+        }
       }
     `;
     const polyfillAssign = `
       window.URLSearchParams = window.URLSearchParams || function () {
-        return location.search.slice(1).split('&');
+        return location.search.slice(1).split('&').map((pair) => pair.split('='));
       };
     `;
+    const polyfillWithTopLevelHelper = `
+      function URLSearchParams() {}
+      function parseHelper() {
+        return location.search.slice(1).split('&').map((pair) => pair.split('='));
+      }
+    `;
     assert.equal(matchJsRule(jsMatcher, 'polyfill-fn.js', polyfillFn).length, 0);
+    assert.equal(matchJsRule(jsMatcher, 'polyfill-class.js', polyfillClass).length, 0);
     assert.equal(matchJsRule(jsMatcher, 'polyfill-assign.js', polyfillAssign).length, 0);
+    assert.equal(matchJsRule(jsMatcher, 'polyfill-helper.js', polyfillWithTopLevelHelper).length, 0);
   });
 
   await t.test('exempts modern URLSearchParams usage and feature-guarded fallbacks', () => {

@@ -533,6 +533,22 @@ void test('js/replace-children-innerhtml: negative / exempt cases', async (t) =>
     const matches = matchJsRule(jsReplaceChildrenInnerHtmlMatcher, 'lookalikes.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts bare global document receivers while still flagging document.body', () => {
+    const code = `
+      function clearDocumentAndBody() {
+        document.innerHTML = '';
+        window.document.innerHTML = '';
+        globalThis.document.innerHTML = null;
+        document.body.innerHTML = '';
+      }
+    `;
+    const matches = matchJsRule(jsReplaceChildrenInnerHtmlMatcher, 'document-innerhtml.js', code);
+    assert.deepStrictEqual(
+      matches.map((m) => m.line),
+      [6],
+    );
+  });
 });
 
 void test('js/replace-children module satisfies fastTokens, anti-sponge selectivity, guideHash, and general rubric invariants', () => {

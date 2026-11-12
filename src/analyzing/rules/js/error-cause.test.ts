@@ -7,12 +7,12 @@ import { JS_GUIDE_HASH, jsErrorCauseMatcher, jsErrorCauseRule } from './error-ca
 
 void test('js/error-cause matcher', async (t) => {
   await t.test('wires js/error-cause in src/rules/js.ts with the locked guideHash', () => {
-    assert.strictEqual(JS_GUIDE_HASH, '8ad03eec26ab');
+    assert.strictEqual(JS_GUIDE_HASH, '78d968c460dd');
     const matchingRules = jsDefaultRules.filter((rule) => rule.id === 'js/error-cause');
     assert.strictEqual(matchingRules.length, 1);
     const [rule] = matchingRules;
     assert.strictEqual(rule?.guideId, 'js');
-    assert.strictEqual(rule?.guideHash, '8ad03eec26ab');
+    assert.strictEqual(rule?.guideHash, '78d968c460dd');
     assert.strictEqual(rule, exportedJsRule);
   });
 

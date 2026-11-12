@@ -308,20 +308,50 @@ function isHybridArrayMap(scope: Node): boolean {
   });
 }
 
+function isUrlSearchParamsAssignment(node: Node): boolean {
+  const assign = getAssignment(node);
+  if (!assign) return false;
+  const lhs = unwrapExpression(assign.left);
+  if (Node.isIdentifier(lhs) && lhs.getText() === 'URLSearchParams') return true;
+  return getMemberAccess(lhs)?.name === 'URLSearchParams';
+}
+
+function isUrlSearchParamsDeclarationOrAssignment(node: Node): boolean {
+  if (
+    Node.isFunctionDeclaration(node) ||
+    Node.isClassDeclaration(node) ||
+    Node.isVariableDeclaration(node)
+  ) {
+    return node.getName() === 'URLSearchParams';
+  }
+  return Node.isBinaryExpression(node) && isUrlSearchParamsAssignment(node);
+}
+
 function isDisqualified(call: CallExpression): boolean {
   const scope = getSearchScope(call);
+  const sf = call.getSourceFile();
 
   const redefinesUrlSearchParams =
-    scope.getDescendantsOfKind(SyntaxKind.FunctionDeclaration).some((fn) => fn.getName() === 'URLSearchParams') ||
-    scope.getDescendantsOfKind(SyntaxKind.ClassDeclaration).some((cls) => cls.getName() === 'URLSearchParams') ||
-    scope.getDescendantsOfKind(SyntaxKind.VariableDeclaration).some((v) => v.getName() === 'URLSearchParams') ||
-    scope.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
-      const assign = getAssignment(bin);
-      if (!assign) return false;
-      const lhs = unwrapExpression(assign.left);
-      if (Node.isIdentifier(lhs) && lhs.getText() === 'URLSearchParams') return true;
-      return getMemberAccess(lhs)?.name === 'URLSearchParams';
-    });
+    Boolean(call.getFirstAncestor(isUrlSearchParamsDeclarationOrAssignment)) ||
+    sf.getFunctions().some((fn) => fn.getName() === 'URLSearchParams') ||
+    sf.getClasses().some((cls) => cls.getName() === 'URLSearchParams') ||
+    sf.getVariableDeclarations().some((v) => v.getName() === 'URLSearchParams') ||
+    sf
+      .getStatements()
+      .some(
+        (stmt) =>
+          Node.isExpressionStatement(stmt) && isUrlSearchParamsAssignment(stmt.getExpression()),
+      ) ||
+    scope
+      .getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
+      .some((fn) => fn.getName() === 'URLSearchParams') ||
+    scope
+      .getDescendantsOfKind(SyntaxKind.ClassDeclaration)
+      .some((cls) => cls.getName() === 'URLSearchParams') ||
+    scope
+      .getDescendantsOfKind(SyntaxKind.VariableDeclaration)
+      .some((v) => v.getName() === 'URLSearchParams') ||
+    scope.getDescendantsOfKind(SyntaxKind.BinaryExpression).some(isUrlSearchParamsAssignment);
   if (redefinesUrlSearchParams) return true;
 
   const hasTryDecode = scope.getDescendantsOfKind(SyntaxKind.TryStatement).some((tryStmt) =>

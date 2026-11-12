@@ -819,6 +819,12 @@ export function areNodesEqual(a: Node | undefined, b: Node | undefined): boolean
   if (Node.isNumericLiteral(ua) && Node.isNumericLiteral(ub)) {
     return ua.getLiteralValue() === ub.getLiteralValue();
   }
+  if (Node.isPrefixUnaryExpression(ua) && Node.isPrefixUnaryExpression(ub)) {
+    return ua.getOperatorToken() === ub.getOperatorToken() && areNodesEqual(ua.getOperand(), ub.getOperand());
+  }
+  if (Node.isPostfixUnaryExpression(ua) && Node.isPostfixUnaryExpression(ub)) {
+    return ua.getOperatorToken() === ub.getOperatorToken() && areNodesEqual(ua.getOperand(), ub.getOperand());
+  }
   const [cA, cB] = [ua.forEachChildAsArray(), ub.forEachChildAsArray()];
   if (cA.length !== cB.length) return false;
   return cA.length === 0 ? ua.getText() === ub.getText() : cA.every((c, i) => areNodesEqual(c, cB[i]));

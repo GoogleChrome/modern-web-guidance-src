@@ -49,9 +49,15 @@ const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
 const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(ALL_RULES.map((r) => [r.id, r]));
-const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = new Map(
-  [...ALL_RULES].reverse().map((r) => [r.guideId, r]),
-);
+const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = (() => {
+  const counts = new Map<string, number>();
+  for (const rule of ALL_RULES) {
+    counts.set(rule.guideId, (counts.get(rule.guideId) ?? 0) + 1);
+  }
+  return new Map(
+    ALL_RULES.filter((rule) => counts.get(rule.guideId) === 1).map((rule) => [rule.guideId, rule]),
+  );
+})();
 
 function findMatchingRule(ruleId: string | undefined, guideId: string): AnalyzerRule | undefined {
   return (ruleId ? RULES_BY_ID.get(ruleId) : undefined) ?? RULES_BY_GUIDE_ID.get(guideId);
