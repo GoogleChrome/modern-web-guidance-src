@@ -111,3 +111,48 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(litBlocks[0]?.includes('${"red"}'), false);
   });
 });
+
+void test('sfc-extractor: custom elements whose names start with script- or style-', async (t) => {
+  const vue = [
+    '<template>',
+    '  <style-provider theme="dark">',
+    '    <script-editor v-model="code"></script-editor>',
+    '    <button>Save</button>',
+    '  </style-provider>',
+    '</template>',
+    '<script setup>',
+    'const code = "";',
+    '</script>',
+    '<style>',
+    'button { color: red; }',
+    '</style>',
+  ].join('\n');
+
+  await t.test('extracts only the real <script> body', () => {
+    const blocks = extractScriptBlocks('App.vue', vue);
+    assert.equal(blocks.length, 1);
+    const content = blocks[0]?.blankedContent ?? '';
+    assert.equal(content.includes('const code = "";'), true);
+    assert.equal(content.includes('v-model'), false);
+    assert.equal(content.includes('<button>'), false);
+  });
+
+  await t.test('extracts only the real <style> body', () => {
+    const blocks = extractStyleBlocks('App.vue', vue);
+    assert.equal(blocks.length, 1);
+    const content = blocks[0] ?? '';
+    assert.equal(content.includes('button { color: red; }'), true);
+    assert.equal(content.includes('theme="dark"'), false);
+    assert.equal(content.includes('<button>'), false);
+  });
+
+  await t.test('keeps the template markup for DOM scanning', () => {
+    const prepared = prepareHtmlForDomScan('App.vue', vue);
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.includes('<style-provider theme="dark">'), true);
+    assert.equal(prepared.includes('<script-editor v-model="code"></script-editor>'), true);
+    assert.equal(prepared.includes('<button>Save</button>'), true);
+    assert.equal(prepared.includes('const code'), false);
+    assert.equal(prepared.includes('button { color: red; }'), false);
+  });
+});
