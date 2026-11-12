@@ -1,19 +1,30 @@
 import {
-  Node,
-  SyntaxKind,
-  ts,
-  type ArrowFunction,
-  type BinaryExpression,
-  type CallExpression,
-  type ExportDeclaration,
-  type FunctionDeclaration,
-  type FunctionExpression,
-  type ImportDeclaration,
-  type MethodDeclaration,
-  type SourceFile,
-  type Statement,
+  Node, SyntaxKind, VariableDeclarationKind, ts,
+  type ArrowFunction, type AsExpression, type BinaryExpression, type Block,
+  type CallExpression, type ElementAccessExpression, type ExportDeclaration,
+  type FunctionDeclaration, type FunctionExpression, type Identifier,
+  type ImportDeclaration, type MethodDeclaration, type NonNullExpression,
+  type ParameterDeclaration, type ParenthesizedExpression, type PropertyAccessExpression,
+  type SatisfiesExpression, type SourceFile, type Statement, type TypeAssertion,
   type VariableDeclaration,
 } from 'ts-morph';
+
+type WrapperExpression =
+  | ParenthesizedExpression
+  | AsExpression
+  | TypeAssertion
+  | NonNullExpression
+  | SatisfiesExpression;
+
+function isWrapperExpression(node: Node): node is WrapperExpression {
+  return (
+    Node.isParenthesizedExpression(node) ||
+    Node.isAsExpression(node) ||
+    Node.isTypeAssertion(node) ||
+    Node.isNonNullExpression(node) ||
+    Node.isSatisfiesExpression(node)
+  );
+}
 
 /**
  * Strips parentheses, type assertions, non-null assertions, and satisfies wrappers
@@ -21,19 +32,29 @@ import {
  */
 export function unwrapExpression(expr: Node): Node {
   let current = expr;
-  while (
-    Node.isParenthesizedExpression(current) ||
-    Node.isAsExpression(current) ||
-    Node.isTypeAssertion(current) ||
-    Node.isNonNullExpression(current) ||
-    Node.isSatisfiesExpression(current)
-  ) {
+  while (isWrapperExpression(current)) {
     current = current.getExpression();
   }
   return current;
 }
 
-function isCallableScope(
+/**
+ * Climbs upward past wrapper expressions (`(...)`, `as T`, `!`, `satisfies T`) to return
+ * the outermost wrapper node (`outer`) and its enclosing semantic `parent`.
+ */
+export function getSemanticParent(
+  node: Node,
+): { readonly outer: Node; readonly parent: Node | undefined } {
+  let outer = node;
+  let parent = outer.getParent();
+  while (parent && isWrapperExpression(parent)) {
+    outer = parent;
+    parent = outer.getParent();
+  }
+  return { outer, parent };
+}
+
+export function isCallableScope(
   scope: Node,
 ): scope is FunctionDeclaration | FunctionExpression | ArrowFunction | MethodDeclaration {
   return (
@@ -44,7 +65,12 @@ function isCallableScope(
   );
 }
 
-function hasBindingName(decl: VariableDeclaration, name: string): boolean {
+export const isCallableNode = isCallableScope;
+
+export function hasBindingName(
+  decl: VariableDeclaration | ParameterDeclaration,
+  name: string,
+): boolean {
   const nameNode = decl.getNameNode();
   return Node.isIdentifier(nameNode)
     ? nameNode.getText() === name
@@ -53,32 +79,111 @@ function hasBindingName(decl: VariableDeclaration, name: string): boolean {
         .some((el) => Node.isIdentifier(el.getNameNode()) && el.getName() === name);
 }
 
-interface ResolvedImport {
+export interface ResolvedImport {
   readonly declaration: ImportDeclaration;
   readonly importedName: string;
 }
 
-function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedImport | null {
-  for (const declaration of sourceFile.getImportDeclarations()) {
-    if (declaration.getDefaultImport()?.getText() === localName) {
-      return { declaration, importedName: 'default' };
-    }
-    if (declaration.getNamespaceImport()?.getText() === localName) {
-      return { declaration, importedName: '*' };
-    }
-    for (const named of declaration.getNamedImports()) {
-      const boundName = named.getAliasNode()?.getText() ?? named.getName();
-      if (boundName === localName) {
-        return { declaration, importedName: named.getName() };
-      }
-    }
-  }
-  return null;
+interface ScopeBindingIndex {
+  readonly sourceText: string;
+  readonly varsByName: ReadonlyMap<string, readonly VariableDeclaration[]>;
+  readonly functionsByName: ReadonlyMap<string, FunctionDeclaration>;
+  readonly typeOrClassNames: ReadonlySet<string>;
+  readonly hoistedVarsByName: ReadonlyMap<string, VariableDeclaration> | null;
+  readonly importsByName: ReadonlyMap<string, ResolvedImport> | null;
+  readonly importEqualsNames: ReadonlySet<string> | null;
 }
 
-type LexicalBinding =
+const scopeBindingCache = new WeakMap<Node, ScopeBindingIndex>();
+
+function addBindingDeclNames(decl: VariableDeclaration, onName: (name: string) => void): void {
+  const nameNode = decl.getNameNode();
+  if (Node.isIdentifier(nameNode)) {
+    onName(nameNode.getText());
+    return;
+  }
+  for (const el of nameNode.getDescendantsOfKind(SyntaxKind.BindingElement)) {
+    if (Node.isIdentifier(el.getNameNode())) onName(el.getName());
+  }
+}
+
+function getScopeBindingIndex(scope: Block | SourceFile): ScopeBindingIndex {
+  const sourceText = scope.getSourceFile().getFullText();
+  const cached = scopeBindingCache.get(scope);
+  if (cached && cached.sourceText === sourceText) return cached;
+
+  const varsByName = new Map<string, VariableDeclaration[]>();
+  for (const decl of scope.getVariableDeclarations()) {
+    addBindingDeclNames(decl, (name) => {
+      const list = varsByName.get(name);
+      if (list) { if (!list.includes(decl)) list.push(decl); } else varsByName.set(name, [decl]);
+    });
+  }
+
+  const functionsByName = new Map<string, FunctionDeclaration>();
+  for (const fn of scope.getFunctions()) {
+    const fnName = fn.getName();
+    if (fnName && !functionsByName.has(fnName)) functionsByName.set(fnName, fn);
+  }
+
+  const typeOrClassNames = new Set<string>();
+  for (const cls of scope.getClasses()) { const clsName = cls.getName(); if (clsName) typeOrClassNames.add(clsName); }
+  for (const enm of scope.getEnums()) typeOrClassNames.add(enm.getName());
+
+  let hoistedVarsByName: Map<string, VariableDeclaration> | null = null;
+  const blockParent = scope.getParent();
+  if (Node.isSourceFile(scope) || (blockParent && isCallableScope(blockParent))) {
+    const hoisted = new Map<string, VariableDeclaration>();
+    scope.forEachDescendant((desc, traversal) => {
+      if (isCallableScope(desc) || Node.isClassDeclaration(desc) || Node.isClassExpression(desc)) {
+        traversal.skip();
+        return;
+      }
+      if (
+        Node.isVariableDeclaration(desc) &&
+        desc.getParentIfKind(SyntaxKind.VariableDeclarationList)?.getDeclarationKind() === VariableDeclarationKind.Var
+      ) {
+        addBindingDeclNames(desc, (name) => { if (!hoisted.has(name)) hoisted.set(name, desc); });
+      }
+    });
+    hoistedVarsByName = hoisted;
+  }
+
+  let importsByName: Map<string, ResolvedImport> | null = null;
+  let importEqualsNames: Set<string> | null = null;
+  if (Node.isSourceFile(scope)) {
+    const imports = new Map<string, ResolvedImport>();
+    for (const declaration of scope.getImportDeclarations()) {
+      const defName = declaration.getDefaultImport()?.getText();
+      if (defName && !imports.has(defName)) imports.set(defName, { declaration, importedName: 'default' });
+      const nsName = declaration.getNamespaceImport()?.getText();
+      if (nsName && !imports.has(nsName)) imports.set(nsName, { declaration, importedName: '*' });
+      for (const named of declaration.getNamedImports()) {
+        const boundName = named.getAliasNode()?.getText() ?? named.getName();
+        if (!imports.has(boundName)) imports.set(boundName, { declaration, importedName: named.getName() });
+      }
+    }
+    const importEq = new Set<string>();
+    for (const stmt of scope.getStatements()) {
+      if (Node.isImportEqualsDeclaration(stmt) && !stmt.isTypeOnly()) importEq.add(stmt.getName());
+    }
+    importsByName = imports;
+    importEqualsNames = importEq;
+  }
+
+  const index: ScopeBindingIndex = { sourceText, varsByName, functionsByName, typeOrClassNames, hoistedVarsByName, importsByName, importEqualsNames };
+  scopeBindingCache.set(scope, index);
+  return index;
+}
+
+export function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedImport | null {
+  return getScopeBindingIndex(sourceFile).importsByName?.get(localName) ?? null;
+}
+
+export type LexicalBinding =
   | { readonly kind: 'variable'; readonly node: VariableDeclaration }
   | { readonly kind: 'function'; readonly node: FunctionDeclaration }
+  | { readonly kind: 'parameter'; readonly node: ParameterDeclaration }
   | { readonly kind: 'import'; readonly importBinding: ResolvedImport }
   | { readonly kind: 'other' };
 
@@ -86,73 +191,44 @@ type LexicalBinding =
  * Walks enclosing lexical scopes from `startNode` up to `SourceFile` and returns
  * the innermost binding for `name` (or `null` if `name` is unbound / global).
  */
-function resolveLexicalBinding(
-  startNode: Node,
-  name: string,
-  beforePos?: number,
-): LexicalBinding | null {
+export function resolveLexicalBinding(startNode: Node, name: string, beforePos?: number): LexicalBinding | null {
   for (let current = startNode.getParent(); current; current = current.getParent()) {
     if (isCallableScope(current)) {
-      if (current.getParameter(name)) {
-        return { kind: 'other' };
-      }
-      if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
-        current.getName() === name
-      ) {
-        return Node.isFunctionDeclaration(current)
-          ? { kind: 'function', node: current }
-          : { kind: 'other' };
+      const param = current.getParameters().find((p) => hasBindingName(p, name));
+      if (param) return { kind: 'parameter', node: param };
+      if ((Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) && current.getName() === name) {
+        return Node.isFunctionDeclaration(current) ? { kind: 'function', node: current } : { kind: 'other' };
       }
     }
-
     if (Node.isCatchClause(current)) {
       const catchVar = current.getVariableDeclaration();
-      if (catchVar && hasBindingName(catchVar, name)) {
-        return { kind: 'other' };
-      }
+      if (catchVar && hasBindingName(catchVar, name)) return { kind: 'variable', node: catchVar };
     }
-
-    if (
-      Node.isForStatement(current) ||
-      Node.isForOfStatement(current) ||
-      Node.isForInStatement(current)
-    ) {
+    if (Node.isForStatement(current) || Node.isForOfStatement(current) || Node.isForInStatement(current)) {
       const init = current.getInitializer();
-      if (init && Node.isVariableDeclarationList(init)) {
-        const loopDecl = init.getDeclarations().find((d) => hasBindingName(d, name));
-        if (loopDecl) {
-          return beforePos !== undefined && loopDecl.getStart() >= beforePos
-            ? { kind: 'other' }
-            : { kind: 'variable', node: loopDecl };
-        }
+      const loopDecl = init && Node.isVariableDeclarationList(init)
+        ? init.getDeclarations().find((d) => hasBindingName(d, name))
+        : undefined;
+      if (loopDecl) {
+        return beforePos !== undefined && loopDecl.getStart() >= beforePos ? { kind: 'other' } : { kind: 'variable', node: loopDecl };
       }
     }
-
     if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      const decl = current.getVariableDeclaration(
-        (d) => hasBindingName(d, name) && (beforePos === undefined || d.getStart() < beforePos),
-      );
-      if (decl) {
-        return { kind: 'variable', node: decl };
+      const idx = getScopeBindingIndex(current);
+      const decl = idx.varsByName.get(name)?.find((d) => beforePos === undefined || d.getStart() < beforePos);
+      if (decl) return { kind: 'variable', node: decl };
+      const func = idx.functionsByName.get(name);
+      if (func) return { kind: 'function', node: func };
+      if (idx.typeOrClassNames.has(name)) return { kind: 'other' };
+      const hoistedVar = idx.hoistedVarsByName?.get(name);
+      if (hoistedVar) {
+        return beforePos !== undefined && hoistedVar.getStart() >= beforePos ? { kind: 'other' } : { kind: 'variable', node: hoistedVar };
       }
-      const func = current.getFunction(name);
-      if (func) {
-        return { kind: 'function', node: func };
-      }
-      if (current.getClass(name)) {
-        return { kind: 'other' };
-      }
-    }
-
-    if (Node.isSourceFile(current)) {
-      const importBinding = findImportBinding(current, name);
-      if (importBinding) {
-        return { kind: 'import', importBinding };
-      }
+      const importBinding = idx.importsByName?.get(name);
+      if (importBinding) return { kind: 'import', importBinding };
+      if (idx.importEqualsNames?.has(name)) return { kind: 'other' };
     }
   }
-
   return null;
 }
 
@@ -221,8 +297,9 @@ export function isGlobalReference(node: Node, globalName: string): boolean {
     return unwrapped.getText() === globalName && isUnshadowedGlobal(unwrapped, globalName);
   }
 
-  if (Node.isPropertyAccessExpression(unwrapped) && unwrapped.getName() === globalName) {
-    const rootExpr = unwrapExpression(unwrapped.getExpression());
+  const member = getMemberAccess(unwrapped);
+  if (member?.name === globalName) {
+    const rootExpr = unwrapExpression(member.expression);
     if (Node.isIdentifier(rootExpr)) {
       const rootName = rootExpr.getText();
       return GLOBAL_ROOT_IDENTIFIERS.has(rootName) && isUnshadowedGlobal(rootExpr, rootName);
@@ -232,65 +309,49 @@ export function isGlobalReference(node: Node, globalName: string): boolean {
   return false;
 }
 
-const NEGATIVE_COMPARISON_VALUES = new Set([
-  "'undefined'",
-  '"undefined"',
-  'undefined',
-  'null',
-  'false',
-]);
+const NEGATIVE_COMPARISON_VALUES = new Set(['undefined', 'null', 'false']);
 
 /**
- * Checks for negative equality comparisons like `typeof Feature === 'undefined'` or `Feature == null`.
+ * Checks equality comparisons like `typeof Feature === 'undefined'`, `typeof Feature === 'function'`, or `Feature == null`.
  */
 function checkBinaryComparisonPolarity(expr: BinaryExpression): 'positive' | 'negative' | null {
-  if (!NEGATIVE_COMPARISON_VALUES.has(expr.getRight().getText())) {
-    return null;
-  }
   const op = expr.getOperatorToken().getKind();
-  if (op === SyntaxKind.EqualsEqualsToken || op === SyntaxKind.EqualsEqualsEqualsToken) {
-    return 'negative';
+  const isEq = op === SyntaxKind.EqualsEqualsToken || op === SyntaxKind.EqualsEqualsEqualsToken;
+  const isNeq =
+    op === SyntaxKind.ExclamationEqualsToken || op === SyntaxKind.ExclamationEqualsEqualsToken;
+  if (!isEq && !isNeq) return null;
+
+  const left = unwrapExpression(expr.getLeft());
+  const right = unwrapExpression(expr.getRight());
+  const rightStr = getStaticStringValue(right);
+  const leftStr = getStaticStringValue(left);
+  if (
+    (Node.isTypeOfExpression(left) && rightStr === 'function') ||
+    (Node.isTypeOfExpression(right) && leftStr === 'function')
+  ) {
+    return isEq ? 'positive' : 'negative';
   }
-  if (op === SyntaxKind.ExclamationEqualsToken || op === SyntaxKind.ExclamationEqualsEqualsToken) {
-    return 'positive';
+  if (
+    NEGATIVE_COMPARISON_VALUES.has(right.getText()) ||
+    NEGATIVE_COMPARISON_VALUES.has(left.getText()) ||
+    rightStr === 'undefined' ||
+    leftStr === 'undefined'
+  ) {
+    return isEq ? 'negative' : 'positive';
   }
   return null;
 }
 
-const BROWSER_GLOBAL_ROOTS = new Set([
-  'window',
-  'document',
-  'navigator',
-  'HTMLElement',
-  'Element',
-  'Node',
-  'CSS',
-  'globalThis',
-  'self',
-]);
-
-function getStaticStringValue(node: Node | undefined): string | null {
-  if (!node) {
-    return null;
-  }
-  const unwrapped = unwrapExpression(node);
-  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
-    ? unwrapped.getLiteralText()
-    : null;
-}
+const BROWSER_GLOBAL_ROOTS = new Set(['window', 'document', 'navigator', 'HTMLElement', 'Element', 'Node', 'CSS', 'globalThis', 'self']);
 
 function matchesTokenExact(name: string | null | undefined, featureTokens: readonly string[]): boolean {
-  if (!name) {
-    return false;
-  }
+  if (!name) return false;
   const lower = name.toLowerCase();
   return featureTokens.some((token) => token.toLowerCase() === lower);
 }
 
 function matchesTokenNameOrSubstring(name: string | null | undefined, featureTokens: readonly string[]): boolean {
-  if (!name) {
-    return false;
-  }
+  if (!name) return false;
   const lower = name.toLowerCase();
   return featureTokens.some((token) => {
     const tokenLower = token.toLowerCase();
@@ -300,8 +361,8 @@ function matchesTokenNameOrSubstring(name: string | null | undefined, featureTok
 
 function getRootExpression(node: Node): Node {
   let root = unwrapExpression(node);
-  while (Node.isPropertyAccessExpression(root)) {
-    root = unwrapExpression(root.getExpression());
+  for (let inner = getMemberAccess(root); inner; inner = getMemberAccess(root)) {
+    root = unwrapExpression(inner.expression);
   }
   return root;
 }
@@ -315,33 +376,30 @@ function extractPropertyCheck(node: Node): PropertyCheck | null {
   if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.InKeyword) {
     return { target: node.getRight(), prop: node.getLeft() };
   }
-
-  if (Node.isCallExpression(node)) {
-    const callee = unwrapExpression(node.getExpression());
-    if (Node.isPropertyAccessExpression(callee)) {
-      const method = callee.getName();
-      const args = node.getArguments();
-      const first = args[0];
-      const second = args[1];
-
-      if (method === 'hasOwn' && first && second && isGlobalReference(callee.getExpression(), 'Object')) {
-        return { target: first, prop: second };
-      }
-      if (method === 'hasOwnProperty' && first) {
-        return { target: callee.getExpression(), prop: first };
-      }
-      if (method === 'call' && first && second) {
-        const target = unwrapExpression(callee.getExpression());
-        const isHasOwn =
-          (Node.isIdentifier(target) && target.getText() === 'hasOwnProperty') ||
-          (Node.isPropertyAccessExpression(target) && target.getName() === 'hasOwnProperty');
-        if (isHasOwn) {
-          return { target: first, prop: second };
-        }
-      }
+  const callInfo = unwrapMethodCall(node);
+  if (!callInfo) return null;
+  const { methodName, receiver, args } = callInfo;
+  const [first, second] = args;
+  if (
+    ((methodName === 'hasOwn' && isGlobalReference(receiver, 'Object')) ||
+      (methodName === 'has' && isGlobalReference(receiver, 'Reflect'))) &&
+    first &&
+    second
+  ) {
+    return { target: first, prop: second };
+  }
+  if (methodName === 'hasOwnProperty' && first && !second) {
+    return { target: receiver, prop: first };
+  }
+  if (methodName === 'call' && first && second) {
+    const target = unwrapExpression(receiver);
+    if (
+      (Node.isIdentifier(target) && target.getText() === 'hasOwnProperty') ||
+      getMemberAccess(target)?.name === 'hasOwnProperty'
+    ) {
+      return { target: first, prop: second };
     }
   }
-
   return null;
 }
 
@@ -379,9 +437,7 @@ function isValidFeatureCondition(
     if (matchesTokenExact(name, featureTokens) && isUnshadowedGlobal(unwrapped, name)) {
       return true;
     }
-    if (seen.has(unwrapped)) {
-      return false;
-    }
+    if (seen.has(unwrapped)) return false;
     seen.add(unwrapped);
     const resolved = resolveLocalExpression(unwrapped, 5);
     return resolved !== unwrapped && !seen.has(resolved)
@@ -400,22 +456,22 @@ function isValidFeatureCondition(
     return isValidFeatureCondition(unwrapped.getExpression(), featureTokens, seen);
   }
 
-  if (Node.isCallExpression(unwrapped)) {
-    const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
-      if (isGlobalReference(callee.getExpression(), 'CSS')) {
-        const argsText = unwrapped.getArguments().map((a) => a.getText()).join(' ');
-        return (
-          matchesTokenNameOrSubstring(argsText, featureTokens) ||
-          featureTokens.some((t) => t.toLowerCase() === 'css.supports')
-        );
-      }
+  const callInfo = unwrapMethodCall(unwrapped);
+  if (callInfo) {
+    const { methodName, receiver } = callInfo;
+    if (methodName === 'supports' && isGlobalReference(receiver, 'CSS')) {
+      const argsText = callInfo.args.map((a) => a.getText()).join(' ');
+      return (
+        matchesTokenNameOrSubstring(argsText, featureTokens) ||
+        featureTokens.some((t) => t.toLowerCase() === 'css.supports')
+      );
     }
     return false;
   }
 
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    if (matchesTokenNameOrSubstring(unwrapped.getName(), featureTokens)) {
+  const member = getMemberAccess(unwrapped);
+  if (member) {
+    if (matchesTokenNameOrSubstring(member.name, featureTokens)) {
       return true;
     }
     const root = getRootExpression(unwrapped);
@@ -431,7 +487,6 @@ function isValidFeatureCondition(
       }
     }
   }
-
   return false;
 }
 
@@ -466,9 +521,7 @@ function conditionCheckPolarity(
   }
 
   if (Node.isIdentifier(unwrapped)) {
-    if (seen.has(unwrapped)) {
-      return null;
-    }
+    if (seen.has(unwrapped)) return null;
     seen.add(unwrapped);
     const resolved = resolveLocalExpression(unwrapped, 5);
     if (resolved !== unwrapped && !seen.has(resolved)) {
@@ -489,13 +542,7 @@ function conditionCheckPolarity(
  * Checks whether a statement or block unconditionally terminates control flow (return, throw, break).
  */
 function statementAlwaysExits(stmt: Node): boolean {
-  if (
-    Node.isReturnStatement(stmt) ||
-    Node.isThrowStatement(stmt) ||
-    Node.isBreakStatement(stmt)
-  ) {
-    return true;
-  }
+  if (Node.isReturnStatement(stmt) || Node.isThrowStatement(stmt) || Node.isBreakStatement(stmt)) return true;
   if (Node.isBlock(stmt)) {
     const last = stmt.getStatements().at(-1);
     return Boolean(last && statementAlwaysExits(last));
@@ -517,43 +564,67 @@ function hasPositiveEarlyReturn(
   );
 }
 
-function isGuardedByCallableEarlyReturn(
-  callable: Node,
-  featureTokens: readonly string[],
-): boolean {
-  if (!isCallableScope(callable)) {
-    return false;
-  }
+function isGuardedByCallableEarlyReturn(callable: Node, featureTokens: readonly string[]): boolean {
+  if (!isCallableScope(callable)) return false;
   const body = callable.getBody();
-  return Boolean(
-    body && Node.isBlock(body) && hasPositiveEarlyReturn(body.getStatements(), featureTokens),
-  );
+  return Boolean(body && Node.isBlock(body) && hasPositiveEarlyReturn(body.getStatements(), featureTokens));
 }
 
-const sourceFileTokenCache = new WeakMap<SourceFile, Map<string, boolean>>();
+interface SourceFileTokenCacheEntry {
+  readonly text: string;
+  readonly tokensLower: Map<string, boolean>;
+}
+const sourceFileTokenCache = new WeakMap<SourceFile, SourceFileTokenCacheEntry>();
 
-function sourceFileContainsAnyToken(
-  sf: SourceFile,
-  tokens: readonly string[],
-): boolean {
-  let cache = sourceFileTokenCache.get(sf);
-  if (!cache) {
-    cache = new Map<string, boolean>();
-    sourceFileTokenCache.set(sf, cache);
+function sourceFileContainsAnyToken(sf: SourceFile, tokens: readonly string[]): boolean {
+  if (tokens.length === 0) return false;
+  const sfText = sf.getFullText();
+  let entry = sourceFileTokenCache.get(sf);
+  if (!entry || entry.text !== sfText) {
+    entry = { text: sfText, tokensLower: new Map() };
+    sourceFileTokenCache.set(sf, entry);
   }
-
   let sfTextLower: string | undefined;
   for (const token of tokens) {
     const tokenLower = token.toLowerCase();
-    let hasToken = cache.get(tokenLower);
+    let hasToken = entry.tokensLower.get(tokenLower);
     if (hasToken === undefined) {
-      sfTextLower ??= sf.getFullText().toLowerCase();
+      sfTextLower ??= sfText.toLowerCase();
       hasToken = sfTextLower.includes(tokenLower);
-      cache.set(tokenLower, hasToken);
+      entry.tokensLower.set(tokenLower, hasToken);
     }
-    if (hasToken) {
+    if (hasToken) return true;
+  }
+  return false;
+}
+
+function isPolyfillTarget(expr: Node): boolean {
+  let root = unwrapExpression(expr);
+  while (true) {
+    const inner = getMemberAccess(root);
+    if (!inner) break;
+    root = unwrapExpression(inner.expression);
+  }
+  return Node.isIdentifier(root) && isUnshadowedGlobal(root, root.getText());
+}
+
+function isPolyfillDefinition(parent: Node, current: Node, tokens: readonly string[]): boolean {
+  const assign = getAssignment(parent);
+  if (assign?.right === current) {
+    const member = getMemberAccess(assign.left);
+    if (member && tokens.includes(member.name) && isPolyfillTarget(member.expression)) {
       return true;
     }
+  }
+  const defineProp = unwrapMethodCall(parent, { methodName: 'defineProperty' });
+  if (
+    defineProp &&
+    isGlobalReference(defineProp.receiver, 'Object') &&
+    defineProp.args[0] &&
+    isPolyfillTarget(defineProp.args[0]) &&
+    tokens.includes(getStaticStringValue(defineProp.args[1]) ?? '')
+  ) {
+    return true;
   }
   return false;
 }
@@ -563,41 +634,25 @@ function sourceFileContainsAnyToken(
  * Recognizes positive checks guarding `else` branches, negative checks guarding `then` branches,
  * ternary conditions, fallback logical RHS (`hasFeature || fallback`), and early returns.
  */
-export function isProtectedByFeatureGuard(
-  node: Node,
-  featureTokens: readonly string[],
-): boolean {
-  if (!sourceFileContainsAnyToken(node.getSourceFile(), featureTokens)) {
-    return false;
-  }
+export function isProtectedByFeatureGuard(node: Node, featureTokens: readonly string[]): boolean {
+  if (!sourceFileContainsAnyToken(node.getSourceFile(), featureTokens)) return false;
 
   const candidateCallables = Node.isCallExpression(node)
     ? node.getArguments()
     : Node.isBinaryExpression(node)
       ? [node.getRight()]
       : [];
-  if (
-    candidateCallables.some((arg) =>
-      isGuardedByCallableEarlyReturn(resolveCallableNode(arg), featureTokens),
-    )
-  ) {
+  if (candidateCallables.some((arg) => isGuardedByCallableEarlyReturn(resolveCallableNode(arg), featureTokens))) {
     return true;
   }
 
-  for (
-    let current: Node = node, parent = current.getParent();
-    parent;
-    current = parent, parent = current.getParent()
-  ) {
+  for (let current: Node = node, parent = current.getParent(); parent; current = parent, parent = current.getParent()) {
     if (Node.isIfStatement(parent) || Node.isConditionalExpression(parent)) {
       const [whenTrue, whenFalse, cond] = Node.isIfStatement(parent)
         ? [parent.getThenStatement(), parent.getElseStatement(), parent.getExpression()]
         : [parent.getWhenTrue(), parent.getWhenFalse(), parent.getCondition()];
-      const expected =
-        current === whenFalse ? 'positive' : current === whenTrue ? 'negative' : null;
-      if (expected && conditionCheckPolarity(cond, featureTokens) === expected) {
-        return true;
-      }
+      const expected = current === whenFalse ? 'positive' : current === whenTrue ? 'negative' : null;
+      if (expected && conditionCheckPolarity(cond, featureTokens) === expected) return true;
     } else if (Node.isBinaryExpression(parent)) {
       const op = parent.getOperatorToken().getKind();
       if (
@@ -613,18 +668,14 @@ export function isProtectedByFeatureGuard(
     ) {
       return true;
     }
+    if (isPolyfillDefinition(parent, current, featureTokens)) {
+      return true;
+    }
   }
-
   return false;
 }
 
-const JQUERY_EVENT_SHORTHANDS: ReadonlySet<string> = new Set([
-  'scroll',
-  'keydown',
-  'keyup',
-  'focus',
-  'blur',
-]);
+const JQUERY_EVENT_SHORTHANDS: ReadonlySet<string> = new Set(['scroll', 'keydown', 'keyup', 'focus', 'blur']);
 
 export interface MatchedEventListener {
   readonly eventName: string;
@@ -632,20 +683,215 @@ export interface MatchedEventListener {
   readonly targetNode: Node | undefined;
 }
 
+export function getStaticStringValue(node: Node | undefined): string | null {
+  if (!node) return null;
+  const unwrapped = unwrapExpression(node);
+  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
+    ? unwrapped.getLiteralText()
+    : null;
+}
+export const getStaticString = getStaticStringValue;
+
+export function getStaticNumber(node: Node | undefined): number | null {
+  if (!node) return null;
+  const unwrapped = unwrapExpression(node);
+  if (Node.isNumericLiteral(unwrapped)) return unwrapped.getLiteralValue();
+  if (Node.isPrefixUnaryExpression(unwrapped)) {
+    const op = unwrapped.getOperatorToken();
+    if (op !== SyntaxKind.MinusToken && op !== SyntaxKind.PlusToken) return null;
+    const inner = getStaticNumber(unwrapped.getOperand());
+    if (inner === null) return null;
+    return op === SyntaxKind.MinusToken ? (inner === 0 ? 0 : -inner) : inner;
+  }
+  return null;
+}
+
+function extractAccessName(access: PropertyAccessExpression | ElementAccessExpression): string | null {
+  return Node.isPropertyAccessExpression(access)
+    ? access.getName()
+    : getStaticStringValue(access.getArgumentExpression());
+}
+
+export function unwrapPropertyAccess(
+  node: Node | undefined,
+  name?: string,
+): PropertyAccessExpression | ElementAccessExpression | null {
+  if (!node) return null;
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isPropertyAccessExpression(unwrapped) && !Node.isElementAccessExpression(unwrapped)) {
+    return null;
+  }
+  const propName = extractAccessName(unwrapped);
+  return propName !== null && (name === undefined || propName === name) ? unwrapped : null;
+}
+
+export function getMemberAccess(
+  node: Node | undefined,
+): { readonly expression: Node; readonly name: string; readonly optional: boolean } | null {
+  const access = unwrapPropertyAccess(node);
+  const name = access ? extractAccessName(access) : null;
+  return access && name !== null
+    ? { expression: access.getExpression(), name, optional: access.hasQuestionDotToken() }
+    : null;
+}
+
+export interface UnwrapMethodCallOptions {
+  readonly methodName?: string | ReadonlySet<string>;
+  readonly arity?: number | { readonly min?: number; readonly max?: number };
+}
+
+export interface UnwrappedMethodCall {
+  readonly call: CallExpression;
+  readonly callee: PropertyAccessExpression | ElementAccessExpression;
+  readonly receiver: Node;
+  readonly methodName: string;
+  readonly args: Node[];
+}
+
+export function unwrapMethodCall(
+  node: Node | undefined,
+  options?: UnwrapMethodCallOptions,
+): UnwrappedMethodCall | null {
+  if (!node) return null;
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isCallExpression(unwrapped)) return null;
+  const callee = unwrapPropertyAccess(unwrapped.getExpression());
+  const methodName = callee ? extractAccessName(callee) : null;
+  if (!callee || methodName === null) return null;
+  const expected = options?.methodName;
+  if (typeof expected === 'string' && methodName !== expected) return null;
+  if (typeof expected === 'object' && expected !== null && !expected.has(methodName)) return null;
+  const args = unwrapped.getArguments();
+  const arity = options?.arity;
+  if (typeof arity === 'number' && args.length !== arity) return null;
+  if (typeof arity === 'object' && arity !== null) {
+    if ((arity.min !== undefined && args.length < arity.min) || (arity.max !== undefined && args.length > arity.max)) {
+      return null;
+    }
+  }
+  return { call: unwrapped, callee, receiver: callee.getExpression(), methodName, args };
+}
+
+export function getSingleArgument(call: CallExpression): Node | null {
+  const [first, second] = call.getArguments();
+  return first && !second && !Node.isSpreadElement(first) ? first : null;
+}
+
+export function getAssignment(node: Node | undefined): {
+  readonly binary: BinaryExpression;
+  readonly left: Node;
+  readonly right: Node;
+  readonly operator: SyntaxKind;
+} | null {
+  if (!node) return null;
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isBinaryExpression(unwrapped)) return null;
+  const operator = unwrapped.getOperatorToken().getKind();
+  if (operator < SyntaxKind.FirstAssignment || operator > SyntaxKind.LastAssignment) return null;
+  return { binary: unwrapped, left: unwrapped.getLeft(), right: unwrapped.getRight(), operator };
+}
+
+export function getAssignedTarget(expr: Node): Node | null {
+  const { outer, parent } = getSemanticParent(expr);
+  if (Node.isVariableDeclaration(parent) && parent.getInitializer() === outer) {
+    return parent.getNameNode();
+  }
+  const assign = getAssignment(parent);
+  if (
+    assign?.right === outer &&
+    (assign.operator === SyntaxKind.EqualsToken ||
+      assign.operator === SyntaxKind.QuestionQuestionEqualsToken ||
+      assign.operator === SyntaxKind.BarBarEqualsToken ||
+      assign.operator === SyntaxKind.AmpersandAmpersandEqualsToken)
+  ) {
+    return assign.left;
+  }
+  return null;
+}
+
+export function areNodesEqual(a: Node | undefined, b: Node | undefined): boolean {
+  if (!a || !b) return false;
+  const [ua, ub] = [unwrapExpression(a), unwrapExpression(b)];
+  if (ua === ub) return true;
+  if (ua.getKind() !== ub.getKind()) return false;
+  const [sA, sB] = [getStaticStringValue(ua), getStaticStringValue(ub)];
+  if (sA !== null || sB !== null) return sA === sB;
+  if (Node.isNumericLiteral(ua) && Node.isNumericLiteral(ub)) {
+    return ua.getLiteralValue() === ub.getLiteralValue();
+  }
+  const [cA, cB] = [ua.forEachChildAsArray(), ub.forEachChildAsArray()];
+  if (cA.length !== cB.length) return false;
+  return cA.length === 0 ? ua.getText() === ub.getText() : cA.every((c, i) => areNodesEqual(c, cB[i]));
+}
+
+export function isGlobalMember(node: Node, names: ReadonlySet<string> | readonly string[]): string | null {
+  const unwrapped = unwrapExpression(node);
+  const name = Node.isIdentifier(unwrapped)
+    ? unwrapped.getText()
+    : (getMemberAccess(unwrapped)?.name ?? null);
+  if (!name) return null;
+  const matches = 'has' in names ? names.has(name) : names.includes(name);
+  return matches && isGlobalReference(unwrapped, name) ? name : null;
+}
+
+export function isIdentifierReference(id: Identifier): boolean {
+  const parent = id.getParent();
+  if (!parent) return false;
+  if (Node.hasName(parent) && !Node.isShorthandPropertyAssignment(parent) && parent.getNameNode() === id) return false;
+  if (Node.isBindingElement(parent) && parent.getPropertyNameNode() === id) return false;
+  if (Node.isImportClause(parent)) return false;
+  if (Node.isJsxAttribute(parent) && parent.getNameNode() === id) return false;
+  if (
+    (Node.isJsxOpeningElement(parent) || Node.isJsxSelfClosingElement(parent) || Node.isJsxClosingElement(parent)) &&
+    parent.getTagNameNode() === id &&
+    /^[a-z]/.test(id.getText())
+  ) {
+    return false;
+  }
+  if (
+    (Node.isLabeledStatement(parent) || Node.isBreakStatement(parent) || Node.isContinueStatement(parent)) &&
+    parent.getLabel() === id
+  ) {
+    return false;
+  }
+  return !id.getFirstAncestor((a) => Node.isTypeNode(a) || Node.isImportDeclaration(a) || Node.isExportDeclaration(a));
+}
+
+export function resolvesToBinding(id: Identifier, declNode: Node): boolean {
+  if (!isIdentifierReference(id)) return false;
+  let declName: string | null = null;
+  if (
+    Node.isVariableDeclaration(declNode) ||
+    Node.isParameterDeclaration(declNode) ||
+    Node.isFunctionDeclaration(declNode) ||
+    Node.isBindingElement(declNode)
+  ) {
+    const nameNode = declNode.getNameNode();
+    declName = Node.isIdentifier(nameNode) ? nameNode.getText() : null;
+  } else if (Node.isIdentifier(declNode)) {
+    declName = declNode.getText();
+  }
+  if (!declName || id.getText() !== declName) return false;
+  const binding = resolveLexicalBinding(id, declName);
+  if (!binding || (binding.kind !== 'variable' && binding.kind !== 'function' && binding.kind !== 'parameter')) {
+    return false;
+  }
+  return (
+    binding.node === declNode ||
+    (Node.isIdentifier(declNode) && binding.node.getNameNode() === declNode) ||
+    (Node.isBindingElement(declNode) &&
+      declNode.getFirstAncestor((a) => Node.isVariableDeclaration(a) || Node.isParameterDeclaration(a)) === binding.node)
+  );
+}
+
 /**
  * Matches native `.addEventListener('<event>', handler)`, jQuery `.on('<event>', [selector,] handler)`,
  * and jQuery shorthands (`.scroll(handler)`, `.keydown(handler)`, `.keyup(handler)`, `.focus(handler)`, `.blur(handler)`)
  * when the event name is in `eventNames`, resolving `handlerNode` via `resolveCallableNode`.
  */
-export function matchEventListenerCall(
-  node: CallExpression,
-  eventNames: readonly string[],
-): MatchedEventListener | null {
+export function matchEventListenerCall(node: CallExpression, eventNames: readonly string[]): MatchedEventListener | null {
   const expr = unwrapExpression(node.getExpression());
-  if (!Node.isPropertyAccessExpression(expr)) {
-    return null;
-  }
-
+  if (!Node.isPropertyAccessExpression(expr)) return null;
   const methodName = expr.getName();
   const targetNode = expr.getExpression();
   const args = node.getArguments();
@@ -658,85 +904,42 @@ export function matchEventListenerCall(
       ? { eventName: evName, handlerNode: resolveCallableNode(secondArg), targetNode }
       : null;
   }
-
   if (methodName === 'on' && secondArg && lastArg) {
     const matchedEvent = getStaticStringValue(firstArg)
-      ?.trim()
-      .split(/\s+/)
-      .map((e) => e.split('.')[0])
+      ?.trim().split(/\s+/).map((e) => e.split('.')[0])
       .find((e): e is string => Boolean(e && eventNames.includes(e)));
-    return matchedEvent
-      ? {
-          eventName: matchedEvent,
-          handlerNode: resolveCallableNode(lastArg),
-          targetNode,
-        }
-      : null;
+    return matchedEvent ? { eventName: matchedEvent, handlerNode: resolveCallableNode(lastArg), targetNode } : null;
   }
-
-  if (
-    lastArg &&
-    JQUERY_EVENT_SHORTHANDS.has(methodName) &&
-    eventNames.includes(methodName)
-  ) {
-    return {
-      eventName: methodName,
-      handlerNode: resolveCallableNode(lastArg),
-      targetNode,
-    };
+  if (lastArg && JQUERY_EVENT_SHORTHANDS.has(methodName) && eventNames.includes(methodName)) {
+    return { eventName: methodName, handlerNode: resolveCallableNode(lastArg), targetNode };
   }
-
   return null;
 }
 
 const CLASS_LIST_MUTATION_METHODS = new Set(['add', 'remove', 'toggle', 'replace']);
 const DIRECT_DOM_MUTATION_METHODS = new Set([
-  'setAttribute',
-  'removeAttribute',
-  'toggleAttribute',
-  'addClass',
-  'removeClass',
-  'toggleClass',
+  'setAttribute', 'removeAttribute', 'toggleAttribute', 'addClass', 'removeClass', 'toggleClass',
 ]);
 
 function isDirectClassOrAttrMutation(n: Node): boolean {
-  if (Node.isBinaryExpression(n)) {
-    const op = n.getOperatorToken().getKind();
-    if (op === SyntaxKind.EqualsToken || op === SyntaxKind.PlusEqualsToken) {
-      const left = unwrapExpression(n.getLeft());
-      return Node.isPropertyAccessExpression(left) && left.getName() === 'className';
-    }
-    return false;
-  }
-
-  if (!Node.isCallExpression(n)) {
-    return false;
-  }
-  const expr = unwrapExpression(n.getExpression());
-  if (!Node.isPropertyAccessExpression(expr)) {
-    return false;
-  }
-  const methodName = expr.getName();
-
-  if (DIRECT_DOM_MUTATION_METHODS.has(methodName)) {
-    return true;
-  }
-
-  if (CLASS_LIST_MUTATION_METHODS.has(methodName)) {
-    const caller = unwrapExpression(expr.getExpression());
-    return Node.isPropertyAccessExpression(caller) && caller.getName() === 'classList';
-  }
-
-  if (methodName === 'attr') {
-    const args = n.getArguments();
-    const firstArg = args[0];
+  const assign = getAssignment(n);
+  if (assign) {
     return (
-      args.length >= 2 ||
-      (args.length === 1 && firstArg !== undefined && Node.isObjectLiteralExpression(unwrapExpression(firstArg)))
+      (assign.operator === SyntaxKind.EqualsToken || assign.operator === SyntaxKind.PlusEqualsToken) &&
+      getMemberAccess(assign.left)?.name === 'className'
     );
   }
-
-  return false;
+  const callInfo = unwrapMethodCall(n);
+  if (!callInfo) return false;
+  const { methodName, receiver, args } = callInfo;
+  if (DIRECT_DOM_MUTATION_METHODS.has(methodName)) return true;
+  if (CLASS_LIST_MUTATION_METHODS.has(methodName)) {
+    return getMemberAccess(receiver)?.name === 'classList';
+  }
+  return (
+    methodName === 'attr' &&
+    (args.length >= 2 || (args.length === 1 && args[0] !== undefined && Node.isObjectLiteralExpression(unwrapExpression(args[0]))))
+  );
 }
 
 /**
@@ -755,9 +958,7 @@ export function isDomClassOrAttrMutation(node: Node): boolean {
  * Safely extracts the module specifier string from an import/export declaration,
  * returning null if the specifier is not a string literal (e.g. template import syntax `<%= path %>`).
  */
-export function getSafeModuleSpecifier(
-  decl: ImportDeclaration | ExportDeclaration,
-): string | null {
+export function getSafeModuleSpecifier(decl: ImportDeclaration | ExportDeclaration): string | null {
   const spec = decl.compilerNode.moduleSpecifier;
   return spec && ts.isStringLiteral(spec) ? spec.text : null;
 }
@@ -765,14 +966,8 @@ export function getSafeModuleSpecifier(
 /**
  * Returns `true` when `spec` equals one of `packages` or is a subpath import (`<pkg>/...`).
  */
-export function matchesPackageSpec(
-  spec: string | null,
-  packages: readonly string[],
-): boolean {
-  return (
-    spec !== null &&
-    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-  );
+export function matchesPackageSpec(spec: string | null, packages: readonly string[]): boolean {
+  return spec !== null && packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
 }
 
 export interface RequirePackageOptions {
@@ -789,17 +984,10 @@ export function isRequireOfPackage(
   options?: RequirePackageOptions,
 ): boolean {
   const unwrapped = unwrapExpression(node);
-  if (!Node.isCallExpression(unwrapped)) {
-    return false;
-  }
+  if (!Node.isCallExpression(unwrapped)) return false;
   const callee = unwrapExpression(unwrapped.getExpression());
   const firstArg = unwrapped.getArguments()[0];
-  if (
-    Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
-    firstArg &&
-    Node.isStringLiteral(firstArg)
-  ) {
+  if (Node.isIdentifier(callee) && callee.getText() === 'require' && firstArg && Node.isStringLiteral(firstArg)) {
     return matchesPackageSpec(firstArg.getLiteralText(), packages);
   }
   return Boolean(options?.allowCurriedRequire && isRequireOfPackage(callee, packages, options));
@@ -823,25 +1011,16 @@ export interface LibraryReferenceOptions extends RequirePackageOptions {
   readonly globalNamespaces?: readonly string[];
 }
 
-function matchesExpectedPropertyName(
-  propName: string,
-  identName: string,
-  allowDefaultImport: boolean,
-): boolean {
+function matchesExpectedPropertyName(propName: string, identName: string, allowDefaultImport: boolean): boolean {
   return propName === identName || (allowDefaultImport && propName === 'default');
 }
 
 function isRequireExportExpression(
-  expr: Node,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-  requireOpts: RequirePackageOptions | undefined,
+  expr: Node, identName: string, packages: readonly string[], allowDefaultImport: boolean, requireOpts: RequirePackageOptions | undefined,
 ): boolean {
+  if (!sourceFileContainsAnyToken(expr.getSourceFile(), packages)) return false;
   const resolved = resolveLocalExpression(expr, 2);
-  if (allowDefaultImport && isRequireOfPackage(resolved, packages, requireOpts)) {
-    return true;
-  }
+  if (allowDefaultImport && isRequireOfPackage(resolved, packages, requireOpts)) return true;
   return (
     Node.isPropertyAccessExpression(resolved) &&
     matchesExpectedPropertyName(resolved.getName(), identName, allowDefaultImport) &&
@@ -850,35 +1029,19 @@ function isRequireExportExpression(
 }
 
 function matchesRequireVariableDeclaration(
-  decl: VariableDeclaration,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-  requireOpts: RequirePackageOptions | undefined,
+  decl: VariableDeclaration, localName: string, identName: string, packages: readonly string[],
+  allowDefaultImport: boolean, requireOpts: RequirePackageOptions | undefined,
 ): boolean {
   const nameNode = decl.getNameNode();
   const init = decl.getInitializer();
-  if (!init) {
-    return false;
-  }
-
-  if (Node.isIdentifier(nameNode)) {
-    return isRequireExportExpression(init, identName, packages, allowDefaultImport, requireOpts);
-  }
-
+  if (!init) return false;
+  if (Node.isIdentifier(nameNode)) return isRequireExportExpression(init, identName, packages, allowDefaultImport, requireOpts);
   if (Node.isObjectBindingPattern(nameNode)) {
     const el = nameNode.getElements().find((e) => e.getName() === localName);
-    if (!el) {
-      return false;
-    }
+    if (!el) return false;
     const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-    return (
-      matchesExpectedPropertyName(propName, identName, allowDefaultImport) &&
-      isRequireOfPackage(resolveLocalExpression(init, 2), packages, requireOpts)
-    );
+    return matchesExpectedPropertyName(propName, identName, allowDefaultImport) && isRequireOfPackage(resolveLocalExpression(init, 2), packages, requireOpts);
   }
-
   return false;
 }
 
@@ -888,46 +1051,31 @@ function matchesRequireVariableDeclaration(
  * (direct, property access, or destructured), or an unshadowed UMD browser global.
  */
 export function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-  options?: LibraryReferenceOptions,
+  node: Node, identName: string, packages: readonly string[], options?: LibraryReferenceOptions,
 ): boolean {
+  const sf = node.getSourceFile();
+  const tokenCandidates = options?.globalNamespaces ? [identName, ...packages, ...options.globalNamespaces] : [identName, ...packages];
+  if (!sourceFileContainsAnyToken(sf, tokenCandidates)) return false;
+
   const allowDefaultImport = options?.allowDefaultImport ?? true;
   const allowGlobal = options?.allowGlobal ?? true;
   const unwrapped = unwrapExpression(node);
 
   if (Node.isIdentifier(unwrapped)) {
     const localName = unwrapped.getText();
+    if (localName !== identName && !sourceFileContainsAnyToken(sf, packages)) return false;
     const binding = resolveLexicalBinding(unwrapped, localName);
-    if (!binding) {
-      return allowGlobal && localName === identName;
-    }
-    if (binding.kind === 'variable') {
-      return matchesRequireVariableDeclaration(
-        binding.node,
-        localName,
-        identName,
-        packages,
-        allowDefaultImport,
-        options,
-      );
-    }
+    if (!binding) return allowGlobal && localName === identName;
+    if (binding.kind === 'variable') return matchesRequireVariableDeclaration(binding.node, localName, identName, packages, allowDefaultImport, options);
     if (binding.kind === 'import') {
       const { declaration, importedName } = binding.importBinding;
-      if (!matchesPackageSpec(getSafeModuleSpecifier(declaration), packages)) {
-        return false;
-      }
-      return importedName === '*'
-        ? allowDefaultImport
-        : matchesExpectedPropertyName(importedName, identName, allowDefaultImport);
+      if (!matchesPackageSpec(getSafeModuleSpecifier(declaration), packages)) return false;
+      return importedName === '*' ? allowDefaultImport : matchesExpectedPropertyName(importedName, identName, allowDefaultImport);
     }
     return false;
   }
 
-  if (isRequireExportExpression(unwrapped, identName, packages, allowDefaultImport, options)) {
-    return true;
-  }
+  if (isRequireExportExpression(unwrapped, identName, packages, allowDefaultImport, options)) return true;
 
   if (
     allowGlobal &&

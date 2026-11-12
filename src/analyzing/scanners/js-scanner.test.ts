@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SyntaxKind, type SourceFile } from 'ts-morph';
+import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
 import type { AnalyzerRule } from '../schema.ts';
 import {
   createInMemoryProject,
+  createJsAstMatcher,
   createJsCallMatcher,
   matchesFastTokens,
   matchJsRule,
@@ -268,6 +269,48 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
         ['gamma', 'delta'],
       ]),
       false,
+    );
+  });
+
+  await t.test('createJsCallMatcher maxLineLength and createJsAstMatcher handle exclusions, guards, and line dedupe', () => {
+    const callMatcher = createJsCallMatcher({
+      fastTokens: ['legacyCall'],
+      maxLineLength: 40,
+      matchCall: (node) => (node.getExpression().getText() === 'legacyCall' ? 'hit' : null),
+    });
+    assert.deepEqual(
+      matchJsRule(
+        callMatcher,
+        'lines.js',
+        `legacyCall();\n${' '.repeat(45)}legacyCall();\n`,
+      ),
+      [{ line: 1, message: 'hit' }],
+    );
+
+    const astMatcher = createJsAstMatcher({
+      kinds: [SyntaxKind.BinaryExpression],
+      fastTokens: ['innerHTML'],
+      featureGuardTokens: ['replaceChildren'],
+      excludePathRegex: /\/vendor\//,
+      excludePackages: ['polyfill-pkg'],
+      maxLineLength: 60,
+      matchNode(node) {
+        if (!Node.isBinaryExpression(node)) return null;
+        return node.getLeft().getText().endsWith('.innerHTML') ? 'clear' : null;
+      },
+    });
+    assert.deepEqual(
+      matchJsRule(
+        astMatcher,
+        'src/app.js',
+        'el.innerHTML = ""; el.innerHTML = "";\nif (!el.replaceChildren) el.innerHTML = "";',
+      ),
+      [{ line: 1, message: 'clear' }],
+    );
+    assert.deepEqual(matchJsRule(astMatcher, 'src/vendor/lib.js', 'el.innerHTML = "";'), []);
+    assert.deepEqual(
+      matchJsRule(astMatcher, 'src/poly.js', "import 'polyfill-pkg/rc';\nel.innerHTML = '';"),
+      [],
     );
   });
 });

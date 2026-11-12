@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -30,6 +30,76 @@ export function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
     'matcher' in value &&
     'verifierRubric' in value
   );
+}
+
+export interface InspectedRuleModule {
+  readonly moduleFiles: readonly string[];
+  readonly defaultRules: readonly unknown[];
+  readonly exportedRules: readonly AnalyzerRule[];
+  readonly definedRuleCount: number;
+}
+
+export async function inspectRuleModuleFiles(
+  filePath: string,
+): Promise<InspectedRuleModule> {
+  const mod: Record<string, unknown> = await import(pathToFileURL(filePath).href);
+  assert.ok(
+    Array.isArray(mod.default),
+    `Rule module "${filePath}" must default-export an array of rules`,
+  );
+
+  const moduleFiles: string[] = [filePath];
+  const subDirPath = filePath.replace(/\.ts$/, '');
+  if (existsSync(subDirPath) && statSync(subDirPath).isDirectory()) {
+    const subFiles = readdirSync(subDirPath)
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+      .sort();
+    for (const subFile of subFiles) {
+      moduleFiles.push(join(subDirPath, subFile));
+    }
+  }
+
+  const exportedRuleSet = new Set<AnalyzerRule>();
+  let definedRuleCount = 0;
+
+  for (const candidateFile of moduleFiles) {
+    const candidateMod: Record<string, unknown> =
+      candidateFile === filePath
+        ? mod
+        : await import(pathToFileURL(candidateFile).href);
+
+    if (Array.isArray(candidateMod.default)) {
+      for (const item of candidateMod.default) {
+        if (isAnalyzerRuleExport(item)) {
+          exportedRuleSet.add(item);
+        }
+      }
+    }
+    for (const value of Object.values(candidateMod)) {
+      if (isAnalyzerRuleExport(value)) {
+        exportedRuleSet.add(value);
+      }
+    }
+    for (const [key, value] of Object.entries(candidateMod)) {
+      if (key !== 'default' && Array.isArray(value)) {
+        for (const item of value) {
+          if (isAnalyzerRuleExport(item)) {
+            exportedRuleSet.add(item);
+          }
+        }
+      }
+    }
+
+    const sourceText = readFileSync(candidateFile, 'utf8');
+    definedRuleCount += (sourceText.match(/\bverifierRubric\s*:/g) ?? []).length;
+  }
+
+  return {
+    moduleFiles,
+    defaultRules: mod.default,
+    exportedRules: [...exportedRuleSet],
+    definedRuleCount,
+  };
 }
 
 export function assertValidFastTokenSpecs(rules: readonly AnalyzerRule[]): void {
@@ -393,9 +463,9 @@ describe('qualified rules architectural invariants', () => {
     });
     for (const line of gitStatus.split('\n')) {
       if (line.startsWith('?? ')) {
-        const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
-        if (match && !line.includes('.test.ts')) {
-          untrackedFiles.add(match[1]!);
+        const rel = line.slice(3).trim().replace(/^src\/analyzing\/rules\//, '');
+        if (!rel.includes('/') && !rel.includes('\\') && rel.endsWith('.ts') && !rel.endsWith('.test.ts')) {
+          untrackedFiles.add(rel.replace(/\.ts$/, ''));
         }
       }
     }
@@ -439,44 +509,32 @@ describe('qualified rules architectural invariants', () => {
       assert.ok(moduleRules.length > 0, 'Every module in RULE_MODULES must export at least 1 rule');
       const guideId = moduleRules[0]!.guideId;
       const filePath = join(rulesDir, `${guideId}.ts`);
-      const modUrl = pathToFileURL(filePath).href;
-      const mod: Record<string, unknown> = await import(modUrl);
+      const inspected = await inspectRuleModuleFiles(filePath);
       assert.ok(
-        Array.isArray(mod.default) && mod.default.length > 0,
+        inspected.defaultRules.length > 0,
         `Rule module "${guideId}.ts" must default-export a non-empty rules array`,
       );
       assert.deepStrictEqual(
-        mod.default,
+        inspected.defaultRules,
         moduleRules,
         `Default export of "${guideId}.ts" must equal its RULE_MODULES entry`,
       );
 
-      const exportedRules = [
-        ...new Set([
-          ...(mod.default as unknown[]).filter(isAnalyzerRuleExport),
-          ...Object.values(mod).filter(isAnalyzerRuleExport),
-          ...Object.entries(mod)
-            .filter(([k, v]) => k !== 'default' && Array.isArray(v))
-            .flatMap(([, v]) => (v as unknown[]).filter(isAnalyzerRuleExport)),
-        ]),
-      ];
       assert.ok(
-        exportedRules.length > 0,
+        inspected.exportedRules.length > 0,
         `Rule module "${guideId}.ts" must export at least one AnalyzerRule`,
       );
-      for (const exportedRule of exportedRules) {
+      for (const exportedRule of inspected.exportedRules) {
         assert.ok(
           moduleRules.includes(exportedRule),
           `Exported rule "${exportedRule.id}" in "${guideId}.ts" is missing from its default export`,
         );
       }
 
-      const sourceText = readFileSync(filePath, 'utf8');
-      const definedRuleCount = (sourceText.match(/\bverifierRubric\s*:/g) ?? []).length;
       assert.strictEqual(
         moduleRules.length,
-        definedRuleCount,
-        `Module "${guideId}.ts" defines ${definedRuleCount} AnalyzerRule object(s) (by verifierRubric:) but default-exports ${moduleRules.length}`,
+        inspected.definedRuleCount,
+        `Module "${guideId}.ts" defines ${inspected.definedRuleCount} AnalyzerRule object(s) (by verifierRubric:) but default-exports ${moduleRules.length}`,
       );
 
       for (const rule of moduleRules) {

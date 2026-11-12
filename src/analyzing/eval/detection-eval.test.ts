@@ -602,6 +602,44 @@ describe('guide summary extraction and scored card loading', () => {
     }
   });
 
+  it('truncates feature guides at 6,000 chars while preserving full multi-section discipline guides up to 48,000 chars', () => {
+    const padding = 'x'.repeat(7500);
+    const featureMarkdown = `---\nname: dark-mode\ndescription: Feature guide\n---\n\n# Dark Mode\n\n${padding}\n\n## Trailing Section\n\nStill more content.\n`;
+    const featureParsed = parseGuideSummaryMarkdown(featureMarkdown, 'dark-mode');
+    assert.ok(featureParsed.markdownBody);
+    assert.ok(featureParsed.markdownBody.endsWith('\n\n... (guide content truncated)'));
+    assert.equal(
+      featureParsed.markdownBody.length,
+      6000 + '\n\n... (guide content truncated)'.length,
+    );
+    assert.equal(featureParsed.promptGuideHash, computePromptGuideHash(featureParsed.markdownBody));
+
+    const tailSection =
+      '## Replace DOM children with `Element.prototype.replaceChildren()` {#replace-children}\n\nPrefer `parent.replaceChildren(...nodes)` over `parent.innerHTML = ""`.\n';
+    const jsDisciplineMarkdown = `---\nname: js\ndescription: JS discipline guide\n---\n\n# JavaScript\n\n${'a'.repeat(5200)}\n\n${'b'.repeat(5200)}\n\n${tailSection}`;
+    assert.ok(jsDisciplineMarkdown.length > 10000);
+    const jsParsed = parseGuideSummaryMarkdown(jsDisciplineMarkdown, 'js');
+    assert.ok(jsParsed.markdownBody);
+    assert.equal(jsParsed.markdownBody.includes('... (guide content truncated)'), false);
+    assert.ok(jsParsed.markdownBody.includes('{#replace-children}'));
+    assert.ok(jsParsed.markdownBody.endsWith('Prefer `parent.replaceChildren(...nodes)` over `parent.innerHTML = ""`.'));
+
+    const cssDisciplineMarkdown = `---\nname: css\ncategory: css\ndescription: CSS discipline guide\n---\n\n# CSS\n\n${'c'.repeat(9000)}\n\n## Late CSS Section {#late-css}\n\nRetained past 6,000 chars.\n`;
+    const cssParsed = parseGuideSummaryMarkdown(cssDisciplineMarkdown, 'css');
+    assert.ok(cssParsed.markdownBody);
+    assert.equal(cssParsed.markdownBody.includes('... (guide content truncated)'), false);
+    assert.ok(cssParsed.markdownBody.includes('{#late-css}'));
+
+    const oversizedDisciplineMarkdown = `---\nname: js\ndescription: Oversized\n---\n\n# JavaScript\n\n${'z'.repeat(49000)}`;
+    const oversizedParsed = parseGuideSummaryMarkdown(oversizedDisciplineMarkdown, 'js');
+    assert.ok(oversizedParsed.markdownBody);
+    assert.ok(oversizedParsed.markdownBody.endsWith('\n\n... (guide content truncated)'));
+    assert.equal(
+      oversizedParsed.markdownBody.length,
+      48000 + '\n\n... (guide content truncated)'.length,
+    );
+  });
+
   it('fails fast on missing/corrupt explainers and empty/missing guide dirs unless allowMissingExplainers is set', async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'guide-summaries-failfast-'));
     try {

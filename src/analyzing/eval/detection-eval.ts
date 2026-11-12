@@ -23,6 +23,8 @@ import {
   type SensitivitySpecificityResult,
 } from './stats.ts';
 import { ALL_RULES } from '../rules/index.ts';
+import { isKnownCategory } from '../../core/categories.ts';
+import { DISCIPLINE_GUIDES } from '../../core/guide-validation.ts';
 import { extractCompactSnippet } from '../scanners/context-slicer.ts';
 import { computeGuideHash } from '../scanners/index.ts';
 import type { AnalyzerRule } from '../schema.ts';
@@ -664,7 +666,13 @@ export function parseGuideSummaryMarkdown(markdown: string, guideId: string): Gu
     str.replace(/\{\{[^}]+\}\}/g, '').replace(/\n{3,}/g, '\n\n').trim();
 
   const cleanBody = clean(body);
-  const maxBodyLength = 6000;
+  const fmCategory = fm.match(/^category:\s*(.+)$/m)?.[1]?.trim().replace(/^['"]|['"]$/g, '');
+  const maxBodyLength =
+    DISCIPLINE_GUIDES.has(guideId) ||
+    isKnownCategory(guideId) ||
+    (fmCategory !== undefined && fmCategory === guideId)
+      ? 48000
+      : 6000;
   const markdownBody =
     cleanBody.length > maxBodyLength
       ? cleanBody.slice(0, maxBodyLength) + '\n\n... (guide content truncated)'
