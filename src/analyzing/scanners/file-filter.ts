@@ -59,9 +59,12 @@ export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'specs',
   'fixtures',
   '__fixtures__',
+  'testing',
+  'e2e',
 ]);
 
-const TEST_OR_SPEC_FILE_RE = /(?:^|\.)(?:test|spec)\./i;
+const TEST_OR_SPEC_FILE_RE =
+  /(?:(?:^|\.)(?:test|spec)\.|(?:_test_runner\.(?:js|ts|html)|testrunner\.(?:js|ts)|tests\.(?:js|ts))$)/i;
 
 function normalizePath(relPath: string): string {
   return relPath.replace(/\\/g, '/').toLowerCase();
@@ -93,7 +96,7 @@ function hasDotDirSegment(relPath: string): boolean {
 
 /**
  * Returns `true` if `relPath` (relative to the target directory) represents a documentation,
- * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file.
+ * example, demo, test, spec, testing, e2e, or fixtures path or is a test/spec/test-runner file.
  */
 export function isDocsOrTestsPath(relPath: string): boolean {
   const segments = splitPathSegments(relPath);
@@ -101,7 +104,9 @@ export function isDocsOrTestsPath(relPath: string): boolean {
     return false;
   }
   return (
-    segments.slice(0, -1).some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg)) ||
+    segments
+      .slice(0, -1)
+      .some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg) || seg.endsWith('_test_runner')) ||
     TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? '')
   );
 }

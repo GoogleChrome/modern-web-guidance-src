@@ -264,19 +264,36 @@ void test('js/promise-with-resolvers matcher', async (t) => {
     assert.deepEqual(matchJsRule(promiseWithResolversMatcher, 'tricky.ts', code), []);
   });
 
-  await t.test('excludes direct await new Promise and DOM/global .on* property assignments', async () => {
+  await t.test('flags awaited new Promise with pure external assignment and excludes extra work or .on* handlers', async () => {
     const code = `
-      async function testAwaitAndEventHandlers(iframe) {
+      class ChunkedReader {
+        #transferFinished!: (arg0: boolean) => void;
+        async read() {
+          return await new Promise((resolve) => {
+            this.#transferFinished = resolve;
+          });
+        }
+      }
+
+      async function testAwaitAndEventHandlers(iframe, kickOff) {
+        let extResolve;
+        await new Promise((resolve) => {
+          extResolve = resolve;
+          kickOff();
+        });
         await new Promise((resolve) => {
           iframe.onload = resolve;
         });
         const isReady = new Promise((resolve) => {
           window.onWasmInitialized = resolve;
         });
-        return isReady;
+        return { extResolve, isReady };
       }
     `;
-    assert.deepEqual(matchJsRule(promiseWithResolversMatcher, 'handlers.js', code), []);
+    assert.deepEqual(
+      matchJsRule(promiseWithResolversMatcher, 'handlers.ts', code).map((m) => m.line),
+      [5],
+    );
   });
 
   await t.test('excludes .obsidian and .vitepress paths only on js/promise-with-resolvers', () => {

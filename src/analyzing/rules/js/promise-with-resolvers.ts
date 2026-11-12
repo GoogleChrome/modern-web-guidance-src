@@ -2,7 +2,6 @@ import { Node, SyntaxKind, VariableDeclarationKind } from 'ts-morph';
 import {
   getAssignment,
   getMemberAccess,
-  getSemanticParent,
   getStaticString,
   isGlobalReference,
   resolveLexicalBinding,
@@ -123,9 +122,6 @@ export const promiseWithResolversMatcher: JsRuleMatcher = createJsCallMatcher({
   maxLineLength: 500,
   isGuarded: isWithResolversGuard,
   matchNew(node) {
-    const { parent: awaitCheck } = getSemanticParent(node);
-    if (Node.isAwaitExpression(awaitCheck)) return null;
-
     const args = node.getArguments();
     if (
       args.length !== 1 ||

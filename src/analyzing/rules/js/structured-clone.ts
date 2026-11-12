@@ -1,7 +1,9 @@
-import { Node, SyntaxKind } from 'ts-morph';
+import { Node, SyntaxKind, type CallExpression, type SourceFile } from 'ts-morph';
 import {
+  getMemberAccess,
   getSingleArgument,
   getStaticString,
+  isCallableNode,
   isGlobalMember,
   isGlobalReference,
   resolveCallableNode,
@@ -103,6 +105,46 @@ const REACTIVE_CALLS = new Set([
   'makeObservable',
 ]);
 const REF_CALLS = new Set(['ref', 'shallowRef', 'computed']);
+const SANITIZE_UNDEFINED_NAME_RE = /(?:clean|strip|omit|prune|remove).*undefined|sanitizeJson/i;
+
+function hasSanitizeUndefinedAncestor(node: Node): boolean {
+  return Boolean(
+    node.getFirstAncestor((ancestor) => {
+      let name: string | undefined;
+      if (Node.isVariableDeclaration(ancestor)) {
+        const nameNode = ancestor.getNameNode();
+        name = Node.isIdentifier(nameNode) ? nameNode.getText() : undefined;
+      } else if (Node.isFunctionDeclaration(ancestor) || Node.isMethodDeclaration(ancestor)) {
+        name = ancestor.getName();
+      } else if (Node.isPropertyAssignment(ancestor)) {
+        name = getStaticString(ancestor.getNameNode()) ?? ancestor.getName();
+      }
+      return Boolean(name && SANITIZE_UNDEFINED_NAME_RE.test(name));
+    }),
+  );
+}
+
+function isPostMessageCall(node: CallExpression): boolean {
+  const callee = unwrapExpression(node.getExpression());
+  if (Node.isIdentifier(callee)) return callee.getText() === 'postMessage';
+  return getMemberAccess(callee)?.name === 'postMessage';
+}
+
+function hasSubsequentPostMessage(node: Node, sourceFile: SourceFile): boolean {
+  if (!sourceFile.getFullText().includes('postMessage')) return false;
+  if (node.getFirstAncestor((ancestor) => Node.isCallExpression(ancestor) && isPostMessageCall(ancestor))) {
+    return true;
+  }
+  const enclosingFn = node.getFirstAncestor(isCallableNode);
+  const scope = enclosingFn ?? sourceFile;
+  const nodeEnd = node.getEnd();
+
+  return scope.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+    if (call === node || !isPostMessageCall(call)) return false;
+    if (call.getFirstAncestor(isCallableNode) !== enclosingFn) return false;
+    return call.getStart() >= nodeEnd;
+  });
+}
 
 function unwrapSingleJsonArg(node: Node, methodName: 'parse' | 'stringify'): Node | null {
   const method = unwrapMethodCall(node, { methodName });
@@ -265,6 +307,9 @@ export const structuredCloneMatcher: JsRuleMatcher = createJsCallMatcher({
     const clonedExpr = inner ? unwrapSingleJsonArg(inner, 'stringify') : null;
     if (!clonedExpr || isTrivialPrimitive(clonedExpr)) return null;
     if (Node.isNewExpression(clonedExpr) && isGlobalReference(clonedExpr.getExpression(), 'Date')) {
+      return null;
+    }
+    if (hasSanitizeUndefinedAncestor(node) || hasSubsequentPostMessage(node, sourceFile)) {
       return null;
     }
     const isVueOptionsApi =

@@ -313,4 +313,92 @@ void test('js/copying-array-methods matcher', async (t) => {
       [6],
     );
   });
+
+  await t.test('resolves local type aliases and same-file method/function return types while flagging non-document .scripts', () => {
+    const exemptCases = `
+      export type ScriptDuplication = Map<string, {
+        estimatedDuplicateBytes: number,
+        duplicates: string[],
+      }>;
+      type AliasDuplication = ScriptDuplication | undefined;
+      type LocalSet = Set<string>;
+
+      function sortAlias(duplication: ScriptDuplication, aliasDup: AliasDuplication, s: LocalSet) {
+        return [
+          [...duplication].sort((a, b) => b[1].estimatedDuplicateBytes - a[1].estimatedDuplicateBytes),
+          [...aliasDup].reverse(),
+          s.slice().sort(),
+        ];
+      }
+
+      function wrapNewMapAndSet(entries, items) {
+        return [
+          new Map([...entries].sort((a, b) => a[0].localeCompare(b[0]))),
+          new Map([...entries].reverse()),
+          new Set([...items].sort()),
+          new window.Set(([...items].reverse())),
+        ];
+      }
+
+      function getSetItems(): Set<string> {
+        return new Set();
+      }
+      const getMapItems = (): Map<string, number> => new Map();
+
+      class StackPane {
+        #childPanes(): Map<HTMLElement, string> {
+          return new Map();
+        }
+        static getAll(): Set<string> {
+          return new Set();
+        }
+        #addNewPanes() {
+          return [
+            [...this.#childPanes()].reverse(),
+            [...StackPane.getAll()].sort(),
+            [...getSetItems()].sort(),
+            [...getMapItems()].reverse(),
+          ];
+        }
+      }
+
+      function docCollections(el, iframe, doc, table, row, select) {
+        return [
+          [...document.scripts].sort(),
+          [...window.document.forms].sort(),
+          [...el.ownerDocument.images].reverse(),
+          [...iframe.contentDocument.links].sort(),
+          [...doc.embeds].sort(),
+          [...Document.applets].reverse(),
+          [...doc.anchors].sort(),
+          [...table.tBodies].sort(),
+          [...table.rows].reverse(),
+          [...row.cells].sort(),
+          [...select.options].sort(),
+        ];
+      }
+    `;
+    assert.equal(matchJsRule(copyingArrayMethodsMatcher, 'exempt-ts.ts', exemptCases).length, 0);
+
+    const recoveredPositives = `
+      type StringList = string[];
+      function getArr(): string[] { return []; }
+      class Panel {
+        #items(): number[] { return []; }
+        run(list: StringList, loaf, user, page) {
+          const a = [...list].sort();
+          const b = [...getArr()].sort();
+          const c = [...this.#items()].reverse();
+          const d = loaf.scripts.slice().sort((x, y) => y.duration - x.duration);
+          const e = [...user.links].sort();
+          const f = page.forms.slice().reverse();
+          return [a, b, c, d, e, f];
+        }
+      }
+    `;
+    assert.deepEqual(
+      matchJsRule(copyingArrayMethodsMatcher, 'recovered.ts', recoveredPositives).map((m) => m.line),
+      [7, 8, 9, 10, 11, 12],
+    );
+  });
 });

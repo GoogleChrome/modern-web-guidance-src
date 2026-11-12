@@ -401,6 +401,7 @@ interface ScanRepoState {
   readonly fileMap: Map<string, string>;
   readonly maxFiles: number;
   readonly fileFilterOptions?: FileFilterOptions;
+  readonly hasDependencyRules: boolean;
   skippedDocsAndTestsCount: number;
 }
 
@@ -429,7 +430,7 @@ function classifyCandidatePath(
 
   if (
     shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
-    isCandidateVendoredFile(relPath)
+    (state.hasDependencyRules && isCandidateVendoredFile(relPath))
   ) {
     return 'candidate';
   }
@@ -443,7 +444,7 @@ function classifyCandidatePath(
 async function tryReadFileContent(
   fullPath: string,
   relPath: string,
-  filterOptions?: FileFilterOptions,
+  state: ScanRepoState,
 ): Promise<string | undefined> {
   try {
     const handle = await open(fullPath, 'r');
@@ -454,8 +455,8 @@ async function tryReadFileContent(
       }
       const content = await handle.readFile('utf8');
       if (
-        shouldScanFile(relPath, content, filterOptions) ||
-        isCandidateVendoredFile(relPath, content)
+        shouldScanFile(relPath, content, state.fileFilterOptions) ||
+        (state.hasDependencyRules && isCandidateVendoredFile(relPath, content))
       ) {
         return content;
       }
@@ -507,7 +508,7 @@ async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<
     }
 
     if (entry.isFile() && classifyCandidatePath(relPath, state) === 'candidate') {
-      const content = await tryReadFileContent(fullPath, relPath, state.fileFilterOptions);
+      const content = await tryReadFileContent(fullPath, relPath, state);
       if (content !== undefined) {
         state.fileMap.set(relPath, content);
       }
@@ -550,7 +551,7 @@ async function tryEnumerateGitFiles(
       const content = await tryReadFileContent(
         join(resolvedRepoDir, relPath),
         relPath,
-        state.fileFilterOptions,
+        state,
       );
       if (content !== undefined) {
         state.fileMap.set(relPath, content);
@@ -576,6 +577,7 @@ export async function scanRepoFiles(
     fileMap,
     maxFiles: options?.maxFiles ?? 5000,
     fileFilterOptions,
+    hasDependencyRules: rules.some((r) => r.matcher.kind === 'dependency'),
     skippedDocsAndTestsCount: 0,
   };
 

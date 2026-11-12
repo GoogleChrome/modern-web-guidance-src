@@ -341,4 +341,72 @@ void test('js/structured-clone matcher', async (t) => {
     `;
     assert.equal(matchJsRule(structuredCloneMatcher, 'negatives.js', code).length, 0);
   });
+
+  await t.test('exempts undefined-stripping helpers and pre-postMessage serialization', () => {
+    const exempt = `
+      const cleanUndefineds = <T>(value: T): T => {
+        return JSON.parse(JSON.stringify(value));
+      };
+
+      function stripUndefinedProps(obj) {
+        return JSON.parse(JSON.stringify(obj));
+      }
+
+      class Serializer {
+        omitUndefinedFields(data) {
+          return JSON.parse(JSON.stringify(data));
+        }
+      }
+
+      const utils = {
+        sanitizeJson: (payload) => JSON.parse(JSON.stringify(payload)),
+        pruneUndefined(payload) {
+          return JSON.parse(JSON.stringify(payload));
+        },
+        removeUndefinedKeys: (payload) => JSON.parse(JSON.stringify(payload)),
+      };
+
+      async function onFrontendMessage(event) {
+        const result = await invokeLH(event.data);
+        if (result && typeof result === 'object') {
+          if ('artifacts' in result) {
+            result.artifacts.Timing = JSON.parse(JSON.stringify(result.artifacts.Timing));
+          }
+        }
+        self.postMessage({ id: event.data.id, result });
+      }
+
+      function sendViaPort(port, items) {
+        port.postMessage(JSON.parse(JSON.stringify(items)));
+        port.postMessage(items.map((item) => JSON.parse(JSON.stringify(item))));
+      }
+    `;
+    assert.equal(matchJsRule(structuredCloneMatcher, 'exempt-worker.ts', exempt).length, 0);
+
+    const stillFlagged = `
+      function earlierPostMessage(worker, data) {
+        worker.postMessage('started');
+        const copy = JSON.parse(JSON.stringify(data));
+        copy.mutated = true;
+        return copy;
+      }
+
+      function unrelatedFunctionPostMessage(data) {
+        const copy = JSON.parse(JSON.stringify(data));
+        const sendLater = () => self.postMessage('later');
+        return { copy, sendLater };
+      }
+
+      function postMessageInSibling(data) {
+        return JSON.parse(JSON.stringify(data));
+      }
+      function notifier(port) {
+        port.postMessage('done');
+      }
+    `;
+    assert.deepEqual(
+      matchJsRule(structuredCloneMatcher, 'still-flagged.js', stillFlagged).map((m) => m.line),
+      [4, 10, 16],
+    );
+  });
 });
