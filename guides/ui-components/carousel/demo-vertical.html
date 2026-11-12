@@ -316,11 +316,13 @@
       }
       settled = item;
       mark(item);
+      const focused = document.activeElement;
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
-      if (prevBtn.disabled) {
+      // Disabling the focused button drops focus, so hand it to the opposite one. Never move focus the user had elsewhere.
+      if (focused === prevBtn && prevBtn.disabled) {
         nextBtn.focus();
-      } else if (nextBtn.disabled) {
+      } else if (focused === nextBtn && nextBtn.disabled) {
         prevBtn.focus();
       }
     }
