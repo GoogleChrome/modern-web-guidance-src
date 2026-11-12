@@ -1,5 +1,5 @@
 diff --git a/index.html b/index.html
-index 66c9173..ef2f3ea 100644
+index 66c9173..c45c498 100644
 --- a/index.html
 +++ b/index.html
 @@ -152,6 +152,150 @@
@@ -7,7 +7,7 @@ index 66c9173..ef2f3ea 100644
        font-size: 0.85rem;
      }
 +
-+    .menu-toolbar {
++    .controls-bar {
 +      display: flex;
 +      flex-wrap: wrap;
 +      gap: 12px 18px;
@@ -20,7 +20,7 @@ index 66c9173..ef2f3ea 100644
 +      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 +    }
 +
-+    .menu-toolbar label {
++    .controls-bar label {
 +      display: inline-flex;
 +      align-items: center;
 +      gap: 6px;
@@ -28,8 +28,8 @@ index 66c9173..ef2f3ea 100644
 +      font-weight: 600;
 +    }
 +
-+    .menu-toolbar select,
-+    .menu-toolbar button {
++    .controls-bar select,
++    .controls-bar button {
 +      font: inherit;
 +      padding: 6px 12px;
 +      border-radius: 4px;
@@ -39,13 +39,13 @@ index 66c9173..ef2f3ea 100644
 +      cursor: pointer;
 +    }
 +
-+    .menu-toolbar button[aria-pressed="true"] {
++    .controls-bar button[aria-pressed="true"] {
 +      background: var(--primary);
 +      color: white;
 +      border-color: var(--primary);
 +    }
 +
-+    .category-summary {
++    .summary-strip {
 +      display: flex;
 +      flex-wrap: wrap;
 +      justify-content: center;
@@ -54,13 +54,13 @@ index 66c9173..ef2f3ea 100644
 +      font-size: 0.85rem;
 +    }
 +
-+    .category-pill {
++    .badge-chip {
 +      background: #efebe9;
 +      padding: 4px 10px;
 +      border-radius: 999px;
 +    }
 +
-+    .card-meta {
++    .card-details {
 +      display: flex;
 +      justify-content: space-between;
 +      align-items: center;
@@ -76,22 +76,22 @@ index 66c9173..ef2f3ea 100644
 +      cursor: pointer;
 +    }
 +
-+    .grouped-layout {
++    .grouped-grid {
 +      display: block;
 +    }
 +
-+    .category-group {
++    .group-block {
 +      margin-top: 24px;
 +    }
 +
-+    .category-group > h3 {
++    .group-block > h3 {
 +      margin-bottom: 12px;
 +      color: var(--primary);
 +      border-bottom: 2px solid var(--secondary);
 +      padding-bottom: 4px;
 +    }
 +
-+    .draft-panel {
++    .order-card {
 +      margin-top: 40px;
 +      background: white;
 +      padding: 24px;
@@ -99,7 +99,7 @@ index 66c9173..ef2f3ea 100644
 +      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +    }
 +
-+    .draft-controls {
++    .order-actions {
 +      display: flex;
 +      flex-wrap: wrap;
 +      gap: 10px;
@@ -107,35 +107,35 @@ index 66c9173..ef2f3ea 100644
 +      margin: 14px 0;
 +    }
 +
-+    .draft-controls select,
-+    .draft-controls input,
-+    .draft-controls button {
++    .order-actions select,
++    .order-actions input,
++    .order-actions button {
 +      font: inherit;
 +      padding: 8px 12px;
 +      border-radius: 4px;
 +      border: 1px solid #bcaaa4;
 +    }
 +
-+    .draft-controls button {
++    .order-actions button {
 +      background: var(--primary);
 +      color: white;
 +      border-color: var(--primary);
 +      cursor: pointer;
 +    }
 +
-+    .draft-controls button.secondary-btn {
++    .order-actions button.btn-outline {
 +      background: white;
 +      color: var(--primary);
 +    }
 +
-+    .draft-items {
++    .order-lines {
 +      list-style: none;
 +      margin-top: 12px;
 +      display: grid;
 +      gap: 8px;
 +    }
 +
-+    .draft-items li {
++    .order-lines li {
 +      padding: 10px 12px;
 +      background: #f7f4f2;
 +      border-radius: 6px;
@@ -145,7 +145,7 @@ index 66c9173..ef2f3ea 100644
 +      font-size: 0.9rem;
 +    }
 +
-+    .snapshot-status {
++    .status-note {
 +      margin-top: 10px;
 +      font-size: 0.85rem;
 +      color: #5d4037;
@@ -162,7 +162,7 @@ index 66c9173..ef2f3ea 100644
 -      <div class="grid">
 +    <section aria-labelledby="menu-heading">
 +      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
-+      <div id="menu-controls" class="menu-toolbar">
++      <div id="menu-controls" class="controls-bar">
 +        <label for="category-filter">Category
 +          <select id="category-filter">
 +            <option value="all">All Categories</option>
@@ -182,7 +182,7 @@ index 66c9173..ef2f3ea 100644
 +        <button type="button" id="reverse-order" aria-pressed="false">Reverse Order</button>
 +        <button type="button" id="group-by-category" aria-pressed="false">Group by Category</button>
 +      </div>
-+      <div id="category-summary" class="category-summary" aria-live="polite"></div>
++      <div id="category-summary" class="summary-strip" aria-live="polite"></div>
 +      <div id="menu-grid" class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
@@ -192,9 +192,9 @@ index 66c9173..ef2f3ea 100644
        </div>
      </section>
 +
-+    <section id="draft-order" class="draft-panel" aria-labelledby="draft-order-heading">
++    <section id="draft-order" class="order-card" aria-labelledby="draft-order-heading">
 +      <h2 id="draft-order-heading">Draft Order</h2>
-+      <div class="draft-controls">
++      <div class="order-actions">
 +        <label for="draft-milk">Milk
 +          <select id="draft-milk">
 +            <option value="Oat">Oat Milk</option>
@@ -206,12 +206,12 @@ index 66c9173..ef2f3ea 100644
 +          <input type="text" id="draft-note" placeholder="Extra hot, light ice...">
 +        </label>
 +        <button type="button" id="save-snapshot">Save Snapshot</button>
-+        <button type="button" id="restore-snapshot" class="secondary-btn">Restore Snapshot</button>
-+        <button type="button" id="clear-order" class="secondary-btn">Clear Order</button>
++        <button type="button" id="restore-snapshot" class="btn-outline">Restore Snapshot</button>
++        <button type="button" id="clear-order" class="btn-outline">Clear Order</button>
 +      </div>
-+      <ul id="draft-order-list" class="draft-items"></ul>
++      <ul id="draft-order-list" class="order-lines"></ul>
 +      <p id="draft-empty-msg">Your draft order is empty.</p>
-+      <p id="snapshot-status" class="snapshot-status">No snapshot saved yet.</p>
++      <p id="snapshot-status" class="status-note">No snapshot saved yet.</p>
 +    </section>
    </main>
  
@@ -314,7 +314,7 @@ index 66c9173..ef2f3ea 100644
 +      title.textContent = drink.name;
 +
 +      const meta = document.createElement('div');
-+      meta.className = 'card-meta';
++      meta.className = 'card-details';
 +      const catBadge = document.createElement('span');
 +      catBadge.textContent = drink.categoryLabel;
 +      const priceEl = document.createElement('span');
@@ -372,20 +372,20 @@ index 66c9173..ef2f3ea 100644
 +      const summaryPills = CATEGORIES.map((cat) => {
 +        const count = Object.hasOwn(grouped, cat.id) ? grouped[cat.id].length : 0;
 +        const pill = document.createElement('span');
-+        pill.className = 'category-pill';
++        pill.className = 'badge-chip';
 +        pill.textContent = `${cat.label}: ${count}`;
 +        return pill;
 +      });
 +      summaryEl.replaceChildren(...summaryPills);
 +
 +      if (uiState.grouped) {
-+        gridEl.className = 'grouped-layout';
++        gridEl.className = 'grouped-grid';
 +        const groupNodes = [];
 +        for (const cat of CATEGORIES) {
 +          const items = grouped[cat.id] ?? [];
 +          if (items.length === 0) continue;
 +          const section = document.createElement('section');
-+          section.className = 'category-group';
++          section.className = 'group-block';
 +          const heading = document.createElement('h3');
 +          heading.textContent = `${cat.label} (${items.length})`;
 +          const innerGrid = document.createElement('div');

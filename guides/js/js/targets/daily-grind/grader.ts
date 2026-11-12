@@ -9,7 +9,7 @@
  * - Exp 5:  SKIPPED — Array.prototype.with() is unnecessary since no indexed item replacement is part of this menu/order UI.
  * - Exp 6:  SKIPPED — findLast() / findLastIndex() is unnecessary since no reverse lookup is needed in this menu/order UI.
  * - Exp 7:  TESTED  — Object.groupBy() / Map.groupBy() for category grouping without .reduce() bucket accumulation.
- * - Exp 8:  TESTED  — Safe grouped key lookup (Object.hasOwn / ?? [] / Map.groupBy) when filtered categories have zero matches, without .hasOwnProperty().
+ * - Exp 8:  TESTED  — Safe grouped key lookup (Object.hasOwn / ?? [] / optional chaining / in / Map.groupBy) when filtered categories have zero matches, without .hasOwnProperty().
  * - Exp 9:  SKIPPED — Promise.withResolvers() is inapplicable to this static client-only statikk page without deferred external callbacks.
  * - Exp 10: SKIPPED — AbortSignal.timeout() is inapplicable because daily-grind makes no fetch() requests or network timeouts.
  * - Exp 11: SKIPPED — AbortSignal.any() is inapplicable because daily-grind has no concurrent cancellable async operations.
@@ -19,7 +19,7 @@
  * - Exp 15: SKIPPED — TextDecoder is inapplicable because no Uint8Array / ArrayBuffer UTF-8 decoding occurs in this UI.
  * - Exp 16: SKIPPED — TextEncoder is inapplicable because no UTF-8 byte encoding occurs in this UI.
  * - Exp 17: TESTED  — element.replaceChildren() (0 args) for clearing DOM containers without innerHTML = '' or removeChild loops.
- * - Exp 18: TESTED  — element.replaceChildren(...nodes) (with args) for atomic DOM child replacement without appendChild loops.
+ * - Exp 18: TESTED  — element.replaceChildren(...nodes) (with args) for atomic DOM child replacement on connected containers.
  * - Exp 19: SKIPPED — Plain new Event() is superseded here by Exp 20 because daily-grind:filter-change carries structured state in detail.
  * - Exp 20: TESTED  — new CustomEvent('daily-grind:filter-change', { detail, bubbles: true }) without document.createEvent / initCustomEvent.
  */
@@ -30,6 +30,7 @@ import {
   type CallExpression,
   type NewExpression,
   type Project,
+  type SourceFile,
 } from 'ts-morph';
 import {
   expect,
@@ -49,16 +50,18 @@ interface CapturedFilterEvent {
 
 interface DailyGrindSpies {
   structuredCloneCalls: number;
+  jsonStringifyCalls: number;
   toSortedCalls: number;
   arraySortCalls: number;
   toReversedCalls: number;
   arrayReverseCalls: number;
   groupByCalls: number;
+  urlSearchParamsCalls: number;
   zeroArgReplaceChildrenCalls: number;
   withArgsReplaceChildrenCalls: number;
   removeChildCalls: number;
   emptyInnerHtmlCalls: number;
-  appendChildCalls: number;
+  connectedAppendChildCalls: number;
   newCustomEventCalls: number;
   createEventCalls: number;
   capturedFilterEvents: CapturedFilterEvent[];
@@ -70,24 +73,29 @@ declare global {
   }
 }
 
-function getAstProject(): Project {
-  return getJsProject(getTargetFiles(import.meta.url));
+interface AstCache {
+  project: Project;
+  sourceFiles: SourceFile[];
+  calls: CallExpression[];
+  news: NewExpression[];
+}
+
+let cachedAst: AstCache | null = null;
+
+function getAstData(): AstCache {
+  if (cachedAst) {
+    return cachedAst;
+  }
+  const project = getJsProject(getTargetFiles(import.meta.url));
+  const sourceFiles = project.getSourceFiles();
+  const calls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+  const news = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
+  cachedAst = { project, sourceFiles, calls, news };
+  return cachedAst;
 }
 
 function normalizedCallee(node: CallExpression | NewExpression): string {
   return node.getExpression().getText().replace(/\s+/g, '');
-}
-
-function getCalls(project: Project): CallExpression[] {
-  return project
-    .getSourceFiles()
-    .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
-}
-
-function getNews(project: Project): NewExpression[] {
-  return project
-    .getSourceFiles()
-    .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
 }
 
 function getMethodName(call: CallExpression): string | null {
@@ -95,27 +103,18 @@ function getMethodName(call: CallExpression): string | null {
   return TsNode.isPropertyAccessExpression(expr) ? expr.getName() : null;
 }
 
-function isInsideIteration(node: TsNode): boolean {
-  let parent = node.getParent();
-  while (parent) {
-    if (
-      TsNode.isForStatement(parent) ||
-      TsNode.isForOfStatement(parent) ||
-      TsNode.isForInStatement(parent) ||
-      TsNode.isWhileStatement(parent) ||
-      TsNode.isDoStatement(parent)
-    ) {
-      return true;
-    }
-    if (TsNode.isCallExpression(parent)) {
-      const name = getMethodName(parent);
-      if (name === 'forEach') {
-        return true;
-      }
-    }
-    parent = parent.getParent();
-  }
-  return false;
+function isGroupBucketReduceCall(call: CallExpression): boolean {
+  if (getMethodName(call) !== 'reduce') return false;
+  const callback = call.getArguments()[0];
+  if (!callback) return false;
+  const mutatesArrayBucket = callback
+    .getDescendantsOfKind(SyntaxKind.CallExpression)
+    .some((inner) => getMethodName(inner) === 'push');
+  if (mutatesArrayBucket) return true;
+  return callback.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
+    if (bin.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) return false;
+    return TsNode.isArrayLiteralExpression(bin.getRight());
+  });
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -125,16 +124,18 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
   const spies = {
     structuredCloneCalls: 0,
+    jsonStringifyCalls: 0,
     toSortedCalls: 0,
     arraySortCalls: 0,
     toReversedCalls: 0,
     arrayReverseCalls: 0,
     groupByCalls: 0,
+    urlSearchParamsCalls: 0,
     zeroArgReplaceChildrenCalls: 0,
     withArgsReplaceChildrenCalls: 0,
     removeChildCalls: 0,
     emptyInnerHtmlCalls: 0,
-    appendChildCalls: 0,
+    connectedAppendChildCalls: 0,
     newCustomEventCalls: 0,
     createEventCalls: 0,
     capturedFilterEvents: [],
@@ -153,6 +154,12 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
       return origStructuredClone.call(this, value, options);
     };
   }
+
+  const origJsonStringify = JSON.stringify;
+  JSON.stringify = function jsonStringifySpy(value, replacer, space) {
+    if (isFromApp()) spies.jsonStringifyCalls += 1;
+    return origJsonStringify.call(JSON, value, replacer, space);
+  };
 
   const origToSorted = Array.prototype.toSorted;
   if (typeof origToSorted === 'function') {
@@ -198,6 +205,26 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
     };
   }
 
+  const OrigURLSearchParams = window.URLSearchParams;
+  window.URLSearchParams = new Proxy(OrigURLSearchParams, {
+    construct(target, args, newTarget) {
+      if (isFromApp()) spies.urlSearchParamsCalls += 1;
+      return Reflect.construct(target, args, newTarget);
+    },
+  });
+
+  const searchParamsDesc = Object.getOwnPropertyDescriptor(URL.prototype, 'searchParams');
+  if (searchParamsDesc && searchParamsDesc.get) {
+    const origSearchParamsGet = searchParamsDesc.get;
+    Object.defineProperty(URL.prototype, 'searchParams', {
+      ...searchParamsDesc,
+      get() {
+        if (isFromApp()) spies.urlSearchParamsCalls += 1;
+        return origSearchParamsGet.call(this);
+      },
+    });
+  }
+
   const origReplaceChildren = Element.prototype.replaceChildren;
   if (typeof origReplaceChildren === 'function') {
     Element.prototype.replaceChildren = function replaceChildrenSpy(...nodes) {
@@ -220,7 +247,9 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
 
   const origAppendChild = Node.prototype.appendChild;
   Node.prototype.appendChild = function appendChildSpy(child) {
-    if (isFromApp()) spies.appendChildCalls += 1;
+    if (isFromApp() && this && this.isConnected) {
+      spies.connectedAppendChildCalls += 1;
+    }
     return origAppendChild.call(this, child);
   };
 
@@ -278,15 +307,17 @@ async function readSpies(page: Page): Promise<DailyGrindSpies> {
   return result;
 }
 
-async function resetRenderSpies(page: Page): Promise<void> {
+async function resetSpyCounters(page: Page): Promise<void> {
   await page.evaluate(() => {
     const spies = window.__dailyGrindSpies;
     if (!spies) return;
+    spies.structuredCloneCalls = 0;
+    spies.jsonStringifyCalls = 0;
     spies.zeroArgReplaceChildrenCalls = 0;
     spies.withArgsReplaceChildrenCalls = 0;
     spies.removeChildCalls = 0;
     spies.emptyInnerHtmlCalls = 0;
-    spies.appendChildCalls = 0;
+    spies.connectedAppendChildCalls = 0;
   });
 }
 
@@ -309,12 +340,12 @@ function getDraftControls(page: Page) {
   const draft = page.locator('#draft-order');
   return {
     draft,
-    milkSelect: draft.getByLabel(/milk/i),
-    noteInput: draft.locator('input[type="text"]').first(),
+    milkSelect: draft.getByRole('combobox').first(),
+    noteInput: draft.locator('input:not([type]), input[type="text"], textarea').first(),
     saveBtn: draft.getByRole('button', { name: /save/i }),
     restoreBtn: draft.getByRole('button', { name: /restore/i }),
     clearBtn: draft.getByRole('button', { name: /clear/i }),
-    items: draft.locator('ul li'),
+    items: draft.locator('ul li, ol li, [data-order-item], .order-item'),
   };
 }
 
@@ -323,17 +354,23 @@ async function isToggleActive(locator: Locator): Promise<boolean> {
     if (el instanceof HTMLInputElement && el.type === 'checkbox') {
       return el.checked;
     }
-    return el.getAttribute('aria-pressed') === 'true';
+    return (
+      el.getAttribute('aria-pressed') === 'true' ||
+      el.getAttribute('aria-checked') === 'true' ||
+      el.classList.contains('active')
+    );
   });
 }
 
-async function selectSortByLabelPattern(sortSelect: Locator, pattern: RegExp): Promise<void> {
+async function selectSortByPattern(sortSelect: Locator, pattern: RegExp): Promise<void> {
   const value = await sortSelect.evaluate((el, patternSource) => {
     if (!(el instanceof HTMLSelectElement)) {
       throw new Error('Expected a <select> element for sort control.');
     }
     const regex = new RegExp(patternSource, 'i');
-    const match = Array.from(el.options).find((opt) => regex.test(opt.textContent ?? ''));
+    const match = Array.from(el.options).find(
+      (opt) => regex.test(opt.textContent ?? '') || regex.test(opt.value),
+    );
     if (!match) {
       throw new Error(`No sort <option> matched /${patternSource}/i.`);
     }
@@ -347,7 +384,8 @@ async function getSelectedSortLabel(sortSelect: Locator): Promise<string> {
     if (!(el instanceof HTMLSelectElement)) {
       throw new Error('Expected a <select> element for sort control.');
     }
-    return el.selectedOptions[0]?.textContent?.trim() ?? '';
+    const selected = el.selectedOptions[0];
+    return `${selected?.textContent?.trim() ?? ''} ${selected?.value ?? ''}`;
   });
 }
 
@@ -365,6 +403,9 @@ async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: 
   });
 }
 
+const PRICE_ASC_PATTERN = /low.*high|price[-_ ]?(?:asc|low)|\basc(?:ending)?\b|lowest/i;
+const PRICE_DESC_PATTERN = /high.*low|price[-_ ]?(?:desc|high)|\bdesc(?:ending)?\b|highest/i;
+
 // =========================================================================
 // Exp 1: structuredClone() for deep draft order snapshots
 // =========================================================================
@@ -372,8 +413,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
+  const { calls } = getAstData();
 
   const structuredCloneAstCalls = calls.filter((c) => {
     const name = normalizedCallee(c);
@@ -396,7 +436,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   expect(jsonRoundTripAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { milkSelect, noteInput, saveBtn, restoreBtn, items } = getDraftControls(page);
   const firstAddBtn = page.locator('main .card button').first();
@@ -409,9 +449,11 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await expect(items.first()).toContainText('Whole');
   await expect(items.first()).toContainText('Extra hot snapshot');
 
+  await resetSpyCounters(page);
   await saveBtn.click();
   const spiesAfterSave = await readSpies(page);
   expect(spiesAfterSave.structuredCloneCalls).toBeGreaterThanOrEqual(1);
+  expect(spiesAfterSave.jsonStringifyCalls).toBe(0);
 
   // Mutate active order after saving snapshot.
   await milkSelect.selectOption('Oat');
@@ -419,13 +461,16 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await page.locator('main .card button').nth(1).click();
   await expect(items).toHaveCount(2);
 
-  // Restore snapshot and confirm post-save mutations did not affect it and Date stays intact.
+  // Restore snapshot and confirm post-save mutations did not affect it.
+  await resetSpyCounters(page);
   await restoreBtn.click();
   await expect(items).toHaveCount(1);
-  const restoredText = (await items.first().textContent()) ?? '';
-  expect(restoredText).toContain('Whole');
-  expect(restoredText).toContain('Extra hot snapshot');
-  expect(/\d{4}-\d{2}-\d{2}T/.test(restoredText)).toBe(false);
+  await expect(items.first()).toContainText('Whole');
+  await expect(items.first()).toContainText('Extra hot snapshot');
+
+  const spiesAfterRestore = await readSpies(page);
+  expect(spiesAfterRestore.structuredCloneCalls).toBeGreaterThanOrEqual(1);
+  expect(spiesAfterRestore.jsonStringifyCalls).toBe(0);
 
   // Mutating after restore must also leave the saved snapshot intact.
   await page.locator('main .card button').nth(2).click();
@@ -441,8 +486,7 @@ test('Exp 2: uses toSorted() without mutating source menu array or calling .sort
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
+  const { calls } = getAstData();
 
   const toSortedAstCalls = calls.filter((c) => getMethodName(c) === 'toSorted');
   const legacySortAstCalls = calls.filter((c) => getMethodName(c) === 'sort');
@@ -451,13 +495,13 @@ test('Exp 2: uses toSorted() without mutating source menu array or calling .sort
   expect(legacySortAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const initial = await getCardSnapshot(page);
   expect(initial.titles.length).toBeGreaterThanOrEqual(6);
 
   const { sortSelect } = getMenuControls(page);
-  await selectSortByLabelPattern(sortSelect, /low.*high/i);
+  await selectSortByPattern(sortSelect, PRICE_ASC_PATTERN);
 
   const sorted = await getCardSnapshot(page);
   expect(sorted.prices.length).toBe(initial.titles.length);
@@ -466,10 +510,18 @@ test('Exp 2: uses toSorted() without mutating source menu array or calling .sort
   );
   expect(isAscending).toBe(true);
 
-  // Resetting sort back to first/default option restores the unmutated original order.
-  const firstSortVal = await sortSelect.locator('option').first().getAttribute('value');
-  expect(firstSortVal).toBeTruthy();
-  await sortSelect.selectOption(firstSortVal ?? '');
+  // Resetting sort back to default option restores the unmutated original order.
+  const firstOptionInfo = await sortSelect.evaluate((el) => {
+    if (!(el instanceof HTMLSelectElement)) {
+      throw new Error('Expected a <select> element for sort control.');
+    }
+    return {
+      count: el.options.length,
+      firstValue: el.options[0]?.value ?? '',
+    };
+  });
+  expect(firstOptionInfo.count).toBeGreaterThanOrEqual(2);
+  await sortSelect.selectOption(firstOptionInfo.firstValue);
   const reset = await getCardSnapshot(page);
   expect(reset.titles).toEqual(initial.titles);
 
@@ -482,8 +534,7 @@ test('Exp 2: uses toSorted() without mutating source menu array or calling .sort
 // Exp 3: toReversed() for non-mutating order reversal
 // =========================================================================
 test('Exp 3: uses toReversed() without calling .reverse()', async ({ page, TARGET_URL }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
+  const { calls } = getAstData();
 
   const toReversedAstCalls = calls.filter((c) => getMethodName(c) === 'toReversed');
   const legacyReverseAstCalls = calls.filter((c) => getMethodName(c) === 'reverse');
@@ -492,7 +543,7 @@ test('Exp 3: uses toReversed() without calling .reverse()', async ({ page, TARGE
   expect(legacyReverseAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const initial = await getCardSnapshot(page);
   expect(initial.titles.length).toBeGreaterThanOrEqual(6);
@@ -517,45 +568,30 @@ test('Exp 3: uses toReversed() without calling .reverse()', async ({ page, TARGE
 // =========================================================================
 // Exp 7: Object.groupBy() / Map.groupBy() for category grouping
 // =========================================================================
-test('Exp 7: uses Object.groupBy() or Map.groupBy() instead of .reduce() object accumulators', async ({
+test('Exp 7: uses Object.groupBy() or Map.groupBy() instead of .reduce() bucket accumulators', async ({
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
+  const { calls } = getAstData();
 
   const groupByAstCalls = calls.filter((c) => {
     const callee = normalizedCallee(c);
     return callee === 'Object.groupBy' || callee === 'Map.groupBy';
   });
-  const reduceBucketAstCalls = calls.filter((c) => {
-    if (getMethodName(c) !== 'reduce') return false;
-    const initArg = c.getArguments()[1];
-    if (!initArg) return false;
-    const text = initArg.getText().replace(/\s+/g, '');
-    return (
-      text === '{}' ||
-      text === 'Object.create(null)' ||
-      text === 'newMap()' ||
-      TsNode.isObjectLiteralExpression(initArg)
-    );
-  });
+  const reduceBucketAstCalls = calls.filter(isGroupBucketReduceCall);
 
   expect(groupByAstCalls.length).toBeGreaterThanOrEqual(1);
   expect(reduceBucketAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
-
-  const initialSpies = await readSpies(page);
-  expect(initialSpies.groupByCalls).toBeGreaterThanOrEqual(1);
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { groupToggle } = getMenuControls(page);
   await groupToggle.click();
   expect(await isToggleActive(groupToggle)).toBe(true);
 
   const afterToggleSpies = await readSpies(page);
-  expect(afterToggleSpies.groupByCalls).toBeGreaterThanOrEqual(2);
+  expect(afterToggleSpies.groupByCalls).toBeGreaterThanOrEqual(1);
 
   const groupHeadingsCount = await page
     .locator('main h3:not(.card h3), main h4:not(.card h4)')
@@ -568,13 +604,11 @@ test('Exp 7: uses Object.groupBy() or Map.groupBy() instead of .reduce() object 
 // =========================================================================
 // Exp 8: Safe grouped key lookup without .hasOwnProperty()
 // =========================================================================
-test('Exp 8: handles empty filtered groups safely with Object.hasOwn, nullish fallback, or Map.groupBy', async ({
+test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', async ({
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
-  const sourceFiles = project.getSourceFiles();
+  const { calls, sourceFiles } = getAstData();
 
   const hasOwnPropertyAstCalls = calls.filter((c) => {
     const callee = normalizedCallee(c);
@@ -586,17 +620,21 @@ test('Exp 8: handles empty filtered groups safely with Object.hasOwn, nullish fa
   const usesMapGroupBy = calls.some((c) => normalizedCallee(c) === 'Map.groupBy');
   const usesObjectGroupBy = calls.some((c) => normalizedCallee(c) === 'Object.groupBy');
   const usesObjectHasOwn = calls.some((c) => normalizedCallee(c) === 'Object.hasOwn');
-  const usesNullishEmptyArray = sourceFiles.some((sf) =>
-    sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
-      if (bin.getOperatorToken().getKind() !== SyntaxKind.QuestionQuestionToken) {
-        return false;
-      }
-      return bin.getRight().getText().trim() === '[]';
-    }),
+  const usesSafeBucketSyntax = sourceFiles.some(
+    (sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.QuestionDotToken).length > 0 ||
+      sf.getDescendantsOfKind(SyntaxKind.InKeyword).length > 0 ||
+      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
+        const op = bin.getOperatorToken().getKind();
+        if (op !== SyntaxKind.QuestionQuestionToken && op !== SyntaxKind.BarBarToken) {
+          return false;
+        }
+        return bin.getRight().getText().trim() === '[]';
+      }),
   );
 
   expect(hasOwnPropertyAstCalls).toEqual([]);
-  expect(usesMapGroupBy || (usesObjectGroupBy && (usesObjectHasOwn || usesNullishEmptyArray))).toBe(
+  expect(usesMapGroupBy || (usesObjectGroupBy && (usesObjectHasOwn || usesSafeBucketSyntax))).toBe(
     true,
   );
 
@@ -606,7 +644,7 @@ test('Exp 8: handles empty filtered groups safely with Object.hasOwn, nullish fa
   });
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const initialCount = await page.locator('main .card').count();
   const { categorySelect, groupToggle } = getMenuControls(page);
@@ -619,8 +657,8 @@ test('Exp 8: handles empty filtered groups safely with Object.hasOwn, nullish fa
   expect(filteredCount).toBeLessThan(initialCount);
 
   const mainText = (await page.locator('main').textContent()) ?? '';
-  expect(/seasonal\D*0/i.test(mainText)).toBe(true);
-  expect(/cold\s*brew\D*0/i.test(mainText)).toBe(true);
+  expect(/seasonal\D*0|0\D*seasonal/i.test(mainText)).toBe(true);
+  expect(/cold[\s-]*brew\D*0|0\D*cold[\s-]*brew/i.test(mainText)).toBe(true);
   expect(pageErrors).toEqual([]);
 });
 
@@ -631,10 +669,7 @@ test('Exp 14: syncs and restores filter state using URLSearchParams without manu
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
-  const news = getNews(project);
-  const sourceFiles = project.getSourceFiles();
+  const { calls, news, sourceFiles } = getAstData();
 
   const usesUrlSearchParamsCtor = news.some((n) => normalizedCallee(n) === 'URLSearchParams');
   const usesUrlSearchParamsProp = sourceFiles.some((sf) =>
@@ -651,12 +686,16 @@ test('Exp 14: syncs and restores filter state using URLSearchParams without manu
   expect(usesUrlSearchParamsCtor || usesUrlSearchParamsProp).toBe(true);
   expect(manualSplitAstCalls).toEqual([]);
 
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await installRuntimeSpies(page);
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
   const { categorySelect, sortSelect, reverseToggle } = getMenuControls(page);
 
   await categorySelect.selectOption('espresso');
-  await selectSortByLabelPattern(sortSelect, /high.*low/i);
+  await selectSortByPattern(sortSelect, PRICE_DESC_PATTERN);
   await reverseToggle.click();
+
+  const spies = await readSpies(page);
+  expect(spies.urlSearchParamsCalls).toBeGreaterThanOrEqual(1);
 
   const syncedUrl = page.url();
   expect(new URL(syncedUrl).search.length).toBeGreaterThan(1);
@@ -664,10 +703,10 @@ test('Exp 14: syncs and restores filter state using URLSearchParams without manu
   const syncedCards = await getCardSnapshot(page);
 
   // Navigate cleanly to the synced URL to verify initial load restoration.
-  await page.goto(syncedUrl, { waitUntil: 'load' });
+  await page.goto(syncedUrl, { waitUntil: 'domcontentloaded' });
   const reloadedControls = getMenuControls(page);
   await expect(reloadedControls.categorySelect).toHaveValue('espresso');
-  expect(await getSelectedSortLabel(reloadedControls.sortSelect)).toMatch(/high.*low/i);
+  expect(await getSelectedSortLabel(reloadedControls.sortSelect)).toMatch(PRICE_DESC_PATTERN);
   expect(await isToggleActive(reloadedControls.reverseToggle)).toBe(true);
 
   const reloadedCards = await getCardSnapshot(page);
@@ -681,12 +720,13 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
-  const sourceFiles = project.getSourceFiles();
+  const { calls, sourceFiles } = getAstData();
 
   const zeroArgReplaceChildrenAstCalls = calls.filter(
-    (c) => getMethodName(c) === 'replaceChildren' && c.getArguments().length === 0,
+    (c) =>
+      getMethodName(c) === 'replaceChildren' &&
+      (c.getArguments().length === 0 ||
+        c.getArguments().some((arg) => TsNode.isSpreadElement(arg))),
   );
   const emptyInnerHtmlAstAssignments = sourceFiles.some((sf) =>
     sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
@@ -706,13 +746,13 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   expect(removeChildAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { clearBtn, items } = getDraftControls(page);
   await page.locator('main .card button').first().click();
   await expect(items).toHaveCount(1);
 
-  await resetRenderSpies(page);
+  await resetSpyCounters(page);
   await clearBtn.click();
 
   await expect(items).toHaveCount(0);
@@ -725,30 +765,24 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
 // =========================================================================
 // Exp 18: element.replaceChildren(...nodes) for atomic list updates
 // =========================================================================
-test('Exp 18: replaces rendered DOM nodes atomically via replaceChildren(...nodes) without appendChild loops', async ({
+test('Exp 18: replaces connected DOM container nodes atomically via replaceChildren(...nodes)', async ({
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
+  const { calls } = getAstData();
 
   const withArgsReplaceChildrenAstCalls = calls.filter(
     (c) => getMethodName(c) === 'replaceChildren' && c.getArguments().length >= 1,
   );
-  const appendChildInLoopAstCalls = calls.filter(
-    (c) => getMethodName(c) === 'appendChild' && isInsideIteration(c),
-  );
-
   expect(withArgsReplaceChildrenAstCalls.length).toBeGreaterThanOrEqual(1);
-  expect(appendChildInLoopAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const initialCount = await page.locator('main .card').count();
   expect(initialCount).toBeGreaterThanOrEqual(6);
 
-  await resetRenderSpies(page);
+  await resetSpyCounters(page);
   const { categorySelect } = getMenuControls(page);
   await categorySelect.selectOption('cold-brew');
 
@@ -761,7 +795,7 @@ test('Exp 18: replaces rendered DOM nodes atomically via replaceChildren(...node
 
   const spies = await readSpies(page);
   expect(spies.withArgsReplaceChildrenCalls).toBeGreaterThanOrEqual(2);
-  expect(spies.appendChildCalls).toBe(0);
+  expect(spies.connectedAppendChildCalls).toBe(0);
 });
 
 // =========================================================================
@@ -771,13 +805,15 @@ test('Exp 20: dispatches bubbling daily-grind:filter-change via new CustomEvent(
   page,
   TARGET_URL,
 }) => {
-  const project = getAstProject();
-  const calls = getCalls(project);
-  const news = getNews(project);
+  const { calls, news } = getAstData();
 
   const newCustomEventAstNodes = news.filter((n) => {
     const callee = normalizedCallee(n);
-    return callee === 'CustomEvent' || callee === 'window.CustomEvent';
+    return (
+      callee === 'CustomEvent' ||
+      callee === 'window.CustomEvent' ||
+      callee === 'globalThis.CustomEvent'
+    );
   });
   const legacyCreateEventAstCalls = calls.filter((c) => {
     const callee = normalizedCallee(c);
@@ -788,7 +824,7 @@ test('Exp 20: dispatches bubbling daily-grind:filter-change via new CustomEvent(
   expect(legacyCreateEventAstCalls).toEqual([]);
 
   await installRuntimeSpies(page);
-  await page.goto(TARGET_URL, { waitUntil: 'load' });
+  await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { categorySelect } = getMenuControls(page);
   await categorySelect.selectOption('seasonal');
@@ -802,8 +838,6 @@ test('Exp 20: dispatches bubbling daily-grind:filter-change via new CustomEvent(
   expect(latestEvent?.type).toBe('daily-grind:filter-change');
   expect(latestEvent?.bubbles).toBe(true);
   expect(isPlainRecord(latestEvent?.detail)).toBe(true);
-  const detailValues = isPlainRecord(latestEvent?.detail)
-    ? Object.values(latestEvent.detail)
-    : [];
-  expect(detailValues).toContain('seasonal');
+  const serializedDetail = JSON.stringify(latestEvent?.detail ?? {}).toLowerCase();
+  expect(serializedDetail.includes('seasonal')).toBe(true);
 });

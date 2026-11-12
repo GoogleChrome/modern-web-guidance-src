@@ -1,26 +1,26 @@
 diff --git a/index.html b/index.html
-index 66c9173..9e9d7f1 100644
+index 66c9173..cca908b 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,150 @@
+@@ -152,6 +152,143 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
-+    .menu-toolbar {
++    .toolbar-grid {
 +      display: flex;
 +      flex-wrap: wrap;
-+      gap: 12px 18px;
++      gap: 14px 20px;
 +      align-items: center;
-+      justify-content: center;
-+      margin-top: 20px;
-+      padding: 16px;
-+      background: white;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      justify-content: space-between;
++      margin-top: 22px;
++      padding: 14px 18px;
++      background: #fbf8f6;
++      border: 2px solid #e6dcd5;
++      border-radius: 6px;
 +    }
 +
-+    .menu-toolbar label {
++    .toolbar-grid label {
 +      display: inline-flex;
 +      align-items: center;
 +      gap: 6px;
@@ -28,45 +28,38 @@ index 66c9173..9e9d7f1 100644
 +      font-weight: 600;
 +    }
 +
-+    .menu-toolbar select,
-+    .menu-toolbar button {
++    .toolbar-grid select {
 +      font: inherit;
-+      padding: 6px 12px;
++      padding: 6px 10px;
 +      border-radius: 4px;
-+      border: 1px solid #bcaaa4;
++      border: 1px solid #8d6e63;
 +      background: white;
 +      color: var(--text);
-+      cursor: pointer;
 +    }
 +
-+    .menu-toolbar button[aria-pressed="true"] {
-+      background: var(--primary);
-+      color: white;
-+      border-color: var(--primary);
-+    }
-+
-+    .category-summary {
++    .counts-row {
 +      display: flex;
 +      flex-wrap: wrap;
-+      justify-content: center;
++      justify-content: flex-start;
 +      gap: 10px;
 +      margin-top: 14px;
 +      font-size: 0.85rem;
 +    }
 +
-+    .category-pill {
-+      background: #efebe9;
-+      padding: 4px 10px;
-+      border-radius: 999px;
++    .count-pill {
++      background: #ede7e3;
++      padding: 4px 12px;
++      border-radius: 4px;
++      font-weight: 600;
 +    }
 +
-+    .card-meta {
++    .item-specs {
 +      display: flex;
 +      justify-content: space-between;
 +      align-items: center;
 +      margin: 10px 0 6px;
 +      font-size: 0.85rem;
-+      color: #5d4037;
++      color: #4e342e;
 +      font-weight: 600;
 +    }
 +
@@ -76,30 +69,30 @@ index 66c9173..9e9d7f1 100644
 +      cursor: pointer;
 +    }
 +
-+    .grouped-layout {
++    .grouped-stack {
 +      display: block;
 +    }
 +
-+    .category-group {
-+      margin-top: 24px;
++    .category-bucket {
++      margin-top: 26px;
 +    }
 +
-+    .category-group > h3 {
++    .category-bucket > h3 {
 +      margin-bottom: 12px;
 +      color: var(--primary);
-+      border-bottom: 2px solid var(--secondary);
++      border-bottom: 1px dashed var(--secondary);
 +      padding-bottom: 4px;
 +    }
 +
-+    .draft-panel {
++    .draft-workbench {
 +      margin-top: 40px;
 +      background: white;
 +      padding: 24px;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 6px;
++      border: 1px solid #d7ccc8;
 +    }
 +
-+    .draft-controls {
++    .draft-toolbar {
 +      display: flex;
 +      flex-wrap: wrap;
 +      gap: 10px;
@@ -107,45 +100,45 @@ index 66c9173..9e9d7f1 100644
 +      margin: 14px 0;
 +    }
 +
-+    .draft-controls select,
-+    .draft-controls input,
-+    .draft-controls button {
++    .draft-toolbar select,
++    .draft-toolbar input,
++    .draft-toolbar button {
 +      font: inherit;
 +      padding: 8px 12px;
 +      border-radius: 4px;
-+      border: 1px solid #bcaaa4;
++      border: 1px solid #8d6e63;
 +    }
 +
-+    .draft-controls button {
++    .draft-toolbar button {
 +      background: var(--primary);
 +      color: white;
 +      border-color: var(--primary);
 +      cursor: pointer;
 +    }
 +
-+    .draft-controls button.secondary-btn {
-+      background: white;
++    .draft-toolbar button.ghost-btn {
++      background: transparent;
 +      color: var(--primary);
 +    }
 +
-+    .draft-items {
++    .draft-queue {
 +      list-style: none;
 +      margin-top: 12px;
 +      display: grid;
 +      gap: 8px;
 +    }
 +
-+    .draft-items li {
++    .draft-queue li {
 +      padding: 10px 12px;
-+      background: #f7f4f2;
-+      border-radius: 6px;
++      background: #f4efec;
++      border-radius: 4px;
 +      display: flex;
 +      justify-content: space-between;
 +      gap: 12px;
 +      font-size: 0.9rem;
 +    }
 +
-+    .snapshot-status {
++    .meta-status {
 +      margin-top: 10px;
 +      font-size: 0.85rem;
 +      color: #5d4037;
@@ -153,12 +146,12 @@ index 66c9173..9e9d7f1 100644
    </style>
  </head>
  
-@@ -177,7 +321,36 @@
+@@ -177,7 +314,36 @@
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
-+      <div id="menu-controls" class="menu-toolbar">
++      <div id="menu-controls" class="toolbar-grid">
 +        <label>
 +          Category
 +          <select id="category-picker">
@@ -179,26 +172,26 @@ index 66c9173..9e9d7f1 100644
 +        </label>
 +        <label>
 +          <input type="checkbox" id="reverse-toggle">
-+          Reverse display order
++          Reverse Order
 +        </label>
 +        <label>
 +          <input type="checkbox" id="group-toggle">
-+          Group by category
++          Group by Category
 +        </label>
 +      </div>
-+      <div id="category-badges" class="category-summary"></div>
++      <div id="category-badges" class="counts-row"></div>
 +      <div id="drink-grid" class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-@@ -195,8 +368,46 @@
+@@ -195,8 +361,46 @@
          </div>
        </div>
      </section>
 +
-+    <section id="draft-order" class="draft-panel">
++    <section id="draft-order" class="draft-workbench">
 +      <h2>Draft Order Builder</h2>
-+      <div class="draft-controls">
++      <div class="draft-toolbar">
 +        <label>
 +          Milk
 +          <select id="milk-choice">
@@ -212,19 +205,19 @@ index 66c9173..9e9d7f1 100644
 +          <input type="text" id="special-note" placeholder="Extra shot, no foam...">
 +        </label>
 +        <button type="button" id="snapshot-save">Save Snapshot</button>
-+        <button type="button" id="snapshot-restore" class="secondary-btn">Restore Snapshot</button>
-+        <button type="button" id="draft-clear" class="secondary-btn">Clear Order</button>
++        <button type="button" id="snapshot-restore" class="ghost-btn">Restore Snapshot</button>
++        <button type="button" id="draft-clear" class="ghost-btn">Clear Order</button>
 +      </div>
-+      <ul id="draft-list" class="draft-items"></ul>
++      <ul id="draft-list" class="draft-queue"></ul>
 +      <p id="draft-placeholder">No drinks added to draft order.</p>
-+      <p id="snapshot-msg" class="snapshot-status">No snapshot saved.</p>
++      <p id="snapshot-msg" class="meta-status">No snapshot saved.</p>
 +    </section>
    </main>
  
 +  <template id="card-template">
 +    <div class="card">
 +      <h3 data-field="name"></h3>
-+      <div class="card-meta">
++      <div class="item-specs">
 +        <span data-field="category"></span>
 +        <span data-field="price"></span>
 +      </div>
@@ -240,7 +233,7 @@ index 66c9173..9e9d7f1 100644
        <a href="/about">Our Story</a> |
 diff --git a/scripts/app.js b/scripts/app.js
 new file mode 100644
-index 0000000..7d8fd5d
+index 0000000..dfea6eb
 --- /dev/null
 +++ b/scripts/app.js
 @@ -0,0 +1,275 @@
@@ -250,7 +243,7 @@ index 0000000..7d8fd5d
 +    name: 'Maple Oat Latte',
 +    category: 'seasonal',
 +    categoryName: 'Seasonal',
-+    price: 5.75,
++    price: 5.65,
 +    description: 'Creamy oat milk with a hint of Vermont maple syrup.',
 +  },
 +  {
@@ -258,7 +251,7 @@ index 0000000..7d8fd5d
 +    name: 'Dark Roast Espresso',
 +    category: 'espresso',
 +    categoryName: 'Espresso',
-+    price: 3.50,
++    price: 3.45,
 +    description: 'Bold, smokey, and perfect for a morning boost.',
 +  },
 +  {
@@ -266,7 +259,7 @@ index 0000000..7d8fd5d
 +    name: 'Cold Brew',
 +    category: 'cold-brew',
 +    categoryName: 'Cold Brew',
-+    price: 4.50,
++    price: 4.40,
 +    description: 'Steeped for 18 hours for maximum smoothness.',
 +  },
 +  {
@@ -409,27 +402,27 @@ index 0000000..7d8fd5d
 +  const badgeNodes = CATEGORY_DEFINITIONS.map((cat) => {
 +    const items = groupedMap.get(cat.id) ?? [];
 +    const badge = document.createElement('span');
-+    badge.className = 'category-pill';
++    badge.className = 'count-pill';
 +    badge.textContent = `${cat.label}: ${items.length}`;
 +    return badge;
 +  });
 +  badgesContainer.replaceChildren(...badgeNodes);
 +
 +  if (filters.grouped) {
-+    drinkGrid.className = 'grouped-layout';
++    drinkGrid.className = 'grouped-stack';
 +    const sectionNodes = [];
 +    for (const cat of CATEGORY_DEFINITIONS) {
 +      const bucket = groupedMap.get(cat.id) ?? [];
 +      if (bucket.length === 0) continue;
-+      const box = document.createElement('section');
-+      box.className = 'category-group';
++      const groupSection = document.createElement('section');
++      groupSection.className = 'category-bucket';
 +      const title = document.createElement('h3');
 +      title.textContent = `${cat.label} (${bucket.length})`;
-+      const inner = document.createElement('div');
-+      inner.className = 'grid';
-+      inner.replaceChildren(...bucket.map(instantiateCard));
-+      box.replaceChildren(title, inner);
-+      sectionNodes.push(box);
++      const cardsWrap = document.createElement('div');
++      cardsWrap.className = 'grid';
++      cardsWrap.replaceChildren(...bucket.map(instantiateCard));
++      groupSection.replaceChildren(title, cardsWrap);
++      sectionNodes.push(groupSection);
 +    }
 +    drinkGrid.replaceChildren(...sectionNodes);
 +  } else {
