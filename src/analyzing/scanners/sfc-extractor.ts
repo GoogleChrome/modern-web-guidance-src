@@ -18,7 +18,7 @@ const SCRIPT_TAG_REGEX = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const STYLE_TAG_REGEX = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
 const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
-const GLIMMER_COMMENT_REGEX = /\{\{!--[\s\S]*?--\}\}|\{\{![\s\S]*?\}\}/g;
+const GLIMMER_COMMENT_REGEX = /\{\{~?!--[\s\S]*?--~?\}\}|\{\{~?![\s\S]*?\}\}/g;
 
 export function isGlimmerPath(relPath: string): boolean {
   const lowerPath = relPath.toLowerCase();
@@ -34,7 +34,19 @@ interface GlimmerTemplateRange {
 }
 
 const TEMPLATE_OPEN_TAG_REGEX = /<template\b(?:"[^"]*"|'[^']*'|[^'">])*>/y;
-const EXPRESSION_PUNCTUATORS = new Set(['=', '(', ',', ':', '?', '[', '!', '&', '|', '>']);
+const EXPRESSION_PUNCTUATORS = new Set(['=', '(', ',', ':', '?', '[', '!', '&', '|']);
+// After these, a `/` starts a regex literal rather than a division.
+const REGEX_PRECEDING_PUNCTUATORS = new Set([...EXPRESSION_PUNCTUATORS, '{', '}', ';', '+', '-', '*', '%', '<', '>', '~', '^']);
+const REGEX_PRECEDING_KEYWORD_REGEX = /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|void|yield|await|delete|throw|new)$/;
+
+/** Whether the code before a template expects a value, so the template is an expression. */
+function expectsExpression(code: string): boolean {
+  return EXPRESSION_PUNCTUATORS.has(code.at(-1) ?? '') || code.endsWith('=>');
+}
+
+function startsRegexLiteral(code: string): boolean {
+  return code === '' || REGEX_PRECEDING_PUNCTUATORS.has(code.at(-1) ?? '') || REGEX_PRECEDING_KEYWORD_REGEX.test(code);
+}
 
 /** The code after the last `class` keyword in `header`, or `null` when there is none. */
 function classHeaderTail(header: string): string | null {
@@ -70,6 +82,9 @@ function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRan
     } else if (char === '"' || char === "'" || char === '`') {
       i = skipString(content, i);
       header += 'x';
+    } else if (char === '/' && startsRegexLiteral(header.trimEnd())) {
+      i = skipRegexLiteral(content, i);
+      header += 'x';
     } else if (char === '<' && isTemplateOpenTagAt(content, i)) {
       const closeStart = content.indexOf('</template>', i);
       if (closeStart === -1) {
@@ -81,9 +96,7 @@ function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRan
         end,
         innerStart: content.indexOf('>', i) + 1,
         innerEnd: closeStart,
-        isClassMember:
-          blockStack.at(-1)?.isClassBody === true &&
-          !EXPRESSION_PUNCTUATORS.has(header.trimEnd().at(-1) ?? ''),
+        isClassMember: blockStack.at(-1)?.isClassBody === true && !expectsExpression(header.trimEnd()),
       });
       i = end;
       header += 'x';
@@ -120,18 +133,55 @@ function skipString(content: string, start: number): number {
   const quote = content[start];
   let interpolationDepth = 0;
   let i = start + 1;
-  while (i < content.length && !(content[i] === quote && interpolationDepth === 0)) {
-    if (content[i] === '\\') {
+  while (i < content.length) {
+    const char = content[i];
+    if (char === '\\') {
+      i += 2;
+      continue;
+    }
+    if (interpolationDepth > 0) {
+      if (char === '"' || char === "'" || char === '`') {
+        i = skipString(content, i);
+        continue;
+      }
+      if (char === '{') {
+        interpolationDepth++;
+      } else if (char === '}') {
+        interpolationDepth--;
+      }
+    } else if (char === quote) {
+      return i + 1;
+    } else if (quote === '`' && char === '$' && content[i + 1] === '{') {
+      interpolationDepth = 1;
       i++;
-    } else if (quote === '`' && content[i] === '$' && content[i + 1] === '{') {
-      interpolationDepth++;
-      i++;
-    } else if (quote === '`' && content[i] === '}' && interpolationDepth > 0) {
-      interpolationDepth--;
     }
     i++;
   }
-  return i + 1;
+  return i;
+}
+
+/** Returns the index after the regex literal (and its flags) that starts at `start`. */
+function skipRegexLiteral(content: string, start: number): number {
+  let inCharacterClass = false;
+  let i = start + 1;
+  while (i < content.length && content[i] !== '\n') {
+    const char = content[i];
+    if (char === '\\') {
+      i++;
+    } else if (char === '[') {
+      inCharacterClass = true;
+    } else if (char === ']') {
+      inCharacterClass = false;
+    } else if (char === '/' && !inCharacterClass) {
+      i++;
+      while (i < content.length && /[a-z]/i.test(content[i] ?? '')) {
+        i++;
+      }
+      return i;
+    }
+    i++;
+  }
+  return i;
 }
 
 /**
@@ -151,28 +201,31 @@ function blankGlimmerTemplates(content: string): string {
 }
 
 /**
- * Keeps only the markup inside Glimmer templates, with Handlebars comments and
- * `<script>`/`<style>` blocks blanked, so linkedom sees the elements at their original offsets.
+ * Keeps only the markup inside Glimmer templates, with Handlebars comments blanked,
+ * at the original offsets.
  */
-function prepareGlimmerForDomScan(content: string): string {
+function glimmerTemplateMarkup(content: string): string {
   const templateRanges = findGlimmerTemplateRanges(content);
   const rangesToBlank: { start: number; end: number }[] = [];
   let lastIndex = 0;
   for (const { innerStart, innerEnd } of templateRanges) {
     rangesToBlank.push({ start: lastIndex, end: innerStart });
+    for (const { start, end } of findTagRanges(content.slice(innerStart, innerEnd), GLIMMER_COMMENT_REGEX)) {
+      rangesToBlank.push({ start: innerStart + start, end: innerStart + end });
+    }
     lastIndex = innerEnd;
   }
   rangesToBlank.push({ start: lastIndex, end: content.length });
-
-  for (const { innerStart, innerEnd } of templateRanges) {
-    const inner = content.slice(innerStart, innerEnd);
-    for (const regex of [GLIMMER_COMMENT_REGEX, SCRIPT_TAG_REGEX, STYLE_TAG_REGEX]) {
-      for (const { start, end } of findTagRanges(inner, regex)) {
-        rangesToBlank.push({ start: innerStart + start, end: innerStart + end });
-      }
-    }
-  }
   return blankRanges(content, rangesToBlank);
+}
+
+/** Template markup of a .gts/.gjs file with `<script>`/`<style>` blocks blanked, for linkedom. */
+function prepareGlimmerForDomScan(content: string): string {
+  const markup = glimmerTemplateMarkup(content);
+  return blankRanges(markup, [
+    ...findTagRanges(markup, SCRIPT_TAG_REGEX),
+    ...findTagRanges(markup, STYLE_TAG_REGEX),
+  ]);
 }
 
 /**
@@ -438,14 +491,15 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
     return content.includes('css`') ? extractLitCssBlocks(content) : [];
   }
 
+  const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
   const blocks: string[] = [];
-  for (const match of content.matchAll(STYLE_TAG_REGEX)) {
+  for (const match of markup.matchAll(STYLE_TAG_REGEX)) {
     const body = match[2] ?? '';
     if (body.trim().length > 0 && match.index !== undefined) {
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      blocks.push(blankOutsideRange(content, startOffset, endOffset));
+      blocks.push(blankOutsideRange(markup, startOffset, endOffset));
     }
   }
 

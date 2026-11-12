@@ -193,6 +193,43 @@ void test('sfc-extractor: Glimmer .gts/.gjs files', async (t) => {
     assert.equal(prepared.includes('<dialog open>{{markup}}</dialog>'), true);
   });
 
+  await t.test('skips regex literals and nested braces or strings in `${}`, but keeps division', () => {
+    const source = [
+      "const esc = (s: string) => s.replace(/'/g, '&#39;').replace(/https?:\\/\\//, '');",
+      "const half = total / 2 / count; const label = `${format({ unit: '}' })}`;",
+      'export default class Row extends Component {',
+      '  items: Array<string>',
+      '  <template><dialog open></dialog></template>',
+      '}',
+    ].join('\n');
+
+    const lines = extractScriptBlocks('row.gts', source)[0]?.blankedContent.split('\n');
+    assert.ok(lines);
+    assert.equal(lines[0], source.split('\n')[0]);
+    assert.equal(lines[1], source.split('\n')[1]);
+    assert.match(lines[4] ?? '', /^ +$/);
+    assert.equal(prepareHtmlForDomScan('row.gts', source).includes('<dialog open></dialog>'), true);
+  });
+
+  await t.test('blanks whitespace-control comments and takes style blocks only from template markup', () => {
+    const source = [
+      '// <style>p { anchor-name: --js-comment; }</style>',
+      'export default class Card extends Component {',
+      '  <template>',
+      '    {{~!-- <dialog open></dialog> <style>p { anchor-name: --hbs; }</style> --~}}',
+      '    {{~! <dialog open></dialog> ~}}',
+      '    <style>p { color: red; }</style>',
+      '  </template>',
+      '}',
+    ].join('\n');
+
+    assert.equal(prepareHtmlForDomScan('card.gts', source).includes('<dialog'), false);
+    const styleBlocks = extractStyleBlocks('card.gts', source);
+    assert.equal(styleBlocks.length, 1);
+    assert.equal(styleBlocks[0]?.includes('color: red'), true);
+    assert.equal(styleBlocks[0]?.split('\n').length, source.split('\n').length);
+  });
+
   await t.test('finds class bodies past type arguments and keeps top-level `satisfies` parseable', () => {
     const source = [
       'class Card extends Component<{ Args: { title: string } }> {',
