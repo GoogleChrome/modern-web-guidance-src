@@ -22,7 +22,6 @@ When items contain interactive controls or selectable text, provide a dedicated 
 - Start pointer drags only for the primary button, and record the initial pointer offset.
 - Apply `cursor: grab`/`grabbing`, `touch-action: none`, and `user-select: none` to the handle so item text remains selectable and page scrolling works outside the handle. Scope `touch-action: none` to the handle only: it disables touch scrolling over the element, which is acceptable on a small dedicated handle (the rest of the item and the page still scroll) but would trap scrolling if applied to the whole item or list.
 - Because the pointer leaves the handle as soon as the drag moves, `:active` on the handle isn't enough to keep the grabbing cursor. Toggle a class on the root element for the length of the drag (removed in the drag-end cleanup) and set `cursor: grabbing` on it and its descendants.
-- Ensure the draggable element can be moved using a single pointer without requiring dragging movements.
 
 ## Keep movement active while reordering
 
@@ -87,6 +86,31 @@ For complex layouts where visual and DOM order cannot naturally align, use the *
 Keep moves within valid destinations. If items can move between containers, make those destinations available to keyboard users too. At the boundary of a container, prevent further movement only when there is no valid destination in that direction.
 
 After moving an item, keep focus on its handle. If the implementation uses separate movement buttons instead, keep focus on the activated button or shift it to the alternative movement control on the same item when the activated control becomes disabled.
+
+## Accessibility requirements
+
+Ensure the draggable element can also be moved or operated using a single pointer without dragging (for example, clicks or taps). What the UI for this looks like depends on the use case. A few examples:
+
+* Kanban boards: a "move to column" menu or buttons
+* Ordering/ranking items: directional buttons for changing an item's position
+* Re-ordering a UI in a builder tool: directional buttons for adjusting the position of the content in a page, within a UI builder tool
+* File-management systems: a "move" menu
+
+Provide feedback for screen reader users when the draggable element is succesfully moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
+
+```html
+<div class="visually-hidden" aria-live="polite"></div>
+```
+
+Update the region when the draggable element is moved:
+
+```html
+<div class="visually-hidden" aria-live="polite">
+  [Name of element] moved [new position]
+</div>
+```
+
+As the keyboard interaction may not be obvious for some users, provide a help button in the draggable element that reveals the keystrokes to perform the operation.
 
 ## Decide on fallback behavior
 
