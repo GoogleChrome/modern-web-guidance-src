@@ -146,7 +146,7 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **ArrowRight on a submenu trigger.** Opens the submenu if needed and focuses its first item.
 * **ArrowLeft or Escape in a submenu.** Closes only that submenu and restores focus to its trigger. The parent menu stays open.
 * **Escape in a top-level menu.** Closes it and restores focus to its trigger.
-* **Enter or Space on a command.** Activates it and closes all open menus. However, if the action is additive (e.g. adding selected users to a review), or selecting the action results in a change of display, with no change of information (e.g. a theme picker), do not close the menu. Keep the menu open, and allow people to continue to interact, to save having to reopen the menu.
+* **Enter or Space on a command.** Activates it and closes all open menus. However, if the action uses a `menuitemradio` or `menuitemcheckbox` and is additive (interacting with the control, adds to pre-selected options, e.g. adding selected users to a review), or selecting the action results in a change of display, with no change of information elsewhere (e.g. a theme picker), do not close the menu. Keep the menu open, update the state of the control (both visually and semantically), and allow people to continue to interact, to save having to reopen the menu.
 * **Tab.** Leaves the menu system. Do not trap focus or step through every command. Closing must not leave focus inside hidden content.
 * **No trigger button.** A menu opened from script focuses its first item when it was opened from the keyboard, and on close restores focus to the element that had it before the menu opened.
 
