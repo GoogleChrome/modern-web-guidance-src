@@ -890,12 +890,14 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
  * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
  * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran */
 function renderA11yCompact(uRate, gRate, delta) {
-    const fmtRate = (/** @type {number | null} */ r) => r === null ? '—' : `${r}%`;
+    const fmtRate = (/** @type {number | null} */ r) =>
+        r === null ? '<span aria-hidden="true">—</span><span class="visually-hidden">not available</span>' : `${r}%`;
     let pillCls = 'eff-pill muted';
-    let pillText = '—';
+    let pillText = '<span aria-hidden="true">—</span>';
     let pillSr = '<span class="visually-hidden"> change not available</span>';
     if (delta !== null) {
-        if (delta < 0) pillCls = 'eff-pill cost';
+        if (delta > 0) pillCls = 'eff-pill neutral';
+        else if (delta < 0) pillCls = 'eff-pill cost';
         pillText = `${delta > 0 ? '+' : ''}${delta} pp`;
         pillSr = '';
     }

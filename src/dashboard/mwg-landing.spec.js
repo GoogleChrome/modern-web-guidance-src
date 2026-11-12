@@ -444,7 +444,7 @@ async function expectNextToBarbell(page, track) {
     const suiteA11yCell = page.locator('.suite-table-row').first().locator('td.a11y-cell');
     await expect(suiteA11yCell).toContainText('52%');
     await expect(suiteA11yCell).toContainText('91%');
-    await expect(suiteA11yCell.locator('.eff-pill')).toContainText('+39 pp');
+    await expect(suiteA11yCell.locator('.eff-pill.neutral')).toContainText('+39 pp');
     await expect(suiteA11yCell).toHaveAttribute('data-barbell-u', '52');
     await expect(suiteA11yCell).toHaveAttribute('data-barbell-g', '91');
     await expect(suiteA11yCell).toHaveAttribute('data-barbell-uplift', '39');
@@ -529,7 +529,10 @@ async function expectNextToBarbell(page, track) {
 
     const partialCell = rows.nth(2).locator('td.a11y-cell');
     await expect(partialCell.locator('.eff-pill.muted')).toHaveText('— change not available');
-    await expect(partialCell.locator('.a11y-delta-sub')).toHaveText(', unguided —→, guided 80%');
+    await expect(partialCell.locator('.a11y-delta-sub')).toHaveText(', unguided —not available→, guided 80%');
+    await expect(partialCell.locator('a.a11y-link')).toHaveAccessibleName(
+      'Automated accessibility checks: change not available , unguided not available , guided 80% (open accessibility check results)'
+    );
 
     expect(errors).toEqual([]);
   });
