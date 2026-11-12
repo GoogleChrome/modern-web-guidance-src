@@ -11,6 +11,7 @@
     --border: light-dark(#767676, #9a9a9a);
     --surface: light-dark(#fff, #1e1e1e);
     --hover: light-dark(#eef3fb, #2b3442);
+    --active: light-dark(#dbe6f8, #3a465a);
     color-scheme: light dark;
     font-family: system-ui, sans-serif;
   }
@@ -31,6 +32,12 @@
     color: inherit;
   }
   input { inline-size: 100%; box-sizing: border-box; }
+  button {
+    cursor: pointer;
+    &:hover { background: var(--hover); border-color: var(--accent); }
+    &:active { background: var(--active); }
+    &:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  }
   :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* Customizable select for the region filter */
