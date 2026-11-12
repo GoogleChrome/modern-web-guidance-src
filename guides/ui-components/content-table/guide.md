@@ -159,7 +159,7 @@ Use a native text input and toggle the `hidden` attribute on non-matching body r
 * **MANDATORY:** Announce only the no-match case, once per change, in a visually hidden `role="status"` element that already exists in the DOM, such as "No rows match your filter". Do not announce the result count when rows match, and clear the status text. Do not put `aria-live` on the table.
 * When no row matches, say so in the status element and show an empty-state message; do not leave an empty `<tbody>` with no explanation.
 * Keep the input outside the scroll container so it does not scroll away with the table.
-* Optionally highlight the matched text in visible rows with the CSS Custom Highlight API (see the `highlight-text-ranges` guide) instead of wrapping matches in `<mark>`. This leaves the DOM and the screen reader output unchanged.
+* Optionally highlight the matched text in visible rows with the CSS Custom Highlight API (see the {{ GUIDE_REF('highlight-text-ranges') }} guide) instead of wrapping matches in `<mark>`. This leaves the DOM and the screen reader output unchanged.
 
 ```html
 <label for="filter">Filter team</label>
