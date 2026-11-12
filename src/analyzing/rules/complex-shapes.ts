@@ -7,14 +7,14 @@ import type {
 
 export const COMPLEX_SHAPES_GUIDE_HASH = '15e7ef5f6ab6';
 
-const WEBKIT_TO_STANDARD_MAP: Readonly<Record<string, string>> = {
-  '-webkit-mask': 'mask',
-  '-webkit-mask-image': 'mask-image',
-  '-webkit-mask-size': 'mask-size',
-  '-webkit-mask-repeat': 'mask-repeat',
-  '-webkit-mask-position': 'mask-position',
-  '-webkit-mask-composite': 'mask-composite',
-};
+const WEBKIT_TO_STANDARD_PAIRS: readonly (readonly [string, string])[] = [
+  ['-webkit-mask', 'mask'],
+  ['-webkit-mask-image', 'mask-image'],
+  ['-webkit-mask-size', 'mask-size'],
+  ['-webkit-mask-repeat', 'mask-repeat'],
+  ['-webkit-mask-position', 'mask-position'],
+  ['-webkit-mask-composite', 'mask-composite'],
+];
 
 const SAFARI_BORDER_RADIUS_WORKAROUND_REGEX =
   /(?:-webkit-)?radial-gradient\s*\([^)]*(?:white|#fff(?:fff)?|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))[^)]*(?:black|#000(?:000)?|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))/i;
@@ -39,10 +39,9 @@ const complexShapesCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 2. Collect declared -webkit-mask* properties that are not resets or Safari compositing workarounds
-    const activeWebkitProps: string[] = [];
-    for (const [webkitProp, standardProp] of Object.entries(WEBKIT_TO_STANDARD_MAP)) {
-      if (!styleRule.hasProperty(webkitProp)) {
+    // 2. Match on the first declared -webkit-mask* property that is not a reset, Safari workaround, or paired with its standard counterpart
+    for (const [webkitProp, standardProp] of WEBKIT_TO_STANDARD_PAIRS) {
+      if (!styleRule.hasProperty(webkitProp) || styleRule.hasProperty(standardProp)) {
         continue;
       }
       const val = styleRule.getPropertyValue(webkitProp) ?? '';
@@ -55,19 +54,13 @@ const complexShapesCssMatcher: CssRuleMatcher = {
       ) {
         continue;
       }
-      if (!styleRule.hasProperty(standardProp)) {
-        activeWebkitProps.push(webkitProp);
-      }
+      return {
+        message:
+          'CSS rule declares vendor-prefixed -webkit-mask properties without standard mask/mask-image; modernize using CSS Masking Module Level 1 standard mask properties.',
+      };
     }
 
-    if (activeWebkitProps.length === 0) {
-      return null;
-    }
-
-    return {
-      message:
-        'CSS rule declares vendor-prefixed -webkit-mask properties without standard mask/mask-image; modernize using CSS Masking Module Level 1 standard mask properties.',
-    };
+    return null;
   },
 };
 

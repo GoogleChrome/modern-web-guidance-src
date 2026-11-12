@@ -199,6 +199,40 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /IntersectionObserver/);
   });
+
+  await t.test('flags scoped function declarations passed to scroll listeners or IntersectionObserver inside enclosing closures', () => {
+    const jqueryClosureCode = `
+      $(document).ready(function () {
+        function updateActiveNav() {
+          const curY = window.pageYOffset;
+          document.querySelectorAll('section').forEach(s => {
+            if (curY >= s.offsetTop) {
+              $('.nav-link').removeClass('active');
+              $('a[href="#' + s.id + '"]').addClass('active');
+            }
+          });
+        }
+        $(window).on('scroll', updateActiveNav);
+      });
+    `;
+    assert.equal(matchJsRule(jsMatcher, 'ready-scroll.js', jqueryClosureCode).length, 1);
+
+    const domContentLoadedObserverCode = `
+      document.addEventListener('DOMContentLoaded', () => {
+        const observer = new IntersectionObserver(onIntersect);
+        function onIntersect(entries) {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+              document.querySelector('nav a[href="#' + entry.target.id + '"]')?.classList.add('active');
+            }
+          });
+        }
+        document.querySelectorAll('section').forEach(s => observer.observe(s));
+      });
+    `;
+    assert.equal(matchJsRule(jsMatcher, 'iife-observer.js', domContentLoadedObserverCode).length, 1);
+  });
 });
 
 void test('scrollspy JS: negative / exempt cases', async (t) => {

@@ -29,6 +29,17 @@ void test('complex-shapes: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
+
+  await t.test('flags unstandardized -webkit-mask-size even when -webkit-mask-image is a reset', () => {
+    const css = `
+      .mixed-reset {
+        -webkit-mask-image: none;
+        -webkit-mask-size: contain;
+      }
+    `;
+    const matches = scanCss('mixed.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+  });
 });
 
 void test('complex-shapes: negative / exempt cases', async (t) => {
@@ -53,6 +64,17 @@ void test('complex-shapes: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('modern-shorthand.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts -webkit-mask-size when standard mask-size is also declared', () => {
+    const css = `
+      .sized-mask {
+        -webkit-mask-size: cover;
+        mask-size: cover;
+      }
+    `;
+    const matches = scanCss('sized-mask.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
