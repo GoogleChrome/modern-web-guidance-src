@@ -1,3 +1,5 @@
+import { SyntaxKind, ts } from 'ts-morph';
+
 export interface ScriptBlock {
   readonly virtualPath: string;
   readonly blankedContent: string;
@@ -30,171 +32,103 @@ interface GlimmerTemplateRange {
   readonly end: number;
   readonly innerStart: number;
   readonly innerEnd: number;
-  readonly isClassMember: boolean;
 }
 
-const TEMPLATE_OPEN_TAG_REGEX = /<template\b(?:"[^"]*"|'[^']*'|[^'">])*>/y;
-const EXPRESSION_PUNCTUATORS = new Set(['=', '(', ',', ':', '?', '[', '!', '&', '|']);
-// After these, a `/` starts a regex literal rather than a division.
-const REGEX_PRECEDING_PUNCTUATORS = new Set([...EXPRESSION_PUNCTUATORS, '{', '}', ';', '+', '-', '*', '%', '<', '>', '~', '^']);
-const REGEX_PRECEDING_KEYWORD_REGEX = /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|void|yield|await|delete|throw|new)$/;
+// After these tokens a `/` is division; after any other token it starts a regex literal.
+const VALUE_END_TOKENS: ReadonlySet<SyntaxKind> = new Set([
+  SyntaxKind.Identifier,
+  SyntaxKind.PrivateIdentifier,
+  SyntaxKind.NumericLiteral,
+  SyntaxKind.BigIntLiteral,
+  SyntaxKind.StringLiteral,
+  SyntaxKind.NoSubstitutionTemplateLiteral,
+  SyntaxKind.TemplateTail,
+  SyntaxKind.RegularExpressionLiteral,
+  SyntaxKind.CloseParenToken,
+  SyntaxKind.CloseBracketToken,
+  SyntaxKind.PlusPlusToken,
+  SyntaxKind.MinusMinusToken,
+  SyntaxKind.ThisKeyword,
+  SyntaxKind.SuperKeyword,
+  SyntaxKind.NullKeyword,
+  SyntaxKind.TrueKeyword,
+  SyntaxKind.FalseKeyword,
+]);
 
-/** Whether the code before a template expects a value, so the template is an expression. */
-function expectsExpression(code: string): boolean {
-  return EXPRESSION_PUNCTUATORS.has(code.at(-1) ?? '') || code.endsWith('=>');
-}
-
-function startsRegexLiteral(code: string): boolean {
-  return code === '' || REGEX_PRECEDING_PUNCTUATORS.has(code.at(-1) ?? '') || REGEX_PRECEDING_KEYWORD_REGEX.test(code);
-}
-
-/** The code after the last `class` keyword in `header`, or `null` when there is none. */
-function classHeaderTail(header: string): string | null {
-  const match = /\bclass\b(?![\s\S]*\bclass\b)([\s\S]*)$/.exec(header);
-  return match ? (match[1] ?? '') : null;
-}
-
-/** `<` minus `>` in a class header, so the braces of `extends Base<{ … }>` are not the body. */
-function openTypeArguments(classTail: string): number {
-  const withoutArrows = classTail.replaceAll('=>', '');
-  return (withoutArrows.match(/</g) ?? []).length - (withoutArrows.match(/>/g) ?? []).length;
-}
+const TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/g;
 
 /**
- * Finds the `<template>…</template>` blocks of a .gts/.gjs file, skipping JS comments and
- * strings. A template directly in a class body, not after `=` or similar, is a class member.
+ * Finds the `<template>…</template>` blocks of a .gts/.gjs file. The TypeScript scanner
+ * skips strings, comments, template literals and regex literals; only the `<template>`
+ * tags are matched by hand.
  */
 function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRange[] {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard, content);
   const ranges: GlimmerTemplateRange[] = [];
-  const blockStack: { isClassBody: boolean; outerHeader: string }[] = [];
-  // Code since the last statement boundary at the current brace depth.
-  let header = '';
-  let i = 0;
-  while (i < content.length) {
-    const char = content[i] ?? '';
-    const next = content[i + 1];
-    if (char === '/' && (next === '/' || next === '*')) {
-      const end = next === '/' ? content.indexOf('\n', i) : content.indexOf('*/', i + 2) + 2;
-      if (end < 2) {
+  // One entry per open `{`: true when it is the `${` of a template literal.
+  const braceStack: boolean[] = [];
+  let previous = SyntaxKind.Unknown;
+  for (let token = scanner.scan(); token !== SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    const start = scanner.getTokenStart();
+    if (token === SyntaxKind.LessThanToken && /^template[\s>]/.test(content.slice(start + 1, start + 10))) {
+      const range = matchGlimmerTemplate(content, start);
+      if (range === null) {
         break;
       }
-      i = end;
-    } else if (char === '"' || char === "'" || char === '`') {
-      i = skipString(content, i);
-      header += 'x';
-    } else if (char === '/' && startsRegexLiteral(header.trimEnd())) {
-      i = skipRegexLiteral(content, i);
-      header += 'x';
-    } else if (char === '<' && isTemplateOpenTagAt(content, i)) {
-      const closeStart = content.indexOf('</template>', i);
-      if (closeStart === -1) {
-        break;
-      }
-      const end = closeStart + '</template>'.length;
-      ranges.push({
-        start: i,
-        end,
-        innerStart: content.indexOf('>', i) + 1,
-        innerEnd: closeStart,
-        isClassMember: blockStack.at(-1)?.isClassBody === true && !expectsExpression(header.trimEnd()),
-      });
-      i = end;
-      header += 'x';
-    } else {
-      if (char === '{') {
-        const classTail = classHeaderTail(header);
-        blockStack.push({
-          isClassBody: classTail !== null && openTypeArguments(classTail) === 0,
-          outerHeader: header,
-        });
-        header = '';
-      } else if (char === '}') {
-        const outerHeader = blockStack.pop()?.outerHeader ?? '';
-        const classTail = classHeaderTail(outerHeader);
-        header = classTail !== null && openTypeArguments(classTail) > 0 ? `${outerHeader}{}` : '';
-      } else if (char === ';') {
-        header = '';
-      } else {
-        header += char;
-      }
-      i++;
+      ranges.push(range);
+      scanner.resetTokenState(range.end);
+      previous = SyntaxKind.CloseBracketToken;
+      continue;
     }
+    if (
+      (token === SyntaxKind.SlashToken || token === SyntaxKind.SlashEqualsToken) &&
+      !VALUE_END_TOKENS.has(previous)
+    ) {
+      token = scanner.reScanSlashToken();
+    } else if (token === SyntaxKind.OpenBraceToken || token === SyntaxKind.TemplateHead) {
+      braceStack.push(token === SyntaxKind.TemplateHead);
+    } else if (token === SyntaxKind.CloseBraceToken && braceStack.pop() === true) {
+      token = scanner.reScanTemplateToken(false);
+      if (token === SyntaxKind.TemplateMiddle) {
+        braceStack.push(true);
+      }
+    }
+    previous = token;
   }
   return ranges;
 }
 
-function isTemplateOpenTagAt(content: string, index: number): boolean {
-  TEMPLATE_OPEN_TAG_REGEX.lastIndex = index;
-  return TEMPLATE_OPEN_TAG_REGEX.test(content);
-}
-
-/** Returns the index after the string or template literal that starts at `start`. */
-function skipString(content: string, start: number): number {
-  const quote = content[start];
-  let interpolationDepth = 0;
-  let i = start + 1;
-  while (i < content.length) {
-    const char = content[i];
-    if (char === '\\') {
-      i += 2;
-      continue;
-    }
-    if (interpolationDepth > 0) {
-      if (char === '"' || char === "'" || char === '`') {
-        i = skipString(content, i);
-        continue;
+/**
+ * Matches the `<template>…</template>` that starts at `start`, counting platform-native
+ * `<template>` elements nested inside it.
+ */
+function matchGlimmerTemplate(content: string, start: number): GlimmerTemplateRange | null {
+  let depth = 0;
+  let innerStart = 0;
+  for (const match of content.slice(start).matchAll(TEMPLATE_TAG_REGEX)) {
+    const index = start + match.index;
+    if (!match[0].startsWith('</')) {
+      if (depth++ === 0) {
+        innerStart = index + match[0].length;
       }
-      if (char === '{') {
-        interpolationDepth++;
-      } else if (char === '}') {
-        interpolationDepth--;
-      }
-    } else if (char === quote) {
-      return i + 1;
-    } else if (quote === '`' && char === '$' && content[i + 1] === '{') {
-      interpolationDepth = 1;
-      i++;
+    } else if (--depth === 0) {
+      return { start, end: index + match[0].length, innerStart, innerEnd: index };
     }
-    i++;
   }
-  return i;
-}
-
-/** Returns the index after the regex literal (and its flags) that starts at `start`. */
-function skipRegexLiteral(content: string, start: number): number {
-  let inCharacterClass = false;
-  let i = start + 1;
-  while (i < content.length && content[i] !== '\n') {
-    const char = content[i];
-    if (char === '\\') {
-      i++;
-    } else if (char === '[') {
-      inCharacterClass = true;
-    } else if (char === ']') {
-      inCharacterClass = false;
-    } else if (char === '/' && !inCharacterClass) {
-      i++;
-      while (i < content.length && /[a-z]/i.test(content[i] ?? '')) {
-        i++;
-      }
-      return i;
-    }
-    i++;
-  }
-  return i;
+  return null;
 }
 
 /**
- * Blanks Glimmer templates out of a .gts/.gjs file. A class-member template becomes spaces;
- * any other becomes a same-length template literal, which is valid as an expression
- * (`const Row = <template>…</template>;`) and as a statement (`<template>…</template> satisfies T`).
+ * Replaces each Glimmer template with a same-length `[`…`]`, as ember-template-imports v3 did.
+ * The brackets are valid both as a class member (a computed key) and as an expression
+ * (an array literal), so the code around the template still parses.
  */
 function blankGlimmerTemplates(content: string): string {
   let result = '';
   let lastIndex = 0;
-  for (const { start, end, isClassMember } of findGlimmerTemplateRanges(content)) {
+  for (const { start, end } of findGlimmerTemplateRanges(content)) {
     const blanked = content.slice(start, end).replace(/[^\r\n]/g, ' ');
-    result += content.slice(lastIndex, start) + (isClassMember ? blanked : `\`${blanked.slice(1, -1)}\``);
+    result += `${content.slice(lastIndex, start)}[\`${blanked.slice(2, -2)}\`]`;
     lastIndex = end;
   }
   return result + content.slice(lastIndex);
