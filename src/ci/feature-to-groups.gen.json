@@ -947,6 +947,9 @@
   "scroll-snap-events": [
     "scrolling"
   ],
+  "scroll-snap-type-pair": [
+    "scrolling"
+  ],
   "scroll-target-group": [
     "scrolling"
   ],
