@@ -18,8 +18,8 @@
   }
   body { max-inline-size: 32rem; margin-block: 2rem; margin-inline: auto; padding-inline: 1rem; }
   form, search { display: grid; gap: 1.5rem; }
-  fieldset {
-    border: 0; padding: 0; margin: 0; display: grid; gap: .375rem;
+  .field {
+    display: grid; gap: .375rem;
     & label { font-weight: 600; }
   }
   .hint { margin: 0; font-size: .875rem; opacity: .8; }
@@ -37,7 +37,6 @@
     cursor: pointer;
     &:hover { background: var(--hover); border-color: var(--accent); }
     &:active { background: var(--active); }
-    &:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
   :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
@@ -99,7 +98,7 @@
 
 <form id="trip" action="#">
   <search>
-  <fieldset>
+  <div class="field">
     <label for="region">Region</label>
     <select id="region" name="region">
       <option value="">All regions</option>
@@ -107,16 +106,14 @@
       <option value="asia">Asia</option>
       <option value="americas">Americas</option>
     </select>
-  </fieldset>
+  </div>
 
-  <fieldset>
+  <div class="field">
     <label id="city-label" for="city">Destination</label>
     <p id="city-hint" class="hint">Type to filter suggestions, or enter any destination.</p>
-    <div class="combobox">
-      <!-- Without JS or anchor positioning, the native datalist provides the suggestions. -->
-      <input id="city" name="city" type="text" autocomplete="off" list="cities"
-             spellcheck="false" aria-describedby="city-hint">
-    </div>
+    <!-- Without JS or anchor positioning, the native datalist provides the suggestions. -->
+    <input id="city" name="city" type="text" autocomplete="off" list="cities"
+           spellcheck="false" aria-describedby="city-hint">
     <datalist id="cities">
       <option value="Amsterdam" data-region="europe"></option>
       <option value="Athens" data-region="europe"></option>
@@ -133,7 +130,7 @@
       <option value="New York" data-region="americas"></option>
     </datalist>
     <p id="city-status" class="sr-only" role="status"></p>
-  </fieldset>
+  </div>
   </search>
 
   <button type="submit">Search</button>
