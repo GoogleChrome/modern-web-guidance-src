@@ -203,8 +203,6 @@
 			if (match) visible++;
 		}
 		empty.hidden = visible > 0;
-		status.textContent = visible
-			? `Showing ${visible} of ${rows.length} rows`
-			: 'No rows match your filter';
+		status.textContent = visible ? '' : 'No rows match your filter';
 	});
 </script>

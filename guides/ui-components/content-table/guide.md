@@ -141,7 +141,7 @@ Use a native text input and toggle the `hidden` attribute on non-matching body r
 
 * **MANDATORY:** Use `<input type="search">` with a visible `<label>`. Filter on `input` events.
 * Match case-insensitively against each row's text content; `toLocaleLowerCase()` is enough for substring filtering.
-* **MANDATORY:** Announce the result count once per change in a visually hidden `role="status"` element that already exists in the DOM, such as "Showing 3 of 12 rows". Do not put `aria-live` on the table.
+* **MANDATORY:** Announce only the no-match case, once per change, in a visually hidden `role="status"` element that already exists in the DOM, such as "No rows match your filter". Do not announce the result count when rows match, and clear the status text. Do not put `aria-live` on the table.
 * When no row matches, say so in the status element and show an empty-state message; do not leave an empty `<tbody>` with no explanation.
 * Keep the input outside the scroll container so it does not scroll away with the table.
 
@@ -162,8 +162,8 @@ filter.addEventListener('input', () => {
     row.hidden = !match;
     if (match) visible++;
   }
-  // One message per change, not per row.
-  status.textContent = `Showing ${visible} of ${rows.length} rows`;
+  // Announce only when nothing matches; stay silent otherwise.
+  status.textContent = visible ? '' : 'No rows match your filter';
 });
 ```
 

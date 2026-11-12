@@ -15,7 +15,7 @@
 - Typing in the filter input does not remove rows from the DOM.
 - Typing in the filter input does not hide the header row.
 - Clearing the filter input makes every body row visible again.
-- After filtering, a `role="status"` element that exists before the input event contains the number of visible rows and the total number of rows.
+- When at least one row matches the filter, a `role="status"` element that exists before the input event is empty and does not announce the result count.
 - No `aria-live` attribute is set on the table, its wrapper, or its rows.
 - When no row matches the filter, an empty-state message is visible and the status element reports that no rows match.
 - When `container-scroll-state-queries` is unsupported, the header cells remain `position: sticky` and the filter still works.
