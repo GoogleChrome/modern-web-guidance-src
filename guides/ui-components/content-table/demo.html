@@ -32,6 +32,7 @@
 		--table-border: light-dark(#d8dce2, #3a4048);
 		--table-head-bg: light-dark(#f1f3f6, #262b32);
 		overflow: auto;
+		container-type: inline-size;
 		max-block-size: 20rem;
 		border: 1px solid var(--table-border);
 	}
@@ -43,6 +44,10 @@
 		min-inline-size: 40rem;
 
 		caption {
+			position: sticky;
+			inset-inline-start: 0;
+			inline-size: max-content;
+			max-inline-size: 100cqi;
 			text-align: start;
 			font-weight: 600;
 			padding-block-end: 0.5rem;

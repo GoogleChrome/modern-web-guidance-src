@@ -47,6 +47,21 @@ Start from a plain semantic table and enhance it. Sorting, filtering and sticky 
 </div>
 ```
 
+Keep the caption in view when the table scrolls horizontally by making it sticky and capping it to the wrapper's width:
+
+```css
+.table-wrapper {
+  container-type: inline-size;
+}
+
+caption {
+  position: sticky;
+  inset-inline-start: 0;
+  inline-size: max-content;
+  max-inline-size: 100cqi;
+}
+```
+
 ## Sticky headers
 
 Use `position: sticky` on the `<th>` cells themselves (not on `<thead>`/`<tr>`), inside a scroll container whose size is bounded. Choose by table shape:
