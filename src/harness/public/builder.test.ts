@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { PublicAllowlist } from './allowlist.ts';
 import {
+  ARTIFACTS_FILE,
   buildSelectedSuites,
   buildSuite,
   cleanRelativePath,
@@ -48,6 +49,11 @@ function listFiles(dir: string): string[] {
     .sort();
 }
 
+/** The fixture suite's published run artifacts, keyed by suite-relative path. */
+function readArtifacts(outDir: string): Record<string, string> {
+  return JSON.parse(fs.readFileSync(path.join(outDir, 'public-evals', SUITE, ARTIFACTS_FILE), 'utf8')) as Record<string, string>;
+}
+
 describe('runRelativePath', () => {
   test('maps a result key and run number to the suite folder layout', () => {
     assert.equal(runRelativePath('daily-grind - security - guided', 1), '1/security/daily-grind/guided');
@@ -77,33 +83,32 @@ describe('cleanRelativePath', () => {
 });
 
 describe('buildSuite', () => {
-  test('writes only evals.json, agent.patch and modern-web.log', async () => {
+  test('writes only evals.json and one artifacts.json holding every patch and log in path order', async () => {
     const options = makeOptions();
     const result = await buildSuite(SUITE, options);
     assert.equal(result.status, 'built', result.reason);
 
     const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
-    assert.deepEqual(listFiles(suiteDir), [
+    assert.deepEqual(listFiles(suiteDir), [ARTIFACTS_FILE, 'evals.json']);
+    assert.equal(result.files, 2);
+    assert.deepEqual(Object.keys(readArtifacts(options.outDir)), [
       `${PASSKEY_RUN}/agent.patch`,
       `${PASSKEY_RUN}/modern-web.log`,
       `${SECURITY_RUN}/agent.patch`,
       `${SECURITY_RUN}/modern-web.log`,
-      'evals.json',
     ]);
-    assert.equal(result.files, 5);
   });
 
   test('filters captured patches and scrubs logs', async () => {
     const options = makeOptions();
     await buildSuite(SUITE, options);
-    const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
+    const artifacts = readArtifacts(options.outDir);
 
-    const patch = fs.readFileSync(path.join(suiteDir, SECURITY_RUN, 'agent.patch'), 'utf8');
+    const patch = artifacts[`${SECURITY_RUN}/agent.patch`];
     assert.ok(patch.includes('a/src/app.ts'));
     assert.ok(!patch.includes('pnpm-lock.yaml'));
 
-    const log = fs.readFileSync(path.join(suiteDir, SECURITY_RUN, 'modern-web.log'), 'utf8');
-    assert.equal(log, 'GET /guides/security from guides\n');
+    assert.equal(artifacts[`${SECURITY_RUN}/modern-web.log`], 'GET /guides/security from guides\n');
   });
 
   test('harvests usernames from rewritten paths and rejects bare occurrences across the suite', async () => {
@@ -133,6 +138,42 @@ describe('buildSuite', () => {
     assert.match(res2.reason ?? '', /forbidden token/);
   });
 
+  test('rejects a bare username whichever of the two artifacts is read last', async () => {
+    const bare = `${SUITE}/${PASSKEY_RUN}/modern-web.log`;
+    const revealing = `${SUITE}/${SECURITY_RUN}/modern-web.log`;
+    for (const readLast of [bare, revealing]) {
+      const options = makeOptions();
+      write(path.join(options.storeRoot, bare), `ran as ${OTHER_FAKE_LDAP}\n`);
+      write(path.join(options.storeRoot, revealing), `GET /guides/security from /home/${OTHER_FAKE_LDAP}/modern-web-guidance-src/guides\n`);
+      const inner = options.store;
+      options.store = {
+        listSuites: () => inner.listSuites(),
+        readFile: async (relPath: string) => {
+          if (relPath === readLast) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          return inner.readFile(relPath);
+        },
+      };
+      const result = await buildSuite(SUITE, options);
+      assert.equal(result.status, 'skipped', readLast);
+      assert.equal(result.code, 'leak', readLast);
+      assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)), readLast);
+    }
+  });
+
+  test('rebuilding a suite published one file per artifact leaves only evals.json and artifacts.json', async () => {
+    const options = makeOptions();
+    const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
+    write(path.join(suiteDir, 'evals.json'), '{}\n');
+    write(path.join(suiteDir, SECURITY_RUN, 'agent.patch'), 'published in the old layout\n');
+    write(path.join(suiteDir, SECURITY_RUN, 'modern-web.log'), 'published in the old layout\n');
+
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'built', result.reason);
+    assert.deepEqual(listFiles(suiteDir), [ARTIFACTS_FILE, 'evals.json']);
+  });
+
   test('publishes a patch that references the Emscripten virtual-FS home', async () => {
     const options = makeOptions();
     write(
@@ -141,7 +182,7 @@ describe('buildSuite', () => {
     );
     const result = await buildSuite(SUITE, options);
     assert.equal(result.status, 'built', result.status === 'skipped' ? result.reason : '');
-    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN, 'agent.patch'), 'utf8');
+    const patch = readArtifacts(options.outDir)[`${SECURITY_RUN}/agent.patch`];
     assert.ok(patch.includes('"/home/web_user"'));
     assert.ok(patch.includes('"/home/web_user/data"'));
   });
@@ -149,7 +190,7 @@ describe('buildSuite', () => {
   test('generates a diff against the base app for legacy runs', async () => {
     const options = makeOptions();
     await buildSuite(SUITE, options);
-    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, PASSKEY_RUN, 'agent.patch'), 'utf8');
+    const patch = readArtifacts(options.outDir)[`${PASSKEY_RUN}/agent.patch`];
     assert.ok(patch.startsWith('diff --git a/index.html b/index.html\n'));
     assert.match(patch, /^-<p>base version<\/p>$/m);
     assert.match(patch, /^\+<p>agent version<\/p>$/m);
@@ -178,7 +219,11 @@ describe('buildSuite', () => {
       fs.rmSync(path.join(options.outDir, 'public-evals'), { recursive: true, force: true });
       const result = await buildSuite(SUITE, options);
       assert.equal(result.status, 'built', JSON.stringify(bad));
-      assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, PASSKEY_RUN, 'agent.patch')), JSON.stringify(bad));
+      assert.deepEqual(
+        Object.keys(readArtifacts(options.outDir)).filter(relPath => relPath.startsWith(`${PASSKEY_RUN}/`)),
+        [`${PASSKEY_RUN}/modern-web.log`],
+        JSON.stringify(bad),
+      );
       const evals = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json'), 'utf8')) as PublicEvals;
       assert.deepEqual(evals.results['task - passkey-authentication - guided'][0].files, ['modern-web.log'], JSON.stringify(bad));
     }
@@ -195,7 +240,7 @@ describe('buildSuite', () => {
 
     const result = await buildSuite(SUITE, options);
     assert.equal(result.status, 'built', result.reason);
-    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, PASSKEY_RUN, 'agent.patch'), 'utf8');
+    const patch = readArtifacts(options.outDir)[`${PASSKEY_RUN}/agent.patch`];
     assert.ok(patch.includes('new file mode'));
   });
 
