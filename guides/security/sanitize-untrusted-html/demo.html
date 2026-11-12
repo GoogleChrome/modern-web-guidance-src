@@ -83,8 +83,8 @@
     <h1>Sanitizer API Demo</h1>
 
     <section>
-      <h2>Untrusted Input</h2>
-      <textarea id="untrusted-input">
+      <h2 id="untrusted-input-heading">Untrusted Input</h2>
+      <textarea id="untrusted-input" aria-labelledby="untrusted-input-heading">
 <p class="blue-text">Safe text with <b>bold</b>.</p>
 <script>console.log('XSS Triggered!')</script>
 <img src="x" onerror="console.log('Event Triggered!')">
