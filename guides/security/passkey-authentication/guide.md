@@ -54,19 +54,24 @@ Use the `autofocus` attribute on dedicated sign-in pages and sign-in dialogs so 
 
 Use the `aria-describedby` attribute on elements with `autofocus` so instructions and context are provided for screen reader users.
 
+Give every input a visible `<label>` associated through `for` and `id`. `aria-describedby` only adds a description; it does not name the field.
+
 ```html
 <h1 id="signin-passkey">Sign In with Passkey</h1>
 <!-- Autocomplete tokens must contain webauthn space-separated -->
 <form id="signin-form">
+  <label for="username">Username</label>
   <input
     type="text"
+    id="username"
     name="username"
     aria-describedby="signin-passkey" 
     autocomplete="username webauthn"
     autofocus
     data-testid="username-field"
   />
-  <input type="password" name="password" autocomplete="current-password" />
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" autocomplete="current-password" />
   <button type="submit">Sign in</button>
 </form>
 ```
