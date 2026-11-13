@@ -16,8 +16,8 @@ const NON_JS_SCRIPT_TYPES: ReadonlySet<string> = new Set([
   'speculationrules',
 ]);
 
-const SCRIPT_TAG_REGEX = /<script(?=[\s/>])([^>]*)>([\s\S]*?)<\/script>/gi;
-const STYLE_TAG_REGEX = /<style(?=[\s/>])([^>]*)>([\s\S]*?)<\/style>/gi;
+const SCRIPT_TAG_REGEX = /<script(?=[\s/>])([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+const STYLE_TAG_REGEX = /<style(?=[\s/>])([^>]*)>([\s\S]*?)<\/style\s*>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
 const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
 const GLIMMER_COMMENT_REGEX = /\{\{~?!--[\s\S]*?--~?\}\}|\{\{~?![\s\S]*?\}\}/g;
@@ -136,9 +136,10 @@ function glimmerTemplateMarkup(content: string): string {
 /** Template markup of a .gts/.gjs file with `<script>`/`<style>` blocks blanked, for linkedom. */
 function prepareGlimmerForDomScan(content: string): string {
   const markup = glimmerTemplateMarkup(content);
+  const uncommented = blankHtmlComments(markup);
   return blankRanges(markup, [
-    ...findTagRanges(markup, SCRIPT_TAG_REGEX),
-    ...findTagRanges(markup, STYLE_TAG_REGEX),
+    ...findTagRanges(uncommented, SCRIPT_TAG_REGEX),
+    ...findTagRanges(uncommented, STYLE_TAG_REGEX),
   ]);
 }
 
@@ -173,6 +174,23 @@ function maskRanges(content: string, ranges: readonly MaskedRange[]): string {
   }
 
   return result;
+}
+
+// Script and style bodies match first, so `<!--` inside them is never treated as a comment.
+const HTML_COMMENT_OR_RAW_TAG_REGEX =
+  /(^---\r?\n[\s\S]*?\r?\n---)|<script(?=[\s/>])[\s\S]*?<\/script\s*>|<style(?=[\s/>])[\s\S]*?<\/style\s*>|<!--[\s\S]*?(?:-->|$)/gi;
+
+/**
+ * Markup with its HTML comments blanked (offsets and newlines preserved), so that
+ * commented-out `<script>`/`<style>` blocks are not extracted.
+ */
+function blankHtmlComments(content: string): string {
+  if (!content.includes('<!--')) {
+    return content;
+  }
+  return content.replace(HTML_COMMENT_OR_RAW_TAG_REGEX, (match) =>
+    match.startsWith('<!--') ? match.replace(/[^\r\n]/g, ' ') : match,
+  );
 }
 
 /**
@@ -285,7 +303,8 @@ export function extractScriptBlocks(
     }
   }
 
-  for (const match of content.matchAll(SCRIPT_TAG_REGEX)) {
+  const markup = blankHtmlComments(content);
+  for (const match of markup.matchAll(SCRIPT_TAG_REGEX)) {
     const attrStr = match[1] ?? '';
     const body = match[2] ?? '';
     const attrs = parseTagAttributes(attrStr);
@@ -526,7 +545,7 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
       : [];
   }
 
-  const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
+  const markup = blankHtmlComments(isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content);
   const blocks: string[] = [];
   for (const match of markup.matchAll(STYLE_TAG_REGEX)) {
     const attrStr = match[1] ?? '';
@@ -577,9 +596,11 @@ export function prepareHtmlForDomScan(relPath: string, content: string): string 
     return content;
   }
 
+  // Blocks are found outside comments, but the comments stay: linkedom skips them itself.
+  const uncommented = blankHtmlComments(content);
   const rangesToBlank: { start: number; end: number }[] = [
-    ...findTagRanges(content, SCRIPT_TAG_REGEX),
-    ...findTagRanges(content, STYLE_TAG_REGEX),
+    ...findTagRanges(uncommented, SCRIPT_TAG_REGEX),
+    ...findTagRanges(uncommented, STYLE_TAG_REGEX),
   ];
 
   if (lowerPath.endsWith('.vue')) {
