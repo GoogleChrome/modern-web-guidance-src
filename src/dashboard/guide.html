@@ -9,7 +9,22 @@
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
+  <meta property="og:site_name" content="Modern Web Guidance Evals">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Guide Performance Trend — Modern Web Guidance Evals">
+  <meta property="og:description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
+  <meta property="og:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="2400">
+  <meta property="og:image:height" content="1260">
+  <meta property="og:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Guide Performance Trend — Modern Web Guidance Evals">
+  <meta name="twitter:description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
+  <meta name="twitter:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta name="twitter:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
   <title>Guide Performance Trend</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
@@ -86,7 +101,7 @@
     }
     .guide-tooltip-date { color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem; }
     .guide-tooltip-rows { display: flex; flex-direction: column; gap: 4px; }
-    .guide-tooltip-row { display: flex; justify-content: space-between; gap: 12px; }
+    .guide-tooltip-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .guide-tooltip-uplift-row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 4px; font-weight: bold; }
     .guide-tooltip-guided { font-weight: 600; color: var(--color-primary); }
     .guide-tooltip-unguided { font-weight: 600; color: var(--text-secondary); }
@@ -146,12 +161,21 @@
         <p>No historical runs found for this guide.</p>
       </div>
     </main>
+
+    <footer class="site-legal-footer">
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <div id="tooltip-container" class="tooltip-container" popover="hint" role="tooltip">
     <div id="tooltip-header"></div>
     <div id="tooltip-content"></div>
   </div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
 
   <script src="features-mapping.gen.js" defer></script>
   <script type="module">
@@ -172,6 +196,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="guide.js"></script>
 </body>
 </html>

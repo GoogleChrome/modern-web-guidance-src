@@ -10,9 +10,9 @@
         color-scheme: light dark;
         --text: light-dark(#1e293b, #e2e8f0);
         --surface: light-dark(#ffffff, #0f172a);
-        --border: color-mix(in oklch, var(--text) 25%, var(--surface));
-        --border-subtle: color-mix(in oklch, var(--text) 15%, var(--surface));
-        --tint: color-mix(in oklch, var(--text) 8%, var(--surface));
+        --border: color-mix(in oklab, var(--text) 25%, var(--surface));
+        --border-subtle: color-mix(in oklab, var(--text) 15%, var(--surface));
+        --tint: color-mix(in oklab, var(--text) 8%, var(--surface));
         --accent: light-dark(#1d4ed8, #93c5fd);
         --space: 0.75rem;
       }
@@ -95,7 +95,7 @@
           }
 
           &[aria-sort] {
-            background: color-mix(in oklch, var(--accent) 12%, var(--surface));
+            background: color-mix(in oklab, var(--accent) 12%, var(--surface));
           }
         }
       }

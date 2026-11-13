@@ -19,6 +19,7 @@ import {
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 import type { ClaudeLogEntry } from './claude.d.ts';
 
 export function setupClaudeCodeCredentials(tempHome: string): void {
@@ -37,7 +38,8 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
     '-p', prompt,
     '--dangerously-skip-permissions',
     ...extraArgs,
-    ...(model ? ['--model', model] : [])
+    ...(model ? ['--model', model] : []),
+    ...resolveEffortCliArgs(Agents.CLAUDE_CODE, model)
   ];
   return { command, commandArgs };
 }
@@ -81,6 +83,7 @@ export function coalesceClaudeEntries(entries: any[]): any[] {
       }
       if (entry.message.usage) prev.message.usage = entry.message.usage;
       if (entry.message.model && !prev.message.model) prev.message.model = entry.message.model;
+      if (entry.effort && !prev.effort) prev.effort = entry.effort;
     }
   }
 
@@ -178,6 +181,7 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
   let totalTokens = 0;
   let cachedTokens = 0;
   let hasTokenData = false;
+  let observedEffort: string | undefined;
   const toolsUsed = new Set<string>();
   const retrievedGuides = new Set<string>();
   const fileReadGuides = new Set<string>();
@@ -193,6 +197,17 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
 
       if (rawEntry.message?.model) {
         modelCounts[rawEntry.message.model] = (modelCounts[rawEntry.message.model] || 0) + 1;
+      }
+      if (!subagentId && !rawEntry.isSidechain) {
+        const entryEffort =
+          rawEntry.type === 'api-request'
+            ? rawEntry.params?.output_config?.effort
+            : rawEntry.type === 'assistant'
+              ? rawEntry.effort
+              : undefined;
+        if (typeof entryEffort === 'string' && entryEffort.trim()) {
+          observedEffort = entryEffort.trim().toLowerCase();
+        }
       }
       if (rawEntry.message?.usage) {
         const u = rawEntry.message.usage;
@@ -335,6 +350,7 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
     model: topModel ? topModel[0] : 'unknown',
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' as const } } : {}),
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),

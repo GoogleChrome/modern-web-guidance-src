@@ -23,7 +23,7 @@ If you need plain-text, non-interactive tooltips rather than structured link pre
 
 ## 1. Triggering the hovercard
 
-Use the **Interest Invokers** API to trigger the hovercard. This ensures the card appears on both hover and focus, and handles accessibility wiring automatically.
+Use the **Interest Invokers** API to trigger the hovercard. This ensures the card appears on both hover and focus.
 
 - Add the `popover="hint"` attribute to your card container. Use `hint` to avoid closing unrelated popover menus that may be open.
 - Add the `interestfor` attribute to the trigger link, pointing to the card's `id`.
@@ -42,11 +42,14 @@ Use the **Interest Invokers** API to trigger the hovercard. This ensures the car
 </div>
 ```
 
-You do not need to include an additional link to the content inside of the hovercard, as it is redundant to the triggering link. 
+You do not need to include an additional link to the content inside of the hovercard, as it is redundant to the triggering link.
 
-### Accessibility built in to `interestfor`
+### Accessibility
 
 {{ FEATURE("interest-invokers", "accessibility") }}
+
+> [!IMPORTANT]
+> Only use hovercards to provide supplemental information (e.g. a preview of information that can otherwise be obtained by clicking on the link), never information that is not available in any other way.
 
 ## 2. Positioning with Anchor Positioning
 
@@ -57,7 +60,7 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
   /* Position the card below the trigger, aligned with its inline-start edge
      and spanning toward the inline-end, flipping if it overflows the viewport. */
   position-area: block-end span-inline-end;
-  position-try-fallbacks: flip-block, flip-inline;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
 }
 ```
 

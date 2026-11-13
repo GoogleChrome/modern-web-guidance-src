@@ -10,7 +10,22 @@
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
+  <meta property="og:site_name" content="Modern Web Guidance Evals">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Evaluation Suite Results — Modern Web Guidance Evals">
+  <meta property="og:description" content="Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
+  <meta property="og:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="2400">
+  <meta property="og:image:height" content="1260">
+  <meta property="og:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Evaluation Suite Results — Modern Web Guidance Evals">
+  <meta name="twitter:description" content="Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
+  <meta name="twitter:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta name="twitter:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
   <title>Suite Results</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -85,10 +100,15 @@
       </section>
     </main>
 
-    <footer class="dashboard-footer">
+    <footer class="dashboard-footer site-legal-footer">
       <a href="./" class="secondary-btn">← Back to results</a>
       <button id="view-gcs-artifacts-btn" class="secondary-btn" hidden>View source</button>
       <button id="view-log-btn" class="secondary-btn">View full run log</button>
+      <nav aria-label="Legal and privacy links" class="site-legal-nav">
+        <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
+        <span class="site-legal-sep" aria-hidden="true">·</span>
+        <a href="https://policies.google.com/terms" class="site-legal-link" rel="noopener">Terms</a>
+      </nav>
     </footer>
   </div>
 
@@ -101,6 +121,7 @@
     <code>Uncached tokens = total − cached</code> (fresh input + output + thinking tokens). Multi-turn agents re-read cached prompt prefixes on every tool turn (roughly 85–96% cached for Claude Code and Codex CLI, ~20% for Antigravity CLI), so both uncached tokens and totals with cache share are shown.
   </div>
   <div id="dumbbell-tooltip" popover="hint" class="chart-tooltip" role="tooltip"></div>
+  <div id="effort-tooltip" class="hint-popover" popover="hint" role="tooltip"></div>
   <dialog id="modal" aria-labelledby="modal-title" closedby="any">
     <div class="modal-content">
       <form method="dialog" class="close-modal-form">
@@ -129,6 +150,7 @@
       import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
+  <script type="module" src="analytics.js"></script>
   <script type="module" src="dashboard.js"></script>
 </body>
 

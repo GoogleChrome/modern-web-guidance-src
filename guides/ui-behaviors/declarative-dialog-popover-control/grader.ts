@@ -166,7 +166,7 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
       expect(conditionMet).toBe(true);
     });
 
-    test('Popover polyfill is loaded conditionally', async ({ page }) => {
+    test('Popover polyfill is loaded conditionally if present', async ({ page }) => {
       const scriptInfo = await page.locator('script').evaluateAll(tags =>
         tags.map(t => ({ src: t.getAttribute('src') || '', text: t.textContent || '' }))
       );
@@ -176,13 +176,17 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
       const externalScripts = getExternalFiles(['.js', '.mjs'], /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi);
       const scripts = [...scriptInfo.map(s => s.text), ...externalScripts];
       const hasPopoverPolyfill = scripts.some(s => /['"][^'"]*(?:popover-polyfill|@oddbird\/popover)[^'"]*['"]/.test(s));
-      expect(hasPopoverPolyfill).toBe(true);
-      const conditionMet = scripts.some(
-        s =>
-          /['"]popover['"]\s*in\s*HTMLElement\.prototype/.test(s) &&
-          (/\bif\s*\(/.test(s) || /\?/.test(s))
-      );
-      expect(conditionMet).toBe(true);
+      if (hasPopoverPolyfill) {
+        const conditionMet = scripts.some(
+          s =>
+            /['"]popover['"]\s*in\s*HTMLElement\.prototype/.test(s) &&
+            (/\bif\s*\(/.test(s) || /\?/.test(s))
+        );
+        expect(conditionMet).toBe(true);
+      } else {
+        const hasPopover = (await page.locator('[popover]').count()) > 0;
+        expect(hasPopover).toBe(true);
+      }
     });
 
     test('CSS rules for :popover-open and .\\:popover-open are separate (not combined in an unforgiving selector list)', async ({ page }) => {

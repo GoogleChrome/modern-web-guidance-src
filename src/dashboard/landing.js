@@ -16,6 +16,12 @@ import {
     SUPPORTS_ANCHOR_POSITIONING,
     placePopoverFallback,
     median,
+    renderEffortChip,
+    setupEffortTooltip,
+    getEffortLevel,
+    getEffortTooltip,
+    compareEffortLevels,
+    pickHigherPrecedenceEffort,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
@@ -49,6 +55,10 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 /** @type {string} */
 let currentModelFilter = 'all';
+/** @type {boolean} */
+let splitModelByEffort = false;
+/** @type {boolean} */
+let splitRowEffortActive = false;
 /** @type {string} */
 let currentSearchFilter = '';
 /** @type {boolean} */
@@ -78,6 +88,11 @@ const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 /** @param {string} testId */
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
+/** @param {LandingSuiteSummary} [testInfo] */
+function isScheduledOrCurated(testInfo) {
+    if (!testInfo) return false;
+    return Boolean(testInfo.curated) || isScheduledSuite(testInfo.testId);
+}
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         setupTestFilters();
@@ -154,11 +169,37 @@ function applySearchParam(qParam) {
     }
 }
 
+/**
+ * Sets or removes the `effort:<level>` token in `#filter-search`, preserving any
+ * free-text search terms and syncing `?q=` in the URL.
+ * @param {string | null} effortLevel
+ */
+function setSearchEffortToken(effortLevel) {
+    const searchInput = document.getElementById('filter-search');
+    const raw = searchInput instanceof HTMLInputElement ? searchInput.value : currentSearchFilter;
+    const kept = raw
+        .trim()
+        .split(/\s+/)
+        .filter(tok => tok && !/^effort:/i.test(tok));
+    if (effortLevel && effortLevel !== 'all') {
+        kept.push(`effort:${effortLevel}`);
+    }
+    const nextValue = kept.join(' ');
+    currentSearchFilter = nextValue.toLowerCase();
+    if (searchInput instanceof HTMLInputElement) {
+        searchInput.value = nextValue;
+    }
+    updateUrlParams();
+}
+
 function setupTestFilters() {
     const searchInput = document.getElementById('filter-search');
     if (!(searchInput instanceof HTMLInputElement)) return;
     searchInput.addEventListener('input', () => {
         currentSearchFilter = searchInput.value.trim().toLowerCase();
+        if (parseSearchQuery(currentSearchFilter).effortLevels.length === 0) {
+            splitRowEffortActive = false;
+        }
         showAllStacked = false;
         updateUrlParams();
         renderSuites();
@@ -174,7 +215,13 @@ function setupTableFilters() {
             const mobileAgent = document.getElementById('mobile-filter-agent');
             if (mobileAgent instanceof HTMLSelectElement) { mobileAgent.value = val; syncSelectStyles(mobileAgent); }
         },
-        'filter-model': (val) => currentModelFilter = val
+        'filter-model': (val) => {
+            currentModelFilter = val;
+            if (splitRowEffortActive) {
+                splitRowEffortActive = false;
+                setSearchEffortToken(null);
+            }
+        }
     };
 
     Object.entries(filters).forEach(([id, updateFn]) => {
@@ -216,6 +263,13 @@ function setupTableFilters() {
 function setupScheduledToggle() {
     const check = document.getElementById('scheduled-only-check');
     if (!(check instanceof HTMLInputElement)) return;
+    const label = document.getElementById('scheduled-only-label') || check.closest('label');
+    if (isPublicView()) {
+        if (label) label.style.display = 'none';
+        scheduledOnly = false;
+        return;
+    }
+    if (label) label.style.display = '';
     scheduledOnly = check.checked;
     check.addEventListener('change', () => { scheduledOnly = check.checked; renderSuites(); });
 }
@@ -358,7 +412,8 @@ function setupInsightsControls() {
         if (btn instanceof HTMLButtonElement) {
             const key = btn.dataset.filterKey;
             const value = btn.dataset.filterValue;
-            if ((key === 'agent' || key === 'model') && value !== undefined) { setInsightFilter(key, value); }
+            const effort = btn.dataset.filterEffort;
+            if ((key === 'agent' || key === 'model') && value !== undefined) { setInsightFilter(key, value, effort); }
             return;
         }
         if (!target.closest('a, button')) {
@@ -368,6 +423,7 @@ function setupInsightsControls() {
         }
     });
     setupBarbellTooltip();
+    setupEffortTooltip();
     setupAnchorPositioningFallback();
 }
 
@@ -446,6 +502,11 @@ async function fetchEvalsUncached(testId) {
 function activeDataSource() {
     const resolved = resolveDataSource();
     return resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
+}
+
+/** @returns {boolean} */
+function isPublicView() {
+    return activeDataSource() === 'public';
 }
 
 function syncHero() {
@@ -601,6 +662,8 @@ function updateRunsFilterDatalist() {
     if (!datalist) return;
     /** @type {Map<string, { count: number, label: string }>} */
     const suggestions = new Map();
+    /** @type {Map<string, number>} */
+    const effortCounts = new Map();
     for (const t of Object.values(allTestData)) {
         if (t.model && t.model !== 'unknown') {
             const prev = suggestions.get(t.model);
@@ -611,6 +674,14 @@ function updateRunsFilterDatalist() {
             const display = agentDisplayNames[t.agent] || t.agent;
             suggestions.set(t.agent, { count: (prev?.count || 0) + 1, label: display !== t.agent ? display : '' });
         }
+        const effortLevel = getEffortLevel(t.reasoningEffort);
+        effortCounts.set(effortLevel, (effortCounts.get(effortLevel) || 0) + 1);
+    }
+    for (const [level, count] of effortCounts.entries()) {
+        const desc = level === 'default'
+            ? 'Reasoning effort: default (CLI built-in default)'
+            : `Reasoning effort: ${level}`;
+        suggestions.set(`effort:${level}`, { count, label: desc });
     }
     datalist.innerHTML = Array.from(suggestions.entries())
         .sort(([a], [b]) => a.localeCompare(b))
@@ -674,7 +745,7 @@ function toRate(stats) {
 
 /** @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
-function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? Math.round(toRateExact(gStats) - toRateExact(uStats)) : null; }
+function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? toRate(gStats) - toRate(uStats) : null; }
 /** A side with no checks has no rate, so uplift against it would be fabricated.
  * @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
@@ -692,21 +763,53 @@ function a11yPair(a11y) {
 }
 
 /**
+ * Extracts `effort:<level>` filter tokens (case-insensitive) and remaining free-text query.
+ * @param {string} query
+ * @returns {{ effortLevels: string[], textQuery: string }}
+ */
+function parseSearchQuery(query) {
+    if (!query) return { effortLevels: [], textQuery: '' };
+    /** @type {string[]} */
+    const effortLevels = [];
+    /** @type {string[]} */
+    const textParts = [];
+    for (const token of query.trim().split(/\s+/)) {
+        if (!token) continue;
+        const m = token.match(/^effort:(.*)$/i);
+        if (m) {
+            const lvl = m[1].trim().toLowerCase();
+            if (lvl) effortLevels.push(lvl);
+        } else {
+            textParts.push(token.toLowerCase());
+        }
+    }
+    return { effortLevels, textQuery: textParts.join(' ') };
+}
+
+/**
  * @param {{ ignoreModelFilter?: boolean }} [options]
  * @returns {string[]}
  */
 function getFilteredKeys({ ignoreModelFilter = false } = {}) {
+    const { effortLevels, textQuery } = parseSearchQuery(currentSearchFilter);
     return Array.from(selectedTestIds).filter(compoundKey => {
         const t = allTestData[compoundKey];
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
-        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
-        if (currentSearchFilter) {
+        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) {
+            return false;
+        }
+        if (!(ignoreModelFilter && splitModelByEffort && splitRowEffortActive) && effortLevels.length > 0) {
+            const suiteEffort = getEffortLevel(t.reasoningEffort);
+            if (!effortLevels.includes(suiteEffort)) return false;
+        }
+        if (textQuery) {
             const { label, ldap } = formatSuiteLabel(t);
             const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
-            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap}`.toLowerCase();
-            if (!haystack.includes(currentSearchFilter)) return false;
+            const curatedKeywords = t.curated ? '1.0 baseline curated' : '';
+            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap} ${curatedKeywords}`.toLowerCase();
+            if (!haystack.includes(textQuery)) return false;
         }
         return true;
     });
@@ -715,9 +818,10 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
 /** @returns {string[]} */
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
-    const anyScheduled = filtered.some(k => isScheduledSuite(allTestData[k].testId));
-    const keys = (scheduledOnly && !currentSearchFilter && anyScheduled)
-        ? filtered.filter(k => isScheduledSuite(allTestData[k].testId))
+    const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
+    const anyScheduled = filtered.some(k => isScheduledOrCurated(allTestData[k]));
+    const keys = (effectiveScheduledOnly && !currentSearchFilter && anyScheduled)
+        ? filtered.filter(k => isScheduledOrCurated(allTestData[k]))
         : filtered;
     return sortSuiteKeys(keys);
 }
@@ -730,8 +834,8 @@ function getSortValue(t, key) {
         case 'date':
             return getSuiteDate(t).getTime();
         case 'uplift':
-            return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
-        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
+            return upliftPp(t.unguidedStats, t.guidedStats);
+        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair ? upliftPp(pair.u, pair.g) : null; }
         case 'time': { const rt = t.efficiencyStats?.runtime; return rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0) ? rt.medianDeltaPct : null; }
         case 'tokens': {
             const tok = t.efficiencyStats?.tokens;
@@ -765,7 +869,7 @@ function sortSuiteKeys(keys) {
 
 /** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
  * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
- * @param {number | null} delta percentage-point change, computed from unrounded rates; null unless both sides ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran
  * @param {string} label used for the screen-reader sentence
  * @param {number} [uErr=0]
  * @param {number} [gErr=0] */
@@ -781,6 +885,23 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
     const uDot = uRate !== null ? `<div class="dot unguided" style="left: ${uRate}%;"></div>` : '';
     const gDot = gRate !== null ? `<div class="dot guided" style="left: ${gRate}%;"></div>` : '';
     return `<div class="suite-dumbbell-track" aria-hidden="true"> ${uErrBand} ${gErrBand} ${connector} ${uDot} ${gDot} </div> <div class="rate-text"> <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${fmtRate(uRate)}</span> <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span> <span class="rate-g">${fmtRate(gRate)}</span> ${deltaHtml} </div>`;
+}
+/** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
+ * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran */
+function renderA11yCompact(uRate, gRate, delta) {
+    const fmtRate = (/** @type {number | null} */ r) =>
+        r === null ? '<span aria-hidden="true">—</span><span class="visually-hidden">not available</span>' : `${r}%`;
+    let pillCls = 'eff-pill muted';
+    let pillText = '<span aria-hidden="true">—</span>';
+    let pillSr = '<span class="visually-hidden"> change not available</span>';
+    if (delta !== null) {
+        if (delta > 0) pillCls = 'eff-pill neutral';
+        else if (delta < 0) pillCls = 'eff-pill cost';
+        pillText = `${delta > 0 ? '+' : ''}${delta} pp`;
+        pillSr = '';
+    }
+    return `<div class="a11y-delta-stack"><span class="visually-hidden">Automated accessibility checks: </span><span class="${pillCls}">${pillText}${pillSr}</span><span class="a11y-delta-sub"><span class="visually-hidden">, unguided </span><span>${fmtRate(uRate)}</span><span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span><span>${fmtRate(gRate)}</span></span></div>`;
 }
 /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -803,11 +924,21 @@ function renderSuites() {
     syncSortHeaders();
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
-    const anyScheduled = filteredKeys.some(k => isScheduledSuite(allTestData[k].testId));
+    const anyScheduled = filteredKeys.some(k => isScheduledOrCurated(allTestData[k]));
+    const isPublic = isPublicView();
     const scheduledCheck = document.getElementById('scheduled-only-check');
+    const scheduledLabel = document.getElementById('scheduled-only-label') || scheduledCheck?.closest('label');
+    if (scheduledLabel) {
+        scheduledLabel.style.display = isPublic ? 'none' : '';
+    }
     if (scheduledCheck instanceof HTMLInputElement) {
-        scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
-        scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+        if (isPublic) {
+            scheduledCheck.checked = false;
+            scheduledCheck.disabled = true;
+        } else {
+            scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
+            scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+        }
     }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 8;
@@ -857,10 +988,11 @@ function renderSuites() {
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
         const isFaulty = earlyFailureRate === 100;
         const scheduled = isScheduledSuite(testId);
+        const curated = Boolean(testInfo.curated);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
         const dateDisplay = formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric' });
-        const suiteBarbellTitle = scheduled
+        const suiteBarbellTitle = (scheduled || curated)
             ? `${dateDisplay} · ${agentDisplay}`
             : `${label || testId}${testInfo.agent && testInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
         const modelPart = testInfo.model && testInfo.model !== 'unknown' ? testInfo.model : '';
@@ -885,7 +1017,7 @@ function renderSuites() {
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderA11yCompact(a11yURate, a11yGRate, a11yPp)} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
         } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
@@ -895,8 +1027,11 @@ function renderSuites() {
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatTokens(tok.guidedUncachedMedian)}</span></div>${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}</div>`
             : renderNotAvailable('Median uncached tokens');
 
-        const badges = [!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : '', isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''].join('');
-        const adhocLabelHtml = !scheduled && label ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
+        const badges = [
+            curated ? '<span class="run-kind-badge curated">1.0 baseline</span>' : (!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : ''),
+            isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''
+        ].join('');
+        const adhocLabelHtml = (!scheduled && !curated && label) ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
         const metaParts = [
             taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
@@ -905,7 +1040,7 @@ function renderSuites() {
         ].filter(Boolean).join(' · ');
 
         html += `
-            <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
+            <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : curated ? ' curated' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
                 <th scope="row" class="suite-cell">
                     <a href="${localLink}" class="suite-link">
                         <span class="suite-title-row"><time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}</span>
@@ -914,7 +1049,7 @@ function renderSuites() {
                     </a>
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
+                <td class="model-cell"><span class="model-cell-inner"><span class="model-name">${escapeHtml(testInfo.model || '')}</span>${testInfo.model ? renderEffortChip(testInfo.reasoningEffort, { separator: false }) : ''}</span></td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
@@ -963,7 +1098,7 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
     if (total === 0) return;
     const visibleNow = paged ? Math.min(pageSize, shown) : shown;
     const parts = [`Showing ${visibleNow} of ${total} run${total === 1 ? '' : 's'}`];
-    if (hiddenAdHoc > 0) {
+    if (!isPublicView() && hiddenAdHoc > 0) {
         parts.push(`${hiddenAdHoc} ad-hoc run${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled runs only"`);
     } else if (matching < total) {
         parts.push(`${total - matching} filtered out`);
@@ -1056,10 +1191,10 @@ function setupAnchorPositioningFallback() {
     if (SUPPORTS_ANCHOR_POSITIONING) return;
     document.addEventListener('toggle', (e) => {
         const hint = e.target;
-        if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover')) return;
+        if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover') || hint.id === 'effort-tooltip') return;
         if (/** @type {ToggleEvent} */ (e).newState !== 'open') return;
         const trigger = document.querySelector(`[interestfor="${CSS.escape(hint.id)}"]`);
-        if (trigger) placePopoverFallback(hint, trigger, { align: hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start', fallbackHeight: 175 });
+        if (trigger) placePopoverFallback(hint, trigger, { align: (hint.id.startsWith('hint-sort-uplift-') || hint.id === 'hint-split-effort-model') ? 'end' : 'start', fallbackHeight: 175 });
     }, true);
     document.addEventListener('scroll', () => {
         document.querySelectorAll('#barbell-tooltip, .hint-popover').forEach(el => { if (el instanceof HTMLElement) setPopoverOpen(el, false); });
@@ -1075,7 +1210,7 @@ function getBarbellDataCell(trigger) {
  * @returns {HTMLElement} */
 function getBarbellAnchorElement(trigger) {
     const cell = getBarbellDataCell(trigger);
-    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track');
+    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track, .a11y-delta-stack');
     if (track instanceof HTMLElement && track.getClientRects().length > 0) return track;
     return cell || trigger;
 }
@@ -1110,6 +1245,8 @@ function renderBarbellTooltipContent(cell) {
     const liftText = uplift === null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`;
     const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
     const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
+    const effortNote = cell.dataset.barbellEffort || '';
+    const effortHtml = effortNote ? ` <div class="barbell-tooltip-effort">${escapeHtml(effortNote)}</div>` : '';
     const uExtraHtml = uDetail !== ''
         ? ` <span class="barbell-tooltip-sd">(${escapeHtml(uDetail)})</span>`
         : (uSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(uSd)} pp SD)</span>` : '');
@@ -1123,13 +1260,13 @@ function renderBarbellTooltipContent(cell) {
         note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
     } else if (kind === 'suite-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+        note = 'Automated accessibility checks passed without MWG and with MWG in this suite run; lift is the percentage-point difference.';
     } else if (kind === 'agent-overall') {
         liftLabel = 'Pass-rate lift';
-        note = 'Checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+        note = 'Checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
     } else if (kind === 'agent-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Accessibility checks passed without MWG and with MWG across the selected nightly suite(s); lift is the percentage-point difference.';
+        note = 'Accessibility checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
         note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
     } else if (kind === 'dimension') {
@@ -1138,7 +1275,7 @@ function renderBarbellTooltipContent(cell) {
         note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
     }
 
-    return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div> <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
+    return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>${effortHtml} <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
 }
 
 function hideBarbellTooltip() {
@@ -1183,14 +1320,19 @@ function getModelInsightKeys() {
     const candidates = getFilteredKeys({ ignoreModelFilter: true })
         .filter(k => Boolean(allTestData[k]?.model && allTestData[k].model !== 'unknown'));
     const { showAll, limit } = getInsightWindowOptions();
-    const byModel = Map.groupBy(candidates, k => allTestData[k].model);
+    const ignoreSplitEffortSearch = splitModelByEffort && splitRowEffortActive && !parseSearchQuery(currentSearchFilter).textQuery;
+    const byBucket = Map.groupBy(candidates, k => {
+        const t = allTestData[k];
+        return splitModelByEffort ? `${t.model}|||${getEffortLevel(t.reasoningEffort)}` : t.model;
+    });
     /** @type {string[]} */
     const result = [];
-    for (const modelKeys of byModel.values()) {
-        const anyScheduled = modelKeys.some(k => isScheduledSuite(allTestData[k].testId));
-        let scoped = (scheduledOnly && !currentSearchFilter && anyScheduled)
-            ? modelKeys.filter(k => isScheduledSuite(allTestData[k].testId))
-            : modelKeys;
+    for (const bucketKeys of byBucket.values()) {
+        const anyScheduled = bucketKeys.some(k => isScheduledOrCurated(allTestData[k]));
+        const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
+        let scoped = (effectiveScheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
+            ? bucketKeys.filter(k => isScheduledOrCurated(allTestData[k]))
+            : bucketKeys;
         if (!showAll && scoped.length > 0) {
             scoped = filterRecentDays(scoped, limit);
         }
@@ -1227,10 +1369,12 @@ function buildModelPivotItem(testInfo, onlyA11y) {
         return null;
     }
     if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
+        const uRate = toRate(testInfo.unguidedStats);
+        const gRate = toRate(testInfo.guidedStats);
         return {
-            uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
-            uRate: toRate(testInfo.unguidedStats),
-            gRate: toRate(testInfo.guidedStats),
+            uplift: gRate - uRate,
+            uRate,
+            gRate,
             uErr,
             gErr,
             rtDeltaPct,
@@ -1254,12 +1398,26 @@ function renderPivotInsights() {
     const onlyA11y = currentInsightsMode === 'a11y';
     /** @type {{ model: Record<string, PivotItem[]>, guide: Record<string, PivotItem[]>, dimension: Record<string, PivotItem[]> }} */
     const grouped = { model: {}, guide: {}, dimension: {} };
+    /** @type {Record<string, { model: string, effortLevel: string, effort?: import('./evals.d.ts').ReasoningEffort }>} */
+    const modelSplitMeta = {};
     modelKeys.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
         if (!testInfo || !testInfo.model) return;
         const item = buildModelPivotItem(testInfo, onlyA11y);
         if (item) {
-            (grouped.model[testInfo.model] ||= []).push(item);
+            if (splitModelByEffort) {
+                const effortLevel = getEffortLevel(testInfo.reasoningEffort);
+                const bucketKey = `${testInfo.model}|||${effortLevel}`;
+                const prevMeta = modelSplitMeta[bucketKey];
+                modelSplitMeta[bucketKey] = {
+                    model: testInfo.model,
+                    effortLevel,
+                    effort: pickHigherPrecedenceEffort(prevMeta?.effort, testInfo.reasoningEffort),
+                };
+                (grouped.model[bucketKey] ||= []).push(item);
+            } else {
+                (grouped.model[testInfo.model] ||= []).push(item);
+            }
         }
     });
     keys.forEach(compoundKey => {
@@ -1381,6 +1539,15 @@ function renderPivotInsights() {
                     const upliftB = statsByKey[b].medianItem.uplift;
                     if (upliftA !== upliftB) { return sortMode === 'uplift-desc' ? upliftB - upliftA : upliftA - upliftB; }
                 }
+                if (filterKey === 'model' && splitModelByEffort) {
+                    const metaA = modelSplitMeta[a];
+                    const metaB = modelSplitMeta[b];
+                    if (metaA && metaB) {
+                        const cmpModel = metaA.model.toLowerCase().localeCompare(metaB.model.toLowerCase());
+                        if (cmpModel !== 0) return cmpModel;
+                        return compareEffortLevels(metaA.effortLevel, metaB.effortLevel);
+                    }
+                }
                 return a.toLowerCase().localeCompare(b.toLowerCase());
             });
         }
@@ -1414,10 +1581,16 @@ function renderPivotInsights() {
                 if (avgGErr > 0) gBandHtml = `<span class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></span>`;
             }
 
-            const isActive = filterKey === 'model' && currentModelFilter === key;
+            const activeEffortFilter = parseSearchQuery(currentSearchFilter).effortLevels[0] || 'all';
+            const splitMeta = (filterKey === 'model' && splitModelByEffort) ? modelSplitMeta[key] : undefined;
+            const modelValue = splitMeta ? splitMeta.model : key;
+            const isActive = filterKey === 'model' && currentModelFilter === modelValue && (
+                splitMeta ? activeEffortFilter === splitMeta.effortLevel : activeEffortFilter === 'all'
+            );
             let nameHtml = '';
             let effSummary = '';
             let displayTitle = key;
+            let barbellEffortAttr = '';
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
                 const sourceQuery = `&source=${encodeURIComponent(activeDataSource())}`;
@@ -1431,7 +1604,14 @@ function renderPivotInsights() {
                 nameHtml = `<span class="pivot-static-name">${escapeHtml(label)}</span>`;
                 effSummary = desc ? `<span class="pivot-trials">${escapeHtml(desc)}</span>` : '';
             } else {
-                nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}" interestfor="barbell-tooltip">${escapeHtml(key)}</button>`;
+                if (splitMeta) {
+                    displayTitle = `${splitMeta.model} (${splitMeta.effortLevel})`;
+                    barbellEffortAttr = ` data-barbell-effort="${escapeHtml(getEffortTooltip(splitMeta.effort))}"`;
+                    const chipHtml = renderEffortChip(splitMeta.effort, { interactive: false });
+                    nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(splitMeta.model)}" data-filter-effort="${escapeHtml(splitMeta.effortLevel)}" aria-pressed="${isActive}" interestfor="barbell-tooltip"><span class="pivot-model-label">${escapeHtml(splitMeta.model)}${chipHtml}</span></button>`;
+                } else {
+                    nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}" interestfor="barbell-tooltip">${escapeHtml(key)}</button>`;
+                }
                 const rtMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.rtDeltaPct).filter(v => typeof v === 'number')));
                 const tokMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.tokDeltaPct).filter(v => typeof v === 'number')));
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
@@ -1470,7 +1650,7 @@ function renderPivotInsights() {
                         data-barbell-uplift="${medUplift}"
                         data-barbell-u-sd="${uSdAttr}"
                         data-barbell-g-sd="${gSdAttr}"
-                        data-barbell-err="${errAttr}">
+                        data-barbell-err="${errAttr}"${barbellEffortAttr}>
                         ${barbellCellHtml}
                     </td>
                 </tr>
@@ -1513,7 +1693,13 @@ function renderPivotInsights() {
                 : `Sorted by uplift (low to high) — click to reset to alphabetical sort`);
         const alphaHintId = `hint-sort-alpha-${panelKey}`;
         const upliftHintId = `hint-sort-uplift-${panelKey}`;
-        return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
+        const effortSplitBtnHtml = panelKey === 'model'
+            ? `<button type="button" class="insights-effort-split-btn anchor-hint-split-effort-model${splitModelByEffort ? ' is-active' : ''}" data-model-effort-split aria-pressed="${splitModelByEffort}" interestfor="hint-split-effort-model">By effort</button>`
+            : '';
+        const effortSplitHintHtml = panelKey === 'model'
+            ? `<div id="hint-split-effort-model" popover="hint" class="hint-popover">${splitModelByEffort ? 'Showing models split by reasoning effort — click to combine' : 'Split model rows by reasoning effort level'}</div>`
+            : '';
+        return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <div class="insights-panel-actions"> ${effortSplitBtnHtml} <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> </div> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> ${effortSplitHintHtml} <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
     };
 
     const COLLAPSED_ROW_THRESHOLD = 6;
@@ -1656,17 +1842,43 @@ function renderPivotInsights() {
         renderPivotInsights();
         document.getElementById('guide-sort-dir-btn')?.focus();
     });
+    const effortSplitBtn = container.querySelector('button[data-model-effort-split]');
+    effortSplitBtn?.addEventListener('click', () => {
+        splitModelByEffort = !splitModelByEffort;
+        if (!splitModelByEffort && splitRowEffortActive) {
+            splitRowEffortActive = false;
+            setSearchEffortToken(null);
+            renderSuites();
+        } else {
+            renderPivotInsights();
+        }
+        /** @type {HTMLElement | null} */
+        (container.querySelector('button[data-model-effort-split]'))?.focus();
+    });
 }
 
 /**
  * Toggles one of the header filters from a pivot row (click again to clear).
  * @param {'agent' | 'model'} filterKey
  * @param {string} value
+ * @param {string} [effort]
  */
-function setInsightFilter(filterKey, value) {
+function setInsightFilter(filterKey, value, effort) {
     const select = document.getElementById(`filter-${filterKey}`);
-    if (select instanceof HTMLSelectElement) {
-        select.value = select.value === value ? 'all' : value;
-        select.dispatchEvent(new Event('change'));
+    if (!(select instanceof HTMLSelectElement)) return;
+    if (filterKey === 'model' && effort !== undefined) {
+        const activeEffortFilter = parseSearchQuery(currentSearchFilter).effortLevels[0] || 'all';
+        const isSame = currentModelFilter === value && activeEffortFilter === effort;
+        const nextModel = isSame ? 'all' : value;
+        const nextEffort = isSame ? null : effort;
+        select.value = nextModel;
+        currentModelFilter = nextModel;
+        splitRowEffortActive = Boolean(nextEffort);
+        setSearchEffortToken(nextEffort);
+        syncSelectStyles(select);
+        renderSuites();
+        return;
     }
+    select.value = select.value === value ? 'all' : value;
+    select.dispatchEvent(new Event('change'));
 }

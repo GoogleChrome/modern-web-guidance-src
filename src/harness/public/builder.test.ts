@@ -252,6 +252,30 @@ describe('buildSuite', () => {
     const result = await buildSuite('nightly-2026-01-01_00-00-00-codex_cli', options);
     assert.deepEqual([result.status, result.reason], ['skipped', 'no evals.json']);
   });
+
+  test('marks curated suites with curated: true on summary and evals.json', async () => {
+    const curatedSuiteId = 'opus-medium-1.0-rc-2026-11-08';
+    const { root, baseApps } = makeFixtureStore();
+    const fixtureDir = path.join(root, curatedSuiteId);
+    fs.cpSync(path.join(root, SUITE), fixtureDir, { recursive: true });
+    const options: BuildOptions = {
+      store: new LocalSuiteStore(root),
+      outDir: fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-curated-')),
+      allowlist: {
+        include: [curatedSuiteId],
+        exclude: [],
+        overrides: [],
+        releasedModels: [FIXTURE_MODEL],
+      },
+      baseAppsDir: baseApps,
+      now: NOW,
+    };
+    const result = await buildSuite(curatedSuiteId, options);
+    assert.equal(result.status, 'built');
+    assert.equal(result.summary?.curated, true);
+    const evals = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', curatedSuiteId, 'evals.json'), 'utf8')) as PublicEvals;
+    assert.equal(evals.curated, true);
+  });
 });
 
 describe('buildSelectedSuites + writeManifest', () => {

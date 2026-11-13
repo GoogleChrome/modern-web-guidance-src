@@ -11,7 +11,9 @@ Related environment variables can be set at `<repo_root>/.env`.
 
 **Safety Note:** The nightly scripts implement a strict fail-fast mechanism. They will immediately abort if the repository has **any uncommitted changes** (including untracked files). This ensures no user progress is accidentally lost. The workflow executes entirely within isolated `nightly-*` branches created directly from `origin/main`. Please avoid using the `nightly-*` prefix for your own active local branches to prevent any potential conflicts.
 
-Evaluation results are uploaded automatically to the dashboard and can be viewed at `go/guidance-evals`.
+Evaluation results are uploaded automatically to the dashboard and can be viewed at `go/guidance-evals`. After all agents finish, the run also calls `pnpm public:publish` to mirror the new suites to the public dashboard (see `src/harness/public/RUNBOOK.md`); its outcome is included in the summary email.
+
+**GitHub CLI requirement for public publishing:** When running on `main`, the post-run publishing step runs `pnpm public:publish` and dispatches the GitHub Pages deployment workflow. This requires `gh` CLI to be installed and authenticated (`gh auth login` with `workflow` scope). The script checks `gh auth status` at startup and will fail fast before running agents if authentication is missing.
 
 ## 2. Generating the Cron Job Entry
 Please run all the following commands from within the `src/harness/nightly/` directory.

@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractSuiteSummary } from './summary-extractor.js';
+import {
+    sanitizeReasoningEffort,
+    normalizeReasoningEffort,
+    getEffortLevel,
+    getEffortTooltip,
+    compareEffortLevels,
+    pickHigherPrecedenceEffort,
+    renderEffortChip,
+} from './utils.js';
 
 /**
  * Builds a run whose grader results contain `passed` passes out of `total` checks.
@@ -55,7 +64,7 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
     assert.strictEqual(guide.guidedRate, 75);
 });
 
-test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and exact unrounded uplift', () => {
+test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and rounded-rate-consistent uplift', () => {
     const summary = extractSuiteSummary('run-3', {
         results: {
             'daily-grind - scrollspy - unguided': [{
@@ -90,7 +99,7 @@ test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and ex
     const scrollspy = summary.guides.scrollspy;
     assert.strictEqual(scrollspy.unguidedRate, 33);
     assert.strictEqual(scrollspy.guidedRate, 67);
-    assert.strictEqual(scrollspy.uplift, 33);
+    assert.strictEqual(scrollspy.uplift, 34);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 120000);
     assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
     assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
@@ -216,9 +225,9 @@ test('extractSuiteSummary counts distinct task-guide scenarios and excludes earl
 test('extractSuiteSummary emits Spotlight slices only for featured guides, aligned by check id', () => {
     const run = (checks: Array<[string, boolean]>, extra: Record<string, unknown> = {}) => ({
         runNumber: 1,
-        prompt: 'add a search box',
-        discipline: 'ui-behaviors',
-        guidesUsed: ['highlight-text-ranges'],
+        prompt: 'add an action menu',
+        discipline: 'ui-components',
+        guidesUsed: ['menu'],
         runtime: { agentRuntime: 60000, graderRuntime: 5000 },
         tokenUsage: { total: 100000, cached: 60000 },
         results: checks.map(([id, passed]) => ({ id, passed, message: `check ${id}` })),
@@ -226,18 +235,18 @@ test('extractSuiteSummary emits Spotlight slices only for featured guides, align
     });
     const summary = extractSuiteSummary('nightly-2026-10-28_01-55-42-claude_code', {
         results: {
-            'task - highlight-text-ranges - guided': [run([['a', true], ['b', true], ['c', false]])],
+            'task - menu - guided': [run([['a', true], ['b', true], ['c', false]])],
             // Unguided lists checks in a different order; slices must align by id, not position.
-            'task - highlight-text-ranges - unguided': [run([['c', false], ['a', true], ['b', false]], { guidesUsed: [] })],
+            'task - menu - unguided': [run([['c', false], ['a', true], ['b', false]], { guidesUsed: [] })],
             'task - not-featured - guided': [run([['x', true]])],
             'task - not-featured - unguided': [run([['x', false]])],
         },
     } as never);
     assert.ok(summary);
-    assert.deepStrictEqual(Object.keys(summary.showcase), ['highlight-text-ranges']);
-    const slice = summary.showcase['highlight-text-ranges'];
-    assert.strictEqual(slice.prompt, 'add a search box');
-    assert.strictEqual(slice.discipline, 'ui-behaviors');
+    assert.deepStrictEqual(Object.keys(summary.showcase), ['menu']);
+    const slice = summary.showcase['menu'];
+    assert.strictEqual(slice.prompt, 'add an action menu');
+    assert.strictEqual(slice.discipline, 'ui-components');
     assert.deepStrictEqual([slice.unguided.passed, slice.unguided.total, slice.guided.passed, slice.guided.total], [1, 3, 2, 3]);
     assert.strictEqual(slice.guided.uncachedTokens, 40000);
     assert.strictEqual(slice.guided.earlyFailure, false);
@@ -246,4 +255,126 @@ test('extractSuiteSummary emits Spotlight slices only for featured guides, align
         ['check b', false, true],
         ['check c', false, false],
     ]);
+});
+
+test('extractSuiteSummary preserves valid reasoningEffort and omits absent or malformed values', () => {
+    const baseResults = {
+        'task - preload-prerender - guided': [mockRun(4, 4)],
+        'task - preload-prerender - unguided': [mockRun(2, 4)],
+    };
+
+    const legacy = extractSuiteSummary('legacy-suite', { results: baseResults });
+    assert.ok(legacy);
+    assert.strictEqual('reasoningEffort' in legacy, false);
+
+    const observed = extractSuiteSummary('observed-suite', {
+        results: baseResults,
+        reasoningEffort: { level: 'high', source: 'observed' },
+    });
+    assert.ok(observed);
+    assert.deepStrictEqual(observed.reasoningEffort, { level: 'high', source: 'observed' });
+
+    const configured = extractSuiteSummary('configured-suite', {
+        results: baseResults,
+        reasoningEffort: { level: 'medium', source: 'configured' },
+    });
+    assert.ok(configured);
+    assert.deepStrictEqual(configured.reasoningEffort, { level: 'medium', source: 'configured' });
+
+    const modelId = extractSuiteSummary('model-id-suite', {
+        results: baseResults,
+        reasoningEffort: { level: 'low', source: 'model-id' },
+    });
+    assert.ok(modelId);
+    assert.deepStrictEqual(modelId.reasoningEffort, { level: 'low', source: 'model-id' });
+
+    const agentDefault = extractSuiteSummary('agent-default-suite', {
+        results: baseResults,
+        reasoningEffort: { source: 'agent-default' },
+    });
+    assert.ok(agentDefault);
+    assert.deepStrictEqual(agentDefault.reasoningEffort, { source: 'agent-default' });
+
+    for (const bad of [
+        null,
+        'high',
+        { level: 'high', source: 'bogus' },
+        { source: 'observed' },
+        { level: 'MEDIUM', source: 'configured' },
+        { level: '   ', source: 'configured' },
+        { level: '<script>alert(1)</script>', source: 'observed' },
+    ]) {
+        const summary = extractSuiteSummary('malformed-suite', {
+            results: baseResults,
+            reasoningEffort: bad as never,
+        });
+        assert.ok(summary);
+        assert.strictEqual('reasoningEffort' in summary, false);
+    }
+});
+
+test('extractSuiteSummary preserves curated flag when present', () => {
+    const regular = extractSuiteSummary('regular-suite', { results: {} });
+    assert.ok(regular);
+    assert.strictEqual('curated' in regular, false);
+
+    const curated = extractSuiteSummary('curated-suite', {
+        results: {},
+        curated: true,
+    } as never);
+    assert.ok(curated);
+    assert.strictEqual(curated.curated, true);
+});
+
+test('reasoningEffort helpers format provenance tooltips, order levels, and reject unsafe tokens', () => {
+    assert.deepStrictEqual(normalizeReasoningEffort(undefined), { source: 'agent-default' });
+    assert.strictEqual(sanitizeReasoningEffort({ level: 'custom_tier-2', source: 'observed' })?.level, 'custom_tier-2');
+    assert.strictEqual(sanitizeReasoningEffort({ level: ' High ', source: 'observed' }), undefined);
+    assert.strictEqual(getEffortLevel(undefined), 'default');
+    assert.strictEqual(getEffortLevel({ source: 'agent-default' }), 'default');
+    assert.strictEqual(getEffortLevel({ level: 'xhigh', source: 'configured' }), 'xhigh');
+
+    assert.strictEqual(
+        getEffortTooltip({ level: 'high', source: 'observed' }),
+        'Reasoning effort: high (observed from agent logs)'
+    );
+    assert.strictEqual(
+        getEffortTooltip({ level: 'medium', source: 'configured' }),
+        'Reasoning effort: medium (configured by harness)'
+    );
+    assert.strictEqual(
+        getEffortTooltip({ level: 'low', source: 'model-id' }),
+        'Reasoning effort: low (from model ID)'
+    );
+    assert.strictEqual(
+        getEffortTooltip({ source: 'agent-default' }),
+        'Reasoning effort: default (CLI built-in default; not explicitly configured or logged)'
+    );
+    assert.strictEqual(
+        getEffortTooltip(undefined),
+        'Reasoning effort: default (CLI built-in default; not explicitly configured or logged)'
+    );
+
+    const levels = ['default', 'max', 'high', 'low', 'off', 'xhigh', 'medium'];
+    assert.deepStrictEqual(
+        [...levels].sort(compareEffortLevels),
+        ['off', 'low', 'medium', 'high', 'xhigh', 'max', 'default']
+    );
+
+    assert.deepStrictEqual(
+        pickHigherPrecedenceEffort(
+            { level: 'high', source: 'configured' },
+            { level: 'high', source: 'observed' }
+        ),
+        { level: 'high', source: 'observed' }
+    );
+
+    const rejectedMarkup = renderEffortChip({ level: '<img src=x onerror=1>', source: 'configured' }, { interactive: false });
+    assert.ok(!rejectedMarkup.includes('<img'), 'must reject HTML injection in effort level');
+    assert.ok(rejectedMarkup.includes('data-effort-level="default"'));
+
+    const interactiveBtn = renderEffortChip({ level: 'high', source: 'observed' });
+    assert.ok(interactiveBtn.includes('interestfor="effort-tooltip"'));
+    assert.ok(interactiveBtn.includes('data-effort-level="high"'));
+    assert.ok(interactiveBtn.includes('data-effort-source="observed"'));
 });
