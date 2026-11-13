@@ -363,8 +363,8 @@
     </header>
 
     <!-- Progress Tracker -->
-    <div class="progress-container" aria-label="Form Progress">
-      <ol class="progress-tracker">
+    <div class="progress-container">
+      <ol class="progress-tracker" aria-label="Form Progress">
         <li class="step active" aria-current="step" id="step1">1</li>
         <li class="step" id="step2">2</li>
         <li class="step" id="step3">3</li>
@@ -484,7 +484,7 @@
           <!-- Checkboxes (Multi-select) -->
           <div class="form-group">
             <label id="interestsLabel">Interests</label>
-            <div class="checkbox-group" aria-labelledby="interestsLabel">
+            <div class="checkbox-group" role="group" aria-labelledby="interestsLabel">
               <label class="control-item">
                 <input type="checkbox" name="interests" value="tech">
                 <span>Technology</span>
