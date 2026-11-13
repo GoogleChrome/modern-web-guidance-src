@@ -3,7 +3,7 @@ import { basename, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
-import { MAX_SOURCE_FILE_BYTES, scanFiles, scanRepoFiles } from './scanners/index.ts';
+import { MAX_SOURCE_FILE_BYTES, scanFiles, scanRepoFiles, shouldScanFile } from './scanners/index.ts';
 import type {
   AnalyzerFinding,
   AnalyzerRule,
@@ -366,7 +366,11 @@ export async function runAnalyzeCli(
       const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
       const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
       files.set(fileKey, content);
-      findings = scanFiles(files, activeRules, { includeDocsAndTests: true });
+      const fileFilterOptions = { includeDocsAndTests: true, ignoreAncestorDirs: true };
+      findings = scanFiles(files, activeRules, { fileFilterOptions });
+      if (findings.length === 0 && !shouldScanFile(fileKey, content, fileFilterOptions)) {
+        return errorCliResult(`Target file cannot be scanned (unsupported, minified, or vendored): ${targetDir}`, isJson, targetDir);
+      }
     } else {
       findings = await scanRepoFiles(resolvedDir, activeRules, {
         maxFiles: options?.maxFiles,

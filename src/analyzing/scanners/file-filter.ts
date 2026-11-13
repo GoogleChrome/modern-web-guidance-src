@@ -271,6 +271,8 @@ export interface FileFilterOptions {
   readonly maxLineLength?: number;
   readonly excludeCorpusNonAppDirs?: boolean;
   readonly includeDocsAndTests?: boolean;
+  /** Apply path rules to the file name only (for an explicitly named file target). */
+  readonly ignoreAncestorDirs?: boolean;
 }
 
 /**
@@ -431,10 +433,11 @@ export const MAX_SOURCE_FILE_BYTES = 1_000_000;
  * Master predicate determining whether a file should be scanned by analyzer rules.
  */
 export function shouldScanFile(
-  relPath: string,
+  targetPath: string,
   content?: string,
   options?: FileFilterOptions,
 ): boolean {
+  const relPath = options?.ignoreAncestorDirs ? posix.basename(normalizePath(targetPath)) : targetPath;
   if (
     isVendoredOrGeneratedPath(relPath, options) ||
     (!options?.includeDocsAndTests && isDocsOrTestsPath(relPath))

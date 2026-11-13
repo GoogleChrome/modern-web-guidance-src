@@ -739,4 +739,49 @@ describe('runAnalyzeCli', () => {
       assert.deepEqual(parsedClean.guides, []);
     });
   });
+
+  it('scans an explicitly named file under a skipped directory such as build/', async () => {
+    await withTempDir(async (testDir) => {
+      await mkdir(join(testDir, 'build/x'), { recursive: true });
+      await writeFile(join(testDir, 'build/x/app.css'), '.box::-webkit-scrollbar { display: none; }\n');
+
+      const res = await runAnalyzeCli(['build/x/app.css', '--json'], { cwd: testDir });
+      assert.equal(res.exitCode, 0);
+      const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
+      assert.equal(parsed.totalFindings, 1);
+      assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, 'build/x/app.css');
+    });
+  });
+
+  it('exits 1 for an explicitly named file that cannot be scanned', async () => {
+    await withTempDir(async (testDir) => {
+      for (const file of ['README.md', 'app.min.css']) {
+        await writeFile(join(testDir, file), '.box::-webkit-scrollbar { display: none; }\n');
+        const message = `Target file cannot be scanned (unsupported, minified, or vendored): ${file}`;
+
+        const resHuman = await runAnalyzeCli([file], { cwd: testDir });
+        assert.equal(resHuman.exitCode, 1, file);
+        assert.equal(resHuman.stderr, `Error: ${message}\n`);
+
+        const resJson = await runAnalyzeCli([file, '--json'], { cwd: testDir });
+        assert.equal(resJson.exitCode, 1, file);
+        assert.equal((JSON.parse(resJson.output) as AnalyzeJsonOutput).error, message);
+      }
+    });
+  });
+
+  it('still reports findings for an explicitly named vendored library file', async () => {
+    await withTempDir(async (testDir) => {
+      for (const file of ['aos.js', 'node_modules/aos/aos.js']) {
+        await mkdir(join(testDir, file, '..'), { recursive: true });
+        await writeFile(join(testDir, file), '/*! AOS v2.3.4 | MIT License */\nvar x = 1;\n');
+
+        const res = await runAnalyzeCli([file, '--json'], { cwd: testDir });
+        assert.equal(res.exitCode, 0, file);
+        const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
+        assert.equal(parsed.guides[0]?.guideId, 'scroll-entry-exit-effects', file);
+        assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, file);
+      }
+    });
+  });
 });

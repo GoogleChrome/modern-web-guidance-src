@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { Dirent } from 'node:fs';
 import { open, readdir } from 'node:fs/promises';
-import { extname, join, relative, resolve } from 'node:path';
+import { basename, extname, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
@@ -388,13 +388,14 @@ export function scanFiles(
       const ctx: FileContext = { relPath, content, repo, commit };
 
       if (!shouldScanFile(relPath, content, filterOpts)) {
+        const libPath = filterOpts?.ignoreAncestorDirs ? basename(relPath) : relPath;
         if (
           depRules.length > 0 &&
-          !isBuildOrInstallPath(relPath) &&
-          !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(relPath))
+          !isBuildOrInstallPath(libPath) &&
+          !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(libPath))
         ) {
           findings.push(
-            ...materializeRuleMatches(ctx, scanVendoredLibraryRules(relPath, content, depRules)),
+            ...materializeRuleMatches(ctx, scanVendoredLibraryRules(libPath, content, depRules)),
           );
         }
         continue;
