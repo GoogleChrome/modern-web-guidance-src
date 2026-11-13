@@ -26,3 +26,6 @@
 - The `source` property is no-longer needed and discouraged so should not be present in the rule.
 - Do not speculate URLs that likely trigger state changes (e.g., `/logout`).
 - The page should be a Multi-Page Application (MPA), not a Single Page Application (SPA).
+- The rule set includes a `"prefetch"` rule with `"eagerness": "moderate"` as the default starting configuration.
+- Broad `"where"` document rules that match site-wide links (such as `"href_matches": "/*"`) use `"eagerness": "moderate"` or `"conservative"` rather than `"eager"` or `"immediate"`.
+- No `"prerender"` rule matches all links on the page; any `"prerender"` rule is scoped to specific opt-in links or URLs.

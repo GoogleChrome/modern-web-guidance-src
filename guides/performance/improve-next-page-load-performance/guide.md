@@ -62,14 +62,23 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
 </script>
 ```
 
-### Example of a simple document rule for prerendering all same-origin links on a page
+### Recommended default: Document rule for prefetching same-origin links with `moderate` eagerness
 
 ```html
 <script type="speculationrules">
   {
-    "tag": "all-links-speculations",
-    "prerender": [{
-      "where": { "href_matches": "/*" }
+    "tag": "default-page-prefetch",
+    "prefetch": [{
+      "where": {
+        "and": [
+          { "href_matches": "/*" },
+          { "not": { "href_matches": "/logout" } },
+          { "not": { "href_matches": "/*\\?*(^|&)add-to-cart=*" } },
+          { "not": { "selector_matches": ".no-prefetch" } },
+          { "not": { "selector_matches": "[rel~=nofollow]" } }
+        ]
+      },
+      "eagerness": "moderate"
     }]
   }
 </script>
@@ -85,7 +94,7 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
       "where": {
         "and": [
           { "href_matches": "/*" },
-          { "not": {"href_matches": "/wp-admin"}},
+          { "not": { "href_matches": "/logout" } },
           { "not": {"href_matches": "/*\\?*(^|&)add-to-cart=*"}},
           { "not": {"selector_matches": ".do-not-prerender"}},
           { "not": {"selector_matches": "[rel~=nofollow]"}}
@@ -96,21 +105,35 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
 </script>
 ```
 
-### Example of a mixed rule set
+### Example of a mixed rule set with opt-in prerendering
 
-This example shows a rule set that prefetches all links eagerly, and then goes further than this to prerender those same links when it gets more signals with `moderate` eagerness.
+This example prefetches general same-origin links on hover (`"eagerness": "moderate"`) while opting specific high-confidence links (`.prerender-link`) into `prerender` once analytics and stateful scripts handle `document.prerendering`:
 
 ```html
 <script type="speculationrules">
   {
     "prefetch": [{
-      "tag": "prefetch-speculations",
-      "where": { "href_matches": "/*" },
-      "eagerness": "eager"
+      "tag": "default-page-prefetch",
+      "where": {
+        "and": [
+          { "href_matches": "/*" },
+          { "not": { "href_matches": "/logout" } },
+          { "not": { "selector_matches": ".no-prefetch" } },
+          { "not": { "selector_matches": ".prerender-link" } },
+          { "not": { "selector_matches": "[rel~=nofollow]" } }
+        ]
+      },
+      "eagerness": "moderate"
     }],
     "prerender": [{
-      "tag": "prerender-speculations",
-      "where": { "href_matches": "/*" },
+      "tag": "opt-in-prerender",
+      "where": {
+        "and": [
+          { "not": { "href_matches": "/logout" } },
+          { "selector_matches": ".prerender-link" },
+          { "not": { "selector_matches": "[rel~=nofollow]" } }
+        ]
+      },
       "eagerness": "moderate"
     }]
   }
