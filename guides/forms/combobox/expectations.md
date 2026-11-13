@@ -19,6 +19,6 @@
 - When the combobox offers to add new items, selecting the add option puts the typed text into the input and the text then appears as an option when the input is filtered again.
 - When the combobox highlights matches and `CSS.highlights` is supported, the matched substring of each option label is registered as a range in `CSS.highlights`.
 - When the combobox highlights matches and `CSS.highlights` is supported, the option label text is not wrapped in a `<mark>` element.
-- When the combobox highlights matches, the match style sets a `text-decoration` in addition to a background color.
+- When the combobox highlights matches, the match style sets a `text-decoration` or inverts the text and background colors in addition to a tinted background.
 - When the combobox highlights matches and `CSS.highlights` is unsupported, the matched substring of each option label is wrapped in a `<mark>` element.
 - When popover or anchor positioning is unsupported, the `<input>` keeps its `list` attribute and the `<datalist>` supplies suggestions.

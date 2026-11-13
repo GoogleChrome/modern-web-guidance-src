@@ -126,19 +126,11 @@ CSS.highlights.set('combobox-match', new Highlight(...ranges));
 ```
 
 ```css
-/* Tinted background plus underline so the match is not conveyed by color alone */
+/* Convey the match by more than color: an underline (below) or inverted colors (background: CanvasText; color: Canvas) */
 ::highlight(combobox-match) {
   background-color: light-dark(#d2e3fc, #3b5a8c);
   color: inherit;
   text-decoration: underline 2px;
-}
-
-/* Forced colors override author colors, so invert with system colors */
-@media (forced-colors: active) {
-  ::highlight(combobox-match) {
-    background-color: Highlight;
-    color: HighlightText;
-  }
 }
 ```
 
