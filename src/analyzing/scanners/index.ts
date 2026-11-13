@@ -383,9 +383,7 @@ export function scanFiles(
       if (JS_EXTENSIONS.has(ext)) {
         const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
         findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, project));
-        if (content.includes('css`')) {
-          findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
-        }
+        findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
       }
     } catch {
       // Per-file exception boundary: an unexpected parser/AST exception on one malformed
