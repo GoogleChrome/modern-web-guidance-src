@@ -70,6 +70,27 @@ export const customTextDecorationsCssMatcher: CssRuleMatcher = {
       return null;
     }
 
+    // Must have border-bottom or border-bottom-width
+    const borderBottom =
+      styleRule.getPropertyValue('border-bottom') ||
+      styleRule.getPropertyValue('border-bottom-width');
+    if (!borderBottom || /^(?:none|0(?:px|rem|em)?|transparent)(?:\s*!important)?$/i.test(borderBottom.trim())) {
+      return null;
+    }
+
+    // Must have text-decoration: none (or text-decoration-line: none)
+    const textDecoration =
+      styleRule.getPropertyValue('text-decoration') ||
+      styleRule.getPropertyValue('text-decoration-line');
+    const hasTextDecNone = textDecoration && textDecoration.toLowerCase().includes('none');
+
+    // Underline simulation requires removing standard underline (text-decoration: none)
+    // or having explicit .underline class naming
+    const isExplicitUnderline = /\.underline\b/i.test(selector);
+    if (!hasTextDecNone && !isExplicitUnderline) {
+      return null;
+    }
+
     // Check for display: block, flex, grid
     const displayVal = styleRule.getPropertyValue('display');
     if (displayVal) {
@@ -104,27 +125,6 @@ export const customTextDecorationsCssMatcher: CssRuleMatcher = {
       if (val && val !== 'none' && val !== '0') {
         return null;
       }
-    }
-
-    // Must have border-bottom or border-bottom-width
-    const borderBottom =
-      styleRule.getPropertyValue('border-bottom') ||
-      styleRule.getPropertyValue('border-bottom-width');
-    if (!borderBottom || /^(?:none|0(?:px|rem|em)?|transparent)(?:\s*!important)?$/i.test(borderBottom.trim())) {
-      return null;
-    }
-
-    // Must have text-decoration: none (or text-decoration-line: none)
-    const textDecoration =
-      styleRule.getPropertyValue('text-decoration') ||
-      styleRule.getPropertyValue('text-decoration-line');
-    const hasTextDecNone = textDecoration && textDecoration.toLowerCase().includes('none');
-
-    // Underline simulation requires removing standard underline (text-decoration: none)
-    // or having explicit .underline class naming
-    const isExplicitUnderline = /\.underline\b/i.test(selector);
-    if (!hasTextDecNone && !isExplicitUnderline) {
-      return null;
     }
 
     return {
