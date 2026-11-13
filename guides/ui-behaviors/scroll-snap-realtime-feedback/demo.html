@@ -141,8 +141,8 @@
       return closestIndex;
     };
 
-    // Scroll snap event handlers live on HTMLElement, not Element, so check the scroller itself.
-    if ('onscrollsnapchanging' in gallery) {
+    // Scroll snap event handlers live on HTMLElement.prototype, not Element.prototype.
+    if ('onscrollsnapchanging' in HTMLElement.prototype) {
       // Eagerly highlight the thumbnail for the pending snap target
       // while the user is still mid-scroll. This gives immediate feedback
       // before the gesture completes.
