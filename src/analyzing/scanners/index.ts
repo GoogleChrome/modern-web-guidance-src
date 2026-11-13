@@ -238,6 +238,12 @@ function scanJsAst(
       const val = Reflect.get(sf, prop, sf);
       return typeof val === 'function' ? val.bind(sf) : val;
     },
+    has(_target, prop) {
+      return Reflect.has(getSourceFile(), prop);
+    },
+    getPrototypeOf() {
+      return Reflect.getPrototypeOf(getSourceFile());
+    },
   });
 
   const matcherCtx: JsMatcherContext = {

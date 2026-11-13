@@ -48,14 +48,16 @@ function getEnclosingAtRule(
       curr instanceof CSSKeyframesRule ||
       curr instanceof CSSAtRule
     ) {
-      if (headerCache.has(curr)) {
-        return headerCache.get(curr) ?? null;
+      let header = headerCache.get(curr);
+      if (header === undefined) {
+        const cssText = curr.cssText;
+        const brace = cssText.indexOf('{');
+        header = brace !== -1 ? cssText.slice(0, brace).trim() : null;
+        headerCache.set(curr, header);
       }
-      const cssText = curr.cssText;
-      const brace = cssText.indexOf('{');
-      const header = brace !== -1 ? cssText.slice(0, brace).trim() : null;
-      headerCache.set(curr, header);
-      return header;
+      if (header !== null) {
+        return header;
+      }
     }
   }
   return null;
