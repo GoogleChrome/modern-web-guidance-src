@@ -40,19 +40,62 @@ void test('sfc-extractor: Lit CSS preserves offsets and CRLF throughout the sour
   assert.deepEqual(blocks[0]?.match(/\r\n/g), source.match(/\r\n/g));
 });
 
-// Known regex limitations; AST-based tagged-template extraction is a follow-up.
-void test('sfc-extractor: ignores Lit CSS text inside comments', {
-  todo: 'Requires AST-based tagged-template extraction',
-}, () => {
-  const source = '// css `.card { color: red; }`;';
+void test('sfc-extractor: ignores Lit CSS text inside comments', () => {
+  const source = [
+    '// css `.card { color: red; }`;',
+    '/* css `.card { color: blue; }`; */',
+  ].join('\n');
   assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
 });
 
-void test('sfc-extractor: ignores Lit CSS text inside strings', {
-  todo: 'Requires AST-based tagged-template extraction',
-}, () => {
-  const source = 'const text = "css `.card { color: red; }`";';
+void test('sfc-extractor: ignores Lit CSS text inside strings, templates, regexes, and member accesses', () => {
+  const source = [
+    'const text = "css `.card { color: red; }`";',
+    'const tmpl = `example: css \\`.card { color: red; }\\``;',
+    'const pattern = /css`.card`/g;',
+    'const member = obj.css`.card { color: red; }`;',
+  ].join('\n');
   assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
+void test('sfc-extractor: Lit CSS AST handles comments before backtick, JSX, and nested interpolation braces', async (t) => {
+  await t.test('extracts css /* comment */ `...` with exact offsets', () => {
+    const css = '.card { color: red; }';
+    const source = `const styles = css /* lit */ \`\n${css}\n\`;`;
+    const blocks = extractStyleBlocks('src/card.ts', source);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0]?.trim(), css);
+    assert.equal(blocks[0]?.length, source.length);
+    assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+  });
+
+  await t.test('masks ${...} interpolations containing closing braces in strings or nested templates', () => {
+    const source = [
+      'const styles = css`',
+      '  .a { color: ${fn("}")}; }',
+      '  .b { background: ${isDark ? `black` : `white`}; }',
+      '  .c { border-color: ${ok ? `}` : "red"}; }',
+      '`;',
+    ].join('\r\n');
+    const blocks = extractStyleBlocks('src/card.tsx', source);
+    assert.equal(blocks.length, 1);
+    const block = blocks[0] ?? '';
+    assert.equal(block.length, source.length);
+    assert.deepEqual(block.match(/\r\n/g), source.match(/\r\n/g));
+    assert.equal(block.includes('fn("}")'), false);
+    assert.equal(block.includes('`black`'), false);
+    assert.equal(block.includes('.c { border-color:'), true);
+  });
+
+  await t.test('extracts Lit CSS inside TSX JSX expressions while skipping unclosed literals', () => {
+    const jsxSource = 'export const View = () => <div>{css`.pill { color: red; }`}</div>;';
+    const blocks = extractStyleBlocks('src/view.tsx', jsxSource);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0]?.trim(), '.pill { color: red; }');
+
+    const unclosed = 'const broken = css`.pill { color: red; }';
+    assert.deepEqual(extractStyleBlocks('src/broken.ts', unclosed), []);
+  });
 });
 
 void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
