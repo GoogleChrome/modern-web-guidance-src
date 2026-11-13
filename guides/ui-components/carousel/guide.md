@@ -105,7 +105,8 @@ The track is a flex row that scrolls on the inline axis and snaps to slides. Eac
 Position the Previous and Next buttons over the track's start and end edges (a `position: absolute` container with a `z-index` so slides don't cover them, and `pointer-events: none` on the container with `pointer-events: auto` on the buttons so the track stays scrollable between them). Build the marker buttons from the slides' `data-marker-name` values, and style the active one with `[aria-current="true"]`.
 
 ```css
-.carousel-markers button[aria-current="true"] {
+/* The marker button supplies the 24px target; the visible dot is its ::after */
+.carousel-markers button[aria-current="true"]::after {
   background: #0a5; /* example color; any clear contrast with the other markers works */
 }
 ```
