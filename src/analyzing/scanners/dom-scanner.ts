@@ -379,6 +379,11 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
       }
       tokenIndex = matchRes.nextIndex;
 
+      // Glimmer's `...attributes` spreads the caller's attributes, like `{...props}` in JSX.
+      if (matcher.skipIfHasSpread && Object.hasOwn(elAttrs, '...attributes')) {
+        continue;
+      }
+
       const { line, column } = matchRes.token;
       const view = createDomElementView(tagLower, elAttrs, line, column);
       const result = matcher.matchElement(view, ctx);

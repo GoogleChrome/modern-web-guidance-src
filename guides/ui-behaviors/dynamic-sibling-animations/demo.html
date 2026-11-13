@@ -18,9 +18,14 @@
       border-radius: 4px;
       animation: fade-in 0.4s both;
       animation-delay: calc(var(--sibling-index) * var(--stagger-time));
-      animation-delay: calc(sibling-index() * var(--stagger-time));
-      @media (prefers-reduced-motion: reduce){
+      @media (prefers-reduced-motion: reduce) {
         animation: none;
+      }
+    }
+
+    @supports (animation-delay: calc(sibling-index() * 0.1s)) {
+      #stagger-list > .item {
+        animation-delay: calc(sibling-index() * var(--stagger-time));
       }
     }
 
@@ -32,9 +37,11 @@
     }
   </style>
   <script type="module">
-    if(!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')){
+    if (!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')) {
       const staggerList = document.getElementById('stagger-list');
-      [...staggerList.children].forEach((el, index)=>el.style.setProperty('--sibling-index', index + 1));
+      [...staggerList.children].forEach((el, index) => {
+        el.style.setProperty('--sibling-index', index + 1);
+      });
     }
   </script>
 </head>

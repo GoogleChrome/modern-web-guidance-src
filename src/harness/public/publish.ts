@@ -11,8 +11,8 @@ import { PUBLIC_EVALS_DIR } from './builder.ts';
  *
  * Plain `git` plus `fs`, not the `gh-pages` package: that library expands the
  * publish directory into one argument per file and hands all of them to a
- * single `git rm`, which exceeds the kernel's argument limit (`E2BIG`) at the
- * ~35k files a full site holds.
+ * single `git rm`, which exceeds the kernel's argument limit (`E2BIG`) at
+ * about 35k files, a count a site with one file per run artifact can reach.
  */
 
 const BRANCH = 'gh-pages';
@@ -102,8 +102,9 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
   fs.cpSync(source, published, { recursive: true, filter: src => !path.basename(src).startsWith('.') });
   fs.writeFileSync(path.join(clone, '.nojekyll'), '');
 
-  // `--force`: a stale `.gitignore` (`*.log`) left on the branch by an earlier deploy would otherwise
-  // silently drop every `modern-web.log`; the dot-prefix filter above is the only junk guard this tree needs.
+  // `--force`: a stale `.gitignore` left on the branch by an earlier deploy must not decide what is
+  // published (its `*.log` rule once dropped every `modern-web.log`); the dot-prefix filter above is the
+  // only junk guard this tree needs.
   git(clone, ['add', '-A', '--force', '--', PUBLIC_EVALS_DIR, '.nojekyll']);
   if (!indexDiffersFromHead(clone, head)) {
     return false;
@@ -177,8 +178,8 @@ function syncClone(repoUrl: string, head: string | null): string {
 
 /**
  * Whether the staged tree differs from the published commit. Answered by exit
- * code, not by listing paths: `git status` output for a full site is several
- * megabytes, more than `execFileSync` buffers.
+ * code, not by listing paths: `git status` output for a site of many small
+ * files is several megabytes, more than `execFileSync` buffers.
  */
 function indexDiffersFromHead(clone: string, head: string | null): boolean {
   if (head === null) {

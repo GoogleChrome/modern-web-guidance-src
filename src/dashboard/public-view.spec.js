@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildSuite, writeManifest } from '../harness/public/builder.ts';
+import { ARTIFACTS_FILE, buildSuite, writeManifest } from '../harness/public/builder.ts';
 import { LocalSuiteStore } from '../harness/public/suite-store.ts';
-import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore } from '../harness/public/fixtures/make-store.ts';
+import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore, SECURITY_RUN } from '../harness/public/fixtures/make-store.ts';
 
 /**
  * The public, unauthenticated view must render entirely from `public-evals/`
@@ -152,6 +152,21 @@ async function mockPrivateBucket(page, options = {}) {
     return route.fulfill({ status: 404, body: 'not found' });
   });
   return authHeaders;
+}
+
+/**
+ * Records, in order, each request for a suite's `artifacts.json` or for a run's own patch or log file.
+ * @param {import('@playwright/test').Page} page
+ * @returns {string[]} Paths relative to `public-evals/`; filled in as requests are made.
+ */
+function recordArtifactRequests(page) {
+  /** @type {string[]} */
+  const requested = [];
+  page.on('request', request => {
+    const rel = new URL(request.url()).pathname.split('/public-evals/')[1];
+    if (rel && /\/(artifacts\.json|agent\.patch|modern-web\.log)$/.test(rel)) requested.push(rel);
+  });
+  return requested;
 }
 
 test.describe('Public view', () => {
@@ -336,8 +351,12 @@ test.describe('Public view', () => {
   test('a capped agent.patch placeholder is shown as text, not as an empty diff', async ({ page }) => {
     await servePublicCopy(page);
     const placeholder = '# diff omitted: 1.5 MB exceeds the 1 MB cap\n';
-    // Registered after servePublicCopy so it wins for this one artifact.
-    await page.context().route('**/public-evals/**/agent.patch', route => route.fulfill({ body: placeholder, contentType: 'text/plain' }));
+    const artifacts = JSON.parse(fs.readFileSync(path.join(publicDir, SUITE, ARTIFACTS_FILE), 'utf8'));
+    for (const relPath of Object.keys(artifacts)) {
+      if (relPath.endsWith('/agent.patch')) artifacts[relPath] = placeholder;
+    }
+    // Registered after servePublicCopy so it wins for this one file.
+    await page.context().route('**/public-evals/**/artifacts.json', route => route.fulfill({ json: artifacts }));
     await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
 
     const security = page.locator('.task-accordion[data-guide="security"]').first();
@@ -346,6 +365,122 @@ test.describe('Public view', () => {
     await expect(page.locator('#modal')).toContainText('# diff omitted: 1.5 MB exceeds the 1 MB cap');
     await expect(page.locator('#modal .diff-file-details')).toHaveCount(0);
     await expect(page.locator('#modal')).not.toContainText('diff --git');
+  });
+
+  test('the builder\'s artifacts.json serves both Diff and Log with one request', async ({ page }) => {
+    await servePublicCopy(page);
+    const requested = recordArtifactRequests(page);
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Diff' }).first().click();
+    await expect(page.locator('#modal')).toContainText('a/src/app.ts');
+    await page.keyboard.press('Escape');
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    await expect(page.locator('#modal')).toContainText('GET /guides/security');
+
+    expect(requested).toEqual([`${SUITE}/artifacts.json`]);
+  });
+
+  test('Diff and Log read from the suite\'s artifacts.json when it has one', async ({ page }) => {
+    await servePublicCopy(page);
+    const patch = 'diff --git a/from/artifacts.ts b/from/artifacts.ts\n--- a/from/artifacts.ts\n+++ b/from/artifacts.ts\n@@ -0,0 +1 @@\n+ok\n';
+    /** @type {(value?: unknown) => void} */
+    let release = () => {};
+    const held = new Promise(resolve => { release = resolve; });
+    // Registered after servePublicCopy so it wins: a file that has this run's patch but not its log, held back until released.
+    await page.context().route('**/public-evals/**/artifacts.json', async route => {
+      await held;
+      return route.fulfill({ json: { [`${SECURITY_RUN}/agent.patch`]: patch } });
+    });
+    const requested = recordArtifactRequests(page);
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Diff' }).first().click();
+    await expect(page.locator('#modal')).toContainText('Loading content...');
+    release();
+    await expect(page.locator('#modal')).toContainText('a/from/artifacts.ts');
+    await page.keyboard.press('Escape');
+
+    // The log is missing from a file that exists: an error, without asking for a separate log file that cannot be there.
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    await expect(page.locator('#modal')).toContainText('File not found');
+    expect(requested).toEqual([`${SUITE}/artifacts.json`]);
+  });
+
+  test('a suite with no artifacts.json opens its per-run files, then uses the file once it is published', async ({ page }) => {
+    await servePublicCopy(page);
+    let published = false;
+    // Registered after servePublicCopy so these win: no artifacts.json at first, and the patch as its own file.
+    await page.context().route('**/public-evals/**/artifacts.json', route => published
+      ? route.fulfill({ json: { [`${SECURITY_RUN}/modern-web.log`]: 'log from artifacts.json\n' } })
+      : route.fulfill({ status: 404, body: 'not found' }));
+    const perRunPatch = 'diff --git a/per/run.ts b/per/run.ts\n--- a/per/run.ts\n+++ b/per/run.ts\n@@ -0,0 +1 @@\n+ok\n';
+    await page.context().route('**/public-evals/**/agent.patch', route => route.fulfill({ body: perRunPatch, contentType: 'text/plain' }));
+    const requested = recordArtifactRequests(page);
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Diff' }).first().click();
+    await expect(page.locator('#modal')).toContainText('a/per/run.ts');
+    expect(requested).toEqual([`${SUITE}/artifacts.json`, `${SUITE}/${SECURITY_RUN}/agent.patch`]);
+    await page.keyboard.press('Escape');
+
+    published = true;
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    await expect(page.locator('#modal')).toContainText('log from artifacts.json');
+  });
+
+  test('a failed artifacts.json load is tried again on the next click', async ({ page }) => {
+    await servePublicCopy(page);
+    let failedOnce = false;
+    // Registered after servePublicCopy so it wins: a server error the first time, the file after that.
+    await page.context().route('**/public-evals/**/artifacts.json', route => {
+      if (failedOnce) return route.fulfill({ json: { [`${SECURITY_RUN}/modern-web.log`]: 'log from artifacts.json\n' } });
+      failedOnce = true;
+      return route.fulfill({ status: 500, body: 'server error' });
+    });
+    const requested = recordArtifactRequests(page);
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    await expect(page.locator('#modal')).toContainText('Error loading file');
+    await page.keyboard.press('Escape');
+
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    await expect(page.locator('#modal')).toContainText('log from artifacts.json');
+    expect(requested).toEqual([`${SUITE}/artifacts.json`, `${SUITE}/artifacts.json`]);
+  });
+
+  test('a Log opened while a Diff is still loading shows the log, not the diff', async ({ page }) => {
+    await servePublicCopy(page);
+    const patch = 'diff --git a/from/artifacts.ts b/from/artifacts.ts\n--- a/from/artifacts.ts\n+++ b/from/artifacts.ts\n@@ -0,0 +1 @@\n+ok\n';
+    /** @type {(value?: unknown) => void} */
+    let release = () => {};
+    const held = new Promise(resolve => { release = resolve; });
+    // Registered after servePublicCopy so it wins: both artifacts in one file, held back until released.
+    await page.context().route('**/public-evals/**/artifacts.json', async route => {
+      await held;
+      return route.fulfill({ json: { [`${SECURITY_RUN}/agent.patch`]: patch, [`${SECURITY_RUN}/modern-web.log`]: 'log from artifacts.json\n' } });
+    });
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Diff' }).first().click();
+    await expect(page.locator('#modal')).toContainText('Loading content...');
+    await page.keyboard.press('Escape');
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    release();
+
+    await expect(page.locator('#modal')).toContainText('log from artifacts.json');
+    await expect(page.locator('#modal')).not.toContainText('a/from/artifacts.ts');
   });
 
   test('a missing public manifest is not an error', async ({ page }) => {

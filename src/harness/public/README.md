@@ -15,14 +15,18 @@ public-evals/
   build-state.json                                 builder bookkeeping; front-ends ignore it
   <suiteId>/
     evals.json                                     one job's results
-    <run>/<guide>/<task>/<guided|unguided>/
-      agent.patch                                  code diff for that run (optional)
-      modern-web.log                               guides the agent requested (optional)
+    artifacts.json                                 every trial's agent.patch and modern-web.log
 ```
 
 - `<suiteId>` is the raw suite's folder name, e.g. `nightly-2026-10-20_20-43-48-codex_cli`.
-- `<run>` is the 1-based run number; `<guide>`, `<task>`, and the mode come from the
-  result key (see below). Example: `1/security/daily-grind/guided/agent.patch`.
+- `artifacts.json` is one JSON object per suite mapping
+  `<run>/<guide>/<task>/<guided|unguided>/<file>` to that file's text. `<run>` is
+  the 1-based run number; `<guide>`, `<task>`, and the mode come from the result
+  key (see below). Example key: `1/security/daily-grind/guided/agent.patch`.
+  It is one file rather than one per artifact because a suite has about 600
+  artifacts, and the number of published files is the suspected cause of slow
+  Pages deploys. The text is JSON-escaped, so parse the file before searching
+  it for a string.
 - `suites.gen.json` is the only index. Do not list the directory.
 - `build-state.json` lets the next build skip suites whose inputs have not
   changed. It holds suite ids, bucket generations, excluded guide names,
@@ -33,8 +37,10 @@ public-evals/
   was rejected.
 - Fetch with plain relative URLs: `fetch('public-evals/suites.gen.json')`. Add a
   10-minute bucketed cache-buster (`?t=<Math.floor(Date.now() / 600_000)>`) to
-  every `public-evals/` fetch; GitHub Pages caches for ~10 min, and bucketing
-  keeps repeat fetches within the same session cacheable.
+  every `public-evals/` fetch except `artifacts.json`; GitHub Pages caches for
+  ~10 min, and bucketing keeps repeat fetches within the same session cacheable.
+  Fetch `artifacts.json` without one: it is the largest file, and a changing URL
+  would download it again where a plain one is revalidated.
 
 ## `suites.gen.json`
 
@@ -84,7 +90,7 @@ the guide is always the middle part.
 | `guidesUsed`, `retrievedGuides`, `fileReadGuides`, `guidanceToolsUsed`, `expectedToolPrefixes` | guide/tool usage lists |
 | `runtime` | `{ agentRuntime?, graderRuntime? }` milliseconds |
 | `tokenUsage` | `{ total, cached }` |
-| `files` | which of `agent.patch`, `modern-web.log` exist for this run. **Use this; do not probe.** |
+| `files` | which of `agent.patch`, `modern-web.log` exist for this run in `artifacts.json`. **Use this; do not probe.** |
 | `results` | `PublicCheck[]` |
 
 **Per check (`PublicCheck`)**
@@ -102,6 +108,8 @@ All strings have been path-scrubbed: anything that was under a home directory
 or the repo checkout is now repo-relative or `~/...`.
 
 ## `agent.patch` and `modern-web.log`
+
+Both are values in the suite's `artifacts.json`, not files of their own.
 
 - `agent.patch` is a `diff --git` unified patch. For runs that stored a built
   app instead of a patch, the builder generated a single-file diff of the
@@ -142,7 +150,8 @@ So nothing needs UI for it:
   is not churned in and out.
 - Builds are incremental: a suite is rebuilt only when its raw `evals.json`
   changes, its override changes, its own model is released or un-released, the
-  builder's field lists or scrub patterns change, or
+  builder's field lists or scrub patterns change, the builder's
+  `OUTPUT_REVISION` is bumped (as it is for a change of output layout), or
   `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. Releasing an additional
   model only builds the suites that were waiting on it. Changes to summary
   extraction or accessibility classification (`summary-extractor.js`,
@@ -171,9 +180,9 @@ pnpm public:build --all --source /tmp/store --allowlist /tmp/allowlist.json --ou
 ls /tmp/pe/public-evals
 ```
 
-The fixture store above has only `evals.json`, so the build writes one file per
-suite. Add `<run>/<guide>/<task>/<mode>/agent.patch` and `modern-web.log` under
-the suite folder to see per-run artifacts come through. `--suite <id>` builds a
+The fixture store above has only `evals.json`, so the build writes `evals.json`
+and an empty `artifacts.json` per suite. Add `<run>/<guide>/<task>/<mode>/agent.patch`
+and `modern-web.log` under the suite folder to see per-run artifacts come through. `--suite <id>` builds a
 single suite (skipping retention and state updates), provided the allowlist
 selects it.
 The dev server (`pnpm dashboard`) serves `out/public-evals/` at `/public-evals/`,

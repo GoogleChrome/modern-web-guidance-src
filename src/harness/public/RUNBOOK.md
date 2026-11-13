@@ -49,6 +49,10 @@ pnpm public:publish --dry-run     # build and report only
 pnpm public:publish --no-dispatch # push gh-pages without dispatching deploy
 ```
 
+Keep that checkout up to date with `origin/main`. A checkout whose output
+revision, field lists, or scrub patterns differ from the one that last
+published treats every job as changed and rebuilds all of them with its own rules.
+
 Usernames are scrubbed from two sources: the names the builder harvests from
 each job's own paths, plus your OS user. To add more (other operators whose
 runs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
@@ -81,7 +85,7 @@ Edit `/tmp/al.json`, rerun, and watch the summary line:
 |---|---|
 | add an id to `exclude` | `1 removed`, directory gone, manifest shorter |
 | remove it again | `1 built` |
-| add `{ "id": …, "excludeGuides": ["webmcp"] }` to `overrides` | that job `built` again; no `*/webmcp/` folder; `grep -c webmcp …/evals.json` → 0 |
+| add `{ "id": …, "excludeGuides": ["webmcp"] }` to `overrides` | that job `built` again; `grep -c webmcp …/evals.json` → 0, and no `artifacts.json` key contains `/webmcp/`: `node -p "Object.keys(require('…/artifacts.json')).filter(k => k.includes('/webmcp/')).length"` → 0 |
 | an unknown guide in `excludeGuides` | job `skipped  override: …` and removed (fail closed) |
 | empty `releasedModels` | every job `skipped  unreleased-model`, published ones removed |
 | `retention.maxSuites: 1` | oldest job `removed` |
