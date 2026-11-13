@@ -21,7 +21,7 @@ This doc covers what `supported` guarantees, the bar for adding a format, and wh
 | `expected-skip` | Deliberately doesn't scan it: either our rules can't apply (no stylesheet syntax to match), or we measured it on real code and our rules found nothing worth the cost. |
 | `unsupported` | Doesn't scan it. |
 
-For the web source files listed in the table below, `0 findings` shouldn't quietly mean "we didn't look at those files": skipped files are counted by extension in the scan output. (Embedded shapes like MUI `sx` objects inside a `.tsx` file are documented here, not counted.)
+For the web source files listed in the table below, `0 findings` shouldn't quietly mean "we didn't look at those files": the planned skip reporting (#4 above) will count skipped files by extension in the scan output. (Embedded shapes like MUI `sx` objects inside a `.tsx` file are documented here, not counted.)
 
 ## The bar for adding a format
 
@@ -50,13 +50,14 @@ For smaller ecosystems, we lean on domain experts from that community to get the
 | --- | --- | --- |
 | `.css` | supported | |
 | `.html`, `.htm`, `.php` (incl. `.blade.php`) | supported | |
-| `.js`, `.mjs`, `.cjs`, `.ts`, `.mts`, `.cts`, `.jsx`, `.tsx` | supported | |
+| `.js`, `.mjs`, `.cjs`, `.ts`, `.mts`, `.cts`, `.jsx`, `.tsx` | supported | DOM rules run on JSX in `.jsx`/`.tsx` only |
+| JSX inside `.js`, `.mjs`, `.cjs` (DOM rules) | unsupported | Under review |
 | `package.json` | supported | Dependency rules |
 | `.vue`, `.svelte`, `.astro`: script, style and template blocks | supported | |
 | `css` tagged templates in JS/TS (Lit, Emotion, styled-components' `css` helper) | supported | Bodies with no selector rarely match |
 | `.gts`, `.gjs` (Ember template tag) | supported | Well under `.astro`'s scale; taken on Ember-community input and small extraction cost |
-| `<style lang="scss">` / `lang="less"` blocks | supported | Scanned today, but rules after a `//` comment are dropped; fix in flight |
-| `.scss`, `.less` | unsupported | Not scanned today; support in flight |
+| `<style lang="scss">` / `lang="less"` blocks | supported | `//` comments masked |
+| `.scss`, `.less` | supported | `//` comments masked |
 | `createGlobalStyle` (styled-components) | unsupported | Under review |
 | styled-components and Emotion component styles (`styled.div`) | expected-skip | Mostly bare declarations |
 | Object-style CSS-in-JS | expected-skip | |

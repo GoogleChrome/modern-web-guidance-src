@@ -299,7 +299,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 3. **Ground in real code**: Inspect only the `rule-writing` corpus. Do not inspect held-out code.
 
 ### Step 2: Static Matcher Authoring
-1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML/JSX DOM via `linkedom`), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json`).
+1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML and SFC markup via `linkedom`, JSX via the TypeScript AST), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json` and vendored library files).
 2. **Implement in `src/analyzing/rules/<guide-id>.ts`**:
    - Set `fastTokens` pre-filters to ensure fast string pre-screening.
    - Target high recall on the structural shape of the legacy idiom.
