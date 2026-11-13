@@ -287,7 +287,7 @@ describe('buildSuite', () => {
     });
     await buildSuite(SUITE, options);
     const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
-    assert.ok(!fs.existsSync(path.join(suiteDir, SECURITY_RUN)));
+    assert.ok(Object.keys(readArtifacts(options.outDir)).every(k => !k.startsWith(`${SECURITY_RUN}/`)));
     const evals = JSON.parse(fs.readFileSync(path.join(suiteDir, 'evals.json'), 'utf8')) as PublicEvals;
     assert.ok(Object.keys(evals.results).every(key => !key.includes(' - security - ')));
   });
@@ -447,7 +447,7 @@ describe('incremental builds', () => {
     const second = await buildSelectedSuites(withOverride);
     assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
     assert.deepEqual(stateFor(options.outDir).suites[SUITE].excludeGuides, ['security']);
-    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN)));
+    assert.ok(Object.keys(readArtifacts(options.outDir)).every(k => !k.startsWith(`${SECURITY_RUN}/`)));
   });
 
   test('--force rebuilds an unchanged suite', async () => {
