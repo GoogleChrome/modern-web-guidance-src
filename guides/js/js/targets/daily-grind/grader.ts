@@ -406,8 +406,12 @@ async function getSelectedSortLabel(sortSelect: Locator): Promise<string> {
   });
 }
 
+function getVisibleCards(page: Page): Locator {
+  return page.locator('main .card:visible');
+}
+
 async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: number[] }> {
-  return page.locator('main .card').evaluateAll((cards) => {
+  return getVisibleCards(page).evaluateAll((cards) => {
     const titles: string[] = [];
     const prices: number[] = [];
     for (const card of cards) {
@@ -815,13 +819,13 @@ test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', as
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-  const initialCount = await page.locator('main .card').count();
+  const initialCount = await getVisibleCards(page).count();
   const { categorySelect, groupToggle } = getMenuControls(page);
 
   await groupToggle.click();
   await categorySelect.selectOption('espresso');
 
-  const filteredCount = await page.locator('main .card').count();
+  const filteredCount = await getVisibleCards(page).count();
   expect(filteredCount).toBeGreaterThanOrEqual(1);
   expect(filteredCount).toBeLessThan(initialCount);
 
@@ -951,19 +955,19 @@ test('Exp 18: replaces connected DOM container nodes atomically via replaceChild
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-  const initialCount = await page.locator('main .card').count();
+  const initialCount = await getVisibleCards(page).count();
   expect(initialCount).toBeGreaterThanOrEqual(6);
 
   await resetSpyCounters(page);
   const { categorySelect } = getMenuControls(page);
   await categorySelect.selectOption('cold-brew');
 
-  const filteredCount = await page.locator('main .card').count();
+  const filteredCount = await getVisibleCards(page).count();
   expect(filteredCount).toBeGreaterThanOrEqual(1);
   expect(filteredCount).toBeLessThan(initialCount);
 
   await categorySelect.selectOption('all');
-  expect(await page.locator('main .card').count()).toBe(initialCount);
+  expect(await getVisibleCards(page).count()).toBe(initialCount);
 
   const spies = await readSpies(page);
   expect(spies.withArgsReplaceChildrenCalls).toBeGreaterThanOrEqual(2);
