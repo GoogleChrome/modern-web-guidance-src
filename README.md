@@ -551,6 +551,20 @@ codex plugin add modern-web-guidance@googlechrome
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
 
+<details>
+<summary><b>Claude Code (if installed via <code>claude-plugins-official</code>)</b></summary>
+
+Anthropic stopped updating third-party plugins in their built-in `claude-plugins-official` marketplace on Oct 12, stranding installs at `v0.0.194` ([details](https://github.com/GoogleChrome/modern-web-guidance-src/issues/3533)). Switch to the `googlechrome` marketplace to get updates:
+
+```shell
+/plugin uninstall modern-web-guidance@claude-plugins-official
+/plugin marketplace add GoogleChrome/modern-web-guidance
+/plugin install modern-web-guidance@googlechrome
+/plugin  # Select GoogleChrome marketplace, press enter, enable AutoUpdate
+/reload-plugins
+```
+</details>
+
 Otherwise, consult your agent's documentation for updating plugins and skills.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/shield-check.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Evals to prove this works well
