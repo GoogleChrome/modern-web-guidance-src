@@ -16,8 +16,8 @@ const NON_JS_SCRIPT_TYPES: ReadonlySet<string> = new Set([
   'speculationrules',
 ]);
 
-const SCRIPT_TAG_REGEX = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
-const STYLE_TAG_REGEX = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
+const SCRIPT_TAG_REGEX = /<script(?=[\s/>])([^>]*)>([\s\S]*?)<\/script>/gi;
+const STYLE_TAG_REGEX = /<style(?=[\s/>])([^>]*)>([\s\S]*?)<\/style>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
 const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
 const GLIMMER_COMMENT_REGEX = /\{\{~?!--[\s\S]*?--~?\}\}|\{\{~?![\s\S]*?\}\}/g;
@@ -402,7 +402,7 @@ export function isMarkupPath(relPath: string): boolean {
  */
 export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
   if (!isMarkupPath(relPath)) {
-    return content.includes('css`') ? extractLitCssBlocks(content) : [];
+    return /\bcss\s*`/.test(content) ? extractLitCssBlocks(content) : [];
   }
 
   const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
