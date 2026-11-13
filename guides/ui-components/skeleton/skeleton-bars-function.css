@@ -1,0 +1,35 @@
+/* One text bar as a closed rounded rectangle, ending at --end. --i is the
+   bar's line index; the bar sits on the line pitch (--bar-height +
+   --bar-gap, which is 1lh). It reads --bar-height, --bar-gap and
+   --bar-radius from the element it is used on. */
+@function --skeleton-bar(--i <number>: 0, --end <length-percentage>: 100%, --start <length>: 0px) {
+  --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2);
+  result: move to calc(var(--start) + var(--bar-radius)) var(--y),
+    hline to calc(var(--end) - var(--bar-radius)),
+    arc to var(--end) calc(var(--y) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(var(--y) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(var(--end) - var(--bar-radius)) calc(var(--y) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to calc(var(--start) + var(--bar-radius)),
+    arc to var(--start) calc(var(--y) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(var(--y) + var(--bar-radius)),
+    arc to calc(var(--start) + var(--bar-radius)) var(--y) of var(--bar-radius) var(--bar-radius) cw,
+    close;
+}
+
+/* Each element lists its own bars (index, end position), because shape()
+   cannot repeat a path from a count. */
+.skeleton[aria-busy="true"] h2 {
+  --bars: shape(from 0 0, --skeleton-bar(0, 88%));
+}
+
+.skeleton[aria-busy="true"] p {
+  --bars: shape(from 0 0, --skeleton-bar(0, 100%), --skeleton-bar(1, 92%), --skeleton-bar(2, 68%));
+}
+
+.skeleton[aria-busy="true"] p:has(> time) {
+  --bars: shape(from 0 0, --skeleton-bar(0, 48%));
+}
+
+.skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
+  --bars: shape(from 0 0, --skeleton-bar(0, 42%));
+}

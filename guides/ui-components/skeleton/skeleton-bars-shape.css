@@ -1,0 +1,76 @@
+/* Each bar written out as a shape() subpath, for browsers without @function */
+.skeleton[aria-busy="true"] h2 {
+  --bars: shape(from 0 0,
+    move to var(--bar-radius) calc(var(--bar-gap) / 2),
+    hline to calc(88% - var(--bar-radius)),
+    arc to 88% calc(calc(var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(88% - var(--bar-radius)) calc(calc(var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-radius)),
+    arc to var(--bar-radius) calc(var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
+    close);
+}
+
+.skeleton[aria-busy="true"] p {
+  --bars: shape(from 0 0,
+    move to var(--bar-radius) calc(var(--bar-gap) / 2),
+    hline to calc(100% - var(--bar-radius)),
+    arc to 100% calc(calc(var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(100% - var(--bar-radius)) calc(calc(var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-radius)),
+    arc to var(--bar-radius) calc(var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
+    close,
+    move to var(--bar-radius) calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2),
+    hline to calc(92% - var(--bar-radius)),
+    arc to 92% calc(calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(92% - var(--bar-radius)) calc(calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-radius)),
+    arc to var(--bar-radius) calc(1 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
+    close,
+    move to var(--bar-radius) calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2),
+    hline to calc(68% - var(--bar-radius)),
+    arc to 68% calc(calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(68% - var(--bar-radius)) calc(calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) + var(--bar-radius)),
+    arc to var(--bar-radius) calc(2 * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
+    close);
+}
+
+.skeleton[aria-busy="true"] p:has(> time) {
+  --bars: shape(from 0 0,
+    move to var(--bar-radius) calc(var(--bar-gap) / 2),
+    hline to calc(48% - var(--bar-radius)),
+    arc to 48% calc(calc(var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(48% - var(--bar-radius)) calc(calc(var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-radius)),
+    arc to var(--bar-radius) calc(var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
+    close);
+}
+
+.skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
+  --bars: shape(from 0 0,
+    move to var(--bar-radius) calc(var(--bar-gap) / 2),
+    hline to calc(42% - var(--bar-radius)),
+    arc to 42% calc(calc(var(--bar-gap) / 2) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(42% - var(--bar-radius)) calc(calc(var(--bar-gap) / 2) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(calc(var(--bar-gap) / 2) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(calc(var(--bar-gap) / 2) + var(--bar-radius)),
+    arc to var(--bar-radius) calc(var(--bar-gap) / 2) of var(--bar-radius) var(--bar-radius) cw,
+    close);
+}
