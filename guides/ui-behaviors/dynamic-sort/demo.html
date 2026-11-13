@@ -24,8 +24,8 @@
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
+      gap: 1rem 2rem;
+      align-items: flex-start;
     }
 
     select,
@@ -34,14 +34,80 @@
       padding: 0.25rem 0.5rem;
     }
 
-    .button-group {
-      display: inline-flex;
+    fieldset {
+      --sort-accent: #005fcc;
+      display: flex;
+      align-items: center;
+      border: 0;
+      margin: 0;
+      padding: 0;
+
+      & legend {
+        float: inline-start;
+        padding: 0;
+        margin-block-end: 0.75rem;
+        font-weight: 600;
+      }
+
+      /* Native radios stay in the accessibility tree and keyboard flow; the labels are the visible segments. */
+      & input[type="radio"] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        opacity: 0;
+      }
+
+      & label {
+        padding: 0.4rem 1rem;
+        border: 1px solid var(--sort-accent);
+        color: var(--sort-accent);
+        background: #fff;
+        cursor: pointer;
+        transition: background-color 0.15s, color 0.15s;
+
+        &:hover {
+          background: #e8f0fe;
+        }
+      }
+
+      & label + input + label {
+        margin-inline-start: -1px;
+      }
+
+      & input:first-of-type + label {
+        border-start-start-radius: 999px;
+        border-end-start-radius: 999px;
+      }
+
+      & label:last-of-type {
+        border-start-end-radius: 999px;
+        border-end-end-radius: 999px;
+      }
+
+      & input:checked + label {
+        background: var(--sort-accent);
+        color: #fff;
+      }
+
+      & input:focus-visible + label {
+        outline: 3px solid var(--sort-accent);
+        outline-offset: 2px;
+        position: relative;
+      }
     }
 
-    button[aria-pressed="true"] {
-      background: #005fcc;
-      color: #fff;
-      border-color: #005fcc;
+    @media (prefers-reduced-motion: reduce) {
+      fieldset label {
+        transition: none;
+      }
+    }
+
+    @media (forced-colors: active) {
+      fieldset input:checked + label {
+        outline: 2px solid CanvasText;
+        outline-offset: -4px;
+      }
     }
 
     section + section {
@@ -51,7 +117,7 @@
     #list {
       list-style: none;
       padding: 0;
-      margin: 1.5rem 0 0;
+      margin-block: 1.5rem 0;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 1rem;
@@ -65,33 +131,50 @@
       background: #fff;
       content-visibility: auto;
       contain-intrinsic-size: auto 110px;
-    }
 
-    .item h2 {
-      font-size: 1rem;
-      margin: 0 0 0.5rem;
-    }
+      & h2 {
+        font-size: 1rem;
+        margin-block: 0 0.5rem;
+        margin-inline: 0;
+      }
 
-    .item p {
-      margin: 0;
-      color: #444;
+      & p {
+        margin: 0;
+        color: #444;
+      }
     }
 
     table {
       border-collapse: collapse;
-      min-width: 300px;
+      inline-size: 100%;
+      max-inline-size: 32rem;
+      margin-block-start: 1.5rem;
+
+      & thead th {
+        background: #f3f4f6;
+        border-block-end: 2px solid #005fcc;
+        font-weight: 600;
+      }
+
+      & td:last-child {
+        font-variant-numeric: tabular-nums;
+      }
     }
 
     th,
     td {
-      text-align: left;
-      padding: 0.5rem 1rem;
+      text-align: start;
+      padding: 0.75rem 1rem;
       border-bottom: 1px solid #ccc;
     }
 
     tbody tr {
       view-transition-name: match-element;
       background: #fff;
+
+      &:last-child td {
+        border-block-end-color: transparent;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -128,15 +211,19 @@
   </section>
 
   <section>
-    <h2>Buttons control the table rows</h2>
+    <h2>Radios control the table rows</h2>
     <div class="controls">
-      <!-- aria-pressed marks the active key. -->
-      <div class="button-group" role="group" aria-label="Sort by">
-        <button type="button" data-key="name" aria-pressed="true">Name</button>
-        <button type="button" data-key="price" aria-pressed="false">Price</button>
-      </div>
-      <!-- The label states the current direction, not the action. -->
-      <button type="button" id="direction" aria-pressed="false">Ascending</button>
+      <!-- Native radios expose the selected key and direction without ARIA. -->
+      <fieldset>
+        <legend>Sort by</legend>
+        <input type="radio" name="key" id="key-name" value="name" checked><label for="key-name">Name</label>
+        <input type="radio" name="key" id="key-price" value="price"><label for="key-price">Price</label>
+      </fieldset>
+      <fieldset>
+        <legend>Direction</legend>
+        <input type="radio" name="direction" id="dir-asc" value="asc" checked><label for="dir-asc">Ascending</label>
+        <input type="radio" name="direction" id="dir-desc" value="desc"><label for="dir-desc">Descending</label>
+      </fieldset>
     </div>
 
     <p id="table-status" role="status" class="visually-hidden"></p>
@@ -223,8 +310,8 @@
     const table = document.getElementById('table');
     const tbody = document.getElementById('rows');
     const tableStatus = document.getElementById('table-status');
-    const keyButtons = document.querySelectorAll('.button-group button');
-    const directionButton = document.getElementById('direction');
+    const keyRadios = document.querySelectorAll('input[name="key"]');
+    const directionRadios = document.querySelectorAll('input[name="direction"]');
     const rowsById = new Map();
     for (const item of items) {
       const tr = document.createElement('tr');
@@ -238,30 +325,26 @@
     let sortKey = 'name';
     let descending = false;
 
-    function commitButtons() {
-      for (const button of keyButtons) {
-        button.setAttribute('aria-pressed', String(button.dataset.key === sortKey));
-      }
-      directionButton.setAttribute('aria-pressed', String(descending));
-      directionButton.textContent = descending ? 'Descending' : 'Ascending';
-
+    function commitRadios() {
       const value = `${sortKey}-${descending ? 'desc' : 'asc'}`;
       sortWithTransition(table, () => reorder(tbody, orderedNodes(rowsById, value)));
       tableStatus.textContent =
         `Sorted by ${sortKey}, ${descending ? 'descending' : 'ascending'}, ${items.length} items`;
     }
 
-    for (const button of keyButtons) {
-      button.addEventListener('click', () => {
-        sortKey = button.dataset.key;
-        commitButtons();
+    for (const radio of keyRadios) {
+      radio.addEventListener('change', () => {
+        sortKey = radio.value;
+        commitRadios();
       });
     }
 
-    directionButton.addEventListener('click', () => {
-      descending = !descending;
-      commitButtons();
-    });
+    for (const radio of directionRadios) {
+      radio.addEventListener('change', () => {
+        descending = radio.value === 'desc';
+        commitRadios();
+      });
+    }
 
     reorder(list, orderedNodes(cardsById, sortSelect.value));
     reorder(tbody, orderedNodes(rowsById, 'name-asc'));
