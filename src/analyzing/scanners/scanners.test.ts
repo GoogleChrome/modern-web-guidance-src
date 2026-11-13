@@ -76,10 +76,32 @@ void test('scanFiles: Lit CSS tag whitespace preserves finding locations', async
   }
 
   await t.test('does not scan untagged templates or a different identifier as CSS', () => {
-    for (const tag of ['', 'notcss ']) {
+    for (const tag of ['', 'notcss ', 'obj.css']) {
       const source = `const styles = ${tag}\`.tooltip { anchor-name: --tip; }\`;`;
       assert.deepEqual(scanFiles(new Map([['src/card.js', source]]), [rule]), []);
     }
+  });
+
+  await t.test('ignores Lit CSS text in comments/strings and preserves lines across brace interpolations', () => {
+    const ignored = [
+      '// css `.tooltip { anchor-name: --tip; }`;',
+      '/* css `.tooltip { anchor-name: --tip; }`; */',
+      'const doc = "css `.tooltip { anchor-name: --tip; }`";',
+      'const docTmpl = `css \\`.tooltip { anchor-name: --tip; }\\``;',
+    ].join('\n');
+    assert.deepEqual(scanFiles(new Map([['src/docs.ts', ignored]]), [rule]), []);
+
+    const complexSource = [
+      "import { css } from 'lit';",
+      'const styles = css`',
+      '  .a { content: "${fn("}")}"; }',
+      '  .b { color: ${useDark ? `black` : `}`}; }',
+      '  .tooltip { anchor-name: --tip; }',
+      '`;',
+    ].join('\n');
+    const findings = scanFiles(new Map([['src/complex.ts', complexSource]]), [rule]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 5);
   });
 });
 
