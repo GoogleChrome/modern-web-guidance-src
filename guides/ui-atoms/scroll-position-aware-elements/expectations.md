@@ -4,3 +4,4 @@
 * The sentinel elements used for fallback are styled to have zero dimensions or use absolute positioning so they do not affect the document flow.
 * The floating element is styled to be hidden by default and only becomes visible when the user has scrolled away from the top of the container.
 * The implementation uses transitionable `visibility` to handle entry/exit animations, ensuring the floating element is properly removed from the tab order when hidden.
+* If focus is on the scroll position aware element when it disappears, focus is moved to the scrollable region. If there is no scrollable region, focus is returned to the body element.

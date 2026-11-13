@@ -1,10 +1,20 @@
 import {
+  CSSAtRule,
+  CSSConditionRule,
+  CSSGroupingRule,
+  CSSKeyframeRule,
+  CSSKeyframesRule,
+  CSSNestedDeclarations,
+  CSSStyleRule,
+  getPropertyValues,
+  getRules,
   parse as parseCss,
-  walkRules,
-  walkStyleRules,
+  resolveSelector,
+  type CSSRule,
 } from 'cssomnom';
 import type {
   AnalyzerMatch,
+  CssDeclaration,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -27,6 +37,32 @@ function collectPropertyNames(text: string, regex: RegExp, target: Set<string>):
   }
 }
 
+function getEnclosingAtRule(
+  rule: CSSRule,
+  headerCache: WeakMap<CSSRule, string | null>,
+): string | null {
+  for (let curr = rule.parentRule; curr; curr = curr.parentRule) {
+    if (curr instanceof CSSStyleRule) continue;
+    if (
+      curr instanceof CSSGroupingRule ||
+      curr instanceof CSSKeyframesRule ||
+      curr instanceof CSSAtRule
+    ) {
+      let header = headerCache.get(curr);
+      if (header === undefined) {
+        const cssText = curr.cssText;
+        const brace = cssText.indexOf('{');
+        header = brace !== -1 ? cssText.slice(0, brace).trim() : null;
+        headerCache.set(curr, header);
+      }
+      if (header !== null) {
+        return header;
+      }
+    }
+  }
+  return null;
+}
+
 function prepareCssContext(
   filePath: string,
   cssContent: string,
@@ -39,31 +75,85 @@ function prepareCssContext(
     return null;
   }
 
-  const allProperties = new Set<string>();
-  for (const entry of walkRules(sheet)) {
-    if (entry.style) {
-      for (const decl of entry.style._declarations) {
-        allProperties.add(decl.name.toLowerCase());
-      }
+  let rawAndConditionProperties: Set<string> | null = null;
+  const propertyResultCache = new Map<string, boolean>();
+  const conditionTexts: string[] = [];
+  const atRuleHeaderCache = new WeakMap<CSSRule, string | null>();
+  const styleRules: CssRuleView[] = [];
+
+  for (const rule of getRules(sheet)) {
+    if (rule instanceof CSSConditionRule && rule.conditionText) {
+      conditionTexts.push(rule.conditionText);
     }
     if (
-      entry.rule &&
-      'conditionText' in entry.rule &&
-      typeof entry.rule.conditionText === 'string'
+      !(rule instanceof CSSStyleRule) &&
+      !(rule instanceof CSSNestedDeclarations) &&
+      !(rule instanceof CSSKeyframeRule)
     ) {
-      collectPropertyNames(entry.rule.conditionText, CONDITION_PROP_RE, allProperties);
+      continue;
     }
+    const selectorText = resolveSelector(rule);
+    if (selectorText === null) continue;
+
+    const { style } = rule;
+    let cachedDecls: readonly CssDeclaration[] | null = null;
+    let cachedPropSet: Set<string> | null = null;
+    let cachedParentAtRule: string | null | undefined;
+
+    styleRules.push({
+      selectorText,
+      line: rule.location?.line ?? 1,
+      column: rule.location?.column ?? 1,
+      get parentAtRule() {
+        if (cachedParentAtRule === undefined) {
+          cachedParentAtRule = getEnclosingAtRule(rule, atRuleHeaderCache);
+        }
+        return cachedParentAtRule;
+      },
+      get declarations() {
+        return (cachedDecls ??= Array.from(style).flatMap((property) => {
+          const values = getPropertyValues(style, property, {
+            logical: false,
+            shorthands: false,
+          });
+          return values.length > 0
+            ? values.map((value) => ({ property, value }))
+            : [{ property, value: style.getPropertyValue(property) }];
+        }));
+      },
+      getPropertyValue: (p: string) => style.getPropertyValue(p) || null,
+      hasProperty: (p: string) => {
+        const norm = p.startsWith('--') ? p : p.toLowerCase();
+        cachedPropSet ??= new Set(style);
+        return cachedPropSet.has(norm) || style.getPropertyValue(norm) !== '';
+      },
+    });
   }
 
-  collectPropertyNames(cssContent, DECL_PROP_RE, allProperties);
-
-  const styleRules: CssRuleView[] = Array.from(walkStyleRules(sheet));
   const ctx: CssMatcherContext = {
     filePath,
     stylesheetText: cssContent,
     rawFileText: rawFileText ?? cssContent,
     styleRules,
-    stylesheetHasProperty: (prop: string) => allProperties.has(prop.toLowerCase()),
+    stylesheetHasProperty: (prop: string) => {
+      const lower = prop.toLowerCase();
+      const cached = propertyResultCache.get(lower);
+      if (cached !== undefined) {
+        return cached;
+      }
+      if (!rawAndConditionProperties) {
+        rawAndConditionProperties = new Set<string>();
+        for (const conditionText of conditionTexts) {
+          collectPropertyNames(conditionText, CONDITION_PROP_RE, rawAndConditionProperties);
+        }
+        collectPropertyNames(cssContent, DECL_PROP_RE, rawAndConditionProperties);
+      }
+      const found =
+        rawAndConditionProperties.has(lower) ||
+        styleRules.some((ruleView) => ruleView.hasProperty(lower));
+      propertyResultCache.set(lower, found);
+      return found;
+    },
     stylesheetHasValue: (substr: string) => cssContent.includes(substr),
   };
 

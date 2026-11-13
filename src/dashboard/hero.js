@@ -1,40 +1,73 @@
-import { getAccessToken, escapeHtml, getAgentBadge, formatSuiteDate } from './utils.js';
+import { getAccessToken, isSignInEnabled, escapeHtml, getAgentBadge, formatSuiteDate } from './utils.js';
 import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 import { AGENT_FAMILIES } from './agents.js';
+import { isLocalServer } from './data-source.js';
+/** @typedef {import('./insights.js').FamilyInsight} FamilyInsight */
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
 /** @typedef {import('./insights.js').ManifestSuite} ManifestSuite */
 /** @typedef {import('./insights.js').RateComparison} RateComparison */
+const MAX_MULTI_NIGHTS = 5;
 /** @type {Record<string, string>} */
 const FAMILY_HINT = { antigravity_cli: 'Gemini' };
 const heroEl = /** @type {HTMLElement | null} */ (document.getElementById('hero'));
 let heroLoadSeq = 0;
+let currentRecentN = 1;
+/** @type {{ suites: ManifestSuite[], fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void, source?: import('./data-source.js').DataSource } | null} */
+let latestHeroInput = null;
 document.addEventListener('DOMContentLoaded', () => {
     const authBtn = document.getElementById('auth-btn');
     const heroAuthBtn = document.getElementById('hero-auth-btn');
     if (heroAuthBtn && authBtn) { heroAuthBtn.addEventListener('click', () => authBtn.click()); }
     const methodAgents = document.getElementById('method-agents');
     if (methodAgents) methodAgents.textContent = `: ${joinNames(AGENT_FAMILIES.map(f => f.label))}`;
+    const windowToggle = document.getElementById('agents-window-toggle');
+    if (windowToggle) {
+        windowToggle.addEventListener('change', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLInputElement) || target.name !== 'agents-window') return;
+            currentRecentN = Math.max(1, parseInt(target.value, 10) || 1);
+            if (latestHeroInput) updateHeroFromSuites(latestHeroInput.suites, latestHeroInput);
+        });
+    }
 });
 /**
  * @param {ManifestSuite[]} suites
- * @param {{ fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void }} [options]
+ * @param {{ fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateHeroFromSuites(suites, { fetchEvals, onHydrated } = {}) {
+export function updateHeroFromSuites(suites, { fetchEvals, onHydrated, source } = {}) {
     if (!heroEl) return;
+    latestHeroInput = { suites, fetchEvals, onHydrated, source };
     const seq = ++heroLoadSeq;
-    const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const isSignedOut = () => (isRemote || suites.length === 0) && !getAccessToken();
+    const isSignedOut = () => (!isLocalServer() || suites.length === 0) && !getAccessToken();
+    const emptyStatus = () => {
+        if (source === 'public') return suites.length === 0 ? 'public-empty' : 'empty';
+        return isSignedOut() ? 'auth' : 'empty';
+    };
     if (suites.length === 0 && isSignedOut()) {
+        syncWindowToggle(0);
         renderPending();
-        setStatus('auth');
+        setStatus(emptyStatus());
         setBusy(false);
         return;
     }
-    const insightOptions = { perAgentRecentN: 1 };
-    const insights = computeHeadlineInsights(suites, insightOptions);
+    let insightOptions = { perAgentRecentN: currentRecentN };
+    let insights = computeHeadlineInsights(suites, insightOptions);
+    if (insights.maxSuitesPerFamily < 2 && currentRecentN !== 1) {
+        currentRecentN = 1;
+        insightOptions = { perAgentRecentN: 1 };
+        insights = computeHeadlineInsights(suites, insightOptions);
+    } else if (currentRecentN > 1) {
+        const clamped = Math.min(MAX_MULTI_NIGHTS, insights.maxSuitesPerFamily);
+        if (currentRecentN !== clamped) {
+            currentRecentN = clamped;
+            insightOptions = { perAgentRecentN: currentRecentN };
+            insights = computeHeadlineInsights(suites, insightOptions);
+        }
+    }
+    syncWindowToggle(insights.maxSuitesPerFamily);
     if (!insights.families.length) {
         renderPending();
-        setStatus(isSignedOut() ? 'auth' : 'empty');
+        setStatus(emptyStatus());
         setBusy(false);
         return;
     }
@@ -56,9 +89,26 @@ export function updateHeroFromSuites(suites, { fetchEvals, onHydrated } = {}) {
         setBusy(false);
     }
 }
+/** @param {number} maxSuitesPerFamily */
+function syncWindowToggle(maxSuitesPerFamily) {
+    const toggle = document.getElementById('agents-window-toggle');
+    const multiRadio = document.getElementById('agents-window-multi');
+    const multiLabel = document.getElementById('agents-window-multi-label');
+    if (!toggle) return;
+    const canToggle = maxSuitesPerFamily >= 2;
+    toggle.hidden = !canToggle;
+    if (!canToggle) return;
+    const multiN = Math.min(MAX_MULTI_NIGHTS, maxSuitesPerFamily);
+    if (multiRadio instanceof HTMLInputElement) multiRadio.value = String(multiN);
+    if (multiLabel) multiLabel.textContent = `Last ${multiN} jobs per model`;
+    const activeVal = currentRecentN > 1 ? String(multiN) : '1';
+    toggle.querySelectorAll('input[name="agents-window"]').forEach(el => {
+        if (el instanceof HTMLInputElement) el.checked = el.value === activeVal;
+    });
+}
 /** @param {boolean} busy */
 function setBusy(busy) { if (heroEl) heroEl.setAttribute('aria-busy', String(busy)); }
-/** @param {'auth' | 'empty' | null} kind */
+/** @param {'auth' | 'empty' | 'public-empty' | null} kind */
 function setStatus(kind) {
     const el = document.getElementById('hero-status');
     const text = document.getElementById('hero-status-text');
@@ -66,10 +116,13 @@ function setStatus(kind) {
     if (!el || !text || !btn) return;
     if (!kind) { el.hidden = true; text.textContent = ''; return; }
     el.hidden = false;
-    btn.hidden = kind !== 'auth';
+    // The sign-in CTA stays for an empty public copy when ?show_login is set so Googlers
+    // can reach internal runs, unless a token is already held (clicking it would sign out).
+    btn.hidden = kind === 'empty' || Boolean(getAccessToken()) || !isSignInEnabled();
     const messages = {
-        'auth': 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.',
-        'empty': 'No nightly evaluation runs were found for this data source yet.'
+        'auth': 'Results live in a private bucket. Sign in with Google to load the latest numbers.',
+        'empty': 'No evaluation jobs were found for this data source yet.',
+        'public-empty': 'No published results yet. Googlers can sign in to see internal runs.'
     };
     text.textContent = messages[kind];
     announce(text.textContent);
@@ -81,6 +134,25 @@ function announce(message) {
     live.textContent = '';
     requestAnimationFrame(() => { live.textContent = message; });
 }
+/** @param {RateComparison | null | undefined} r
+ * @param {'unguided' | 'guided'} side
+ * @returns {number | null} */
+function roundedRate(r, side) {
+    if (!r) return null;
+    const passed = side === 'guided' ? r.guidedPassed : r.unguidedPassed;
+    const total = side === 'guided' ? r.guidedTotal : r.unguidedTotal;
+    if (total > 0) return Math.round((passed / total) * 100);
+    const rate = side === 'guided' ? r.guidedRate : r.unguidedRate;
+    return rate === null ? null : Math.round(rate);
+}
+
+/** @param {RateComparison | null | undefined} r
+ * @returns {number | null} */
+function displayedUpliftPp(r) {
+    const u = roundedRate(r, 'unguided');
+    const g = roundedRate(r, 'guided');
+    return u === null || g === null ? null : g - u;
+}
 /** @param {HeadlineInsights} insights */
 function renderHero(insights) {
     renderEyebrow(insights);
@@ -89,25 +161,25 @@ function renderHero(insights) {
     const el = document.getElementById('method-recent-n');
     const recentN = insights.options.perAgentRecentN;
     if (el) {
-        el.textContent = recentN === 1 ? 'latest nightly run' : `most recent ${recentN} nightly runs`;
+        el.textContent = recentN === 1 ? 'latest job per model' : `most recent ${recentN} jobs per model`;
     }
-    const o = insights.pooled?.overall;
-    announce(o && o.upliftPp !== null ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
+    const overallUplift = displayedUpliftPp(insights.pooled?.overall);
+    announce(overallUplift !== null ? `Latest results loaded: ${signed(overallUplift, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
 }
 function renderPending() {
     const list = document.getElementById('hero-takeaways');
     if (list) {
         list.innerHTML = [
-            pendingCard('overall', 'Change in aggregate pass rate of using best practices', 'percentage-point lift', true),
-            pendingCard('a11y', 'Accessibility', '', false)
+            pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true),
+            pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)
         ].join('');
     }
     const body = document.getElementById('agent-table-body');
     if (body) {
-        body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Runs">${naCell()}</td></tr>`;
+        body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Sample">${naCell()}</td></tr>`;
     }
     const eyebrow = document.getElementById('hero-eyebrow');
-    if (eyebrow) eyebrow.textContent = 'Nightly evaluations';
+    if (eyebrow) eyebrow.textContent = 'Latest jobs per model (last 7 days; nightly or 1.0 baseline)';
 }
 /** @param {HeadlineInsights} insights */
 function renderEyebrow(insights) {
@@ -121,9 +193,9 @@ function renderEyebrow(insights) {
     const el = document.getElementById('hero-eyebrow');
     if (!el) return;
     const latest = latestDateOf(insights);
-    const n = insights.pooled?.suiteCount || 0;
-    const detail = n > 0 ? `<span class="eyebrow-detail"> · ${n} recent ${n === 1 ? 'run' : 'runs'} across ${insights.families.length} agent ${insights.families.length === 1 ? 'family' : 'families'}</span>` : '';
-    el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
+    const recentN = insights.options.perAgentRecentN;
+    const label = recentN === 1 ? 'Latest job per model (last 7 days; nightly or 1.0 baseline)' : `Most recent ${recentN} jobs per model`;
+    el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>${escapeHtml(label)}${latest ? ` · <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
 /** @param {number | null} uRate @param {number | null} gRate */
 function renderTakeawayDumbbell(uRate, gRate) {
@@ -144,38 +216,42 @@ function renderTakeaways(insights) {
     const pooled = insights.pooled;
     /** @type {string[]} */
     const cards = [];
-    if (pooled?.overall && pooled.overall.upliftPp !== null) {
+    const overallUplift = displayedUpliftPp(pooled?.overall);
+    if (pooled?.overall && overallUplift !== null) {
         const o = pooled.overall;
-        const taskCounts = insights.families.flatMap(f => f.suites.map(s => s.taskCount || 0)).filter(n => n > 0);
-        const yTasks = taskCounts.length > 0 ? Math.max(...taskCounts) : 0;
-        const nRuns = pooled.suiteCount || 0;
+        const uRate = roundedRate(o, 'unguided');
+        const gRate = roundedRate(o, 'guided');
+        const recentN = insights.options.perAgentRecentN;
         const mAgents = pooled.familyCount || insights.families.length;
-        const scopeClause = yTasks > 0
-            ? `, across ${yTasks} ${yTasks === 1 ? 'task' : 'tasks'} over ${nRuns} ${nRuns === 1 ? 'run' : 'runs'} and ${mAgents} ${mAgents === 1 ? 'agent' : 'agents'}.`
-            : '';
-        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${nRuns} nightly ${nRuns === 1 ? 'run' : 'runs'}`;
+        const statement = taskStatement(insights, recentN);
+        const suitesSuffix = recentN > 1 || pooled.suiteCount > mAgents ? ` · ${pooled.suiteCount} ${pooled.suiteCount === 1 ? 'job' : 'jobs'}` : '';
+        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${mAgents} ${mAgents === 1 ? 'agent' : 'agents'}${suitesSuffix}`;
         cards.push(takeawayCard({
             metric: 'overall',
             primary: true,
-            label: `Change in aggregate pass rate of using best practices${scopeClause}`,
-            figure: `<span class="figure-val">${signed(o.upliftPp, 0)}</span><span class="unit"> pp</span>`,
-            figureText: `${signed(o.upliftPp, 0)} percentage points`,
-            statement: 'percentage-point lift',
-            visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
-            short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
+            label: 'Best-practice pass rate',
+            figure: `<span class="figure-val">${signed(overallUplift, 0)}</span><span class="unit"> pp</span>`,
+            figureText: `${signed(overallUplift, 0)} percentage points`,
+            statement,
+            visual: renderTakeawayDumbbell(uRate, gRate),
+            short: `<span class="visually-hidden">${fmtPct(uRate)} → ${fmtPct(gRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
     } else {
-        cards.push(pendingCard('overall', 'Change in aggregate pass rate of using best practices', 'percentage-point lift', true));
+        cards.push(pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true));
     }
-    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Accessibility', '', false)); } else {
+    const a11yUplift = displayedUpliftPp(pooled?.a11y);
+    if (!pooled?.a11y || a11yUplift === null) { cards.push(pendingCard('a11y', 'Automated accessibility checks', 'Not a full WCAG audit', false)); } else {
         const a = pooled.a11y;
-        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` across ${a.guideCount} guides` : ''}`;
+        const uRate = roundedRate(a, 'unguided');
+        const gRate = roundedRate(a, 'guided');
+        const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} checks${a.guideCount ? ` · ${a.guideCount} ${a.guideCount === 1 ? 'guide' : 'guides'}` : ''} · 5 dimensions`;
         cards.push(takeawayCard({
             metric: 'a11y',
             primary: false,
-            label: 'Accessibility',
-            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(a.unguidedRate)} → <strong>${fmtPct(a.guidedRate)}</strong>)</span>`,
-            figureText: `${signed(a.upliftPp, 0)} percentage points (${fmtPct(a.unguidedRate)} to ${fmtPct(a.guidedRate)})`,
+            label: 'Automated accessibility checks',
+            figure: `<span class="figure-val">${signed(a11yUplift, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(uRate)} → <strong>${fmtPct(gRate)}</strong>)</span>`,
+            figureText: `${signed(a11yUplift, 0)} percentage points (${fmtPct(uRate)} to ${fmtPct(gRate)})`,
+            statement: 'Not a full WCAG audit',
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
@@ -202,29 +278,126 @@ function takeawayCard(c) {
     return ` <li class="${roleCls}" data-metric="${c.metric}"> <h3 class="takeaway-label">${c.label}</h3> <p class="takeaway-figure"><span aria-hidden="true">${c.figure}</span><span class="visually-hidden">${escapeHtml(c.figureText)}</span></p> ${c.statement ? `<p class="takeaway-statement">${c.statement}</p>` : ''}
             ${c.visual || ''} <p class="takeaway-qualifier takeaway-qualifier-short">${c.short}</p> </li>`;
 }
+/** @param {HeadlineInsights} insights @param {number} recentN */
+function taskStatement(insights, recentN) {
+    const counts = insights.families.map(f => f.sample.pairedTasks).filter(n => n > 0);
+    if (counts.length === 0) return 'pass-rate lift';
+    const total = counts.reduce((sum, n) => sum + n, 0);
+    if (recentN > 1 || (insights.pooled?.suiteCount || 0) > insights.families.length) {
+        return `lift across ${fmtInt(total)} ${total === 1 ? 'task' : 'tasks'}`;
+    }
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+    if (min !== max) return `lift across ${fmtInt(min)}–${fmtInt(max)} tasks`;
+    return `lift across ${fmtInt(max)} ${max === 1 ? 'task' : 'tasks'}`;
+}
 /** @param {HeadlineInsights} insights */
 function renderAgentTable(insights) {
     const body = document.getElementById('agent-table-body');
     const caption = document.getElementById('agent-table-caption');
+    const windowNote = document.getElementById('hero-agents-window-note');
     if (!body) return;
     const n = insights.options.perAgentRecentN;
     if (caption) {
-        caption.textContent = `Latest ${n} nightly ${n === 1 ? 'run' : 'runs'} per agent family, pooled. Unguided → guided; change in percentage points (pp).`;
+        caption.textContent = n === 1
+            ? 'Latest job per model (last 7 days; nightly or 1.0 baseline) by agent family. Unguided → guided; change in percentage points (pp).'
+            : `Most recent ${n} jobs per model by agent family, pooled. Unguided → guided; change in percentage points (pp).`;
+    }
+    if (windowNote) {
+        windowNote.textContent = n === 1
+            ? 'Latest job per model (models run in the last 7 days; nightly or 1.0 baseline).'
+            : `Last ${n} jobs per model pooled.`;
     }
     body.innerHTML = insights.families.map(f => {
-        const metaParts = [
-            `${f.suiteCount} ${f.suiteCount === 1 ? 'run' : 'runs'}`,
-            f.models.length ? f.models.map(shortModelName).join(', ') : '',
-            f.latest?.timestamp ? formatDateShort(f.latest.timestamp) : ''
-        ].filter(Boolean).join(' · ');
-        return ` <tr> <th scope="row">${getAgentBadge(f.id)}${escapeHtml(f.label)}</th> <td data-label="Pass rate">${rateCell(f.overall)}</td> <td data-label="Accessibility">${rateCell(f.a11y)}</td> <td data-label="Runs"><span class="agent-meta-inline">${escapeHtml(metaParts)}</span></td> </tr>`;
+        const overall = rateCell(f, f.overall, false);
+        const a11y = rateCell(f, f.a11y, true);
+        return ` <tr> <th scope="row">${getAgentBadge(f.id)}${escapeHtml(f.label)}</th> <td data-label="Pass rate"${overall.attrs}>${overall.html}</td> <td data-label="Accessibility"${a11y.attrs}>${a11y.html}</td> <td data-label="Sample">${sampleCell(f)}</td> </tr>`;
     }).join('');
 }
-/** @param {RateComparison | null} r */
-function rateCell(r) {
-    if (!r || (r.guidedTotal === 0 && r.unguidedTotal === 0)) return naCell();
-    return ` <div class="metric-main"> <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span> ${r.upliftPp === null ? naCell() : deltaChip(r.upliftPp)} </div>`;
+/** @param {FamilyInsight} f @param {boolean} isA11y */
+function singleSuiteHref(f, isA11y) {
+    if (f.suiteCount !== 1 || !f.latest.source) return '';
+    const base = `dashboard.html?testId=${encodeURIComponent(f.latest.testId)}&source=${encodeURIComponent(f.latest.source)}`;
+    return isA11y ? `${base}&mode=a11y&sort=a11y-desc` : base;
 }
+/** @param {RateComparison} r */
+function checksCountText(r) {
+    const u = r.unguidedTotal || 0;
+    const g = r.guidedTotal || 0;
+    if (u === 0 && g === 0) return '';
+    if (u === g) return `${fmtInt(g)} ${g === 1 ? 'check' : 'checks'}`;
+    return `${fmtInt(u)} / ${fmtInt(g)} checks`;
+}
+/** @param {FamilyInsight} f @param {RateComparison | null} r @param {boolean} isA11y
+ * @returns {{ attrs: string, html: string }} */
+function rateCell(f, r, isA11y) {
+    if (!r || (r.guidedTotal === 0 && r.unguidedTotal === 0)) return { attrs: '', html: naCell() };
+    const checksText = checksCountText(r);
+    const uRate = roundedRate(r, 'unguided');
+    const gRate = roundedRate(r, 'guided');
+    const uplift = displayedUpliftPp(r);
+    const stackHtml = ` <div class="agent-cell-stack"> <div class="metric-main"> <span class="metric-pair">${fmtPct(uRate)} → <strong>${fmtPct(gRate)}</strong></span> ${uplift === null ? naCell() : deltaChip(uplift)} </div> <span class="metric-sub">${escapeHtml(checksText)}</span> </div>`;
+    const href = singleSuiteHref(f, isA11y);
+    const subParts = isA11y
+        ? ['Automated accessibility checks', f.a11y?.guideCount ? `${f.a11y.guideCount} ${f.a11y.guideCount === 1 ? 'guide' : 'guides'}` : '']
+        : ['Pass rate', sampleSummaryText(f)];
+    const uDetail = r.unguidedTotal > 0 ? `${fmtInt(r.unguidedPassed)}/${fmtInt(r.unguidedTotal)} checks` : '';
+    const gDetail = r.guidedTotal > 0 ? `${fmtInt(r.guidedPassed)}/${fmtInt(r.guidedTotal)} checks` : '';
+    const upliftRounded = uplift === null ? '' : String(uplift);
+    const attrs = ` data-barbell-title="${escapeHtml(f.label)}" data-barbell-sub="${escapeHtml(subParts.filter(Boolean).join(' · '))}" data-barbell-kind="${isA11y ? 'agent-a11y' : 'agent-overall'}" data-barbell-u="${uRate === null ? '' : uRate}" data-barbell-g="${gRate === null ? '' : gRate}" data-barbell-uplift="${upliftRounded}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}"`;
+    const html = href
+        ? `<a href="${escapeHtml(href)}" class="agent-rate-trigger" interestfor="barbell-tooltip">${stackHtml}</a>`
+        : `<button type="button" class="agent-rate-trigger" interestfor="barbell-tooltip">${stackHtml}</button>`;
+    return { attrs, html };
+}
+/** @param {FamilyInsight} f */
+function sampleTasksLabel(f) {
+    const s = f.sample;
+    if (s.excludedTasks > 0) return `${fmtInt(s.pairedTasks)}/${fmtInt(s.attemptedTasks)} tasks`;
+    if (s.pairedTasks > 0) return `${fmtInt(s.pairedTasks)} ${s.pairedTasks === 1 ? 'task' : 'tasks'}`;
+    return '';
+}
+/** @param {FamilyInsight} f */
+function sampleRunsPerTaskLabel(f) {
+    const s = f.sample;
+    if (s.pairedTasks === 0 && s.attemptedTasks === 0) return '';
+    return s.minMaxRuns === s.maxMaxRuns ? `×${s.maxMaxRuns}/task` : `×${s.minMaxRuns}–${s.maxMaxRuns}/task`;
+}
+/** @param {FamilyInsight} f */
+function sampleSummaryText(f) {
+    const allNightly = f.models.length <= 1 && f.suites.every(s => !s.curated && s.testId.startsWith('nightly-'));
+    return [
+        f.suiteCount > 1 ? `${f.suiteCount} ${allNightly ? 'nights' : 'jobs'}` : '',
+        sampleTasksLabel(f),
+        sampleRunsPerTaskLabel(f)
+    ].filter(Boolean).join(' · ');
+}
+/** @param {FamilyInsight} f */
+function sampleCell(f) {
+    const s = f.sample;
+    const allNightly = f.models.length <= 1 && f.suites.every(suite => !suite.curated && suite.testId.startsWith('nightly-'));
+    const countNoun = allNightly ? (f.suiteCount === 1 ? 'night' : 'nights') : (f.suiteCount === 1 ? 'job' : 'jobs');
+    const primaryParts = [
+        f.suiteCount > 1 ? `<span class="sample-nights">${f.suiteCount} ${countNoun}</span>` : '',
+        escapeHtml(sampleTasksLabel(f)),
+        escapeHtml(sampleRunsPerTaskLabel(f)),
+        s.earlyFailureCount !== null && s.earlyFailureCount > 0
+            ? `<span class="sample-warn">${escapeHtml(`${fmtInt(s.earlyFailureCount)} err`)}</span>`
+            : (s.earlyFailureRate > 0 ? `<span class="sample-warn">${escapeHtml(`${s.earlyFailureRate}% err`)}</span>` : ''),
+        s.pageLoadFailed > 0 ? `<span class="sample-warn">${escapeHtml(`${fmtInt(s.pageLoadFailed)} page-load`)}</span>` : '',
+        s.unguidedLeakRate > 0 ? `<span class="sample-leak">${escapeHtml(`${s.unguidedLeakRate}% leak`)}</span>` : ''
+    ].filter(Boolean);
+    const runsListHtml = f.suites.map(suite => {
+        const model = shortModelName(suite.model);
+        const effort = suite.reasoningEffort?.level ? ` (${suite.reasoningEffort.level})` : '';
+        const date = formatDateShort(suite.timestamp);
+        const badge = suite.curated ? ' <span class="run-kind-badge curated">1.0 baseline</span>' : '';
+        return `<span class="sample-run-pill">${escapeHtml(model)}${escapeHtml(effort)} · <time>${escapeHtml(date)}</time>${badge}</span>`;
+    }).join(' · ');
+    return ` <div class="agent-cell-stack"> <span class="agent-sample-main">${primaryParts.join(' · ')}</span> ${runsListHtml ? `<span class="metric-sub">${runsListHtml}</span>` : ''} </div>`;
+}
+/** @param {number} v */
+function fmtInt(v) { return Math.round(v || 0).toLocaleString('en-US'); }
 function naCell() { return '<span class="na"><span aria-hidden="true">—</span><span class="visually-hidden">not available</span></span>'; }
 /** @param {number} value */
 function deltaChip(value) {

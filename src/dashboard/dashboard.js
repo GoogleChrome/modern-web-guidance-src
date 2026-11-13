@@ -1,7 +1,8 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
-import { ApiClient } from './api.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote } from './data-source.js';
 import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
 
 /**
@@ -224,10 +225,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.history.replaceState({}, '', url);
         if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
     });
-    // Auth Button Handling (only for remote)
-    if (api.source === 'remote') {
+    // Auth Button Handling (remote reloads data in place; public reloads the page as remote)
+    if (api.source === 'remote' || api.source === 'public') {
         initGoogleAuth(async () => {
-            // Reload on auth success
+            if (api.source === 'public') {
+                reloadAsRemote();
+                return;
+            }
             const params = new URLSearchParams(window.location.search);
             const testId = params.get('testId');
             if (testId) {
@@ -332,7 +336,11 @@ async function loadDashboardData(testId) {
                         await showDetails(testName, runData, testStats, testId);
 
                         const paths = await getResultPaths(testId, run, testName);
-                        if (paths) {
+                        if (paths && api.source === 'public') {
+                            if ((/** @type {DashboardRunResult} */ (run).files || []).includes('agent.patch')) {
+                                await viewContent(paths.resultPath, paths.resultPath);
+                            }
+                        } else if (paths) {
                             const { setupPath, resultPath } = paths;
                             await viewDiff(setupPath, resultPath, testName, run.runNumber);
                         }
@@ -370,10 +378,13 @@ async function loadDashboardData(testId) {
             try { targetGuide = decodeURIComponent(targetGuide); } catch {
             }
             const targetTask = params.get('task');
-            setTimeout(() => {
+            setTimeout(async () => {
+                try { await renderGridIdle(); } catch { return; }
                 const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"][data-task="${CSS.escape(targetTask)}"]`))
                     || document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"]`);
                 if (accordionEl) {
+                    const catSection = accordionEl.closest('.eval-category-section.collapsed');
+                    if (catSection) /** @type {HTMLElement | null} */ ($('.eval-category-header', catSection))?.click();
                     accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                     if (!accordionEl.classList.contains('open')) {
                         const header = $('.task-accordion-header', accordionEl);
@@ -386,6 +397,14 @@ async function loadDashboardData(testId) {
         console.error('Error:', error);
         dashboardLoaded = false;
         endLoadingReservations();
+
+        // The bucket rejected the request: leave for the landing page, which falls back to the
+        // public copy. A 401 has already cleared the dead token; a 403 keeps it (valid account,
+        // no access) so the landing page still offers Sign out.
+        if (api.source === 'remote' && isAuthRejection(error)) {
+            window.location.href = './';
+            return;
+        }
 
         const message = (error instanceof Error) ? error.message : String(error);
 
@@ -459,10 +478,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // View GCS Artifacts
     const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
     if (gcsBtn) {
-        const params = new URLSearchParams(window.location.search);
-        const source = params.get('source');
-        const testId = params.get('testId');
-        if (source === 'remote' && testId) {
+        const testId = new URLSearchParams(window.location.search).get('testId');
+        if (api.source === 'remote' && testId) {
             gcsBtn.hidden = false;
             gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${encodeURIComponent(testId)}?project=chrome-kiwi-air-force-dev`, '_blank');
         }
@@ -486,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const title = $('#modal-title');
                             const body = $('#modal-body');
 
-                            title.textContent = 'Test Suite Run Log';
+                            title.textContent = 'Job Log';
                             body.innerHTML = '<div class="modal-status-msg">Loading log...</div>';
                             modal.dataset.view = 'log';
                             modal.showModal();
@@ -584,6 +601,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
         }
 
         container.removeAttribute('aria-busy');
+        setupEffortTooltip();
         container.innerHTML = `
             <h1 class="suite-page-title">${escapeHtml(testId)}</h1>
             <div class="header-meta-grid">
@@ -597,7 +615,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(model)}</span>
+                    <span class="meta-value meta-value-model">${escapeHtml(model)}${renderEffortChip(data?.reasoningEffort)}</span>
                     <span class="meta-value">${escapeHtml(agent)}</span>
                     <span class="meta-label">Model &times; Agent</span>
                 </div>
@@ -701,11 +719,8 @@ function renderSummary(data) {
     const exactRate = (/** @type {{ passed: number, total: number }} */ st) => st.total > 0 ? (st.passed / st.total) * 100 : 0;
     const unguidedPassRate = Math.round(exactRate(unguidedStats));
     const guidedPassRate = Math.round(exactRate(guidedStats));
-    const upliftDelta = Math.round(exactRate(guidedStats) - exactRate(unguidedStats));
-    const a11yUpliftPp = Math.round(
-        exactRate({ passed: a11yStats.guidedPassed, total: a11yStats.guidedTotal }) -
-        exactRate({ passed: a11yStats.unguidedPassed, total: a11yStats.unguidedTotal })
-    );
+    const upliftDelta = (unguidedStats.total > 0 && guidedStats.total > 0) ? (guidedPassRate - unguidedPassRate) : null;
+    const a11yUpliftPp = (a11yStats.unguidedTotal > 0 && a11yStats.guidedTotal > 0) ? (a11yStats.guidedRate - a11yStats.unguidedRate) : null;
     const fraction = (/** @type {number} */ passed, /** @type {number} */ total) => `${passed.toLocaleString()}/${total.toLocaleString()}`;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
@@ -721,9 +736,13 @@ function renderSummary(data) {
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
         if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
-        const dimPp = Math.round(exactRate({ passed: sc.guidedPassed, total: sc.guidedTotal }) - exactRate({ passed: sc.unguidedPassed, total: sc.unguidedTotal }));
-        const deltaSign = dimPp >= 0 ? '+' : '';
-        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
+        const uStr = sc.unguidedTotal > 0 ? `${sc.unguidedRate}%` : '—';
+        const gStr = sc.guidedTotal > 0 ? `${sc.guidedRate}%` : '—';
+        const dimPp = (sc.unguidedTotal > 0 && sc.guidedTotal > 0) ? (sc.guidedRate - sc.unguidedRate) : null;
+        const deltaHtml = dimPp !== null
+            ? ` <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : (dimPp === 0 ? 'neutral' : '')}">(${dimPp > 0 ? '+' : ''}${dimPp} pp)</span>`
+            : '';
+        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${uStr} <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${gStr}</strong>${deltaHtml}</span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
     }).join('');
     /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -732,9 +751,10 @@ function renderSummary(data) {
         if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
         return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
     };
-    /** @param {number} deltaPp
+    /** @param {number | null} deltaPp
  * @param {string} noun */
     const ratePill = (deltaPp, noun) => {
+        if (deltaPp === null) return '';
         const cls = deltaPp > 0 ? 'positive' : (deltaPp < 0 ? 'negative' : 'neutral');
         const glyph = deltaPp > 0 ? '▲ ' : (deltaPp < 0 ? '▼ ' : '');
         return `<span class="efficiency-delta-pill ${cls}"><span aria-hidden="true">${glyph}</span>${deltaPp > 0 ? '+' : ''}${deltaPp} pp<span class="visually-hidden"> ${escapeHtml(noun)}</span></span>`;
@@ -764,19 +784,19 @@ function renderSummary(data) {
                 </div>
                 ${validPairsCount < tasksCount ? `<div class="narrative-metric-row"> <span>Valid task pairs</span> <strong class="text-warning">${validPairsCount} / ${tasksCount}</strong> </div>` : ''}
                 <div class="narrative-metric-row narrative-note">
-                    <span>Graded checks per mode differ when a run fails before grading (excluded from check totals).</span>
+                    <span>Graded checks per mode differ when a trial encounters an infra error before grading (excluded from check totals).</span>
                 </div>
-                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected runs</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
-                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
-                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected trials</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
+                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid trial${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} trial${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
             </div>
         </article>
 
-        <!-- Card 2: Cross-Cutting Accessibility Subscore -->
+        <!-- Card 2: Automated Accessibility Checks -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Accessibility subscore</span>
-                ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
+                <span class="meta-label">Automated accessibility checks</span>
+                ${ratePill(a11yUpliftPp, 'accessibility check pass rate change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
@@ -808,7 +828,7 @@ function renderSummary(data) {
                     <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Timed-out runs (≥10 min)</span>
+                    <span>Timed-out trials (≥10 min)</span>
                     <strong>${rt.unguidedTimeouts} unguided → ${rt.guidedTimeouts} guided</strong>
                 </div>
             </div>
@@ -867,10 +887,10 @@ function yieldToMain() {
 }
 
 const HINT_TEXT = {
-    infra: 'Infrastructure or CLI errors stop a run before grading. Those runs are excluded from pass rates.',
-    build: "The agent produced a broken app or build, so grading failed. Open the task to see each run's failure reason.",
-    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the run isn't a clean baseline.",
-    invalid: 'Excluded from the rollup because one or both sides have 0 valid runs.',
+    infra: 'Infrastructure or CLI errors stop a trial before grading. Those trials are excluded from pass rates.',
+    build: "The agent produced a broken app or build, so grading failed. Open the task to see each trial's failure reason.",
+    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the trial isn't a clean baseline.",
+    invalid: 'Excluded from the rollup because one or both sides have 0 valid trials.',
 };
 /** @type {WeakMap<DashboardEvalsReport, Promise<ScenarioItem[]>>} */
 const scenarioCache = new WeakMap();
@@ -951,20 +971,19 @@ async function computeScenarios(data) {
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {{ rate: number | null, exact: number | null }}
+             * @returns {number | null}
              */
             const getAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null };
+                if (!runs || runs.length === 0) return null;
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runs.reduce((acc, run) => acc + getRunStats(run.results).total, 0);
-                if (totalChecks <= 0) return { rate: null, exact: null };
-                const exact = (totalPassed / totalChecks) * 100;
-                return { rate: Math.round(exact), exact };
+                if (totalChecks <= 0) return null;
+                return Math.round((totalPassed / totalChecks) * 100);
             };
             /** @param {DashboardRunResult[] | undefined} runs
- * @returns {{ rate: number | null, exact: number | null, count: number }} */
+ * @returns {{ rate: number | null, count: number }} */
             const getA11yAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null, count: 0 };
+                if (!runs || runs.length === 0) return { rate: null, count: 0 };
                 let passed = 0;
                 let total = 0;
                 let validRuns = 0;
@@ -978,10 +997,9 @@ async function computeScenarios(data) {
                     if (s.total > maxChecksInRun) maxChecksInRun = s.total;
                 });
                 if (validRuns === 0 || total === 0) {
-                    return { rate: null, exact: null, count: maxChecksInRun };
+                    return { rate: null, count: maxChecksInRun };
                 }
-                const exact = (passed / total) * 100;
-                return { rate: Math.round(exact), exact, count: maxChecksInRun };
+                return { rate: Math.round((passed / total) * 100), count: maxChecksInRun };
             };
 
             /** @param {DashboardRunResult[] | undefined} runs
@@ -1010,20 +1028,18 @@ async function computeScenarios(data) {
                 });
                 return count > 0 ? Math.round(sum / count) : 0;
             };
-            const uAvgObj = getAvg(unguidedRuns);
-            const gAvgObj = getAvg(guidedRuns);
-            const unguidedAvg = uAvgObj.rate;
-            const guidedAvg = gAvgObj.rate;
-            const uplift = (uAvgObj.exact !== null && gAvgObj.exact !== null)
-                ? Math.round(gAvgObj.exact - uAvgObj.exact)
+            const unguidedAvg = getAvg(unguidedRuns);
+            const guidedAvg = getAvg(guidedRuns);
+            const uplift = (unguidedAvg !== null && guidedAvg !== null)
+                ? guidedAvg - unguidedAvg
                 : null;
             const uA11y = getA11yAvg(unguidedRuns);
             const gA11y = getA11yAvg(guidedRuns);
             const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
             const a11yUnguidedAvg = uA11y.rate;
             const a11yGuidedAvg = gA11y.rate;
-            const a11yUplift = (uA11y.exact !== null && gA11y.exact !== null)
-                ? Math.round(gA11y.exact - uA11y.exact)
+            const a11yUplift = (a11yUnguidedAvg !== null && a11yGuidedAvg !== null)
+                ? a11yGuidedAvg - a11yUnguidedAvg
                 : null;
             const uRuntimeMs = getAvgRuntime(unguidedRuns);
             const gRuntimeMs = getAvgRuntime(guidedRuns);
@@ -1157,7 +1173,7 @@ function buildEvalsTableHeader() {
         ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
         <div class="eval-col-time">${sortBtn('time', 'Duration', 'Unguided / Guided')}</div>
         <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
-        <div class="eval-col-dumbbell"><span>Pass rate</span><span class="eval-col-sub">Unguided → Guided</span></div>
+        <div class="eval-col-dumbbell"><span>${isA11yMode ? 'A11y pass rate' : 'Pass rate'}</span><span class="eval-col-sub">Unguided → Guided</span></div>
         <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
     `;
     header.querySelectorAll('.eval-col-sort-btn').forEach(btn => {
@@ -1247,15 +1263,15 @@ async function renderGridOnce(data, testId) {
     }
 
     sortedScenarios = filteredScenarios.map(item => item.scenarioName);
-    const cacheKeyMode = `${currentMetricMode}|${currentTaskSort === 'default' ? 'grouped' : 'flat'}`;
-    if (accordionCache.data !== data || accordionCache.mode !== cacheKeyMode || accordionCache.testId !== testId) {
+    if (accordionCache.data !== data || accordionCache.mode !== currentMetricMode || accordionCache.testId !== testId) {
         accordionCache.data = data;
-        accordionCache.mode = cacheKeyMode;
+        accordionCache.mode = currentMetricMode;
         accordionCache.testId = testId;
         accordionCache.nodes = new Map();
     }
     if (!guideGrid) return;
     guideGrid.classList.toggle('is-a11y-mode', currentMetricMode === 'a11y');
+    guideGrid.classList.toggle('is-sorted-flat', currentTaskSort !== 'default');
     guideGrid.replaceChildren();
     guideGrid.append(buildEvalsTableHeader());
 
@@ -1361,9 +1377,7 @@ function buildAccordion(item, testId) {
     const featureChipHtml = primaryFeatureId && primaryFeatureId !== guide
         ? `<span class="feature-chip">${escapeHtml(primaryFeatureId)}</span>`
         : '';
-    const rowCategoryHtml = currentTaskSort !== 'default'
-        ? `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`
-        : '';
+    const rowCategoryHtml = `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`;
     const a11yColHtml = currentMetricMode === 'a11y' ? '' : (
         a11yCheckCount > 0
             ? `<div class="task-a11y-col"><span class="visually-hidden">Accessibility checks: ${a11yCheckCount} checks, unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%, change </span><span class="metric-before">${a11yCheckCount} ${a11yCheckCount === 1 ? 'check' : 'checks'}</span><span class="metric-after ${a11yUplift !== null && a11yUplift > 0 ? 'positive' : a11yUplift !== null && a11yUplift < 0 ? 'negative' : ''}">${a11yUplift !== null ? `${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp` : '—'}</span></div>`
@@ -1493,21 +1507,21 @@ function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
     const uFailed = isRunEarlyFailure(unguidedRuns);
     const gFailed = isRunEarlyFailure(guidedRuns);
     const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
-    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
+    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Check results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader check results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
     if (maxRuns > 1) {
-        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Assertion Requirement</th> </tr> <tr>`;
+        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Check Requirement</th> </tr> <tr>`;
         for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         truthMatrixHtml += `</tr>`;
     } else {
-        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Assertion Requirement</th> </tr>`;
+        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Check Requirement</th> </tr>`;
     }
     truthMatrixHtml += `</thead><tbody>`;
 
     const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
     if (assertionMap.size === 0) {
         const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
-        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader checks recorded (all trials encountered infrastructure errors before grading).</td></tr>`;
     }
 
     const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
@@ -1551,18 +1565,20 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         let promptHtml = '<div style="color: var(--text-secondary); margin-bottom: 20px;">Prompt fetch deferred or failed.</div>';
         let baseApp = 'n/a';
 
-        // Fetch prompt from the first run (unguided or guided)
+        // The prompt recorded on the first run (unguided or guided) is authoritative; older
+        // results without one are reconstructed from run.mjs, then from the task file at HEAD.
         const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
         if (sampleRun && sampleRun.taskName) {
             try {
                 const typeLabel = (unguidedRuns && unguidedRuns[0]) ? 'unguided' : 'guided';
-                const paths = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
-                if (!paths) return;
-                const { usedBasePath } = paths;
+                let promptText = typeof sampleRun.prompt === 'string' ? sampleRun.prompt.trim() : '';
+                if (promptText) {
+                    baseApp = sampleRun.baseApp || baseApp;
+                } else {
+                    const paths = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
+                    if (!paths) return;
+                    const { usedBasePath } = paths;
 
-                let promptText = sampleRun.prompt || '';
-                if (sampleRun.baseApp) baseApp = sampleRun.baseApp;
-                if (!promptText) {
                     try {
                         const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
                         const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
@@ -1671,8 +1687,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
                  const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
-                 const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                 const appUrl = (api.source === 'remote' && !isLocalServer)
+                 // A run with a built app can be opened and diffed against its base app; see getResultInfo.
+                 const hasApp = setupPath !== '';
+                 const appUrl = !hasApp ? ''
+                     : (api.source === 'remote' && !isLocalServer())
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
 
@@ -1691,8 +1709,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)}<span class="visually-hidden"> uncached tokens, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
                              ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
-                             <button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : !hasApp ? '' : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
+                             ${!appUrl ? '' : `<button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>`}
                              ${jsonFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${jsonFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${jsonFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
                              ${runtimeFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${logFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${logFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
@@ -1730,7 +1748,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
 
                  html += `
                      <div class="run-card">
-                         <span class="run-card-title">${typeLabel} Run ${i + 1}</span>
+                         <span class="run-card-title">${typeLabel} Trial ${i + 1}</span>
 
                          ${toolsUsed.length > 0 ? `
                          <div class="run-card-row">
@@ -1873,7 +1891,10 @@ async function openTrajectory(usedBasePath, sessionFile) {
     const placeholder = body.lastElementChild;
     const modal = $('dialog#modal');
     try {
-        const html = await api.getFileText(`${usedBasePath}/${sessionFile}`);
+        const [html, trajSummary] = await Promise.all([
+            api.getFileText(`${usedBasePath}/${sessionFile}`),
+            api.getTrajectorySummary(usedBasePath),
+        ]);
         if (!modal.open || !placeholder || !body.contains(placeholder)) return;
         const frame = createSandboxedFrame({
             srcdoc: withEscBridge(html),
@@ -1881,7 +1902,21 @@ async function openTrajectory(usedBasePath, sessionFile) {
             sandbox: 'allow-scripts',
         });
         frame.dataset.escBridge = '';
-        body.replaceChildren(renderBackButton(), frame);
+        if (trajSummary && (trajSummary.model || trajSummary.reasoningEffort)) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'trajectory-modal-toolbar';
+            toolbar.appendChild(renderBackButton());
+            const meta = document.createElement('div');
+            meta.className = 'trajectory-meta-pill';
+            const modelLabel = trajSummary.model || allTestData?.model || 'unknown';
+            const effortSource = trajSummary.reasoningEffort ?? allTestData?.reasoningEffort;
+            setupEffortTooltip();
+            meta.innerHTML = `<span class="trajectory-meta-model">${escapeHtml(modelLabel)}</span>${renderEffortChip(effortSource)}`;
+            toolbar.appendChild(meta);
+            body.replaceChildren(toolbar, frame);
+        } else {
+            body.replaceChildren(renderBackButton(), frame);
+        }
     } catch (e) {
         if (!modal.open || !placeholder || !body.contains(placeholder)) return;
         console.error('Error loading trajectory:', e);
@@ -1971,11 +2006,15 @@ function renderBackButton() {
     return btn;
 }
 
+/** Counts `viewContent` calls, so one that finishes loading after a newer one has started leaves the modal to the newer one. */
+let contentViews = 0;
+
 /**
  * @param {string} fileName
  * @param {string} filePath
  */
 async function viewContent(fileName, filePath) {
+    const view = ++contentViews;
     const title = $('#modal-title');
     const body = $('#modal-body');
     const modal = $('dialog#modal');
@@ -1983,7 +2022,6 @@ async function viewContent(fileName, filePath) {
     title.textContent = fileName;
     modal.dataset.view = 'content';
     if (!modal.open) modal.showModal();
-    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     body.innerHTML = '';
     body.appendChild(renderBackButton());
@@ -1991,12 +2029,16 @@ async function viewContent(fileName, filePath) {
     const pre = document.createElement('pre');
     pre.className = 'log-content';
     pre.tabIndex = 0;
+    pre.textContent = 'Loading content...';
     body.appendChild(pre);
 
     try {
         const text = await api.getFileText(filePath);
+        if (view !== contentViews) return;
 
-        if (fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) {
+        // A capped patch is a one-line `# diff omitted: ...` placeholder with no `diff --git`
+        // header, so it is shown as plain text rather than as an empty per-file diff.
+        if ((fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) && /^diff --git /m.test(text)) {
             body.innerHTML = '';
             body.appendChild(renderBackButton());
 
@@ -2051,6 +2093,7 @@ async function viewContent(fileName, filePath) {
         pre.className = '';
 
     } catch (e) {
+        if (view !== contentViews) return;
         body.innerHTML = '';
         body.appendChild(renderBackButton());
         const error = document.createElement('div');
@@ -2399,8 +2442,8 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'empty-chart-msg';
         emptyMsg.textContent = currentMetricMode === 'a11y'
-            ? 'No accessibility checks recorded in this suite.'
-            : 'No chart data available for this suite.';
+            ? 'No accessibility checks recorded in this job.'
+            : 'No chart data available for this job.';
         container.appendChild(emptyMsg);
     }
 }

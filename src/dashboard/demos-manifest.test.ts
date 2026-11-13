@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 
 import { generateDemosManifest, generateGroupedTasksManifest, stagePages } from './generate-manifests.js';
 import { DISCIPLINE_GUIDES } from '../core/guide-validation.ts';
-import { rootDir } from '../core/paths.ts';
+import { dashboardDir, rootDir } from '../core/paths.ts';
 
 let tempDir = '';
 let manifestDir = '';
@@ -45,9 +45,13 @@ test('stagePages copies demo assets but not eval sources', () => {
     stagePages(stageDir, manifestDir);
 
     const expected = [
+        'og-image.png',
         'demos/index.html',
         'demos/demos.js',
         'demos/demos.css',
+        'search/index.html',
+        'search/search.js',
+        'search/search.css',
         'demos.gen.json',
         'guides/css/animate-to-intrinsic-sizes/demo.html',
     ];
@@ -67,4 +71,46 @@ test('generateGroupedTasksManifest includes sorted disciplineGuides alongside ca
     const written = JSON.parse(fs.readFileSync(path.join(manifestDir, 'grouped-tasks.gen.json'), 'utf8'));
     assert.deepEqual(written.disciplineGuides, [...DISCIPLINE_GUIDES].sort());
     assert.ok(Array.isArray(written.guides.css?.['css-layout']), 'named discipline guide retains its filesystem category directory');
+});
+
+test('public dashboard entry points declare Open Graph and Twitter social card metadata matching og-image.png', () => {
+    const ogImagePath = path.join(dashboardDir, 'og-image.png');
+    assert.ok(fs.existsSync(ogImagePath), 'og-image.png should exist in src/dashboard');
+
+    const pngHeader = fs.readFileSync(ogImagePath).subarray(0, 24);
+    assert.equal(pngHeader.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'og-image.png should be a valid PNG');
+    const width = String(pngHeader.readUInt32BE(16));
+    const height = String(pngHeader.readUInt32BE(20));
+
+    const expectedOgImageUrl = 'https://googlechrome.github.io/modern-web-guidance-src/og-image.png';
+    const pages: Array<[string, string | undefined]> = [
+        ['index.html', 'https://googlechrome.github.io/modern-web-guidance-src/'],
+        // Query-parameterized templates (?testId=, ?guide=) omit static og:url so unfurlers preserve deep links.
+        ['dashboard.html', undefined],
+        ['guide.html', undefined],
+        ['search/index.html', 'https://googlechrome.github.io/modern-web-guidance-src/search/'],
+        ['demos/index.html', 'https://googlechrome.github.io/modern-web-guidance-src/demos/'],
+    ];
+
+    for (const [relPath, expectedUrl] of pages) {
+        const html = fs.readFileSync(path.join(dashboardDir, relPath), 'utf8');
+        const getMeta = (attr: 'property' | 'name', key: string) =>
+            html.match(new RegExp(`<meta\\s+${attr}="${key}"\\s+content="([^"]+)"`))?.[1];
+
+        assert.equal(getMeta('property', 'og:type'), 'website', `${relPath} og:type`);
+        assert.equal(getMeta('property', 'og:site_name'), 'Modern Web Guidance Evals', `${relPath} og:site_name`);
+        assert.equal(getMeta('property', 'og:url'), expectedUrl, `${relPath} og:url`);
+        assert.equal(getMeta('property', 'og:image'), expectedOgImageUrl, `${relPath} og:image`);
+        assert.equal(getMeta('property', 'og:image:type'), 'image/png', `${relPath} og:image:type`);
+        assert.equal(getMeta('property', 'og:image:width'), width, `${relPath} og:image:width`);
+        assert.equal(getMeta('property', 'og:image:height'), height, `${relPath} og:image:height`);
+        assert.ok((getMeta('property', 'og:title') ?? '').length > 0, `${relPath} og:title`);
+        assert.ok((getMeta('property', 'og:description') ?? '').length > 0, `${relPath} og:description`);
+        assert.ok((getMeta('property', 'og:image:alt') ?? '').length > 0, `${relPath} og:image:alt`);
+        assert.equal(getMeta('name', 'twitter:card'), 'summary_large_image', `${relPath} twitter:card`);
+        assert.ok((getMeta('name', 'twitter:title') ?? '').length > 0, `${relPath} twitter:title`);
+        assert.ok((getMeta('name', 'twitter:description') ?? '').length > 0, `${relPath} twitter:description`);
+        assert.equal(getMeta('name', 'twitter:image'), expectedOgImageUrl, `${relPath} twitter:image`);
+        assert.ok((getMeta('name', 'twitter:image:alt') ?? '').length > 0, `${relPath} twitter:image:alt`);
+    }
 });

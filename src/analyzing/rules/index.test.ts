@@ -1,17 +1,25 @@
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { SyntaxKind } from 'ts-morph';
 import { scanAllGuides } from '../../core/guide-validation.ts';
+import { scanCssRules } from '../scanners/css-scanner.ts';
+import { scanHtmlRules, scanJsxRules } from '../scanners/dom-scanner.ts';
+import { scanFiles } from '../scanners/index.ts';
 import {
   CSS_RULE_EXTENSIONS,
   DOM_RULE_EXTENSIONS,
   JS_RULE_EXTENSIONS,
 } from '../scanners/file-filter.ts';
-import { matchesFastTokens, normalizeFastTokenGroups } from '../scanners/js-scanner.ts';
-import type { AnalyzerRule } from '../schema.ts';
+import {
+  createInMemoryProject,
+  matchesFastTokens,
+  normalizeFastTokenGroups,
+} from '../scanners/js-scanner.ts';
+import type { AnalyzerMatch, AnalyzerRule } from '../schema.ts';
 import {
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
@@ -382,6 +390,192 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
   }
 }
 
+/**
+ * Ensures rule files do not put positive whole-file `.includes(...)` pre-filters
+ * inside `matchFile` / `matchElement` / `matchRule` (e.g. `if (!ctx.fileContent.includes('foo')) return []`).
+ *
+ * Positive substring requirements belong in `fastTokens` (using CNF `readonly (readonly string[])[]`
+ * when multiple token groups must co-occur) so the scanner can skip AST/DOM/CSS parsing altogether
+ * and corpus SQL queries can filter candidates upfront. Negative feature-guard checks
+ * (`if (ctx.fileContent.includes('modernApi')) return []`) remain allowed inside matchers.
+ */
+export function assertNoInlinePositiveTextPreChecks(ruleDirs: readonly string[]): void {
+  const negatedWholeFileIncludesRe =
+    /!\s*(?:ctx\.)?(?:fileContent|documentText|stylesheetText)\.includes\s*\(/;
+
+  for (const dir of ruleDirs) {
+    if (!existsSync(dir)) {
+      continue;
+    }
+    const files = readdirSync(dir)
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'index.ts')
+      .sort();
+    for (const file of files) {
+      const fullPath = join(dir, file);
+      const lines = readFileSync(fullPath, 'utf8').split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]!;
+        assert.strictEqual(
+          negatedWholeFileIncludesRe.test(line),
+          false,
+          `Rule file "${fullPath}:${i + 1}" uses a negated whole-file .includes() pre-check (${line.trim()}); move positive substring requirements into CNF fastTokens instead.`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Why we test `fastTokens` recall against syntax-mutated test fixtures:
+ *
+ * Rule authors naturally write positive unit test fixtures in one canonical formatting style
+ * (e.g. double-quoted HTML `role="menu"`, tight CSS parens `:nth-child(1)`, double-colon
+ * pseudo-elements `::before`, or single-quoted JS `classList.toggle('has-items')`).
+ *
+ * Because AST, CSS, and HTML parsers normalize away quotes, whitespace, and legacy `:before`
+ * single-colon syntax, the rule's structural matcher (`matchFile` / `matchRule` / `matchElement`)
+ * will match all of those surface variations in real-world code. However, `fastTokens` is a raw
+ * substring pre-filter (`content.includes(token)`). If `fastTokens` accidentally bakes in
+ * formatting punctuation (such as `"('has-"`, `':nth-child(1)'`, `'::before'`, or `'role="menu"'`),
+ * the rule will pass its own unit tests on the unmutated fixture while silently dropping valid
+ * matches in the wild before the parser ever runs.
+ *
+ * To catch this class of recall bug automatically:
+ * 1. We extract the test fixture strings from each rule's `<guideId>.test.ts` file and find the
+ *    positive fixtures that the rule's matcher accepts when `fastTokens` is bypassed (`fastTokens: []`).
+ * 2. For each positive fixture, we generate trivial syntax-preserving mutants:
+ *    - `quote-swap`: swaps `'...'` <-> `"..."`
+ *    - `paren-space`: inserts a space after `(` (`foo('x')` -> `foo( 'x')`, `:nth-child(1)` -> `:nth-child( 1)`)
+ *    - `single-colon-pseudo`: replaces `::before` / `::after` with CSS2 `:before` / `:after`
+ * 3. Whenever the underlying structural matcher STILL matches a mutated snippet (`Matcher(f') != empty`),
+ *    we assert that `matchesFastTokens(f', rule.matcher.fastTokens)` is also `true`.
+ */
+export function assertFastTokensRecallOnMutatedTestFixtures(
+  rules: readonly AnalyzerRule[],
+  testSearchDirs: readonly string[],
+): void {
+  const project = createInMemoryProject();
+  const snippetCache = new Map<string, readonly string[]>();
+
+  function getTestSnippetsForRule(rule: AnalyzerRule): readonly string[] {
+    const subSlug = rule.id.includes('/') ? rule.id.split('/')[1]! : rule.guideId;
+    const candidateFiles = testSearchDirs.flatMap((dir) => [
+      join(dir, `${rule.guideId}.test.ts`),
+      join(dir, `${subSlug}.test.ts`),
+    ]);
+    const existingFiles = [...new Set(candidateFiles)].filter((p) => existsSync(p));
+    const cacheKey = existingFiles.join('||');
+    const cached = snippetCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const snippets = new Set<string>();
+    for (const testPath of existingFiles) {
+      const sf = project.createSourceFile(testPath, readFileSync(testPath, 'utf8'), {
+        overwrite: true,
+      });
+      try {
+        for (const lit of [
+          ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+          ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+        ]) {
+          const text = lit.getLiteralText();
+          if (
+            text.length >= 12 &&
+            (text.includes('\n') || text.includes('<') || text.includes('{') || text.includes('('))
+          ) {
+            snippets.add(text);
+          }
+        }
+      } finally {
+        project.removeSourceFile(sf);
+      }
+    }
+
+    const list = [...snippets];
+    snippetCache.set(cacheKey, list);
+    return list;
+  }
+
+  function runMatcherIgnoringFastTokens(rule: AnalyzerRule, snippet: string): AnalyzerMatch[] {
+    const matcher = rule.matcher;
+    if (matcher.kind === 'dependency') {
+      return [];
+    }
+    if (matcher.kind === 'css') {
+      return scanCssRules('fixture.css', snippet, [
+        { matcher: { ...matcher, fastTokens: [] } },
+      ]).map((r) => r.match);
+    }
+    if (matcher.kind === 'dom') {
+      const htmlHits = scanHtmlRules('fixture.html', snippet, [
+        { matcher: { ...matcher, fastTokens: [] } },
+      ]).map((r) => r.match);
+      if (htmlHits.length > 0) {
+        return htmlHits;
+      }
+      const sf = project.createSourceFile('fixture.tsx', snippet, { overwrite: true });
+      try {
+        return scanJsxRules('fixture.tsx', sf, [
+          { matcher: { ...matcher, fastTokens: [] } },
+        ]).map((r) => r.match);
+      } finally {
+        project.removeSourceFile(sf);
+      }
+    }
+    const sf = project.createSourceFile('fixture.tsx', snippet, { overwrite: true });
+    try {
+      return matcher.matchFile(sf, { filePath: 'fixture.tsx', fileContent: snippet });
+    } finally {
+      project.removeSourceFile(sf);
+    }
+  }
+
+  for (const rule of rules) {
+    if (rule.matcher.kind === 'dependency') {
+      continue;
+    }
+    const snippets = getTestSnippetsForRule(rule);
+    for (const snippet of snippets) {
+      const baseHits = runMatcherIgnoringFastTokens(rule, snippet);
+      if (baseHits.length === 0) {
+        continue;
+      }
+
+      const mutants: readonly { readonly name: string; readonly text: string }[] = [
+        { name: 'original', text: snippet },
+        {
+          name: 'quote-swap',
+          text: snippet.replace(/["']/g, (ch) => (ch === '"' ? "'" : '"')),
+        },
+        {
+          name: 'paren-space',
+          text: snippet.replace(/\((?!\s)/g, '( '),
+        },
+        {
+          name: 'single-colon-pseudo',
+          text: snippet.replace(/::(before|after)\b/gi, ':$1'),
+        },
+      ];
+
+      for (const mutant of mutants) {
+        const hits =
+          mutant.name === 'original'
+            ? baseHits
+            : runMatcherIgnoringFastTokens(rule, mutant.text);
+        if (hits.length > 0) {
+          assert.strictEqual(
+            matchesFastTokens(mutant.text, rule.matcher.fastTokens),
+            true,
+            `Rule "${rule.id}" matcher accepted ${mutant.name} fixture, but fastTokens ${JSON.stringify(rule.matcher.fastTokens)} rejected it:\n${mutant.text.slice(0, 200)}`,
+          );
+        }
+      }
+    }
+  }
+}
+
 describe('qualified rules architectural invariants', () => {
   it('enforces that every rule module file on disk in src/analyzing/rules is registered in RULE_MODULES', () => {
     const rulesDir = resolve(import.meta.dirname);
@@ -501,5 +695,36 @@ describe('qualified rules architectural invariants', () => {
 
   it('enforces anti-sponge selectivity gate on fastTokens across QUALIFIED_RULES', () => {
     assertAntiSpongeSelectivity(QUALIFIED_RULES);
+  });
+
+  it('enforces no inline negated whole-file .includes() pre-checks in rule files', () => {
+    assertNoInlinePositiveTextPreChecks([resolve(import.meta.dirname)]);
+  });
+
+  it('enforces fastTokens recall across syntax-mutated positive test fixtures', () => {
+    assertFastTokensRecallOnMutatedTestFixtures(QUALIFIED_RULES, [resolve(import.meta.dirname)]);
+  });
+
+  it('enforces zero self-hits when running each qualified rule against its own guide demo.html', () => {
+    const allGuides = scanAllGuides();
+    const guideMap = new Map(allGuides.map((g) => [g.name, g]));
+
+    for (const rule of QUALIFIED_RULES) {
+      const guide = guideMap.get(rule.guideId);
+      if (!guide || !guide.hasDemo) {
+        continue;
+      }
+      const demoPath = join(guide.dir, 'demo.html');
+      const demoContent = readFileSync(demoPath, 'utf8');
+      const findings = scanFiles(new Map([[demoPath, demoContent]]), [rule], {
+        includeDocsAndTests: true,
+      });
+      assert.strictEqual(
+        findings.length,
+        0,
+        `Rule "${rule.id}" must produce 0 self-hits on its own guide demo.html (${demoPath}), but found ${findings.length}:\n` +
+          findings.map((f) => `  line ${f.line}: ${f.message}`).join('\n'),
+      );
+    }
   });
 });

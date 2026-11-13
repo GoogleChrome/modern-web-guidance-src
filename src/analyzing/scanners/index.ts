@@ -1,7 +1,9 @@
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { Dirent } from 'node:fs';
 import { open, readdir } from 'node:fs/promises';
-import { extname, join, relative } from 'node:path';
+import { extname, join, relative, resolve } from 'node:path';
+import { promisify } from 'node:util';
 import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
   AnalyzerFinding,
@@ -182,13 +184,30 @@ function memoizeSourceFileQueries(sourceFile: SourceFile): void {
   }) as SourceFile['getText'];
 }
 
+interface JsProjectPool {
+  project: Project;
+  readonly isExternalProject: boolean;
+  parsedCount: number;
+}
+
+const EPHEMERAL_PROJECT_ROTATION_INTERVAL = 25;
+
+function acquireProjectForFile(pool: JsProjectPool): Project {
+  if (!pool.isExternalProject && pool.parsedCount >= EPHEMERAL_PROJECT_ROTATION_INTERVAL) {
+    pool.project = createInMemoryProject();
+    pool.parsedCount = 0;
+  }
+  pool.parsedCount++;
+  return pool.project;
+}
+
 function scanJsAst(
   ctx: FileContext,
   parsePath: string,
   parseContent: string,
   jsRules: readonly RuleWith<JsRuleMatcher>[],
   domRules: readonly RuleWith<DomRuleMatcher>[],
-  project: Project,
+  pool: JsProjectPool,
 ): AnalyzerFinding[] {
   const activeDomRules = domRules.filter((rule) =>
     matchesFastTokens(parseContent, rule.matcher.fastTokens),
@@ -200,10 +219,32 @@ function scanJsAst(
     return [];
   }
 
-  const sourceFile = project.createSourceFile(parsePath, parseContent, {
-    overwrite: true,
+  let realSourceFile: SourceFile | undefined;
+  let activeProject: Project | undefined;
+  const getSourceFile = (): SourceFile => {
+    if (!realSourceFile) {
+      activeProject = acquireProjectForFile(pool);
+      realSourceFile = activeProject.createSourceFile(parsePath, parseContent, {
+        overwrite: true,
+      });
+      memoizeSourceFileQueries(realSourceFile);
+    }
+    return realSourceFile;
+  };
+
+  const lazySourceFile = new Proxy({} as SourceFile, {
+    get(_target, prop) {
+      const sf = getSourceFile();
+      const val = Reflect.get(sf, prop, sf);
+      return typeof val === 'function' ? val.bind(sf) : val;
+    },
+    has(_target, prop) {
+      return Reflect.has(getSourceFile(), prop);
+    },
+    getPrototypeOf() {
+      return Reflect.getPrototypeOf(getSourceFile());
+    },
   });
-  memoizeSourceFileQueries(sourceFile);
 
   const matcherCtx: JsMatcherContext = {
     filePath: parsePath,
@@ -213,21 +254,24 @@ function scanJsAst(
   const findings: AnalyzerFinding[] = [];
   try {
     if (activeDomRules.length > 0) {
+      const sf = getSourceFile();
       findings.push(
         ...materializeRuleMatches(
           ctx,
-          scanJsxRules(ctx.relPath, sourceFile, activeDomRules),
-          sourceFile,
+          scanJsxRules(ctx.relPath, sf, activeDomRules),
+          sf,
         ),
       );
     }
     for (const rule of activeJsRules) {
-      for (const match of rule.matcher.matchFile(sourceFile, matcherCtx)) {
-        findings.push(materializeFinding(ctx, rule, match, sourceFile));
+      for (const match of rule.matcher.matchFile(lazySourceFile, matcherCtx)) {
+        findings.push(materializeFinding(ctx, rule, match, getSourceFile()));
       }
     }
   } finally {
-    project.removeSourceFile(sourceFile);
+    if (pool.isExternalProject && realSourceFile && activeProject) {
+      activeProject.removeSourceFile(realSourceFile);
+    }
   }
   return findings;
 }
@@ -253,14 +297,17 @@ function scanExtractedStyles(
 function processMultiBlockFile(
   ctx: FileContext,
   rules: FileRuleBundle,
-  project: Project,
+  pool: JsProjectPool,
 ): AnalyzerFinding[] {
   const findings: AnalyzerFinding[] = [];
 
   if (rules.dom.length > 0) {
     const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
     findings.push(
-      ...materializeRuleMatches(ctx, scanHtmlRules(ctx.relPath, preparedHtml, rules.dom)),
+      ...materializeRuleMatches(
+        ctx,
+        scanHtmlRules(ctx.relPath, preparedHtml, rules.dom, ctx.content),
+      ),
     );
   }
 
@@ -268,7 +315,7 @@ function processMultiBlockFile(
     for (const block of extractScriptBlocks(ctx.relPath, ctx.content)) {
       if (!isMinifiedContent(block.blankedContent)) {
         findings.push(
-          ...scanJsAst(ctx, block.virtualPath, block.blankedContent, rules.js, [], project),
+          ...scanJsAst(ctx, block.virtualPath, block.blankedContent, rules.js, [], pool),
         );
       }
     }
@@ -324,7 +371,11 @@ export function scanFiles(
 
   const ruleBundle: FileRuleBundle = { dom: domRules, js: jsRules, css: cssRules };
   const findings: AnalyzerFinding[] = [];
-  const project = options?.project ?? createInMemoryProject();
+  const pool: JsProjectPool = {
+    project: options?.project ?? createInMemoryProject(),
+    isExternalProject: Boolean(options?.project),
+    parsedCount: 0,
+  };
   const filterOpts = resolveFileFilterOptions(options);
 
   for (const [relPath, content] of files) {
@@ -371,16 +422,14 @@ export function scanFiles(
       }
 
       if (isMarkupPath(lowerPath)) {
-        findings.push(...processMultiBlockFile(ctx, ruleBundle, project));
+        findings.push(...processMultiBlockFile(ctx, ruleBundle, pool));
         continue;
       }
 
       if (JS_EXTENSIONS.has(ext)) {
         const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
-        findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, project));
-        if (content.includes('css`')) {
-          findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
-        }
+        findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, pool));
+        findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
       }
     } catch {
       // Per-file exception boundary: an unexpected parser/AST exception on one malformed
@@ -391,7 +440,7 @@ export function scanFiles(
   return findings;
 }
 
-interface WalkDirState {
+interface ScanRepoState {
   readonly repoDirPath: string;
   readonly fileMap: Map<string, string>;
   readonly maxFiles: number;
@@ -399,11 +448,118 @@ interface WalkDirState {
   skippedDocsAndTestsCount: number;
 }
 
-async function walkDirectory(currentDir: string, state: WalkDirState): Promise<void> {
-  if (state.fileMap.size >= state.maxFiles) {
-    return;
+const execFileAsync = promisify(execFile);
+
+/**
+ * Classifies a candidate path synchronously without disk I/O.
+ * Returns 'candidate' if the file should be read and scanned, or 'skip' otherwise.
+ * Accurately increments skippedDocsAndTestsCount for test/doc files.
+ */
+function classifyCandidatePath(
+  relPath: string,
+  state: ScanRepoState,
+): 'candidate' | 'skip' {
+  if (!state.fileFilterOptions?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
+    if (
+      shouldScanFile(relPath, undefined, {
+        ...state.fileFilterOptions,
+        includeDocsAndTests: true,
+      })
+    ) {
+      state.skippedDocsAndTestsCount++;
+    }
+    return 'skip';
   }
 
+  if (
+    shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
+    isCandidateVendoredFile(relPath)
+  ) {
+    return 'candidate';
+  }
+
+  return 'skip';
+}
+
+/**
+ * Reads a single candidate file from disk atomically, validating file type, size cap, and content filters.
+ */
+async function tryReadFileContent(
+  fullPath: string,
+  relPath: string,
+  filterOptions?: FileFilterOptions,
+): Promise<string | undefined> {
+  try {
+    const handle = await open(fullPath, 'r');
+    try {
+      const fileStat = await handle.stat();
+      if (!fileStat.isFile() || fileStat.size > MAX_SOURCE_FILE_BYTES) {
+        return undefined;
+      }
+      const content = await handle.readFile('utf8');
+      if (
+        shouldScanFile(relPath, content, filterOptions) ||
+        isCandidateVendoredFile(relPath, content)
+      ) {
+        return content;
+      }
+      return undefined;
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    // Missing/deleted file (ENOENT), unreadable, or binary file
+    return undefined;
+  }
+}
+
+const FILE_READ_CONCURRENCY = 64;
+
+/**
+ * Classifies and reads candidate paths in bounded concurrent batches while preserving
+ * exact deterministic fileMap insertion order and skippedDocsAndTestsCount.
+ */
+async function readCandidatePathsIntoState(
+  repoRoot: string,
+  rawPaths: readonly string[],
+  state: ScanRepoState,
+): Promise<void> {
+  let idx = 0;
+  while (idx < rawPaths.length && state.fileMap.size < state.maxFiles) {
+    const batchLimit = Math.min(FILE_READ_CONCURRENCY, state.maxFiles - state.fileMap.size);
+    const batch: string[] = [];
+    while (idx < rawPaths.length && batch.length < batchLimit) {
+      const rawPath = rawPaths[idx++];
+      if (!rawPath) continue;
+      const relPath = rawPath.replace(/\\/g, '/');
+      if (classifyCandidatePath(relPath, state) === 'candidate') {
+        batch.push(relPath);
+      }
+    }
+    if (batch.length === 0) {
+      break;
+    }
+
+    const contents = await Promise.all(
+      batch.map((relPath) =>
+        tryReadFileContent(join(repoRoot, relPath), relPath, state.fileFilterOptions),
+      ),
+    );
+    for (let i = 0; i < batch.length; i++) {
+      const relPath = batch[i];
+      const content = contents[i];
+      if (relPath !== undefined && content !== undefined) {
+        state.fileMap.set(relPath, content);
+      }
+    }
+  }
+}
+
+async function collectDirectoryPaths(
+  currentDir: string,
+  state: ScanRepoState,
+  outPaths: string[],
+): Promise<void> {
   let entries: Dirent[];
   try {
     entries = await readdir(currentDir, { withFileTypes: true });
@@ -414,16 +570,13 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
   entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
 
   for (const entry of entries) {
-    if (state.fileMap.size >= state.maxFiles) {
-      return;
-    }
-
     const fullPath = join(currentDir, entry.name);
     const relPath = relative(state.repoDirPath, fullPath).replace(/\\/g, '/');
 
     if (entry.isDirectory()) {
       const dirLower = entry.name.toLowerCase();
       if (
+        (dirLower !== '.' && dirLower !== '..' && dirLower.startsWith('.')) ||
         BUILD_OR_INSTALL_DIR_SEGMENTS.has(dirLower) ||
         state.fileFilterOptions?.customIgnoredDirs?.has(dirLower) ||
         (state.fileFilterOptions?.excludeCorpusNonAppDirs &&
@@ -431,49 +584,50 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
       ) {
         continue;
       }
-      await walkDirectory(fullPath, state);
+      await collectDirectoryPaths(fullPath, state, outPaths);
       continue;
     }
 
     if (entry.isFile()) {
-      if (!state.fileFilterOptions?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
-        if (
-          shouldScanFile(relPath, undefined, {
-            ...state.fileFilterOptions,
-            includeDocsAndTests: true,
-          })
-        ) {
-          state.skippedDocsAndTestsCount++;
-        }
-        continue;
-      }
-
-      if (
-        shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
-        isCandidateVendoredFile(relPath)
-      ) {
-        try {
-          const handle = await open(fullPath, 'r');
-          try {
-            const fileStat = await handle.stat();
-            if (fileStat.size <= MAX_SOURCE_FILE_BYTES) {
-              const content = await handle.readFile('utf8');
-              if (
-                shouldScanFile(relPath, content, state.fileFilterOptions) ||
-                isCandidateVendoredFile(relPath, content)
-              ) {
-                state.fileMap.set(relPath, content);
-              }
-            }
-          } finally {
-            await handle.close();
-          }
-        } catch {
-          // Unreadable or binary file
-        }
-      }
+      outPaths.push(relPath);
     }
   }
+}
+
+async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<void> {
+  const relPaths: string[] = [];
+  await collectDirectoryPaths(currentDir, state, relPaths);
+  await readCandidatePathsIntoState(state.repoDirPath, relPaths, state);
+}
+
+async function tryEnumerateGitFiles(
+  repoDirPath: string,
+  state: ScanRepoState,
+): Promise<boolean> {
+  const resolvedRepoDir = resolve(repoDirPath);
+  let stdout: string;
+  try {
+    const res = await execFileAsync(
+      'git',
+      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+      {
+        cwd: resolvedRepoDir,
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: 10_000,
+      },
+    );
+    stdout = res.stdout;
+  } catch {
+    return false;
+  }
+
+  const rawPaths = stdout.split('\0').filter(Boolean);
+  if (rawPaths.length === 0) {
+    return false;
+  }
+
+  await readCandidatePathsIntoState(resolvedRepoDir, rawPaths, state);
+  return true;
 }
 
 /**
@@ -486,7 +640,7 @@ export async function scanRepoFiles(
 ): Promise<AnalyzerFinding[]> {
   const fileMap = new Map<string, string>();
   const fileFilterOptions = resolveFileFilterOptions(options);
-  const state: WalkDirState = {
+  const state: ScanRepoState = {
     repoDirPath,
     fileMap,
     maxFiles: options?.maxFiles ?? 5000,
@@ -494,7 +648,10 @@ export async function scanRepoFiles(
     skippedDocsAndTestsCount: 0,
   };
 
-  await walkDirectory(repoDirPath, state);
+  const gitEnumerated = await tryEnumerateGitFiles(repoDirPath, state);
+  if (!gitEnumerated) {
+    await walkDirectory(repoDirPath, state);
+  }
 
   if (options?.stats) {
     options.stats.skippedDocsAndTestsCount = state.skippedDocsAndTestsCount;

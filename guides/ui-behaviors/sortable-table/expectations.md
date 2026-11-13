@@ -1,0 +1,11 @@
+- Each sortable column header is a `<th scope="col">` containing a `<button type="button">` whose text is the column name.
+- Activating a sortable header's button sets `aria-sort="ascending"` on its `<th>`, and activating it again sets `aria-sort="descending"`.
+- At most one `<th>` has an `aria-sort` attribute at any time, and no `<button>` has `aria-sort`.
+- After sorting, a reference to a `<tr>` element taken before sorting is still attached to the `<tbody>`, and the `<tbody>` is the same node.
+- Rows are sorted into the correct order for the activated column, with numeric columns compared as numbers (for example, 12,104 sorts after 6,779 when ascending).
+- A `role="status"` element present in the DOM before sorting receives a message naming the column and direction after each sort.
+- The `<table>` and its ancestors have no `aria-live` attribute.
+- Focus remains on the activated header button after sorting.
+- The sort icon inside each header button has `aria-hidden="true"`.
+- The sort buttons use `commandfor` referencing the table's `id` with a `command` value starting with `--`, and a `command` event listener handles sorting.
+- Sorting reorders the existing `<tr>` nodes in the `<tbody>`; rows are not recreated or cloned.

@@ -15,12 +15,73 @@ import {
   scanCssRules,
 } from './css-scanner.ts';
 import { scanHtml, scanJsx, tokenizeHtmlTags } from './dom-scanner.ts';
+import { isProtectedByFeatureGuard } from './ast-helpers.ts';
+import { withVirtualSourceFile } from './js-scanner.ts';
+import { prepareHtmlForDomScan } from './sfc-extractor.ts';
 import {
   computeGuideHash,
   createInMemoryProject,
   scanFiles,
   scanRepoFiles,
 } from './index.ts';
+
+void test('scanFiles: Lit CSS tag whitespace preserves finding locations', async (t) => {
+  const rule: AnalyzerRule = {
+    id: 'test-lit-anchor',
+    guideId: 'anchor-positioning',
+    guideHash: '000000000000',
+    summary: 'test',
+    matcher: {
+      kind: 'css',
+      fastTokens: ['anchor-name'],
+      matchRule: (view) => view.hasProperty('anchor-name')
+        ? { message: 'anchor declaration' }
+        : null,
+    },
+    verifierRubric: { keepWhen: ['anchor declaration'], dropWhen: [] },
+  };
+
+  for (const extension of ['js', 'mjs', 'ts']) {
+    for (const separator of ['', ' ', '\t', '\n', '\r\n']) {
+      await t.test(`${extension}, separator ${JSON.stringify(separator)}`, () => {
+        const source = `const styles = css${separator}\`\n.tooltip { anchor-name: --tip; }\n\`;`;
+        const file = `src/card.${extension}`;
+        const findings = scanFiles(new Map([[file, source]]), [rule]);
+        assert.equal(findings.length, 1);
+        assert.equal(findings[0]?.file, file);
+        const line = source.slice(0, source.indexOf('.tooltip')).split('\n').length;
+        assert.equal(findings[0]?.line, line);
+        assert.ok(findings[0]?.codeSnippet.includes('.tooltip'));
+      });
+    }
+  }
+
+  for (const extension of ['js', 'mjs', 'ts']) {
+    await t.test(`${extension}, CRLF line endings throughout`, () => {
+      const source = [
+        'import { css } from "lit";',
+        'const styles = css',
+        '`',
+        '.tooltip { anchor-name: --tip; }',
+        '`;',
+        '',
+      ].join('\r\n');
+      const file = `src/card.${extension}`;
+      const findings = scanFiles(new Map([[file, source]]), [rule]);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.file, file);
+      assert.equal(findings[0]?.line, 4);
+      assert.ok(findings[0]?.codeSnippet.includes('.tooltip'));
+    });
+  }
+
+  await t.test('does not scan untagged templates or a different identifier as CSS', () => {
+    for (const tag of ['', 'notcss ']) {
+      const source = `const styles = ${tag}\`.tooltip { anchor-name: --tip; }\`;`;
+      assert.deepEqual(scanFiles(new Map([['src/card.js', source]]), [rule]), []);
+    }
+  });
+});
 
 void test('dom-scanner: HTML bare-attributes and JSX-DOM bridge', async (t) => {
   await t.test('tokenizeHtmlTags locates bare boolean attributes accurately', () => {
@@ -391,6 +452,33 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     ]);
   });
 
+  await t.test('preserves duplicate fallback declarations in view.declarations', () => {
+    const fallbackCss = `
+    .hero {
+      background-image: -webkit-image-set(url('a.avif') 1x);
+      background-image: image-set(url('a.avif') 1x);
+    }
+    `;
+
+    let capturedDecls: ReadonlyArray<{ property: string; value: string }> = [];
+
+    const rule: CssRuleMatcher = {
+      kind: 'css',
+      fastTokens: ['background-image'],
+      matchRule: (view) => {
+        capturedDecls = view.declarations;
+        return { message: 'found' };
+      },
+    };
+
+    const matches = scanCss('hero.css', fallbackCss, [rule]);
+    assert.equal(matches.length, 1);
+    assert.deepEqual(capturedDecls, [
+      { property: 'background-image', value: `-webkit-image-set(url("a.avif") 1x)` },
+      { property: 'background-image', value: `image-set(url("a.avif") 1x)` },
+    ]);
+  });
+
   await t.test('scanCssRules executes active rules in single-parse pass', () => {
     const multiRuleCss = `
     .btn {
@@ -449,6 +537,55 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     assert.equal(normalizeCssDeclValue('  12px  '), '12px');
     assert.equal(normalizeCssDeclValue(null), '');
     assert.equal(normalizeCssDeclValue(undefined), '');
+  });
+
+  await t.test('lazy parentAtRule and lazy stylesheetHasProperty cache results and expand shorthands', () => {
+    const scopedCss = `
+      @supports (text-box-trim: trim-both) {
+        .modern { color: green; }
+      }
+      @scope (.card) {
+        .title { margin: 4px 8px; }
+        .body { border: 1px solid black; }
+      }
+    `;
+
+    const parentAtRules: Array<string | null> = [];
+    let hasMarginTop = false;
+    let hasBorderBottomWidth = false;
+    let hasTextBoxTrim = false;
+    let hasMissingProp = true;
+
+    const rule: CssRuleMatcher = {
+      kind: 'css',
+      fastTokens: ['@scope'],
+      matchRule: (view, ctx) => {
+        if (view.selectorText === '.title' || view.selectorText === '.body') {
+          // Access parentAtRule multiple times across sibling rules sharing @scope
+          assert.equal(view.parentAtRule, view.parentAtRule);
+          parentAtRules.push(view.parentAtRule ?? null);
+        }
+        if (view.selectorText === '.body') {
+          hasMarginTop = ctx.stylesheetHasProperty('margin-top');
+          hasBorderBottomWidth = ctx.stylesheetHasProperty('border-bottom-width');
+          hasTextBoxTrim = ctx.stylesheetHasProperty('text-box-trim');
+          hasMissingProp = ctx.stylesheetHasProperty('non-existent-prop');
+          // Second lookup hits propertyResultCache
+          assert.equal(ctx.stylesheetHasProperty('margin-top'), true);
+          assert.equal(ctx.stylesheetHasProperty('non-existent-prop'), false);
+          return { message: 'matched-body' };
+        }
+        return null;
+      },
+    };
+
+    const matches = scanCss('scoped.css', scopedCss, [rule]);
+    assert.equal(matches.length, 1);
+    assert.deepEqual(parentAtRules, ['@scope (.card)', '@scope (.card)']);
+    assert.equal(hasMarginTop, true);
+    assert.equal(hasBorderBottomWidth, true);
+    assert.equal(hasTextBoxTrim, true);
+    assert.equal(hasMissingProp, false);
   });
 });
 
@@ -667,6 +804,180 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     const astroCss = astroFindings.find((f) => f.ruleId === 'test-css-anchor');
     assert.ok(astroCss);
     assert.equal(astroCss.line, 8);
+  });
+
+  await t.test('scans .gts and .gjs Glimmer files with exact line numbers', () => {
+    const gtsContent = [
+      "import Component from '@glimmer/component';",
+      '',
+      'const Badge = <template><span>{{@label}}</span></template>;',
+      '',
+      'export default class Clock extends Component {',
+      '  now = Temporal.Now.instant();',
+      '',
+      '  <template>',
+      '    {{!-- <dialog open>commented out</dialog> --}}',
+      '    <dialog open>{{this.now}}</dialog>',
+      '    <style>',
+      '      dialog { anchor-name: --clock; }',
+      '    </style>',
+      '  </template>',
+      '}',
+    ].join('\n');
+
+    const gtsFindings = scanFiles(new Map([['app/components/clock.gts', gtsContent]]), rules);
+    assert.equal(gtsFindings.length, 3);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-js-temporal')?.line, 6);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-dom-dialog')?.line, 10);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-css-anchor')?.line, 12);
+
+    const gjsContent = [
+      'const now = Temporal.Now.instant();',
+      '',
+      '<template>',
+      '  <dialog open>{{now}}</dialog>',
+      '</template>',
+    ].join('\n');
+
+    const gjsFindings = scanFiles(new Map([['app/components/clock.gjs', gjsContent]]), rules);
+    assert.equal(gjsFindings.length, 2);
+    assert.equal(gjsFindings.find((f) => f.ruleId === 'test-js-temporal')?.line, 1);
+    assert.equal(gjsFindings.find((f) => f.ruleId === 'test-dom-dialog')?.line, 4);
+  });
+
+  // Reports each TypeScript syntax error, so code mis-read around a template is a finding.
+  const syntaxErrorRule: AnalyzerRule = {
+    id: 'test-js-syntax-error',
+    guideId: 'syntax-guide',
+    guideHash: '123456789012',
+    summary: 'Report syntax errors',
+    verifierRubric: { keepWhen: ['syntax error'], dropWhen: [] },
+    matcher: {
+      kind: 'js',
+      fastTokens: [],
+      matchFile: (sourceFile) =>
+        sourceFile
+          .getProject()
+          .getProgram()
+          .getSyntacticDiagnostics(sourceFile)
+          .map((diagnostic) => ({ line: diagnostic.getLineNumber() ?? 0, column: 1, message: 'syntax error' })),
+    },
+  };
+
+  // Each template's text says "Temporal": if a template is missed, its markup reaches the
+  // JS rule as code and adds a `test-js-temporal` finding on that line.
+  const glimmerFindings = (content: string, path = 'app/components/card.gts') =>
+    scanFiles(new Map([[path, content]]), [...rules, syntaxErrorRule])
+      .map((f) => `${f.ruleId}:${f.line}`)
+      .sort();
+
+  await t.test('.gts: a template ends at the first </template>, as in content-tag', () => {
+    // content-tag does not support a platform-native <template> nested inside, so Ember
+    // cannot build this file. The markup after the inner </template> is not a template.
+    const gts = [
+      'export default class Modal extends Component {',
+      '  <template>',
+      '    <template id="row"><span>x</span></template>',
+      '    <dialog open>After</dialog>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    assert.equal(glimmerFindings(gts).includes('test-dom-dialog:4'), false);
+  });
+
+  await t.test('.gts: comment before `class` and braces in `extends`', () => {
+    const commentBeforeClass = [
+      'export/* */class Card extends Component {',
+      '  <template><dialog open>Temporal</dialog></template>',
+      '  now = Temporal.Now.instant();',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(commentBeforeClass), ['test-dom-dialog:2', 'test-js-temporal:3']);
+
+    const bracesInExtends = [
+      'class Card extends makeBase({ a: 1 }) {',
+      '  <template><dialog open>Temporal</dialog></template>',
+      '  now = Temporal.Now.instant();',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(bracesInExtends), ['test-dom-dialog:2', 'test-js-temporal:3']);
+  });
+
+  await t.test('.gjs: regex literals before a template', () => {
+    const regexAfterIf = [
+      "if (cond) /'/.test(s);",
+      'export default <template><dialog open>Temporal</dialog></template>;',
+      'const now = Temporal.Now.instant();',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(regexAfterIf, 'app/components/card.gjs'), [
+      'test-dom-dialog:2',
+      'test-js-temporal:3',
+    ]);
+
+    const quotesAndSlashes = [
+      "const clean = (s) => s.replace(/['\"`]+/g, '').replace(/https?:\\/\\//, '');",
+      'const half = total / 2 / count;',
+      'export const Card = <template><dialog open>Temporal</dialog></template>;',
+      'const now = Temporal.Now.instant();',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(quotesAndSlashes, 'app/components/card.gjs'), [
+      'test-dom-dialog:3',
+      'test-js-temporal:4',
+    ]);
+  });
+
+  await t.test('.gts: templates in comments, strings and template literals are not templates', () => {
+    const gts = [
+      '// const Old = <template><dialog open>Temporal</dialog></template>;',
+      "const markup = '<template><dialog open>Temporal</dialog></template>';",
+      'const label = `${format({ unit: "}" })} <template><dialog open></dialog></template>`;',
+      'export default class Card extends Component {',
+      '  <template>',
+      '    {{!-- <dialog open>Temporal</dialog> --}}',
+      '    {{~! <dialog open>Temporal</dialog> ~}}',
+      '    <dialog open>Temporal</dialog>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(gts), ['test-dom-dialog:8']);
+  });
+
+  await t.test('.gts: templates in expressions, callbacks and after fields without semicolons', () => {
+    const gts = [
+      "test('renders', async () => {",
+      '  await render(<template><dialog open>Temporal</dialog></template>);',
+      '});',
+      'const columns = [{ Cell: <template><dialog open>Temporal</dialog></template> }];',
+      'class Row extends Component {',
+      '  items: Array<string>',
+      '  ratings = [1, 2, 3]',
+      '  <template><dialog open>Temporal</dialog></template>',
+      '  now = Temporal.Now.instant()',
+      '}',
+      '<template><dialog open>Temporal</dialog></template> satisfies TOC<{ Args: {} }>;',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(gts), [
+      'test-dom-dialog:11',
+      'test-dom-dialog:2',
+      'test-dom-dialog:4',
+      'test-dom-dialog:8',
+      'test-js-temporal:9',
+    ]);
+  });
+
+  await t.test('.gts: line numbers after multi-byte characters, and styles only from templates', () => {
+    const gts = [
+      "const title = '🎵 Blåbær';",
+      '// <style>p { anchor-name: --js-comment; }</style>',
+      'export default class Card extends Component {',
+      '  <template>',
+      '    {{!-- <style>p { anchor-name: --hbs-comment; }</style> --}}',
+      '    <dialog open>{{title}}</dialog>',
+      '    <style>dialog { anchor-name: --card; }</style>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(gts), ['test-css-anchor:7', 'test-dom-dialog:6']);
   });
 
   await t.test('scans .html file with inline <script> and <style> with exact line numbers', () => {
@@ -928,5 +1239,323 @@ void test('scanFiles: per-file exception boundary', () => {
   const findings = scanFiles(files, []);
   assert.deepEqual(findings, []);
 });
+
+void test('ast-helpers: feature-guard AST blind spots and identifier resolution', async (t) => {
+  await t.test('resolves cached boolean feature variables in early returns and if statements', () => {
+    const code = `
+      const supportsFieldSizing = typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content');
+      function resizeInput(el) {
+        if (supportsFieldSizing) return;
+        legacyFallback();
+      }
+
+      const hasSetHTML = "setHTML" in Element.prototype;
+      function renderOutput(raw) {
+        if (!hasSetHTML) {
+          fallbackSanitize();
+        } else {
+          modernSanitize();
+        }
+      }
+
+      function renderOutputElse(raw) {
+        if (hasSetHTML) {
+          modernSanitize();
+        } else {
+          fallbackSanitizeElse();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('guards.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      // Early return via cached supportsFieldSizing protects fallback
+      assert.equal(isProtectedByFeatureGuard(findCall('legacyFallback'), ['field-sizing']), true);
+
+      // Negative if (!hasSetHTML) then branch protects fallbackSanitize
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackSanitize'), ['sethtml']), true);
+      assert.equal(isProtectedByFeatureGuard(findCall('modernSanitize'), ['sethtml']), false);
+
+      // Positive if (hasSetHTML) else branch protects fallbackSanitizeElse
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackSanitizeElse'), ['sethtml']), true);
+    });
+  });
+
+  await t.test('handles self-referential / circular variable declarations without infinite loops', () => {
+    const code = `
+      let a = b;
+      let b = a;
+      function testCircle() {
+        if (a) return;
+        unprotectedFallback();
+      }
+
+      let selfRef = selfRef;
+      function testSelfRef() {
+        if (!selfRef) {
+          unprotectedSelfRef();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('cycle.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      // Circular and self-referential variables must not loop and must not falsely guard
+      assert.equal(isProtectedByFeatureGuard(findCall('unprotectedFallback'), ['someToken']), false);
+      assert.equal(isProtectedByFeatureGuard(findCall('unprotectedSelfRef'), ['someToken']), false);
+    });
+  });
+
+  await t.test('recognizes Object.hasOwn and hasOwnProperty.call feature guards', () => {
+    const code = `
+      function testHasOwn() {
+        if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
+          fallbackHasOwn();
+        }
+      }
+
+      function testProtoHasOwnProperty() {
+        if (!Object.prototype.hasOwnProperty.call(HTMLButtonElement.prototype, 'commandForElement')) {
+          fallbackProtoHasOwnProperty();
+        }
+      }
+
+      function testBareHasOwnProperty() {
+        if (hasOwnProperty.call(HTMLButtonElement.prototype, 'commandForElement')) return;
+        fallbackBareHasOwnProperty();
+      }
+
+      function testDictionaryCheck(dialogOptions: any) {
+        if (!Object.hasOwn(dialogOptions, 'modal')) {
+          dictionaryFallback();
+        }
+        if (!dialogOptions.hasOwnProperty('modal')) {
+          dictionaryFallback2();
+        }
+        if (!('modal' in dialogOptions)) {
+          dictionaryFallback3();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('hasown.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackHasOwn'), ['commandforelement']), true);
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackProtoHasOwnProperty'), ['commandforelement']), true);
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackBareHasOwnProperty'), ['commandforelement']), true);
+      // Non-browser feature target dictionary checks must NOT be mistaken for feature guards
+      // even if the dictionary variable name contains a feature token like 'dialog'
+      assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback'), ['dialog']), false);
+      assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback2'), ['dialog']), false);
+      assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback3'), ['dialog']), false);
+    });
+  });
+
+  await t.test('matches feature guard tokens case-insensitively', () => {
+    const code = `
+      function testCaseInsensitive() {
+        if (!('interestForElement' in HTMLButtonElement.prototype)) {
+          fallbackTooltip();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('case.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      // Token 'interestfor' matches 'interestForElement' case-insensitively
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackTooltip'), ['interestfor']), true);
+    });
+  });
+});
+
+void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags preserving offsets', async (t) => {
+  await t.test('blanks nested template v-if and template v-for tags so ancestor selectors match', () => {
+    const vue = `<template>
+  <form id="checkout">
+    <template v-if="showBilling">
+      <div class="field">
+        <template v-for="item in items">
+          <input type="text" name="street_address" />
+        </template>
+      </div>
+    </template>
+  </form>
+</template>`;
+
+    const prepared = prepareHtmlForDomScan('Test.vue', vue);
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.split('\n').length, vue.split('\n').length);
+    // All <template> and </template> occurrences should be replaced with spaces
+    assert.equal(/<\/?template\b/i.test(prepared), false);
+    assert.equal(prepared.includes('<input type="text" name="street_address" />'), true);
+  });
+
+  await t.test('handles > inside quoted attributes in template tags and preserves matching in linkedom', () => {
+    const vue = `<template>
+  <form id="orderForm">
+    <template v-if="items.length > 0">
+      <input type="password" name="password" id="pwd" />
+    </template>
+  </form>
+</template>`;
+
+    const rule: AnalyzerRule = {
+      id: 'test/form-pwd',
+      guideId: 'autofill-sign-in-form',
+      guideHash: '000000000000',
+      summary: 'test',
+      matcher: {
+        kind: 'dom',
+        selector: 'form input[type="password"]',
+        fastTokens: ['password'],
+        matchElement: () => ({ message: 'missing autocomplete' }),
+      },
+      verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    };
+
+    const findings = scanFiles(new Map([['src/Order.vue', vue]]), [rule]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 4);
+  });
+});
+
+void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, and batched I/O', async (t) => {
+  await t.test('lazySourceFile skips AST creation on early ctx.fileContent exit and forwards has/getPrototypeOf when used', () => {
+    const project = createInMemoryProject();
+    let createSourceFileCalls = 0;
+    const origCreate = project.createSourceFile.bind(project);
+    project.createSourceFile = ((...args: Parameters<typeof origCreate>) => {
+      createSourceFileCalls++;
+      return origCreate(...args);
+    }) as typeof project.createSourceFile;
+
+    let sawHasOperator = false;
+    let sawPrototype = false;
+
+    const rule: AnalyzerRule = {
+      id: 'test/lazy-sf',
+      guideId: 'dialog',
+      guideHash: '000000000000',
+      summary: 'test lazy SourceFile',
+      verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+      matcher: {
+        kind: 'js',
+        fastTokens: ['legacyWidget'],
+        matchFile: (sf, ctx) => {
+          if (ctx.fileContent.includes('modernGuard')) {
+            return [];
+          }
+          sawHasOperator = 'getDescendantsOfKind' in sf;
+          sawPrototype = Object.getPrototypeOf(sf) !== Object.prototype;
+          return sf
+            .getDescendantsOfKind(SyntaxKind.CallExpression)
+            .map((c) => ({ line: c.getStartLineNumber(), message: 'hit' }));
+        },
+      },
+    };
+
+    const guardedFindings = scanFiles(
+      new Map([['src/guarded.ts', 'const modernGuard = true; legacyWidget();']]),
+      [rule],
+      { project },
+    );
+    assert.equal(guardedFindings.length, 0);
+    assert.equal(createSourceFileCalls, 0, 'must not parse AST when rule exits early on ctx.fileContent');
+
+    const activeFindings = scanFiles(
+      new Map([['src/active.ts', 'legacyWidget();']]),
+      [rule],
+      { project },
+    );
+    assert.equal(activeFindings.length, 1);
+    assert.equal(createSourceFileCalls, 1);
+    assert.equal(sawHasOperator, true);
+    assert.equal(sawPrototype, true);
+  });
+
+  await t.test('scanFiles rotates ephemeral Project across >25 AST-parsed files and scanRepoFiles preserves order, maxFiles, and skippedDocsAndTestsCount across >64 files', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'batched-io-repo-'));
+    try {
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+      await mkdir(join(tempDir, 'test'), { recursive: true });
+
+      for (let i = 0; i < 80; i++) {
+        const padded = String(i).padStart(3, '0');
+        await writeFile(
+          join(tempDir, 'src', `file-${padded}.ts`),
+          `export const idx = ${i};\nlegacyTarget(${i});\n`,
+        );
+      }
+      for (let j = 0; j < 10; j++) {
+        await writeFile(
+          join(tempDir, 'src', `a-spec-${j}.test.ts`),
+          `legacyTarget(${j});\n`,
+        );
+      }
+
+      const seenProjects = new Set<unknown>();
+      const rule: AnalyzerRule = {
+        id: 'test/batched-scan',
+        guideId: 'dialog',
+        guideHash: '000000000000',
+        summary: 'test batched scan',
+        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+        matcher: {
+          kind: 'js',
+          fastTokens: ['legacyTarget'],
+          matchFile: (sf) => {
+            seenProjects.add(sf.getProject());
+            return sf
+              .getDescendantsOfKind(SyntaxKind.CallExpression)
+              .map((c) => ({ line: c.getStartLineNumber(), message: c.getText() }));
+          },
+        },
+      };
+
+      const stats: { skippedDocsAndTestsCount?: number } = {};
+      const findings = await scanRepoFiles(tempDir, [rule], {
+        maxFiles: 70,
+        stats,
+      });
+
+      assert.equal(findings.length, 70, 'must cap scanned files at maxFiles=70 across 64-file batches');
+      assert.equal(seenProjects.size, 3, 'must rotate ephemeral Project every 25 AST-parsed files (25 + 25 + 20 = 3 Projects)');
+      assert.equal(stats.skippedDocsAndTestsCount, 10, 'must count all 10 skipped test files before hitting maxFiles');
+      const expectedFiles = Array.from({ length: 70 }, (_, i) => `src/file-${String(i).padStart(3, '0')}.ts`);
+      assert.deepEqual(
+        findings.map((f) => f.file),
+        expectedFiles,
+        'must preserve exact lexicographical file ordering across concurrent I/O batches and >25 file Project rotations',
+      );
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
 
 

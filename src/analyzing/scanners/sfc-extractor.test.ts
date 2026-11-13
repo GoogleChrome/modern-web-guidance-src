@@ -8,6 +8,53 @@ import {
   prepareHtmlForDomScan,
 } from './sfc-extractor.ts';
 
+void test('sfc-extractor: Lit CSS tag whitespace preserves source offsets', async (t) => {
+  for (const separator of ['', ' ', '\t', '\n', '\r\n']) {
+    await t.test(`separator ${JSON.stringify(separator)}`, () => {
+      const css = '.card { color: red; }';
+      const source = `const styles = css${separator}\`\n${css}\n\`;`;
+      const blocks = extractStyleBlocks('src/card.ts', source);
+      assert.equal(blocks.length, 1);
+      assert.equal(blocks[0]?.trim(), css);
+      assert.equal(blocks[0]?.length, source.length);
+      assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+    });
+  }
+});
+
+void test('sfc-extractor: Lit CSS preserves offsets and CRLF throughout the source', () => {
+  const css = '.card { color: red; }';
+  const source = [
+    'import { css } from "lit";',
+    'const styles = css',
+    '`',
+    css,
+    '`;',
+    '',
+  ].join('\r\n');
+  const blocks = extractStyleBlocks('src/card.ts', source);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0]?.trim(), css);
+  assert.equal(blocks[0]?.length, source.length);
+  assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+  assert.deepEqual(blocks[0]?.match(/\r\n/g), source.match(/\r\n/g));
+});
+
+// Known regex limitations; AST-based tagged-template extraction is a follow-up.
+void test('sfc-extractor: ignores Lit CSS text inside comments', {
+  todo: 'Requires AST-based tagged-template extraction',
+}, () => {
+  const source = '// css `.card { color: red; }`;';
+  assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
+void test('sfc-extractor: ignores Lit CSS text inside strings', {
+  todo: 'Requires AST-based tagged-template extraction',
+}, () => {
+  const source = 'const text = "css `.card { color: red; }`";';
+  assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
 void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
   await t.test('extracts frontmatter containing internal --- comments without premature termination', () => {
     const astro = [
@@ -109,5 +156,50 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(litBlocks.length, 1);
     assert.equal(litBlocks[0]?.includes('.card { color:'), true);
     assert.equal(litBlocks[0]?.includes('${"red"}'), false);
+  });
+});
+
+void test('sfc-extractor: custom elements whose names start with script- or style-', async (t) => {
+  const vue = [
+    '<template>',
+    '  <style-provider theme="dark">',
+    '    <script-editor v-model="code"></script-editor>',
+    '    <button>Save</button>',
+    '  </style-provider>',
+    '</template>',
+    '<script setup>',
+    'const code = "";',
+    '</script>',
+    '<style>',
+    'button { color: red; }',
+    '</style>',
+  ].join('\n');
+
+  await t.test('extracts only the real <script> body', () => {
+    const blocks = extractScriptBlocks('App.vue', vue);
+    assert.equal(blocks.length, 1);
+    const content = blocks[0]?.blankedContent ?? '';
+    assert.equal(content.includes('const code = "";'), true);
+    assert.equal(content.includes('v-model'), false);
+    assert.equal(content.includes('<button>'), false);
+  });
+
+  await t.test('extracts only the real <style> body', () => {
+    const blocks = extractStyleBlocks('App.vue', vue);
+    assert.equal(blocks.length, 1);
+    const content = blocks[0] ?? '';
+    assert.equal(content.includes('button { color: red; }'), true);
+    assert.equal(content.includes('theme="dark"'), false);
+    assert.equal(content.includes('<button>'), false);
+  });
+
+  await t.test('keeps the template markup for DOM scanning', () => {
+    const prepared = prepareHtmlForDomScan('App.vue', vue);
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.includes('<style-provider theme="dark">'), true);
+    assert.equal(prepared.includes('<script-editor v-model="code"></script-editor>'), true);
+    assert.equal(prepared.includes('<button>Save</button>'), true);
+    assert.equal(prepared.includes('const code'), false);
+    assert.equal(prepared.includes('button { color: red; }'), false);
   });
 });

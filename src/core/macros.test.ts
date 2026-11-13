@@ -78,7 +78,7 @@ describe('replaceMacros (Functional with real data)', () => {
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
         result,
-        "HTML in canvas is not natively supported by any major browser yet."
+        "Browser support for HTML-in-canvas: Limited availability.\nSupported by: Chrome 157 (Nov 2026) and Edge 157 (Nov 2026).\nUnsupported in: Firefox and Safari."
       );
     });
 

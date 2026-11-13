@@ -5,7 +5,7 @@ import type {
   DomRuleMatcher,
 } from '../schema.ts';
 
-export const AUTOFILL_ADDRESS_FORM_GUIDE_HASH = '31a1d6e904ab';
+export const AUTOFILL_ADDRESS_FORM_GUIDE_HASH = '7e7270bbb89f';
 
 const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
@@ -62,7 +62,17 @@ const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   'bind:autocomplete',
 ];
 
-const SUPPORTED_EXTENSIONS = ['.html', '.htm', '.jsx', '.tsx'];
+const SUPPORTED_EXTENSIONS = [
+  '.html',
+  '.htm',
+  '.jsx',
+  '.tsx',
+  '.vue',
+  '.svelte',
+  '.gts',
+  '.gjs',
+  '.astro',
+];
 const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
 
 const NON_ADDRESS_INPUT_TYPES = new Set([
@@ -82,7 +92,17 @@ const NON_ADDRESS_INPUT_TYPES = new Set([
 const autofillAddressFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input, textarea',
-  fastTokens: ['address', 'postal', 'zip'],
+  fastTokens: [
+    'address',
+    'Address',
+    'ADDRESS',
+    'postal',
+    'Postal',
+    'POSTAL',
+    'zip',
+    'Zip',
+    'ZIP',
+  ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
@@ -144,16 +164,11 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
     const isPostal =
       matchedField.toLowerCase().includes('zip') ||
       matchedField.toLowerCase().includes('postal');
-    const targetToken = isPostal
-      ? 'postal-code'
+    const [targetToken, suggestedTokens] = isPostal
+      ? ['postal-code', 'postal-code']
       : isTextarea
-        ? 'street-address'
-        : 'address-line1';
-    const suggestedTokens = isPostal
-      ? 'postal-code'
-      : isTextarea
-        ? 'street-address'
-        : 'address-line1 / street-address';
+        ? ['street-address', 'street-address']
+        : ['address-line1', 'address-line1 / street-address'];
 
     return {
       message:

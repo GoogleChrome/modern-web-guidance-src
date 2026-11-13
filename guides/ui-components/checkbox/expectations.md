@@ -1,5 +1,7 @@
 - Checkboxes are implemented using the native semantic `<input type="checkbox">` element to preserve native form submission, accessibility, and keyboard focus.
 - Every checkbox is associated with a `<label>` element (either via matching `for` and `id` attributes or by nesting the `<input>` inside the `<label>`).
+- The checked and indeterminate state colors must have a contrast of at least `3:1` with the background color.
+- Focus indicators must have a contrast of at least `3:1` with the background color.
 - Native-styled checkboxes (if present) use the CSS `accent-color` property to style their checked and indeterminate states.
 - Custom-styled checkboxes apply `appearance: none` directly on the `<input type="checkbox">` element with explicit relative dimensions (`inline-size` and `aspect-ratio: 1`) rather than hiding the input and recreating a fake control with wrapper elements.
 - Custom-styled checkboxes render their checkmark icon via a CSS pseudo-element (`::before` or `::after`) on the `<input type="checkbox">` element using `mask` and `currentColor` when `:checked`.

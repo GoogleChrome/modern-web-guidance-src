@@ -102,7 +102,7 @@ export function sampleDiversifiedFindings(
 }
 
 export const ANALYZE_CLI_HELP = `
-Usage: modern-web-guidance analyze [path] [options]
+Usage: modern-web-guidance legacy-scan [path] [options]
 
 Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
 
@@ -184,7 +184,7 @@ export function formatHumanReadable(
           `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`,
           fmt(
             'dim',
-            `Note: analyze covers legacy patterns for ~20% of the guidance corpus. Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
+            `Note: legacy-scan covers legacy patterns for ${plural(activeGuideCount, 'guide')} (~20% of the guidance corpus). Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
           ),
           ...(skippedNotice ? [skippedNotice] : []),
         ]
@@ -197,7 +197,7 @@ export function formatHumanReadable(
 
   const lines: string[] = [
     `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-    `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
+    `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}${isDefaultMode ? ` (scanned ${plural(activeGuideCount, 'guide')} with deterministic rules; ~20% of the guidance corpus)` : ''}:`,
     fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
     ...(skippedNotice ? [skippedNotice] : []),
     '',
@@ -225,7 +225,7 @@ export function formatHumanReadable(
   }
 
   lines.push(
-    `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')} (or pass ${fmt('cyan', '--json')} for coding agents)`,
+    `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')}`,
   );
 
   return `${lines.join('\n').trimEnd()}\n`;
@@ -295,7 +295,7 @@ export async function runAnalyzeCli(
   args: readonly string[],
   options?: AnalyzeCliExecutionOptions,
 ): Promise<AnalyzeCliResult> {
-  const cleanArgs = args[0] === 'analyze' ? args.slice(1) : args;
+  const cleanArgs = (args[0] === 'legacy-scan' || args[0] === 'analyze') ? args.slice(1) : args;
 
   let parsed: ReturnType<typeof parseArgs>;
   try {
@@ -336,6 +336,15 @@ export async function runAnalyzeCli(
   const baseCwd = options?.cwd ?? process.cwd();
   const resolvedDir = resolve(baseCwd, targetDir);
 
+  const isDefaultQualifiedMode = !guideFilter && options?.rules === undefined;
+  const baseRules = options?.rules ?? QUALIFIED_RULES;
+  const activeRules = guideFilter ? baseRules.filter((r) => r.guideId === guideFilter) : baseRules;
+  if (guideFilter && activeRules.length === 0) {
+    return errorCliResult(`Unknown or unsupported analyzer guide ID: ${guideFilter}`, isJson, targetDir);
+  }
+  const activeRuleCount = activeRules.length;
+  const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
+
   const dirStat = await stat(resolvedDir).catch(() => null);
   if (!dirStat) {
     return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
@@ -343,12 +352,6 @@ export async function runAnalyzeCli(
   if (!dirStat.isFile() && !dirStat.isDirectory()) {
     return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
   }
-
-  const isDefaultQualifiedMode = !guideFilter && options?.rules === undefined;
-  const baseRules = options?.rules ?? QUALIFIED_RULES;
-  const activeRules = guideFilter ? baseRules.filter((r) => r.guideId === guideFilter) : baseRules;
-  const activeRuleCount = activeRules.length;
-  const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
   const scanStats: { skippedDocsAndTestsCount?: number } = {};
   let findings: AnalyzerFinding[] = [];
@@ -382,9 +385,12 @@ export async function runAnalyzeCli(
     guides,
     activeRuleCount,
     activeGuideCount,
-    ...(totalFindings === 0 && isDefaultQualifiedMode
+    ...(isDefaultQualifiedMode
       ? {
-          note: `No legacy patterns found from the ${activeRuleCount} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+          note:
+            totalFindings === 0
+              ? `No legacy patterns found across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`
+              : `Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`,
         }
       : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
@@ -415,6 +421,7 @@ const isMainModule =
   Boolean(import.meta.main) ||
   (Boolean(process.argv[1]) &&
     (resolve(process.argv[1]) === fileURLToPath(import.meta.url) ||
+      process.argv[1].endsWith('legacy-scan.mjs') ||
       process.argv[1].endsWith('analyze.mjs')));
 
 if (isMainModule) {
