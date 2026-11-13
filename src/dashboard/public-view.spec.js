@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildSuite, writeManifest } from '../harness/public/builder.ts';
+import { ARTIFACTS_FILE, buildSuite, writeManifest } from '../harness/public/builder.ts';
 import { LocalSuiteStore } from '../harness/public/suite-store.ts';
 import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore, SECURITY_RUN } from '../harness/public/fixtures/make-store.ts';
 
@@ -351,8 +351,12 @@ test.describe('Public view', () => {
   test('a capped agent.patch placeholder is shown as text, not as an empty diff', async ({ page }) => {
     await servePublicCopy(page);
     const placeholder = '# diff omitted: 1.5 MB exceeds the 1 MB cap\n';
-    // Registered after servePublicCopy so it wins for this one artifact.
-    await page.context().route('**/public-evals/**/agent.patch', route => route.fulfill({ body: placeholder, contentType: 'text/plain' }));
+    const artifacts = JSON.parse(fs.readFileSync(path.join(publicDir, SUITE, ARTIFACTS_FILE), 'utf8'));
+    for (const relPath of Object.keys(artifacts)) {
+      if (relPath.endsWith('/agent.patch')) artifacts[relPath] = placeholder;
+    }
+    // Registered after servePublicCopy so it wins for this one file.
+    await page.context().route('**/public-evals/**/artifacts.json', route => route.fulfill({ json: artifacts }));
     await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
 
     const security = page.locator('.task-accordion[data-guide="security"]').first();
@@ -361,6 +365,22 @@ test.describe('Public view', () => {
     await expect(page.locator('#modal')).toContainText('# diff omitted: 1.5 MB exceeds the 1 MB cap');
     await expect(page.locator('#modal .diff-file-details')).toHaveCount(0);
     await expect(page.locator('#modal')).not.toContainText('diff --git');
+  });
+
+  test('the builder\'s artifacts.json serves both Diff and Log with one request', async ({ page }) => {
+    await servePublicCopy(page);
+    const requested = recordArtifactRequests(page);
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Diff' }).first().click();
+    await expect(page.locator('#modal')).toContainText('a/src/app.ts');
+    await page.keyboard.press('Escape');
+    await security.locator('.tfoot-action-btn', { hasText: 'Log' }).first().click();
+    await expect(page.locator('#modal')).toContainText('GET /guides/security');
+
+    expect(requested).toEqual([`${SUITE}/artifacts.json`]);
   });
 
   test('Diff and Log read from the suite\'s artifacts.json when it has one', async ({ page }) => {
