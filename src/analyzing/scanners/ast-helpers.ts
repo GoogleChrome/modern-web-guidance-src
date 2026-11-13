@@ -17,25 +17,36 @@ import {
   type VariableDeclaration,
 } from 'ts-morph';
 
+const callAndBinaryCache = new WeakMap<
+  object,
+  ReadonlyArray<CallExpression | BinaryExpression>
+>();
+
 /**
  * Returns all `CallExpression` and `BinaryExpression` descendants of `sourceFile` in
  * exact AST pre-order (`getPos()` ascending, then `getEnd()` descending for parent-before-child),
- * reusing `sourceFile.getDescendantsOfKind` caches across rules.
+ * memoizing the combined sorted array per `SourceFile` across rules.
  */
 export function getCallAndBinaryDescendants(
   sourceFile: SourceFile,
 ): ReadonlyArray<CallExpression | BinaryExpression> {
+  const cacheKey: object = sourceFile.compilerNode ?? sourceFile;
+  const cached = callAndBinaryCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
   const calls = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
   const binaries = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-  if (calls.length === 0) {
-    return binaries;
-  }
-  if (binaries.length === 0) {
-    return calls;
-  }
-  return [...calls, ...binaries].sort(
-    (a, b) => a.getPos() - b.getPos() || b.getEnd() - a.getEnd(),
-  );
+  const sorted =
+    calls.length === 0
+      ? binaries
+      : binaries.length === 0
+        ? calls
+        : [...calls, ...binaries].sort(
+            (a, b) => a.getPos() - b.getPos() || b.getEnd() - a.getEnd(),
+          );
+  callAndBinaryCache.set(cacheKey, sorted);
+  return sorted;
 }
 
 /**

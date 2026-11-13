@@ -322,6 +322,11 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
         );
 
         assert.deepEqual(actual, expected);
+        assert.equal(
+          getCallAndBinaryDescendants(sf),
+          getCallAndBinaryDescendants(sf),
+          'getCallAndBinaryDescendants must memoize and reuse the sorted array per SourceFile',
+        );
       },
     );
   });

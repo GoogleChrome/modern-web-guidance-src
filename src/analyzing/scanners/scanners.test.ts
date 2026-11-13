@@ -1517,6 +1517,7 @@ void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, a
         );
       }
 
+      const seenProjects = new Set<unknown>();
       const rule: AnalyzerRule = {
         id: 'test/batched-scan',
         guideId: 'dialog',
@@ -1526,10 +1527,12 @@ void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, a
         matcher: {
           kind: 'js',
           fastTokens: ['legacyTarget'],
-          matchFile: (sf) =>
-            sf
+          matchFile: (sf) => {
+            seenProjects.add(sf.getProject());
+            return sf
               .getDescendantsOfKind(SyntaxKind.CallExpression)
-              .map((c) => ({ line: c.getStartLineNumber(), message: c.getText() })),
+              .map((c) => ({ line: c.getStartLineNumber(), message: c.getText() }));
+          },
         },
       };
 
@@ -1540,6 +1543,7 @@ void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, a
       });
 
       assert.equal(findings.length, 70, 'must cap scanned files at maxFiles=70 across 64-file batches');
+      assert.equal(seenProjects.size, 3, 'must rotate ephemeral Project every 25 AST-parsed files (25 + 25 + 20 = 3 Projects)');
       assert.equal(stats.skippedDocsAndTestsCount, 10, 'must count all 10 skipped test files before hitting maxFiles');
       const expectedFiles = Array.from({ length: 70 }, (_, i) => `src/file-${String(i).padStart(3, '0')}.ts`);
       assert.deepEqual(
