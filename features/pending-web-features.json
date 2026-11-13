@@ -21,11 +21,6 @@
     "issue": "https://github.com/web-platform-dx/web-features/issues/4292",
     "compat_features": "html.elements.iframe.allow.media-playback-while-not-visible"
   },
-  "tmp-navigation-source": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4301",
-    "group": "css",
-    "compat_features": "css.selectors.navigation-source"
-  },
   "tmp-calc-dimensions": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4196",
     "group": "css",
@@ -37,11 +32,6 @@
   "tmp-long-animation-frames-style-layout": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4453",
     "compat_features": "api.PerformanceLongAnimationFrameTiming.styleDuration"
-  },
-  "tmp-polygon-round": {
-    "issue": "https://github.com/web-platform-dx/web-features/issues/4429",
-    "group": "css",
-    "compat_features": "css.types.basic-shape.polygon.round"
   },
   "tmp-path-length": {
     "issue": "https://github.com/web-platform-dx/web-features/issues/4307",

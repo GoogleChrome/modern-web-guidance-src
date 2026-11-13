@@ -73,7 +73,7 @@
         color: var(--accent-color);
       }
 
-      nav a[aria-current="true"] {
+      nav a:is([aria-current="true"], [aria-current="location"]) {
         background: #e7f1ff;
         color: var(--accent-color);
         font-weight: 600;
@@ -115,7 +115,7 @@
     <nav>
       <h1>Table of Contents</h1>
       <ul>
-        <li><a href="#sunset">Sunset over the mountains</a></li>
+        <li><a href="#sunset" aria-current="location">Sunset over the mountains</a></li>
         <li><a href="#ocean">Ocean waves at dawn</a></li>
         <li><a href="#forest">Forest trail in autumn</a></li>
         <li><a href="#city">City skyline at night</a></li>
@@ -251,47 +251,51 @@
     </main>
 
     <script>
-      const links = document.querySelectorAll("a");
-      const headers = document.querySelectorAll("h2");
+      const main = document.getElementById("main");
+      const links = document.querySelectorAll("nav a");
+      const headers = main.querySelectorAll("h2");
 
-      function setSelectedParagraph(id) {
-        links.forEach((link) =>
-          link.setAttribute(
-            "aria-current",
-            link.getAttribute("href") === `#${id}`,
-          ),
-        );
+      function setActiveLink(id) {
+        for (const link of links) {
+          if (link.getAttribute("href") === `#${id}`) {
+            link.setAttribute("aria-current", "location");
+          } else {
+            link.removeAttribute("aria-current");
+          }
+        }
         // Track which section the user paused on (analytics).
         console.log("Section viewed:", id);
       }
 
-      const main = document.getElementById("main");
       main.addEventListener("scrollsnapchange", (event) => {
         const snappedSection = event.snapTargetBlock;
-        if (snappedSection) setSelectedParagraph(snappedSection.id);
+        if (snappedSection) setActiveLink(snappedSection.id);
       });
 
       // Feature detect support for scrollsnapchange
       if (!("onscrollsnapchange" in HTMLElement.prototype)) {
-        //Fallback with IntersectionObserver
+        // Fallback with IntersectionObserver
         const observer = new IntersectionObserver(
           () => {
-            // Each time the set of intersecting headers changes, find the top
-            // header that is visible.
+            const scrollportTop =
+              main.getBoundingClientRect().top + main.clientTop;
             const topEntry = [...headers].reduce((currentTop, header) => {
               // Use the bottom to handle scrolling up, when the top is still offscreen
-              const {bottom} = header.getBoundingClientRect();
-              // Don't match if the header's bottom is aboce the scrollport
-              if (bottom < 0) return;
+              const { bottom } = header.getBoundingClientRect();
+              // Exclude targets whose bottom has scrolled past the 1px top rootMargin
+              if (bottom <= scrollportTop + 1) return currentTop;
               if (!currentTop) return header;
-              return bottom <
-                currentTop.getBoundingClientRect().bottom
+              return bottom < currentTop.getBoundingClientRect().bottom
                 ? header
                 : currentTop;
             }, undefined);
-            if (topEntry) setSelectedParagraph(topEntry.id);
+            if (topEntry) setActiveLink(topEntry.id);
           },
-          { root: main, threshold: 0.9 },
+          {
+            root: main,
+            rootMargin: "-1px 0px 0px 0px",
+            threshold: [0, 0.9],
+          },
         );
         headers.forEach((header) => observer.observe(header));
       }

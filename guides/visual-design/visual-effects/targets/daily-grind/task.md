@@ -1,0 +1,1 @@
+- Refresh the visual design of The Daily Grind homepage: add a warm lighting overlay over the "Wake Up Your Senses" hero photo, color gradients on the hero banner and "Order Now" button, elevated depth on the "Seasonal Favorites" cards, decorative stripe, checkerboard, or dot accents, and a flavor-profile pie chart inside each drink card.

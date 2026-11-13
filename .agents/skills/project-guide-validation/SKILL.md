@@ -51,13 +51,13 @@ Review `expectations.md` against `guide.md`, `demo.html`, and primary specs/MDN/
     *   **Internal & Cross-Guide Consistency**: Flag direct contradictions or redundant overlaps between bullets in `expectations.md`, as well as rules that conflict with companion guides an agent retrieves alongside this one on the same task.
 *   **Coverage (Missing & Unnecessary)**:
     *   **Missing**: Identify core guide rules (`DO` / `DO NOT` / decision-tree branches, accessibility, overflow, focus order, fallbacks) and `demo.html` behaviors with no corresponding expectation (there is no bullet cap, unprompted guide requirements are fair to grade, and never drop a requirement just because it is hard to test).
-    *   **Unnecessary**: Cut items that are absent from `guide.md`, optional/*"Prefer"*, fallbacks for Baseline Widely Available features, redundant, subjective or untestable (*"where content should determine the size"*), off-scenario or inapplicable to the target app, or so strict that they reject idiomatic correct code.
+    *   **Unnecessary**: Cut items that are absent from `guide.md`, optional/*"Prefer"*, fallbacks for Baseline Widely Available features, redundant, subjective or untestable (*"where content should determine the size"*), off-scenario or inapplicable to the base app, or so strict that they reject idiomatic correct code.
 *   **Per-Expectation Grader Read**: Evaluate each bullet as the grader generator (`gd dev`) will interpret it when writing a test that must pass every golden solution patch and fail the zero-passrate patch:
 
 | Check | Question |
 |---|---|
 | **Clear** | Is there one unambiguous reading with self-evident terms in plain declarative phrasing (no `MUST` / `SHOULD` boilerplate)? |
-| **Succinct** | Is it a single requirement per bullet (no compound assertions)? |
+| **Succinct** | Is it a single requirement per bullet (no compound checks)? |
 | **Scoped** | Does every correct implementation of this use case satisfy it? If it is a discipline-guide bullet, does it name the element or feature it governs so the grader generator can judge relevance per base app? |
 | **Correct** | Does it match both `guide.md` and the underlying spec/MDN/BCD without rejecting valid alternatives? |
 | **Achievable** | Would all golden solutions (written by different agents) satisfy it, or would the generated test overfit to an example value or *"such as"* clause? |

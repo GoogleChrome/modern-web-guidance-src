@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const title = $('#modal-title');
                             const body = $('#modal-body');
 
-                            title.textContent = 'Test Suite Run Log';
+                            title.textContent = 'Job Log';
                             body.innerHTML = '<div class="modal-status-msg">Loading log...</div>';
                             modal.dataset.view = 'log';
                             modal.showModal();
@@ -719,11 +719,8 @@ function renderSummary(data) {
     const exactRate = (/** @type {{ passed: number, total: number }} */ st) => st.total > 0 ? (st.passed / st.total) * 100 : 0;
     const unguidedPassRate = Math.round(exactRate(unguidedStats));
     const guidedPassRate = Math.round(exactRate(guidedStats));
-    const upliftDelta = Math.round(exactRate(guidedStats) - exactRate(unguidedStats));
-    const a11yUpliftPp = Math.round(
-        exactRate({ passed: a11yStats.guidedPassed, total: a11yStats.guidedTotal }) -
-        exactRate({ passed: a11yStats.unguidedPassed, total: a11yStats.unguidedTotal })
-    );
+    const upliftDelta = (unguidedStats.total > 0 && guidedStats.total > 0) ? (guidedPassRate - unguidedPassRate) : null;
+    const a11yUpliftPp = (a11yStats.unguidedTotal > 0 && a11yStats.guidedTotal > 0) ? (a11yStats.guidedRate - a11yStats.unguidedRate) : null;
     const fraction = (/** @type {number} */ passed, /** @type {number} */ total) => `${passed.toLocaleString()}/${total.toLocaleString()}`;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
@@ -739,9 +736,13 @@ function renderSummary(data) {
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
         if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
-        const dimPp = Math.round(exactRate({ passed: sc.guidedPassed, total: sc.guidedTotal }) - exactRate({ passed: sc.unguidedPassed, total: sc.unguidedTotal }));
-        const deltaSign = dimPp >= 0 ? '+' : '';
-        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
+        const uStr = sc.unguidedTotal > 0 ? `${sc.unguidedRate}%` : '—';
+        const gStr = sc.guidedTotal > 0 ? `${sc.guidedRate}%` : '—';
+        const dimPp = (sc.unguidedTotal > 0 && sc.guidedTotal > 0) ? (sc.guidedRate - sc.unguidedRate) : null;
+        const deltaHtml = dimPp !== null
+            ? ` <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : (dimPp === 0 ? 'neutral' : '')}">(${dimPp > 0 ? '+' : ''}${dimPp} pp)</span>`
+            : '';
+        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${uStr} <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${gStr}</strong>${deltaHtml}</span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
     }).join('');
     /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -750,9 +751,10 @@ function renderSummary(data) {
         if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
         return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
     };
-    /** @param {number} deltaPp
+    /** @param {number | null} deltaPp
  * @param {string} noun */
     const ratePill = (deltaPp, noun) => {
+        if (deltaPp === null) return '';
         const cls = deltaPp > 0 ? 'positive' : (deltaPp < 0 ? 'negative' : 'neutral');
         const glyph = deltaPp > 0 ? '▲ ' : (deltaPp < 0 ? '▼ ' : '');
         return `<span class="efficiency-delta-pill ${cls}"><span aria-hidden="true">${glyph}</span>${deltaPp > 0 ? '+' : ''}${deltaPp} pp<span class="visually-hidden"> ${escapeHtml(noun)}</span></span>`;
@@ -782,11 +784,11 @@ function renderSummary(data) {
                 </div>
                 ${validPairsCount < tasksCount ? `<div class="narrative-metric-row"> <span>Valid task pairs</span> <strong class="text-warning">${validPairsCount} / ${tasksCount}</strong> </div>` : ''}
                 <div class="narrative-metric-row narrative-note">
-                    <span>Graded checks per mode differ when a run fails before grading (excluded from check totals).</span>
+                    <span>Graded checks per mode differ when a trial encounters an infra error before grading (excluded from check totals).</span>
                 </div>
-                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected runs</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
-                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
-                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected trials</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
+                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid trial${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} trial${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
             </div>
         </article>
 
@@ -826,7 +828,7 @@ function renderSummary(data) {
                     <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Timed-out runs (≥10 min)</span>
+                    <span>Timed-out trials (≥10 min)</span>
                     <strong>${rt.unguidedTimeouts} unguided → ${rt.guidedTimeouts} guided</strong>
                 </div>
             </div>
@@ -885,10 +887,10 @@ function yieldToMain() {
 }
 
 const HINT_TEXT = {
-    infra: 'Infrastructure or CLI errors stop a run before grading. Those runs are excluded from pass rates.',
-    build: "The agent produced a broken app or build, so grading failed. Open the task to see each run's failure reason.",
-    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the run isn't a clean baseline.",
-    invalid: 'Excluded from the rollup because one or both sides have 0 valid runs.',
+    infra: 'Infrastructure or CLI errors stop a trial before grading. Those trials are excluded from pass rates.',
+    build: "The agent produced a broken app or build, so grading failed. Open the task to see each trial's failure reason.",
+    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the trial isn't a clean baseline.",
+    invalid: 'Excluded from the rollup because one or both sides have 0 valid trials.',
 };
 /** @type {WeakMap<DashboardEvalsReport, Promise<ScenarioItem[]>>} */
 const scenarioCache = new WeakMap();
@@ -969,20 +971,19 @@ async function computeScenarios(data) {
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {{ rate: number | null, exact: number | null }}
+             * @returns {number | null}
              */
             const getAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null };
+                if (!runs || runs.length === 0) return null;
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runs.reduce((acc, run) => acc + getRunStats(run.results).total, 0);
-                if (totalChecks <= 0) return { rate: null, exact: null };
-                const exact = (totalPassed / totalChecks) * 100;
-                return { rate: Math.round(exact), exact };
+                if (totalChecks <= 0) return null;
+                return Math.round((totalPassed / totalChecks) * 100);
             };
             /** @param {DashboardRunResult[] | undefined} runs
- * @returns {{ rate: number | null, exact: number | null, count: number }} */
+ * @returns {{ rate: number | null, count: number }} */
             const getA11yAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null, count: 0 };
+                if (!runs || runs.length === 0) return { rate: null, count: 0 };
                 let passed = 0;
                 let total = 0;
                 let validRuns = 0;
@@ -996,10 +997,9 @@ async function computeScenarios(data) {
                     if (s.total > maxChecksInRun) maxChecksInRun = s.total;
                 });
                 if (validRuns === 0 || total === 0) {
-                    return { rate: null, exact: null, count: maxChecksInRun };
+                    return { rate: null, count: maxChecksInRun };
                 }
-                const exact = (passed / total) * 100;
-                return { rate: Math.round(exact), exact, count: maxChecksInRun };
+                return { rate: Math.round((passed / total) * 100), count: maxChecksInRun };
             };
 
             /** @param {DashboardRunResult[] | undefined} runs
@@ -1028,20 +1028,18 @@ async function computeScenarios(data) {
                 });
                 return count > 0 ? Math.round(sum / count) : 0;
             };
-            const uAvgObj = getAvg(unguidedRuns);
-            const gAvgObj = getAvg(guidedRuns);
-            const unguidedAvg = uAvgObj.rate;
-            const guidedAvg = gAvgObj.rate;
-            const uplift = (uAvgObj.exact !== null && gAvgObj.exact !== null)
-                ? Math.round(gAvgObj.exact - uAvgObj.exact)
+            const unguidedAvg = getAvg(unguidedRuns);
+            const guidedAvg = getAvg(guidedRuns);
+            const uplift = (unguidedAvg !== null && guidedAvg !== null)
+                ? guidedAvg - unguidedAvg
                 : null;
             const uA11y = getA11yAvg(unguidedRuns);
             const gA11y = getA11yAvg(guidedRuns);
             const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
             const a11yUnguidedAvg = uA11y.rate;
             const a11yGuidedAvg = gA11y.rate;
-            const a11yUplift = (uA11y.exact !== null && gA11y.exact !== null)
-                ? Math.round(gA11y.exact - uA11y.exact)
+            const a11yUplift = (a11yUnguidedAvg !== null && a11yGuidedAvg !== null)
+                ? a11yGuidedAvg - a11yUnguidedAvg
                 : null;
             const uRuntimeMs = getAvgRuntime(unguidedRuns);
             const gRuntimeMs = getAvgRuntime(guidedRuns);
@@ -1509,21 +1507,21 @@ function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
     const uFailed = isRunEarlyFailure(unguidedRuns);
     const gFailed = isRunEarlyFailure(guidedRuns);
     const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
-    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
+    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Check results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader check results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
     if (maxRuns > 1) {
-        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Assertion Requirement</th> </tr> <tr>`;
+        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Check Requirement</th> </tr> <tr>`;
         for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         truthMatrixHtml += `</tr>`;
     } else {
-        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Assertion Requirement</th> </tr>`;
+        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Check Requirement</th> </tr>`;
     }
     truthMatrixHtml += `</thead><tbody>`;
 
     const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
     if (assertionMap.size === 0) {
         const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
-        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader checks recorded (all trials encountered infrastructure errors before grading).</td></tr>`;
     }
 
     const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
@@ -1750,7 +1748,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
 
                  html += `
                      <div class="run-card">
-                         <span class="run-card-title">${typeLabel} Run ${i + 1}</span>
+                         <span class="run-card-title">${typeLabel} Trial ${i + 1}</span>
 
                          ${toolsUsed.length > 0 ? `
                          <div class="run-card-row">
@@ -2008,11 +2006,15 @@ function renderBackButton() {
     return btn;
 }
 
+/** Counts `viewContent` calls, so one that finishes loading after a newer one has started leaves the modal to the newer one. */
+let contentViews = 0;
+
 /**
  * @param {string} fileName
  * @param {string} filePath
  */
 async function viewContent(fileName, filePath) {
+    const view = ++contentViews;
     const title = $('#modal-title');
     const body = $('#modal-body');
     const modal = $('dialog#modal');
@@ -2020,7 +2022,6 @@ async function viewContent(fileName, filePath) {
     title.textContent = fileName;
     modal.dataset.view = 'content';
     if (!modal.open) modal.showModal();
-    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     body.innerHTML = '';
     body.appendChild(renderBackButton());
@@ -2028,10 +2029,12 @@ async function viewContent(fileName, filePath) {
     const pre = document.createElement('pre');
     pre.className = 'log-content';
     pre.tabIndex = 0;
+    pre.textContent = 'Loading content...';
     body.appendChild(pre);
 
     try {
         const text = await api.getFileText(filePath);
+        if (view !== contentViews) return;
 
         // A capped patch is a one-line `# diff omitted: ...` placeholder with no `diff --git`
         // header, so it is shown as plain text rather than as an empty per-file diff.
@@ -2090,6 +2093,7 @@ async function viewContent(fileName, filePath) {
         pre.className = '';
 
     } catch (e) {
+        if (view !== contentViews) return;
         body.innerHTML = '';
         body.appendChild(renderBackButton());
         const error = document.createElement('div');
@@ -2438,8 +2442,8 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'empty-chart-msg';
         emptyMsg.textContent = currentMetricMode === 'a11y'
-            ? 'No accessibility checks recorded in this suite.'
-            : 'No chart data available for this suite.';
+            ? 'No accessibility checks recorded in this job.'
+            : 'No chart data available for this job.';
         container.appendChild(emptyMsg);
     }
 }

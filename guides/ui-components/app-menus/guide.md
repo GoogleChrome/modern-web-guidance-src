@@ -22,6 +22,7 @@ Each menu in the bar is a complete popup menu: invoker-triggered popover, nested
 ## Structure
 
 * Put `role="menubar"` with an `aria-label` on the container of the top-level triggers, never on a popover. Each top-level trigger is a direct child of the menubar, immediately followed by its popover.
+* Each top-level trigger has an accessible name that describes its purpose, and has a `role="menuitem"` attribute.
 * Style the bar as one continuous strip with no gaps or borders between triggers. Visually separate buttons signal one `Tab` stop each; a continuous bar signals one widget.
 * Give the trigger with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
 
@@ -29,7 +30,7 @@ Each menu in the bar is a complete popup menu: invoker-triggered popover, nested
 <div role="menubar" aria-label="Document commands">
   <!-- Only the active trigger is tabbable; the script moves tabindex with ArrowLeft and ArrowRight. -->
   <button id="file-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
-    commandfor="file-menu" command="toggle-popover">File</button>
+    commandfor="file-menu" command="toggle-popover" role="menuitem">File</button>
   <div id="file-menu" popover="auto">
     <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
       <!-- Items and submenus as in the menu guide -->

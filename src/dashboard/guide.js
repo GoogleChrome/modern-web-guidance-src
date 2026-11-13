@@ -386,7 +386,7 @@ function renderGraphs(guideName) {
         return isA11yMode ? (targetStats.a11y || null) : targetStats;
     };
 
-    // Filter out suites that don't have this guide, or have 0 trials for it
+    // Filter out jobs that don't have this guide, or have 0 trials for it
     const filteredKeys = testKeys.filter(key => {
         const g = getStats(allTestData[key]);
         if (!g) return false;
@@ -534,7 +534,7 @@ function renderGraphs(guideName) {
                 ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> <span class="guide-card-model-row">${escapeHtml(model)}${renderEffortChip(cardReasoningEffort)}</span>
             </h2>
             <div class="guide-card-subtitle">
-                ${runs.length} chronological trials${isA11yMode ? ' · Accessibility checks' : ''}
+                ${runs.length} chronological jobs${isA11yMode ? ' · Accessibility checks' : ''}
             </div>
         `;
         card.appendChild(header);
@@ -607,7 +607,7 @@ function renderGraphs(guideName) {
                     `;
                 }
 
-                const pointLabel = `${suite.shortDate}: open run`;
+                const pointLabel = `${suite.shortDate}: open job`;
                 const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
                 const modeParam = isA11yMode ? '&mode=a11y' : '';
                 const runHref = `dashboard.html?testId=${encodeURIComponent(run.testId)}&source=${encodeURIComponent(run.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
@@ -678,7 +678,8 @@ function renderGraphs(guideName) {
         const gTotal = stats.guidedTotal || 0;
         const uPassed = stats.unguidedPassed || 0;
         const uTotal = stats.unguidedTotal || 0;
-        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>Reasoning Effort:</span> ${renderEffortChip(runData.reasoningEffort, { interactive: false, separator: false })} </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${stats.uplift == null ? '' : (stats.uplift >= 0 ? 'positive' : 'negative')}"> ${stats.uplift == null ? '—' : `${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp`} </span> </div> </div>`;
+        const uplift = (gTotal > 0 && uTotal > 0) ? (stats.guidedRate - stats.unguidedRate) : null;
+        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>Reasoning Effort:</span> ${renderEffortChip(runData.reasoningEffort, { interactive: false, separator: false })} </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${uplift == null ? '' : (uplift > 0 ? 'positive' : (uplift < 0 ? 'negative' : ''))}"> ${uplift == null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`} </span> </div> </div>`;
         return true;
     };
 }

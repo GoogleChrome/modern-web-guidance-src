@@ -284,7 +284,7 @@ function setupScrollRegion() {
     if (!(wrap instanceof HTMLElement)) return;
     wrap.setAttribute('tabindex', '0');
     wrap.setAttribute('role', 'region');
-    wrap.setAttribute('aria-label', 'All runs table (scrolls horizontally)');
+    wrap.setAttribute('aria-label', 'All jobs table (scrolls horizontally)');
     setupBarbellTooltip();
     if ('ResizeObserver' in window) {
         const ro = new ResizeObserver(entries => {
@@ -686,7 +686,7 @@ function updateRunsFilterDatalist() {
     datalist.innerHTML = Array.from(suggestions.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([val, { count, label }]) => {
-            const countText = `${count} ${count === 1 ? 'run' : 'runs'}`;
+            const countText = `${count} ${count === 1 ? 'job' : 'jobs'}`;
             const optionLabel = label ? `${label} · ${countText}` : countText;
             return `<option value="${escapeHtml(val)}" label="${escapeHtml(optionLabel)}"></option>`;
         })
@@ -745,7 +745,7 @@ function toRate(stats) {
 
 /** @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
-function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? Math.round(toRateExact(gStats) - toRateExact(uStats)) : null; }
+function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? toRate(gStats) - toRate(uStats) : null; }
 /** A side with no checks has no rate, so uplift against it would be fabricated.
  * @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
@@ -834,8 +834,8 @@ function getSortValue(t, key) {
         case 'date':
             return getSuiteDate(t).getTime();
         case 'uplift':
-            return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
-        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
+            return upliftPp(t.unguidedStats, t.guidedStats);
+        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair ? upliftPp(pair.u, pair.g) : null; }
         case 'time': { const rt = t.efficiencyStats?.runtime; return rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0) ? rt.medianDeltaPct : null; }
         case 'tokens': {
             const tok = t.efficiencyStats?.tokens;
@@ -869,7 +869,7 @@ function sortSuiteKeys(keys) {
 
 /** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
  * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
- * @param {number | null} delta percentage-point change, computed from unrounded rates; null unless both sides ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran
  * @param {string} label used for the screen-reader sentence
  * @param {number} [uErr=0]
  * @param {number} [gErr=0] */
@@ -885,6 +885,23 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
     const uDot = uRate !== null ? `<div class="dot unguided" style="left: ${uRate}%;"></div>` : '';
     const gDot = gRate !== null ? `<div class="dot guided" style="left: ${gRate}%;"></div>` : '';
     return `<div class="suite-dumbbell-track" aria-hidden="true"> ${uErrBand} ${gErrBand} ${connector} ${uDot} ${gDot} </div> <div class="rate-text"> <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${fmtRate(uRate)}</span> <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span> <span class="rate-g">${fmtRate(gRate)}</span> ${deltaHtml} </div>`;
+}
+/** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
+ * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
+ * @param {number | null} delta percentage-point change, computed from rounded endpoint rates; null unless both sides ran */
+function renderA11yCompact(uRate, gRate, delta) {
+    const fmtRate = (/** @type {number | null} */ r) =>
+        r === null ? '<span aria-hidden="true">—</span><span class="visually-hidden">not available</span>' : `${r}%`;
+    let pillCls = 'eff-pill muted';
+    let pillText = '<span aria-hidden="true">—</span>';
+    let pillSr = '<span class="visually-hidden"> change not available</span>';
+    if (delta !== null) {
+        if (delta > 0) pillCls = 'eff-pill neutral';
+        else if (delta < 0) pillCls = 'eff-pill cost';
+        pillText = `${delta > 0 ? '+' : ''}${delta} pp`;
+        pillSr = '';
+    }
+    return `<div class="a11y-delta-stack"><span class="visually-hidden">Automated accessibility checks: </span><span class="${pillCls}">${pillText}${pillSr}</span><span class="a11y-delta-sub"><span class="visually-hidden">, unguided </span><span>${fmtRate(uRate)}</span><span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span><span>${fmtRate(gRate)}</span></span></div>`;
 }
 /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -938,7 +955,7 @@ function renderSuites() {
 
     if (visibleKeys.length === 0) {
         const anyData = Object.keys(allTestData).length > 0;
-        container.innerHTML = `<tr class="suites-empty-row"> <td colspan="${colCount}">${anyData ? 'No runs match the current filters.' : 'Loading runs…'}</td> </tr>`;
+        container.innerHTML = `<tr class="suites-empty-row"> <td colspan="${colCount}">${anyData ? 'No jobs match the current filters.' : 'Loading jobs…'}</td> </tr>`;
         return;
     }
 
@@ -1000,7 +1017,7 @@ function renderSuites() {
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
-            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Automated accessibility checks')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
+            a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderA11yCompact(a11yURate, a11yGRate, a11yPp)} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
         } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
         const timeCellHtml = hasRuntime && rt
@@ -1012,7 +1029,7 @@ function renderSuites() {
 
         const badges = [
             curated ? '<span class="run-kind-badge curated">1.0 baseline</span>' : (!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : ''),
-            isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''
+            isFaulty ? '<span class="run-kind-badge faulty">all trials had infra errors</span>' : ''
         ].join('');
         const adhocLabelHtml = (!scheduled && !curated && label) ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
@@ -1080,9 +1097,9 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
     el.innerHTML = '';
     if (total === 0) return;
     const visibleNow = paged ? Math.min(pageSize, shown) : shown;
-    const parts = [`Showing ${visibleNow} of ${total} run${total === 1 ? '' : 's'}`];
+    const parts = [`Showing ${visibleNow} of ${total} job${total === 1 ? '' : 's'}`];
     if (!isPublicView() && hiddenAdHoc > 0) {
-        parts.push(`${hiddenAdHoc} ad-hoc run${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled runs only"`);
+        parts.push(`${hiddenAdHoc} ad-hoc job${hiddenAdHoc === 1 ? '' : 's'} hidden by "Scheduled only"`);
     } else if (matching < total) {
         parts.push(`${total - matching} filtered out`);
     }
@@ -1091,7 +1108,7 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'text-btn show-all-rows-btn';
-        btn.textContent = `Show all ${shown} runs`;
+        btn.textContent = `Show all ${shown} jobs`;
         btn.addEventListener('click', () => {
             showAllStacked = true;
             renderSuites();
@@ -1193,7 +1210,7 @@ function getBarbellDataCell(trigger) {
  * @returns {HTMLElement} */
 function getBarbellAnchorElement(trigger) {
     const cell = getBarbellDataCell(trigger);
-    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track');
+    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track, .a11y-delta-stack');
     if (track instanceof HTMLElement && track.getClientRects().length > 0) return track;
     return cell || trigger;
 }
@@ -1226,7 +1243,7 @@ function renderBarbellTooltipContent(cell) {
     const hasErr = cell.dataset.barbellErr === '1';
     const liftCls = uplift !== null && uplift > 0 ? 'up' : (uplift !== null && uplift < 0 ? 'down' : 'flat');
     const liftText = uplift === null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`;
-    const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
+    const runsText = `${runs} ${runs === 1 ? 'job' : 'jobs'}`;
     const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
     const effortNote = cell.dataset.barbellEffort || '';
     const effortHtml = effortNote ? ` <div class="barbell-tooltip-effort">${escapeHtml(effortNote)}</div>` : '';
@@ -1240,22 +1257,22 @@ function renderBarbellTooltipContent(cell) {
     let note = '';
     if (kind === 'suite-overall') {
         liftLabel = 'Pass-rate lift';
-        note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
+        note = `Vertical ticks mark checks passed without MWG and with MWG in this job; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from trials with infra errors before grading.' : ''}`;
     } else if (kind === 'suite-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+        note = 'Automated accessibility checks passed without MWG and with MWG in this job; lift is the percentage-point difference.';
     } else if (kind === 'agent-overall') {
         liftLabel = 'Pass-rate lift';
-        note = 'Checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
+        note = 'Checks passed without MWG and with MWG across the selected job(s); lift is the percentage-point difference.';
     } else if (kind === 'agent-a11y') {
         liftLabel = 'Accessibility lift';
-        note = 'Accessibility checks passed without MWG and with MWG across the selected suite run(s); lift is the percentage-point difference.';
+        note = 'Accessibility checks passed without MWG and with MWG across the selected job(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
-        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
+        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across jobs.' : ''}`;
     } else if (kind === 'dimension') {
         note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${runsText} for this dimension; the horizontal bar spans the median lift.`;
     } else {
-        note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
+        note = `Vertical ticks mark this model’s median job ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from trials with infra errors before grading.' : ''}`;
     }
 
     return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>${effortHtml} <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
@@ -1352,10 +1369,12 @@ function buildModelPivotItem(testInfo, onlyA11y) {
         return null;
     }
     if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
+        const uRate = toRate(testInfo.unguidedStats);
+        const gRate = toRate(testInfo.guidedStats);
         return {
-            uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
-            uRate: toRate(testInfo.unguidedStats),
-            gRate: toRate(testInfo.guidedStats),
+            uplift: gRate - uRate,
+            uRate,
+            gRate,
             uErr,
             gErr,
             rtDeltaPct,
@@ -1576,7 +1595,7 @@ function renderPivotInsights() {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
                 const sourceQuery = `&source=${encodeURIComponent(activeDataSource())}`;
                 nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}${sourceQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
-                effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
+                effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'job' : 'jobs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
                 const label = subMeta ? subMeta.label : key;
@@ -1597,7 +1616,7 @@ function renderPivotInsights() {
                 const tokMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.tokDeltaPct).filter(v => typeof v === 'number')));
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
                 const parts = [
-                    `${items.length} ${items.length === 1 ? 'run' : 'runs'}`,
+                    `${items.length} ${items.length === 1 ? 'job' : 'jobs'}`,
                     rtMed !== null ? `duration ${fmtSignedPct(rtMed)}` : '',
                     tokMed !== null ? `tokens ${fmtSignedPct(tokMed)}` : ''
                 ].filter(Boolean);
@@ -1650,7 +1669,7 @@ function renderPivotInsights() {
             if (pSort === 'alpha') firstColAriaSort = ' aria-sort="ascending"';
             else secondColAriaSort = ` aria-sort="${pSort === 'uplift-asc' ? 'ascending' : 'descending'}"`;
         }
-        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="visually-hidden"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
+        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across jobs)' : ''}</caption> <thead class="visually-hidden"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
         const isExpanded = Boolean(expandedPanels[filterKey]);
         const scrollCls = `insights-table-scroll${filterKey === 'guide' ? ' pivot-scroll' : ''}${isExpanded ? ' is-expanded' : ''}`;
         const label = filterKey === 'guide' ? 'By guide table (scrolls vertically)' : `By ${captionNoun} table (scrolls vertically)`;
@@ -1715,11 +1734,11 @@ function renderPivotInsights() {
         </div>`
         : '';
     const a11yScopeNoteHtml = onlyA11y ? `
-        <p class="insights-a11y-note">Automated Playwright assertions covering 5 programmable dimensions (keyboard, focus &amp; <code>inert</code>, ARIA &amp; live regions, motion &amp; contrast preferences, form labeling). Does not measure full WCAG compliance or replace manual and assistive-technology testing.</p>`
+        <p class="insights-a11y-note">Automated Playwright checks covering 5 programmable dimensions (keyboard, focus &amp; <code>inert</code>, ARIA &amp; live regions, motion &amp; contrast preferences, form labeling). Does not measure full WCAG compliance or replace manual and assistive-technology testing.</p>`
         : '';
     container.innerHTML = `
         <div class="insights-scope-bar">
-            <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
+            <p class="insights-scope">${runCount} ${runCount === 1 ? 'job' : 'jobs'} · medians across jobs</p>
             <div class="guide-legend">
                 <span class="guide-legend-item">
                     <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
@@ -1731,7 +1750,7 @@ function renderPivotInsights() {
                     <strong>Guided</strong>
                 </span>
                 <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
-                <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
+                <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across jobs; the vertical tick mark shows the median rate.</div>
             </div>
         </div>
         ${a11yScopeNoteHtml}

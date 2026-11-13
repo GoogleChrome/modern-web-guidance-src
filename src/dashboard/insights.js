@@ -1,6 +1,7 @@
 import { extractSuiteSummary } from './summary-extractor.js';
 import { parseSuiteDateInfo } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
+import { SHOWCASE_GUIDE_IDS, SHOWCASE_TASKS } from './showcase-config.js';
 export { AGENT_FAMILIES };
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
 /** @typedef {Partial<SuiteSummary> & { testId: string, source?: import('./api.js').DataSource, pageLoadStats?: { guidedFailed?: number, unguidedFailed?: number } }} ManifestSuite */
@@ -99,7 +100,20 @@ export const isNightlySuite = isCanonicalSuite;
 export function getAgentFamily(agent, families = AGENT_FAMILIES) { if (!agent) return null; const needle = agent.toLowerCase(); return families.find(f => f.agents.includes(needle)) || null; }
 /** @param {ManifestSuite} suite */
 // Also requires the A/B Spotlight slice, so manifests from older extractors get hydrated from evals.json.
-export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStats && suite.showcase); }
+export function hasHeadlineStats(suite) {
+    if (!suite || !suite.a11yStats || !suite.showcase) return false;
+    const keys = Object.keys(suite.showcase);
+    if (keys.some(k => !SHOWCASE_GUIDE_IDS.has(k))) return false;
+    if (suite.guides) {
+        return SHOWCASE_TASKS.every(t => {
+            const g = suite.guides?.[t.id];
+            if (!g) return true;
+            const expectsSlice = g.guidedTotal === undefined || (g.guidedTotal > 0 && g.unguidedTotal > 0);
+            return !expectsSlice || Boolean(suite.showcase?.[t.id]);
+        });
+    }
+    return keys.length === 0 || SHOWCASE_TASKS.every(t => Boolean(suite.showcase?.[t.id]));
+}
 /** @param {ManifestSuite[]} suites
  * @param {InsightOptions} [options]
  * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */

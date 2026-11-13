@@ -114,7 +114,7 @@ export function computeDevReportFlag(input: {
   if (!input.toolsUsed.some(t => t.includes('modern-web-guidance'))) {
     return {
       flag: 'MISSING_GUIDANCE_TOOL',
-      flagDetails: `Guided run did not invoke modern-web-guidance (tools used: ${input.toolsUsed.length > 0 ? input.toolsUsed.join(', ') : 'none'}).`,
+      flagDetails: `Guided trial did not invoke modern-web-guidance (tools used: ${input.toolsUsed.length > 0 ? input.toolsUsed.join(', ') : 'none'}).`,
     };
   }
 
@@ -122,7 +122,7 @@ export function computeDevReportFlag(input: {
   if (!input.guidesConsumed.includes(input.guideName)) {
     return {
       flag: 'MISSING_EXPECTED_GUIDE',
-      flagDetails: `Guided run did not consume the expected guide '${input.guideName}' (guides consumed: ${input.guidesConsumed.length > 0 ? input.guidesConsumed.join(', ') : 'none'}).`,
+      flagDetails: `Guided trial did not consume the expected guide '${input.guideName}' (guides consumed: ${input.guidesConsumed.length > 0 ? input.guidesConsumed.join(', ') : 'none'}).`,
     };
   }
 

@@ -137,7 +137,10 @@ function getSequenceStartRules(ctx: CssMatcherContext): Set<CssRuleView> {
 
 const dynamicSiblingAnimationsCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: [':nth-child(1)', ':nth-child(2)', ':nth-of-type(1)', ':nth-of-type(2)'],
+  fastTokens: [
+    [':nth-child(', ':nth-of-type('],
+    ['animation-delay', 'transition-delay'],
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const startRules = getSequenceStartRules(ctx);
     if (!startRules.has(styleRule)) {

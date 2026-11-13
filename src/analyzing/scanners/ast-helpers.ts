@@ -5,15 +5,49 @@ import {
   type ArrowFunction,
   type BinaryExpression,
   type CallExpression,
+  type ElementAccessExpression,
   type ExportDeclaration,
   type FunctionDeclaration,
   type FunctionExpression,
   type ImportDeclaration,
   type MethodDeclaration,
+  type PropertyAccessExpression,
   type SourceFile,
   type Statement,
   type VariableDeclaration,
 } from 'ts-morph';
+
+const callAndBinaryCache = new WeakMap<
+  object,
+  ReadonlyArray<CallExpression | BinaryExpression>
+>();
+
+/**
+ * Returns all `CallExpression` and `BinaryExpression` descendants of `sourceFile` in
+ * exact AST pre-order (`getPos()` ascending, then `getEnd()` descending for parent-before-child),
+ * memoizing the combined sorted array per `SourceFile` across rules.
+ */
+export function getCallAndBinaryDescendants(
+  sourceFile: SourceFile,
+): ReadonlyArray<CallExpression | BinaryExpression> {
+  const cacheKey: object = sourceFile.compilerNode ?? sourceFile;
+  const cached = callAndBinaryCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const calls = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+  const binaries = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
+  const sorted =
+    calls.length === 0
+      ? binaries
+      : binaries.length === 0
+        ? calls
+        : [...calls, ...binaries].sort(
+            (a, b) => a.getPos() - b.getPos() || b.getEnd() - a.getEnd(),
+          );
+  callAndBinaryCache.set(cacheKey, sorted);
+  return sorted;
+}
 
 /**
  * Strips parentheses, type assertions, non-null assertions, and satisfies wrappers
@@ -33,7 +67,7 @@ export function unwrapExpression(expr: Node): Node {
   return current;
 }
 
-function isCallableScope(
+export function isCallableScope(
   scope: Node,
 ): scope is FunctionDeclaration | FunctionExpression | ArrowFunction | MethodDeclaration {
   return (
@@ -53,7 +87,7 @@ function hasBindingName(decl: VariableDeclaration, name: string): boolean {
         .some((el) => Node.isIdentifier(el.getNameNode()) && el.getName() === name);
 }
 
-interface ResolvedImport {
+export interface ResolvedImport {
   readonly declaration: ImportDeclaration;
   readonly importedName: string;
 }
@@ -76,7 +110,7 @@ function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedI
   return null;
 }
 
-type LexicalBinding =
+export type LexicalBinding =
   | { readonly kind: 'variable'; readonly node: VariableDeclaration }
   | { readonly kind: 'function'; readonly node: FunctionDeclaration }
   | { readonly kind: 'import'; readonly importBinding: ResolvedImport }
@@ -86,7 +120,7 @@ type LexicalBinding =
  * Walks enclosing lexical scopes from `startNode` up to `SourceFile` and returns
  * the innermost binding for `name` (or `null` if `name` is unbound / global).
  */
-function resolveLexicalBinding(
+export function resolveLexicalBinding(
   startNode: Node,
   name: string,
   beforePos?: number,
@@ -269,7 +303,7 @@ const BROWSER_GLOBAL_ROOTS = new Set([
   'self',
 ]);
 
-function getStaticStringValue(node: Node | undefined): string | null {
+export function getStaticStringValue(node: Node | undefined): string | null {
   if (!node) {
     return null;
   }
@@ -939,4 +973,46 @@ export function isLibraryReference(
   }
 
   return allowGlobal && isGlobalReference(unwrapped, identName);
+}
+
+function extractAccessName(access: PropertyAccessExpression | ElementAccessExpression): string | null {
+  return Node.isPropertyAccessExpression(access)
+    ? access.getName()
+    : getStaticStringValue(access.getArgumentExpression());
+}
+
+export function getMemberAccess(
+  node: Node | undefined,
+): { readonly expression: Node; readonly name: string; readonly optional: boolean } | null {
+  if (!node) {
+    return null;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isPropertyAccessExpression(unwrapped) && !Node.isElementAccessExpression(unwrapped)) {
+    return null;
+  }
+  const name = extractAccessName(unwrapped);
+  return name !== null
+    ? { expression: unwrapped.getExpression(), name, optional: unwrapped.hasQuestionDotToken() }
+    : null;
+}
+
+export function getAssignment(node: Node | undefined): {
+  readonly binary: BinaryExpression;
+  readonly left: Node;
+  readonly right: Node;
+  readonly operator: SyntaxKind;
+} | null {
+  if (!node) {
+    return null;
+  }
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isBinaryExpression(unwrapped)) {
+    return null;
+  }
+  const operator = unwrapped.getOperatorToken().getKind();
+  if (operator < SyntaxKind.FirstAssignment || operator > SyntaxKind.LastAssignment) {
+    return null;
+  }
+  return { binary: unwrapped, left: unwrapped.getLeft(), right: unwrapped.getRight(), operator };
 }
