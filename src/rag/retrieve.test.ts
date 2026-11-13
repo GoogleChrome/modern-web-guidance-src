@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import child_process from 'node:child_process';
-import { retrieveUseCase, OriginTrialGateError, VolatileFeatureGateError, FeatureGateError } from './retrieve.ts';
+import { retrieveUseCase, OriginTrialGateError, VolatileFeatureGateError, FeatureGateError, UnknownGuideError, formatUnknownGuideMessage } from './retrieve.ts';
 import { searchUseCases } from './search.ts';
 import { USE_CASES } from './guides.ts';
 
@@ -233,5 +233,42 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
 
     const results = await searchUseCases(volatileGuide.description);
     assert.ok(results.map((r) => r.id).includes(volatileGuide.id));
+  });
+});
+
+describe('retrieveUseCase with unknown IDs', () => {
+  test('rejects a misspelled ID with UnknownGuideError listing the closest guide first', async () => {
+    const typo = regularGuide.id.slice(0, -1);
+    await assert.rejects(
+      () => retrieveUseCase(typo),
+      (err: unknown) => {
+        assert.ok(err instanceof UnknownGuideError);
+        assert.strictEqual(err.guideId, typo);
+        assert.strictEqual(err.suggestions[0], regularGuide.id);
+        assert.ok(err.suggestions.length <= 3);
+        assert.ok(err.message.startsWith(`Unknown guide ID "${typo}". Did you mean: ${regularGuide.id}`));
+        return true;
+      }
+    );
+  });
+
+  test('rejects a hopeless ID without suggestions', async () => {
+    await assert.rejects(
+      () => retrieveUseCase('qwfp-zxcv-jjjj'),
+      (err: unknown) => {
+        assert.ok(err instanceof UnknownGuideError);
+        assert.deepStrictEqual(err.suggestions, []);
+        assert.ok(err.message.includes('No similar guide IDs found.'));
+        return true;
+      }
+    );
+  });
+
+  test('truncates very long IDs in the error message', () => {
+    const message = formatUnknownGuideMessage('x'.repeat(5000), []);
+    const firstLine = message.split('\n')[0];
+    assert.ok(firstLine.includes(`"${'x'.repeat(79)}…"`), firstLine);
+    assert.ok(firstLine.length < 140, `first line is ${firstLine.length} chars`);
+    assert.ok(formatUnknownGuideMessage('x'.repeat(80), []).includes(`"${'x'.repeat(80)}"`));
   });
 });
