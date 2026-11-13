@@ -217,8 +217,8 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
         const isUnguided = key.endsWith(' - unguided');
 
         if (parsedKey) {
-            distinctBaseApps.add(parsedKey.task);
-            const { guide, task } = parsedKey;
+            distinctBaseApps.add(parsedKey.baseApp);
+            const { guide, baseApp } = parsedKey;
             if (!jobGuides[guide]) {
                 jobGuides[guide] = {
                     guided: { passed: 0, total: 0 },
@@ -226,13 +226,13 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
                 };
             }
             if (!jobGuideTasks[guide]) jobGuideTasks[guide] = {};
-            if (task && !jobGuideTasks[guide][task]) {
-                jobGuideTasks[guide][task] = {
+            if (baseApp && !jobGuideTasks[guide][baseApp]) {
+                jobGuideTasks[guide][baseApp] = {
                     guided: { passed: 0, total: 0 },
                     unguided: { passed: 0, total: 0 }
                 };
             }
-            const pairKey = `${task}|||${guide}`;
+            const pairKey = `${baseApp}|||${guide}`;
             if (!pairedTaskEfficiency[pairKey]) {
                 pairedTaskEfficiency[pairKey] = {
                     guidedMs: [],
@@ -243,15 +243,15 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
             }
         }
 
-        const isEligibleTask = parsedKey ? eligibleTasks.has(`${parsedKey.task} - ${parsedKey.guide}`) : true;
+        const isEligibleTask = parsedKey ? eligibleTasks.has(`${parsedKey.baseApp} - ${parsedKey.guide}`) : true;
 
         if (isGuided) guidedTrialCount += trials.length;
         else if (isUnguided) unguidedTrialCount += trials.length;
 
         if (parsedKey && SHOWCASE_GUIDE_IDS.has(parsedKey.guide) && (parsedKey.condition === 'guided' || parsedKey.condition === 'unguided') && trials.length) {
             const firstTrial = trials.reduce((a, b) => ((b.runNumber ?? 0) < (a.runNumber ?? 0) ? b : a));
-            const entry = (showcaseTrials[parsedKey.guide] ||= { task: parsedKey.task });
-            if (entry.task === parsedKey.task) entry[parsedKey.condition] = firstTrial;
+            const entry = (showcaseTrials[parsedKey.guide] ||= { task: parsedKey.baseApp });
+            if (entry.task === parsedKey.baseApp) entry[parsedKey.condition] = firstTrial;
         }
         trials.forEach((/** @type {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} */ trial) => {
             if (isInfraErrorTrial(trial.results)) {
@@ -267,11 +267,11 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
                 if (isGuided) { guidedPassed += s.passed; guidedTotal += s.total; } else if (isUnguided) { unguidedPassed += s.passed; unguidedTotal += s.total; }
                 if (parsedKey && (parsedKey.condition === 'guided' || parsedKey.condition === 'unguided')) {
                     const condition = /** @type {'guided' | 'unguided'} */ (parsedKey.condition);
-                    const { guide, task } = parsedKey;
+                    const { guide, baseApp } = parsedKey;
                     jobGuides[guide][condition].passed += s.passed;
                     jobGuides[guide][condition].total += s.total;
 
-                    const taskStats = task && jobGuideTasks[guide][task];
+                    const taskStats = baseApp && jobGuideTasks[guide][baseApp];
                     if (taskStats) { taskStats[condition].passed += s.passed; taskStats[condition].total += s.total; }
                     // Skip infra-error trials (zeroed by getTrialStats) so a11y totals stay in sync with overall totals.
                     if (s.total > 0) (trial.results || []).forEach(check => {
@@ -286,16 +286,16 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
                             }
                             jobGuideA11y[guide][condition].total += 1;
                             if (check.passed) jobGuideA11y[guide][condition].passed += 1;
-                            if (task) {
+                            if (baseApp) {
                                 if (!jobGuideTaskA11y[guide]) jobGuideTaskA11y[guide] = {};
-                                if (!jobGuideTaskA11y[guide][task]) {
-                                    jobGuideTaskA11y[guide][task] = {
+                                if (!jobGuideTaskA11y[guide][baseApp]) {
+                                    jobGuideTaskA11y[guide][baseApp] = {
                                         guided: { passed: 0, total: 0 },
                                         unguided: { passed: 0, total: 0 }
                                     };
                                 }
-                                jobGuideTaskA11y[guide][task][condition].total += 1;
-                                if (check.passed) jobGuideTaskA11y[guide][task][condition].passed += 1;
+                                jobGuideTaskA11y[guide][baseApp][condition].total += 1;
+                                if (check.passed) jobGuideTaskA11y[guide][baseApp][condition].passed += 1;
                             }
                             if (condition === 'guided') { a11yGuidedTotal += 1; if (check.passed) a11yGuidedPassed += 1; } else { a11yUnguidedTotal += 1; if (check.passed) a11yUnguidedPassed += 1; }
                             const bucket = subCatTallies[cls.subCategory];
@@ -307,14 +307,14 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
 
             if (parsedKey && (parsedKey.condition === 'guided' || parsedKey.condition === 'unguided')) {
                 const condition = /** @type {'guided' | 'unguided'} */ (parsedKey.condition);
-                const { guide, task } = parsedKey;
+                const { guide, baseApp } = parsedKey;
                 const runtimeMs = getAgentRuntimeMs(trial);
                 const hasInfraError = isInfraErrorTrial(trial.results);
                 const timedOut = runtimeMs >= TIMEOUT_MS ||
                     (hasInfraError && (trial.results || []).some(c => /timeout/i.test(c.message || '')));
                 if (timedOut) { if (condition === 'guided') guidedTimeouts += 1; else unguidedTimeouts += 1; }
                 if (isEligibleTask && !hasInfraError) {
-                    const pairKey = `${task}|||${guide}`;
+                    const pairKey = `${baseApp}|||${guide}`;
                     const pairBucket = pairedTaskEfficiency[pairKey];
                     if (runtimeMs > 0) {
                         if (condition === 'guided') { guidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.guidedMs.push(runtimeMs); } else { unguidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.unguidedMs.push(runtimeMs); }

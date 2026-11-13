@@ -141,7 +141,7 @@ export class ApiClient {
     /**
      * Whether an optional file exists for the current source. The public copy
      * has no listing API and every optional file it carries is named in
-     * `run.files`, so nothing is probed there.
+     * `trial.files`, so nothing is probed there.
      * @private
      * @param {string} path
      * @returns {Promise<boolean>}
@@ -278,7 +278,7 @@ export class ApiClient {
     async getResultInfo(jobId, trial, resultKey) {
         const parsed = parseResultKey(resultKey);
         if (!parsed) return null;
-        const { task: baseAppName, guide: guideName, condition } = parsed;
+        const { baseApp: baseAppName, guide: guideName, condition } = parsed;
         const actualBaseApp = trial.baseApp;
         let logicalBasePath = `${jobId}/${trial.runNumber}/${guideName}/${baseAppName}/${condition}`;
 

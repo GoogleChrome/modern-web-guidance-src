@@ -510,22 +510,22 @@ export function timeAgo(date) {
 
 /**
  * @param {string} key
- * @returns {{ task: string, guide: string, condition: string } | null}
+ * @returns {{ baseApp: string, guide: string, condition: string } | null}
  */
 export function parseResultKey(key) {
     const parts = key.split(' - ');
     if (parts.length < 2 || parts.length > 3) return null;
-    let [task, guide, condition] = parts;
+    let [baseApp, guide, condition] = parts;
 
     const featuresMap = typeof window !== 'undefined' ? window.__featuresMapping : undefined;
     let isFlipped = false;
 
     if (featuresMap) {
         const isGuideValid = featuresMap[guide] !== undefined;
-        const isTaskValidGuide = featuresMap[task] !== undefined;
-        if (isTaskValidGuide && !isGuideValid) {
+        const isBaseAppValidGuide = featuresMap[baseApp] !== undefined;
+        if (isBaseAppValidGuide && !isGuideValid) {
             isFlipped = true;
-        } else if (!isGuideValid && !isTaskValidGuide) {
+        } else if (!isGuideValid && !isBaseAppValidGuide) {
             isFlipped = guide === 'task' || !!(guide && guide.endsWith('-task'));
         }
     } else {
@@ -533,12 +533,12 @@ export function parseResultKey(key) {
     }
 
     if (isFlipped) {
-        const temp = task;
-        task = guide;
+        const temp = baseApp;
+        baseApp = guide;
         guide = temp;
     }
 
-    return { task, guide, condition };
+    return { baseApp, guide, condition };
 }
 
 /**
@@ -556,7 +556,7 @@ export function getEligibleTaskIds(results) {
         const otherKey = key.endsWith(' - guided') ? key.replace(/ - guided$/, ' - unguided') : key.replace(/ - unguided$/, ' - guided');
         if (trials.some(t => getTrialStats(t.results).total > 0) &&
             (!results[otherKey] || results[otherKey].some(t => getTrialStats(t.results).total > 0))) {
-            eligible.add(`${parsed.task} - ${parsed.guide}`);
+            eligible.add(`${parsed.baseApp} - ${parsed.guide}`);
         }
     }
     return eligible;
@@ -582,10 +582,10 @@ export function calculateChartData(results, optionsOrEligible = {}) {
     Object.keys(results).forEach(key => {
         const parsedKey = parseResultKey(key);
         if (!parsedKey) return;
-        const { task: taskName, guide, condition: rawCondition } = parsedKey;
+        const { baseApp, guide, condition: rawCondition } = parsedKey;
 
         if (rawCondition !== 'guided' && rawCondition !== 'unguided') return;
-        if (!eligibleTasks.has(`${taskName} - ${guide}`)) return;
+        if (!eligibleTasks.has(`${baseApp} - ${guide}`)) return;
         /** @type {'guided' | 'unguided'} */
         const condition = rawCondition;
         const failedKey = condition === 'guided' ? 'guided_failed' : 'unguided_failed';
@@ -595,7 +595,7 @@ export function calculateChartData(results, optionsOrEligible = {}) {
         const cachedPctKey = condition === 'guided' ? 'guided_cached_pct' : 'unguided_cached_pct';
         const runtimeKey = condition === 'guided' ? 'guided_runtime_ms' : 'unguided_runtime_ms';
 
-        const taskLabel = `${taskName} (${guide})`;
+        const taskLabel = `${baseApp} (${guide})`;
         if (!tasks[taskLabel]) {
             tasks[taskLabel] = { 
                 guided: [], 

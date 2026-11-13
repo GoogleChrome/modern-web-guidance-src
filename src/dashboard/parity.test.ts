@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert';
-import { generateSuitesManifest } from './generate-manifests.js';
+import { generateJobsManifest } from './generate-manifests.js';
 import { suitesDir } from '../core/paths.ts';
 
 let tempDir = '';
@@ -26,7 +26,7 @@ before(async () => {
     }
 
     // Generate manifests for standard tests
-    await generateSuitesManifest(manifestOutDir, targetResultsDir);
+    await generateJobsManifest(manifestOutDir, targetResultsDir);
 });
 
 after(async () => {
@@ -54,7 +54,7 @@ test('Parity: Static manifests should be correctly generated and accessible', as
 test('Parity: evals.json should be valid in all completed suites', async () => {
     const suitesPath = path.join(manifestOutDir, 'suites.gen.json');
     // Re-generate to ensure we have a valid file for this test if previous one was cleaned up
-    await generateSuitesManifest(manifestOutDir, targetResultsDir);
+    await generateJobsManifest(manifestOutDir, targetResultsDir);
     
     assert.ok(fs.existsSync(suitesPath), 'suites.gen.json should exist');
     

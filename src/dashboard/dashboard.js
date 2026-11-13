@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const parsed = parseResultKey(currentDetails.testName);
             if (!parsed) return;
-            const { task: baseAppName, guide, condition } = parsed;
+            const { baseApp: baseAppName, guide, condition } = parsed;
             const currentTaskKey = `${baseAppName} - ${guide}`;
 
             let tIdx = sortedTaskKeys.indexOf(currentTaskKey);
@@ -1598,10 +1598,10 @@ async function fillAccordionDetails(container, taskKey, unguidedTrials, guidedTr
                 if (!promptText) {
                     const parsed = parseResultKey(`${taskKey} - ${conditionLabel}`);
                     const guideName = parsed?.guide || '';
-                    const targetApp = parsed?.task || sampleTrial.baseApp || 'daily-grind';
+                    const fallbackBaseApp = parsed?.baseApp || sampleTrial.baseApp || 'daily-grind';
                     const catMap = await loadGuideCategoryMap();
                     const catDir = catMap.get(guideName)?.dir || guideName;
-                    const taskPath = `guides/${catDir}/${guideName}/targets/${targetApp}/task.md`;
+                    const taskPath = `guides/${catDir}/${guideName}/targets/${fallbackBaseApp}/task.md`;
                     const text = await api.getFileText(taskPath);
 
                     const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
@@ -1973,9 +1973,9 @@ async function showDetails(testName, trials, stats, testId) {
     currentDetails = { testName, trials, stats, testId };
 
     const parsed = parseResultKey(testName);
-    const taskKey = parsed ? `${parsed.task} - ${parsed.guide}` : testName.replace(/ - (guided|unguided)$/, '');
+    const taskKey = parsed ? `${parsed.baseApp} - ${parsed.guide}` : testName.replace(/ - (guided|unguided)$/, '');
     const accordionId = `item-${taskKey.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
-    const accordionEl = (parsed && document.querySelector(`.task-accordion[data-guide="${CSS.escape(parsed.guide)}"][data-task="${CSS.escape(parsed.task)}"]`))
+    const accordionEl = (parsed && document.querySelector(`.task-accordion[data-guide="${CSS.escape(parsed.guide)}"][data-task="${CSS.escape(parsed.baseApp)}"]`))
         || document.getElementById(accordionId);
 
     if (accordionEl) {
@@ -2256,7 +2256,7 @@ function sliceChartDataForDiscipline(chartData, disciplineResults) {
     const taskLabels = new Set();
     for (const key of Object.keys(disciplineResults)) {
         const parsed = parseResultKey(key);
-        if (parsed) taskLabels.add(`${parsed.task} (${parsed.guide})`);
+        if (parsed) taskLabels.add(`${parsed.baseApp} (${parsed.guide})`);
     }
     /** @type {number[]} */
     const indices = [];
@@ -2374,14 +2374,14 @@ function renderDashboardDumbbellChart(data, summary = currentJobSummary) {
             const originalKey = Object.keys(disciplineResults).find(key => {
                 const parsed = parseResultKey(key);
                 if (!parsed) return false;
-                return `${parsed.task} (${parsed.guide})` === taskLabel && parsed.condition === condition;
+                return `${parsed.baseApp} (${parsed.guide})` === taskLabel && parsed.condition === condition;
             });
 
             if (originalKey) {
                 const parsed = parseResultKey(originalKey);
                 if (parsed) {
-                    const { guide, task } = parsed;
-                    const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(task)}"]`))
+                    const { guide, baseApp } = parsed;
+                    const accordionEl = (baseApp && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(baseApp)}"]`))
                         || document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"]`);
                     if (accordionEl) {
                         const catSection = accordionEl.closest('.eval-category-section.collapsed');

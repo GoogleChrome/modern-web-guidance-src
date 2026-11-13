@@ -495,7 +495,7 @@ async function fetchEvalsUncached(testId) {
 /**
  * The data source this page actually loaded from, for the hero and for links to
  * other pages. Usually `resolveDataSource()`, except after a 403 sent a signed-in
- * visitor to the public copy: links must then say `source=public` or the suite
+ * visitor to the public copy: links must then say `source=public` or the job
  * page would try the bucket again and bounce back here.
  * @returns {import('./api.js').DataSource}
  */
@@ -1230,7 +1230,7 @@ function renderBarbellTooltipContent(cell) {
     const title = cell.dataset.barbellTitle || '';
     const kind = cell.dataset.barbellKind || 'guide';
     const metric = cell.dataset.barbellMetric || 'Pass rate';
-    const runs = parseInt(cell.dataset.barbellRuns || '0') || 0;
+    const jobCount = parseInt(cell.dataset.barbellRuns || '0') || 0;
     // Empty attributes mean that side (or the comparison) has no data.
     const parseOrNull = (/** @type {string | undefined} */ v) => (v === undefined || v === '') ? null : (parseInt(v) || 0);
     const uRate = parseOrNull(cell.dataset.barbellU);
@@ -1243,8 +1243,8 @@ function renderBarbellTooltipContent(cell) {
     const hasErr = cell.dataset.barbellErr === '1';
     const liftCls = uplift !== null && uplift > 0 ? 'up' : (uplift !== null && uplift < 0 ? 'down' : 'flat');
     const liftText = uplift === null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`;
-    const runsText = `${runs} ${runs === 1 ? 'job' : 'jobs'}`;
-    const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
+    const jobsText = `${jobCount} ${jobCount === 1 ? 'job' : 'jobs'}`;
+    const subText = cell.dataset.barbellSub || `${metric} · median across ${jobsText}`;
     const effortNote = cell.dataset.barbellEffort || '';
     const effortHtml = effortNote ? ` <div class="barbell-tooltip-effort">${escapeHtml(effortNote)}</div>` : '';
     const uExtraHtml = uDetail !== ''
@@ -1268,11 +1268,11 @@ function renderBarbellTooltipContent(cell) {
         liftLabel = 'Accessibility lift';
         note = 'Accessibility checks passed without MWG and with MWG across the selected job(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
-        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across jobs.' : ''}`;
+        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${jobsText} in this date window; the horizontal bar spans the median lift.${jobCount > 1 ? ' Shaded bands show ±1 standard deviation across jobs.' : ''}`;
     } else if (kind === 'dimension') {
-        note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${runsText} for this dimension; the horizontal bar spans the median lift.`;
+        note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${jobsText} for this dimension; the horizontal bar spans the median lift.`;
     } else {
-        note = `Vertical ticks mark this model’s median job ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from trials with infra errors before grading.' : ''}`;
+        note = `Vertical ticks mark this model’s median job ${metric.toLowerCase()} without MWG and with MWG across ${jobsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from trials with infra errors before grading.' : ''}`;
     }
 
     return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>${effortHtml} <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;

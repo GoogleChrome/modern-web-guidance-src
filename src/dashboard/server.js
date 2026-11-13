@@ -346,7 +346,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // --- /api/eval-launch : spawns an evaluation run in background ---
+  // --- /api/eval-launch : spawns an evaluation job in background ---
   if (decodedPath === '/api/eval-launch' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });

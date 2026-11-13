@@ -52,7 +52,7 @@ export function generateMapping(outputDir = defaultOutputDir) {
 /** 
  * Generates suites.gen.json based on folders in results/suites that contain evals.json.
  */
-export async function generateSuitesManifest(outputDir = defaultOutputDir, resultsSourceDir = suitesDir) {
+export async function generateJobsManifest(outputDir = defaultOutputDir, resultsSourceDir = suitesDir) {
     fs.mkdirSync(outputDir, { recursive: true });
     const { extractJobSummary } = await import('./summary-extractor.js');
     /** @type {Map<string, Record<string, any>>} */
@@ -252,7 +252,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
     }
 
     console.log('🔄 Generating jobs manifest...');
-    await generateSuitesManifest(outputDir, resultsSourceDir);
+    await generateJobsManifest(outputDir, resultsSourceDir);
 }
 
 // CLI Runner
