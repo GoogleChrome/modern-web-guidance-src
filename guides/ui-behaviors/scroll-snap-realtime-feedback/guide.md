@@ -126,7 +126,10 @@ For browsers that do not support `scrollsnapchanging`, the UI will not provide e
 **DO** simulate the real-time nature of `scrollsnapchanging` with a `scroll` event listener coupled with `requestAnimationFrame` and geometric distance calculations to determine the closest snap target while the user is actively scrolling.
 
 ```javascript
-if ('onscrollsnapchanging' in Element.prototype) {
+// Check HTMLElement.prototype, not Element.prototype. Scroll snap event handlers are
+// defined on HTMLElement (like onclick), so `'onscrollsnapchanging' in Element.prototype`
+// is false even in browsers that fire the events.
+if ('onscrollsnapchanging' in HTMLElement.prototype) {
   // Use native scroll snap events
 } else {
   // Fallback: use scroll + requestAnimationFrame for eager feedback
