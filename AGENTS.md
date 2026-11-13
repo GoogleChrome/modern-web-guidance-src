@@ -18,8 +18,10 @@ Always read and follow `.agents/skills/<skill>/SKILL.md` before starting a task:
 
 For repository architecture, terminology, governance, and contributor workflows, see [`docs/CONTEXT.md`](./docs/CONTEXT.md), [`docs/LEXICON.md`](./docs/LEXICON.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`GOVERNANCE.md`](./GOVERNANCE.md), [`guides/CONTRIBUTING.md`](./guides/CONTRIBUTING.md), and [`docs/ATLS.md`](./docs/ATLS.md).
 
-## PR Review Etiquette
+## GitHub & PR Etiquette
 
-- Prefix agent-posted GitHub comments and replies to indicate human involvement: `🤖` autonomous (unsteered on this point), `✨` directed (from a quick human prompt), or `🧠` co-designed (shaped through multi-turn human iteration or debugging).
-- When accepting a ` ```suggestion ` block verbatim, commit it via the GitHub UI/API or in a dedicated commit (`Apply suggestions from code review`) with `Co-authored-by: Name <email>` trailers.
-- Reply to every addressed review thread (citing the commit SHA or explaining how a suggestion was adapted).
+- **External Contributor Gate (non-Peers/ATLs/Owners):** Before opening a PR, verify: (1) the user signed the [Google CLA](https://cla.developers.google.com/) with their `git config user.email`, (2) an agreed-upon issue exists and is assigned to them or labeled `help wanted` (open issues and maintainer follow-up comments are **not** invitations to PR; only unambiguous typos/broken links skip this), (3) no open competing PR targets the issue and the user has **0 other open PRs** in this repo (limit: 1 open PR at a time), and (4) content diffs touch at most **1 guide directory**. If any check fails, stop and do not open a PR.
+- **Provenance Prefix:** Prefix agent-drafted GitHub issues, PR descriptions, and review comments with `🤖` autonomous (unsteered), `✨` directed (quick prompt), or `🧠` co-designed (multi-turn iteration/debugging).
+- **No AI Commit Trailers:** Never emit `Co-Authored-By:` trailers for AI models or tools.
+- **PR Descriptions:** Keep descriptions concise and focused on the motivation and net effect—no introductory fluff ("This PR..."), no repeating the title, no listing changed files/methods already visible in the diff, and no verification boilerplate.
+- **Review Replies:** Commit verbatim ` ```suggestion ` blocks with human `Co-authored-by: Name <email>` trailers, reply to every addressed thread (citing the commit SHA or explaining how a suggestion was adapted), and resolve the thread.
