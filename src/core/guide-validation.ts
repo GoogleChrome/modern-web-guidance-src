@@ -823,10 +823,44 @@ export function classifyGuide(
   return 'complete';
 }
 
+/**
+ * Collects `guide.md` files that sit below a guide directory. The canonical
+ * layout is `guides/<category>/<guide>/guide.md`, so any deeper `guide.md` is a
+ * misplaced guide: the inventory cannot describe it (its category would be the
+ * parent guide) and silently dropping it hid duplicate IDs and empty artifacts
+ * from the integrity tests (see #3536).
+ */
+function findNestedGuideFiles(guideDir: string): string[] {
+  const nested: string[] = [];
+
+  const walk = (dir: string, isRoot: boolean) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+      const entryPath = path.join(dir, entry.name);
+      if (entry.isFile()) {
+        if (!isRoot && entry.name === GUIDE_FILE) nested.push(entryPath);
+        continue;
+      }
+      if (entry.isDirectory()) walk(entryPath, false);
+    }
+  };
+
+  walk(guideDir, true);
+  return nested;
+}
+
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   const guides: GuideInventory[] = [];
+  const nestedGuides: string[] = [];
 
-  if (!fs.existsSync(guidesDir)) return guides;
+  if (!fs.existsSync(scanDir)) return guides;
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
      .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
@@ -839,9 +873,20 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-      guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
+      const guideDir = path.join(categoryDir, entry.name);
+      guides.push(inventoryGuide(guideDir));
+      nestedGuides.push(...findNestedGuideFiles(guideDir));
     }
   }
+
+  if (nestedGuides.length > 0) {
+    const list = nestedGuides.map(file => `  - ${path.relative(REPO_ROOT, file)}`).join('\n');
+    throw new Error(
+      `Nested guide directories are not supported: guides must live at guides/<category>/<guide>/.\n`
+      + `Found a guide.md below an existing guide:\n${list}`,
+    );
+  }
+
   return guides;
 }
 

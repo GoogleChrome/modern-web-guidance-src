@@ -181,3 +181,69 @@ test('scanAllGuides works with standard category/guide structure', () => {
     removeTempDir(tempDir);
   }
 });
+
+test('scanAllGuides rejects a guide.md nested below a guide directory (#3536)', () => {
+  const tempDir = createTempDir();
+  try {
+    const guidesDir = path.join(tempDir, 'guides');
+    const guideDir = path.join(guidesDir, 'performance', 'parent-guide');
+    const nestedDir = path.join(guideDir, 'nested-guide');
+    fs.mkdirSync(nestedDir, { recursive: true });
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), 'content');
+    fs.writeFileSync(path.join(nestedDir, 'guide.md'), 'content');
+
+    assert.throws(
+      () => scanAllGuides(guidesDir),
+      (error: Error) => {
+        assert.match(error.message, /Nested guide directories are not supported/);
+        assert.ok(error.message.includes(path.join('nested-guide', 'guide.md')), error.message);
+        return true;
+      },
+    );
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('scanAllGuides allows nested directories that hold no guide.md', () => {
+  const tempDir = createTempDir();
+  try {
+    const guidesDir = path.join(tempDir, 'guides');
+    const guideDir = path.join(guidesDir, 'html', 'my-use-case');
+    fs.mkdirSync(path.join(guideDir, 'tasks'), { recursive: true });
+    fs.mkdirSync(path.join(guideDir, 'assets'), { recursive: true });
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), 'content');
+    fs.writeFileSync(path.join(guideDir, 'tasks', 'task.md'), 'task');
+    fs.writeFileSync(path.join(guideDir, 'assets', 'demo.css'), 'body{}');
+
+    const guides = scanAllGuides(guidesDir);
+    assert.strictEqual(guides.length, 1);
+    assert.ok(guides[0].dir.includes('my-use-case'));
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('scanAllGuides lists every misplaced guide.md it finds', () => {
+  const tempDir = createTempDir();
+  try {
+    const guidesDir = path.join(tempDir, 'guides');
+    const guideDir = path.join(guidesDir, 'performance', 'parent-guide');
+    for (const nested of ['first-nested', 'second-nested']) {
+      fs.mkdirSync(path.join(guideDir, nested), { recursive: true });
+      fs.writeFileSync(path.join(guideDir, nested, 'guide.md'), 'content');
+    }
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), 'content');
+
+    assert.throws(
+      () => scanAllGuides(guidesDir),
+      (error: Error) => {
+        assert.ok(error.message.includes(path.join('first-nested', 'guide.md')), error.message);
+        assert.ok(error.message.includes(path.join('second-nested', 'guide.md')), error.message);
+        return true;
+      },
+    );
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
