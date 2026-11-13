@@ -7,12 +7,9 @@ import config, { Agents } from '../config.ts';
 import { parseBooleanEnv } from '../../core/env.ts';
 import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import {
-  cleanupIsolatedHome,
   copyFileIfExists,
-  parseAgentArgs,
-  runCliAgentCommand,
+  runAgentCliEntrypoint,
   parseJsonlFile,
-  setupIsolatedWorkDir,
   type GuideUsage
 } from '../lib/agent-shared.ts';
 import {
@@ -25,7 +22,6 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory,
   readTrajectorySummary,
   getSessionFiles,
   standardizeAction
@@ -97,48 +93,6 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
       ? (baseName.startsWith('subagent-') ? `${baseName}.jsonl` : `subagent-${baseName}.jsonl`)
       : (baseName.startsWith('session-') ? `${baseName}.jsonl` : `session-${baseName}.jsonl`);
     fs.writeFileSync(path.join(targetDir, destName), sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
-  }
-}
-
-/**
- * Executes the Pi CLI command and captures output.
- */
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType);
-
-  if (!workDir) {
-    throw new Error(`Failed to initialize working directory: ${workDir}`);
-  }
-
-  try {
-    console.log(`Starting Pi agent in ${workDir}`);
-
-    const { command, commandArgs } = getPiCommandAndArgs(userPrompt);
-
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
-
-    try {
-      await runCliAgentCommand(
-        command,
-        commandArgs,
-        workDir,
-        targetDir,
-        'Pi',
-        runType,
-        getPiEnvOverrides(path.dirname(workDir)),
-      );
-    } finally {
-      exportPiTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
-    }
-
-    console.log('Pi agent finished successfully.');
-  } catch (err) {
-    console.error('Error during Pi execution:', err);
-    process.exitCode = 1;
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
@@ -407,6 +361,11 @@ export function collectPiToolsFromTrajectory(dir: string): string[] {
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  run();
+  runAgentCliEntrypoint({
+    agent: Agents.PI,
+    displayName: 'Pi',
+    scriptName: 'pi-agent.ts',
+    exportTrajectories: exportPiTrajectories,
+  });
 }
 
