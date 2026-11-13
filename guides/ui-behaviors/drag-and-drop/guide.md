@@ -89,6 +89,31 @@ Keep moves within valid destinations. If items can move between containers, make
 
 After moving an item, keep focus on its handle. If the implementation uses separate movement buttons instead, keep focus on the activated button or shift it to the alternative movement control on the same item when the activated control becomes disabled.
 
+## Accessibility requirements
+
+Ensure the draggable element can also be moved or operated using a single pointer without dragging (for example, clicks or taps). What the UI for this looks like depends on the use case. A few examples:
+
+* Kanban boards: a "move to column" menu or buttons
+* Ordering/ranking items: directional buttons for changing an item's position
+* Re-ordering a UI in a builder tool: directional buttons for adjusting the position of the content in a page, within a UI builder tool
+* File-management systems: a "move" menu
+
+Provide feedback for screen reader users when the draggable element is succesfully moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
+
+```html
+<div class="visually-hidden" aria-live="polite"></div>
+```
+
+Update the region when the draggable element is moved:
+
+```html
+<div class="visually-hidden" aria-live="polite">
+  [Name of element] moved [new position]
+</div>
+```
+
+As the keyboard interaction may not be obvious for some users, provide a help button in the draggable element that reveals the keystrokes to perform the operation.
+
 ## Decide on fallback behavior
 
 When reordering is supplementary, keep the collection readable and usable in its default DOM order without JavaScript. If the order represents user-controlled data or directly affects behavior—for example, task priority, playlist order, or workflow sequence—treat reordering as essential and provide the required pointer and keyboard interactions rather than presenting the static order as equivalent behavior.
