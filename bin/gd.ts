@@ -49,6 +49,7 @@ const COMMAND_METADATA = {
   backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
   pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
+  preview: { desc: 'Preview a solution or zero-passrate patch in a temporary app', flags: [] },
   compare: { desc: 'Compare two evaluation runs to diagnose performance variance', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
@@ -194,7 +195,7 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'pr', 'dev-gap'],
+      commands: ['dev', 'pr', 'dev-gap', 'preview'],
     },
     {
       title: 'Codebase Analysis',
@@ -227,7 +228,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'preview' ? ' <patch>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -263,6 +264,13 @@ async function main() {
   }
 
   switch (command) {
+    case 'preview': {
+      const patch = requireArg(positionals[1], 'gd preview <path/to/file.patch>');
+      if (positionals.length > 2) throw new Error('Usage: gd preview <path/to/file.patch>');
+      const { previewPatch } = await import('../src/authoring/preview.ts');
+      await previewPatch(patch);
+      break;
+    }
     case 'compare': {
       const runDirA = requireArg(positionals[1], 'gd compare <runDirA> <runDirB>');
       const runDirB = requireArg(positionals[2], 'gd compare <runDirA> <runDirB>');
