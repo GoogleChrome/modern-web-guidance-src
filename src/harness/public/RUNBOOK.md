@@ -58,7 +58,7 @@ It checks out the published `public-evals/` from `gh-pages`, rebuilds it from
 the checked-out allowlist (incrementally, so an unchanged site costs one
 listing call), prints the per-job summary, and pushes. It refuses to push
 when `PUBLIC_EVALS_FORBIDDEN_TOKENS` is malformed, when `gh-pages` moved while
-it was building, or when any job FAILED (transient storage error): fix the
+it was building, or when any job `FAILED` (transient storage error): fix the
 cause and rerun. The publisher does not check which branch is checked out, so
 run it from `main` or the site will reflect a local allowlist.
 
