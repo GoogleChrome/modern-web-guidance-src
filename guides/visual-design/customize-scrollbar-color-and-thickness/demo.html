@@ -58,6 +58,9 @@
         .scroller.custom-scrollbar {
             /* DO: Use standard properties natively */
             scrollbar-color: #00796b #e0f7fa;
+            /* `thin` is opt-in: shown only to demonstrate thickness. In real
+               UI, default to `auto` unless the content can also be scrolled
+               another accessible way (e.g., previous/next buttons). */
             scrollbar-width: thin;
             /* DO: Force track background to be visible on macOS */
             scrollbar-gutter: stable;

@@ -34,7 +34,7 @@ Example customizations that are possible:
 - Use `accent-color` to apply the page's accent color to any browser-generated UI.
 - Use `color-scheme` to have browser UI adapt to light/dark mode.
 - Use `scrollbar-color` to customize scrollbar colors — keep the thumb visibly distinct from the track (contrast ≥3:1)
-- **DON'T** use the `scrollbar-width` with any value other than `auto`, unless another accessible option is provided to scroll content. Although `scrollbar-width: thin` does provide a thumb, the target size of the thumb will be too small for some users to operate.
+- Pair `scrollbar-color` with an explicit `scrollbar-width: auto`. **DON'T** use `scrollbar-width: thin` or `none` unless another accessible option is provided to scroll content. Although `scrollbar-width: thin` does provide a thumb, the target size of the thumb will be too small for some users to operate.
 - Use `:user-invalid` / `:user-valid` for validity styling, **not** `:invalid` / `:valid` — they only match after the user has interacted with the field, avoiding the hostile default of flagging required-empty fields as errors on page load. Exclude range sliders when targeting `input` broadly (e.g., `input:not(input[type="range"]):user-valid`) so adjusting a slider does not apply field validity borders or backgrounds to it.
 - Buttons and text fields (including `<textarea>`) can generally be styled as normal elements.
 - Use `font-size` to scale and other textual properties to control typography
