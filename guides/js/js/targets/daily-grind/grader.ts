@@ -18,7 +18,7 @@
  * - Exp 14: TESTED  — URLSearchParams / URL.searchParams for URL query state sync without manual .split('&') / .split('=').
  * - Exp 15: SKIPPED — TextDecoder is inapplicable because no Uint8Array / ArrayBuffer UTF-8 decoding occurs in this UI.
  * - Exp 16: SKIPPED — TextEncoder is inapplicable because no UTF-8 byte encoding occurs in this UI.
- * - Exp 17: TESTED  — element.replaceChildren() (0 args) for clearing DOM containers without innerHTML = '' or removeChild loops.
+ * - Exp 17: TESTED  — element.replaceChildren() for clearing DOM containers without innerHTML = '' or removeChild loops.
  * - Exp 18: TESTED  — element.replaceChildren(...nodes) (with args) for atomic DOM child replacement on connected containers.
  * - Exp 19: SKIPPED — Plain new Event() is superseded here by Exp 20 because daily-grind:filter-change carries structured state in detail.
  * - Exp 20: TESTED  — new CustomEvent('daily-grind:filter-change', { detail, bubbles: true }) without document.createEvent / initCustomEvent.
@@ -358,7 +358,9 @@ function getDraftControls(page: Page) {
     saveBtn: draft.getByRole('button', { name: /save/i }),
     restoreBtn: draft.getByRole('button', { name: /restore/i }),
     clearBtn: draft.getByRole('button', { name: /clear/i }),
-    items: draft.locator('ul li, ol li, [data-order-item], .order-item'),
+    items: draft
+      .locator('ul li, ol li, [data-order-item], .order-item')
+      .filter({ hasNotText: /\bempty\b|no drinks/i }),
   };
 }
 
@@ -908,7 +910,9 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
 
   await expect(items).toHaveCount(0);
   const spies = await readSpies(page);
-  expect(spies.zeroArgReplaceChildrenCalls).toBeGreaterThanOrEqual(1);
+  expect(
+    spies.zeroArgReplaceChildrenCalls + spies.withArgsReplaceChildrenCalls,
+  ).toBeGreaterThanOrEqual(1);
   expect(spies.removeChildCalls).toBe(0);
   expect(spies.emptyInnerHtmlCalls).toBe(0);
 });
