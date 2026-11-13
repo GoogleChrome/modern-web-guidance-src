@@ -181,7 +181,7 @@ describe('modern-web CLI', () => {
   it('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
     const clearedAgentEnv = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map((k) => [k, undefined]));
-    fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
+    fs.writeFileSync(versionPath, '2026_11_12-latest12\n');
     try {
       const nonClaudeRes = runCLI(['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help'], clearedAgentEnv);
       assert.strictEqual(nonClaudeRes.status, 0);
@@ -190,14 +190,22 @@ describe('modern-web CLI', () => {
       assert.ok(nonClaudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
       assert.strictEqual(nonClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'), false);
 
-      const claudeRes = runCLI(
-        ['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help'],
+      const frozenClaudeRes = runCLI(
+        ['--skill-version', '2026_10_12-dacb5911', 'legacy-scan', '--help'],
         { ...clearedAgentEnv, CLAUDECODE: '1' },
       );
-      assert.strictEqual(claudeRes.status, 0);
-      assert.ok(claudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
-      assert.ok(claudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'));
-      assert.ok(claudeRes.stderr.includes('/plugin install modern-web-guidance@googlechrome'));
+      assert.strictEqual(frozenClaudeRes.status, 0);
+      assert.ok(frozenClaudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      assert.ok(frozenClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'));
+      assert.ok(frozenClaudeRes.stderr.includes('/plugin install modern-web-guidance@googlechrome'));
+
+      const recentClaudeRes = runCLI(
+        ['--skill-version', '2026_11_01-newsha', 'legacy-scan', '--help'],
+        { ...clearedAgentEnv, CLAUDECODE: '1' },
+      );
+      assert.strictEqual(recentClaudeRes.status, 0);
+      assert.ok(recentClaudeRes.stderr.includes('Warning: a new SKILL.md is available'));
+      assert.strictEqual(recentClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'), false);
     } finally {
       fs.rmSync(versionPath, { force: true });
     }
