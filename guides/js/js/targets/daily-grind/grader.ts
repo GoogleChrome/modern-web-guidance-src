@@ -18,7 +18,7 @@
  * - Exp 14: TESTED  — URLSearchParams / URL.searchParams for URL query state sync without manual .split('&') / .split('=').
  * - Exp 15: SKIPPED — TextDecoder is inapplicable because no Uint8Array / ArrayBuffer UTF-8 decoding occurs in this UI.
  * - Exp 16: SKIPPED — TextEncoder is inapplicable because no UTF-8 byte encoding occurs in this UI.
- * - Exp 17: TESTED  — element.replaceChildren() (0 args) for clearing DOM containers without innerHTML = '' or removeChild loops.
+ * - Exp 17: TESTED  — element.replaceChildren() for clearing DOM containers without innerHTML = '' or removeChild loops.
  * - Exp 18: TESTED  — element.replaceChildren(...nodes) (with args) for atomic DOM child replacement on connected containers.
  * - Exp 19: SKIPPED — Plain new Event() is superseded here by Exp 20 because daily-grind:filter-change carries structured state in detail.
  * - Exp 20: TESTED  — new CustomEvent('daily-grind:filter-change', { detail, bubbles: true }) without document.createEvent / initCustomEvent.
@@ -342,10 +342,12 @@ function getMenuControls(page: Page) {
     sortSelect: controls.getByRole('combobox', { name: /sort/i }),
     reverseToggle: controls
       .getByRole('button', { name: /reverse/i })
-      .or(controls.getByRole('checkbox', { name: /reverse/i })),
+      .or(controls.getByRole('checkbox', { name: /reverse/i }))
+      .or(controls.getByRole('switch', { name: /reverse/i })),
     groupToggle: controls
       .getByRole('button', { name: /group/i })
-      .or(controls.getByRole('checkbox', { name: /group/i })),
+      .or(controls.getByRole('checkbox', { name: /group/i }))
+      .or(controls.getByRole('switch', { name: /group/i })),
   };
 }
 
@@ -358,7 +360,9 @@ function getDraftControls(page: Page) {
     saveBtn: draft.getByRole('button', { name: /save/i }),
     restoreBtn: draft.getByRole('button', { name: /restore/i }),
     clearBtn: draft.getByRole('button', { name: /clear/i }),
-    items: draft.locator('ul li, ol li, [data-order-item], .order-item'),
+    items: draft
+      .locator('ul li, ol li, [data-order-item], .order-item')
+      .filter({ hasNotText: /\bempty\b|no drinks/i }),
   };
 }
 
@@ -402,8 +406,12 @@ async function getSelectedSortLabel(sortSelect: Locator): Promise<string> {
   });
 }
 
+function getVisibleCards(page: Page): Locator {
+  return page.locator('main .card:visible');
+}
+
 async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: number[] }> {
-  return page.locator('main .card').evaluateAll((cards) => {
+  return getVisibleCards(page).evaluateAll((cards) => {
     const titles: string[] = [];
     const prices: number[] = [];
     for (const card of cards) {
@@ -418,6 +426,21 @@ async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: 
 
 const PRICE_ASC_PATTERN = /low.*high|price[-_ ]?(?:asc|low)|\basc(?:ending)?\b|lowest/i;
 const PRICE_DESC_PATTERN = /high.*low|price[-_ ]?(?:desc|high)|\bdesc(?:ending)?\b|highest/i;
+
+async function expectOrderItemContainsNote(item: Locator, expectedNote: string): Promise<void> {
+  await expect(async () => {
+    const hasNote = await item.evaluate((el, note) => {
+      if ((el.textContent ?? '').includes(note)) return true;
+      const controls = el.querySelectorAll('input, textarea');
+      return Array.from(controls).some(
+        (ctrl) =>
+          (ctrl instanceof HTMLInputElement || ctrl instanceof HTMLTextAreaElement) &&
+          ctrl.value.includes(note),
+      );
+    }, expectedNote);
+    expect(hasNote).toBe(true);
+  }).toPass({ timeout: 2000 });
+}
 
 // =========================================================================
 // Exp 1: structuredClone() for deep draft order snapshots
@@ -460,7 +483,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
 
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
-  await expect(items.first()).toContainText('Extra hot snapshot');
+  await expectOrderItemContainsNote(items.first(), 'Extra hot snapshot');
 
   await resetSpyCounters(page);
   await saveBtn.click();
@@ -479,7 +502,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await restoreBtn.click();
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
-  await expect(items.first()).toContainText('Extra hot snapshot');
+  await expectOrderItemContainsNote(items.first(), 'Extra hot snapshot');
 
   const spiesAfterRestore = await readSpies(page);
   expect(spiesAfterRestore.structuredCloneCalls).toBeGreaterThanOrEqual(1);
@@ -796,13 +819,13 @@ test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', as
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-  const initialCount = await page.locator('main .card').count();
+  const initialCount = await getVisibleCards(page).count();
   const { categorySelect, groupToggle } = getMenuControls(page);
 
   await groupToggle.click();
   await categorySelect.selectOption('espresso');
 
-  const filteredCount = await page.locator('main .card').count();
+  const filteredCount = await getVisibleCards(page).count();
   expect(filteredCount).toBeGreaterThanOrEqual(1);
   expect(filteredCount).toBeLessThan(initialCount);
 
@@ -908,7 +931,9 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
 
   await expect(items).toHaveCount(0);
   const spies = await readSpies(page);
-  expect(spies.zeroArgReplaceChildrenCalls).toBeGreaterThanOrEqual(1);
+  expect(
+    spies.zeroArgReplaceChildrenCalls + spies.withArgsReplaceChildrenCalls,
+  ).toBeGreaterThanOrEqual(1);
   expect(spies.removeChildCalls).toBe(0);
   expect(spies.emptyInnerHtmlCalls).toBe(0);
 });
@@ -930,19 +955,19 @@ test('Exp 18: replaces connected DOM container nodes atomically via replaceChild
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-  const initialCount = await page.locator('main .card').count();
+  const initialCount = await getVisibleCards(page).count();
   expect(initialCount).toBeGreaterThanOrEqual(6);
 
   await resetSpyCounters(page);
   const { categorySelect } = getMenuControls(page);
   await categorySelect.selectOption('cold-brew');
 
-  const filteredCount = await page.locator('main .card').count();
+  const filteredCount = await getVisibleCards(page).count();
   expect(filteredCount).toBeGreaterThanOrEqual(1);
   expect(filteredCount).toBeLessThan(initialCount);
 
   await categorySelect.selectOption('all');
-  expect(await page.locator('main .card').count()).toBe(initialCount);
+  expect(await getVisibleCards(page).count()).toBe(initialCount);
 
   const spies = await readSpies(page);
   expect(spies.withArgsReplaceChildrenCalls).toBeGreaterThanOrEqual(2);

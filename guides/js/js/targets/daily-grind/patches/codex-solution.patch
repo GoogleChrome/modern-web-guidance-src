@@ -1,514 +1,271 @@
 diff --git a/index.html b/index.html
-index 66c9173..cca908b 100644
+index 66c9173..9ca1133 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,143 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -135,6 +135,25 @@
+       background: #3e2723;
      }
-+
-+    .toolbar-grid {
-+      display: flex;
-+      flex-wrap: wrap;
-+      gap: 14px 20px;
-+      align-items: center;
-+      justify-content: space-between;
-+      margin-top: 22px;
-+      padding: 14px 18px;
-+      background: #fbf8f6;
-+      border: 2px solid #e6dcd5;
-+      border-radius: 6px;
-+    }
-+
-+    .toolbar-grid label {
-+      display: inline-flex;
-+      align-items: center;
-+      gap: 6px;
-+      font-size: 0.9rem;
-+      font-weight: 600;
-+    }
-+
-+    .toolbar-grid select {
-+      font: inherit;
-+      padding: 6px 10px;
-+      border-radius: 4px;
-+      border: 1px solid #8d6e63;
-+      background: white;
-+      color: var(--text);
-+    }
-+
-+    .counts-row {
-+      display: flex;
-+      flex-wrap: wrap;
-+      justify-content: flex-start;
-+      gap: 10px;
-+      margin-top: 14px;
-+      font-size: 0.85rem;
-+    }
-+
-+    .count-pill {
-+      background: #ede7e3;
-+      padding: 4px 12px;
-+      border-radius: 4px;
-+      font-weight: 600;
-+    }
-+
-+    .item-specs {
-+      display: flex;
-+      justify-content: space-between;
-+      align-items: center;
-+      margin: 10px 0 6px;
-+      font-size: 0.85rem;
-+      color: #4e342e;
-+      font-weight: 600;
-+    }
-+
-+    .card button.btn {
-+      border: none;
-+      font: inherit;
-+      cursor: pointer;
-+    }
-+
-+    .grouped-stack {
-+      display: block;
-+    }
-+
-+    .category-bucket {
-+      margin-top: 26px;
-+    }
-+
-+    .category-bucket > h3 {
-+      margin-bottom: 12px;
-+      color: var(--primary);
-+      border-bottom: 1px dashed var(--secondary);
-+      padding-bottom: 4px;
-+    }
-+
-+    .draft-workbench {
-+      margin-top: 40px;
-+      background: white;
-+      padding: 24px;
-+      border-radius: 6px;
-+      border: 1px solid #d7ccc8;
-+    }
-+
-+    .draft-toolbar {
-+      display: flex;
-+      flex-wrap: wrap;
-+      gap: 10px;
-+      align-items: center;
-+      margin: 14px 0;
-+    }
-+
-+    .draft-toolbar select,
-+    .draft-toolbar input,
-+    .draft-toolbar button {
-+      font: inherit;
-+      padding: 8px 12px;
-+      border-radius: 4px;
-+      border: 1px solid #8d6e63;
-+    }
-+
-+    .draft-toolbar button {
-+      background: var(--primary);
-+      color: white;
-+      border-color: var(--primary);
-+      cursor: pointer;
-+    }
-+
-+    .draft-toolbar button.ghost-btn {
-+      background: transparent;
-+      color: var(--primary);
-+    }
-+
-+    .draft-queue {
-+      list-style: none;
-+      margin-top: 12px;
-+      display: grid;
-+      gap: 8px;
-+    }
-+
-+    .draft-queue li {
-+      padding: 10px 12px;
-+      background: #f4efec;
-+      border-radius: 4px;
-+      display: flex;
-+      justify-content: space-between;
-+      gap: 12px;
-+      font-size: 0.9rem;
-+    }
-+
-+    .meta-status {
-+      margin-top: 10px;
-+      font-size: 0.85rem;
-+      color: #5d4037;
-+    }
-   </style>
- </head>
  
-@@ -177,7 +314,36 @@
++    button, select, input { font: inherit; }
++    button { cursor: pointer; border: 0; }
++    button:disabled { opacity: 0.55; cursor: default; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    #menu-controls, .order-controls, .order-actions {
++      display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 20px 0;
++    }
++    select, input[type="text"] { padding: 8px; max-width: 100%; }
++    .menu-category, #draft-order { margin-top: 32px; }
++    .price { font-weight: bold; margin-top: 12px; }
++    #order-items { padding-left: 24px; }
++    #order-items li { margin: 16px 0; }
++    #order-status { min-height: 1.6em; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +194,49 @@
+   </header>
+ 
    <main class="container">
-     <section>
-       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
-+      <div id="menu-controls" class="toolbar-grid">
-+        <label>
-+          Category
-+          <select id="category-picker">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading">Daily Grind Coffee Menu</h2>
++      <div id="menu-controls">
++        <label for="category">Category
++          <select id="category">
 +            <option value="all">All</option>
 +            <option value="seasonal">Seasonal</option>
 +            <option value="espresso">Espresso</option>
 +            <option value="cold-brew">Cold Brew</option>
 +          </select>
 +        </label>
-+        <label>
-+          Sort
-+          <select id="sort-picker">
-+            <option value="featured">Featured</option>
-+            <option value="price_asc">Price: Low to High</option>
-+            <option value="price_desc">Price: High to Low</option>
-+            <option value="alpha">Name: A to Z</option>
++        <label for="sort">Sort
++          <select id="sort">
++            <option value="featured">Featured (default)</option>
++            <option value="price-asc">Price: low to high</option>
++            <option value="price-desc">Price: high to low</option>
 +          </select>
 +        </label>
-+        <label>
-+          <input type="checkbox" id="reverse-toggle">
-+          Reverse Order
-+        </label>
-+        <label>
-+          <input type="checkbox" id="group-toggle">
-+          Group by Category
-+        </label>
++        <label><input id="reverse" type="checkbox"> Reverse Order</label>
++        <label><input id="group" type="checkbox"> Group by Category</label>
 +      </div>
-+      <div id="category-badges" class="counts-row"></div>
-+      <div id="drink-grid" class="grid">
-         <div class="card">
-           <h3>Maple Oat Latte</h3>
-           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-@@ -195,8 +361,46 @@
-         </div>
-       </div>
-     </section>
-+
-+    <section id="draft-order" class="draft-workbench">
-+      <h2>Draft Order Builder</h2>
-+      <div class="draft-toolbar">
-+        <label>
-+          Milk
-+          <select id="milk-choice">
-+            <option value="Oat">Oat</option>
-+            <option value="Whole">Whole</option>
-+            <option value="Soy">Soy</option>
-+          </select>
-+        </label>
-+        <label>
-+          Special Instructions
-+          <input type="text" id="special-note" placeholder="Extra shot, no foam...">
-+        </label>
-+        <button type="button" id="snapshot-save">Save Snapshot</button>
-+        <button type="button" id="snapshot-restore" class="ghost-btn">Restore Snapshot</button>
-+        <button type="button" id="draft-clear" class="ghost-btn">Clear Order</button>
-+      </div>
-+      <ul id="draft-list" class="draft-queue"></ul>
-+      <p id="draft-placeholder">No drinks added to draft order.</p>
-+      <p id="snapshot-msg" class="meta-status">No snapshot saved.</p>
++      <p id="menu-count" role="status"></p>
++      <div id="menu-items"></div>
 +    </section>
++    <section id="draft-order" aria-labelledby="order-heading">
++      <h2 id="order-heading">Draft Order</h2>
++      <p>Choose your customization and note before adding a drink. Snapshots last for this page visit.</p>
++      <div class="order-controls">
++        <label for="milk">Milk
++          <select id="milk"><option value="Whole">Whole</option><option value="Oat">Oat</option></select>
++        </label>
++        <label for="customer-note">Customer note
++          <input id="customer-note" type="text" maxlength="500" placeholder="For your next drink">
++        </label>
++      </div>
++      <ol id="order-items"></ol>
++      <p id="order-total"></p>
++      <div class="order-actions">
++        <button id="save-snapshot" class="btn" type="button">Save Snapshot</button>
++        <button id="restore-snapshot" class="btn" type="button" disabled>Restore Snapshot</button>
++        <button id="clear-order" class="btn" type="button">Clear Order</button>
+       </div>
++      <p id="order-status" role="status"></p>
+     </section>
    </main>
  
-+  <template id="card-template">
-+    <div class="card">
-+      <h3 data-field="name"></h3>
-+      <div class="item-specs">
-+        <span data-field="category"></span>
-+        <span data-field="price"></span>
-+      </div>
-+      <p data-field="description"></p>
-+      <button type="button" class="btn" data-action="add">Add to Order</button>
-+    </div>
-+  </template>
-+
-+  <script type="module" src="./scripts/app.js"></script>
-+
-   <footer>
-     <div class="footer-links">
-       <a href="/about">Our Story</a> |
-diff --git a/scripts/app.js b/scripts/app.js
+@@ -207,6 +250,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="menu.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/menu.js b/menu.js
 new file mode 100644
-index 0000000..dfea6eb
+index 0000000..ebd117e
 --- /dev/null
-+++ b/scripts/app.js
-@@ -0,0 +1,275 @@
-+const DRINKS = [
-+  {
-+    id: 'maple-oat-latte',
-+    name: 'Maple Oat Latte',
-+    category: 'seasonal',
-+    categoryName: 'Seasonal',
-+    price: 5.65,
-+    description: 'Creamy oat milk with a hint of Vermont maple syrup.',
-+  },
-+  {
-+    id: 'dark-roast-espresso',
-+    name: 'Dark Roast Espresso',
-+    category: 'espresso',
-+    categoryName: 'Espresso',
-+    price: 3.45,
-+    description: 'Bold, smokey, and perfect for a morning boost.',
-+  },
-+  {
-+    id: 'cold-brew',
-+    name: 'Cold Brew',
-+    category: 'cold-brew',
-+    categoryName: 'Cold Brew',
-+    price: 4.40,
-+    description: 'Steeped for 18 hours for maximum smoothness.',
-+  },
-+  {
-+    id: 'toasted-pecan-macchiato',
-+    name: 'Toasted Pecan Macchiato',
-+    category: 'seasonal',
-+    categoryName: 'Seasonal',
-+    price: 6.10,
-+    description: 'Espresso marked with steamed milk and toasted pecan praline.',
-+  },
-+  {
-+    id: 'ristretto-cortado',
-+    name: 'Ristretto Cortado',
-+    category: 'espresso',
-+    categoryName: 'Espresso',
-+    price: 4.25,
-+    description: 'Sweet ristretto shots equalized with silky microfoam.',
-+  },
-+  {
-+    id: 'salted-caramel-cold-brew',
-+    name: 'Salted Caramel Cold Brew',
-+    category: 'cold-brew',
-+    categoryName: 'Cold Brew',
-+    price: 5.45,
-+    description: 'Slow-steeped cold brew swirled with sea-salt caramel.',
-+  },
-+];
++++ b/menu.js
+@@ -0,0 +1,147 @@
++(() => {
++  'use strict';
 +
-+const CATEGORY_DEFINITIONS = [
-+  { id: 'seasonal', label: 'Seasonal' },
-+  { id: 'espresso', label: 'Espresso' },
-+  { id: 'cold-brew', label: 'Cold Brew' },
-+];
++  const categories = new Map([
++    ['seasonal', 'Seasonal'], ['espresso', 'Espresso'], ['cold-brew', 'Cold Brew'],
++  ]);
++  const menu = Object.freeze([
++    { id: 'maple-oat-latte', name: 'Maple Oat Latte', category: 'seasonal', price: 575, description: 'Creamy oat milk with a hint of Vermont maple syrup.' },
++    { id: 'dark-roast-espresso', name: 'Dark Roast Espresso', category: 'espresso', price: 300, description: 'Bold, smokey, and perfect for a morning boost.' },
++    { id: 'cold-brew', name: 'Cold Brew', category: 'cold-brew', price: 450, description: 'Steeped for 18 hours for maximum smoothness.' },
++    { id: 'cinnamon-latte', name: 'Cinnamon Latte', category: 'seasonal', price: 550, description: 'Warming cinnamon with silky steamed milk.' },
++    { id: 'cappuccino', name: 'Cappuccino', category: 'espresso', price: 425, description: 'Rich espresso with a cloud of milk foam.' },
++    { id: 'vanilla-cold-brew', name: 'Vanilla Cold Brew', category: 'cold-brew', price: 500, description: 'Our smooth cold brew with fragrant vanilla.' },
++  ].map((item) => Object.freeze(item)));
++  const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++  const price = (cents) => money.format(cents / 100);
 +
-+function getInitialFilters() {
-+  const url = new URL(window.location.href);
-+  return {
-+    filter: url.searchParams.get('filter') || 'all',
-+    order: url.searchParams.get('order') || 'featured',
-+    desc: url.searchParams.get('desc') === '1',
-+    grouped: url.searchParams.get('grouped') === '1',
-+  };
-+}
++  // Validate required elements once so later DOM access has a known element type.
++  function element(id, type = HTMLElement) {
++    const found = document.getElementById(id);
++    if (!(found instanceof type)) throw new Error(`Missing or invalid element: ${id}`);
++    return found;
++  }
++  const controls = element('menu-controls');
++  const category = element('category', HTMLSelectElement);
++  const sort = element('sort', HTMLSelectElement);
++  const reverse = element('reverse', HTMLInputElement);
++  const group = element('group', HTMLInputElement);
++  const milk = element('milk', HTMLSelectElement);
++  const note = element('customer-note', HTMLInputElement);
++  const restore = element('restore-snapshot', HTMLButtonElement);
++  let order = [];
++  let snapshot = null;
 +
-+function syncBrowserUrl(filters) {
-+  const url = new URL(window.location.href);
-+  if (filters.filter === 'all') url.searchParams.delete('filter');
-+  else url.searchParams.set('filter', filters.filter);
-+
-+  if (filters.order === 'featured') url.searchParams.delete('order');
-+  else url.searchParams.set('order', filters.order);
-+
-+  if (filters.desc) url.searchParams.set('desc', '1');
-+  else url.searchParams.delete('desc');
-+
-+  if (filters.grouped) url.searchParams.set('grouped', '1');
-+  else url.searchParams.delete('grouped');
-+
-+  window.history.replaceState(null, '', url.pathname + url.search + url.hash);
-+}
-+
-+const filters = getInitialFilters();
-+let orderState = {
-+  lines: [],
-+  tags: new Set(['pickup']),
-+  lastModified: new Date(),
-+};
-+let storedSnapshot = null;
-+
-+const controlsPanel = document.getElementById('menu-controls');
-+const categoryPicker = document.getElementById('category-picker');
-+const sortPicker = document.getElementById('sort-picker');
-+const reverseToggle = document.getElementById('reverse-toggle');
-+const groupToggle = document.getElementById('group-toggle');
-+const badgesContainer = document.getElementById('category-badges');
-+const drinkGrid = document.getElementById('drink-grid');
-+const cardTemplate = document.getElementById('card-template');
-+
-+const milkChoice = document.getElementById('milk-choice');
-+const specialNote = document.getElementById('special-note');
-+const snapshotSaveBtn = document.getElementById('snapshot-save');
-+const snapshotRestoreBtn = document.getElementById('snapshot-restore');
-+const draftClearBtn = document.getElementById('draft-clear');
-+const draftList = document.getElementById('draft-list');
-+const draftPlaceholder = document.getElementById('draft-placeholder');
-+const snapshotMsg = document.getElementById('snapshot-msg');
-+
-+function deriveDisplayedDrinks() {
-+  const matching = DRINKS.filter(
-+    (item) => filters.filter === 'all' || item.category === filters.filter,
-+  );
-+
-+  let sorted = matching;
-+  switch (filters.order) {
-+    case 'price_asc':
-+      sorted = matching.toSorted((a, b) => a.price - b.price);
-+      break;
-+    case 'price_desc':
-+      sorted = matching.toSorted((a, b) => b.price - a.price);
-+      break;
-+    case 'alpha':
-+      sorted = matching.toSorted((a, b) => a.name.localeCompare(b.name));
-+      break;
-+    default:
-+      break;
++  function node(tag, text, className) {
++    const result = document.createElement(tag);
++    if (text !== undefined) result.textContent = text;
++    if (className) result.className = className;
++    return result;
 +  }
 +
-+  return filters.desc ? sorted.toReversed() : sorted;
-+}
++  function state() {
++    return { category: category.value, sort: sort.value, reverse: reverse.checked, group: group.checked };
++  }
 +
-+function instantiateCard(drink) {
-+  const fragment = cardTemplate.content.cloneNode(true);
-+  const card = fragment.firstElementChild;
-+  card.querySelector('[data-field="name"]').textContent = drink.name;
-+  card.querySelector('[data-field="category"]').textContent = drink.categoryName;
-+  card.querySelector('[data-field="price"]').textContent = `$${drink.price.toFixed(2)}`;
-+  card.querySelector('[data-field="description"]').textContent = drink.description;
-+  card.querySelector('[data-action="add"]').addEventListener('click', () => {
-+    orderState.lines.push({
-+      id: drink.id,
-+      name: drink.name,
-+      price: drink.price,
-+      prefs: {
-+        milk: milkChoice.value,
-+        note: specialNote.value.trim() || 'Regular',
-+        extras: new Set([milkChoice.value]),
-+      },
-+      createdAt: new Date(),
++  function readURL() {
++    const params = new URLSearchParams(window.location.search);
++    const requestedCategory = params.get('category');
++    category.value = categories.has(requestedCategory) ? requestedCategory : 'all';
++    const requestedSort = params.get('sort');
++    sort.value = ['featured', 'price-asc', 'price-desc'].includes(requestedSort) ? requestedSort : 'featured';
++    reverse.checked = params.get('reverse') === 'true';
++    group.checked = params.get('group') === 'true';
++  }
++
++  function card(item) {
++    const result = node('article', undefined, 'card');
++    result.dataset.itemId = item.id;
++    const add = node('button', 'Add to Order', 'btn');
++    add.type = 'button';
++    add.setAttribute('aria-label', `Add ${item.name} to Order`);
++    add.addEventListener('click', () => {
++      order = [...order, {
++        menuId: item.id, name: item.name, price: item.price,
++        options: { milk: milk.value, customer: { note: note.value } },
++        addedAt: new Date(),
++      }];
++      renderOrder();
++      element('order-status').textContent = `${item.name} added to your order.`;
 +    });
-+    orderState.lastModified = new Date();
-+    renderDraft();
-+  });
-+  return card;
-+}
++    result.append(node('h3', item.name), node('p', item.description), node('p', price(item.price), 'price'), add);
++    return result;
++  }
 +
-+function renderDrinks() {
-+  const displayed = deriveDisplayedDrinks();
-+  const groupedMap = Map.groupBy(displayed, (d) => d.category);
-+
-+  const badgeNodes = CATEGORY_DEFINITIONS.map((cat) => {
-+    const items = groupedMap.get(cat.id) ?? [];
-+    const badge = document.createElement('span');
-+    badge.className = 'count-pill';
-+    badge.textContent = `${cat.label}: ${items.length}`;
-+    return badge;
-+  });
-+  badgesContainer.replaceChildren(...badgeNodes);
-+
-+  if (filters.grouped) {
-+    drinkGrid.className = 'grouped-stack';
-+    const sectionNodes = [];
-+    for (const cat of CATEGORY_DEFINITIONS) {
-+      const bucket = groupedMap.get(cat.id) ?? [];
-+      if (bucket.length === 0) continue;
-+      const groupSection = document.createElement('section');
-+      groupSection.className = 'category-bucket';
-+      const title = document.createElement('h3');
-+      title.textContent = `${cat.label} (${bucket.length})`;
-+      const cardsWrap = document.createElement('div');
-+      cardsWrap.className = 'grid';
-+      cardsWrap.replaceChildren(...bucket.map(instantiateCard));
-+      groupSection.replaceChildren(title, cardsWrap);
-+      sectionNodes.push(groupSection);
++  function renderMenu() {
++    const current = state();
++    let items = menu.filter((item) => current.category === 'all' || item.category === current.category);
++    if (current.sort !== 'featured') {
++      items = items.toSorted((a, b) => current.sort === 'price-asc' ? a.price - b.price : b.price - a.price);
 +    }
-+    drinkGrid.replaceChildren(...sectionNodes);
-+  } else {
-+    drinkGrid.className = 'grid';
-+    drinkGrid.replaceChildren(...displayed.map(instantiateCard));
++    if (current.reverse) items = items.toReversed();
++    const content = document.createDocumentFragment();
++    if (current.group) {
++      const groups = Object.groupBy(items, (item) => item.category);
++      for (const [key, label] of categories) {
++        const bucket = groups[key] ?? [];
++        const section = node('section', undefined, 'menu-category');
++        section.append(node('h3', `${label} (${bucket.length})`));
++        if (bucket.length) {
++          const grid = node('div', undefined, 'grid');
++          grid.replaceChildren(...bucket.map(card));
++          section.append(grid);
++        } else {
++          section.append(node('p', 'No drinks match the current filter.'));
++        }
++        content.append(section);
++      }
++    } else {
++      const grid = node('div', undefined, 'grid');
++      grid.replaceChildren(...items.map(card));
++      content.append(grid);
++    }
++    element('menu-items').replaceChildren(content);
++    element('menu-count').textContent = `${items.length} drinks shown`;
++    const url = new URL(window.location.href);
++    for (const [key, value] of Object.entries(current)) url.searchParams.set(key, String(value));
++    window.history.replaceState(window.history.state, '', url);
++    controls.dispatchEvent(new CustomEvent('daily-grind:filter-change', { bubbles: true, detail: current }));
 +  }
-+}
 +
-+function renderDraft() {
-+  if (orderState.lines.length === 0) {
-+    draftList.replaceChildren();
-+    draftPlaceholder.hidden = false;
-+    return;
++  function renderOrder() {
++    const rows = order.map((item) => {
++      const row = node('li');
++      const timestamp = node('time', item.addedAt.toLocaleString());
++      timestamp.dateTime = item.addedAt.toISOString();
++      row.append(node('strong', `${item.name} — ${price(item.price)}`),
++        node('p', `Milk: ${item.options.milk}. Note: ${item.options.customer.note || 'None'}`), timestamp);
++      return row;
++    });
++    element('order-items').replaceChildren(...rows);
++    element('order-total').textContent = order.length
++      ? `${order.length} drink${order.length === 1 ? '' : 's'} · Total: ${price(order.reduce((sum, item) => sum + item.price, 0))}`
++      : 'Your draft order is empty.';
 +  }
 +
-+  draftPlaceholder.hidden = true;
-+  const listNodes = orderState.lines.map((line) => {
-+    const li = document.createElement('li');
-+    const title = document.createElement('span');
-+    title.textContent = `${line.name} (${line.prefs.milk}, ${line.prefs.note})`;
-+    const meta = document.createElement('span');
-+    meta.textContent = `$${line.price.toFixed(2)} • ${line.createdAt.toLocaleTimeString()}`;
-+    li.replaceChildren(title, meta);
-+    return li;
++  controls.addEventListener('change', renderMenu);
++  window.addEventListener('popstate', () => { readURL(); renderMenu(); });
++  element('save-snapshot').addEventListener('click', () => {
++    snapshot = structuredClone(order);
++    restore.disabled = false;
++    element('order-status').textContent = 'Snapshot saved.';
 +  });
-+  draftList.replaceChildren(...listNodes);
-+}
-+
-+function emitStateEvent() {
-+  const ev = new CustomEvent('daily-grind:filter-change', {
-+    detail: { ...filters },
-+    bubbles: true,
-+    cancelable: false,
++  restore.addEventListener('click', () => {
++    if (snapshot === null) return;
++    order = structuredClone(snapshot);
++    renderOrder();
++    element('order-status').textContent = 'Snapshot restored.';
 +  });
-+  controlsPanel.dispatchEvent(ev);
-+}
-+
-+function onFilterUpdated() {
-+  syncBrowserUrl(filters);
-+  renderDrinks();
-+  emitStateEvent();
-+}
-+
-+categoryPicker.value = filters.filter;
-+sortPicker.value = filters.order;
-+reverseToggle.checked = filters.desc;
-+groupToggle.checked = filters.grouped;
-+
-+categoryPicker.addEventListener('change', () => {
-+  filters.filter = categoryPicker.value;
-+  onFilterUpdated();
-+});
-+
-+sortPicker.addEventListener('change', () => {
-+  filters.order = sortPicker.value;
-+  onFilterUpdated();
-+});
-+
-+reverseToggle.addEventListener('change', () => {
-+  filters.desc = reverseToggle.checked;
-+  onFilterUpdated();
-+});
-+
-+groupToggle.addEventListener('change', () => {
-+  filters.grouped = groupToggle.checked;
-+  onFilterUpdated();
-+});
-+
-+snapshotSaveBtn.addEventListener('click', () => {
-+  storedSnapshot = structuredClone(orderState);
-+  snapshotMsg.textContent = `Saved snapshot with ${storedSnapshot.lines.length} drink(s).`;
-+});
-+
-+snapshotRestoreBtn.addEventListener('click', () => {
-+  if (!storedSnapshot) return;
-+  orderState = structuredClone(storedSnapshot);
-+  renderDraft();
-+  snapshotMsg.textContent = `Restored snapshot with ${orderState.lines.length} drink(s).`;
-+});
-+
-+draftClearBtn.addEventListener('click', () => {
-+  orderState.lines = [];
-+  orderState.lastModified = new Date();
-+  draftList.replaceChildren();
-+  draftPlaceholder.hidden = false;
-+});
-+
-+renderDrinks();
-+renderDraft();
++  element('clear-order').addEventListener('click', () => {
++    order = [];
++    renderOrder();
++    element('order-status').textContent = 'Draft order cleared.';
++  });
++  readURL();
++  renderMenu();
++  renderOrder();
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..8e1659f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check menu.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
