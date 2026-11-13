@@ -665,6 +665,95 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
   assert.equal(finding.lineContent, '<input type="password" name="pwd">');
 });
 
+void test('scanFiles: element rules scan JSX in .js/.mjs/.cjs, not in the TS family', async (t) => {
+  const passwordRule: AnalyzerRule = {
+    id: 'test-jsx-password',
+    guideId: 'autofill-sign-in-form',
+    guideHash: '000000000000',
+    summary: 'test',
+    verifierRubric: { keepWhen: [], dropWhen: [] },
+    matcher: {
+      kind: 'dom',
+      selector: 'input[type="password"]',
+      fastTokens: ['password'],
+      matchElement: (el) =>
+        el.hasAttribute('autocomplete') ? null : { message: 'missing autocomplete' },
+    },
+  };
+  const jsxComponent = [
+    "import React from 'react';",
+    '',
+    'export default function Login() {',
+    '  return (',
+    '    <form>',
+    '      <input type="password" name="password" />',
+    '    </form>',
+    '  );',
+    '}',
+    '',
+  ].join('\n');
+
+  await t.test('reports the same element findings for .js/.mjs/.cjs as for .jsx', () => {
+    const [reference] = scanFiles(new Map([['src/Login.jsx', jsxComponent]]), [passwordRule]);
+    assert.ok(reference);
+    for (const ext of ['.js', '.mjs', '.cjs']) {
+      const findings = scanFiles(new Map([[`src/Login${ext}`, jsxComponent]]), [passwordRule]);
+      assert.equal(findings.length, 1, ext);
+      assert.equal(findings[0]?.line, reference.line, ext);
+      assert.equal(findings[0]?.lineContent, reference.lineContent, ext);
+      assert.equal(findings[0]?.codeSnippet, reference.codeSnippet, ext);
+    }
+  });
+
+  await t.test('keeps .ts/.mts/.cts excluded (angle-bracket type assertions)', () => {
+    const casts = 'const el = <HTMLInputElement>document.querySelector(\'[type="password"]\');\n';
+    for (const ext of ['.ts', '.mts', '.cts']) {
+      const files = new Map([
+        [`src/view${ext}`, jsxComponent],
+        [`src/casts${ext}`, casts],
+      ]);
+      assert.deepEqual(scanFiles(files, [passwordRule]), [], ext);
+    }
+  });
+
+  await t.test('does not parse JSX-free .js files only because element fastTokens match', (st) => {
+    const project = createInMemoryProject();
+    const createSourceFile = st.mock.method(project, 'createSourceFile');
+    const plain = [
+      "// <input type=\"password\"> lives only in comments and strings here",
+      "const markup = '<form><input type=\"password\"></form>';",
+      'export const isLong = (password) => password.length > 8 && markup.length < 100;',
+      '',
+    ].join('\n');
+    const findings = scanFiles(
+      new Map([
+        ['src/plain.js', plain],
+        ['src/Login.js', jsxComponent],
+      ]),
+      [passwordRule],
+      { project },
+    );
+    assert.deepEqual(
+      createSourceFile.mock.calls.map((call) => call.arguments[0]),
+      ['src/Login.js'],
+    );
+    assert.deepEqual(findings.map((f) => f.file), ['src/Login.js']);
+  });
+
+  await t.test('known limitation: skips .js JSX with no detectable lead-in', () => {
+    // A comment between `return` and the tag hides the expression position from
+    // the cheap pre-parse check, so the .js file gets no element findings.
+    const hidden = [
+      'export function Login() {',
+      '  return /* sign-in */ <input type="password" />;',
+      '}',
+      '',
+    ].join('\n');
+    assert.equal(scanFiles(new Map([['src/Login.jsx', hidden]]), [passwordRule]).length, 1);
+    assert.deepEqual(scanFiles(new Map([['src/Login.js', hidden]]), [passwordRule]), []);
+  });
+});
+
 void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Lit CSS', async (t) => {
   const domRule: AnalyzerRule = {
     id: 'test-dom-dialog',

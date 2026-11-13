@@ -62,11 +62,9 @@ const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   'bind:autocomplete',
 ];
 
-const SUPPORTED_EXTENSIONS = [
+const MARKUP_EXTENSIONS = [
   '.html',
   '.htm',
-  '.jsx',
-  '.tsx',
   '.vue',
   '.svelte',
   '.gts',
@@ -107,9 +105,10 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     // 1. High-precision file type constraint: skip XML/XFA specs, test fixtures, or non-web templates
+    //    (JSX elements only come from files the scanner treats as JSX: JSX_RULE_EXTENSIONS)
     const lowerPath = ctx.filePath.toLowerCase();
     if (
-      !SUPPORTED_EXTENSIONS.some((ext) => lowerPath.endsWith(ext)) ||
+      !(element.isJsx || MARKUP_EXTENSIONS.some((ext) => lowerPath.endsWith(ext))) ||
       TEST_PATH_SUBSTRINGS.some((sub) => lowerPath.includes(sub))
     ) {
       return null;
