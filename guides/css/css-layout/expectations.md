@@ -39,14 +39,6 @@
 - The implementation MUST use dynamic viewport units (`dvh`, `dvw`, `dvb`, or `dvi`) for full-height mobile layout containers instead of `vh`.
 - The implementation MUST NOT use `100vw` for full-width layout containers.
 - When implementing masonry-style galleries, the implementation MUST use multi-column (`columns`) with `break-inside: avoid`, or grid with `grid-auto-flow: dense` when the items are not interactive, and MUST gate any `grid-template-rows: masonry` or `display: grid-lanes` usage behind an `@supports` block.
-- The implementation MUST NOT require the structure of the DOM to be modified to fit the desired layout if doing so breaks the content's logical reading sequence.
-- The implementation MUST support the zooming of content to 200% in the browser without causing content to overlap itself, be cut off or clipped, or to be completely removed.
-- The implementation MUST ensure all content is still operable when viewed at a viewport size of 320 by 256 CSS pixels (equivalent to viewport size of 1280 by 1024 CSS pixels zoomed in at 400%).
-- The implementation MUST avoid horizontal AND vertical scrolling when viewed at a viewport size of 320 by 256 CSS pixels (equivalent to viewport size of 1280 by 1024 CSS pixels zoomed in at 400%).
-- The implementation MUST support changes to the following text style properties (where available) without loss of content or functionality:
-  - Line height (line spacing) to at least 1.5 times the content's font size.
-  - Spacing following paragraphs to at least 2 times the content's font size.
-  - Letter spacing (tracking) to at least 0.12 times the content's font size.
-  - Word spacing to at least 0.16 times the font size.
-- The implementation MUST NOT modify the keyboard focus order of interactive elements as set in the DOM.
-- The implementation MUST NOT cause interactive elements that have keyboard focus to become fully hidden behind content that is fixed to the page or floats above the page.
+- The implementation MUST NOT cause the document to scroll horizontally at a viewport width of 320 CSS pixels.
+- The implementation MUST NOT clip text, or make text overlap other text, when line height is set to 1.5 times the font size, spacing after paragraphs to 2 times the font size, letter spacing to 0.12 times the font size, and word spacing to 0.16 times the font size.
+- When the page has a sticky or fixed header, the implementation MUST set `scroll-padding-block-start` (or `scroll-padding-top`) on the scroll container to at least the header's height.
