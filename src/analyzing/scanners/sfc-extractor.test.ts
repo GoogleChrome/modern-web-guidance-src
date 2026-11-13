@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   blankOutsideRange,
+  blankPreprocessorLineComments,
   blankRanges,
   extractScriptBlocks,
   extractStyleBlocks,
@@ -244,5 +245,66 @@ void test('sfc-extractor: custom elements whose names start with script- or styl
     assert.equal(prepared.includes('<button>Save</button>'), true);
     assert.equal(prepared.includes('const code'), false);
     assert.equal(prepared.includes('button { color: red; }'), false);
+  });
+});
+
+void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style> blocks', async (t) => {
+  await t.test('blanks // line comments while preserving offsets and CRLF newlines', () => {
+    const scss = ['// header', '.box { color: red; } // inline', '// footer'].join('\r\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.deepEqual(blanked.match(/\r\n/g), scss.match(/\r\n/g));
+    assert.equal(blanked.includes('//'), false);
+    assert.equal(blanked.includes('.box { color: red; }'), true);
+  });
+
+  await t.test('preserves // inside block comments, strings, and URLs', () => {
+    const scss = [
+      '.a { background: url(https://example.com/a.png); }',
+      '.b { background: url(//cdn.example.com/b.png); }',
+      '.c { background: url( //cdn.example.com/b.png ); }',
+      '.d { background: url(/images//logo.png); }',
+      '.e { content: "// literal"; }',
+      '/* // block comment */',
+      '$endpoint: https://api.example.com/v1;',
+      '.f { color: blue; }',
+    ].join('\n');
+    assert.equal(blankPreprocessorLineComments(scss), scss);
+  });
+
+  await t.test('blanks // comments after (, whitespace-separated ://, and trailing after url()', () => {
+    const scss = [
+      '.a { color: rgb(// red',
+      '  255, 0, 0); }',
+      '$m: (// note',
+      '  a: 1);',
+      '.b:// comment',
+      '.c { background: url( //cdn.example.com/b.png ); } // trailing',
+    ].join('\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.equal(blanked.includes('// red'), false);
+    assert.equal(blanked.includes('// note'), false);
+    assert.equal(blanked.includes('// comment'), false);
+    assert.equal(blanked.includes('// trailing'), false);
+    assert.equal(blanked.includes('url( //cdn.example.com/b.png )'), true);
+    assert.equal(blanked.includes('255, 0, 0); }'), true);
+  });
+
+  await t.test('blanks // comments inside <style lang="scss|less"> only', () => {
+    for (const lang of ['scss', 'less']) {
+      const vue = `<template><div/></template>\n<style lang="${lang}" scoped>\n// note\n.box { color: red; }\n</style>`;
+      const blocks = extractStyleBlocks('App.vue', vue);
+      assert.equal(blocks.length, 1);
+      assert.equal(blocks[0]?.length, vue.length);
+      assert.equal(blocks[0]?.includes('// note'), false);
+      assert.equal(blocks[0]?.includes('.box { color: red; }'), true);
+    }
+
+    for (const langAttr of ['', ' lang="sass"']) {
+      const vue = `<template><div/></template>\n<style${langAttr}>\n// preserved\n.box { content: "// ok"; }\n</style>`;
+      const blocks = extractStyleBlocks('App.vue', vue);
+      assert.equal(blocks[0]?.includes('// preserved'), true);
+    }
   });
 });

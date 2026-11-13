@@ -40,6 +40,7 @@ import {
   matchesFastTokens,
 } from './js-scanner.ts';
 import {
+  blankPreprocessorLineComments,
   extractScriptBlocks,
   extractStyleBlocks,
   isMarkupPath,
@@ -412,10 +413,18 @@ export function scanFiles(
 
       const ext = extname(lowerPath);
 
-      if (ext === '.css') {
+      if (ext === '.css' || ext === '.scss' || ext === '.less') {
         if (cssRules.length > 0) {
+          // Blank SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
+          const cssContent =
+            ext === '.scss' || ext === '.less'
+              ? blankPreprocessorLineComments(content)
+              : content;
           findings.push(
-            ...materializeRuleMatches(ctx, scanCssRules(relPath, content, cssRules)),
+            ...materializeRuleMatches(
+              ctx,
+              scanCssRules(relPath, cssContent, cssRules, content),
+            ),
           );
         }
         continue;

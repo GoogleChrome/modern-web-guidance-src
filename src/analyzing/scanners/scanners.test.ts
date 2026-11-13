@@ -1066,6 +1066,103 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
   });
 });
 
+void test('scanFiles: SCSS/Less files and // comments in <style lang="scss|less"> (#3553)', () => {
+  const thumbRule: AnalyzerRule = {
+    id: 'test-css-scrollbar-thumb',
+    guideId: 'customize-scrollbar-color-and-thickness',
+    guideHash: '123456789012',
+    summary: 'Flags ::-webkit-scrollbar-thumb',
+    verifierRubric: { keepWhen: ['scrollbar thumb'], dropWhen: [] },
+    matcher: {
+      kind: 'css',
+      fastTokens: ['scrollbar-thumb'],
+      matchRule: (view) =>
+        view.selectorText.includes('scrollbar-thumb')
+          ? { message: `found scrollbar thumb in ${view.selectorText}` }
+          : null,
+    },
+  };
+
+  const legacyRule = '.box::-webkit-scrollbar-thumb { background: red; }';
+  const files = new Map<string, string>([
+    ['src/styles/case1.css', legacyRule],
+    ['src/styles/case2.scss', `// header comment\n.custom {\n  &::-webkit-scrollbar-thumb { background: red; }\n}`],
+    ['src/styles/case2.less', `@thumb-bg: red;\n// header comment\n.custom {\n  &::-webkit-scrollbar-thumb { background: @thumb-bg; }\n}`],
+    ['src/AppClean.vue', `<template><div/></template>\n<style lang="scss">\n${legacyRule}\n</style>`],
+    ['src/AppBlockComment.vue', `<template><div/></template>\n<style lang="scss">\n/* comment */\n${legacyRule}\n</style>`],
+    ['src/AppLineComment.vue', `<template><div/></template>\n<style lang="scss">\n// line comment\n${legacyRule}\n</style>`],
+    ['src/AppLessComment.vue', `<template><div/></template>\n<style lang="less">\n// line comment\n${legacyRule}\n</style>`],
+    ['src/styles/case6_nested.css', '.box { &::-webkit-scrollbar-thumb { background: red; } }'],
+  ]);
+
+  const findings = scanFiles(files, [thumbRule]);
+  assert.equal(findings.length, 8);
+
+  const byFile = new Map(findings.map((f) => [f.file, f]));
+  assert.equal(byFile.get('src/styles/case1.css')?.line, 1);
+  assert.equal(byFile.get('src/styles/case2.scss')?.line, 3);
+  assert.ok(byFile.get('src/styles/case2.scss')?.codeSnippet.includes('// header comment'));
+  assert.equal(byFile.get('src/styles/case2.less')?.line, 4);
+  assert.ok(byFile.get('src/styles/case2.less')?.codeSnippet.includes('// header comment'));
+  assert.equal(byFile.get('src/AppClean.vue')?.line, 3);
+  assert.equal(byFile.get('src/AppBlockComment.vue')?.line, 4);
+  assert.equal(byFile.get('src/AppLineComment.vue')?.line, 4);
+  assert.equal(byFile.get('src/AppLessComment.vue')?.line, 4);
+  assert.equal(byFile.get('src/styles/case6_nested.css')?.line, 1);
+});
+
+void test('scanFiles: SCSS // edge cases, URL preservation, and CRLF line numbers (#3553)', () => {
+  const thumbRule: AnalyzerRule = {
+    id: 'test-css-scrollbar-thumb',
+    guideId: 'customize-scrollbar-color-and-thickness',
+    guideHash: '123456789012',
+    summary: 'Flags ::-webkit-scrollbar-thumb',
+    verifierRubric: { keepWhen: ['scrollbar thumb'], dropWhen: [] },
+    matcher: {
+      kind: 'css',
+      fastTokens: ['scrollbar-thumb'],
+      matchRule: (view) =>
+        view.selectorText.includes('scrollbar-thumb')
+          ? { message: `found scrollbar thumb in ${view.selectorText}` }
+          : null,
+    },
+  };
+
+  const legacyRule = '.box::-webkit-scrollbar-thumb { background: red; }';
+  const files = new Map<string, string>([
+    ['src/styles/commented-out.scss', `// ${legacyRule}`],
+    ['src/styles/commented-out.less', `// ${legacyRule}`],
+    [
+      'src/styles/url-spaced.scss',
+      `.h { background: url( //cdn.example.com/b.png ); }\n${legacyRule}`,
+    ],
+    [
+      'src/styles/url-path-slashes.scss',
+      `.h { background: url(/images//logo.png); }\n${legacyRule}`,
+    ],
+    [
+      'src/styles/paren-and-scheme-crlf.scss',
+      [
+        '.a { color: rgb(// red',
+        '  255, 0, 0); }',
+        '.b { color:// comment',
+        '  blue; }',
+        legacyRule,
+      ].join('\r\n'),
+    ],
+  ]);
+
+  const findings = scanFiles(files, [thumbRule]);
+  const byFile = new Map(findings.map((f) => [f.file, f]));
+
+  assert.equal(byFile.has('src/styles/commented-out.scss'), false);
+  assert.equal(byFile.has('src/styles/commented-out.less'), false);
+  assert.equal(byFile.get('src/styles/url-spaced.scss')?.line, 2);
+  assert.equal(byFile.get('src/styles/url-path-slashes.scss')?.line, 2);
+  assert.equal(byFile.get('src/styles/paren-and-scheme-crlf.scss')?.line, 5);
+  assert.equal(findings.length, 3);
+});
+
 void test('slice-c: vendored library whole-file detection & AST matcher suppression', async (testingContext) => {
   const fittextRule: AnalyzerRule = {
     id: 'dependency-jquery-fittext',
