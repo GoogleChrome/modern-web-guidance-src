@@ -195,6 +195,8 @@ Anthropic stopped updating third-party plugins in their built-in `claude-plugins
 /plugin uninstall modern-web-guidance@claude-plugins-official
 /plugin marketplace add GoogleChrome/modern-web-guidance
 /plugin install modern-web-guidance@googlechrome
+/plugin  # Select GoogleChrome marketplace, press enter, enable AutoUpdate
+/reload-plugins
 ```
 </details>
 

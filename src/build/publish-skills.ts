@@ -175,6 +175,7 @@ async function publishBranchToDistributionRepo(
         branch,
         repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
         dotfiles: true,
+        remove: '{**/*,**/.*/**/*,**/.[!.]*}',
         message,
         ...(tag ? { tag } : {}),
         src,
