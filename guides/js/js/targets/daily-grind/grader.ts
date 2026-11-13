@@ -342,10 +342,12 @@ function getMenuControls(page: Page) {
     sortSelect: controls.getByRole('combobox', { name: /sort/i }),
     reverseToggle: controls
       .getByRole('button', { name: /reverse/i })
-      .or(controls.getByRole('checkbox', { name: /reverse/i })),
+      .or(controls.getByRole('checkbox', { name: /reverse/i }))
+      .or(controls.getByRole('switch', { name: /reverse/i })),
     groupToggle: controls
       .getByRole('button', { name: /group/i })
-      .or(controls.getByRole('checkbox', { name: /group/i })),
+      .or(controls.getByRole('checkbox', { name: /group/i }))
+      .or(controls.getByRole('switch', { name: /group/i })),
   };
 }
 
@@ -421,6 +423,21 @@ async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: 
 const PRICE_ASC_PATTERN = /low.*high|price[-_ ]?(?:asc|low)|\basc(?:ending)?\b|lowest/i;
 const PRICE_DESC_PATTERN = /high.*low|price[-_ ]?(?:desc|high)|\bdesc(?:ending)?\b|highest/i;
 
+async function expectOrderItemContainsNote(item: Locator, expectedNote: string): Promise<void> {
+  await expect(async () => {
+    const hasNote = await item.evaluate((el, note) => {
+      if ((el.textContent ?? '').includes(note)) return true;
+      const controls = el.querySelectorAll('input, textarea');
+      return Array.from(controls).some(
+        (ctrl) =>
+          (ctrl instanceof HTMLInputElement || ctrl instanceof HTMLTextAreaElement) &&
+          ctrl.value.includes(note),
+      );
+    }, expectedNote);
+    expect(hasNote).toBe(true);
+  }).toPass({ timeout: 2000 });
+}
+
 // =========================================================================
 // Exp 1: structuredClone() for deep draft order snapshots
 // =========================================================================
@@ -462,7 +479,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
 
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
-  await expect(items.first()).toContainText('Extra hot snapshot');
+  await expectOrderItemContainsNote(items.first(), 'Extra hot snapshot');
 
   await resetSpyCounters(page);
   await saveBtn.click();
@@ -481,7 +498,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await restoreBtn.click();
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
-  await expect(items.first()).toContainText('Extra hot snapshot');
+  await expectOrderItemContainsNote(items.first(), 'Extra hot snapshot');
 
   const spiesAfterRestore = await readSpies(page);
   expect(spiesAfterRestore.structuredCloneCalls).toBeGreaterThanOrEqual(1);
