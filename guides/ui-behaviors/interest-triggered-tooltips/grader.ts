@@ -234,23 +234,25 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(hasPseudoTooltip).toBe(false);
   });
 
-  test('Tooltips are hoverable and persistent per WCAG 1.4.13 guidelines', async () => {
-    expect(/popover=["']hint["']/i.test(html)).toBe(true);
-  });
-
-  test('Tooltip becomes visible on hover', async ({ page }) => {
+  test('Hovering a trigger opens its tooltip, moving the pointer onto the tooltip keeps it open, and pressing Escape dismisses it', async ({ page }) => {
     const trigger = page.locator('[interestfor], .tooltip').first();
     await expect(trigger).toBeVisible();
-    
+
     const interestFor = await trigger.getAttribute('interestfor');
     if (!interestFor) {
       throw new Error('No interestfor attribute found on trigger');
     }
-    
+
     const tooltip = page.locator(`#${interestFor}`);
     await expect(tooltip).toBeHidden();
-    
+
     await trigger.hover();
     await expect(tooltip).toBeVisible();
+
+    await tooltip.hover();
+    await expect(tooltip).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
   });
 });

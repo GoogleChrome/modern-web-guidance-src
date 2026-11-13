@@ -6,7 +6,7 @@ Served locally instead of from a third-party CDN (`guides/security/secure-extern
 |---|---|---|---|---|
 | `popover-polyfill.js` | `@oddbird/popover-polyfill` | 0.6.1 | https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js | © 2022–2023 OddBird |
 | `css-anchor-positioning.js` | `@oddbird/css-anchor-positioning` | 0.10.2 | https://unpkg.com/@oddbird/css-anchor-positioning@0.10.2/dist/css-anchor-positioning.js | © 2022–2026 OddBird LLC |
-| `interestfor.js` | `interestfor` | 1.0.10 | https://unpkg.com/interestfor@1.0.10/src/interestfor.min.js | © 2025 Mason Freed |
+| `interestfor.js` | `interestfor` | 1.0.14 | https://unpkg.com/interestfor@1.0.14/src/interestfor.min.js | © 2025 Mason Freed |
 
 ## BSD-3-Clause License (applies to all three packages above)
 

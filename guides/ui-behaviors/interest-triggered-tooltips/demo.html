@@ -4,63 +4,6 @@
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
     <script type="module">
-      // Explicit ARIA until browsers and the polyfill expose interestfor semantics consistently. Runs before the
-      // polyfill loads: the polyfill wires ARIA only on `load`, too late for some screen readers, and adds no
-      // `role="tooltip"` to plain hints.
-      const managed = new WeakSet();
-      const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
-
-      // Approximates the accessible name: aria-labelledby, then aria-label, then content including image alt, then title.
-      function accessibleName(el) {
-        const labels = (el.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((id) => document.getElementById(id)?.textContent);
-        const alts = [...el.querySelectorAll("img[alt]")].map((img) => img.alt);
-        return text(labels.join(" ")) || text(el.getAttribute("aria-label")) || text(el.textContent + " " + alts.join(" ")) || text(el.title);
-      }
-
-      function wireInterestHints(root = document) {
-        for (const trigger of root.querySelectorAll("[interestfor]")) {
-          const hint = document.getElementById(trigger.getAttribute("interestfor"));
-          if (hint?.getAttribute("popover") !== "hint") {
-            continue;
-          }
-          // Nothing to add when the hint just repeats the trigger's name.
-          const name = accessibleName(trigger);
-          if (text(hint.textContent) === name) {
-            continue;
-          }
-          hint.role ??= "tooltip";
-          const id = CSS.escape(hint.id);
-          if (!name) {
-            // The hint names an unnamed trigger (icon-only button).
-            if (!trigger.hasAttribute("aria-labelledby")) {
-              trigger.setAttribute("aria-labelledby", hint.id);
-            }
-          } else if (trigger.matches(`[popovertarget="${id}"], [commandfor="${id}"]`)) {
-            // Activating the trigger opens the hint, so open/closed state is honest.
-            // Skip triggers whose aria-expanded belongs to something else.
-            if (!trigger.hasAttribute("aria-expanded")) {
-              trigger.ariaExpanded = hint.matches(":popover-open");
-              managed.add(trigger);
-            }
-          } else if (!trigger.hasAttribute("aria-describedby")) {
-            // Activation does something else (a link, an action button): "collapsed" would promise what
-            // Enter does not deliver, so describe instead.
-            trigger.setAttribute("aria-describedby", hint.id);
-          }
-        }
-      }
-
-      wireInterestHints();
-
-      // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
-      document.addEventListener("toggle", ({ target, newState }) => {
-        for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
-          if (managed.has(trigger)) {
-            trigger.ariaExpanded = newState === "open";
-          }
-        }
-      }, true);
-
       if (!("interestForElement" in HTMLButtonElement.prototype)) {
         await import("https://unpkg.com/interestfor@latest");
       }
@@ -123,10 +66,10 @@
         max-width: 20rem;
         /* Use `anchor()` functions rather than `position-area`, as the anchor positioning polyfill doesn't support `position-area` with `position-try-fallbacks`. */
         inset-block-start: anchor(end);
-        inset-inline-start: anchor(end);
+        inset-inline-start: anchor(start);
         position-try-fallbacks: flip-inline;
       }
-      /* These tooltips adds an explicit anchor-name, as the anchor positioning polyfill does not support implicit anchors. */
+      /* These tooltips add an explicit anchor-name, as the anchor positioning polyfill does not support implicit anchors. */
       button[interestfor="tooltip-dom"] {
         anchor-name: --tooltip-dom;
       }

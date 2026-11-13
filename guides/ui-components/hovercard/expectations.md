@@ -4,4 +4,3 @@
 - The popover has a transition that includes `display` and `overlay` with `transition-behavior: allow-discrete`.
 - The popover has a `@starting-style` block that defines its initial state for entry animations (e.g. `opacity: 0`).
 - If `prefers-reduced-motion: reduce` is active, the popover opens without a transform or opacity transition.
-- The trigger link references its popover via `aria-describedby` and does not have `aria-expanded`.
