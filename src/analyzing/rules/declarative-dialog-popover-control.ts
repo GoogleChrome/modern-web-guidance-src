@@ -1,5 +1,6 @@
 import { Node, type CallExpression, type SourceFile, type Statement } from 'ts-morph';
 import {
+  getCallAndBinaryDescendants,
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveLocalExpression,
@@ -207,11 +208,21 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
     ['click', 'onclick'],
     ['showModal', 'showPopover', 'hidePopover', 'togglePopover', 'close'],
   ],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
+    if (
+      !ctx.fileContent.includes('showModal') &&
+      !ctx.fileContent.includes('showPopover') &&
+      !ctx.fileContent.includes('hidePopover') &&
+      !ctx.fileContent.includes('togglePopover') &&
+      !DIALOG_RECEIVER_HINT_RE.test(ctx.fileContent)
+    ) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
     const seenPositions = new Set<number>();
 
-    sourceFile.forEachDescendant((node) => {
+    for (const node of getCallAndBinaryDescendants(sourceFile)) {
       let handlerNode: Node | null = null;
       let targetNode: Node | undefined;
 
@@ -248,24 +259,24 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
       }
 
       if (!handlerNode) {
-        return;
+        continue;
       }
 
       // Check target node: reject window, document, body, overlay, backdrop, or scrim
       if (targetNode) {
         const targetText = targetNode.getText().trim();
         if (NON_BUTTON_LISTENER_TARGET_RE.test(targetText)) {
-          return;
+          continue;
         }
       }
 
       if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-        return;
+        continue;
       }
 
       const pureCall = extractPureDialogPopoverCallFromHandler(handlerNode);
       if (!pureCall) {
-        return;
+        continue;
       }
 
       // Reject if target is the same dialog element being closed (backdrop listener, not button)
@@ -274,14 +285,14 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
         if (Node.isPropertyAccessExpression(callee)) {
           const closeReceiverText = unwrapExpression(callee.getExpression()).getText().trim();
           if (closeReceiverText === targetNode.getText().trim()) {
-            return;
+            continue;
           }
         }
       }
 
       const callPos = pureCall.callNode.getStart();
       if (seenPositions.has(callPos)) {
-        return;
+        continue;
       }
       seenPositions.add(callPos);
 
@@ -291,7 +302,7 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
         column,
         message: `Click listener only calls \`.${pureCall.methodName}()\` to control a dialog or popover; replace imperative JS listener with declarative HTML \`commandfor\`/\`command\` or \`popovertarget\` attributes.`,
       });
-    });
+    }
 
     return matches;
   },

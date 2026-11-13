@@ -127,6 +127,12 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
             : newNodes;
 
       for (const node of candidates) {
+        const message = Node.isCallExpression(node)
+          ? config.matchCall?.(node, sourceFile, ctx)
+          : config.matchNew?.(node, sourceFile, ctx);
+        if (!message) {
+          continue;
+        }
         const line = node.getStartLineNumber();
         if (
           visitedLines?.has(line) ||
@@ -136,13 +142,8 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
         ) {
           continue;
         }
-        const message = Node.isCallExpression(node)
-          ? config.matchCall?.(node, sourceFile, ctx)
-          : config.matchNew?.(node, sourceFile, ctx);
-        if (message) {
-          visitedLines?.add(line);
-          matches.push({ line, message });
-        }
+        visitedLines?.add(line);
+        matches.push({ line, message });
       }
 
       return matches;

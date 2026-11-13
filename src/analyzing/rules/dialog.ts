@@ -4,6 +4,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
+  getCallAndBinaryDescendants,
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
@@ -221,9 +222,13 @@ export const dialogJsMatcher: JsRuleMatcher = {
   fastTokens: [
     ['click', 'onclick'],
     ['close'],
-    ['target', 'getBoundingClientRect'],
+    ['.target', 'dialog', 'Dialog', 'DIALOG', 'getBoundingClientRect'],
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+    if (!/\bclose\b/.test(ctx.fileContent)) {
+      return [];
+    }
+
     // If guarded by closedBy in file or feature check, skip
     if (
       (ctx.fileContent.includes('closedBy') || ctx.fileContent.includes('closedby')) &&
@@ -234,7 +239,7 @@ export const dialogJsMatcher: JsRuleMatcher = {
 
     const matches: AnalyzerMatch[] = [];
 
-    sourceFile.forEachDescendant((node) => {
+    for (const node of getCallAndBinaryDescendants(sourceFile)) {
       const candidate = matchClickRegistration(node);
       if (
         !candidate ||
@@ -243,7 +248,7 @@ export const dialogJsMatcher: JsRuleMatcher = {
         (!isDialogOrTargetComparison(candidate.handlerNode, candidate.targetNode) &&
           !hasBoundingRectCoordinateCheck(candidate.handlerNode, candidate.targetNode))
       ) {
-        return;
+        continue;
       }
 
       matches.push({
@@ -251,7 +256,7 @@ export const dialogJsMatcher: JsRuleMatcher = {
         message:
           'Manual backdrop click listener dismisses dialog; modernize with declarative <dialog closedby="any">.',
       });
-    });
+    }
 
     return matches;
   },

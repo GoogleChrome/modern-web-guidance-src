@@ -18,6 +18,27 @@ import {
 } from 'ts-morph';
 
 /**
+ * Returns all `CallExpression` and `BinaryExpression` descendants of `sourceFile` in
+ * exact AST pre-order (`getPos()` ascending, then `getEnd()` descending for parent-before-child),
+ * reusing `sourceFile.getDescendantsOfKind` caches across rules.
+ */
+export function getCallAndBinaryDescendants(
+  sourceFile: SourceFile,
+): ReadonlyArray<CallExpression | BinaryExpression> {
+  const calls = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
+  const binaries = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
+  if (calls.length === 0) {
+    return binaries;
+  }
+  if (binaries.length === 0) {
+    return calls;
+  }
+  return [...calls, ...binaries].sort(
+    (a, b) => a.getPos() - b.getPos() || b.getEnd() - a.getEnd(),
+  );
+}
+
+/**
  * Strips parentheses, type assertions, non-null assertions, and satisfies wrappers
  * to reveal the underlying core expression.
  */

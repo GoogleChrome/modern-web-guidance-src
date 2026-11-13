@@ -296,7 +296,7 @@ function isNativeParentClassListToggle(node: CallExpression): boolean {
 export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     ['classList', 'addClass', 'removeClass', 'toggleClass'],
-    ['parentElement', 'parentNode', 'closest', 'parent', 'parents'],
+    ['parentElement', 'parentNode', 'closest', 'addClass', 'removeClass', 'toggleClass'],
     [
       'focus',
       'Focus',
