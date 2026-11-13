@@ -318,9 +318,6 @@ window.__featuresMapping = {
   "deliver-optimized-decorative-images": [
     "image-set"
   ],
-  "serve-alternative-image-formats": [
-    "image-set"
-  ],
   "deprioritize-background-fetches": [
     "fetch-priority",
     "fetch"
