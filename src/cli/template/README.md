@@ -186,15 +186,17 @@ codex plugin add modern-web-guidance@googlechrome
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
 
-### Claude Code (`claude-plugins-official`)
+<details>
+<summary><b>Claude Code (if installed via <code>claude-plugins-official</code>)</b></summary>
 
-Anthropic's built-in `claude-plugins-official` marketplace is pinned to an older release (`v0.0.194`), so `/plugin update` will not upgrade it. Switch to the `googlechrome` marketplace to receive updates:
+Anthropic stopped updating third-party plugins in their built-in `claude-plugins-official` marketplace on Oct 12, stranding installs at `v0.0.194` ([details](https://github.com/GoogleChrome/modern-web-guidance-src/issues/3533)). Switch to the `googlechrome` marketplace to get updates:
 
 ```shell
 /plugin uninstall modern-web-guidance@claude-plugins-official
 /plugin marketplace add GoogleChrome/modern-web-guidance
 /plugin install modern-web-guidance@googlechrome
 ```
+</details>
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 

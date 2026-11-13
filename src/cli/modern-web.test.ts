@@ -186,6 +186,8 @@ describe('modern-web CLI', () => {
       assert.ok(res.stdout.includes('Usage: modern-web-guidance legacy-scan'));
       assert.ok(res.stderr.includes('Warning: a new SKILL.md is available'));
       assert.ok(res.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      assert.ok(res.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'));
+      assert.ok(res.stderr.includes('/plugin install modern-web-guidance@googlechrome'));
     } finally {
       fs.rmSync(versionPath, { force: true });
     }
