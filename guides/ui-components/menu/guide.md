@@ -146,7 +146,7 @@ Do not add a second roving-tabindex system inside a focusgroup. Script covers on
 * **ArrowRight on a submenu trigger.** Opens the submenu if needed and focuses its first item.
 * **ArrowLeft or Escape in a submenu.** Closes only that submenu and restores focus to its trigger. The parent menu stays open.
 * **Escape in a top-level menu.** Closes it and restores focus to its trigger.
-* **Enter or Space on a command.** Activates it and closes all open menus.
+* **Enter or Space on a command.** Activates it and closes all open menus. However, if the action uses a `menuitemradio` or `menuitemcheckbox` and is additive (interacting with the control, adds to pre-selected options, e.g. adding selected users to a review), or selecting the action results in a change of display, with no change of information elsewhere (e.g. a theme picker), do not close the menu. Keep the menu open, update the state of the control (both visually and semantically), and allow people to continue to interact, to save having to reopen the menu.
 * **Tab.** Leaves the menu system. Do not trap focus or step through every command. Closing must not leave focus inside hidden content.
 * **No trigger button.** A menu opened from script focuses its first item when it was opened from the keyboard, and on close restores focus to the element that had it before the menu opened.
 
@@ -250,7 +250,7 @@ Also:
 
 ### Separators and checkable items
 
-* Separate item groups with `<hr>` inside the focusgroup: a native `separator`, not focusable, skipped by focusgroup and the fallback. Never a styled `<div>`.
+* Separate item groups with `<hr aria-hidden="true">` inside the focusgroup: a native `separator`, not focusable, skipped by focusgroup and the fallback. Never a styled `<div>`. The `aria-hidden="true"` attribute prevents the screen reader numbering of items from being disrupted, helping people understand the number of available actionable menu items.
 * A boolean option is a `<button type="button">` with `aria-checked` and an explicit `role="menuitemcheckbox"`. Focusgroup does not infer these roles, so this is the one place shared markup sets an item role.
 * One of a set is a `<button type="button">` with `role="menuitemradio"` and `aria-checked`, inside a `role="group"` with an `aria-label`, in the same focusgroup.
 * Script toggles `aria-checked`.
@@ -300,8 +300,9 @@ When a row has an icon, label, and shortcut or submenu indicator, reserve a fixe
 
 /* Check mark for checked items. This selector must be at least as specific as the base
    ::before rule above, or the empty content wins and the check mark never shows. */
+/* ARIA conveys the state to screen readers, so provide an empty text alternative for this checkmark to prevent duplicated state announcements */
 [focusgroup~="menu"] button[aria-checked="true"]::before {
-  content: "✓";
+  content: "✓" / "";
 }
 
 /* Shortcut or submenu indicator at the inline end. */
