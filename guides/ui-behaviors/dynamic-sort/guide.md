@@ -87,7 +87,7 @@ Reordering moves many nodes, but the user performed one action. **DO NOT** put `
 * Add one visually hidden `role="status"` element and set its text once per reorder, after starting the update. It must already be in the DOM before its text changes.
 * Name the result, not the mechanism: "Sorted by price, low to high, 24 items".
 * Keep focus on the control that triggered the change. Do not move focus into the list.
-* Make the current order readable from the control itself, so a screen reader user who lands on it hears what is selected without searching the page. Native controls (`<select>`, radios) do this already; for toggle buttons use `aria-pressed` and label the current state, not the action.
+* Make the current order readable from the control itself, so a screen reader user who lands on it hears what is selected without searching the page. Use native controls (`<select>`, or radios in a `<fieldset>` with a `<legend>`), which do this already. **DO NOT** use `aria-pressed` buttons for mutually exclusive choices or for a button whose label changes.
 
 ```html
 <p id="reorder-status" role="status" class="visually-hidden"></p>
