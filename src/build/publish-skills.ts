@@ -3,7 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import ghpages from 'gh-pages';
-import { buildDist, processSkills, type DistTag } from './build-dist.ts';
+import { buildDist } from './build-dist.ts';
 import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
@@ -31,10 +31,7 @@ const GH_PUBLISH_PATTERNS = [
 
 const isDryRun = process.argv.includes('--dry-run');
 
-export type { DistTag };
-
 export interface PublishOptions {
-  distTag: DistTag;
   explicitVersion?: string;
 }
 
@@ -45,26 +42,18 @@ export function parsePublishOptions(
   const { values } = parseArgs({
     args: argv,
     options: {
-      tag: { type: 'string' },
       version: { type: 'string' },
     },
     strict: false,
   });
 
-  const rawTag = (typeof values.tag === 'string' ? values.tag : (env.DIST_TAG ?? env.NPM_DIST_TAG))?.trim();
   const rawVersion = (typeof values.version === 'string' ? values.version : env.RELEASE_VERSION)?.trim();
-
-  const distTag = (rawTag || 'latest') as DistTag;
-  if (distTag !== 'latest' && distTag !== 'next') {
-    throw new Error(`Invalid dist-tag "${distTag}". Expected "latest" or "next".`);
-  }
-
   const explicitVersion = rawVersion ? rawVersion.replace(/^v/, '') : undefined;
   if (explicitVersion !== undefined && !/^\d+\.\d+\.\d+$/.test(explicitVersion)) {
     throw new Error(`Invalid explicit version "${rawVersion}". Expected X.Y.Z semver (e.g. 1.0.0).`);
   }
 
-  return { distTag, explicitVersion };
+  return { explicitVersion };
 }
 
 function incrementVersion(version: string): string {
@@ -127,7 +116,6 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
 
 async function publishBranchToDistributionRepo(
   publishCliDir: string,
-  branch: 'main' | 'next',
   message: string,
   tag?: string,
 ) {
@@ -139,7 +127,7 @@ async function publishBranchToDistributionRepo(
     ghpages.publish(
       publishCliDir,
       {
-        branch,
+        branch: 'main',
         repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
         dotfiles: true,
         message,
@@ -191,39 +179,14 @@ async function publishToDistributionRepo(
   publishCliDir: string,
   newVersion: string,
   latestTag: string,
-  distTag: DistTag = 'latest',
 ) {
-  if (distTag === 'next') {
-    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (next branch)...`);
-    await publishBranchToDistributionRepo(
-      publishCliDir,
-      'next',
-      `Release v${newVersion} (next)`,
-    );
-    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance (next branch)!`);
-    return;
-  }
-
   const previousReleaseTag = getLatestDistributionReleaseTag(latestTag);
   console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
   await publishBranchToDistributionRepo(
     publishCliDir,
-    'main',
     `Release v${newVersion}`,
     `v${newVersion}`,
   );
-
-  console.log(`Syncing GoogleChrome/modern-web-guidance (next branch) with v${newVersion}...`);
-  processSkills(publishCliDir, 'next');
-  try {
-    await publishBranchToDistributionRepo(
-      publishCliDir,
-      'next',
-      `Release v${newVersion}`,
-    );
-  } finally {
-    processSkills(publishCliDir, 'latest');
-  }
 
   const releaseNotes = await generateReleaseNotes({
     previousTag: previousReleaseTag,
@@ -254,7 +217,6 @@ async function publishToDistributionRepo(
  */
 export interface ValidateDeps {
   dryRun?: boolean;
-  distTag?: DistTag;
   embedChunks?: typeof embedGuideChunks;
   runBuildDist?: typeof buildDist;
   runDistTests?: () => void;
@@ -263,7 +225,6 @@ export interface ValidateDeps {
 export async function validate(newVersion: string, deps: ValidateDeps = {}) {
   const {
     dryRun = isDryRun,
-    distTag = 'latest',
     embedChunks = embedGuideChunks,
     runBuildDist = buildDist,
     runDistTests = () =>
@@ -294,12 +255,11 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
     }
   }
 
-  console.log(`\nRebuilding distribution with version ${newVersion} (dist-tag: ${distTag})...`);
+  console.log(`\nRebuilding distribution with version ${newVersion}...`);
   const result = await runBuildDist({
     publishRoot: publishCliDir,
     version: newVersion,
     failOnMissingVectors: !dryRun,
-    distTag,
   });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
@@ -312,7 +272,7 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
 }
 
 async function main() {
-  const { distTag, explicitVersion } = parsePublishOptions();
+  const { explicitVersion } = parsePublishOptions();
   const latestTag = getLatestGitTag();
   let newVersion: string;
 
@@ -321,7 +281,7 @@ async function main() {
       throw new Error(`Version v${explicitVersion} has already been tagged!`);
     }
     newVersion = explicitVersion;
-    console.log(`Using explicit version override: ${newVersion} (dist-tag: ${distTag})`);
+    console.log(`Using explicit version override: ${newVersion}`);
   } else {
     newVersion = await getNextVersion();
     // Self-healing loop: ensure the version tag doesn't exist locally or on remote repos
@@ -331,7 +291,7 @@ async function main() {
     }
   }
 
-  const { skillsCount, skillNames } = await validate(newVersion, { distTag });
+  const { skillsCount, skillNames } = await validate(newVersion);
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   if (isDryRun) {
@@ -383,7 +343,7 @@ async function main() {
     // Update both the distribution bundle README and the source repo README
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
 
-    await publishToDistributionRepo(publishCliDir, newVersion, latestTag, distTag);
+    await publishToDistributionRepo(publishCliDir, newVersion, latestTag);
 
     console.log('Committing automated documentation updates to source repo...');
     try {

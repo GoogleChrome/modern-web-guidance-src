@@ -20,8 +20,6 @@ import { getSkillUpdateLevel } from "./skill-version.ts";
 import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
 
-declare const __MWG_DIST_TAG__: string | undefined;
-
 const MAX_INLINE_STDOUT_BYTES = 9500;
 
 const { values, positionals } = parseArgs({
@@ -238,11 +236,7 @@ async function main() {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
     const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
-    const distTag = typeof __MWG_DIST_TAG__ !== "undefined" ? __MWG_DIST_TAG__ : "latest";
-    const repoSource = distTag === "next"
-      ? "https://github.com/GoogleChrome/modern-web-guidance/tree/next"
-      : "GoogleChrome/modern-web-guidance";
-    const installArgs = `-y skills add ${repoSource} ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
       .concat(extraArgs);
