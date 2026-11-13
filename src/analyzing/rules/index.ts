@@ -26,6 +26,7 @@ import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
 import interestTriggeredTooltips from './interest-triggered-tooltips.ts';
+import js from './js.ts';
 import progress from './progress.ts';
 import sanitizeUntrustedHtml from './sanitize-untrusted-html.ts';
 import scrollEntryExitEffects from './scroll-entry-exit-effects.ts';
@@ -65,6 +66,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   improveNextPageLoadPerformance,
   improveTextLayoutAndLegibility,
   interestTriggeredTooltips,
+  js,
   progress,
   sanitizeUntrustedHtml,
   scrollEntryExitEffects,

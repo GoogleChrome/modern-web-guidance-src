@@ -1,0 +1,20 @@
+- Deep cloning of structured in-memory state (objects, arrays, `Date`, `Map`, `Set`, and typed arrays) uses `structuredClone()` rather than `JSON.parse(JSON.stringify(...))` when JSON wire normalization is not required.
+- Non-mutating array sorting uses `Array.prototype.toSorted()` instead of cloning and mutating with `[...arr].sort()`, `arr.slice().sort()`, or `Array.from(arr).sort()`.
+- Non-mutating array reversal uses `Array.prototype.toReversed()` instead of cloning and mutating with `[...arr].reverse()` or `arr.slice().reverse()`.
+- Non-mutating array element removal and insertion use `Array.prototype.toSpliced()` instead of cloning an array before calling `.splice()`.
+- Non-mutating single-index array replacement uses `Array.prototype.with()` instead of cloning an array before assigning `clone[index] = value`.
+- Searching an array from the end uses `Array.prototype.findLast()` or `Array.prototype.findLastIndex()` instead of reversing a copy of the array before calling `.find()`.
+- Partitioning an iterable into array buckets by key uses `Object.groupBy()` (for string or symbol keys) or `Map.groupBy()` (for non-string or object keys) instead of `.reduce()` bucket accumulator loops.
+- Key existence checks on the `null`-prototype object returned by `Object.groupBy()` use `Object.hasOwn(groups, key)` or nullish coalescing (`groups[key] ?? []`) rather than `groups.hasOwnProperty(key)`.
+- Deferred promise construction where `resolve` or `reject` is invoked outside the executor callback uses `Promise.withResolvers()` instead of assigning to mutable outer `let resolve, reject` bindings.
+- Time-bounded asynchronous operations use `AbortSignal.timeout(ms)` instead of manual `AbortController` and `setTimeout(() => controller.abort(), ms)` timers.
+- Combining multiple cancellation sources (such as a user-controlled `AbortController` signal and an `AbortSignal.timeout(ms)` deadline) uses `AbortSignal.any(signals)` instead of manually forwarding abort listeners.
+- When distinguishing timeout deadlines from user cancellation, abort error handlers check `err.name === 'TimeoutError'` and `err.name === 'AbortError'`.
+- Re-thrown and wrapped errors attach the original error via `new Error(message, { cause: err })` rather than relying solely on string concatenation to preserve error provenance.
+- URL query-string parsing and serialization use `URLSearchParams` (or `new URL(url, base).searchParams`, reading or converting via `.get()`, `.getAll()`, `.has()`, `.set()`, `.toString()`, or `Object.fromEntries()`) instead of manual `.split('&')` and `.split('=')` string splitting with `decodeURIComponent()`.
+- Decoding UTF-8 `Uint8Array` byte buffers into strings uses `TextDecoder` (passing `{ stream: true }` for chunked byte streams) instead of `String.fromCharCode.apply(null, bytes)` or `String.fromCharCode(...bytes)`.
+- `new TextEncoder().encode(...)` encodes strings into UTF-8 `Uint8Array` byte arrays instead of manual character-code loops.
+- Clearing all children of a DOM element uses `element.replaceChildren()` (or `template.content.replaceChildren()` for `<template>` elements) instead of `element.innerHTML = ''` or child-removal loops.
+- Replacing all children of a DOM element with new nodes or text uses `element.replaceChildren(...nodes)` atomically instead of clearing and appending in separate steps.
+- Constructing standard synthetic DOM events uses `new Event(type, options)` (or specialized constructors such as `new MouseEvent()`, `new KeyboardEvent()`, or `new UIEvent()`) instead of `document.createEvent()` and `initEvent()`.
+- Constructing custom synthetic DOM events with structured payload data uses `new CustomEvent(type, { detail, ...options })` instead of `document.createEvent('CustomEvent')` and `initCustomEvent()`.

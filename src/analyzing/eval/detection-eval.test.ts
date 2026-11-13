@@ -9,6 +9,7 @@ import {
   computeExplainerContextHash,
   computeJudgeInputProvenance,
   computePromptGuideHash,
+  computeRuleHash,
   deriveJudgeVerdictFromFacts,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
@@ -33,6 +34,7 @@ import {
   type JudgeResult,
   type JudgeVerdict,
 } from './detection-eval.ts';
+import { jsUrlSearchParamsRule } from '../rules/js/url-search-params.ts';
 
 const mockGeminiResponse = (p: unknown, status = 200) =>
   new Response(typeof p === 'string' ? p : JSON.stringify(p), {
@@ -542,6 +544,78 @@ describe('code snippet slicing, blind cards prep, and direct judge runner', () =
     assert.equal('rawResponse' in consensusRow, false);
     assert.equal('error' in consensusRow, false);
   });
+
+  it('fails fast on multi-rule guides without explicit ruleId instead of returning unregistered', () => {
+    const jsSummary: GuideSummaryInfo = {
+      guideId: 'js',
+      problem: 'JavaScript discipline guide.',
+      markdownBody: '# JavaScript\n\nUse URLSearchParams and structuredClone.',
+    };
+
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          cardId: 'card-js-no-rule',
+          repo: 'sample-repo',
+          file: 'src/query.js',
+          line: 10,
+          guideId: 'js',
+          guideSummary: jsSummary,
+          codeSnippet: "location.search.slice(1).split('&');",
+        }),
+      /multi-rule guide "js".*js\/url-search-params/,
+    );
+
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          cardId: 'card-scroll-no-rule',
+          repo: 'sample-repo',
+          file: 'src/scroll.css',
+          line: 4,
+          guideId: 'scroll-entry-exit-effects',
+          guideSummary: {
+            guideId: 'scroll-entry-exit-effects',
+            problem: 'Scroll entry/exit effects.',
+            markdownBody: '# Scroll entry/exit effects',
+          },
+          codeSnippet: '.card {}',
+        }),
+      /multi-rule guide "scroll-entry-exit-effects"/,
+    );
+
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          cardId: 'card-text-no-rule',
+          repo: 'sample-repo',
+          file: 'src/type.css',
+          line: 4,
+          guideId: 'improve-text-layout-and-legibility',
+          guideSummary: {
+            guideId: 'improve-text-layout-and-legibility',
+            problem: 'Text layout.',
+            markdownBody: '# Text layout',
+          },
+          codeSnippet: 'p {}',
+        }),
+      /multi-rule guide "improve-text-layout-and-legibility"/,
+    );
+
+    const withExplicitRuleId = computeJudgeInputProvenance({
+      cardId: 'card-js-explicit-rule',
+      repo: 'sample-repo',
+      file: 'src/query.js',
+      line: 10,
+      guideId: 'js',
+      ruleId: 'js/url-search-params',
+      guideSummary: jsSummary,
+      codeSnippet: "location.search.slice(1).split('&');",
+    });
+    assert.equal(withExplicitRuleId.ruleId, 'js/url-search-params');
+    assert.equal(withExplicitRuleId.ruleGuideHash, jsUrlSearchParamsRule.guideHash);
+    assert.equal(withExplicitRuleId.ruleHash, computeRuleHash(jsUrlSearchParamsRule));
+  });
 });
 
 describe('guide summary extraction and scored card loading', () => {
@@ -600,6 +674,44 @@ describe('guide summary extraction and scored card loading', () => {
         /invalid\/sentinel guideHash/,
       );
     }
+  });
+
+  it('truncates feature guides at 6,000 chars while preserving full multi-section discipline guides up to 48,000 chars', () => {
+    const padding = 'x'.repeat(7500);
+    const featureMarkdown = `---\nname: dark-mode\ndescription: Feature guide\n---\n\n# Dark Mode\n\n${padding}\n\n## Trailing Section\n\nStill more content.\n`;
+    const featureParsed = parseGuideSummaryMarkdown(featureMarkdown, 'dark-mode');
+    assert.ok(featureParsed.markdownBody);
+    assert.ok(featureParsed.markdownBody.endsWith('\n\n... (guide content truncated)'));
+    assert.equal(
+      featureParsed.markdownBody.length,
+      6000 + '\n\n... (guide content truncated)'.length,
+    );
+    assert.equal(featureParsed.promptGuideHash, computePromptGuideHash(featureParsed.markdownBody));
+
+    const tailSection =
+      '## Replace DOM children with `Element.prototype.replaceChildren()` {#replace-children}\n\nPrefer `parent.replaceChildren(...nodes)` over `parent.innerHTML = ""`.\n';
+    const jsDisciplineMarkdown = `---\nname: js\ndescription: JS discipline guide\n---\n\n# JavaScript\n\n${'a'.repeat(5200)}\n\n${'b'.repeat(5200)}\n\n${tailSection}`;
+    assert.ok(jsDisciplineMarkdown.length > 10000);
+    const jsParsed = parseGuideSummaryMarkdown(jsDisciplineMarkdown, 'js');
+    assert.ok(jsParsed.markdownBody);
+    assert.equal(jsParsed.markdownBody.includes('... (guide content truncated)'), false);
+    assert.ok(jsParsed.markdownBody.includes('{#replace-children}'));
+    assert.ok(jsParsed.markdownBody.endsWith('Prefer `parent.replaceChildren(...nodes)` over `parent.innerHTML = ""`.'));
+
+    const cssDisciplineMarkdown = `---\nname: css\ncategory: css\ndescription: CSS discipline guide\n---\n\n# CSS\n\n${'c'.repeat(9000)}\n\n## Late CSS Section {#late-css}\n\nRetained past 6,000 chars.\n`;
+    const cssParsed = parseGuideSummaryMarkdown(cssDisciplineMarkdown, 'css');
+    assert.ok(cssParsed.markdownBody);
+    assert.equal(cssParsed.markdownBody.includes('... (guide content truncated)'), false);
+    assert.ok(cssParsed.markdownBody.includes('{#late-css}'));
+
+    const oversizedDisciplineMarkdown = `---\nname: js\ndescription: Oversized\n---\n\n# JavaScript\n\n${'z'.repeat(49000)}`;
+    const oversizedParsed = parseGuideSummaryMarkdown(oversizedDisciplineMarkdown, 'js');
+    assert.ok(oversizedParsed.markdownBody);
+    assert.ok(oversizedParsed.markdownBody.endsWith('\n\n... (guide content truncated)'));
+    assert.equal(
+      oversizedParsed.markdownBody.length,
+      48000 + '\n\n... (guide content truncated)'.length,
+    );
   });
 
   it('fails fast on missing/corrupt explainers and empty/missing guide dirs unless allowMissingExplainers is set', async () => {
