@@ -34,7 +34,7 @@ A starter web application (`daily-grind`, `devtools-times`, `cards-app`, `empty-
 
 One batch execution of the **Eval Harness** across a configured selection of **Tasks**, **Conditions**, and repetitions for an **Agent Harness** and model snapshot (for example, a nightly schedule, a baseline release snapshot, or an ad-hoc invocation). Each row on the evaluation dashboard landing page represents one job.
 
-* _Reference_: `src/harness/run-suite.ts`, `src/dashboard/summary-extractor.js#SuiteSummary`, `results/suites/`
+* _Reference_: `src/harness/run-suite.ts`, `src/dashboard/summary-extractor.js#JobSummary`, `results/suites/`
 * _AKA_: Job — Harbor Framework
 * _Avoid_: Suite, Suite Run, Run (unscoped for the batch), Trial (for a historical job point in guide trend charts)
 
@@ -112,13 +112,13 @@ Not to be confused with solution-caused **`Page-Load / Build Error`** (`pageLoad
 
 A grading outcome recorded when the agent's modified application fails to build or hits runtime errors on initial browser load during `checkTargetPageLoad`. Tracked separately from **`Infra Error`** because build/runtime defects in agent output reflect solution quality rather than harness infrastructure (except when caused by runner/browser startup crashes).
 
-* _Reference_: `src/grading/test-fixture.ts#checkTargetPageLoad`, `src/grading/run-grader.ts#runPlaywright`, `src/dashboard/insights.js#toSuiteRef` (`pageLoadFailed`)
+* _Reference_: `src/grading/test-fixture.ts#checkTargetPageLoad`, `src/grading/run-grader.ts#runPlaywright`, `src/dashboard/insights.js#toJobRef` (`pageLoadFailed`)
 
 ### Unguided Leak
 
 A control-hygiene flag triggered when an **Unguided** trial accesses or retrieves its expected guide (or `modern-web-guidance` skill), indicating contamination of the unguided baseline rather than an **`Infra Error`** or check failure.
 
-* _Reference_: `src/harness/lib/collection.ts#collectGuideUsage`, `src/dashboard/utils.js#isUnguidedLeakRun`
+* _Reference_: `src/harness/lib/collection.ts#collectGuideUsage`, `src/dashboard/utils.js#isUnguidedLeakTrial`
 
 ### Calibration Failure
 

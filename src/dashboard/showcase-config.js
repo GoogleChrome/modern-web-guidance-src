@@ -1,6 +1,6 @@
 /**
- * Use cases featured in the A/B Task Spotlight, in display order. Only the list is curated;
- * the results always come from each agent's latest nightly run, unfiltered.
+ * Guides featured in the A/B Task Spotlight, in display order. Only the list is curated;
+ * the results always come from each agent's latest nightly job, unfiltered.
  * @type {ReadonlyArray<{ id: string, label: string }>}
  */
 export const SHOWCASE_TASKS = [
