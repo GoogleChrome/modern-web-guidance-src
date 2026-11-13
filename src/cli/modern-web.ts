@@ -9,7 +9,8 @@ import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
+import { retrieveUseCase, formatUnknownGuideMessage, FeatureGateError, UnknownGuideError } from "../rag/retrieve.ts";
+import { normalizeGuideId } from "../rag/guide-ids.ts";
 import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
@@ -171,17 +172,13 @@ async function main() {
       process.exit(1);
     }
   } else if (command === "retrieve") {
-    const ids = arg
-      ? [
-          ...new Set(
-            arg
-              .split(/[\s,;]+/)
-              .map(id => id.replace(/^["'\\]+|["'\\;]+$/g, "").trim())
-              .filter(id => Boolean(id) && !id.startsWith("-"))
-          ),
-        ]
+    const requestedIds = arg
+      ? arg
+          .split(/[\s,;]+/)
+          .map(id => id.replace(/^["'\\]+|["'\\;]+$/g, "").trim())
+          .filter(id => Boolean(id) && !id.startsWith("-"))
       : [];
-    if (ids.length === 0) {
+    if (requestedIds.length === 0) {
       await getLogger().logRetrieveResult(0, false, "");
       console.error("No IDs provided for retrieve.");
       process.exit(1);
@@ -189,6 +186,18 @@ async function main() {
 
     let hasError = false;
     const retrievedSections: string[] = [];
+    const ids = new Set<string>();
+    for (const requestedId of requestedIds) {
+      const id = normalizeGuideId(requestedId);
+      if (id) {
+        ids.add(id);
+      } else {
+        // Path-like input with no ID left after normalization, e.g. `/` or `.md`.
+        hasError = true;
+        console.error(formatUnknownGuideMessage(requestedId, []));
+        await getLogger().logRetrieveResult(0, false, "");
+      }
+    }
 
     for (const id of ids) {
       const startTime = Date.now();
@@ -198,7 +207,7 @@ async function main() {
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
-        if (error instanceof FeatureGateError) {
+        if (error instanceof FeatureGateError || error instanceof UnknownGuideError) {
           console.error(error.message);
         } else {
           console.error(`Retrieve failed for ${id}:`, error);

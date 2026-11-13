@@ -23,6 +23,7 @@ Search operates via asymmetric dense retrieval fused with Okapi BM25 lexical ran
 - **CLI Harness Ergonomics (`src/rag/retrieve.ts`, `src/cli/modern-web.ts`):**
   - **Automatic `/tmp` Spilling (`#3191`):** Coding agent harnesses (e.g., Claude Code, Codex CLI) silently middle-truncate inline terminal tool output exceeding ~10 KB (`<truncated ... bytes>`), and agents rarely follow manual redirection instructions. When `retrieve` output exceeds 9.5 KB (`Buffer.byteLength(output) > 9500`) on a non-file pipe (`!fstatSync(1).isFile()`), `retrieve` automatically writes the markdown content to `/tmp/mwg-guide-<pid>-<timestamp>.md` and prints a 2-line instruction for the agent to inspect the file. Single guides under 9.5 KB (76.6% of guides) and file redirects (`>`) stream inline in a single turn.
   - **Fuzzy Argument Splitting:** Splits CLI guide ID arguments on `/[\s,;]+/` and strips stray quotes and backslashes, gracefully handling space-separated inputs (`retrieve dialog popover`) or shell-escaped quotes.
+  - **Tolerant IDs & Suggestions (`src/rag/guide-ids.ts`):** IDs are case-insensitive and may be passed as paths (`forms/switch`, `guides/forms/switch/guide.md`, `switch.md`). An unknown ID prints a concise stderr error (no stack trace) with up to 3 "did you mean" IDs ranked by edit distance and word overlap, while valid IDs in the same request are still printed; the command exits `1`.
 
 ## Generated Tables & Data Formats (`src/rag/gen/`)
 
