@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const title = $('#modal-title');
                             const body = $('#modal-body');
 
-                            title.textContent = 'Test Suite Run Log';
+                            title.textContent = 'Job Log';
                             body.innerHTML = '<div class="modal-status-msg">Loading log...</div>';
                             modal.dataset.view = 'log';
                             modal.showModal();
@@ -784,11 +784,11 @@ function renderSummary(data) {
                 </div>
                 ${validPairsCount < tasksCount ? `<div class="narrative-metric-row"> <span>Valid task pairs</span> <strong class="text-warning">${validPairsCount} / ${tasksCount}</strong> </div>` : ''}
                 <div class="narrative-metric-row narrative-note">
-                    <span>Graded checks per mode differ when a run fails before grading (excluded from check totals).</span>
+                    <span>Graded checks per mode differ when a trial encounters an infra error before grading (excluded from check totals).</span>
                 </div>
-                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected runs</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
-                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
-                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected trials</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
+                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid trial${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} trial${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
             </div>
         </article>
 
@@ -828,7 +828,7 @@ function renderSummary(data) {
                     <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Timed-out runs (≥10 min)</span>
+                    <span>Timed-out trials (≥10 min)</span>
                     <strong>${rt.unguidedTimeouts} unguided → ${rt.guidedTimeouts} guided</strong>
                 </div>
             </div>
@@ -887,10 +887,10 @@ function yieldToMain() {
 }
 
 const HINT_TEXT = {
-    infra: 'Infrastructure or CLI errors stop a run before grading. Those runs are excluded from pass rates.',
-    build: "The agent produced a broken app or build, so grading failed. Open the task to see each run's failure reason.",
-    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the run isn't a clean baseline.",
-    invalid: 'Excluded from the rollup because one or both sides have 0 valid runs.',
+    infra: 'Infrastructure or CLI errors stop a trial before grading. Those trials are excluded from pass rates.',
+    build: "The agent produced a broken app or build, so grading failed. Open the task to see each trial's failure reason.",
+    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the trial isn't a clean baseline.",
+    invalid: 'Excluded from the rollup because one or both sides have 0 valid trials.',
 };
 /** @type {WeakMap<DashboardEvalsReport, Promise<ScenarioItem[]>>} */
 const scenarioCache = new WeakMap();
@@ -1507,21 +1507,21 @@ function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
     const uFailed = isRunEarlyFailure(unguidedRuns);
     const gFailed = isRunEarlyFailure(guidedRuns);
     const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
-    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
+    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Check results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader check results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
     if (maxRuns > 1) {
-        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Assertion Requirement</th> </tr> <tr>`;
+        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Check Requirement</th> </tr> <tr>`;
         for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         truthMatrixHtml += `</tr>`;
     } else {
-        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Assertion Requirement</th> </tr>`;
+        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Check Requirement</th> </tr>`;
     }
     truthMatrixHtml += `</thead><tbody>`;
 
     const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
     if (assertionMap.size === 0) {
         const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
-        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader checks recorded (all trials encountered infrastructure errors before grading).</td></tr>`;
     }
 
     const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
@@ -1748,7 +1748,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
 
                  html += `
                      <div class="run-card">
-                         <span class="run-card-title">${typeLabel} Run ${i + 1}</span>
+                         <span class="run-card-title">${typeLabel} Trial ${i + 1}</span>
 
                          ${toolsUsed.length > 0 ? `
                          <div class="run-card-row">
@@ -2442,8 +2442,8 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'empty-chart-msg';
         emptyMsg.textContent = currentMetricMode === 'a11y'
-            ? 'No accessibility checks recorded in this suite.'
-            : 'No chart data available for this suite.';
+            ? 'No accessibility checks recorded in this job.'
+            : 'No chart data available for this job.';
         container.appendChild(emptyMsg);
     }
 }

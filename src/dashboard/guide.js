@@ -386,7 +386,7 @@ function renderGraphs(guideName) {
         return isA11yMode ? (targetStats.a11y || null) : targetStats;
     };
 
-    // Filter out suites that don't have this guide, or have 0 trials for it
+    // Filter out jobs that don't have this guide, or have 0 trials for it
     const filteredKeys = testKeys.filter(key => {
         const g = getStats(allTestData[key]);
         if (!g) return false;
@@ -534,7 +534,7 @@ function renderGraphs(guideName) {
                 ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> <span class="guide-card-model-row">${escapeHtml(model)}${renderEffortChip(cardReasoningEffort)}</span>
             </h2>
             <div class="guide-card-subtitle">
-                ${runs.length} chronological trials${isA11yMode ? ' · Accessibility checks' : ''}
+                ${runs.length} chronological jobs${isA11yMode ? ' · Accessibility checks' : ''}
             </div>
         `;
         card.appendChild(header);
@@ -607,7 +607,7 @@ function renderGraphs(guideName) {
                     `;
                 }
 
-                const pointLabel = `${suite.shortDate}: open run`;
+                const pointLabel = `${suite.shortDate}: open job`;
                 const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
                 const modeParam = isA11yMode ? '&mode=a11y' : '';
                 const runHref = `dashboard.html?testId=${encodeURIComponent(run.testId)}&source=${encodeURIComponent(run.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;

@@ -167,10 +167,10 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
       opts.map(o => ({ value: o.getAttribute('value'), label: o.getAttribute('label') }))
     );
     expect(datalistOptions).toEqual([
-      { value: 'effort:default', label: 'Reasoning effort: default (CLI built-in default) · 2 runs' },
-      { value: 'effort:high', label: 'Reasoning effort: high · 2 runs' },
-      { value: 'effort:low', label: 'Reasoning effort: low · 1 run' },
-      { value: 'effort:medium', label: 'Reasoning effort: medium · 2 runs' },
+      { value: 'effort:default', label: 'Reasoning effort: default (CLI built-in default) · 2 jobs' },
+      { value: 'effort:high', label: 'Reasoning effort: high · 2 jobs' },
+      { value: 'effort:low', label: 'Reasoning effort: low · 1 job' },
+      { value: 'effort:medium', label: 'Reasoning effort: medium · 2 jobs' },
     ]);
 
     // Case-insensitive EFFORT:MEDIUM
@@ -381,7 +381,7 @@ test.describe('Reasoning effort chips, filters, and insights sub-grouping', () =
     await expect(mediumCard).toBeVisible();
     await expect(unifiedFlashCard).toHaveCount(1);
     await expect(unifiedFlashCard).toHaveAttribute('data-effort', 'high');
-    await expect(unifiedFlashCard.locator('.guide-card-subtitle')).toContainText('2 chronological trials');
+    await expect(unifiedFlashCard.locator('.guide-card-subtitle')).toContainText('2 chronological jobs');
 
     const effortTooltip = page.locator('#effort-tooltip');
     const highChip = highCard.locator('.guide-card-title button.effort-chip');

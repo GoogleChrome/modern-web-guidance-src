@@ -586,7 +586,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
 ```
 
 1. **Simulated Developer Tasks**: We define realistic developer prompts against full base applications (`daily-grind`, `devtools-times`) that mimic real-world requests (e.g., "make my images load faster"). Prompts avoid naming APIs or features, testing whether the agent can naturally discover and apply the right guides.
-2. **Static & Browser-Based Assertions**: Playwright graders verify that each implementation requirement was followed—checking source patterns, computed styles, runtime DOM behaviors, and accessibility states.
+2. **Static & Browser-Based Checks**: Playwright graders verify that each implementation requirement was followed—checking source patterns, computed styles, runtime DOM behaviors, and accessibility states.
 3. **Self-Healing Calibration**: Graders are calibrated against multi-agent (Claude/Codex/AGY) golden solutions (100% pass target) and an unmodified baseline application (0% pass target).
 4. **E2E Testing**: We measure coding agent performance on real tasks with and without guidance. The _opportunity_ (100% - unguided pass rate) and _uplift_ (guided - unguided pass rate) are key: if models already succeed without guidance, we prune redundant advice; where agents struggle, we refine guides to maximize uplift.
 
@@ -595,7 +595,7 @@ We developed a robust eval harness to ensure that the content is **empirically p
 Explore full per-agent and per-guide breakdowns on the **[Eval Dashboard](https://googlechrome.github.io/modern-web-guidance-src/)**.
 
 <!-- INJECT_EVAL_RESULTS_START -->
-| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
+| Date | Agent + Model | Tasks / Checks | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
 | Nov 8 | antigravity_cli (gemini-4-argon) | 214 / 1673 | 58% → 94% (**+36pp**) |
 | Nov 8 | codex_cli (gpt-6.1-sol) | 215 / 1795 | 54% → 82% (**+28pp**) |

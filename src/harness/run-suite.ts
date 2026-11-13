@@ -40,13 +40,13 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   const promptContent = promptContentRaw + COMMON_APPEND_PROMPT;
 
   if (!fs.existsSync(templateDir)) {
-    console.error(`❌ Template directory not found: ${templateDir}`);
+    console.error(`❌ Base app directory not found: ${templateDir}`);
     return;
   }
 
   console.log(`\n=== Running ${taskNameLabel} ===`);
   console.log(`Agent: ${agent}`);
-  console.log(`Template: ${templateDir}`);
+  console.log(`Base app: ${templateDir}`);
   console.log(`Target: ${targetDir}\n`);
 
   if (!fs.existsSync(targetDir)) {
@@ -111,7 +111,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const originalConsoleMethods = setupLogging(logFilePath);
   const suiteStart = Date.now();
 
-  console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
+  console.log(`\n=== Evaluation Job Starting with ID: ${testID} ===`);
   console.log(`Results will be saved to: ${testDir}\n`);
   console.log(`Log file: ${logFilePath}\n`);
 
@@ -120,7 +120,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     const numRuns = options.numRuns ?? suiteConfig.numRuns;
     const endRun = 1 + numRuns;
 
-    console.log(`\nStarting execution for ${numRuns} runs`);
+    console.log(`\nStarting execution for ${numRuns} ${numRuns === 1 ? 'trial per condition' : 'trials per condition'}`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
       if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -254,9 +254,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
+      console.log(`\n❌ Evaluation job completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
-      console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
+      console.log(`\n✅ Evaluation job complete! Results saved to: ${testDir}`);
     }
 
     if (!options.skipEval) {
@@ -270,7 +270,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       process.exitCode = 1;
     }
   } catch (e) {
-    console.error('❌ Error during suite execution:', e);
+    console.error('❌ Error during job execution:', e);
   } finally {
     restoreLogging(originalConsoleMethods);
   }
