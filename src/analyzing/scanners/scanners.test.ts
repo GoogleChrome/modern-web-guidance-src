@@ -699,6 +699,180 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     assert.equal(astroCss.line, 8);
   });
 
+  await t.test('scans .gts and .gjs Glimmer files with exact line numbers', () => {
+    const gtsContent = [
+      "import Component from '@glimmer/component';",
+      '',
+      'const Badge = <template><span>{{@label}}</span></template>;',
+      '',
+      'export default class Clock extends Component {',
+      '  now = Temporal.Now.instant();',
+      '',
+      '  <template>',
+      '    {{!-- <dialog open>commented out</dialog> --}}',
+      '    <dialog open>{{this.now}}</dialog>',
+      '    <style>',
+      '      dialog { anchor-name: --clock; }',
+      '    </style>',
+      '  </template>',
+      '}',
+    ].join('\n');
+
+    const gtsFindings = scanFiles(new Map([['app/components/clock.gts', gtsContent]]), rules);
+    assert.equal(gtsFindings.length, 3);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-js-temporal')?.line, 6);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-dom-dialog')?.line, 10);
+    assert.equal(gtsFindings.find((f) => f.ruleId === 'test-css-anchor')?.line, 12);
+
+    const gjsContent = [
+      'const now = Temporal.Now.instant();',
+      '',
+      '<template>',
+      '  <dialog open>{{now}}</dialog>',
+      '</template>',
+    ].join('\n');
+
+    const gjsFindings = scanFiles(new Map([['app/components/clock.gjs', gjsContent]]), rules);
+    assert.equal(gjsFindings.length, 2);
+    assert.equal(gjsFindings.find((f) => f.ruleId === 'test-js-temporal')?.line, 1);
+    assert.equal(gjsFindings.find((f) => f.ruleId === 'test-dom-dialog')?.line, 4);
+  });
+
+  // Reports each TypeScript syntax error, so code mis-read around a template is a finding.
+  const syntaxErrorRule: AnalyzerRule = {
+    id: 'test-js-syntax-error',
+    guideId: 'syntax-guide',
+    guideHash: '123456789012',
+    summary: 'Report syntax errors',
+    verifierRubric: { keepWhen: ['syntax error'], dropWhen: [] },
+    matcher: {
+      kind: 'js',
+      fastTokens: [],
+      matchFile: (sourceFile) =>
+        sourceFile
+          .getProject()
+          .getProgram()
+          .getSyntacticDiagnostics(sourceFile)
+          .map((diagnostic) => ({ line: diagnostic.getLineNumber() ?? 0, column: 1, message: 'syntax error' })),
+    },
+  };
+
+  // Each template's text says "Temporal": if a template is missed, its markup reaches the
+  // JS rule as code and adds a `test-js-temporal` finding on that line.
+  const glimmerFindings = (content: string, path = 'app/components/card.gts') =>
+    scanFiles(new Map([[path, content]]), [...rules, syntaxErrorRule])
+      .map((f) => `${f.ruleId}:${f.line}`)
+      .sort();
+
+  await t.test('.gts: a template ends at the first </template>, as in content-tag', () => {
+    // content-tag does not support a platform-native <template> nested inside, so Ember
+    // cannot build this file. The markup after the inner </template> is not a template.
+    const gts = [
+      'export default class Modal extends Component {',
+      '  <template>',
+      '    <template id="row"><span>x</span></template>',
+      '    <dialog open>After</dialog>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    assert.equal(glimmerFindings(gts).includes('test-dom-dialog:4'), false);
+  });
+
+  await t.test('.gts: comment before `class` and braces in `extends`', () => {
+    const commentBeforeClass = [
+      'export/* */class Card extends Component {',
+      '  <template><dialog open>Temporal</dialog></template>',
+      '  now = Temporal.Now.instant();',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(commentBeforeClass), ['test-dom-dialog:2', 'test-js-temporal:3']);
+
+    const bracesInExtends = [
+      'class Card extends makeBase({ a: 1 }) {',
+      '  <template><dialog open>Temporal</dialog></template>',
+      '  now = Temporal.Now.instant();',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(bracesInExtends), ['test-dom-dialog:2', 'test-js-temporal:3']);
+  });
+
+  await t.test('.gjs: regex literals before a template', () => {
+    const regexAfterIf = [
+      "if (cond) /'/.test(s);",
+      'export default <template><dialog open>Temporal</dialog></template>;',
+      'const now = Temporal.Now.instant();',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(regexAfterIf, 'app/components/card.gjs'), [
+      'test-dom-dialog:2',
+      'test-js-temporal:3',
+    ]);
+
+    const quotesAndSlashes = [
+      "const clean = (s) => s.replace(/['\"`]+/g, '').replace(/https?:\\/\\//, '');",
+      'const half = total / 2 / count;',
+      'export const Card = <template><dialog open>Temporal</dialog></template>;',
+      'const now = Temporal.Now.instant();',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(quotesAndSlashes, 'app/components/card.gjs'), [
+      'test-dom-dialog:3',
+      'test-js-temporal:4',
+    ]);
+  });
+
+  await t.test('.gts: templates in comments, strings and template literals are not templates', () => {
+    const gts = [
+      '// const Old = <template><dialog open>Temporal</dialog></template>;',
+      "const markup = '<template><dialog open>Temporal</dialog></template>';",
+      'const label = `${format({ unit: "}" })} <template><dialog open></dialog></template>`;',
+      'export default class Card extends Component {',
+      '  <template>',
+      '    {{!-- <dialog open>Temporal</dialog> --}}',
+      '    {{~! <dialog open>Temporal</dialog> ~}}',
+      '    <dialog open>Temporal</dialog>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(gts), ['test-dom-dialog:8']);
+  });
+
+  await t.test('.gts: templates in expressions, callbacks and after fields without semicolons', () => {
+    const gts = [
+      "test('renders', async () => {",
+      '  await render(<template><dialog open>Temporal</dialog></template>);',
+      '});',
+      'const columns = [{ Cell: <template><dialog open>Temporal</dialog></template> }];',
+      'class Row extends Component {',
+      '  items: Array<string>',
+      '  ratings = [1, 2, 3]',
+      '  <template><dialog open>Temporal</dialog></template>',
+      '  now = Temporal.Now.instant()',
+      '}',
+      '<template><dialog open>Temporal</dialog></template> satisfies TOC<{ Args: {} }>;',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(gts), [
+      'test-dom-dialog:11',
+      'test-dom-dialog:2',
+      'test-dom-dialog:4',
+      'test-dom-dialog:8',
+      'test-js-temporal:9',
+    ]);
+  });
+
+  await t.test('.gts: line numbers after multi-byte characters, and styles only from templates', () => {
+    const gts = [
+      "const title = '🎵 Blåbær';",
+      '// <style>p { anchor-name: --js-comment; }</style>',
+      'export default class Card extends Component {',
+      '  <template>',
+      '    {{!-- <style>p { anchor-name: --hbs-comment; }</style> --}}',
+      '    <dialog open>{{title}}</dialog>',
+      '    <style>dialog { anchor-name: --card; }</style>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    assert.deepEqual(glimmerFindings(gts), ['test-css-anchor:7', 'test-dom-dialog:6']);
+  });
+
   await t.test('scans .html file with inline <script> and <style> with exact line numbers', () => {
     const htmlContent = [
       '<!DOCTYPE html>',

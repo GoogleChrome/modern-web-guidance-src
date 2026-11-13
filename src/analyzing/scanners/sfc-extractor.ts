@@ -1,3 +1,5 @@
+import { SyntaxKind, ts } from 'ts-morph';
+
 export interface ScriptBlock {
   readonly virtualPath: string;
   readonly blankedContent: string;
@@ -18,6 +20,127 @@ const SCRIPT_TAG_REGEX = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const STYLE_TAG_REGEX = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
 const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+const GLIMMER_COMMENT_REGEX = /\{\{~?!--[\s\S]*?--~?\}\}|\{\{~?![\s\S]*?\}\}/g;
+
+export function isGlimmerPath(relPath: string): boolean {
+  const lowerPath = relPath.toLowerCase();
+  return lowerPath.endsWith('.gts') || lowerPath.endsWith('.gjs');
+}
+
+interface GlimmerTemplateRange {
+  readonly start: number;
+  readonly end: number;
+  readonly innerStart: number;
+  readonly innerEnd: number;
+}
+
+// After these tokens a `/` is division; after any other token it starts a regex literal.
+const VALUE_END_TOKENS: ReadonlySet<SyntaxKind> = new Set([
+  SyntaxKind.Identifier,
+  SyntaxKind.PrivateIdentifier,
+  SyntaxKind.NumericLiteral,
+  SyntaxKind.BigIntLiteral,
+  SyntaxKind.StringLiteral,
+  SyntaxKind.NoSubstitutionTemplateLiteral,
+  SyntaxKind.TemplateTail,
+  SyntaxKind.RegularExpressionLiteral,
+  SyntaxKind.CloseParenToken,
+  SyntaxKind.CloseBracketToken,
+  SyntaxKind.PlusPlusToken,
+  SyntaxKind.MinusMinusToken,
+  SyntaxKind.ThisKeyword,
+  SyntaxKind.SuperKeyword,
+  SyntaxKind.NullKeyword,
+  SyntaxKind.TrueKeyword,
+  SyntaxKind.FalseKeyword,
+]);
+
+/**
+ * Finds the `<template>…</template>` blocks of a .gts/.gjs file. The TypeScript scanner
+ * skips strings, comments, template literals and regex literals. Like content-tag, a block
+ * opens on exactly `<template>` and ends at the first `</template>`.
+ */
+function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRange[] {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard, content);
+  const ranges: GlimmerTemplateRange[] = [];
+  // One entry per open `{`: true when it is the `${` of a template literal.
+  const braceStack: boolean[] = [];
+  let previous = SyntaxKind.Unknown;
+  for (let token = scanner.scan(); token !== SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    const start = scanner.getTokenStart();
+    if (token === SyntaxKind.LessThanToken && content.startsWith('<template>', start)) {
+      const innerStart = start + '<template>'.length;
+      const innerEnd = content.indexOf('</template>', innerStart);
+      if (innerEnd === -1) {
+        break;
+      }
+      const end = innerEnd + '</template>'.length;
+      ranges.push({ start, end, innerStart, innerEnd });
+      scanner.resetTokenState(end);
+      previous = SyntaxKind.CloseBracketToken;
+      continue;
+    }
+    if (
+      (token === SyntaxKind.SlashToken || token === SyntaxKind.SlashEqualsToken) &&
+      !VALUE_END_TOKENS.has(previous)
+    ) {
+      token = scanner.reScanSlashToken();
+    } else if (token === SyntaxKind.OpenBraceToken || token === SyntaxKind.TemplateHead) {
+      braceStack.push(token === SyntaxKind.TemplateHead);
+    } else if (token === SyntaxKind.CloseBraceToken && braceStack.pop() === true) {
+      token = scanner.reScanTemplateToken(false);
+      if (token === SyntaxKind.TemplateMiddle) {
+        braceStack.push(true);
+      }
+    }
+    previous = token;
+  }
+  return ranges;
+}
+
+/**
+ * Replaces each Glimmer template with a same-length `[`…`]`, as ember-template-imports v3 did.
+ * The brackets are valid both as a class member (a computed key) and as an expression
+ * (an array literal), so the code around the template still parses.
+ */
+function blankGlimmerTemplates(content: string): string {
+  let result = '';
+  let lastIndex = 0;
+  for (const { start, end } of findGlimmerTemplateRanges(content)) {
+    const blanked = content.slice(start, end).replace(/[^\r\n]/g, ' ');
+    result += `${content.slice(lastIndex, start)}[\`${blanked.slice(2, -2)}\`]`;
+    lastIndex = end;
+  }
+  return result + content.slice(lastIndex);
+}
+
+/**
+ * Keeps only the markup inside Glimmer templates, with Handlebars comments blanked,
+ * at the original offsets.
+ */
+function glimmerTemplateMarkup(content: string): string {
+  const templateRanges = findGlimmerTemplateRanges(content);
+  const rangesToBlank: { start: number; end: number }[] = [];
+  let lastIndex = 0;
+  for (const { innerStart, innerEnd } of templateRanges) {
+    rangesToBlank.push({ start: lastIndex, end: innerStart });
+    for (const { start, end } of findTagRanges(content.slice(innerStart, innerEnd), GLIMMER_COMMENT_REGEX)) {
+      rangesToBlank.push({ start: innerStart + start, end: innerStart + end });
+    }
+    lastIndex = innerEnd;
+  }
+  rangesToBlank.push({ start: lastIndex, end: content.length });
+  return blankRanges(content, rangesToBlank);
+}
+
+/** Template markup of a .gts/.gjs file with `<script>`/`<style>` blocks blanked, for linkedom. */
+function prepareGlimmerForDomScan(content: string): string {
+  const markup = glimmerTemplateMarkup(content);
+  return blankRanges(markup, [
+    ...findTagRanges(markup, SCRIPT_TAG_REGEX),
+    ...findTagRanges(markup, STYLE_TAG_REGEX),
+  ]);
+}
 
 /**
  * Replaces characters in specified index ranges with spaces, preserving all newlines.
@@ -124,6 +247,15 @@ export function extractScriptBlocks(
   relPath: string,
   content: string,
 ): readonly ScriptBlock[] {
+  if (isGlimmerPath(relPath)) {
+    return [
+      {
+        virtualPath: `${relPath}${relPath.toLowerCase().endsWith('.gts') ? '.ts' : '.js'}`,
+        blankedContent: blankGlimmerTemplates(content),
+      },
+    ];
+  }
+
   const blocks: ScriptBlock[] = [];
   const lowerPath = relPath.toLowerCase();
 
@@ -259,7 +391,8 @@ export function isMarkupPath(relPath: string): boolean {
     lowerPath.endsWith('.php') ||
     lowerPath.endsWith('.vue') ||
     lowerPath.endsWith('.svelte') ||
-    lowerPath.endsWith('.astro')
+    lowerPath.endsWith('.astro') ||
+    isGlimmerPath(lowerPath)
   );
 }
 
@@ -272,14 +405,15 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
     return content.includes('css`') ? extractLitCssBlocks(content) : [];
   }
 
+  const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
   const blocks: string[] = [];
-  for (const match of content.matchAll(STYLE_TAG_REGEX)) {
+  for (const match of markup.matchAll(STYLE_TAG_REGEX)) {
     const body = match[2] ?? '';
     if (body.trim().length > 0 && match.index !== undefined) {
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      blocks.push(blankOutsideRange(content, startOffset, endOffset));
+      blocks.push(blankOutsideRange(markup, startOffset, endOffset));
     }
   }
 
@@ -303,6 +437,9 @@ const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
  * and blanking all <template> tags in Vue SFCs so inner DOM elements remain attached in linkedom.
  */
 export function prepareHtmlForDomScan(relPath: string, content: string): string {
+  if (isGlimmerPath(relPath)) {
+    return prepareGlimmerForDomScan(content);
+  }
   const lowerPath = relPath.toLowerCase();
   if (
     !lowerPath.endsWith('.vue') &&
