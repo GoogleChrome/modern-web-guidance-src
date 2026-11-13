@@ -24,7 +24,7 @@ describe('modern-web CLI', () => {
     const { stdout } = runCLI([]);
     assert.ok(stdout.includes('Usage: modern-web-guidance <command> [args]'));
     assert.ok(stdout.includes('search <query>            Search use cases by English query'));
-    assert.ok(stdout.includes('legacy-scan [path] [options]'));
+    assert.strictEqual(stdout.includes('legacy-scan'), false);
   });
 
   it('hints on stderr when non-English search queries return empty or low results', () => {
@@ -144,7 +144,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('handles legacy-scan with leading and trailing --skill-version without shifting positional arguments', () => {
+  it.skip('handles legacy-scan with leading and trailing --skill-version without shifting positional arguments', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
       // Leading --skill-version
@@ -167,7 +167,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('forwards --help to legacy-scan when --help appears before command', () => {
+  it.skip('forwards --help to legacy-scan when --help appears before command', () => {
     const res1 = runCLI(['--help', 'legacy-scan']);
     assert.strictEqual(res1.status, 0);
     assert.ok(res1.stdout.includes('Usage: modern-web-guidance legacy-scan'));
@@ -177,7 +177,7 @@ describe('modern-web CLI', () => {
     assert.ok(res2.stdout.includes('Usage: modern-web-guidance legacy-scan'));
   });
 
-  it('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
+  it.skip('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
     fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
     try {
@@ -191,7 +191,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('exits with code 1 when legacy-scan is called with unknown --guide ID', () => {
+  it.skip('exits with code 1 when legacy-scan is called with unknown --guide ID', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
       const resJson = runCLI(['legacy-scan', tempDir, '--guide', 'nonexistent-guide-id', '--json']);
@@ -208,7 +208,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('only logs to modern-web.log when analyze or legacy-scan exits with code 0 and result.data is present', () => {
+  it.skip('only logs to modern-web.log when analyze or legacy-scan exits with code 0 and result.data is present', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));
     try {

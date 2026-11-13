@@ -10,7 +10,6 @@ import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
-import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
@@ -68,7 +67,7 @@ Commands:
   search <query>            Search use cases by English query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
-  legacy-scan [path] [options]  Analyze codebase for legacy web platform patterns
+  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
@@ -93,25 +92,6 @@ async function main() {
 
   const command = positionals[0];
 
-  if (command === "legacy-scan" || command === "analyze") {
-    maybeEmitUpdateMessage(skillVersion);
-    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
-    const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
-    const args = process.argv.slice(2);
-    const cmdIdx = args.indexOf(command);
-    if (cmdIdx !== -1) args.splice(cmdIdx, 1);
-    const startTime = Date.now();
-    const result = await runAnalyzeCli(args);
-    if (result.exitCode === 0 && result.data) {
-      logToolResult(
-        "analyze",
-        result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
-      );
-    }
-    const logger = new ClearcutLogger({ skillVersion });
-    await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.LEGACY_SCAN);
-    process.exit(writeAnalyzeCliResult(result));
-  }
 
   if (values.help || positionals.length === 0) {
     printUsage();

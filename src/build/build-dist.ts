@@ -253,37 +253,6 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         path.join(ROOT_DIST_DIR, "search.meta.json"),
         JSON.stringify(resultSearch.metafile)
       );
-
-      console.log("Bundling legacy-scan.mjs...");
-      const resultAnalyze = await esbuild.build({
-        entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
-        bundle: true,
-        platform: "node",
-        format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/legacy-scan.mjs"),
-        banner: {
-          js: `// @ts-nocheck
-import { createRequire } from 'module';
-import { fileURLToPath as __fileURLToPath } from 'url';
-import { dirname as __dirnameFunction } from 'path';
-const require = createRequire(import.meta.url);
-const __filename = __fileURLToPath(import.meta.url);
-const __dirname = __dirnameFunction(__filename);
-`,
-        },
-        sourcemap: false,
-        sourcesContent: false,
-        metafile: true,
-        minify: true,
-        legalComments: "none",
-        plugins: [createStripTsMorphLibFilesPlugin()],
-      });
-
-      fs.writeFileSync(
-        path.join(ROOT_DIST_DIR, "legacy-scan.meta.json"),
-        JSON.stringify(resultAnalyze.metafile)
-      );
-
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/cli/modern-web.ts")],
@@ -308,9 +277,6 @@ if (__mwg_major < 22) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
             });
-            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
-              return { path: './legacy-scan.mjs', external: true }
-            });
           },
         }],
         metafile: true,
@@ -332,7 +298,7 @@ if (__mwg_major < 22) {
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
