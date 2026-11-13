@@ -4,7 +4,7 @@ The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idiom
 
 See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `legacy-scan`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, and the `rule-writing` and `held-out` splits).
 
-See [FORMATS.md](./FORMATS.md) for which file formats and embedded languages `legacy-scan` reads, what "supported" promises, and how to propose a new format.
+See [format-support.md](./format-support.md) for which file formats and embedded languages `legacy-scan` reads, what "supported" promises, and how to propose a new format.
 
 ---
 
