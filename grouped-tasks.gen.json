@@ -185,6 +185,9 @@
       "coordinate-global-events": [
         "task"
       ],
+      "js": [
+        "daily-grind"
+      ],
       "sort-high-precision-timestamps": [
         "task"
       ],
@@ -692,6 +695,7 @@
     "forms",
     "guided-navigation",
     "html",
+    "js",
     "motion",
     "natural-interactions",
     "passkeys",

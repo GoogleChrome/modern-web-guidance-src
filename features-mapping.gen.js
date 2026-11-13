@@ -284,6 +284,20 @@ window.__featuresMapping = {
   "coordinate-global-events": [
     "temporal"
   ],
+  "js": [
+    "structured-clone",
+    "url",
+    "dom",
+    "array-group",
+    "promise-withresolvers",
+    "events",
+    "array-by-copy",
+    "array-findlast",
+    "abortsignal-timeout",
+    "abortsignal-any",
+    "error-cause",
+    "text-encoding"
+  ],
   "sort-high-precision-timestamps": [
     "temporal"
   ],
