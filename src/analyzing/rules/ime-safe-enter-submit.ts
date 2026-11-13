@@ -325,6 +325,7 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   fastTokens: [
     ['keydown', 'onkeydown', 'onKeyDown'],
     ["'Enter'", '"Enter"'],
+    ['key', 'code', 'case '],
   ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {

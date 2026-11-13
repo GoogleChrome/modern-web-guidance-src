@@ -293,13 +293,10 @@ function isNativeParentClassListToggle(node: CallExpression): boolean {
   return hasStateClass && isEnclosedInFormEventHandler(node) && !hasDisallowedHandlerCalls(node);
 }
 
-const NATIVE_QUOTED_STATE_CLASS_RE =
-  /['"](?:is-|has-)?(?:focus|focused|active|checked|valid|invalid|empty|filled|value)['"]/i;
-const JQUERY_CLASS_METHOD_RE = /\b(?:addClass|removeClass|toggleClass)\b/;
-
 export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     ['classList', 'addClass', 'removeClass', 'toggleClass'],
+    ['add', 'remove', 'toggle', 'addClass', 'removeClass', 'toggleClass'],
     ['parentElement', 'parentNode', 'closest', 'addClass', 'removeClass', 'toggleClass'],
     [
       'focus',
@@ -313,12 +310,32 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatche
       'input',
       'Input',
     ],
+    [
+      'focus',
+      'Focus',
+      'FOCUS',
+      'active',
+      'Active',
+      'ACTIVE',
+      'checked',
+      'Checked',
+      'CHECKED',
+      'valid',
+      'Valid',
+      'VALID',
+      'empty',
+      'Empty',
+      'EMPTY',
+      'filled',
+      'Filled',
+      'FILLED',
+      'value',
+      'Value',
+      'VALUE',
+    ],
   ],
   featureGuardTokens: [':has', 'has('],
   dedupeLines: true,
-  shouldSkipFile: (_sourceFile, ctx) =>
-    !NATIVE_QUOTED_STATE_CLASS_RE.test(ctx.fileContent) &&
-    !JQUERY_CLASS_METHOD_RE.test(ctx.fileContent),
   matchCall: (node) =>
     isJQueryParentClassToggle(node) || isNativeParentClassListToggle(node)
       ? MATCH_MESSAGE

@@ -132,8 +132,8 @@ export const checkboxCssMatcher: CssRuleMatcher = {
     ['checkbox', 'Checkbox', 'custom-control-input', 'custom-checkbox', ':checked'],
     ['checkbox', 'Checkbox', 'custom-control-input', 'custom-checkbox', ':before', ':after'],
     ['checkbox', 'Checkbox', 'custom-control-input', 'custom-checkbox', 'label', 'span'],
-    ['opacity:', 'appearance:', ':checked'],
-    ['opacity: 0', 'opacity:0', 'appearance: none', 'appearance:none', ':before', ':after'],
+    ['opacity', 'appearance', ':checked'],
+    ['opacity', 'none', ':before', ':after'],
   ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already defines accent-color, skip

@@ -205,7 +205,7 @@ const NON_BUTTON_LISTENER_TARGET_RE =
 export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    ["'click'", '"click"', '`click`', '.on(', '.click', 'onclick', 'onClick'],
+    ['click', 'onclick', 'onClick'],
     ['showModal', 'showPopover', 'hidePopover', 'togglePopover', 'close'],
     [
       'showModal',
@@ -223,17 +223,7 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
       'POPOVER',
     ],
   ],
-  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
-    if (
-      !ctx.fileContent.includes('showModal') &&
-      !ctx.fileContent.includes('showPopover') &&
-      !ctx.fileContent.includes('hidePopover') &&
-      !ctx.fileContent.includes('togglePopover') &&
-      !DIALOG_RECEIVER_HINT_RE.test(ctx.fileContent)
-    ) {
-      return [];
-    }
-
+  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
     const seenPositions = new Set<number>();
 
