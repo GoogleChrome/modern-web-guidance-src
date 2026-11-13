@@ -286,13 +286,17 @@
       show(item);
       aimedAt = position();
     };
-    // A Previous/Next click that cannot be followed yet, replayed once scrolling settles
-    let queued = 0;
+    // When the click has no neighbor (the parked slides ran out mid-scroll, or a marker trip left the
+    // slides in DOM order), park around the slide being scrolled to, then carry on. The scroll in flight is
+    // cancelled by the instant compensating scroll, and aim() restarts it straight away from the new layout.
     const step = (dir) => {
-      const target = neighbor(pending ?? nearest(), dir);
+      const base = pending ?? nearest();
+      let target = neighbor(base, dir);
+      if (!target) {
+        park(slides.indexOf(base), false);
+        target = neighbor(base, dir);
+      }
       if (target) aim(target);
-      // On a marker trip the slides are in DOM order, so an end slide has no neighbor to wrap to until settling parks again
-      else if (parkedFor === "initial") queued = dir;
     };
     let markFrame = 0;
     track.addEventListener("scroll", () => {
@@ -310,8 +314,6 @@
       button.addEventListener("click", () => {
         // A direct scroll to a parked end slide goes the short way round, so travel in DOM order; settling parks again
         if (slide !== nearest()) park();
-        // A new marker target replaces a click that was waiting on the previous one
-        queued = 0;
         aim(slide);
       });
       markerNav.append(button);
@@ -319,15 +321,17 @@
     });
 
     // Tell CSS the settled slide (or none, for DOM order), then cancel the layout shift with an instant scroll.
-    function park(current = "initial") {
+    // The compensation always follows the slide in view (nearest), which may differ from the slide
+    // being parked for when called mid-scroll.
+    function park(current = "initial", lock = true) {
       parkedFor = current;
       const item = nearest();
       const before = offsetToCenter(item);
       // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
       track.style.scrollSnapType = "none";
       // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker.
-      // Not when a scroll is about to follow (a marker trip, or a queued click): Safari will not start it on a locked track.
-      if (current !== "initial" && !queued && document.activeElement !== track) track.style.overflowX = "hidden";
+      // Not when a scroll is about to follow (a marker trip, or a click parking mid-scroll): Safari will not start it on a locked track.
+      if (lock && current !== "initial" && document.activeElement !== track) track.style.overflowX = "hidden";
       track.style.setProperty("--current", current);
       track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
@@ -360,11 +364,6 @@
         nextBtn.focus();
       } else if (focused === nextBtn && nextBtn.disabled) {
         prevBtn.focus();
-      }
-      if (queued) {
-        const dir = queued;
-        queued = 0;
-        step(dir);
       }
     }
 
