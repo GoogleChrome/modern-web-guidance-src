@@ -271,6 +271,52 @@ export interface FileFilterOptions {
   readonly maxLineLength?: number;
   readonly excludeCorpusNonAppDirs?: boolean;
   readonly includeDocsAndTests?: boolean;
+  /**
+   * Skip directory-based exclusions (build, vendor, and dot directories, vendored library
+   * subpaths, hashed asset directories) so a file is judged by its own name and content, and
+   * treat a stemless dotfile such as `.css` as having no extension.
+   * Used for explicitly named single-file targets.
+   */
+  readonly ignoreAncestorDirs?: boolean;
+}
+
+/**
+ * Returns `true` if the lower-cased `base` file name is a well-known vendored third-party library.
+ */
+function isVendoredLibraryFileName(base: string): boolean {
+  return (
+    VENDORED_LIBRARY_FILENAMES.has(base) ||
+    VENDORED_MOMENT_FILENAME_RE.test(base) ||
+    VENDORED_MODERNIZR_FILENAME_RE.test(base) ||
+    VENDORED_CHUI_STYLESHEET_RE.test(base)
+  );
+}
+
+/**
+ * Explains why the lower-cased `base` file name marks generated or vendored output,
+ * or returns `undefined` if the name alone does not exclude it.
+ */
+function getExcludedFileNameReason(base: string): string | undefined {
+  const ignoredSuffix = DEFAULT_IGNORED_EXTENSIONS.find((ext) => base.endsWith(ext));
+  if (ignoredSuffix) {
+    return `"*${ignoredSuffix}" files are excluded as minified, bundled, or generated output`;
+  }
+  if (isVendoredLibraryFileName(base)) {
+    return 'file name matches a well-known vendored third-party library';
+  }
+  return undefined;
+}
+
+/**
+ * Returns `true` if the normalized path lies in a vendored library directory subpath
+ * or a framework-published hashed asset directory.
+ */
+function hasVendoredDirectorySubpath(normalized: string): boolean {
+  const withLeadingSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  return (
+    VENDORED_DIRECTORY_SUBPATHS.some((subpath) => withLeadingSlash.includes(subpath)) ||
+    HASHED_ASSET_DIR_RE.test(withLeadingSlash)
+  );
 }
 
 /**
@@ -279,16 +325,9 @@ export interface FileFilterOptions {
  */
 export function isExcludedCorpusNonAppPath(relPath: string): boolean {
   const normalized = normalizePath(relPath);
-  const withLeadingSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
-  const base = posix.basename(normalized);
-
   return (
-    VENDORED_LIBRARY_FILENAMES.has(base) ||
-    VENDORED_MOMENT_FILENAME_RE.test(base) ||
-    VENDORED_MODERNIZR_FILENAME_RE.test(base) ||
-    VENDORED_CHUI_STYLESHEET_RE.test(base) ||
-    VENDORED_DIRECTORY_SUBPATHS.some((subpath) => withLeadingSlash.includes(subpath)) ||
-    HASHED_ASSET_DIR_RE.test(withLeadingSlash)
+    isVendoredLibraryFileName(posix.basename(normalized)) ||
+    hasVendoredDirectorySubpath(normalized)
   );
 }
 
@@ -312,15 +351,25 @@ export function isVendoredOrGeneratedPath(
   relPath: string,
   options?: FileFilterOptions,
 ): boolean {
+  return (
+    getExcludedFileNameReason(posix.basename(normalizePath(relPath))) !== undefined ||
+    isExcludedDirectoryPath(relPath, options)
+  );
+}
+
+/**
+ * Directory-based half of {@link isVendoredOrGeneratedPath}: build, install, vendor, and dot
+ * directories, vendored library subpaths, hashed asset directories, and (optionally) corpus
+ * non-app directories.
+ */
+function isExcludedDirectoryPath(relPath: string, options?: FileFilterOptions): boolean {
   const normalized = normalizePath(relPath);
   const ignoredDirs = options?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
-
   return (
-    isExcludedCorpusNonAppPath(normalized) ||
+    hasVendoredDirectorySubpath(normalized) ||
     hasDotDirSegment(normalized) ||
     hasMatchingDirSegment(normalized, ignoredDirs) ||
-    (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized)) ||
-    DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext))
+    (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized))
   );
 }
 
@@ -428,6 +477,51 @@ export function hasVendoredLicenseHeader(
 export const MAX_SOURCE_FILE_BYTES = 1_000_000;
 
 /**
+ * Explains why a file cannot be scanned judging only by the file itself (its name, extension
+ * and, when provided, its content), ignoring the directories it lives in.
+ * Returns `undefined` when the file is scannable.
+ */
+export function getUnscannableFileReason(
+  filePath: string,
+  content?: string,
+  options?: FileFilterOptions,
+): string | undefined {
+  const base = posix.basename(normalizePath(filePath));
+  if (!base.endsWith('package.json')) {
+    // Directory scans take everything after the last dot; explicitly named files follow
+    // `extname`, so a stemless dotfile such as `.css` has no extension.
+    const dotIdx = base.lastIndexOf('.');
+    if (dotIdx === -1 || (options?.ignoreAncestorDirs && dotIdx === 0)) {
+      return 'files without an extension are not supported';
+    }
+    const ext = base.slice(dotIdx);
+    if (!SUPPORTED_SOURCE_EXTENSIONS.has(ext)) {
+      return `unsupported file extension "${ext}"`;
+    }
+  }
+
+  const excludedNameReason = getExcludedFileNameReason(base);
+  if (excludedNameReason) {
+    return excludedNameReason;
+  }
+
+  if (content !== undefined) {
+    if (Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES) {
+      return `file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes)`;
+    }
+    const maxLineLength = options?.maxLineLength ?? MAX_UNMINIFIED_LINE_LENGTH;
+    if (isMinifiedContent(content, maxLineLength)) {
+      return `content appears minified (lines longer than ${maxLineLength} characters)`;
+    }
+    if (hasVendoredLicenseHeader(content, options)) {
+      return 'content starts with a versioned third-party license header, indicating vendored code';
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Master predicate determining whether a file should be scanned by analyzer rules.
  */
 export function shouldScanFile(
@@ -436,31 +530,12 @@ export function shouldScanFile(
   options?: FileFilterOptions,
 ): boolean {
   if (
-    isVendoredOrGeneratedPath(relPath, options) ||
+    (!options?.ignoreAncestorDirs && isExcludedDirectoryPath(relPath, options)) ||
     (!options?.includeDocsAndTests && isDocsOrTestsPath(relPath))
   ) {
     return false;
   }
-
-  const normalized = normalizePath(relPath);
-  if (!normalized.endsWith('package.json')) {
-    const dotIdx = normalized.lastIndexOf('.');
-    if (dotIdx === -1 || !SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx))) {
-      return false;
-    }
-  }
-
-  if (content !== undefined) {
-    if (
-      Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES ||
-      isMinifiedContent(content, options?.maxLineLength) ||
-      hasVendoredLicenseHeader(content, options)
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return getUnscannableFileReason(relPath, content, options) === undefined;
 }
 
 /**

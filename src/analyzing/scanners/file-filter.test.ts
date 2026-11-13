@@ -10,6 +10,7 @@ import type { AnalyzerRule } from '../schema.ts';
 import {
   BUILD_OR_INSTALL_DIR_SEGMENTS,
   DOCS_AND_TESTS_DIR_SEGMENTS,
+  getUnscannableFileReason,
   hasVendoredLicenseHeader,
   isBuildOrInstallPath,
   isCorpusNonAppPath,
@@ -17,6 +18,7 @@ import {
   isExcludedCorpusNonAppPath,
   isMinifiedContent,
   isVendoredOrGeneratedPath,
+  MAX_SOURCE_FILE_BYTES,
   shouldScanFile,
 } from './file-filter.ts';
 import { scanRepoFiles } from './index.ts';
@@ -562,5 +564,97 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
 
       assert.deepEqual(findings.map((f) => f.file), ['app.js']);
     });
+  });
+});
+
+describe('getUnscannableFileReason and ignoreAncestorDirs', () => {
+  it('returns undefined for supported files regardless of their directories', () => {
+    const filePaths = [
+      'app.css',
+      'dist/app.js',
+      'node_modules/pkg/a.tsx',
+      'APP.CSS',
+      'package.json',
+      '.cache/x.vue',
+    ];
+    for (const filePath of filePaths) {
+      assert.equal(getUnscannableFileReason(filePath, 'const a = 1;\n'), undefined, filePath);
+    }
+  });
+
+  it('explains unsupported extensions, excluded file names, and unscannable content', () => {
+    const cases: Array<[filePath: string, content: string | undefined, reason: string]> = [
+      ['docs/README.md', undefined, 'unsupported file extension ".md"'],
+      ['Makefile', undefined, 'files without an extension are not supported'],
+      [
+        'app.min.css',
+        undefined,
+        '"*.min.css" files are excluded as minified, bundled, or generated output',
+      ],
+      [
+        'types.d.ts',
+        undefined,
+        '"*.d.ts" files are excluded as minified, bundled, or generated output',
+      ],
+      [
+        'static/jquery.js',
+        undefined,
+        'file name matches a well-known vendored third-party library',
+      ],
+      [
+        'app.js',
+        `${'a'.repeat(1300)}\n`,
+        'content appears minified (lines longer than 1200 characters)',
+      ],
+      [
+        'lib.js',
+        '/*! mylib v1.2.3 | MIT License */\nfoo();\n',
+        'content starts with a versioned third-party license header, indicating vendored code',
+      ],
+      [
+        'app.js',
+        'a'.repeat(MAX_SOURCE_FILE_BYTES + 1),
+        `file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes)`,
+      ],
+    ];
+    for (const [filePath, content, reason] of cases) {
+      assert.equal(getUnscannableFileReason(filePath, content), reason, filePath);
+    }
+  });
+
+  it('ignoreAncestorDirs skips only directory-based exclusions in shouldScanFile', () => {
+    const options = { ignoreAncestorDirs: true };
+    const dirExcluded = [
+      'build/x/app.css',
+      'tmp/a.js',
+      'libs/site.css',
+      '.cache/a.css',
+      'proj/codemirror/a.js',
+      'assets/a09b59a8/a.css',
+    ];
+    for (const filePath of dirExcluded) {
+      assert.equal(shouldScanFile(filePath), false, filePath);
+      assert.equal(shouldScanFile(filePath, undefined, options), true, filePath);
+    }
+    for (const filePath of ['dist/app.min.js', 'vendor/jquery.js', 'build/notes.txt']) {
+      assert.equal(shouldScanFile(filePath, undefined, options), false, filePath);
+    }
+    assert.equal(shouldScanFile('test/a.css', undefined, options), false);
+    const withDocsAndTests = { ...options, includeDocsAndTests: true };
+    assert.equal(shouldScanFile('test/a.css', undefined, withDocsAndTests), true);
+  });
+
+  it('treats stemless dotfiles as extension-less only for explicitly named files', () => {
+    // Directory scans keep their existing rule: `.html` and `.css` count as supported extensions.
+    assert.equal(getUnscannableFileReason('src/.html'), undefined);
+    assert.equal(shouldScanFile('src/.html'), true);
+    assert.equal(shouldScanFile('src/.css'), true);
+
+    const options = { ignoreAncestorDirs: true };
+    for (const filePath of ['src/.html', '.css']) {
+      const reason = getUnscannableFileReason(filePath, undefined, options);
+      assert.equal(reason, 'files without an extension are not supported', filePath);
+      assert.equal(shouldScanFile(filePath, undefined, options), false, filePath);
+    }
   });
 });

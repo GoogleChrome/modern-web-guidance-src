@@ -3,7 +3,12 @@ import { basename, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
-import { MAX_SOURCE_FILE_BYTES, scanFiles, scanRepoFiles } from './scanners/index.ts';
+import {
+  getUnscannableFileReason,
+  MAX_SOURCE_FILE_BYTES,
+  scanFiles,
+  scanRepoFiles,
+} from './scanners/index.ts';
 import type {
   AnalyzerFinding,
   AnalyzerRule,
@@ -366,7 +371,18 @@ export async function runAnalyzeCli(
       const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
       const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
       files.set(fileKey, content);
-      findings = scanFiles(files, activeRules, { includeDocsAndTests: true });
+      // An explicitly named file is judged by its own name and content, never by its directories.
+      const fileFilterOptions = { includeDocsAndTests: true, ignoreAncestorDirs: true };
+      findings = scanFiles(files, activeRules, { fileFilterOptions });
+      // Unscannable files may still be identified as vendored libraries; otherwise say why.
+      const unscannableReason = getUnscannableFileReason(fileKey, content, fileFilterOptions);
+      if (unscannableReason && findings.length === 0) {
+        return errorCliResult(
+          `Target file cannot be scanned (${unscannableReason}): ${targetDir}`,
+          isJson,
+          targetDir,
+        );
+      }
     } else {
       findings = await scanRepoFiles(resolvedDir, activeRules, {
         maxFiles: options?.maxFiles,
