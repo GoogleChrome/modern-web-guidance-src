@@ -396,6 +396,73 @@ export function isMarkupPath(relPath: string): boolean {
   );
 }
 
+const PREPROCESSOR_STYLE_LANGS: ReadonlySet<string> = new Set(['scss', 'sass', 'less']);
+
+function scanQuotedStringEnd(content: string, quoteIndex: number, limit: number): number {
+  const quote = content[quoteIndex];
+  let i = quoteIndex + 1;
+  while (i < limit) {
+    const ch = content[i];
+    if (ch === '\\') {
+      i += 2;
+      continue;
+    }
+    if (ch === quote) {
+      return i + 1;
+    }
+    if (ch === '\n' || ch === '\r') {
+      return i;
+    }
+    i++;
+  }
+  return limit;
+}
+
+/**
+ * Replaces `//` single-line comments inside [startOffset, endOffset) with spaces while
+ * preserving line/column offsets. Leaves `/* ... *\/` block comments, quoted strings,
+ * and URL `//` sequences immediately after `:` or `(` untouched.
+ */
+export function blankPreprocessorLineComments(
+  content: string,
+  startOffset = 0,
+  endOffset = content.length,
+): string {
+  const start = Math.max(0, startOffset);
+  const end = Math.min(content.length, endOffset);
+  if (end <= start) {
+    return content;
+  }
+
+  const commentRanges: { start: number; end: number }[] = [];
+  let i = start;
+  while (i < end) {
+    const ch = content[i];
+    const next = content[i + 1];
+    if (ch === '/' && next === '*') {
+      const close = content.indexOf('*/', i + 2);
+      i = close === -1 ? end : Math.min(end, close + 2);
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      i = scanQuotedStringEnd(content, i, end);
+      continue;
+    }
+    if (ch === '/' && next === '/' && content[i - 1] !== ':' && content[i - 1] !== '(') {
+      let lineEnd = i + 2;
+      while (lineEnd < end && content[lineEnd] !== '\n' && content[lineEnd] !== '\r') {
+        lineEnd++;
+      }
+      commentRanges.push({ start: i, end: lineEnd });
+      i = lineEnd;
+      continue;
+    }
+    i++;
+  }
+
+  return blankRanges(content, commentRanges);
+}
+
 /**
  * Extracts style blocks from HTML, Vue, Svelte, and Astro files,
  * or Lit css`...` tagged template literals from JS/TS files.
@@ -408,12 +475,19 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
   const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
   const blocks: string[] = [];
   for (const match of markup.matchAll(STYLE_TAG_REGEX)) {
+    const attrStr = match[1] ?? '';
     const body = match[2] ?? '';
     if (body.trim().length > 0 && match.index !== undefined) {
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      blocks.push(blankOutsideRange(markup, startOffset, endOffset));
+      const blanked = blankOutsideRange(markup, startOffset, endOffset);
+      const lang = parseTagAttributes(attrStr).lang?.toLowerCase();
+      blocks.push(
+        lang !== undefined && PREPROCESSOR_STYLE_LANGS.has(lang)
+          ? blankPreprocessorLineComments(blanked, startOffset, endOffset)
+          : blanked,
+      );
     }
   }
 

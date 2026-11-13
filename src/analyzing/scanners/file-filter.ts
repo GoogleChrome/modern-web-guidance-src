@@ -138,6 +138,7 @@ export const JS_RULE_EXTENSIONS = [
 
 export const CSS_RULE_EXTENSIONS = [
   '.css',
+  '.scss',
   '.vue',
   '.svelte',
   '.gts',
@@ -179,6 +180,7 @@ const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.gjs',
   '.astro',
   '.css',
+  '.scss',
 ]);
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([

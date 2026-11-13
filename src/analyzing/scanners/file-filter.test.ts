@@ -107,6 +107,9 @@ describe('file-filter vendored and hashed asset exclusions', () => {
 
     assert.equal(isExcludedCorpusNonAppPath('src/styles/aspect-ratio.css'), false);
     assert.equal(shouldScanFile('src/styles/aspect-ratio.css'), true);
+
+    assert.equal(isExcludedCorpusNonAppPath('src/styles/theme.scss'), false);
+    assert.equal(shouldScanFile('src/styles/theme.scss'), true);
   });
 
   it('excludes Coolite Datejs and 2-part versioned license headers (Card 004ac0a9d6f8)', () => {

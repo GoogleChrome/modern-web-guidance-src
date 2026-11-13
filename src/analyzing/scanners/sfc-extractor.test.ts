@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   blankOutsideRange,
+  blankPreprocessorLineComments,
   blankRanges,
   extractScriptBlocks,
   extractStyleBlocks,
@@ -201,5 +202,42 @@ void test('sfc-extractor: custom elements whose names start with script- or styl
     assert.equal(prepared.includes('<button>Save</button>'), true);
     assert.equal(prepared.includes('const code'), false);
     assert.equal(prepared.includes('button { color: red; }'), false);
+  });
+});
+
+void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style> blocks', async (t) => {
+  await t.test('blanks // line comments while preserving offsets and CRLF newlines', () => {
+    const scss = ['// header', '.box { color: red; } // inline', '// footer'].join('\r\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.deepEqual(blanked.match(/\r\n/g), scss.match(/\r\n/g));
+    assert.equal(blanked.includes('//'), false);
+    assert.equal(blanked.includes('.box { color: red; }'), true);
+  });
+
+  await t.test('preserves // inside block comments, strings, and URLs', () => {
+    const scss = [
+      '.a { background: url(https://example.com/a.png); }',
+      '.b { background: url(//cdn.example.com/b.png); }',
+      '.c { content: "// literal"; }',
+      '/* // block comment */',
+      '.d { color: blue; }',
+    ].join('\n');
+    assert.equal(blankPreprocessorLineComments(scss), scss);
+  });
+
+  await t.test('blanks // comments inside <style lang="scss|sass|less"> only', () => {
+    for (const lang of ['scss', 'sass', 'less']) {
+      const vue = `<template><div/></template>\n<style lang="${lang}" scoped>\n// note\n.box { color: red; }\n</style>`;
+      const blocks = extractStyleBlocks('App.vue', vue);
+      assert.equal(blocks.length, 1);
+      assert.equal(blocks[0]?.length, vue.length);
+      assert.equal(blocks[0]?.includes('// note'), false);
+      assert.equal(blocks[0]?.includes('.box { color: red; }'), true);
+    }
+
+    const plainVue = '<template><div/></template>\n<style>\n// preserved\n.box { content: "// ok"; }\n</style>';
+    const plainBlocks = extractStyleBlocks('App.vue', plainVue);
+    assert.equal(plainBlocks[0]?.includes('// preserved'), true);
   });
 });
