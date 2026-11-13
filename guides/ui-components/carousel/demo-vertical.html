@@ -11,7 +11,6 @@
       --surface: Canvas;
       --ink: CanvasText;
       --line: color-mix(in srgb, CanvasText, transparent 75%);
-      --inactive-button: #666666;
       --accent: #0a5;
     }
 
@@ -113,46 +112,59 @@
       justify-content: space-between;
       gap: 1rem;
       pointer-events: none;
-    }
 
-    .carousel-controls button {
-      pointer-events: auto;
-      font: inherit;
-      inline-size: 2.5rem;
-      block-size: 2.5rem;
-      border-radius: 50%;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--ink);
-      rotate: 90deg;
-      cursor: pointer;
-    }
+      & button {
+        pointer-events: auto;
+        font: inherit;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        rotate: 90deg;
+        cursor: pointer;
 
-    .carousel-controls button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
+        &:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+      }
     }
 
     .carousel-markers {
+      --marker-dot-color: #666666;
+
       display: flex;
       flex-direction: column;
       justify-content: center;
       gap: 1rem;
+
+      & button {
+        inline-size: 0.8rem;
+        block-size: 0.8rem;
+        padding: 0;
+        border-radius: 50%;
+        border: 0.1rem solid transparent;
+        background: var(--marker-dot-color);
+        cursor: pointer;
+
+        &[aria-current="true"] {
+          background: var(--accent);
+          box-shadow: 0 0 0 0.1em #000, 0 0 0 0.2em #fff;
+        }
+      }
     }
 
-    .carousel-markers button {
-      inline-size: 0.8rem;
-      block-size: 0.8rem;
-      padding: 0;
-      border-radius: 50%;
-      border: 0.1rem solid transparent;
-      background: var(--inactive-button);
-      cursor: pointer;
-    }
+    /* The active marker is told apart by its fill and shadow, which forced colors removes */
+    @media (forced-colors: active) {
+      .carousel-markers button {
+        background: ButtonText;
 
-    .carousel-markers button[aria-current="true"] {
-      background: var(--accent);
-      box-shadow: 0 0 0 0.1em #000, 0 0 0 0.2em #fff;
+        &[aria-current="true"] {
+          background: Highlight;
+        }
+      }
     }
 
     .carousel-track,
