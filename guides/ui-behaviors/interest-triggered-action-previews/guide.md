@@ -9,6 +9,8 @@ web-feature-ids:
 
 It can be beneficial to provide users a preview of their actions before they commit to them. Interest invokers are an experimental web platform feature that provides a declarative-based way of creating interest relationships between an interest source (i.e. a button or a link) and an interest target. Once the declarative relationship has been established there are a number of methods a developer can respond to based on interest and loss of interest using both CSS and JavaScript. For this use case, we can leverage the `interest` and `loseinterest` events to preview various effects for an interest target.
 
+Interest Triggered Action Previews are not intended to be used as a way of providing additional information, and should only be used to provide secondary information that is available elsewhere in the UI, or available upon selection of a control that does not trigger a submission. This is because information displayed in Interest Triggered Action Previews may not be available to everyone, particularly people using assistive technologies, and **MUST** therefore, not be used as the single way to access information.
+
 ## How to implement
 
 An interest relationship is created by setting the `interestfor` attribute on a button or link (i.e. the interest source). The attribute takes an ID reference to another element (i.e. the interest target). Interest invokers or sources can only have a single interest target, but an interest target can have multiple interest invokers.
