@@ -99,7 +99,7 @@
         color: var(--text-muted);
       }
 
-      /* Scrollable region with customized scrollbar-color and scrollbar-width */
+      /* Scrollable region with customized scrollbar-color and an explicit scrollbar-width: auto */
       .scrollable-notes {
         max-height: 7.5rem;
         overflow-y: auto;
@@ -107,7 +107,7 @@
         border: 1px solid var(--border);
         border-radius: 0.5rem;
         background-color: var(--surface-muted);
-        scrollbar-width: thin;
+        scrollbar-width: auto;
         scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
         scrollbar-gutter: stable;
       }
@@ -423,7 +423,7 @@
 
         <div class="scrollable-notes" tabindex="0" aria-label="Release notes">
           <p>
-            <strong>Scrollable region:</strong> This container uses <code>scrollbar-width: thin</code>
+            <strong>Scrollable region:</strong> This container uses <code>scrollbar-width: auto</code>
             and <code>scrollbar-color</code> with a high-contrast thumb and track.
           </p>
           <p>

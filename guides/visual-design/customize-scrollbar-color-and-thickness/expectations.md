@@ -6,3 +6,4 @@
 * The modern `scrollbar-width` and `scrollbar-color` properties are applied directly to the scrollable element.
 * The fallback `::-webkit-scrollbar` styling is conditionally applied within an `@supports not (scrollbar-color: auto)` or equivalent feature query to prevent overriding modern properties.
 * The thumb color of each `scrollbar-color` value has a contrast ratio of at least 3:1 against its track color.
+* The scrollable element sets `scrollbar-width` explicitly, defaulting to `auto`; `thin` or `none` is used only when another accessible way to scroll the content is provided.
