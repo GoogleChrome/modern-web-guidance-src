@@ -1,10 +1,10 @@
 import { validateFeature, getStatusMessage, getFeatureName, pendingFeatures } from "./baseline.ts";
 import { getGuidesMap } from "./guide-validation.ts";
 import { resolveInclude } from "./include.ts";
-import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
+import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, getFeatureMacroReferences, stripComments, maskComments } from "./macro-parsing.ts";
 
 // Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
-export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments };
+export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, getFeatureMacroReferences, stripComments, maskComments };
 
 export type BuildTarget = 'skills-cli' | 'devsite';
 
