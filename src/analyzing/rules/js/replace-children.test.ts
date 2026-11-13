@@ -7,7 +7,7 @@ import {
   assertValidFastTokenSpecs,
 } from '../index.test.ts';
 import { computeGuideHash } from '../../scanners/index.ts';
-import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRule } from '../../scanners/js-scanner.ts';
 import {
   JS_REPLACE_CHILDREN_GUIDE_HASH,
   jsReplaceChildrenMatcher,

@@ -827,7 +827,7 @@ export function classifyGuide(
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   const guides: GuideInventory[] = [];
 
-  if (!fs.existsSync(guidesDir)) return guides;
+  if (!fs.existsSync(scanDir)) return guides;
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
      .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')

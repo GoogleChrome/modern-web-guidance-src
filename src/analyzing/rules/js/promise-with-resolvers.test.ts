@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { jsPromiseWithResolversRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, jsPromiseWithResolversRule, promiseWithResolversMatcher } from './promise-with-resolvers.ts';
 

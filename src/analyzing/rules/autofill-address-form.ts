@@ -92,7 +92,17 @@ const NON_ADDRESS_INPUT_TYPES = new Set([
 const autofillAddressFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input, textarea',
-  fastTokens: ['address', 'postal', 'zip'],
+  fastTokens: [
+    'address',
+    'Address',
+    'ADDRESS',
+    'postal',
+    'Postal',
+    'POSTAL',
+    'zip',
+    'Zip',
+    'ZIP',
+  ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

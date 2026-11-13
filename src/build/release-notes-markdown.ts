@@ -197,7 +197,7 @@ export function buildReleaseNotesMarkdown(opts: BuildReleaseNotesMarkdownOptions
 
   if (evalSummary.length > 0) {
     sections.push('## 📊 Benchmark Evaluations\n');
-    sections.push('| Agent + Model | Tasks / Assertions | Unguided → Guided Pass Rate | Uplift |');
+    sections.push('| Agent + Model | Tasks / Checks | Unguided → Guided Pass Rate | Uplift |');
     sections.push('| :--- | :---: | :---: | :---: |');
     for (const item of evalSummary) {
       const uplift = item.guidedPassRate - item.unguidedPassRate;

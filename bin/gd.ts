@@ -21,11 +21,11 @@ const ALL_OPTIONS = {
   grade: { type: 'boolean', desc: 'Run/calibrate grader' },
   'test-grader': { type: 'boolean', desc: 'Check grader calibration (solution + zero-passrate)' },
   'gen-grader': { type: 'boolean', desc: 'Generate a new grader script' },
-  guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
+  guided: { type: 'boolean', desc: 'Skip calibration, run guided agent trial only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
   config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
   ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
-  'no-test': { type: 'boolean', desc: 'Skip agent tests after calibration' },
+  'no-test': { type: 'boolean', desc: 'Skip agent trials after calibration' },
   'cross-app': { type: 'boolean', desc: 'Also check grader on an unmodified base app' },
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
@@ -41,15 +41,15 @@ const COMMAND_METADATA = {
   'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
-  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
+  eval: { desc: 'Run the evaluation dataset, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
-  run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
+  run: { desc: 'Run an ad-hoc agent trial against a base app', flags: ['config'] },
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
-  upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
-  backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
+  upload: { desc: 'Upload evaluation job results to GCS', flags: [] },
+  backfill: { desc: 'Backfill metrics for historical jobs', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
   pr: { desc: 'Push branch and create or update GitHub PR from dev report', flags: [] },
-  compare: { desc: 'Compare two evaluation runs to diagnose performance variance', flags: [] },
+  compare: { desc: 'Compare two evaluation trials to diagnose performance variance', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
@@ -227,7 +227,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <runDirA> <runDirB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <base-app> <prompt>' : cmd === 'eval' ? ' [tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <trialA> <trialB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -264,8 +264,8 @@ async function main() {
 
   switch (command) {
     case 'compare': {
-      const runDirA = requireArg(positionals[1], 'gd compare <runDirA> <runDirB>');
-      const runDirB = requireArg(positionals[2], 'gd compare <runDirA> <runDirB>');
+      const runDirA = requireArg(positionals[1], 'gd compare <trialA> <trialB>');
+      const runDirB = requireArg(positionals[2], 'gd compare <trialA> <trialB>');
       const { runComparison } = await import('../src/harness/lib/compare-evals.ts');
       try {
         await runComparison(runDirA, runDirB);
@@ -347,8 +347,8 @@ async function main() {
     }
 
     case 'run': {
-      const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
-      const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');
+      const tmpl = requireArg(positionals[1], 'gd run <base-app> <prompt>');
+      const prompt = requireArg(positionals[2], 'gd run <base-app> <prompt>');
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 

@@ -264,8 +264,8 @@ async function expectNextToBarbell(page, track) {
     const scheduledCheck = page.locator('#scheduled-only-check');
     await expect(scheduledCheck).toBeChecked();
     await expect(search).toHaveAttribute('list', 'runs-filter-datalist');
-    await expect(page.locator('#runs-filter-datalist option[value="openrouter/mistralai/mistral-medium-3.1"]')).toHaveAttribute('label', '1 run');
-    await expect(page.locator('#runs-filter-datalist option[value="pi"]')).toHaveAttribute('label', 'Pi CLI · 1 run');
+    await expect(page.locator('#runs-filter-datalist option[value="openrouter/mistralai/mistral-medium-3.1"]')).toHaveAttribute('label', '1 job');
+    await expect(page.locator('#runs-filter-datalist option[value="pi"]')).toHaveAttribute('label', 'Pi CLI · 1 job');
     // Default table view shows the 2 scheduled nightly runs, hiding the ad-hoc pi run.
     await expect(page.locator('.suite-table-row')).toHaveCount(2);
     // Opening Breakdowns shows Mistral in By Model even while Scheduled runs only is checked.
@@ -639,7 +639,7 @@ test.describe('Guide trend page MWG compliance', () => {
     await expect(point).toHaveAttribute('href', /^dashboard\.html\?testId=.+#guide-content-vis$/);
     await expect(point).toHaveAttribute('interestfor', 'tooltip-container');
     await expect(point).not.toHaveAttribute('role', /.*/);
-    await expect(point).toHaveAttribute('aria-label', /^[^%]+: open run$/);
+    await expect(point).toHaveAttribute('aria-label', /^[^%]+: open job$/);
     await point.locator('.timeline-marker').hover();
     await expect(tooltip).toBeVisible();
     expect(await tooltip.evaluate(el => el.matches(':popover-open'))).toBe(true);

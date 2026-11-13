@@ -449,9 +449,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         }
 
         if (res.sharedFailingTests && res.sharedFailingTests.length > 0) {
-          console.error(cRed(`❌ All golden solutions failed the same assertion(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
+          console.error(cRed(`❌ All golden solutions failed the same check(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
           console.error(cYellow(`Aborting calibration immediately (0 retries). Presuming guide.md / expectations.md misalignment or broken test.`));
-          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared test assertions.');
+          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared grader checks.');
           return false;
         }
 
@@ -796,7 +796,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   console.log(`   ${GUIDE_FILE.padEnd(28)} \u2705 exists`);
   
   if (!inv.hasExpectations || inv.expectationsEmpty) {
-    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding checks)`);
   } else {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u2705 exists`);
   }

@@ -6,6 +6,7 @@ import {
   createInMemoryProject,
   createJsAstMatcher,
   createJsCallMatcher,
+  getCallAndBinaryDescendants,
   matchesFastTokens,
   matchJsRule,
   normalizeFastTokenGroups,
@@ -271,7 +272,6 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
       false,
     );
   });
-
   await t.test('createJsCallMatcher maxLineLength and createJsAstMatcher handle exclusions, guards, and line dedupe', () => {
     const callMatcher = createJsCallMatcher({
       fastTokens: ['legacyCall'],
@@ -323,5 +323,77 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
     const filler = 'a;\n'.repeat(160_000);
     const matches = matchJsRule(matcher, 'huge.js', `${filler}target = 1;\n`);
     assert.deepEqual(matches, [{ line: 160_001, message: 'found' }]);
+  });
+
+  await t.test('evaluates matchCall before running featureGuardTokens or isGuarded checks', () => {
+    let guardChecks = 0;
+    const matcher = createJsCallMatcher({
+      fastTokens: ['targetCall'],
+      isGuarded: () => {
+        guardChecks++;
+        return false;
+      },
+      matchCall: (node) =>
+        node.getExpression().getText() === 'targetCall' ? 'matched target' : null,
+    });
+
+    const matches = matchJsRule(
+      matcher,
+      'many-calls.ts',
+      [
+        'otherOne();',
+        'otherTwo();',
+        'targetCall();',
+        'otherThree();',
+      ].join('\n'),
+    );
+
+    assert.equal(matches.length, 1);
+    assert.equal(
+      guardChecks,
+      1,
+      'isGuarded must only run on calls that matched matchCall, not on unrelated calls',
+    );
+  });
+
+  await t.test('getCallAndBinaryDescendants visits CallExpression and BinaryExpression nodes in exact AST pre-order', () => {
+    withVirtualSourceFile(
+      'preorder.ts',
+      'getTarget().onclick = wrap(a + b);',
+      (sf) => {
+        const expected = sf
+          .getDescendants()
+          .filter(
+            (n) =>
+              n.getKind() === SyntaxKind.CallExpression ||
+              n.getKind() === SyntaxKind.BinaryExpression,
+          )
+          .map((n) => `${n.getKindName()}:${n.getText()}`);
+
+        const actual = getCallAndBinaryDescendants(sf).map(
+          (n) => `${n.getKindName()}:${n.getText()}`,
+        );
+
+        assert.deepEqual(actual, expected);
+        assert.equal(
+          getCallAndBinaryDescendants(sf),
+          getCallAndBinaryDescendants(sf),
+          'getCallAndBinaryDescendants must memoize and reuse the sorted array per SourceFile',
+        );
+      },
+    );
+  });
+
+  await t.test('matchJsRule throws if matcher.matchFile matches a file that matcher.fastTokens rejects', () => {
+    const brokenMatcher = createJsCallMatcher({
+      fastTokens: ['neverPresentToken'],
+      matchCall: (node) =>
+        node.getExpression().getText() === 'legacyCall' ? 'legacy call' : null,
+    });
+
+    assert.throws(
+      () => matchJsRule(brokenMatcher, 'recall-bug.ts', 'legacyCall();'),
+      /matchJsRule: matcher matched "recall-bug\.ts" .* but fastTokens .* rejected the file content/,
+    );
   });
 });

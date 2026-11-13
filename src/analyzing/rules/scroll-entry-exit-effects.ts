@@ -75,7 +75,7 @@ export const scrollEntryExitEffectsPackageMatcher: DependencyRuleMatcher =
   );
 
 export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['AOS.init', 'ScrollReveal', 'new WOW'],
+  fastTokens: ['AOS', 'aos', 'ScrollReveal', 'scrollreveal', 'WOW', 'wowjs', 'wow.js'],
   featureGuardTokens: SCROLL_TIMELINE_GUARD_TOKENS,
   matchCall: matchScrollRevealCall,
 });

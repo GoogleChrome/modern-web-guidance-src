@@ -538,6 +538,55 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     assert.equal(normalizeCssDeclValue(null), '');
     assert.equal(normalizeCssDeclValue(undefined), '');
   });
+
+  await t.test('lazy parentAtRule and lazy stylesheetHasProperty cache results and expand shorthands', () => {
+    const scopedCss = `
+      @supports (text-box-trim: trim-both) {
+        .modern { color: green; }
+      }
+      @scope (.card) {
+        .title { margin: 4px 8px; }
+        .body { border: 1px solid black; }
+      }
+    `;
+
+    const parentAtRules: Array<string | null> = [];
+    let hasMarginTop = false;
+    let hasBorderBottomWidth = false;
+    let hasTextBoxTrim = false;
+    let hasMissingProp = true;
+
+    const rule: CssRuleMatcher = {
+      kind: 'css',
+      fastTokens: ['@scope'],
+      matchRule: (view, ctx) => {
+        if (view.selectorText === '.title' || view.selectorText === '.body') {
+          // Access parentAtRule multiple times across sibling rules sharing @scope
+          assert.equal(view.parentAtRule, view.parentAtRule);
+          parentAtRules.push(view.parentAtRule ?? null);
+        }
+        if (view.selectorText === '.body') {
+          hasMarginTop = ctx.stylesheetHasProperty('margin-top');
+          hasBorderBottomWidth = ctx.stylesheetHasProperty('border-bottom-width');
+          hasTextBoxTrim = ctx.stylesheetHasProperty('text-box-trim');
+          hasMissingProp = ctx.stylesheetHasProperty('non-existent-prop');
+          // Second lookup hits propertyResultCache
+          assert.equal(ctx.stylesheetHasProperty('margin-top'), true);
+          assert.equal(ctx.stylesheetHasProperty('non-existent-prop'), false);
+          return { message: 'matched-body' };
+        }
+        return null;
+      },
+    };
+
+    const matches = scanCss('scoped.css', scopedCss, [rule]);
+    assert.equal(matches.length, 1);
+    assert.deepEqual(parentAtRules, ['@scope (.card)', '@scope (.card)']);
+    assert.equal(hasMarginTop, true);
+    assert.equal(hasBorderBottomWidth, true);
+    assert.equal(hasTextBoxTrim, true);
+    assert.equal(hasMissingProp, false);
+  });
 });
 
 void test('scanFiles and computeGuideHash: end-to-end integration', () => {
@@ -1391,6 +1440,120 @@ void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags pr
     const findings = scanFiles(new Map([['src/Order.vue', vue]]), [rule]);
     assert.equal(findings.length, 1);
     assert.equal(findings[0]?.line, 4);
+  });
+});
+
+void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, and batched I/O', async (t) => {
+  await t.test('lazySourceFile skips AST creation on early ctx.fileContent exit and forwards has/getPrototypeOf when used', () => {
+    const project = createInMemoryProject();
+    let createSourceFileCalls = 0;
+    const origCreate = project.createSourceFile.bind(project);
+    project.createSourceFile = ((...args: Parameters<typeof origCreate>) => {
+      createSourceFileCalls++;
+      return origCreate(...args);
+    }) as typeof project.createSourceFile;
+
+    let sawHasOperator = false;
+    let sawPrototype = false;
+
+    const rule: AnalyzerRule = {
+      id: 'test/lazy-sf',
+      guideId: 'dialog',
+      guideHash: '000000000000',
+      summary: 'test lazy SourceFile',
+      verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+      matcher: {
+        kind: 'js',
+        fastTokens: ['legacyWidget'],
+        matchFile: (sf, ctx) => {
+          if (ctx.fileContent.includes('modernGuard')) {
+            return [];
+          }
+          sawHasOperator = 'getDescendantsOfKind' in sf;
+          sawPrototype = Object.getPrototypeOf(sf) !== Object.prototype;
+          return sf
+            .getDescendantsOfKind(SyntaxKind.CallExpression)
+            .map((c) => ({ line: c.getStartLineNumber(), message: 'hit' }));
+        },
+      },
+    };
+
+    const guardedFindings = scanFiles(
+      new Map([['src/guarded.ts', 'const modernGuard = true; legacyWidget();']]),
+      [rule],
+      { project },
+    );
+    assert.equal(guardedFindings.length, 0);
+    assert.equal(createSourceFileCalls, 0, 'must not parse AST when rule exits early on ctx.fileContent');
+
+    const activeFindings = scanFiles(
+      new Map([['src/active.ts', 'legacyWidget();']]),
+      [rule],
+      { project },
+    );
+    assert.equal(activeFindings.length, 1);
+    assert.equal(createSourceFileCalls, 1);
+    assert.equal(sawHasOperator, true);
+    assert.equal(sawPrototype, true);
+  });
+
+  await t.test('scanFiles rotates ephemeral Project across >25 AST-parsed files and scanRepoFiles preserves order, maxFiles, and skippedDocsAndTestsCount across >64 files', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'batched-io-repo-'));
+    try {
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+      await mkdir(join(tempDir, 'test'), { recursive: true });
+
+      for (let i = 0; i < 80; i++) {
+        const padded = String(i).padStart(3, '0');
+        await writeFile(
+          join(tempDir, 'src', `file-${padded}.ts`),
+          `export const idx = ${i};\nlegacyTarget(${i});\n`,
+        );
+      }
+      for (let j = 0; j < 10; j++) {
+        await writeFile(
+          join(tempDir, 'src', `a-spec-${j}.test.ts`),
+          `legacyTarget(${j});\n`,
+        );
+      }
+
+      const seenProjects = new Set<unknown>();
+      const rule: AnalyzerRule = {
+        id: 'test/batched-scan',
+        guideId: 'dialog',
+        guideHash: '000000000000',
+        summary: 'test batched scan',
+        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+        matcher: {
+          kind: 'js',
+          fastTokens: ['legacyTarget'],
+          matchFile: (sf) => {
+            seenProjects.add(sf.getProject());
+            return sf
+              .getDescendantsOfKind(SyntaxKind.CallExpression)
+              .map((c) => ({ line: c.getStartLineNumber(), message: c.getText() }));
+          },
+        },
+      };
+
+      const stats: { skippedDocsAndTestsCount?: number } = {};
+      const findings = await scanRepoFiles(tempDir, [rule], {
+        maxFiles: 70,
+        stats,
+      });
+
+      assert.equal(findings.length, 70, 'must cap scanned files at maxFiles=70 across 64-file batches');
+      assert.equal(seenProjects.size, 3, 'must rotate ephemeral Project every 25 AST-parsed files (25 + 25 + 20 = 3 Projects)');
+      assert.equal(stats.skippedDocsAndTestsCount, 10, 'must count all 10 skipped test files before hitting maxFiles');
+      const expectedFiles = Array.from({ length: 70 }, (_, i) => `src/file-${String(i).padStart(3, '0')}.ts`);
+      assert.deepEqual(
+        findings.map((f) => f.file),
+        expectedFiles,
+        'must preserve exact lexicographical file ordering across concurrent I/O batches and >25 file Project rotations',
+      );
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -599,7 +599,7 @@ export class DumbbellChart {
               hitArea.setAttribute("class", "dc-hit");
               hitArea.setAttribute("href", this.options.itemHref ? this.options.itemHref(item) : `#guide-${encodeURIComponent(item.useCaseId || featureName)}`);
               hitArea.setAttribute("interestfor", "dumbbell-tooltip");
-              const failedNote = (item.uFailed || item.gFailed) ? ', at least one run failed before grading' : '';
+              const failedNote = (item.uFailed || item.gFailed) ? ', at least one trial had an infra error before grading' : '';
               hitArea.setAttribute("aria-label", `${item.useCaseId || featureName} (${item.taskName}): open task${failedNote}`);
               hitArea.appendChild(hitRect);
               scrollSvgLinkIntoViewOnFocus(hitArea, hitRect);

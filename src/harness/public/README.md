@@ -11,11 +11,11 @@ Everything lives under one directory on the same origin as the dashboard
 
 ```
 public-evals/
-  suites.gen.json                                  index of every published suite
+  suites.gen.json                                  index of every published job
   build-state.json                                 builder bookkeeping; front-ends ignore it
   <suiteId>/
-    evals.json                                     one suite's results
-    artifacts.json                                 every run's agent.patch and modern-web.log
+    evals.json                                     one job's results
+    artifacts.json                                 every trial's agent.patch and modern-web.log
 ```
 
 - `<suiteId>` is the raw suite's folder name, e.g. `nightly-2026-10-20_20-43-48-codex_cli`.
@@ -44,21 +44,21 @@ public-evals/
 
 ## `suites.gen.json`
 
-An array, sorted by `testId`, one entry per published suite. Produced by
+An array, sorted by `testId`, one entry per published job. Produced by
 `src/dashboard/summary-extractor.js#extractSuiteSummary`, so it is the same
 shape the private bucket's manifest has. Fields the landing page uses:
 
 | field | type | notes |
 |---|---|---|
 | `testId` | string | suite id; also the folder name |
-| `timestamp` | ISO string | when the suite ran |
+| `timestamp` | ISO string | when the job ran |
 | `agent` | string | `claude_code`, `codex_cli`, `antigravity_cli` only |
 | `model` | string | only values on the allowlist's `releasedModels` |
 | `reasoningEffort` | object | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; omitted on legacy suites without it |
 | `serving` | string | always `unknown` publicly; the field is not published in `evals.json` |
 | `taskCount`, `maxRuns` | number | |
-| `guidedStats`, `unguidedStats` | `{ passed, total }` | assertion counts |
-| `earlyFailureRate` | number | percent of runs that failed before grading |
+| `guidedStats`, `unguidedStats` | `{ passed, total }` | check counts |
+| `earlyFailureRate` | number | percent of trials with infra errors before grading |
 | `guides` | `Record<guide, GuideSummary>` | per-guide pass counts, rates, uplift; `tasks` sub-map when a guide has several |
 | `chartData` | object | precomputed series for the landing charts |
 
@@ -67,7 +67,7 @@ shape the private bucket's manifest has. Fields the landing page uses:
 Built fresh from an allowlist of fields; anything not listed below is never
 present. Types match `src/harness/lib/metrics.ts`.
 
-**Suite level**
+**Job level**
 
 | field | notes |
 |---|---|
@@ -93,13 +93,13 @@ the guide is always the middle part.
 | `files` | which of `agent.patch`, `modern-web.log` exist for this run in `artifacts.json`. **Use this; do not probe.** |
 | `results` | `PublicCheck[]` |
 
-**Per assertion (`PublicCheck`)**
+**Per check (`PublicCheck`)**
 
 | field | notes |
 |---|---|
-| `id`, `passed`, `message` | `message` is the assertion's title |
-| `isEarlyFailure`, `failureReason` | present when the run died before grading |
-| `error` | failing assertion's error text (failed checks only) |
+| `id`, `passed`, `message` | `message` is the check's title |
+| `isEarlyFailure`, `failureReason` | present when the trial died before grading |
+| `error` | failing check's error text (failed checks only) |
 | `errorLocation` | `guides/<discipline>/<guide>/targets/<task>/grader.ts:<line>` (or `guides/<discipline>/<guide>/grader.ts:<line>`), repo-relative |
 | `pageSnapshot` | accessibility-tree text of the page at failure; can be several KB, render collapsed |
 | `browserErrors` | console errors and failed requests captured during the check |
