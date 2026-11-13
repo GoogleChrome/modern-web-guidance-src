@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import type { JsRuleMatcher } from '../../schema.ts';
 import { JS_GUIDE_HASH, jsUrlSearchParamsMatcher, jsUrlSearchParamsRule } from './url-search-params.ts';
 

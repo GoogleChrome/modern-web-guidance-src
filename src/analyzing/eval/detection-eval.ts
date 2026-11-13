@@ -49,18 +49,32 @@ const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
 const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(ALL_RULES.map((r) => [r.id, r]));
-const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = (() => {
-  const counts = new Map<string, number>();
+const RULES_BY_GUIDE_ID: ReadonlyMap<string, readonly AnalyzerRule[]> = (() => {
+  const byGuideId = new Map<string, AnalyzerRule[]>();
   for (const rule of ALL_RULES) {
-    counts.set(rule.guideId, (counts.get(rule.guideId) ?? 0) + 1);
+    const group = byGuideId.get(rule.guideId) ?? [];
+    group.push(rule);
+    byGuideId.set(rule.guideId, group);
   }
-  return new Map(
-    ALL_RULES.filter((rule) => counts.get(rule.guideId) === 1).map((rule) => [rule.guideId, rule]),
-  );
+  return byGuideId;
 })();
 
 function findMatchingRule(ruleId: string | undefined, guideId: string): AnalyzerRule | undefined {
-  return (ruleId ? RULES_BY_ID.get(ruleId) : undefined) ?? RULES_BY_GUIDE_ID.get(guideId);
+  const normalizedRuleId = ruleId?.trim();
+  if (normalizedRuleId) {
+    const byId = RULES_BY_ID.get(normalizedRuleId);
+    if (byId) return byId;
+  }
+  const guideRules = RULES_BY_GUIDE_ID.get(guideId);
+  if (!guideRules || guideRules.length === 0) return undefined;
+  if (guideRules.length === 1) return guideRules[0];
+  if (!normalizedRuleId || normalizedRuleId === guideId) {
+    throw new Error(
+      `Cannot resolve rule for multi-rule guide "${guideId}" without an explicit ruleId ` +
+        `(available rules: ${guideRules.map((r) => r.id).join(', ')}).`,
+    );
+  }
+  return undefined;
 }
 
 const sha256Hex12 = (text: string): string =>

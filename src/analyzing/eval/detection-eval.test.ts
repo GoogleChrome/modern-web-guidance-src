@@ -545,25 +545,62 @@ describe('code snippet slicing, blind cards prep, and direct judge runner', () =
     assert.equal('error' in consensusRow, false);
   });
 
-  it('requires explicit ruleId for multi-rule guides like js instead of collapsing onto structured-clone', () => {
+  it('fails fast on multi-rule guides without explicit ruleId instead of returning unregistered', () => {
     const jsSummary: GuideSummaryInfo = {
       guideId: 'js',
       problem: 'JavaScript discipline guide.',
       markdownBody: '# JavaScript\n\nUse URLSearchParams and structuredClone.',
     };
 
-    const withoutRuleId = computeJudgeInputProvenance({
-      cardId: 'card-js-no-rule',
-      repo: 'sample-repo',
-      file: 'src/query.js',
-      line: 10,
-      guideId: 'js',
-      guideSummary: jsSummary,
-      codeSnippet: "location.search.slice(1).split('&');",
-    });
-    assert.equal(withoutRuleId.ruleId, 'js');
-    assert.equal(withoutRuleId.ruleGuideHash, 'unregistered');
-    assert.equal(withoutRuleId.ruleHash, 'unregistered');
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          cardId: 'card-js-no-rule',
+          repo: 'sample-repo',
+          file: 'src/query.js',
+          line: 10,
+          guideId: 'js',
+          guideSummary: jsSummary,
+          codeSnippet: "location.search.slice(1).split('&');",
+        }),
+      /multi-rule guide "js".*js\/url-search-params/,
+    );
+
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          cardId: 'card-scroll-no-rule',
+          repo: 'sample-repo',
+          file: 'src/scroll.css',
+          line: 4,
+          guideId: 'scroll-entry-exit-effects',
+          guideSummary: {
+            guideId: 'scroll-entry-exit-effects',
+            problem: 'Scroll entry/exit effects.',
+            markdownBody: '# Scroll entry/exit effects',
+          },
+          codeSnippet: '.card {}',
+        }),
+      /multi-rule guide "scroll-entry-exit-effects"/,
+    );
+
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          cardId: 'card-text-no-rule',
+          repo: 'sample-repo',
+          file: 'src/type.css',
+          line: 4,
+          guideId: 'improve-text-layout-and-legibility',
+          guideSummary: {
+            guideId: 'improve-text-layout-and-legibility',
+            problem: 'Text layout.',
+            markdownBody: '# Text layout',
+          },
+          codeSnippet: 'p {}',
+        }),
+      /multi-rule guide "improve-text-layout-and-legibility"/,
+    );
 
     const withExplicitRuleId = computeJudgeInputProvenance({
       cardId: 'card-js-explicit-rule',

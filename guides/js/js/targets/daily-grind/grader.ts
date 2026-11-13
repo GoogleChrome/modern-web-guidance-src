@@ -10,7 +10,7 @@
  * - Exp 6:  SKIPPED — findLast() / findLastIndex() is unnecessary since no reverse lookup is needed in this menu/order UI.
  * - Exp 7:  TESTED  — Object.groupBy() / Map.groupBy() for category grouping without .reduce() bucket accumulation.
  * - Exp 8:  TESTED  — Safe grouped key lookup (Object.hasOwn / ?? [] / optional chaining / in / Map.groupBy) when filtered categories have zero matches, without .hasOwnProperty().
- * - Exp 9:  SKIPPED — Promise.withResolvers() is inapplicable to this static client-only statikk page without deferred external callbacks.
+ * - Exp 9:  SKIPPED — Promise.withResolvers() is inapplicable to this static client-only page without deferred external callbacks.
  * - Exp 10: SKIPPED — AbortSignal.timeout() is inapplicable because daily-grind makes no fetch() requests or network timeouts.
  * - Exp 11: SKIPPED — AbortSignal.any() is inapplicable because daily-grind has no concurrent cancellable async operations.
  * - Exp 12: SKIPPED — TimeoutError / AbortError handling is inapplicable without AbortSignal or fetch() requests.
@@ -225,18 +225,20 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
     });
   }
 
-  const origReplaceChildren = Element.prototype.replaceChildren;
-  if (typeof origReplaceChildren === 'function') {
-    Element.prototype.replaceChildren = function replaceChildrenSpy(...nodes) {
-      if (isFromApp()) {
-        if (nodes.length === 0) {
-          spies.zeroArgReplaceChildrenCalls += 1;
-        } else {
-          spies.withArgsReplaceChildrenCalls += 1;
+  for (const proto of [Element.prototype, DocumentFragment.prototype, Document.prototype]) {
+    const origReplaceChildren = proto.replaceChildren;
+    if (typeof origReplaceChildren === 'function') {
+      proto.replaceChildren = function replaceChildrenSpy(...nodes) {
+        if (isFromApp()) {
+          if (nodes.length === 0) {
+            spies.zeroArgReplaceChildrenCalls += 1;
+          } else {
+            spies.withArgsReplaceChildrenCalls += 1;
+          }
         }
-      }
-      return origReplaceChildren.apply(this, nodes);
-    };
+        return origReplaceChildren.apply(this, nodes);
+      };
+    }
   }
 
   const origRemoveChild = Node.prototype.removeChild;
@@ -313,6 +315,7 @@ async function resetSpyCounters(page: Page): Promise<void> {
     if (!spies) return;
     spies.structuredCloneCalls = 0;
     spies.jsonStringifyCalls = 0;
+    spies.urlSearchParamsCalls = 0;
     spies.zeroArgReplaceChildrenCalls = 0;
     spies.withArgsReplaceChildrenCalls = 0;
     spies.removeChildCalls = 0;
@@ -617,20 +620,85 @@ test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', as
       callee.includes('Object.prototype.hasOwnProperty')
     );
   });
-  const usesMapGroupBy = calls.some((c) => normalizedCallee(c) === 'Map.groupBy');
+  const isGroupByCall = (node: TsNode): boolean =>
+    TsNode.isCallExpression(node) &&
+    (normalizedCallee(node) === 'Object.groupBy' || normalizedCallee(node) === 'Map.groupBy');
+
+  const groupByVarNames = new Set<string>();
+  for (const call of calls) {
+    if (!isGroupByCall(call)) continue;
+    const parent = call.getParent();
+    if (TsNode.isVariableDeclaration(parent)) {
+      const nameNode = parent.getNameNode();
+      if (TsNode.isIdentifier(nameNode)) {
+        groupByVarNames.add(nameNode.getText());
+      }
+    } else if (
+      TsNode.isBinaryExpression(parent) &&
+      parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+      parent.getRight() === call
+    ) {
+      const lhs = parent.getLeft();
+      if (TsNode.isIdentifier(lhs)) {
+        groupByVarNames.add(lhs.getText());
+      }
+    }
+  }
+
+  const unwrapParen = (node: TsNode): TsNode => {
+    let cur = node;
+    while (TsNode.isParenthesizedExpression(cur)) {
+      cur = cur.getExpression();
+    }
+    return cur;
+  };
+
+  const isGroupByResultExpr = (node: TsNode): boolean => {
+    const cur = unwrapParen(node);
+    return (
+      isGroupByCall(cur) ||
+      (TsNode.isIdentifier(cur) && groupByVarNames.has(cur.getText()))
+    );
+  };
+
+  const isGroupByOrBucketExpr = (node: TsNode): boolean => {
+    const cur = unwrapParen(node);
+    if (isGroupByResultExpr(cur)) return true;
+    if (TsNode.isPropertyAccessExpression(cur) || TsNode.isElementAccessExpression(cur)) {
+      return isGroupByResultExpr(cur.getExpression());
+    }
+    return false;
+  };
+
+  const usesMapGroupBy =
+    calls.some((c) => normalizedCallee(c) === 'Map.groupBy') &&
+    calls.some((c) => {
+      const expr = c.getExpression();
+      return (
+        getMethodName(c) === 'get' &&
+        TsNode.isPropertyAccessExpression(expr) &&
+        isGroupByResultExpr(expr.getExpression())
+      );
+    });
   const usesObjectGroupBy = calls.some((c) => normalizedCallee(c) === 'Object.groupBy');
   const usesObjectHasOwn = calls.some((c) => normalizedCallee(c) === 'Object.hasOwn');
-  const usesSafeBucketSyntax = sourceFiles.some(
-    (sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.QuestionDotToken).length > 0 ||
-      sf.getDescendantsOfKind(SyntaxKind.InKeyword).length > 0 ||
-      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
-        const op = bin.getOperatorToken().getKind();
-        if (op !== SyntaxKind.QuestionQuestionToken && op !== SyntaxKind.BarBarToken) {
-          return false;
-        }
-        return bin.getRight().getText().trim() === '[]';
-      }),
+  const usesSafeBucketSyntax = sourceFiles.some((sf) =>
+    sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
+      const op = bin.getOperatorToken().getKind();
+      if (op === SyntaxKind.InKeyword) {
+        return isGroupByResultExpr(bin.getRight());
+      }
+      return (
+        (op === SyntaxKind.QuestionQuestionToken || op === SyntaxKind.BarBarToken) &&
+        bin.getRight().getText().trim() === '[]'
+      );
+    }) ||
+    sf
+      .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      .some((acc) => acc.hasQuestionDotToken() && isGroupByOrBucketExpr(acc.getExpression())) ||
+    sf
+      .getDescendantsOfKind(SyntaxKind.ElementAccessExpression)
+      .some((acc) => acc.hasQuestionDotToken() && isGroupByOrBucketExpr(acc.getExpression())),
   );
 
   expect(hasOwnPropertyAstCalls).toEqual([]);
@@ -688,6 +756,7 @@ test('Exp 14: syncs and restores filter state using URLSearchParams without manu
 
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
+  await resetSpyCounters(page);
   const { categorySelect, sortSelect, reverseToggle } = getMenuControls(page);
 
   await categorySelect.selectOption('espresso');

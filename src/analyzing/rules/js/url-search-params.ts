@@ -465,7 +465,7 @@ function matchQueryCall(call: CallExpression): string | null {
 }
 
 export const jsUrlSearchParamsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: [['location'], ['.search', '.href'], ['.split(', '.match(', '.exec(', '.replace(']],
+  fastTokens: [['location'], ['.search', '.href'], ['.split', '.match', '.exec', '.replace']],
   featureGuardTokens: ['URLSearchParams'],
   dedupeLines: true,
   matchCall(call) {

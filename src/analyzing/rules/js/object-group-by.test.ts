@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { objectGroupByRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, objectGroupByMatcher, objectGroupByRule } from './object-group-by.ts';
 
@@ -380,6 +380,28 @@ void test('js/object-group-by matcher', async (t) => {
     assert.deepEqual(
       matchJsRule(objectGroupByMatcher, 'class-method-groupby.ts', classMethodGroupByCode).map((m) => m.line),
       [4],
+    );
+
+    const genericReduceCode = `
+      const grouped = items.reduce<Record<string, Item[]>>((acc, item) => {
+        (acc[item.category] ??= []).push(item);
+        return acc;
+      }, {});
+    `;
+    assert.deepEqual(
+      matchJsRule(objectGroupByMatcher, 'generic-reduce.ts', genericReduceCode).map((m) => m.line),
+      [2],
+    );
+
+    const spreadOnlyReduceCode = `
+      const grouped = items.reduce((acc, item) => ({
+        ...acc,
+        [item.category]: [...(acc[item.category] ?? []), item],
+      }), {});
+    `;
+    assert.deepEqual(
+      matchJsRule(objectGroupByMatcher, 'spread-reduce.js', spreadOnlyReduceCode).map((m) => m.line),
+      [2],
     );
   });
 });

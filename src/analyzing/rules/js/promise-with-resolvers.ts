@@ -117,7 +117,6 @@ function isWithResolversGuard(node: Node): boolean {
 export const promiseWithResolversMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [['new Promise', 'window.Promise', 'globalThis.Promise', 'self.Promise']],
   featureGuardTokens: ['withResolvers'],
-  excludePathRegex: /(?:^|[\\/])(?:\.obsidian|\.vitepress)(?:[\\/]|$)/i,
   dedupeLines: true,
   maxLineLength: 500,
   isGuarded: isWithResolversGuard,

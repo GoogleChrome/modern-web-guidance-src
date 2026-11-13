@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { jsTextDecoderRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, jsTextDecoderMatcher, jsTextDecoderRule } from './text-decoder.ts';
 
@@ -97,105 +97,156 @@ void test('js/text-decoder matcher', async (t) => {
     assert.deepEqual(htmlFindings.map((f) => f.line), [5]);
   });
 
-  await t.test('exempts binary btoa() encoders, chunked accumulators, helpers, probes, non-byte views, and guards', () => {
-    const negCode = `
-      function toLatin1(bytes: Uint8Array) {
-        return (String.fromCharCode.apply(null, bytes) as string);
-      }
-
-      class BinaryCodec {
-        static encode(bytes: Uint8Array) {
-          return String.fromCharCode(...bytes);
+  await t.test('exempts binary btoa() encoders (statement, variable, helper, arrow helper)', () => {
+    const snippets = [
+      `
+        function directBtoa(buffer: ArrayBuffer) {
+          const b1 = btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
+          const b2 = window.btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          return b1 + b2;
         }
-        static toBase64(bytes: Uint8Array) {
-          return btoa(BinaryCodec.encode(bytes));
+      `,
+      `
+        function variableBtoa(bytes: Uint8Array) {
+          const bin = String.fromCharCode(...bytes);
+          return btoa(bin);
         }
-      }
-
-      function binaryToBase64(buffer: ArrayBuffer, data: ArrayBuffer) {
-        const b1 = btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
-        const b2 = window.btoa(String.fromCharCode(...new Uint8Array(buffer)));
-        const raw = (String.fromCharCode.apply(null, new Uint8Array(buffer)) as string);
-        const chunks: string[] = [];
-        let acc = '';
-        for (let i = 0; i < data.byteLength; i += 1024) {
-          acc += String.fromCharCode.apply(null, new Uint8Array(data.slice(i, i + 1024)));
-          chunks.push(String.fromCharCode.apply(null, new Uint8Array(data.slice(i, i + 1024))));
-          const piece = String.fromCharCode(...new Uint8Array(data.slice(i, i + 1024)));
-          chunks.push(piece);
+      `,
+      `
+        function castVariableBtoa(buffer: ArrayBuffer) {
+          const raw = (String.fromCharCode.apply(null, new Uint8Array(buffer)) as string);
+          return btoa(raw);
         }
-        const arr = [String.fromCharCode.apply(null, new Uint8Array(buffer))];
-        return btoa(raw) + btoa(toLatin1(new Uint8Array(buffer))) + b1 + b2 + acc + chunks.join('') + arr.join('');
-      }
-
-      function isValidUtf8(s: string) {
-        try {
-          decodeURIComponent(escape(s));
-          return true;
-        } catch {
-          return false;
+      `,
+      `
+        function toLatin1(bytes: Uint8Array) {
+          return (String.fromCharCode.apply(null, bytes) as string);
         }
-      }
-
-      function capabilityProbes() {
-        try {
-          const arr = new Uint8Array([1, 2, 3]);
-          String.fromCharCode.apply(null, arr);
-        } catch {}
-        try {
-          return String.fromCharCode.apply(null, new Uint8Array([0])) === '\\0';
-        } catch {
-          return false;
+        function helperBtoa(bytes: Uint8Array) {
+          return btoa(toLatin1(bytes));
         }
-      }
-
-      function nonByteBuffers(input: ArrayBuffer) {
-        const utf16 = String.fromCharCode.apply(null, new Uint16Array(input));
-        const codePoints = String.fromCharCode(...new Int32Array(input));
-        let j;
-        j = new Float32Array(input);
-        const floats = String.fromCharCode.apply(null, new Uint8Array(j.buffer));
-        let forFloats = '';
-        let k;
-        for (let i = 0; i < 1 && (k = new Float32Array(input)); i++) {
-          forFloats += String.fromCharCode.apply(null, new Uint8Array(k.buffer));
+      `,
+      `
+        const toBinArrow = (bytes: Uint8Array) => String.fromCharCode(...bytes);
+        function arrowHelperBtoa(bytes: Uint8Array) {
+          return btoa(toBinArrow(bytes));
         }
-        const encoded = new TextEncoder().encode('hello');
-        const roundtrip = String.fromCharCode(...encoded);
-        return utf16 + codePoints + floats + forFloats + roundtrip;
-      }
-
-      function encodeUtf8Loop(str: string) {
-        let out = '';
-        for (let n = 0; n < str.length; n++) {
-          const c = str.charCodeAt(n);
-          out += String.fromCharCode((c >> 12) | 224);
-          out += String.fromCharCode(((c >> 6) & 63) | 128);
-          out += String.fromCharCode((c & 63) | 128);
+      `,
+      `
+        class BinaryCodec {
+          static encode(bytes: Uint8Array) {
+            return String.fromCharCode(...bytes);
+          }
+          static toBase64(bytes: Uint8Array) {
+            return btoa(BinaryCodec.encode(bytes));
+          }
         }
-        return out;
-      }
+      `,
+    ];
+    for (const [idx, code] of snippets.entries()) {
+      assert.equal(
+        matchJsRule(jsTextDecoderMatcher, `neg-btoa-${idx}.ts`, code).length,
+        0,
+        `expected zero matches for btoa snippet #${idx}`,
+      );
+    }
+  });
 
-      function decodeBase64Loop(b: number, c: number, d: number) {
-        return ((b & 0x3f) << 12) | ((c & 0x3f) << 6) | (d & 0x3f);
-      }
-
-      function codepageCopy(buf: Uint8Array, table: string[], out: Record<number, string>) {
-        for (let i = 0, j = 0; i < buf.length;) {
-          out[j++] = table[((buf[i++] & 15) << 12) | ((buf[i++] & 63) << 6) | (buf[i++] & 63)];
+  await t.test('exempts chunked accumulators, utf8 validators, probes, non-byte views, codepages, and guards', () => {
+    const snippets = [
+      `
+        function chunkedAccumulators(buffer: ArrayBuffer, data: ArrayBuffer) {
+          const chunks: string[] = [];
+          let acc = '';
+          for (let i = 0; i < data.byteLength; i += 1024) {
+            acc += String.fromCharCode.apply(null, new Uint8Array(data.slice(i, i + 1024)));
+            chunks.push(String.fromCharCode.apply(null, new Uint8Array(data.slice(i, i + 1024))));
+            const piece = String.fromCharCode(...new Uint8Array(data.slice(i, i + 1024)));
+            chunks.push(piece);
+          }
+          const arr = [String.fromCharCode.apply(null, new Uint8Array(buffer))];
+          return acc + chunks.join('') + arr.join('');
         }
-      }
-
-      function guarded(bytes: ArrayBuffer) {
-        if (typeof window.TextDecoder !== 'undefined') {
-          return new window.TextDecoder().decode(bytes);
+      `,
+      `
+        function isValidUtf8(s: string) {
+          try {
+            decodeURIComponent(escape(s));
+            return true;
+          } catch {
+            return false;
+          }
         }
-        return String.fromCharCode.apply(null, new Uint8Array(bytes));
-      }
-
-      // decodeURIComponent(escape(commented))
-      const literal = 'decodeURIComponent(escape(inLiteral))';
-    `;
-    assert.equal(matchJsRule(jsTextDecoderMatcher, 'negatives.ts', negCode).length, 0);
+      `,
+      `
+        function capabilityProbes() {
+          try {
+            const arr = new Uint8Array([1, 2, 3]);
+            String.fromCharCode.apply(null, arr);
+          } catch {}
+          try {
+            return String.fromCharCode.apply(null, new Uint8Array([0])) === '\\0';
+          } catch {
+            return false;
+          }
+        }
+      `,
+      `
+        function nonByteBuffers(input: ArrayBuffer) {
+          const utf16 = String.fromCharCode.apply(null, new Uint16Array(input));
+          const codePoints = String.fromCharCode(...new Int32Array(input));
+          let j;
+          j = new Float32Array(input);
+          const floats = String.fromCharCode.apply(null, new Uint8Array(j.buffer));
+          let forFloats = '';
+          let k;
+          for (let i = 0; i < 1 && (k = new Float32Array(input)); i++) {
+            forFloats += String.fromCharCode.apply(null, new Uint8Array(k.buffer));
+          }
+          const encoded = new TextEncoder().encode('hello');
+          const roundtrip = String.fromCharCode(...encoded);
+          return utf16 + codePoints + floats + forFloats + roundtrip;
+        }
+      `,
+      `
+        function encodeUtf8Loop(str: string) {
+          let out = '';
+          for (let n = 0; n < str.length; n++) {
+            const c = str.charCodeAt(n);
+            out += String.fromCharCode((c >> 12) | 224);
+            out += String.fromCharCode(((c >> 6) & 63) | 128);
+            out += String.fromCharCode((c & 63) | 128);
+          }
+          return out;
+        }
+        function decodeBase64Loop(b: number, c: number, d: number) {
+          return ((b & 0x3f) << 12) | ((c & 0x3f) << 6) | (d & 0x3f);
+        }
+        function codepageCopy(buf: Uint8Array, table: string[], out: Record<number, string>) {
+          for (let i = 0, j = 0; i < buf.length;) {
+            out[j++] = table[((buf[i++] & 15) << 12) | ((buf[i++] & 63) << 6) | (buf[i++] & 63)];
+          }
+        }
+      `,
+      `
+        function guarded(bytes: ArrayBuffer) {
+          if (typeof window.TextDecoder !== 'undefined') {
+            return new window.TextDecoder().decode(bytes);
+          }
+          return String.fromCharCode.apply(null, new Uint8Array(bytes));
+        }
+      `,
+      `
+        // decodeURIComponent(escape(commented))
+        const literal = 'decodeURIComponent(escape(inLiteral))';
+      `,
+    ];
+    for (const [idx, code] of snippets.entries()) {
+      assert.equal(
+        matchJsRule(jsTextDecoderMatcher, `neg-other-${idx}.ts`, code).length,
+        0,
+        `expected zero matches for exemption snippet #${idx}`,
+      );
+    }
   });
 });

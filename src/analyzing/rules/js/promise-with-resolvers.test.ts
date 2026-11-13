@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { jsPromiseWithResolversRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, jsPromiseWithResolversRule, promiseWithResolversMatcher } from './promise-with-resolvers.ts';
 
@@ -296,15 +296,24 @@ void test('js/promise-with-resolvers matcher', async (t) => {
     );
   });
 
-  await t.test('excludes .obsidian and .vitepress paths only on js/promise-with-resolvers', () => {
+  await t.test('excludes .obsidian and .vitepress paths via scanFiles dot-directory filter', () => {
     const code = `
       let resolveFn;
       const p = new Promise((resolve) => {
         resolveFn = resolve;
       });
     `;
-    assert.deepEqual(matchJsRule(promiseWithResolversMatcher, '.obsidian/plugins/main.js', code), []);
-    assert.deepEqual(matchJsRule(promiseWithResolversMatcher, '.vitepress/theme/Layout.js', code), []);
-    assert.equal(matchJsRule(promiseWithResolversMatcher, 'src/deferred.js', code).length, 1);
+    const findings = scanFiles(
+      new Map([
+        ['.obsidian/plugins/main.js', code],
+        ['.vitepress/theme/Layout.js', code],
+        ['src/deferred.js', code],
+      ]),
+      [jsPromiseWithResolversRule],
+    );
+    assert.deepEqual(
+      findings.map((f) => f.file),
+      ['src/deferred.js'],
+    );
   });
 });

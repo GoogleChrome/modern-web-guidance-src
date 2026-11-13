@@ -1,4 +1,4 @@
-import { Node, SyntaxKind, type CallExpression, type VariableDeclaration } from 'ts-morph';
+import { Node, SyntaxKind, type CallExpression, type NewExpression, type VariableDeclaration } from 'ts-morph';
 import {
   areNodesEqual,
   getAssignment,
@@ -157,9 +157,19 @@ function isInsideEventPolyfill(
 }
 
 function hasModernEventFallback(call: CallExpression): boolean {
+  const isEventCtorName = (node: Node): boolean => {
+    const unwrapped = unwrapExpression(node);
+    const name =
+      Node.isIdentifier(unwrapped)
+        ? unwrapped.getText()
+        : getMemberAccess(unwrapped)?.name ?? null;
+    return Boolean(name && (EVENT_CTORS.has(name) || name.endsWith('Event')));
+  };
   const isConstructorRef = (exprNode: Node): boolean => {
     const unwrapped = unwrapExpression(exprNode);
-    return Node.isIdentifier(unwrapped) || Node.isPropertyAccessExpression(unwrapped);
+    if (isEventCtorName(unwrapped)) return true;
+    const resolved = Node.isIdentifier(unwrapped) ? resolveLocalExpression(unwrapped, 2) : unwrapped;
+    return resolved !== unwrapped && isEventCtorName(resolved);
   };
 
   for (let cur: Node = call, parent = cur.getParent(); parent; cur = parent, parent = cur.getParent()) {
@@ -191,13 +201,18 @@ function hasModernEventFallback(call: CallExpression): boolean {
       const elseBranch = Node.isIfStatement(parent) ? parent.getElseStatement() : parent.getWhenFalse();
       const sibling = cur === thenBranch ? elseBranch : thenBranch;
       const unwrapped = sibling ? unwrapExpression(sibling) : undefined;
+      const isSiblingFallbackCtor = (ne: NewExpression): boolean =>
+        isConstructorRef(ne.getExpression()) ||
+        cond
+          .getDescendantsOfKind(SyntaxKind.TypeOfExpression)
+          .some((toe) => areNodesEqual(toe.getExpression(), ne.getExpression()));
       if (
         unwrapped &&
         (/\b(?:createEventObject|fireEvent)\b/.test(unwrapped.getText()) ||
-          (Node.isNewExpression(unwrapped) && isConstructorRef(unwrapped.getExpression())) ||
+          (Node.isNewExpression(unwrapped) && isSiblingFallbackCtor(unwrapped)) ||
           unwrapped
             .getDescendantsOfKind(SyntaxKind.NewExpression)
-            .some((ne) => isConstructorRef(ne.getExpression())))
+            .some(isSiblingFallbackCtor))
       ) {
         return true;
       }

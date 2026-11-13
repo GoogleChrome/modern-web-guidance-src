@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { copyingArrayMethodsRule as exportedJsRule } from '../js.ts';
 import {
   copyingArrayMethodsMatcher,
@@ -411,6 +411,16 @@ void test('js/copying-array-methods matcher', async (t) => {
     assert.deepEqual(
       matchJsRule(copyingArrayMethodsMatcher, 'recovered.ts', recoveredPositives).map((m) => m.line),
       [8, 9, 10, 11, 12, 13, 14, 15],
+    );
+
+    const multilineSpread = `
+      const sorted = [
+        ...items,
+      ].sort((a, b) => a - b);
+    `;
+    assert.deepEqual(
+      matchJsRule(copyingArrayMethodsMatcher, 'multiline-spread.js', multilineSpread).map((m) => m.line),
+      [2],
     );
   });
 });

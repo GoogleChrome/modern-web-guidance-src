@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { jsErrorCauseRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, jsErrorCauseMatcher, jsErrorCauseRule } from './error-cause.ts';
 
@@ -262,5 +262,59 @@ void test('js/error-cause matcher', async (t) => {
     `;
     const matches = matchJsRule(jsErrorCauseMatcher, 'traps.js', code);
     assert.deepEqual(matches, []);
+  });
+
+  await t.test('recognizes bracket mutations and non-object-literal Object.assign sources', () => {
+    const code = `
+      function bracketAndAssignSources(extraMeta) {
+        try {
+          step1();
+        } catch (e) {
+          const withBracketCause = new Error('Step 1 failed');
+          withBracketCause['cause'] = e;
+          throw withBracketCause;
+        }
+
+        try {
+          step2();
+        } catch (e) {
+          const withBracketCode = new Error(\`Step 2 failed: \${e.message}\`);
+          withBracketCode['code'] = 'E_STEP2';
+          throw withBracketCode;
+        }
+
+        try {
+          step3();
+        } catch (e) {
+          throw Object.assign(new Error(\`Step 3 failed: \${e.message}\`), extraMeta);
+        }
+
+        try {
+          step4();
+        } catch (e) {
+          throw Object.assign(new Error('Step 4 failed'), extraMeta, { cause: e });
+        }
+      }
+    `;
+    const matches = matchJsRule(jsErrorCauseMatcher, 'brackets-and-assign.js', code);
+    assert.deepEqual(
+      matches.map((m) => m.line),
+      [6, 28],
+    );
+    for (const m of matches) {
+      assert.match(m.message, /\{ cause: err \}/);
+    }
+  });
+
+  await t.test('matches fastTokens on standalone bracket cause assignment without catch keyword', () => {
+    const code = `
+      function wrapCause(msg, cause) {
+        const err = new Error(msg);
+        err['cause'] = cause;
+        return err;
+      }
+    `;
+    const matches = matchJsRule(jsErrorCauseMatcher, 'bracket-cause-no-catch.js', code);
+    assert.deepEqual(matches.map((m) => m.line), [3]);
   });
 });

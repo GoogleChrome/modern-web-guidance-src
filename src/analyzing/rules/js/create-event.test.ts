@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { jsCreateEventRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, jsCreateEventMatcher, jsCreateEventRule } from './create-event.ts';
 
@@ -335,6 +335,25 @@ void test('js/create-event matcher', async (t) => {
     assert.deepEqual(
       matches.map((m) => m.line),
       [3],
+    );
+  });
+
+  await t.test('does not suppress createEvent inside catch when try block constructs a non-Event class', () => {
+    const code = `
+      function fallbackInCatch(target) {
+        try {
+          new Date();
+        } catch (err) {
+          const ev = document.createEvent('Event');
+          ev.initEvent('tick', false, false);
+          target.dispatchEvent(ev);
+        }
+      }
+    `;
+    const matches = matchJsRule(jsCreateEventMatcher, 'non-event-try-catch.js', code);
+    assert.deepEqual(
+      matches.map((m) => m.line),
+      [6],
     );
   });
 });

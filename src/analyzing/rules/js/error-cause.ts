@@ -66,7 +66,10 @@ function scanAssignCall(
   if (!firstArg || !matchesTarget(firstArg)) return;
 
   for (const src of sourceArgs) {
-    if (!Node.isObjectLiteralExpression(src)) continue;
+    if (!Node.isObjectLiteralExpression(src)) {
+      mutations.hasCustom = true;
+      continue;
+    }
     for (const prop of src.getProperties()) {
       const propName = Node.isSpreadAssignment(prop) ? null : getPropertyNameText(prop);
       if (propName === 'cause') {
@@ -115,8 +118,9 @@ function analyzeMutations(newExpr: NewExpression): { hasCause: boolean; hasCusto
     const assign = getAssignment(bin);
     if (!assign || assign.operator !== SyntaxKind.EqualsToken) continue;
     const lhs = unwrapExpression(assign.left);
-    if (Node.isPropertyAccessExpression(lhs) && isTargetId(lhs.getExpression())) {
-      if (lhs.getName() === 'cause') {
+    const member = getMemberAccess(lhs);
+    if (member && isTargetId(member.expression)) {
+      if (member.name === 'cause') {
         mutations.hasCause = true;
       } else {
         mutations.hasCustom = true;
@@ -236,7 +240,7 @@ function isLogCallArg(newExpr: NewExpression): boolean {
 }
 
 export const jsErrorCauseMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: [['catch', '.cause'], ['Error']],
+  fastTokens: [['catch', 'cause'], ['Error']],
   dedupeLines: true,
   matchNew(node) {
     const errorName = isGlobalMember(node.getExpression(), STANDARD_ERROR_CTORS);

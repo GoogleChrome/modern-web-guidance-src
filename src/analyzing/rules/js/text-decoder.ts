@@ -172,18 +172,7 @@ function hasBinaryConsumer(call: CallExpression, callParent: Node | undefined): 
   }
 
   const fn = call.getFirstAncestor(isCallableNode);
-  let assignedId = targetParent
-    ? getAssignedTarget(targetParent)?.asKind(SyntaxKind.Identifier)
-    : undefined;
-  if (assignedId) {
-    const varDecl = targetParent?.asKind(SyntaxKind.VariableDeclaration);
-    const propAssign = targetParent?.asKind(SyntaxKind.PropertyAssignment);
-    const assignExpr = getAssignment(targetParent);
-    const initNode = varDecl?.getInitializer() ?? propAssign?.getInitializer() ?? assignExpr?.right;
-    if (!initNode || unwrapExpression(initNode) !== target) {
-      assignedId = undefined;
-    }
-  }
+  const assignedId = getAssignedTarget(target)?.asKind(SyntaxKind.Identifier);
 
   let flowsToReturn = Boolean(
     callParent &&
@@ -203,7 +192,10 @@ function hasBinaryConsumer(call: CallExpression, callParent: Node | undefined): 
       if (id === assignedId || id.getText() !== varName || !isIdentifierReference(id)) continue;
       if (bindingDecl && !resolvesToBinding(id, bindingDecl)) continue;
       const idParent = getSemanticParent(id).parent;
-      const methodName = getPropertyMethodName(idParent);
+      const callOrArgParent = Node.isPropertyAccessExpression(idParent)
+        ? idParent.getParent()
+        : idParent;
+      const methodName = getPropertyMethodName(callOrArgParent);
       if (id.getFirstAncestor(isBinaryCodingCall) || methodName === 'push' || methodName === 'join') {
         return true;
       }
@@ -214,21 +206,20 @@ function hasBinaryConsumer(call: CallExpression, callParent: Node | undefined): 
   }
 
   if (!flowsToReturn || !fn) return false;
-  let helperIdNode: Node | undefined;
-  if (Node.isNameable(fn) || Node.isPropertyNamed(fn)) {
-    helperIdNode = fn.getNameNode();
-  } else {
-    const fnParent = fn.getParent();
-    helperIdNode = (fnParent ? getAssignedTarget(fnParent) : null) ?? undefined;
-  }
+  const helperIdNode =
+    (Node.isNameable(fn) || Node.isPropertyNamed(fn) ? fn.getNameNode() : undefined) ??
+    getAssignedTarget(fn);
   const helperId = helperIdNode?.asKind(SyntaxKind.Identifier);
   if (!helperId) return false;
 
   const helperName = helperId.getText();
-  const helperScope =
-    fn.getFirstAncestor((a) => Node.isClassDeclaration(a) || Node.isClassExpression(a)) ??
-    call.getSourceFile();
+  const enclosingClass = fn.getFirstAncestor(
+    (a) => Node.isClassDeclaration(a) || Node.isClassExpression(a),
+  );
+  const helperScope = enclosingClass ?? call.getSourceFile();
   const isClassMethod = Node.isMethodDeclaration(fn);
+  const className = Node.isClassDeclaration(enclosingClass) ? enclosingClass.getName() : undefined;
+  const isStaticMethod = isClassMethod && fn.isStatic();
 
   return helperScope.getDescendantsOfKind(SyntaxKind.CallExpression).some((binaryCall) => {
     if (!isBinaryCodingCall(binaryCall)) return false;
@@ -236,7 +227,15 @@ function hasBinaryConsumer(call: CallExpression, callParent: Node | undefined): 
       if (id === helperId || id.getText() !== helperName) return false;
       if (isClassMethod) {
         const access = id.getParentIfKind(SyntaxKind.PropertyAccessExpression);
-        return Boolean(access && access.getNameNode() === id && Node.isThisExpression(access.getExpression()));
+        if (!access || access.getNameNode() !== id) return false;
+        const receiver = unwrapExpression(access.getExpression());
+        return (
+          Node.isThisExpression(receiver) ||
+          (isStaticMethod &&
+            Boolean(className) &&
+            Node.isIdentifier(receiver) &&
+            receiver.getText() === className)
+        );
       }
       return isIdentifierReference(id);
     });

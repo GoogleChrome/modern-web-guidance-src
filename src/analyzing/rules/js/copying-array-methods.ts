@@ -542,7 +542,7 @@ function isModernArrayGuard(node: Node): boolean {
 }
 
 export const copyingArrayMethodsMatcher = createJsCallMatcher({
-  fastTokens: [['.slice(', '.concat(', '[...', '[ ...'], ['.sort(', '.reverse(']],
+  fastTokens: [['.slice', '.concat', '...'], ['.sort', '.reverse']],
   dedupeLines: true,
   maxLineLength: 500,
   featureGuardTokens: MODERN_METHODS,

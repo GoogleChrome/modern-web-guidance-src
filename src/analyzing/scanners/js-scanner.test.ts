@@ -313,4 +313,15 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
       [],
     );
   });
+
+  await t.test('collectOrderedDescendants handles >150k AST nodes without RangeError', () => {
+    const matcher = createJsAstMatcher({
+      kinds: [SyntaxKind.ExpressionStatement, SyntaxKind.BinaryExpression],
+      matchNode: (node) =>
+        Node.isBinaryExpression(node) && node.getLeft().getText() === 'target' ? 'found' : null,
+    });
+    const filler = 'a;\n'.repeat(160_000);
+    const matches = matchJsRule(matcher, 'huge.js', `${filler}target = 1;\n`);
+    assert.deepEqual(matches, [{ line: 160_001, message: 'found' }]);
+  });
 });

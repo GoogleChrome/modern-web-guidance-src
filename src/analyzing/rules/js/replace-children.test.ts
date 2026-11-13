@@ -7,7 +7,7 @@ import {
   assertValidFastTokenSpecs,
 } from '../index.test.ts';
 import { computeGuideHash } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import {
   JS_REPLACE_CHILDREN_GUIDE_HASH,
   jsReplaceChildrenMatcher,
@@ -315,11 +315,12 @@ void test('js/replace-children: negative / exempt cases', async (t) => {
 });
 
 void test('js/replace-children-innerhtml: positive standalone empty innerHTML clears', async (t) => {
-  await t.test('flags empty string, empty template literal, null, and .content clears on DOM receivers', () => {
+  await t.test('flags empty string, empty template literal, and null clears on DOM receivers', () => {
     const code = `
       class PanelView {
         shadowRoot!: ShadowRoot;
-        clearAll(el: HTMLElement, svgContainer: HTMLElement, rows: HTMLElement[], tpl: HTMLTemplateElement, card: HTMLElement) {
+        private content!: HTMLElement;
+        clearAll(el: HTMLElement, svgContainer: HTMLElement, rows: HTMLElement[], card: HTMLElement) {
           el.innerHTML = '';
           el.innerHTML = "";
           el.innerHTML = \`\`;
@@ -328,11 +329,7 @@ void test('js/replace-children-innerhtml: positive standalone empty innerHTML cl
           document.body.innerHTML = '';
           svgContainer.querySelector<SVGSVGElement>('svg')!.innerHTML = \`\`;
           rows[0]!.innerHTML = '';
-          tpl.content.innerHTML = '';
-          (tpl as HTMLTemplateElement).content.innerHTML = '';
-          const frag = tpl.content;
-          frag.innerHTML = '';
-          tpl.content.cloneNode(true);
+          this.content.innerHTML = '';
           card.innerHTML = '';
         }
       }
@@ -340,7 +337,7 @@ void test('js/replace-children-innerhtml: positive standalone empty innerHTML cl
     const matches = matchJsRule(jsReplaceChildrenInnerHtmlMatcher, 'clear.ts', code);
     assert.deepStrictEqual(
       matches.map((m) => m.line),
-      [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18],
+      [6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     );
   });
 
@@ -438,6 +435,18 @@ void test('js/replace-children-innerhtml: negative / exempt cases', async (t) =>
 
         const inferredTpl = document.getElementById('custom-card');
         inferredTpl!.innerHTML = '';
+
+        typedTpl.content.innerHTML = '';
+        (genericEl as HTMLTemplateElement).content.innerHTML = '';
+        const tplFrag = typedTpl.content;
+        tplFrag.innerHTML = '';
+        const createdFrag = document.createDocumentFragment();
+        createdFrag.innerHTML = '';
+        function clearFragmentParam(frag: DocumentFragment) {
+          frag.innerHTML = '';
+        }
+        clearFragmentParam(genericEl as unknown as DocumentFragment);
+        (genericEl as DocumentFragment).innerHTML = '';
       }
 
       class TemplateComponent {

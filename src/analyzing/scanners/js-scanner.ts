@@ -78,6 +78,24 @@ export function matchJsRule(
 }
 
 /**
+ * Runs `matchJsRule` and asserts that any matched source also satisfies `matcher.fastTokens`,
+ * preventing tests from masking fast-token pre-filter misses that would skip the file in `scanFiles`.
+ */
+export function matchJsRuleWithFastTokens(
+  matcher: JsRuleMatcher,
+  filePath: string,
+  fileContent: string,
+): AnalyzerMatch[] {
+  const matches = matchJsRule(matcher, filePath, fileContent);
+  if (matches.length > 0 && !matchesFastTokens(fileContent, matcher.fastTokens)) {
+    throw new Error(
+      `Matcher matched ${matches.length} line(s) in ${filePath}, but matchesFastTokens returned false for ${JSON.stringify(matcher.fastTokens)}`,
+    );
+  }
+  return matches;
+}
+
+/**
  * Configuration for `createJsCallMatcher`.
  * Note: `matchCall` and `matchNew` run prior to `visitedLines`, `featureGuardTokens`,
  * and `isGuarded` checks, so they must be side-effect-free predicates.
@@ -159,7 +177,9 @@ function collectOrderedDescendants(sourceFile: SourceFile, kinds: readonly Synta
   }
   const nodes: Node[] = [];
   for (const kind of kinds) {
-    nodes.push(...sourceFile.getDescendantsOfKind(kind));
+    for (const descendant of sourceFile.getDescendantsOfKind(kind)) {
+      nodes.push(descendant);
+    }
   }
   return nodes.sort((a, b) => a.getPos() - b.getPos());
 }
@@ -314,7 +334,9 @@ export function scanJsSource(
 
   try {
     for (const rule of activeRules) {
-      matches.push(...rule.matchFile(sourceFile, ctx));
+      for (const match of rule.matchFile(sourceFile, ctx)) {
+        matches.push(match);
+      }
     }
   } finally {
     if (!project) {

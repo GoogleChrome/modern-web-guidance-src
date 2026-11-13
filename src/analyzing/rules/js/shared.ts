@@ -7,6 +7,7 @@ import {
 import {
   getMemberAccess,
   getStaticString,
+  resolveLexicalBinding,
   resolveLocalExpression,
   unwrapExpression,
   unwrapMethodCall,
@@ -84,20 +85,9 @@ export function findReceiverDeclaration(expr: Node): ReceiverDecl | undefined {
     return cls?.getProperty(member.name) ?? cls?.getConstructors()[0]?.getParameter(member.name);
   }
   if (!Node.isIdentifier(expr)) return undefined;
-  const name = expr.getText();
-  for (let scope: Node | undefined = expr.getParent(); scope; scope = scope.getParent()) {
-    if (Node.isFunctionLikeDeclaration(scope)) {
-      const param = scope.getParameter(name);
-      if (param) return param;
-    }
-    if (Node.isBlock(scope) || Node.isSourceFile(scope)) {
-      const varDecl = scope.getVariableDeclaration(
-        (decl) => decl.getName() === name && decl.getStart() < expr.getStart(),
-      );
-      if (varDecl) return varDecl;
-    }
-  }
-  return undefined;
+  const binding = resolveLexicalBinding(expr, expr.getText(), expr.getStart());
+  if (binding?.kind !== 'variable' && binding?.kind !== 'parameter') return undefined;
+  return Node.isIdentifier(binding.node.getNameNode()) ? binding.node : undefined;
 }
 
 export function isTemplateReceiver(rawNode: Node): boolean {

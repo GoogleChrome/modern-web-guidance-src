@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanFiles } from '../../scanners/index.ts';
-import { matchJsRule } from '../../scanners/js-scanner.ts';
+import { matchJsRuleWithFastTokens as matchJsRule } from '../../scanners/js-scanner.ts';
 import jsDefaultRules, { structuredCloneRule as exportedJsRule } from '../js.ts';
 import { JS_GUIDE_HASH, structuredCloneMatcher, structuredCloneRule } from './structured-clone.ts';
 
