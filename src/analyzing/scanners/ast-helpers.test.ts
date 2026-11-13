@@ -1112,4 +1112,52 @@ test('shared AST helpers: static literals, member/method/assignment unwrapping, 
     assert.equal(isLibraryReference(libRef2, 'lib', ['alpha-pkg']), false);
     assert.equal(isProtectedByFeatureGuard(innerHtml2, ['replaceChildren']), true);
   });
+
+  await t.test('resolveLexicalBinding resolves constructor, setter, and getter parameters and isolates var hoisting', () => {
+    const sf = project.createSourceFile(
+      'ctor-setter-binding.ts',
+      `
+        class Panel {
+          constructor(frag: DocumentFragment) {
+            frag.innerHTML = '';
+          }
+          set target(el: HTMLTemplateElement) {
+            el.innerHTML = '';
+          }
+          get view() {
+            var leaked = 1;
+            return leaked;
+          }
+        }
+        function outer(leakedParam: string) {
+          const obj = {
+            set sink(val: string) {
+              var localOnly = val;
+              console.log(localOnly, leakedParam);
+            },
+          };
+          return localOnly;
+        }
+      `,
+      { overwrite: true },
+    );
+
+    const fragRef = sf
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'frag' && Node.isPropertyAccessExpression(id.getParent()));
+    assert.ok(fragRef);
+    assert.equal(resolveLexicalBinding(fragRef, 'frag')?.kind, 'parameter');
+
+    const elRef = sf
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'el' && Node.isPropertyAccessExpression(id.getParent()));
+    assert.ok(elRef);
+    assert.equal(resolveLexicalBinding(elRef, 'el')?.kind, 'parameter');
+
+    const localOnlyReturn = sf
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'localOnly' && Node.isReturnStatement(id.getParent()));
+    assert.ok(localOnlyReturn);
+    assert.equal(resolveLexicalBinding(localOnlyReturn, 'localOnly'), null);
+  });
 });

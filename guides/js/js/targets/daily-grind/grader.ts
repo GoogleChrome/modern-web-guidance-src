@@ -255,6 +255,16 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
     return origAppendChild.call(this, child);
   };
 
+  const origElementAppend = Element.prototype.append;
+  if (typeof origElementAppend === 'function') {
+    Element.prototype.append = function elementAppendSpy(...nodes) {
+      if (isFromApp() && this && this.isConnected) {
+        spies.connectedAppendChildCalls += 1;
+      }
+      return origElementAppend.apply(this, nodes);
+    };
+  }
+
   const innerHtmlDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
   if (innerHtmlDescriptor && innerHtmlDescriptor.set) {
     const origSet = innerHtmlDescriptor.set;
@@ -620,31 +630,6 @@ test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', as
       callee.includes('Object.prototype.hasOwnProperty')
     );
   });
-  const isGroupByCall = (node: TsNode): boolean =>
-    TsNode.isCallExpression(node) &&
-    (normalizedCallee(node) === 'Object.groupBy' || normalizedCallee(node) === 'Map.groupBy');
-
-  const groupByVarNames = new Set<string>();
-  for (const call of calls) {
-    if (!isGroupByCall(call)) continue;
-    const parent = call.getParent();
-    if (TsNode.isVariableDeclaration(parent)) {
-      const nameNode = parent.getNameNode();
-      if (TsNode.isIdentifier(nameNode)) {
-        groupByVarNames.add(nameNode.getText());
-      }
-    } else if (
-      TsNode.isBinaryExpression(parent) &&
-      parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
-      parent.getRight() === call
-    ) {
-      const lhs = parent.getLeft();
-      if (TsNode.isIdentifier(lhs)) {
-        groupByVarNames.add(lhs.getText());
-      }
-    }
-  }
-
   const unwrapParen = (node: TsNode): TsNode => {
     let cur = node;
     while (TsNode.isParenthesizedExpression(cur)) {
@@ -652,14 +637,111 @@ test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', as
     }
     return cur;
   };
+  const exprKey = (node: TsNode): string => unwrapParen(node).getText().replace(/\s+/g, '');
+
+  const isGroupByCall = (node: TsNode): boolean =>
+    TsNode.isCallExpression(node) &&
+    (normalizedCallee(node) === 'Object.groupBy' || normalizedCallee(node) === 'Map.groupBy');
+
+  const groupByExprKeys = new Set<string>();
+  const groupByHelperNames = new Set<string>();
 
   const isGroupByResultExpr = (node: TsNode): boolean => {
     const cur = unwrapParen(node);
+    if (isGroupByCall(cur)) return true;
+    if (TsNode.isCallExpression(cur)) {
+      const callee = normalizedCallee(cur);
+      const methodName = getMethodName(cur);
+      if (groupByHelperNames.has(callee) || (methodName !== null && groupByHelperNames.has(methodName))) {
+        return true;
+      }
+    }
     return (
-      isGroupByCall(cur) ||
-      (TsNode.isIdentifier(cur) && groupByVarNames.has(cur.getText()))
+      (TsNode.isIdentifier(cur) || TsNode.isPropertyAccessExpression(cur)) &&
+      groupByExprKeys.has(exprKey(cur))
     );
   };
+
+  const isDirectFunctionAncestor = (node: TsNode, fn: TsNode): boolean =>
+    node.getFirstAncestor(
+      (a) =>
+        TsNode.isFunctionDeclaration(a) ||
+        TsNode.isFunctionExpression(a) ||
+        TsNode.isArrowFunction(a) ||
+        TsNode.isMethodDeclaration(a),
+    ) === fn;
+
+  const varDecls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration));
+  const assignments = sourceFiles
+    .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.BinaryExpression))
+    .filter((bin) => bin.getOperatorToken().getKind() === SyntaxKind.EqualsToken);
+  const functionLikes = sourceFiles.flatMap((sf) => [
+    ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
+    ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
+    ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
+    ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
+  ]);
+
+  for (let pass = 0; pass < 5; pass += 1) {
+    const prevCount = groupByExprKeys.size + groupByHelperNames.size;
+    for (const decl of varDecls) {
+      const init = decl.getInitializer();
+      const nameNode = decl.getNameNode();
+      if (init && TsNode.isIdentifier(nameNode) && isGroupByResultExpr(init)) {
+        groupByExprKeys.add(exprKey(nameNode));
+      }
+    }
+    for (const bin of assignments) {
+      const lhs = unwrapParen(bin.getLeft());
+      if (
+        (TsNode.isIdentifier(lhs) || TsNode.isPropertyAccessExpression(lhs)) &&
+        isGroupByResultExpr(bin.getRight())
+      ) {
+        groupByExprKeys.add(exprKey(lhs));
+      }
+    }
+    for (const fn of functionLikes) {
+      let returnsGroupBy = false;
+      if (TsNode.isArrowFunction(fn) && !TsNode.isBlock(fn.getBody())) {
+        returnsGroupBy = isGroupByResultExpr(fn.getBody());
+      } else {
+        returnsGroupBy = fn
+          .getDescendantsOfKind(SyntaxKind.ReturnStatement)
+          .some((ret) => {
+            if (!isDirectFunctionAncestor(ret, fn)) return false;
+            const expr = ret.getExpression();
+            return expr !== undefined && isGroupByResultExpr(expr);
+          });
+      }
+      if (!returnsGroupBy) continue;
+      if (
+        TsNode.isFunctionDeclaration(fn) ||
+        TsNode.isFunctionExpression(fn) ||
+        TsNode.isMethodDeclaration(fn)
+      ) {
+        const name = fn.getName();
+        if (name) groupByHelperNames.add(name);
+      }
+      if (TsNode.isArrowFunction(fn) || TsNode.isFunctionExpression(fn)) {
+        const parent = fn.getParent();
+        if (TsNode.isVariableDeclaration(parent) && TsNode.isIdentifier(parent.getNameNode())) {
+          groupByHelperNames.add(parent.getNameNode().getText());
+        } else if (TsNode.isPropertyAssignment(parent)) {
+          groupByHelperNames.add(parent.getName());
+        } else if (
+          TsNode.isBinaryExpression(parent) &&
+          parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+          parent.getRight() === fn
+        ) {
+          const lhs = unwrapParen(parent.getLeft());
+          if (TsNode.isIdentifier(lhs) || TsNode.isPropertyAccessExpression(lhs)) {
+            groupByHelperNames.add(exprKey(lhs));
+          }
+        }
+      }
+    }
+    if (groupByExprKeys.size + groupByHelperNames.size === prevCount) break;
+  }
 
   const isGroupByOrBucketExpr = (node: TsNode): boolean => {
     const cur = unwrapParen(node);

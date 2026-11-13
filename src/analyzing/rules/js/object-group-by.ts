@@ -404,7 +404,7 @@ function isGroupingLoop(loopStmt: Statement, itemName: string | null, body: Node
 }
 
 export const objectGroupByMatcher: JsRuleMatcher = createJsAstMatcher({
-  fastTokens: [['.push', '.concat', '...'], ['.reduce', ' of ', '.forEach']],
+  fastTokens: [['.push', '.concat', '[...', '[ ...'], ['.reduce', ' of ', '.forEach']],
   featureGuardTokens: ['groupBy'],
   dedupeLines: true,
   kinds: [SyntaxKind.ForOfStatement, SyntaxKind.CallExpression],

@@ -8,10 +8,12 @@ import {
   type BinaryExpression,
   type Block,
   type CallExpression,
+  type ConstructorDeclaration,
   type ElementAccessExpression,
   type ExportDeclaration,
   type FunctionDeclaration,
   type FunctionExpression,
+  type GetAccessorDeclaration,
   type Identifier,
   type ImportDeclaration,
   type MethodDeclaration,
@@ -20,6 +22,7 @@ import {
   type ParenthesizedExpression,
   type PropertyAccessExpression,
   type SatisfiesExpression,
+  type SetAccessorDeclaration,
   type SourceFile,
   type Statement,
   type TypeAssertion,
@@ -113,6 +116,24 @@ export function isCallableScope(
   );
 }
 
+function isFunctionLikeScope(
+  scope: Node,
+): scope is
+  | FunctionDeclaration
+  | FunctionExpression
+  | ArrowFunction
+  | MethodDeclaration
+  | ConstructorDeclaration
+  | SetAccessorDeclaration
+  | GetAccessorDeclaration {
+  return (
+    isCallableScope(scope) ||
+    Node.isConstructorDeclaration(scope) ||
+    Node.isSetAccessorDeclaration(scope) ||
+    Node.isGetAccessorDeclaration(scope)
+  );
+}
+
 export const isCallableNode = isCallableScope;
 
 export function hasBindingName(
@@ -180,10 +201,10 @@ function getScopeBindingIndex(scope: Block | SourceFile): ScopeBindingIndex {
 
   let hoistedVarsByName: Map<string, VariableDeclaration> | null = null;
   const blockParent = scope.getParent();
-  if (Node.isSourceFile(scope) || (blockParent && isCallableScope(blockParent))) {
+  if (Node.isSourceFile(scope) || (blockParent && isFunctionLikeScope(blockParent))) {
     const hoisted = new Map<string, VariableDeclaration>();
     scope.forEachDescendant((desc, traversal) => {
-      if (isCallableScope(desc) || Node.isClassDeclaration(desc) || Node.isClassExpression(desc)) {
+      if (isFunctionLikeScope(desc) || Node.isClassDeclaration(desc) || Node.isClassExpression(desc)) {
         traversal.skip();
         return;
       }
@@ -245,7 +266,7 @@ export function resolveLexicalBinding(
   beforePos?: number,
 ): LexicalBinding | null {
   for (let current = startNode.getParent(); current; current = current.getParent()) {
-    if (isCallableScope(current)) {
+    if (isFunctionLikeScope(current)) {
       const param = current.getParameters().find((p) => hasBindingName(p, name));
       if (param) return { kind: 'parameter', node: param };
       if ((Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) && current.getName() === name) {

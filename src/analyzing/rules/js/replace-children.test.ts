@@ -452,6 +452,12 @@ void test('js/replace-children-innerhtml: negative / exempt cases', async (t) =>
       class TemplateComponent {
         private template!: HTMLTemplateElement;
         private tpl = document.createElement('template');
+        constructor(frag: DocumentFragment) {
+          frag.innerHTML = '';
+        }
+        set target(el: HTMLTemplateElement) {
+          el.innerHTML = '';
+        }
         reset() {
           this.template.innerHTML = '';
           this.tpl.innerHTML = '';
