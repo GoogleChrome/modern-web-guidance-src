@@ -39,8 +39,8 @@ A guide progresses through three sequential stages from concept to evaluated rel
 
 Translate a web platform feature into 2–5 distinct, action-oriented developer tasks (focusing on *what* the user is trying to accomplish rather than *how* the API works).
 
-* **Via a stub PR**: Create `guides/<category>/<use-case-slug>/guide.md` containing only the YAML frontmatter stub (`name`, `description`, `web-feature-ids`), validate structure with `pnpm test`, and open a draft/stub PR to align with the category's [Content Area Tech Lead (ATL)](../docs/ATLS.md) listed in [`.github/atls.json`](../.github/atls.json). *(Onboarded [Peers](../GOVERNANCE.md#peers) may fast-track directly to Stage 2).*
-* **Via an issue (no stub PR required)**: Alternatively, open a [`new-use-case` issue](../.github/ISSUE_TEMPLATE/new-use-case.yml) to propose the use case and align with the category's Content ATL.
+* **Via an issue**: Open a [`new-use-case` issue](../.github/ISSUE_TEMPLATE/new-use-case.yml) to propose the use case and align with the category's [Content Area Tech Lead (ATL)](../docs/ATLS.md) listed in [`.github/atls.json`](../.github/atls.json) before opening a PR.
+* **For onboarded [Peers](../GOVERNANCE.md#peers), Content ATLs, and Owners**: You may fast-track directly to Stage 2, or open a Stage 1 stub PR (`guides/<category>/<use-case-slug>/guide.md` containing only the YAML frontmatter stub with `draft: stub`) to align with the category ATL.
 
 * **Authoritative Specification**: **[`.agents/skills/project-use-cases/SKILL.md`](../.agents/skills/project-use-cases/SKILL.md)** (and **[`project-discipline-guides`](../.agents/skills/project-discipline-guides/SKILL.md)** for category hub guides).
 
