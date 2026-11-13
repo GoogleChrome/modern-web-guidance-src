@@ -6,14 +6,11 @@ import os from 'os';
 import { DatabaseSync } from 'node:sqlite';
 import {
   generateNormalizedTrajectory,
-  parseJetskiCliSession,
-  writeTrajectorySummary,
-  collectJetskiCliGuidesFromTrajectory,
-  collectJetskiCliToolsFromTrajectory,
-  extractJetskiCliModel,
-  extractJetskiCliTokenUsage
+  writeTrajectorySummary
 } from './trajectory-normalizer.ts';
+import { parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from './collection.ts';
+import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
 import { extractBase64TrajectoryPayloads } from './secret-guard.ts';
 import { exportTrajectories } from './trajectory-export.ts';
 import { Agents } from '../config.ts';
@@ -142,11 +139,11 @@ test('collectJetski metrics from trajectory files', async () => {
     writeTrajectorySummary(tempDir, parsed);
 
     // 3. Verify collection methods read strictly from summary
-    const guides = await collectJetskiCliGuidesFromTrajectory(tempDir);
+    const guides = await collectGuidesUsed(tempDir);
     assert.deepStrictEqual(guides.retrievedGuides, ['validate-input-after-interaction', 'required-field-feedback']);
     assert.deepStrictEqual(guides.fileReadGuides, ['required-field-feedback']);
 
-    const tools = collectJetskiCliToolsFromTrajectory(tempDir);
+    const tools = await collectGuidanceToolsUsed(tempDir);
     assert.deepStrictEqual(tools, ['modern-web-guidance']);
 
     const model = extractModelFromResults(tempDir);
@@ -154,12 +151,6 @@ test('collectJetski metrics from trajectory files', async () => {
 
     const tokens = extractTokenUsageFromResults(tempDir);
     assert.deepStrictEqual(tokens, { total: 1900, cached: 400 });
-
-    const directModel = extractJetskiCliModel(tempDir);
-    assert.strictEqual(directModel, 'gemini-3.6-flash');
-
-    const directTokens = extractJetskiCliTokenUsage(tempDir);
-    assert.deepStrictEqual(directTokens, { total: 1900, cached: 400 });
   } finally {
     removeTempDir(tempDir);
   }

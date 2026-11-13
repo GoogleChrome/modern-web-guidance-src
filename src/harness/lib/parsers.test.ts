@@ -4,14 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { extractTokenUsageFromResults, extractModelFromResults } from './collection.ts';
-import {
-  collectClaudeToolsFromTrajectory,
-  collectClaudeGuidesFromTrajectory,
-  collectCodexToolsFromTrajectory,
-  collectCodexGuidesFromTrajectory,
-  collectJetskiCliToolsFromTrajectory,
-  collectJetskiCliGuidesFromTrajectory
-} from './trajectory-normalizer.ts';
+import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
 
 function getMostRecentFiles(baseDir: string, pattern: string, count = 5): string[] {
   if (!fs.existsSync(baseDir)) return [];
@@ -75,8 +68,8 @@ test('Jetski CLI real trajectory parsing sanity check', async (t) => {
     const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
-    assert.doesNotThrow(() => collectJetskiCliToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectJetskiCliGuidesFromTrajectory(tempDir));
+    await assert.doesNotReject(async () => collectGuidanceToolsUsed(tempDir));
+    await assert.doesNotReject(async () => collectGuidesUsed(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }
@@ -103,8 +96,8 @@ test('Claude Code real trajectory parsing sanity check', async (t) => {
     const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
-    assert.doesNotThrow(() => collectClaudeToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectClaudeGuidesFromTrajectory(tempDir));
+    await assert.doesNotReject(async () => collectGuidanceToolsUsed(tempDir));
+    await assert.doesNotReject(async () => collectGuidesUsed(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }
@@ -131,8 +124,8 @@ test('Codex CLI real trajectory parsing sanity check', async (t) => {
     const model = extractModelFromResults(tempDir);
     assert.ok(typeof model === 'string', 'Model extracted as string');
 
-    assert.doesNotThrow(() => collectCodexToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectCodexGuidesFromTrajectory(tempDir));
+    await assert.doesNotReject(async () => collectGuidanceToolsUsed(tempDir));
+    await assert.doesNotReject(async () => collectGuidesUsed(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }

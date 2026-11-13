@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
-import { parseJsonlFile, copyFileIfExists, runAgentCliEntrypoint, type GuideUsage } from '../lib/agent-shared.ts';
+import { parseJsonlFile, copyFileIfExists, runAgentCliEntrypoint } from '../lib/agent-shared.ts';
 import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import {
@@ -10,12 +10,10 @@ import {
   type SubagentMetadata,
   type TrajectorySummary,
   extractRetrievedGuidesFromCommand,
-  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
@@ -46,12 +44,6 @@ export function getClaudeCodeCommandAndArgs(prompt: string, extraArgs: string[] 
 // NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
 // However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
 // into the test output directory to ensure uniform matching across the dashboard and metrics engine.
-const TRAJECTORY_GLOB = '*.jsonl';
-
-function getSessionFiles(dir: string): string[] {
-  return fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
-}
-
 export function coalesceClaudeEntries(entries: any[]): any[] {
   const result: any[] = [];
   const entriesById = new Map<string, any>();
@@ -313,78 +305,6 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
     retrievedGuides: Array.from(retrievedGuides),
     fileReadGuides: Array.from(fileReadGuides)
   });
-}
-
-export function extractClaudeMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
-  model: string;
-  tokenUsage?: { total: number; cached: number };
-  toolsUsed: string[];
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-} {
-  const summary = parseClaudeTrajectory(logData, subagentsMap);
-  return {
-    model: summary.model || 'unknown',
-    tokenUsage: summary.tokenUsage,
-    toolsUsed: summary.toolsUsed || [],
-    retrievedGuides: summary.retrievedGuides || [],
-    fileReadGuides: summary.fileReadGuides || []
-  };
-}
-
-export function loadClaudeLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
-  const logData: any[] = [];
-  const subagentsMap: Record<string, any[]> = {};
-  const files = getSessionFiles(dir);
-
-  const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
-  const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
-
-  for (const file of mainFiles) {
-    logData.push(...parseJsonlFile(path.join(dir, file)));
-  }
-
-  for (const file of subFiles) {
-    const subId = extractSubagentIdFromFilename(file);
-    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
-  }
-
-  return { logData, subagentsMap };
-}
-
-function getClaudeMetadataForDir(dir: string): ReturnType<typeof extractClaudeMetadata> {
-  const summary = readTrajectorySummary(dir);
-  if (summary) {
-    return {
-      model: summary.model || 'unknown',
-      tokenUsage: summary.tokenUsage,
-      toolsUsed: summary.toolsUsed || [],
-      retrievedGuides: summary.retrievedGuides || [],
-      fileReadGuides: summary.fileReadGuides || []
-    };
-  }
-  const { logData, subagentsMap } = loadClaudeLogs(dir);
-  return extractClaudeMetadata(logData, subagentsMap);
-}
-
-export async function collectClaudeGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
-  const meta = getClaudeMetadataForDir(dirPath);
-  return {
-    retrievedGuides: meta.retrievedGuides,
-    fileReadGuides: meta.fileReadGuides
-  };
-}
-
-export function extractClaudeCodeModel(resultsDir: string): string {
-  return getClaudeMetadataForDir(resultsDir).model;
-}
-
-export function extractClaudeCodeTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  return getClaudeMetadataForDir(dir).tokenUsage;
-}
-
-export function collectClaudeToolsFromTrajectory(dir: string): string[] {
-  return getClaudeMetadataForDir(dir).toolsUsed;
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
