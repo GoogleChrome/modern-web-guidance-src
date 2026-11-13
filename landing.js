@@ -8,9 +8,9 @@ import {
     getAgentBadge,
     getScrollBehavior,
     AGENT_DISPLAY_NAMES,
-    parseSuiteDateInfo,
-    formatSuiteDate,
-    getSuiteDayKey,
+    parseJobDateInfo,
+    formatJobDate,
+    getJobDayKey,
     isPopoverOpen,
     setPopoverOpen,
     SUPPORTS_ANCHOR_POSITIONING,
@@ -24,29 +24,29 @@ import {
     pickHigherPrecedenceEffort,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
-import { extractSuiteSummary } from './summary-extractor.js';
-import { updateHeroFromSuites } from './hero.js';
-import { updateShowcaseFromSuites } from './showcase.js';
+import { extractJobSummary } from './summary-extractor.js';
+import { updateHeroFromJobs } from './hero.js';
+import { updateShowcaseFromJobs } from './showcase.js';
 import { ApiClient, isAuthRejection } from './api.js';
 import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
 
 /**
- * @typedef {import('./insights.js').ManifestSuite & {
+ * @typedef {import('./insights.js').ManifestJob & {
  *   source: import('./api.js').DataSource;
  *   timestamp: string;
  *   agent: string;
  *   model: string;
- * }} LandingSuiteSummary
+ * }} LandingJobSummary
  */
 
 /** @typedef {'all' | import('./api.js').DataSource} SourceFilter */
 /** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
 /** @typedef {'asc' | 'desc'} SortDirection */
 /** @typedef {'all' | 'a11y'} InsightsMode */
-/** @typedef {'date' | 'uplift' | 'a11y' | 'time' | 'tokens'} SuiteSortKey */
+/** @typedef {'date' | 'uplift' | 'a11y' | 'time' | 'tokens'} JobSortKey */
 
-/** @type {Record<string, LandingSuiteSummary>} */
-let allTestData = {};
+/** @type {Record<string, LandingJobSummary>} */
+let allJobData = {};
 /** @type {Set<string>} */
 let selectedTestIds = new Set();
 /** @type {SourceFilter} */
@@ -65,12 +65,12 @@ let currentSearchFilter = '';
 let scheduledOnly = true;
 /** @type {'remote' | 'public' | null} */
 let loadedManifestSource = null;
-/** @type {SuiteSortKey} */
-let currentSuiteSort = 'date';
+/** @type {JobSortKey} */
+let currentJobSort = 'date';
 /** @type {SortDirection} */
-let currentSuiteSortDir = 'desc';
+let currentJobSortDir = 'desc';
 
-/** @type {Record<SuiteSortKey, SortDirection>} */
+/** @type {Record<JobSortKey, SortDirection>} */
 const DEFAULT_SORT_DIR = {
     date: 'desc',
     uplift: 'desc',
@@ -87,11 +87,11 @@ let currentInsightsMode = 'all';
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 /** @param {string} testId */
-function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
-/** @param {LandingSuiteSummary} [testInfo] */
-function isScheduledOrCurated(testInfo) {
-    if (!testInfo) return false;
-    return Boolean(testInfo.curated) || isScheduledSuite(testInfo.testId);
+function isScheduledJob(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
+/** @param {LandingJobSummary} [jobInfo] */
+function isScheduledOrCurated(jobInfo) {
+    if (!jobInfo) return false;
+    return Boolean(jobInfo.curated) || isScheduledJob(jobInfo.testId);
 }
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -124,11 +124,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        selectedTestIds = new Set(Object.keys(allTestData));
+        selectedTestIds = new Set(Object.keys(allJobData));
         applyTestsParam(params.get('tests'));
         applySearchParam(params.get('q'));
 
-        renderSuites();
+        renderJobs();
         syncHero();
         applyGuidesHash(window.location.hash, true);
     } catch (error) {
@@ -141,10 +141,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
-    selectedTestIds = new Set(Object.keys(allTestData));
+    selectedTestIds = new Set(Object.keys(allJobData));
     applyTestsParam(params.get('tests'));
     applySearchParam(params.get('q'));
-    renderSuites();
+    renderJobs();
     applyGuidesHash(window.location.hash, false);
 });
 
@@ -155,7 +155,7 @@ function applyTestsParam(testsParam) {
     const requestedIds = testsParam.split(',').filter(id => id.trim() !== '');
     const matchIds = new Set();
     requestedIds.forEach(req => {
-        if (allTestData[req]) matchIds.add(req);
+        if (allJobData[req]) matchIds.add(req);
     });
     if (matchIds.size > 0) { selectedTestIds = matchIds; }
 }
@@ -202,7 +202,7 @@ function setupTestFilters() {
         }
         showAllStacked = false;
         updateUrlParams();
-        renderSuites();
+        renderJobs();
     });
 }
 
@@ -232,7 +232,7 @@ function setupTableFilters() {
             if (target instanceof HTMLSelectElement || target instanceof HTMLInputElement) {
                 updateFn(target.value);
                 syncSelectStyles(target);
-                renderSuites();
+                renderJobs();
             }
         });
         syncSelectStyles(el);
@@ -244,7 +244,7 @@ function setupTableFilters() {
             syncSelectStyles(mobileAgent);
             const desktopAgent = document.getElementById('filter-agent');
             if (desktopAgent instanceof HTMLSelectElement) { desktopAgent.value = mobileAgent.value; syncSelectStyles(desktopAgent); }
-            renderSuites();
+            renderJobs();
         });
     }
     const mobileSort = document.getElementById('mobile-sort-select');
@@ -252,9 +252,9 @@ function setupTableFilters() {
         mobileSort.addEventListener('change', () => {
             const [sortKey, sortDir] = mobileSort.value.split(':');
             if (sortKey && (sortDir === 'asc' || sortDir === 'desc')) {
-                currentSuiteSort = /** @type {SuiteSortKey} */ (sortKey);
-                currentSuiteSortDir = sortDir;
-                renderSuites();
+                currentJobSort = /** @type {JobSortKey} */ (sortKey);
+                currentJobSortDir = sortDir;
+                renderJobs();
             }
         });
     }
@@ -271,7 +271,7 @@ function setupScheduledToggle() {
     }
     if (label) label.style.display = '';
     scheduledOnly = check.checked;
-    check.addEventListener('change', () => { scheduledOnly = check.checked; renderSuites(); });
+    check.addEventListener('change', () => { scheduledOnly = check.checked; renderJobs(); });
 }
 const STACKED_MAX_WIDTH = 640;
 const STACKED_PAGE_SIZE = 10;
@@ -290,7 +290,7 @@ function setupScrollRegion() {
         const ro = new ResizeObserver(entries => {
             const width = entries[0]?.contentRect.width ?? wrap.clientWidth;
             const stacked = width < STACKED_MAX_WIDTH;
-            if (stacked !== isStacked) { isStacked = stacked; renderSuites(); }
+            if (stacked !== isStacked) { isStacked = stacked; renderJobs(); }
         });
         ro.observe(wrap);
         isStacked = wrap.clientWidth < STACKED_MAX_WIDTH;
@@ -299,11 +299,11 @@ function setupScrollRegion() {
 function setupSortButtons() {
     document.querySelectorAll('.suites-table thead .sort-btn').forEach(btn => {
         if (!(btn instanceof HTMLButtonElement)) return;
-        const key = /** @type {SuiteSortKey | undefined} */ (btn.dataset.sort);
+        const key = /** @type {JobSortKey | undefined} */ (btn.dataset.sort);
         if (!key) return;
         btn.addEventListener('click', () => {
-            if (currentSuiteSort === key) { currentSuiteSortDir = currentSuiteSortDir === 'asc' ? 'desc' : 'asc'; } else { currentSuiteSort = key; currentSuiteSortDir = DEFAULT_SORT_DIR[key]; }
-            renderSuites();
+            if (currentJobSort === key) { currentJobSortDir = currentJobSortDir === 'asc' ? 'desc' : 'asc'; } else { currentJobSort = key; currentJobSortDir = DEFAULT_SORT_DIR[key]; }
+            renderJobs();
         });
     });
     syncSortHeaders();
@@ -312,11 +312,11 @@ function syncSortHeaders() {
     document.querySelectorAll('.suites-table thead th').forEach(th => {
         const btn = th.querySelector('.sort-btn');
         if (!(btn instanceof HTMLButtonElement)) return;
-        if (btn.dataset.sort === currentSuiteSort) { th.setAttribute('aria-sort', currentSuiteSortDir === 'asc' ? 'ascending' : 'descending'); } else { th.removeAttribute('aria-sort'); }
+        if (btn.dataset.sort === currentJobSort) { th.setAttribute('aria-sort', currentJobSortDir === 'asc' ? 'ascending' : 'descending'); } else { th.removeAttribute('aria-sort'); }
     });
     const mobileSort = document.getElementById('mobile-sort-select');
     if (mobileSort instanceof HTMLSelectElement) {
-        const targetVal = `${currentSuiteSort}:${currentSuiteSortDir}`;
+        const targetVal = `${currentJobSort}:${currentJobSortDir}`;
         if (Array.from(mobileSort.options).some(o => o.value === targetVal)) { mobileSort.value = targetVal; }
     }
 }
@@ -436,7 +436,7 @@ function syncSelectStyles(el) {
 
 function updateUrlParams() {
     const url = new URL(window.location.href);
-    const allIds = Object.keys(allTestData);
+    const allIds = Object.keys(allJobData);
     if (selectedTestIds.size === allIds.length) {
         url.searchParams.delete('tests');
     } else {
@@ -462,7 +462,7 @@ function setEmptyState(message) {
 
 /**
  * Memoized by testId so overlapping syncHero() calls (e.g. local load, then remote load with a
- * cached token) share one request per suite instead of refetching every missing evals.json.
+ * cached token) share one request per job instead of refetching every missing evals.json.
  * @type {Map<string, Promise<import('../harness/lib/metrics.ts').EvalsReport>>}
  */
 const heroEvalsCache = new Map();
@@ -482,7 +482,7 @@ function fetchEvalsForHero(testId) {
 /** @param {string} testId
  * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>} */
 async function fetchEvalsUncached(testId) {
-    const match = Object.values(allTestData).find(s => s.testId === testId);
+    const match = Object.values(allJobData).find(s => s.testId === testId);
     if (match?.source === 'remote' || match?.source === 'public') {
         return new ApiClient(match.source).getEvals(testId);
     }
@@ -495,7 +495,7 @@ async function fetchEvalsUncached(testId) {
 /**
  * The data source this page actually loaded from, for the hero and for links to
  * other pages. Usually `resolveDataSource()`, except after a 403 sent a signed-in
- * visitor to the public copy: links must then say `source=public` or the suite
+ * visitor to the public copy: links must then say `source=public` or the job
  * page would try the bucket again and bounce back here.
  * @returns {import('./api.js').DataSource}
  */
@@ -510,16 +510,16 @@ function isPublicView() {
 }
 
 function syncHero() {
-    const suites = Object.values(allTestData);
+    const jobs = Object.values(allJobData);
     const source = activeDataSource();
-    updateShowcaseFromSuites(suites, { source });
-    updateHeroFromSuites(suites, {
+    updateShowcaseFromJobs(jobs, { source });
+    updateHeroFromJobs(jobs, {
         source,
         fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
-            updateShowcaseFromSuites(suites, { hydrated: true, source });
+            updateShowcaseFromJobs(jobs, { hydrated: true, source });
             refreshFilterOptions();
-            renderSuites();
+            renderJobs();
             const drawer = document.getElementById('breakdowns');
             if (drawer instanceof HTMLDetailsElement && drawer.open) { renderPivotInsights(); }
         }
@@ -538,11 +538,11 @@ async function loadLocalTests() {
             // Try fetching suites.gen.json as fallback for static mode
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return; // Silent fail if both fail
-            const suitesData = await staticRes.json();
-            if (Array.isArray(suitesData)) {
-                manifest = { suites: suitesData };
+            const jobsData = await staticRes.json();
+            if (Array.isArray(jobsData)) {
+                manifest = { suites: jobsData };
             } else {
-                manifest = suitesData;
+                manifest = jobsData;
             }
             useResultsPrefix = true;
         } else {
@@ -553,24 +553,24 @@ async function loadLocalTests() {
             setEmptyState(null);
         }
 
-        // Load local test data
+        // Load local job data
         const sourceName = useResultsPrefix ? 'static' : 'local';
-        for (const suite of manifest.suites) {
-            if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
-                registerSuiteSummary(suite, sourceName, { refreshFilters: false });
+        for (const job of manifest.suites) {
+            if (typeof job === 'object' && job.testId && job.guidedStats) {
+                registerJobSummary(job, sourceName, { refreshFilters: false });
             } else {
-                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
-                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                const testId = typeof job === 'string' ? job : job.id || job.testId;
+                const jobTimestamp = typeof job === 'object' ? job.timestamp : undefined;
                 if (!testId) continue;
                 try {
                     const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
                     const response = await fetch(`${fetchPath}?source=${sourceName}&t=${Date.now()}`);
                     if (response.ok) {
                         const parsed = await response.json();
-                        registerTestData(testId, sourceName, parsed, suiteTimestamp);
+                        registerJobData(testId, sourceName, parsed, jobTimestamp);
                     }
                 } catch (e) {
-                    console.warn(`Failed to load local test ${testId}:`, e);
+                    console.warn(`Failed to load local job ${testId}:`, e);
                 }
             }
         }
@@ -584,12 +584,12 @@ async function loadLocalTests() {
 async function loadManifestTests(source) {
     loadedManifestSource = source;
     try {
-        const manifest = await new ApiClient(source).getSuitesManifest();
+        const manifest = await new ApiClient(source).getJobsManifest();
         if (manifest.length > 0) {
             setEmptyState(null);
             for (const item of manifest) {
                 if (item && item.testId) {
-                    registerSuiteSummary(item, source, { refreshFilters: false });
+                    registerJobSummary(item, source, { refreshFilters: false });
                 }
             }
             refreshFilterOptions();
@@ -599,16 +599,16 @@ async function loadManifestTests(source) {
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
         if (!initialTests || initialTests.trim() === '') {
-            selectedTestIds = new Set(Object.keys(allTestData));
+            selectedTestIds = new Set(Object.keys(allJobData));
         } else {
             applyTestsParam(initialTests);
         }
         applySearchParam(params.get('q'));
-        renderSuites();
+        renderJobs();
         syncHero();
 
     } catch (error) {
-        console.error(`Error loading ${source} suites:`, error);
+        console.error(`Error loading ${source} jobs:`, error);
         // The bucket rejected the token; show the public copy rather than nothing. Not on the
         // dev server's local view, where the bucket is merely merged in: a stale token there
         // must not mix out/public-evals/ into local results. (Checked by mode rather than
@@ -625,22 +625,22 @@ async function loadManifestTests(source) {
  * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
  * @param {string} [forcedTimestamp]
  */
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+function registerJobData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractJobSummary(testId, parsed, forcedTimestamp);
     if (summary) {
-        registerSuiteSummary(summary, source);
+        registerJobSummary(summary, source);
     }
 }
 
 /**
- * @param {import('./insights.js').ManifestSuite} summary
+ * @param {import('./insights.js').ManifestJob} summary
  * @param {import('./api.js').DataSource} source
  * @param {{ refreshFilters?: boolean }} [options] Pass `refreshFilters: false` when registering
  *     in a batch, then call `refreshFilterOptions()` once afterward.
  */
-function registerSuiteSummary(summary, source, { refreshFilters = true } = {}) {
+function registerJobSummary(summary, source, { refreshFilters = true } = {}) {
     const compoundKey = `${summary.testId}|||${source}`;
-    allTestData[compoundKey] = {
+    allJobData[compoundKey] = {
         ...summary,
         source,
         timestamp: summary.timestamp || '',
@@ -654,17 +654,17 @@ function refreshFilterOptions() {
     updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('mobile-filter-agent-group', 'agent', agentDisplayNames);
     updateSourceFilterOptions();
-    updateRunsFilterDatalist();
+    updateJobsFilterDatalist();
 }
 
-function updateRunsFilterDatalist() {
+function updateJobsFilterDatalist() {
     const datalist = document.getElementById('runs-filter-datalist');
     if (!datalist) return;
     /** @type {Map<string, { count: number, label: string }>} */
     const suggestions = new Map();
     /** @type {Map<string, number>} */
     const effortCounts = new Map();
-    for (const t of Object.values(allTestData)) {
+    for (const t of Object.values(allJobData)) {
         if (t.model && t.model !== 'unknown') {
             const prev = suggestions.get(t.model);
             suggestions.set(t.model, { count: (prev?.count || 0) + 1, label: '' });
@@ -698,7 +698,7 @@ function updateSourceFilterOptions() {
     if (!group) return;
     const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static', public: 'Public' };
     const values = /** @type {Array<import('./data-source.js').DataSource>} */ (
-        [...new Set(Object.values(allTestData).map(t => t.source).filter(Boolean))].sort()
+        [...new Set(Object.values(allJobData).map(t => t.source).filter(Boolean))].sort()
     );
     if (values.length === 0) return;
     const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
@@ -718,7 +718,7 @@ function updateFilterOptions(groupId, key, displayNames = {}) {
     const group = document.getElementById(groupId);
     if (!group) return;
 
-    const values = /** @type {string[]} */ ([...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))]).sort();
+    const values = /** @type {string[]} */ ([...new Set(Object.values(allJobData).map(t => t[key]).filter(Boolean))]).sort();
     const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
     if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
 
@@ -728,12 +728,12 @@ function updateFilterOptions(groupId, key, displayNames = {}) {
 }
 
 
-/** @param {LandingSuiteSummary} testInfo
- * @returns {import('./utils.js').SuiteDateInfo} */
-function getSuiteDateInfo(testInfo) { return parseSuiteDateInfo(testInfo.timestamp, testInfo.testId) || { date: new Date(0), dateOnly: false }; }
-/** @param {LandingSuiteSummary} testInfo
+/** @param {LandingJobSummary} jobInfo
+ * @returns {import('./utils.js').JobDateInfo} */
+function getJobDateInfo(jobInfo) { return parseJobDateInfo(jobInfo.timestamp, jobInfo.testId) || { date: new Date(0), dateOnly: false }; }
+/** @param {LandingJobSummary} jobInfo
  * @returns {Date} */
-function getSuiteDate(testInfo) { return getSuiteDateInfo(testInfo).date; }
+function getJobDate(jobInfo) { return getJobDateInfo(jobInfo).date; }
 
 /** @param {{ passed: number, total: number } | undefined} stats */
 function toRateExact(stats) { return stats && stats.total > 0 ? (stats.passed / stats.total) * 100 : 0; }
@@ -752,7 +752,7 @@ function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? toRate
 function hasBothSides(uStats, gStats) { return (uStats?.total || 0) > 0 && (gStats?.total || 0) > 0; }
 /** @param {{ passed: number, total: number } | undefined} stats */
 function rateOrNull(stats) { return (stats?.total || 0) > 0 ? toRate(stats) : null; }
-/** @param {import('./summary-extractor.js').SuiteA11yStats | undefined} a11y
+/** @param {import('./summary-extractor.js').JobA11yStats | undefined} a11y
  * @returns {{ u: { passed: number, total: number }, g: { passed: number, total: number } } | null} */
 function a11yPair(a11y) {
     if (!a11y || !(a11y.guidedTotal > 0 || a11y.unguidedTotal > 0)) return null;
@@ -793,7 +793,7 @@ function parseSearchQuery(query) {
 function getFilteredKeys({ ignoreModelFilter = false } = {}) {
     const { effortLevels, textQuery } = parseSearchQuery(currentSearchFilter);
     return Array.from(selectedTestIds).filter(compoundKey => {
-        const t = allTestData[compoundKey];
+        const t = allJobData[compoundKey];
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
@@ -801,11 +801,11 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
             return false;
         }
         if (!(ignoreModelFilter && splitModelByEffort && splitRowEffortActive) && effortLevels.length > 0) {
-            const suiteEffort = getEffortLevel(t.reasoningEffort);
-            if (!effortLevels.includes(suiteEffort)) return false;
+            const jobEffort = getEffortLevel(t.reasoningEffort);
+            if (!effortLevels.includes(jobEffort)) return false;
         }
         if (textQuery) {
-            const { label, ldap } = formatSuiteLabel(t);
+            const { label, ldap } = formatJobLabel(t);
             const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
             const curatedKeywords = t.curated ? '1.0 baseline curated' : '';
             const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap} ${curatedKeywords}`.toLowerCase();
@@ -819,20 +819,20 @@ function getFilteredKeys({ ignoreModelFilter = false } = {}) {
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
     const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
-    const anyScheduled = filtered.some(k => isScheduledOrCurated(allTestData[k]));
+    const anyScheduled = filtered.some(k => isScheduledOrCurated(allJobData[k]));
     const keys = (effectiveScheduledOnly && !currentSearchFilter && anyScheduled)
-        ? filtered.filter(k => isScheduledOrCurated(allTestData[k]))
+        ? filtered.filter(k => isScheduledOrCurated(allJobData[k]))
         : filtered;
-    return sortSuiteKeys(keys);
+    return sortJobKeys(keys);
 }
 
-/** @param {LandingSuiteSummary} t
- * @param {SuiteSortKey} key
+/** @param {LandingJobSummary} t
+ * @param {JobSortKey} key
  * @returns {number | null} */
 function getSortValue(t, key) {
     switch (key) {
         case 'date':
-            return getSuiteDate(t).getTime();
+            return getJobDate(t).getTime();
         case 'uplift':
             return upliftPp(t.unguidedStats, t.guidedStats);
         case 'a11y': { const pair = a11yPair(t.a11yStats); return pair ? upliftPp(pair.u, pair.g) : null; }
@@ -849,10 +849,10 @@ function getSortValue(t, key) {
     }
 }
 /** @param {string[]} keys */
-function sortSuiteKeys(keys) {
-    const dir = currentSuiteSortDir === 'asc' ? 1 : -1;
+function sortJobKeys(keys) {
+    const dir = currentJobSortDir === 'asc' ? 1 : -1;
     return keys
-        .map((k, i) => ({ k, i, v: getSortValue(allTestData[k], currentSuiteSort), d: getSuiteDate(allTestData[k]).getTime() }))
+        .map((k, i) => ({ k, i, v: getSortValue(allJobData[k], currentJobSort), d: getJobDate(allJobData[k]).getTime() }))
         .sort((a, b) => {
             if (a.v === null && b.v === null) return b.d - a.d || a.i - b.i;
             if (a.v === null) return 1;
@@ -918,13 +918,13 @@ function renderDeltaPill(deltaPct, words) {
 function renderNotAvailable(what) {
     return `<span class="not-available" aria-hidden="true">—</span><span class="visually-hidden">${escapeHtml(what)} not available</span>`;
 }
-function renderSuites() {
+function renderJobs() {
     const container = document.getElementById('suites-list');
     if (!container) return;
     syncSortHeaders();
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
-    const anyScheduled = filteredKeys.some(k => isScheduledOrCurated(allTestData[k]));
+    const anyScheduled = filteredKeys.some(k => isScheduledOrCurated(allJobData[k]));
     const isPublic = isPublicView();
     const scheduledCheck = document.getElementById('scheduled-only-check');
     const scheduledLabel = document.getElementById('scheduled-only-label') || scheduledCheck?.closest('label');
@@ -947,61 +947,61 @@ function renderSuites() {
     const paged = !showAllStacked && visibleKeys.length > pageSize;
     table?.classList.toggle('paged', paged && isStacked);
     table?.classList.toggle('paged-desktop', paged && !isStacked);
-    renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged, pageSize);
+    renderJobsCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged, pageSize);
     syncOptionalColumns();
     if (activeBarbellAnchor && container.contains(activeBarbellAnchor)) {
         hideBarbellTooltip();
     }
 
     if (visibleKeys.length === 0) {
-        const anyData = Object.keys(allTestData).length > 0;
+        const anyData = Object.keys(allJobData).length > 0;
         container.innerHTML = `<tr class="suites-empty-row"> <td colspan="${colCount}">${anyData ? 'No jobs match the current filters.' : 'Loading jobs…'}</td> </tr>`;
         return;
     }
 
     let html = '';
     visibleKeys.forEach(compoundKey => {
-        const testInfo = allTestData[compoundKey];
-        const testId = testInfo.testId;
-        const dateInfo = getSuiteDateInfo(testInfo);
+        const jobInfo = allJobData[compoundKey];
+        const testId = jobInfo.testId;
+        const dateInfo = getJobDateInfo(jobInfo);
         const date = dateInfo.date;
 
-        const gRate = rateOrNull(testInfo.guidedStats);
-        const uRate = rateOrNull(testInfo.unguidedStats);
-        const overallPp = upliftPp(testInfo.unguidedStats, testInfo.guidedStats);
+        const gRate = rateOrNull(jobInfo.guidedStats);
+        const uRate = rateOrNull(jobInfo.unguidedStats);
+        const overallPp = upliftPp(jobInfo.unguidedStats, jobInfo.guidedStats);
 
-        const a11y = a11yPair(testInfo.a11yStats);
+        const a11y = a11yPair(jobInfo.a11yStats);
 
-        const rt = testInfo.efficiencyStats?.runtime;
+        const rt = jobInfo.efficiencyStats?.runtime;
         const hasRuntime = Boolean(rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0));
 
-        const tok = testInfo.efficiencyStats?.tokens;
+        const tok = jobInfo.efficiencyStats?.tokens;
         const hasTokens = Boolean(tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0));
 
-        const localLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(testInfo.source)}`;
-        const a11yLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(testInfo.source)}&mode=a11y&sort=a11y-desc`;
-        const taskCount = testInfo.taskCount || 0;
-        const maxRuns = testInfo.maxRuns || 1;
-        const earlyFailureRate = testInfo.earlyFailureRate || 0;
-        const unguidedLeakRate = testInfo.unguidedLeakRate || 0;
-        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
-        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
-        const isFaulty = earlyFailureRate === 100;
-        const scheduled = isScheduledSuite(testId);
-        const curated = Boolean(testInfo.curated);
-        const { label, ldap } = formatSuiteLabel(testInfo);
-        const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
-        const dateDisplay = formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric' });
-        const suiteBarbellTitle = (scheduled || curated)
+        const localLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(jobInfo.source)}`;
+        const a11yLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(jobInfo.source)}&mode=a11y&sort=a11y-desc`;
+        const taskCount = jobInfo.taskCount || 0;
+        const maxTrials = jobInfo.maxRuns || 1;
+        const infraErrorRate = jobInfo.earlyFailureRate || 0;
+        const unguidedLeakRate = jobInfo.unguidedLeakRate || 0;
+        const uErr = jobInfo.unguidedErrorRate ?? infraErrorRate;
+        const gErr = jobInfo.guidedErrorRate ?? infraErrorRate;
+        const isFaulty = infraErrorRate === 100;
+        const scheduled = isScheduledJob(testId);
+        const curated = Boolean(jobInfo.curated);
+        const { label, ldap } = formatJobLabel(jobInfo);
+        const agentDisplay = agentDisplayNames[jobInfo.agent] || jobInfo.agent;
+        const dateDisplay = formatJobDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric' });
+        const jobBarbellTitle = (scheduled || curated)
             ? `${dateDisplay} · ${agentDisplay}`
-            : `${label || testId}${testInfo.agent && testInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
-        const modelPart = testInfo.model && testInfo.model !== 'unknown' ? testInfo.model : '';
-        const overallScope = taskCount > 0 ? `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}${maxRuns > 1 ? ` ×${maxRuns}` : ''}` : 'single run';
+            : `${label || testId}${jobInfo.agent && jobInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
+        const modelPart = jobInfo.model && jobInfo.model !== 'unknown' ? jobInfo.model : '';
+        const overallScope = taskCount > 0 ? `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}${maxTrials > 1 ? ` ×${maxTrials}` : ''}` : 'single job';
         const overallSub = ['Pass rate', modelPart, overallScope].filter(Boolean).join(' · ');
-        const uTotal = testInfo.unguidedStats?.total || 0;
-        const gTotal = testInfo.guidedStats?.total || 0;
-        const uDetail = uTotal > 0 ? `${(testInfo.unguidedStats?.passed || 0).toLocaleString('en-US')}/${uTotal.toLocaleString('en-US')} checks` : '';
-        const gDetail = gTotal > 0 ? `${(testInfo.guidedStats?.passed || 0).toLocaleString('en-US')}/${gTotal.toLocaleString('en-US')} checks` : '';
+        const uTotal = jobInfo.unguidedStats?.total || 0;
+        const gTotal = jobInfo.guidedStats?.total || 0;
+        const uDetail = uTotal > 0 ? `${(jobInfo.unguidedStats?.passed || 0).toLocaleString('en-US')}/${uTotal.toLocaleString('en-US')} checks` : '';
+        const gDetail = gTotal > 0 ? `${(jobInfo.guidedStats?.passed || 0).toLocaleString('en-US')}/${gTotal.toLocaleString('en-US')} checks` : '';
         const overallErrAttr = uErr > 0 || gErr > 0 ? '1' : '';
         let a11yCellAttrs = '';
         let a11yCellHtml = '';
@@ -1009,14 +1009,14 @@ function renderSuites() {
             const a11yURate = rateOrNull(a11y.u);
             const a11yGRate = rateOrNull(a11y.g);
             const a11yPp = upliftPp(a11y.u, a11y.g);
-            const a11yGuideCount = testInfo.a11yStats?.guideCount || 0;
+            const a11yGuideCount = jobInfo.a11yStats?.guideCount || 0;
             const a11yScope = a11yGuideCount > 0
                 ? `${a11yGuideCount} ${a11yGuideCount === 1 ? 'guide' : 'guides'}`
                 : overallScope;
             const a11ySub = ['Automated accessibility checks', modelPart, a11yScope].filter(Boolean).join(' · ');
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
-            a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
+            a11yCellAttrs = ` data-barbell-title="${escapeHtml(jobBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
             a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderA11yCompact(a11yURate, a11yGRate, a11yPp)} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
         } else { a11yCellHtml = renderNotAvailable('Automated accessibility checks'); }
 
@@ -1034,7 +1034,7 @@ function renderSuites() {
         const adhocLabelHtml = (!scheduled && !curated && label) ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
         const metaParts = [
-            taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
+            taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxTrials > 1 ? ` ×${maxTrials}` : ''}${infraErrorRate > 0 ? ` (${infraErrorRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
             `<span class="nowrap">${escapeHtml(timeAgo(date))}</span>`,
             ldap ? `<span class="nowrap">${escapeHtml(ldap)}</span>` : ''
         ].filter(Boolean).join(' · ');
@@ -1048,9 +1048,9 @@ function renderSuites() {
                         <span class="suite-meta">${metaParts}</span>
                     </a>
                 </th>
-                <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td class="model-cell"><span class="model-cell-inner"><span class="model-name">${escapeHtml(testInfo.model || '')}</span>${testInfo.model ? renderEffortChip(testInfo.reasoningEffort, { separator: false }) : ''}</span></td>
-                <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
+                <td class="agent-cell" data-agent="${escapeHtml(jobInfo.agent)}"><span>${getAgentBadge(jobInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
+                <td class="model-cell"><span class="model-cell-inner"><span class="model-name">${escapeHtml(jobInfo.model || '')}</span>${jobInfo.model ? renderEffortChip(jobInfo.reasoningEffort, { separator: false }) : ''}</span></td>
+                <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(jobBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
                         <span class="visually-hidden"> (open per-guide results)</span>
@@ -1059,7 +1059,7 @@ function renderSuites() {
                 <td class="a11y-cell metric-cell"${a11yCellAttrs}>${a11yCellHtml}</td>
                 <td class="metric-cell">${timeCellHtml}</td>
                 <td class="metric-cell tokens-cell">${tokenCellHtml}</td>
-                <td class="source-cell">${escapeHtml(testInfo.source)}</td>
+                <td class="source-cell">${escapeHtml(jobInfo.source)}</td>
             </tr>
         `;
     });
@@ -1071,14 +1071,14 @@ function renderSuites() {
 }
 
 /**
- * Columns whose value is identical for every loaded run carry no information, so
+ * Columns whose value is identical for every loaded job carry no information, so
  * hide them (Source) to keep the table within the page width. Cells stay
  * in the DOM so the stacked-layout labels (nth-child) keep lining up.
  */
 function syncOptionalColumns() {
     const table = document.querySelector('.suites-table');
     if (!table) return;
-    const all = Object.values(allTestData);
+    const all = Object.values(allJobData);
     const sources = new Set(all.map(t => t.source));
     table.classList.toggle('hide-source', !isLocalServer() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
@@ -1090,10 +1090,10 @@ function syncOptionalColumns() {
  * @param {boolean} paged
  * @param {number} pageSize
  */
-function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKTOP_PAGE_SIZE) {
+function renderJobsCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKTOP_PAGE_SIZE) {
     const el = document.getElementById('suites-count');
     if (!el) return;
-    const total = Object.keys(allTestData).length;
+    const total = Object.keys(allJobData).length;
     el.innerHTML = '';
     if (total === 0) return;
     const visibleNow = paged ? Math.min(pageSize, shown) : shown;
@@ -1111,7 +1111,7 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
         btn.textContent = `Show all ${shown} jobs`;
         btn.addEventListener('click', () => {
             showAllStacked = true;
-            renderSuites();
+            renderJobs();
             const rows = document.querySelectorAll('#suites-list .suite-table-row');
             const next = rows[pageSize]?.querySelector('a');
             if (next instanceof HTMLElement) next.focus();
@@ -1127,18 +1127,18 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
 /**
  * Splits "nightly-2026-10-09_07-00-02-antigravity_cli" into a short label plus
  * any trailing owner tag, dropping the agent tokens that other columns show.
- * @param {LandingSuiteSummary} testInfo
+ * @param {LandingJobSummary} jobInfo
  * @returns {{ label: string, ldap: string }}
  */
-function formatSuiteLabel(testInfo) {
-    const { testId, agent } = testInfo;
-    if (!testId) return { label: 'evaluation-run', ldap: '' };
+function formatJobLabel(jobInfo) {
+    const { testId, agent } = jobInfo;
+    if (!testId) return { label: 'evaluation-job', ldap: '' };
 
     const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
     const parts = testId.split(timeRegex);
     let prefix = (parts[0] || '').replace(/^[-_]+|[-_]+$/g, '');
     let suffix = (parts[1] || '').replace(/^[-_]+|[-_]+$/g, '');
-    const label = prefix || 'evaluation-run';
+    const label = prefix || 'evaluation-job';
     if (!suffix) return { label, ldap: '' };
     const normalize = (/** @type {string} */ s) => (s || '').toLowerCase().replace(/[-_]+/g, '');
     const normAgent = normalize(agent);
@@ -1230,7 +1230,7 @@ function renderBarbellTooltipContent(cell) {
     const title = cell.dataset.barbellTitle || '';
     const kind = cell.dataset.barbellKind || 'guide';
     const metric = cell.dataset.barbellMetric || 'Pass rate';
-    const runs = parseInt(cell.dataset.barbellRuns || '0') || 0;
+    const jobCount = parseInt(cell.dataset.barbellRuns || '0') || 0;
     // Empty attributes mean that side (or the comparison) has no data.
     const parseOrNull = (/** @type {string | undefined} */ v) => (v === undefined || v === '') ? null : (parseInt(v) || 0);
     const uRate = parseOrNull(cell.dataset.barbellU);
@@ -1243,8 +1243,8 @@ function renderBarbellTooltipContent(cell) {
     const hasErr = cell.dataset.barbellErr === '1';
     const liftCls = uplift !== null && uplift > 0 ? 'up' : (uplift !== null && uplift < 0 ? 'down' : 'flat');
     const liftText = uplift === null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`;
-    const runsText = `${runs} ${runs === 1 ? 'job' : 'jobs'}`;
-    const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
+    const jobsText = `${jobCount} ${jobCount === 1 ? 'job' : 'jobs'}`;
+    const subText = cell.dataset.barbellSub || `${metric} · median across ${jobsText}`;
     const effortNote = cell.dataset.barbellEffort || '';
     const effortHtml = effortNote ? ` <div class="barbell-tooltip-effort">${escapeHtml(effortNote)}</div>` : '';
     const uExtraHtml = uDetail !== ''
@@ -1268,11 +1268,11 @@ function renderBarbellTooltipContent(cell) {
         liftLabel = 'Accessibility lift';
         note = 'Accessibility checks passed without MWG and with MWG across the selected job(s); lift is the percentage-point difference.';
     } else if (kind === 'guide') {
-        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across jobs.' : ''}`;
+        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${jobsText} in this date window; the horizontal bar spans the median lift.${jobCount > 1 ? ' Shaded bands show ±1 standard deviation across jobs.' : ''}`;
     } else if (kind === 'dimension') {
-        note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${runsText} for this dimension; the horizontal bar spans the median lift.`;
+        note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${jobsText} for this dimension; the horizontal bar spans the median lift.`;
     } else {
-        note = `Vertical ticks mark this model’s median job ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from trials with infra errors before grading.' : ''}`;
+        note = `Vertical ticks mark this model’s median job ${metric.toLowerCase()} without MWG and with MWG across ${jobsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from trials with infra errors before grading.' : ''}`;
     }
 
     return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>${effortHtml} <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
@@ -1296,7 +1296,7 @@ function getInsightWindowOptions() {
  * @param {number} limit
  * @returns {string[]} */
 function filterRecentDays(keys, limit) {
-    const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
+    const dayOf = (/** @type {string} */ k) => getJobDayKey(getJobDateInfo(allJobData[k]));
     const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
     const activeDates = new Set(sortedDates.slice(-limit));
     return keys.filter(k => activeDates.has(dayOf(k)));
@@ -1311,27 +1311,27 @@ function getInsightKeys() {
 
 /**
  * Returns compound keys for the "By Model" breakdown. Unlike `getInsightKeys()`,
- * this includes models that only have non-scheduled runs (such as `pi` evaluations
+ * this includes models that only have non-scheduled jobs (such as `pi` evaluations
  * on Mistral or Qwen) and applies the `limit` day window per model so models
  * evaluated on earlier dates remain visible.
  * @returns {string[]}
  */
 function getModelInsightKeys() {
     const candidates = getFilteredKeys({ ignoreModelFilter: true })
-        .filter(k => Boolean(allTestData[k]?.model && allTestData[k].model !== 'unknown'));
+        .filter(k => Boolean(allJobData[k]?.model && allJobData[k].model !== 'unknown'));
     const { showAll, limit } = getInsightWindowOptions();
     const ignoreSplitEffortSearch = splitModelByEffort && splitRowEffortActive && !parseSearchQuery(currentSearchFilter).textQuery;
     const byBucket = Map.groupBy(candidates, k => {
-        const t = allTestData[k];
+        const t = allJobData[k];
         return splitModelByEffort ? `${t.model}|||${getEffortLevel(t.reasoningEffort)}` : t.model;
     });
     /** @type {string[]} */
     const result = [];
     for (const bucketKeys of byBucket.values()) {
-        const anyScheduled = bucketKeys.some(k => isScheduledOrCurated(allTestData[k]));
+        const anyScheduled = bucketKeys.some(k => isScheduledOrCurated(allJobData[k]));
         const effectiveScheduledOnly = !isPublicView() && scheduledOnly;
         let scoped = (effectiveScheduledOnly && (!currentSearchFilter || ignoreSplitEffortSearch) && anyScheduled)
-            ? bucketKeys.filter(k => isScheduledOrCurated(allTestData[k]))
+            ? bucketKeys.filter(k => isScheduledOrCurated(allJobData[k]))
             : bucketKeys;
         if (!showAll && scoped.length > 0) {
             scoped = filterRecentDays(scoped, limit);
@@ -1348,29 +1348,29 @@ const currentPanelSorts = { model: 'alpha', dimension: 'uplift-desc' };
 const expandedPanels = { model: false, dimension: false, guide: false };
 
 /**
- * @param {LandingSuiteSummary} testInfo
+ * @param {LandingJobSummary} jobInfo
  * @param {boolean} onlyA11y
  * @returns {PivotItem | null}
  */
-function buildModelPivotItem(testInfo, onlyA11y) {
-    const rt = testInfo.efficiencyStats?.runtime;
+function buildModelPivotItem(jobInfo, onlyA11y) {
+    const rt = jobInfo.efficiencyStats?.runtime;
     const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
-    const tok = testInfo.efficiencyStats?.tokens;
+    const tok = jobInfo.efficiencyStats?.tokens;
     const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
-    const earlyFailureRate = testInfo.earlyFailureRate || 0;
-    const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
-    const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
+    const infraErrorRate = jobInfo.earlyFailureRate || 0;
+    const uErr = jobInfo.unguidedErrorRate ?? infraErrorRate;
+    const gErr = jobInfo.guidedErrorRate ?? infraErrorRate;
     if (onlyA11y) {
-        const pair = a11yPair(testInfo.a11yStats);
+        const pair = a11yPair(jobInfo.a11yStats);
         const pairUplift = pair ? upliftPp(pair.u, pair.g) : null;
         if (pair && pairUplift !== null) {
             return { uplift: pairUplift, uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
         }
         return null;
     }
-    if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
-        const uRate = toRate(testInfo.unguidedStats);
-        const gRate = toRate(testInfo.guidedStats);
+    if (hasBothSides(jobInfo.unguidedStats, jobInfo.guidedStats)) {
+        const uRate = toRate(jobInfo.unguidedStats);
+        const gRate = toRate(jobInfo.guidedStats);
         return {
             uplift: gRate - uRate,
             uRate,
@@ -1401,30 +1401,30 @@ function renderPivotInsights() {
     /** @type {Record<string, { model: string, effortLevel: string, effort?: import('./evals.d.ts').ReasoningEffort }>} */
     const modelSplitMeta = {};
     modelKeys.forEach(compoundKey => {
-        const testInfo = allTestData[compoundKey];
-        if (!testInfo || !testInfo.model) return;
-        const item = buildModelPivotItem(testInfo, onlyA11y);
+        const jobInfo = allJobData[compoundKey];
+        if (!jobInfo || !jobInfo.model) return;
+        const item = buildModelPivotItem(jobInfo, onlyA11y);
         if (item) {
             if (splitModelByEffort) {
-                const effortLevel = getEffortLevel(testInfo.reasoningEffort);
-                const bucketKey = `${testInfo.model}|||${effortLevel}`;
+                const effortLevel = getEffortLevel(jobInfo.reasoningEffort);
+                const bucketKey = `${jobInfo.model}|||${effortLevel}`;
                 const prevMeta = modelSplitMeta[bucketKey];
                 modelSplitMeta[bucketKey] = {
-                    model: testInfo.model,
+                    model: jobInfo.model,
                     effortLevel,
-                    effort: pickHigherPrecedenceEffort(prevMeta?.effort, testInfo.reasoningEffort),
+                    effort: pickHigherPrecedenceEffort(prevMeta?.effort, jobInfo.reasoningEffort),
                 };
                 (grouped.model[bucketKey] ||= []).push(item);
             } else {
-                (grouped.model[testInfo.model] ||= []).push(item);
+                (grouped.model[jobInfo.model] ||= []).push(item);
             }
         }
     });
     keys.forEach(compoundKey => {
-        const testInfo = allTestData[compoundKey];
-        if (!testInfo) return;
+        const jobInfo = allJobData[compoundKey];
+        if (!jobInfo) return;
         if (onlyA11y) {
-            const bySub = testInfo.a11yStats?.bySubCategory;
+            const bySub = jobInfo.a11yStats?.bySubCategory;
             if (bySub) {
                 A11Y_SUBCATEGORIES.forEach(sub => {
                     const sc = bySub[sub.id];
@@ -1443,9 +1443,9 @@ function renderPivotInsights() {
             }
         }
 
-        const suiteGuides = testInfo.guides || {};
-        Object.keys(suiteGuides).forEach(guide => {
-            const gEntry = suiteGuides[guide];
+        const jobGuides = jobInfo.guides || {};
+        Object.keys(jobGuides).forEach(guide => {
+            const gEntry = jobGuides[guide];
             const src = onlyA11y ? gEntry.a11y : gEntry;
             if (!src) return;
             const u = { passed: src.unguidedPassed || 0, total: src.unguidedTotal || 0 };
@@ -1848,7 +1848,7 @@ function renderPivotInsights() {
         if (!splitModelByEffort && splitRowEffortActive) {
             splitRowEffortActive = false;
             setSearchEffortToken(null);
-            renderSuites();
+            renderJobs();
         } else {
             renderPivotInsights();
         }
@@ -1876,7 +1876,7 @@ function setInsightFilter(filterKey, value, effort) {
         splitRowEffortActive = Boolean(nextEffort);
         setSearchEffortToken(nextEffort);
         syncSelectStyles(select);
-        renderSuites();
+        renderJobs();
         return;
     }
     select.value = select.value === value ? 'all' : value;

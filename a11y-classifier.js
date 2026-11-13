@@ -217,7 +217,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
 /** @param {{ message?: string, testId?: string, id?: string, isEarlyFailure?: boolean, failureReason?: string } | null | undefined} check
  * @param {string | undefined | null} guideName
  * @param {string | undefined | null} [discipline] */
-export function classifyScenarioCheck(check, guideName, discipline = '') {
+export function classifyCheck(check, guideName, discipline = '') {
     if (
         !check ||
         check.isEarlyFailure ||
