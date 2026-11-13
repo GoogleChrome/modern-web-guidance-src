@@ -6,7 +6,6 @@ import {
   CSSKeyframesRule,
   CSSNestedDeclarations,
   CSSStyleRule,
-  getDeclaredProperties,
   getPropertyValues,
   getRules,
   parse as parseCss,
@@ -74,7 +73,8 @@ function prepareCssContext(
     return null;
   }
 
-  let allProperties: Set<string> | null = null;
+  let rawAndConditionProperties: Set<string> | null = null;
+  const propertyResultCache = new Map<string, boolean>();
   const conditionTexts: string[] = [];
   const atRuleHeaderCache = new WeakMap<CSSRule, string | null>();
   const styleRules: CssRuleView[] = [];
@@ -134,16 +134,23 @@ function prepareCssContext(
     rawFileText: rawFileText ?? cssContent,
     styleRules,
     stylesheetHasProperty: (prop: string) => {
-      if (!allProperties) {
-        allProperties = new Set<string>(
-          Array.from(getDeclaredProperties(sheet), (p) => p.toLowerCase()),
-        );
-        for (const conditionText of conditionTexts) {
-          collectPropertyNames(conditionText, CONDITION_PROP_RE, allProperties);
-        }
-        collectPropertyNames(cssContent, DECL_PROP_RE, allProperties);
+      const lower = prop.toLowerCase();
+      const cached = propertyResultCache.get(lower);
+      if (cached !== undefined) {
+        return cached;
       }
-      return allProperties.has(prop.toLowerCase());
+      if (!rawAndConditionProperties) {
+        rawAndConditionProperties = new Set<string>();
+        for (const conditionText of conditionTexts) {
+          collectPropertyNames(conditionText, CONDITION_PROP_RE, rawAndConditionProperties);
+        }
+        collectPropertyNames(cssContent, DECL_PROP_RE, rawAndConditionProperties);
+      }
+      const found =
+        rawAndConditionProperties.has(lower) ||
+        styleRules.some((ruleView) => ruleView.hasProperty(lower));
+      propertyResultCache.set(lower, found);
+      return found;
     },
     stylesheetHasValue: (substr: string) => cssContent.includes(substr),
   };

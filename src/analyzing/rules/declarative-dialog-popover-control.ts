@@ -205,8 +205,23 @@ const NON_BUTTON_LISTENER_TARGET_RE =
 export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    ['click', 'onclick'],
+    ["'click'", '"click"', '`click`', '.on(', '.click', 'onclick', 'onClick'],
     ['showModal', 'showPopover', 'hidePopover', 'togglePopover', 'close'],
+    [
+      'showModal',
+      'showPopover',
+      'hidePopover',
+      'togglePopover',
+      'dialog',
+      'Dialog',
+      'DIALOG',
+      'dlg',
+      'Dlg',
+      'DLG',
+      'popover',
+      'Popover',
+      'POPOVER',
+    ],
   ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (

@@ -330,7 +330,7 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];
     }
-    if (ctx.fileContent && !/['"]Enter['"]/.test(ctx.fileContent)) {
+    if (ctx.fileContent && !ENTER_CHECK_REGEX.test(ctx.fileContent)) {
       return [];
     }
 

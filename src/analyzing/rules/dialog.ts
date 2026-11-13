@@ -220,7 +220,7 @@ function matchClickRegistration(
 export const dialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    ['click', 'onclick'],
+    ["'click'", '"click"', '`click`', '.on(', '.click', 'onclick'],
     ['close'],
     ['.target', 'dialog', 'Dialog', 'DIALOG', 'getBoundingClientRect'],
   ],
