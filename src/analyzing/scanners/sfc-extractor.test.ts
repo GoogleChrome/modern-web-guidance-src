@@ -111,3 +111,35 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(litBlocks[0]?.includes('${"red"}'), false);
   });
 });
+
+void test('sfc-extractor: createGlobalStyle template literal extraction', async (t) => {
+  await t.test('extracts createGlobalStyle blocks and preserves offsets', () => {
+    const source = [
+      "import { createGlobalStyle } from 'styled-components';",
+      '',
+      'export const GlobalStyle = createGlobalStyle`',
+      '  body { color: red; }',
+      '  .banner { color: ${(props) => props.color}; }',
+      '`;',
+    ].join('\n');
+
+    const blocks = extractStyleBlocks('src/global-style.js', source);
+    assert.equal(blocks.length, 1);
+    const block = blocks[0] ?? '';
+    // Blanking must preserve offsets so findings keep their original line numbers.
+    assert.equal(block.length, source.length);
+    assert.equal(block.split('\n').length, source.split('\n').length);
+    assert.equal(block.includes('body { color: red; }'), true);
+    assert.equal(block.includes('${(props) => props.color}'), false);
+  });
+
+  await t.test('does not treat other CSS-in-JS literals as stylesheets', () => {
+    const source = [
+      "import styled from 'styled-components';",
+      'export const Button = styled.button`color: red;`;',
+      'const styles = `body { color: red; }`;',
+      'const message = `Hello {name: value}`;',
+    ].join('\n');
+    assert.deepEqual(extractStyleBlocks('src/button.js', source), []);
+  });
+});
