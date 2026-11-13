@@ -110,6 +110,9 @@ describe('file-filter vendored and hashed asset exclusions', () => {
 
     assert.equal(isExcludedCorpusNonAppPath('src/styles/theme.scss'), false);
     assert.equal(shouldScanFile('src/styles/theme.scss'), true);
+
+    assert.equal(shouldScanFile('src/styles/theme.min.scss'), false);
+    assert.equal(shouldScanFile('src/styles/theme.bundle.scss'), false);
   });
 
   it('excludes Coolite Datejs and 2-part versioned license headers (Card 004ac0a9d6f8)', () => {

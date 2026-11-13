@@ -1035,6 +1035,56 @@ void test('scanFiles: SCSS files and // comments in <style lang="scss"> (#3553)'
   assert.equal(byFile.get('src/styles/case6_nested.css')?.line, 1);
 });
 
+void test('scanFiles: SCSS // edge cases, URL preservation, and CRLF line numbers (#3553)', () => {
+  const thumbRule: AnalyzerRule = {
+    id: 'test-css-scrollbar-thumb',
+    guideId: 'customize-scrollbar-color-and-thickness',
+    guideHash: '123456789012',
+    summary: 'Flags ::-webkit-scrollbar-thumb',
+    verifierRubric: { keepWhen: ['scrollbar thumb'], dropWhen: [] },
+    matcher: {
+      kind: 'css',
+      fastTokens: ['scrollbar-thumb'],
+      matchRule: (view) =>
+        view.selectorText.includes('scrollbar-thumb')
+          ? { message: `found scrollbar thumb in ${view.selectorText}` }
+          : null,
+    },
+  };
+
+  const legacyRule = '.box::-webkit-scrollbar-thumb { background: red; }';
+  const files = new Map<string, string>([
+    ['src/styles/commented-out.scss', `// ${legacyRule}`],
+    [
+      'src/styles/url-spaced.scss',
+      `.h { background: url( //cdn.example.com/b.png ); }\n${legacyRule}`,
+    ],
+    [
+      'src/styles/url-path-slashes.scss',
+      `.h { background: url(/images//logo.png); }\n${legacyRule}`,
+    ],
+    [
+      'src/styles/paren-and-scheme-crlf.scss',
+      [
+        '.a { color: rgb(// red',
+        '  255, 0, 0); }',
+        '.b { color:// comment',
+        '  blue; }',
+        legacyRule,
+      ].join('\r\n'),
+    ],
+  ]);
+
+  const findings = scanFiles(files, [thumbRule]);
+  const byFile = new Map(findings.map((f) => [f.file, f]));
+
+  assert.equal(byFile.has('src/styles/commented-out.scss'), false);
+  assert.equal(byFile.get('src/styles/url-spaced.scss')?.line, 2);
+  assert.equal(byFile.get('src/styles/url-path-slashes.scss')?.line, 2);
+  assert.equal(byFile.get('src/styles/paren-and-scheme-crlf.scss')?.line, 5);
+  assert.equal(findings.length, 3);
+});
+
 void test('slice-c: vendored library whole-file detection & AST matcher suppression', async (testingContext) => {
   const fittextRule: AnalyzerRule = {
     id: 'dependency-jquery-fittext',

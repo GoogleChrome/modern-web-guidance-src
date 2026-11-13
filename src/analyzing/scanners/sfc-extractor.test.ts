@@ -219,15 +219,37 @@ void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style>
     const scss = [
       '.a { background: url(https://example.com/a.png); }',
       '.b { background: url(//cdn.example.com/b.png); }',
-      '.c { content: "// literal"; }',
+      '.c { background: url( //cdn.example.com/b.png ); }',
+      '.d { background: url(/images//logo.png); }',
+      '.e { content: "// literal"; }',
       '/* // block comment */',
-      '.d { color: blue; }',
+      '$endpoint: https://api.example.com/v1;',
+      '.f { color: blue; }',
     ].join('\n');
     assert.equal(blankPreprocessorLineComments(scss), scss);
   });
 
-  await t.test('blanks // comments inside <style lang="scss|sass|less"> only', () => {
-    for (const lang of ['scss', 'sass', 'less']) {
+  await t.test('blanks // comments after (, whitespace-separated ://, and trailing after url()', () => {
+    const scss = [
+      '.a { color: rgb(// red',
+      '  255, 0, 0); }',
+      '$m: (// note',
+      '  a: 1);',
+      '.b:// comment',
+      '.c { background: url( //cdn.example.com/b.png ); } // trailing',
+    ].join('\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.equal(blanked.includes('// red'), false);
+    assert.equal(blanked.includes('// note'), false);
+    assert.equal(blanked.includes('// comment'), false);
+    assert.equal(blanked.includes('// trailing'), false);
+    assert.equal(blanked.includes('url( //cdn.example.com/b.png )'), true);
+    assert.equal(blanked.includes('255, 0, 0); }'), true);
+  });
+
+  await t.test('blanks // comments inside <style lang="scss|less"> only', () => {
+    for (const lang of ['scss', 'less']) {
       const vue = `<template><div/></template>\n<style lang="${lang}" scoped>\n// note\n.box { color: red; }\n</style>`;
       const blocks = extractStyleBlocks('App.vue', vue);
       assert.equal(blocks.length, 1);
@@ -236,8 +258,10 @@ void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style>
       assert.equal(blocks[0]?.includes('.box { color: red; }'), true);
     }
 
-    const plainVue = '<template><div/></template>\n<style>\n// preserved\n.box { content: "// ok"; }\n</style>';
-    const plainBlocks = extractStyleBlocks('App.vue', plainVue);
-    assert.equal(plainBlocks[0]?.includes('// preserved'), true);
+    for (const langAttr of ['', ' lang="sass"']) {
+      const vue = `<template><div/></template>\n<style${langAttr}>\n// preserved\n.box { content: "// ok"; }\n</style>`;
+      const blocks = extractStyleBlocks('App.vue', vue);
+      assert.equal(blocks[0]?.includes('// preserved'), true);
+    }
   });
 });

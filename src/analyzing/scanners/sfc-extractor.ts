@@ -396,7 +396,7 @@ export function isMarkupPath(relPath: string): boolean {
   );
 }
 
-const PREPROCESSOR_STYLE_LANGS: ReadonlySet<string> = new Set(['scss', 'sass', 'less']);
+const PREPROCESSOR_STYLE_LANGS: ReadonlySet<string> = new Set(['scss', 'less']);
 
 function scanQuotedStringEnd(content: string, quoteIndex: number, limit: number): number {
   const quote = content[quoteIndex];
@@ -418,10 +418,33 @@ function scanQuotedStringEnd(content: string, quoteIndex: number, limit: number)
   return limit;
 }
 
+function scanUrlFunctionEnd(content: string, urlStart: number, limit: number): number | null {
+  let j = urlStart + 4;
+  while (j < limit) {
+    const ch = content[j];
+    if (ch === '"' || ch === "'") {
+      j = scanQuotedStringEnd(content, j, limit);
+      continue;
+    }
+    if (ch === '\\') {
+      j += 2;
+      continue;
+    }
+    if (ch === ')') {
+      return j + 1;
+    }
+    if (ch === ';' || ch === '{' || ch === '}') {
+      return null;
+    }
+    j++;
+  }
+  return null;
+}
+
 /**
  * Replaces `//` single-line comments inside [startOffset, endOffset) with spaces while
  * preserving line/column offsets. Leaves `/* ... *\/` block comments, quoted strings,
- * and URL `//` sequences immediately after `:` or `(` untouched.
+ * `url(...)` bodies, and `scheme://\S` URLs untouched.
  */
 export function blankPreprocessorLineComments(
   content: string,
@@ -448,14 +471,36 @@ export function blankPreprocessorLineComments(
       i = scanQuotedStringEnd(content, i, end);
       continue;
     }
-    if (ch === '/' && next === '/' && content[i - 1] !== ':' && content[i - 1] !== '(') {
-      let lineEnd = i + 2;
-      while (lineEnd < end && content[lineEnd] !== '\n' && content[lineEnd] !== '\r') {
-        lineEnd++;
+    if (
+      (ch === 'u' || ch === 'U') &&
+      content.slice(i, i + 4).toLowerCase() === 'url(' &&
+      (i === start || !/[a-zA-Z0-9_-]/.test(content[i - 1] ?? ''))
+    ) {
+      const urlEnd = scanUrlFunctionEnd(content, i, end);
+      if (urlEnd !== null) {
+        i = urlEnd;
+        continue;
       }
-      commentRanges.push({ start: i, end: lineEnd });
-      i = lineEnd;
+      i += 4;
       continue;
+    }
+    if (ch === '/' && next === '/') {
+      const prefix = content.slice(Math.max(start, i - 32), i);
+      const after = content[i + 2] ?? '';
+      const isSchemeUrl =
+        content[i - 1] === ':' &&
+        /(?:^|[^a-zA-Z0-9_.-])[a-zA-Z][a-zA-Z0-9+.-]*:$/.test(prefix) &&
+        after !== '' &&
+        !/\s/.test(after);
+      if (!isSchemeUrl) {
+        let lineEnd = i + 2;
+        while (lineEnd < end && content[lineEnd] !== '\n' && content[lineEnd] !== '\r') {
+          lineEnd++;
+        }
+        commentRanges.push({ start: i, end: lineEnd });
+        i = lineEnd;
+        continue;
+      }
     }
     i++;
   }

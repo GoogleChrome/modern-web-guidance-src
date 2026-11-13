@@ -109,8 +109,10 @@ export function isDocsOrTestsPath(relPath: string): boolean {
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.min.js',
   '.min.css',
+  '.min.scss',
   '.bundle.js',
   '.bundle.css',
+  '.bundle.scss',
   '.pack.js',
   '-opt.js',
   '.opt.js',
