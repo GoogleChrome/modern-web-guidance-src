@@ -8,3 +8,4 @@
 - When `navigator.install()` is unsupported and the page uses a custom install button, a `beforeinstallprompt` event reveals the button and activating it calls the captured event's `prompt()` method exactly once.
 - When `navigator.install()` is unsupported and the page uses a custom install button, accepting or dismissing the `beforeinstallprompt` prompt discards the captured event and hides the button unless a new `beforeinstallprompt` event is fired.
 - Completing an installation action reports that the app was installed (or opened), while cancellation is reported as cancellation rather than as an application error.
+- When the custom install button is hidden after being activated, focus moves to the install status message.

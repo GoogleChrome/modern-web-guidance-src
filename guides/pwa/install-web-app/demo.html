@@ -77,7 +77,7 @@
           <h2>Custom control</h2>
           <p>This control appears only when installation can be requested.</p>
           <button id="custom-install-app" type="button" hidden>Install app</button>
-          <p id="custom-install-status" role="status"></p>
+          <p id="custom-install-status" role="status" tabindex="-1"></p>
         </section>
       </div>
     </main>
@@ -131,6 +131,8 @@
             // Calling directly from this handler preserves transient user activation.
             await navigator.install();
             customInstallStatus.textContent = "The app was installed or opened.";
+            // Move focus off the button before hiding it, so focus isn't lost.
+            customInstallStatus.focus();
             customInstallButton.hidden = true;
           } else if (deferredInstallPrompt) {
             // Clear the single-use event before awaiting the user's choice.
@@ -144,6 +146,7 @@
                 : "Installation canceled.";
 
             if (!deferredInstallPrompt) {
+              customInstallStatus.focus();
               customInstallButton.hidden = true;
             }
           }
