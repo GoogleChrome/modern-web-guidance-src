@@ -1,0 +1,242 @@
+diff --git a/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/demo.html b/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/demo.html
+deleted file mode 100644
+index cf873b4c..00000000
+--- a/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/demo.html
++++ /dev/null
+@@ -1 +0,0 @@
+-<!-- TODO -->
+diff --git a/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/expectations.md b/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/expectations.md
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/guide.md b/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/guide.md
+deleted file mode 100644
+index 30f90646..00000000
+--- a/guides/performance/deliver-optimized-decorative-images/serve-alternative-image-formats/guide.md
++++ /dev/null
+@@ -1,6 +0,0 @@
+----
+-name: deliver-optimized-decorative-images
+-description: Deliver optimized decorative images (such as backgrounds, UI icons, or complex masks) by simultaneously providing next-generation image formats (like AVIF or WebP) alongside multiple pixel densities (like 1x and 2x) so the browser can dynamically negotiate the best combination of file size and visual quality for the user's device capabilities.
+-web-feature-ids: 
+-  - image-set
+----
+diff --git a/src/core/guide-validation.test.ts b/src/core/guide-validation.test.ts
+index eee7b45f..1270f914 100644
+--- a/src/core/guide-validation.test.ts
++++ b/src/core/guide-validation.test.ts
+@@ -3,7 +3,7 @@ import assert from 'node:assert';
+ import fs from 'node:fs';
+ import path from 'node:path';
+ import os from 'node:os';
+-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, processGuideInventory, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
++import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
+ import { extractFeatureIds } from './feature-parser.ts';
+ import { maskComments, validateMacros } from './macros.ts';
+ import { guidesDir } from './paths.ts';
+@@ -678,129 +678,31 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
+   });
+ });
+ 
+-
+ describe('scanAllGuides', () => {
+-  test('discovers nested guide directories and validates their frontmatter', () => {
+-    const tmpDir = fs.mkdtempSync(
+-      path.join(os.tmpdir(), 'nested-guide-test-')
+-    );
+-
+-    const scanDir = path.join(tmpDir, 'guides');
+-    const categoryDir = path.join(scanDir, 'performance');
+-    const parentDir = path.join(categoryDir, 'parent-guide');
+-    const nestedDir = path.join(parentDir, 'nested-guide');
+-
+-    fs.mkdirSync(nestedDir, { recursive: true });
+-
+-    // Create a parent guide.
++  test('scans the provided directory instead of the default guides directory', () => {
++    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-all-guides-test-'));
++    const guideDir = path.join(tmpDir, 'performance', 'my-guide');
++    fs.mkdirSync(guideDir, { recursive: true });
+     fs.writeFileSync(
+-      path.join(parentDir, 'guide.md'),
+-      `---
+-name: parent-guide
+-description: Parent guide description
+-web-feature-ids: []
+----
+-
+-# Parent Guide
+-
+-Parent guide content.
+-`
+-    );
+-
+-    // Create a nested stub guide with an incorrect name.
+-    fs.writeFileSync(
+-      path.join(nestedDir, 'guide.md'),
+-      `---
+-name: parent-guide
+----
+-`
++      path.join(guideDir, 'guide.md'),
++      `---\nname: my-guide\ndescription: A test guide\nweb-feature-ids: []\n---\n\n# My Guide\n`,
+     );
+ 
+     try {
+-      const guides = scanAllGuides(scanDir);
+-
+-      // Both parent and nested guides should be discovered.
+-      assert.strictEqual(guides.length, 2);
+-
+-      const parentGuide = guides.find(
+-        guide => guide.dir === parentDir
+-      );
+-
+-      const nestedGuide = guides.find(
+-        guide => guide.dir === nestedDir
+-      );
+-
+-      assert.ok(parentGuide, 'Parent guide should be discovered');
+-      assert.ok(nestedGuide, 'Nested guide should be discovered');
+-
+-      assert.strictEqual(nestedGuide.name, 'nested-guide');
+-      assert.strictEqual(nestedGuide.isStub, true);
+-
+-      // The nested guide should be validated.
+-      const result = processGuideInventory([nestedGuide]);
+-
+-      assert.ok(
+-        result.errors.some(error =>
+-          error.includes(
+-            'does not match directory name "nested-guide"'
+-          )
+-        ),
+-        'Expected validation to detect the incorrect nested guide name'
+-      );
++      const guides = scanAllGuides(tmpDir);
++      assert.strictEqual(guides.length, 1);
++      assert.strictEqual(guides[0].dir, guideDir);
+     } finally {
+       fs.rmSync(tmpDir, { recursive: true, force: true });
+     }
+   });
+ 
+-  test('does not inventory nested directories without guide.md', () => {
+-    const tmpDir = fs.mkdtempSync(
+-      path.join(os.tmpdir(), 'nested-guide-empty-test-')
+-    );
+-
+-    const scanDir = path.join(tmpDir, 'guides');
+-    const parentDir = path.join(
+-      scanDir,
+-      'performance',
+-      'parent-guide'
+-    );
+-
+-    const ordinaryNestedDir = path.join(
+-      parentDir,
+-      'ordinary-folder'
+-    );
+-
+-    fs.mkdirSync(ordinaryNestedDir, { recursive: true });
+-
+-    fs.writeFileSync(
+-      path.join(parentDir, 'guide.md'),
+-      `---
+-name: parent-guide
+-description: Parent guide description
+-web-feature-ids: []
+----
+-
+-# Parent Guide
+-
+-Parent guide content.
+-`
+-    );
+-
+-    try {
+-      const guides = scanAllGuides(scanDir);
+-
+-      assert.strictEqual(guides.length, 1);
+-
+-      assert.strictEqual(
+-        guides[0].dir,
+-        parentDir
+-      );
+-    } finally {
+-      fs.rmSync(tmpDir, { recursive: true, force: true });
+-    }
++  test('returns an empty list when the provided directory does not exist', () => {
++    const missingDir = path.join(os.tmpdir(), 'scan-all-guides-missing-' + Date.now());
++    assert.deepStrictEqual(scanAllGuides(missingDir), []);
+   });
+ });
+ 
+-
+ describe('guide draft flag (publish control)', () => {
+   // Inventory a guide.md with the given body in a throwaway dir.
+   const inventory = (md: string) => {
+diff --git a/src/core/guide-validation.ts b/src/core/guide-validation.ts
+index bfca52af..cdcca637 100644
+--- a/src/core/guide-validation.ts
++++ b/src/core/guide-validation.ts
+@@ -823,54 +823,28 @@ export function classifyGuide(
+   return 'complete';
+ }
+ 
+-
+ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
+   const guides: GuideInventory[] = [];
+ 
+   if (!fs.existsSync(scanDir)) return guides;
+ 
+-  const shouldSkip = (entry: fs.Dirent) =>
+-    !entry.isDirectory() ||
+-    entry.name.startsWith('.') ||
+-    entry.name === 'node_modules';
+-
+-  const findNestedGuides = (dir: string): void => {
+-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+-      if (shouldSkip(entry)) continue;
+-
+-      const nestedDir = path.join(dir, entry.name);
+-
+-      if (fs.existsSync(path.join(nestedDir, GUIDE_FILE))) {
+-        guides.push(inventoryGuide(nestedDir));
+-      }
+-
+-      findNestedGuides(nestedDir);
+-    }
+-  };
+-
+   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+-    .filter(entry => !shouldSkip(entry))
+-    .map(entry => entry.name);
++     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
++     .map(d => d.name);
+ 
+   for (const category of categories) {
+     const categoryDir = path.join(scanDir, category);
++    if (!fs.existsSync(categoryDir)) continue;
+ 
++    // Scan subdirectories
+     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
+-      if (shouldSkip(entry)) continue;
+-
+-      const guideDir = path.join(categoryDir, entry.name);
+-
+-      guides.push(inventoryGuide(guideDir));
+-
+-      // Discover guide definitions nested inside an existing guide.
+-      findNestedGuides(guideDir);
++      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name === 'node_modules') continue;
++      guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
+     }
+   }
+-
+   return guides;
+ }
+ 
+-
+ let cachedGuidesMap: Map<string, GuideInventory> | null = null;
+ 
+ export function getGuidesMap(): Map<string, GuideInventory> {
