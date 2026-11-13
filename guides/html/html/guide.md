@@ -144,8 +144,11 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ### Guidelines
 
+See {{ GUIDE_REF("optimize-preload-priority") }}, {{ GUIDE_REF("optimize-script-priority") }}, and {{ GUIDE_REF("optimize-image-priority") }} for detailed guidance on resource discovery and `fetchpriority` hints across preloads, scripts, and images.
+
 - **DO** use `fetchpriority="high"` for the Largest Contentful Paint (LCP) element (e.g., hero image) to elevate network priority.
 - **DO** use `<link rel="preload" as="image">` with `fetchpriority="high"` for LCP background images defined in CSS.
+- **DO** use `<link rel="modulepreload">` (not `<link rel="preload" as="script">`) to fetch and parse critical ES module graphs early, and `<link rel="preload" as="style">` for critical CSS discovered late (e.g., via `@import` or runtime injection).
 - **DO** apply `loading="lazy"` to off-screen images and iframes to defer bandwidth.
 - **DO** specify `width` and `height` on all `<img>` tags to preserve aspect ratio and prevent Layout Shifts (CLS).
 - **DO** use the `srcset` attribute on `<img>`s for adding multiple versions of the same image at different sizes.
