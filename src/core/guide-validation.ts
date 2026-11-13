@@ -602,13 +602,19 @@ export function resolveTaskGraderPath(taskInfo: Pick<TaskInfo, 'guideDir' | 'bas
   return path.join(taskInfo.guideDir, GRADER_FILE);
 }
 
+function getTaskPrompt(content: string): string {
+  const prompt = content.trim();
+  // Keep multiline Markdown intact while preserving the single-line task format.
+  return !/[\r\n]/.test(prompt) && prompt.startsWith('- ') ? prompt.slice(2).trim() : prompt;
+}
+
 /**
  * Builds a map of guide names to task information.
  * Scans all guide directories for `task.md`.
  */
-export function getTaskMap(): Map<string, TaskInfo> {
+export function getTaskMap(guidesRoot = guidesDir): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
-  if (!fs.existsSync(guidesDir)) return taskMap;
+  if (!fs.existsSync(guidesRoot)) return taskMap;
 
   function processTasks(guideName: string, tasksDir: string, guideDir: string) {
     for (const taskEntry of fs.readdirSync(tasksDir, { withFileTypes: true })) {
@@ -622,8 +628,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
 
       const { data, content } = matter(rawContent);
 
-      const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
-      const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
+      const prompt = getTaskPrompt(content);
 
       const info: TaskInfo = {
         baseApp: data?.base_app || 'daily-grind',
@@ -648,8 +653,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
       if (!rawContent) continue;
 
       const { content } = matter(rawContent);
-      const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
-      const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
+      const prompt = getTaskPrompt(content);
 
       const info: TaskInfo = {
         baseApp: baseAppName,
@@ -672,12 +676,12 @@ export function getTaskMap(): Map<string, TaskInfo> {
     }
   }
 
-  const disciplines = fs.readdirSync(guidesDir, { withFileTypes: true })
+  const disciplines = fs.readdirSync(guidesRoot, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
 
   for (const discipline of disciplines) {
-    const disciplineDir = path.join(guidesDir, discipline);
+    const disciplineDir = path.join(guidesRoot, discipline);
     if (!fs.existsSync(disciplineDir)) continue;
 
     // Check subdirectories (guides)

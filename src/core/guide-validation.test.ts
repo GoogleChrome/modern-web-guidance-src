@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getTaskMap, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 import { guidesDir } from './paths.ts';
@@ -767,6 +767,61 @@ describe('stripAllComments', () => {
 
 
 
+
+describe('getTaskMap', () => {
+  const cases = [
+    { name: 'single-line bullet remains byte-identical', body: '- Do X\n', prompt: 'Do X' },
+    { name: 'multiple bullets', body: '- Do X\n- Do Y\n', prompt: '- Do X\n- Do Y' },
+    { name: 'continuations and nested lists', body: '- Do X\n  with these details:\n  - Do Y\n', prompt: '- Do X\n  with these details:\n  - Do Y' },
+    { name: 'paragraphs before bullets', body: 'Update the existing app.\n\n- Do X\n\nKeep the current theme.\n', prompt: 'Update the existing app.\n\n- Do X\n\nKeep the current theme.' },
+    { name: 'code before bullets', body: '```md\n- Example text\n```\n\n- Do X\n', prompt: '```md\n- Example text\n```\n\n- Do X' },
+    { name: 'CRLF multiline Markdown', body: '- Do X\r\n- Do Y\r\n', prompt: '- Do X\r\n- Do Y' },
+    { name: 'CRLF single-line bullet', body: '- Do X\r\n', prompt: 'Do X' },
+    { name: 'plain paragraph', body: 'Do X\n', prompt: 'Do X' },
+    { name: 'whitespace-only body', body: ' \n\n', prompt: '' },
+  ];
+
+  for (const layout of ['Gen1', 'Gen2']) {
+    for (const { name, body, prompt } of cases) {
+      test(`${layout}: ${name}`, () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'task-map-'));
+        const guideDir = path.join(root, 'web', 'test-guide');
+        const taskDir = layout === 'Gen1' ? path.join(guideDir, 'tasks') : path.join(guideDir, 'targets', 'devtools-times');
+        fs.mkdirSync(taskDir, { recursive: true });
+        const taskName = layout === 'Gen1' ? 'test-task' : 'devtools-times';
+        // Frontmatter must never become part of the agent prompt in either layout.
+        fs.writeFileSync(path.join(taskDir, layout === 'Gen1' ? 'test-task.md' : 'task.md'), `---\nbase_app: devtools-times\n---\n${body}`);
+        try {
+          const tasks = getTaskMap(root);
+          assert.strictEqual(tasks.size, 1);
+          assert.deepStrictEqual(tasks.get(`test-guide/${taskName}`), {
+            baseApp: 'devtools-times', prompt, guideDir, baselineTarget: 'widely',
+          });
+        } finally {
+          fs.rmSync(root, { recursive: true, force: true });
+        }
+      });
+    }
+  }
+
+  test('Gen1 defaults to daily-grind and skips empty files', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'task-map-'));
+    const guideDir = path.join(root, 'web', 'test-guide');
+    const taskDir = path.join(guideDir, 'tasks');
+    fs.mkdirSync(taskDir, { recursive: true });
+    fs.writeFileSync(path.join(taskDir, 'default.md'), '- Do X\n');
+    fs.writeFileSync(path.join(taskDir, 'empty.md'), '');
+    try {
+      const tasks = getTaskMap(root);
+      assert.strictEqual(tasks.size, 1);
+      assert.deepStrictEqual(tasks.get('test-guide/default'), {
+        baseApp: 'daily-grind', prompt: 'Do X', guideDir, baselineTarget: 'widely',
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('getSupportedBaseApps', () => {
   test('returns the exact list of supported base applications', () => {
