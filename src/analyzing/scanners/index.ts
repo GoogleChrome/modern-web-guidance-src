@@ -367,11 +367,13 @@ export function scanFiles(
 
       const ext = extname(lowerPath);
 
-      if (ext === '.css' || ext === '.scss') {
+      if (ext === '.css' || ext === '.scss' || ext === '.less') {
         if (cssRules.length > 0) {
-          // Blank SCSS `//` comments so cssomnom does not attach them to the next selector.
+          // Blank SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
           const cssContent =
-            ext === '.scss' ? blankPreprocessorLineComments(content) : content;
+            ext === '.scss' || ext === '.less'
+              ? blankPreprocessorLineComments(content)
+              : content;
           findings.push(
             ...materializeRuleMatches(
               ctx,

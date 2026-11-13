@@ -110,9 +110,11 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.min.js',
   '.min.css',
   '.min.scss',
+  '.min.less',
   '.bundle.js',
   '.bundle.css',
   '.bundle.scss',
+  '.bundle.less',
   '.pack.js',
   '-opt.js',
   '.opt.js',
@@ -141,6 +143,7 @@ export const JS_RULE_EXTENSIONS = [
 export const CSS_RULE_EXTENSIONS = [
   '.css',
   '.scss',
+  '.less',
   '.vue',
   '.svelte',
   '.gts',
@@ -183,6 +186,7 @@ const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.astro',
   '.css',
   '.scss',
+  '.less',
 ]);
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
