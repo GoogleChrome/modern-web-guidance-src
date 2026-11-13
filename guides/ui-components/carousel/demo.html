@@ -10,11 +10,12 @@
       color-scheme: light dark;
       --surface: Canvas;
       --ink: CanvasText;
-      --line: color-mix(in srgb, CanvasText, transparent 75%);
-      --inactive-button: #666666;
-      --accent: #0a5;
-      --minimum-target-size: 24px;
-      --marker-button-diameter: 0.8rem;
+      --muted: color-mix(in oklab, CanvasText 55%, Canvas);
+      --radius: 1.25rem;
+      --slide-ratio: 16 / 9;
+      --marker-size: 0.625rem;
+      /* Thin invisible rim around each dot that still takes clicks and taps */
+      --marker-hit: 0.25rem;
     }
 
     * {
@@ -33,7 +34,8 @@
 
     .carousel {
       position: relative;
-      inline-size: min(90vw, 32rem);
+      inline-size: min(92vw, 38rem);
+      container-type: inline-size;
     }
 
     .carousel-track {
@@ -43,19 +45,94 @@
       overscroll-behavior-x: contain;
       scrollbar-width: none;
       gap: 1rem;
-      border-radius: 0.5rem;
+      border-radius: var(--radius);
     }
 
+    /* Each slide sets --hue; its artwork is gradients derived from it, standing in for a product photo */
     .carousel-track > * {
       flex: 0 0 100%;
       scroll-snap-align: center;
+      position: relative;
+      overflow: hidden;
       display: grid;
-      place-items: center;
-      block-size: 12rem;
-      border-radius: 0.5rem;
-      font-size: 2rem;
-      background: color-mix(in srgb, var(--accent), var(--surface) 80%);
-      border: 1px solid var(--line);
+      align-content: end;
+      gap: 0.25rem;
+      aspect-ratio: var(--slide-ratio);
+      padding-block: clamp(1.25rem, 5cqi, 2.25rem);
+      /* Clear the previous and next buttons, which overlay the slide's edges */
+      padding-inline: 4.5rem;
+      border-radius: var(--radius);
+      color: white;
+      background:
+        radial-gradient(60% 80% at 100% 0%, oklch(75% 0.16 calc(var(--hue) + 70)), transparent),
+        linear-gradient(135deg, oklch(48% 0.19 var(--hue)), oklch(28% 0.12 calc(var(--hue) + 40)));
+
+      /* Position badge, from the slide's label. The empty alternative text stops it being read out twice */
+      &::before {
+        content: attr(aria-label) / "";
+        position: absolute;
+        inset-block-start: 1rem;
+        inset-inline-start: 1rem;
+        padding: 0.15rem 0.6rem;
+        border-radius: 100vmax;
+        background: rgb(0 0 0 / 0.35);
+        font-size: 0.75rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* A shaded sphere where the product would be */
+      &::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 4.5rem;
+        inset-block-start: 50%;
+        translate: 0 -50%;
+        inline-size: 28%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle at 32% 28%,
+            oklch(96% 0.05 calc(var(--hue) + 70)),
+            oklch(70% 0.19 calc(var(--hue) + 40)) 35%,
+            oklch(30% 0.15 var(--hue)));
+        box-shadow: 0 1.5rem 3rem -0.5rem oklch(15% 0.1 var(--hue) / 0.7);
+      }
+
+      & > * {
+        margin: 0;
+      }
+
+      /* Narrow slides have no room for the sphere beside the text; wider ones keep the text clear of it */
+      @container (inline-size < 30rem) {
+        &::after {
+          display: none;
+        }
+      }
+
+      @container (inline-size >= 30rem) {
+        & > * {
+          max-inline-size: 60%;
+        }
+      }
+
+      h2 {
+        font-size: clamp(1.25rem, 5cqi, 2rem);
+        line-height: 1.15;
+        text-wrap: balance;
+      }
+
+      p {
+        font-size: 0.95rem;
+        line-height: 1.4;
+        text-wrap: pretty;
+      }
+
+      .eyebrow {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
     }
 
     /*
@@ -98,12 +175,12 @@
       }
     }
 
-    /* Overlay the buttons at the track's left and right edges, centered on the slide height */
+    /* Overlay the buttons at the track's left and right edges. Same aspect ratio as the slides, so they center on the slide height */
     .carousel-controls {
       position: absolute;
-      inset-inline: 0.5rem;
+      inset-inline: 0;
       inset-block-start: 0;
-      block-size: 12rem;
+      aspect-ratio: var(--slide-ratio);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -111,64 +188,99 @@
       z-index: 1;
     }
 
+    /* Fixed colors: the buttons always sit on the slide artwork, not on the page surface */
     .carousel-controls button {
       pointer-events: auto;
-      font: inherit;
-      inline-size: 2.5rem;
-      block-size: 2.5rem;
+      /* Margin, not padding on the overlay: WebKit shrinks an absolutely positioned box with aspect-ratio by its padding */
+      margin-inline: 0.75rem;
+      display: grid;
+      place-items: center;
+      inline-size: 2.75rem;
+      block-size: 2.75rem;
+      padding: 0;
+      border: none;
       border-radius: 50%;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--ink);
+      background: rgb(255 255 255 / 0.9);
+      color: #111;
+      box-shadow: 0 0.125rem 0.5rem rgb(0 0 0 / 0.25);
       cursor: pointer;
-    }
 
-    .carousel-controls button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
+      &:hover {
+        background: white;
+      }
+
+      &:active {
+        scale: 0.94;
+      }
+
+      /* Two-tone ring, visible on any slide color */
+      &:focus-visible {
+        outline: 0.2rem solid black;
+        outline-offset: 0;
+        box-shadow: 0 0 0 0.4rem white;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      svg {
+        inline-size: 1.25rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
     }
 
     .carousel-markers {
       display: flex;
       justify-content: center;
+      /* With the rim, dot centers sit 26px apart, so 24px target circles do not overlap (WCAG 2.5.8 Target Size) */
       gap: 0.5rem;
       margin-block-start: 0.75rem;
     }
 
-    /* We hide styling on the button, just using it to ensure that it meets minimum target size for WCAG 2.5.8 Target Size */
+    /*
+     * The transparent border is part of the button, so it makes the click and tap target
+     * a little larger than the visible dot. background-clip keeps the fill off the border.
+     */
     .carousel-markers button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      min-inline-size: var(--minimum-target-size);
-      min-block-size: var(--minimum-target-size);
-      position: relative;
-      outline: none;
-    }
-
-    /* Apply visible styling to the after pseudo element, positioned inside the appropriately sized button */
-    .carousel-markers button::after {
-      background: var(--inactive-button);
-      block-size: var(--marker-button-diameter);
-      border-radius: 50%;
-      border: 0.1rem solid transparent;
-      content: " ";
-      inline-size: var(--marker-button-diameter);
-      left: calc(var(--minimum-target-size) / 2 - var(--marker-button-diameter) / 2);
+      box-sizing: content-box;
+      inline-size: var(--marker-size);
+      block-size: var(--marker-size);
       padding: 0;
-      position: absolute;
-      top: calc(var(--minimum-target-size) / 2 - var(--marker-button-diameter) / 2);
+      border: var(--marker-hit) solid transparent;
+      border-radius: 100vmax;
+      background: var(--muted) padding-box;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--ink);
+      }
+
+      /* Wider, not just a different color (WCAG 1.4.1 Use of Color) */
+      &[aria-current="true"] {
+        inline-size: calc(var(--marker-size) * 2.8);
+        background-color: var(--ink);
+      }
+
+      /* Pull the outline in from the border edge so it hugs the dot */
+      &:focus-visible {
+        outline-offset: calc(0.15rem - var(--marker-hit));
+      }
     }
 
-    /* Make the pseudo element also visibly display when it's focused */
-    .carousel-markers button:focus-visible::after {
-      outline: 0.2rem solid #f90;
-      outline-offset: 0.15rem;
-    }
+    @media (prefers-reduced-motion: no-preference) {
+      .carousel-controls button {
+        transition: scale 0.15s, background-color 0.15s;
+      }
 
-    .carousel-markers button[aria-current="true"]::after {
-      background: var(--accent);
-      box-shadow: 0 0 0 0.1em #000, 0 0 0 0.2em #fff;
+      .carousel-markers button {
+        transition: inline-size 0.25s, background-color 0.25s;
+      }
     }
 
     .carousel-track,
@@ -177,7 +289,7 @@
     }
 
     :focus-visible {
-      outline: 0.2rem solid #f90;
+      outline: 0.2rem solid var(--ink);
       outline-offset: 0.15rem;
     }
 
@@ -196,19 +308,39 @@
 <body>
   <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
     <div class="carousel-controls">
-      <button type="button" class="carousel-prev" data-direction="previous" aria-label="Previous slide">‹</button>
-      <button type="button" class="carousel-next" data-direction="next" aria-label="Next slide">›</button>
+      <button type="button" class="carousel-prev" data-direction="previous" aria-label="Previous slide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
+      </button>
+      <button type="button" class="carousel-next" data-direction="next" aria-label="Next slide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+      </button>
     </div>
 
     <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
       <div role="group" aria-roledescription="slide" aria-label="1 of 4"
-        data-marker-name="Go to slide 1">Slide 1</div>
+        data-marker-name="Go to slide 1" style="--hue: 290">
+        <p class="eyebrow">New</p>
+        <h2>Aurora desk lamp</h2>
+        <p>Warm, dimmable light that follows your day.</p>
+      </div>
       <div role="group" aria-roledescription="slide" aria-label="2 of 4"
-        data-marker-name="Go to slide 2">Slide 2</div>
+        data-marker-name="Go to slide 2" style="--hue: 20">
+        <p class="eyebrow">Bestseller</p>
+        <h2>Ember travel mug</h2>
+        <p>Keeps coffee hot from the first sip to the last.</p>
+      </div>
       <div role="group" aria-roledescription="slide" aria-label="3 of 4"
-        data-marker-name="Go to slide 3">Slide 3</div>
+        data-marker-name="Go to slide 3" style="--hue: 165">
+        <p class="eyebrow">Back in stock</p>
+        <h2>Moss planter</h2>
+        <p>Self-watering, so your plants forgive you.</p>
+      </div>
       <div role="group" aria-roledescription="slide" aria-label="4 of 4"
-        data-marker-name="Go to slide 4">Slide 4</div>
+        data-marker-name="Go to slide 4" style="--hue: 235">
+        <p class="eyebrow">Limited edition</p>
+        <h2>Tide speaker</h2>
+        <p>Room-filling sound in a pocket-sized shell.</p>
+      </div>
     </div>
 
     <!-- MANDATORY: announces the current slide regardless of which control moved the carousel -->
