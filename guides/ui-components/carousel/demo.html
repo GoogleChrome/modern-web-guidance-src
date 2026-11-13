@@ -181,7 +181,6 @@
       inset-inline: 0;
       inset-block-start: 0;
       aspect-ratio: var(--slide-ratio);
-      padding-inline: 0.75rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -192,6 +191,8 @@
     /* Fixed colors: the buttons always sit on the slide artwork, not on the page surface */
     .carousel-controls button {
       pointer-events: auto;
+      /* Margin, not padding on the overlay: WebKit shrinks an absolutely positioned box with aspect-ratio by its padding */
+      margin-inline: 0.75rem;
       display: grid;
       place-items: center;
       inline-size: 2.75rem;
