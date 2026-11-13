@@ -122,64 +122,12 @@ Simple pie chart:
 
 ## Accessibility considerations
 
-Visual effects are **not** required to meet WCAG 2.2 if they are applied purely for decorative purposes alone.
-
-However, they are subject to certain WCAG success criteria when they convey information or are used to render backgrounds behind text:
-
-For example, when using gradients to render graphs and charts, you MUST:
-
-- Provide a short text description of the chart for screen readers.
-- MANDATORY: Provide a semantic data table as an accessible alternative (WCAG 2.2 SC 1.1.1 Non-text Content (Level A)).
-
-For more information, refer to {{ GUIDE_REF("accessibility") }} under the alternate text and media guidelines.
-
-```html
-<!-- Complex graph with figcaption and text description -->
-<figure>
-  <div role="img" aria-label="Sales growth graph 2024" class="graph">...graph generated with visual effects...</div>
-  <figcaption>Sales grew 20% in Q3 due to new platform launch.</figcaption>
-</figure>
-
-<!-- equivalent semantic data table -->
-<table>
-  <thead>
-    <tr>
-      <th scope="col">Period</th>
-      <th scope="col">Sales</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th scope="row">Q1</th>
-      <td>$100,000</td>
-    </tr>
-    <tr>
-      <th scope="row">Q2</th>
-      <td>$100,000</td>
-    </tr>
-    <tr>
-      <th scope="row">Q3</th>
-      <td>$120,000</td>
-    </tr>
-    <tr>
-      <th scope="row">Q4</th>
-      <td>$122,000</td>
-    </tr>
-  </tbody>
-</table>
-```
-
-When using gradients as backgrounds, make sure that any non-decorative content that overlays the gradient meets minimum contrast requirements for **all** areas of the gradient effect:
-
-- 4.5:1 for normal text and 3:1 for large text (at least 24px, or at least 18.66px bold) (WCAG 2.2 SC 1.4.3 Contrast (Minimum) (Level AA))
-- 3:1 for icons (WCAG 2.2 SC 1.4.11 Non-text Contrast (Level AA))
-
-Refer to {{ GUIDE_REF("color") }} for more details.
+Text and icons placed over a gradient or pattern background, and text filled with a gradient, need enough contrast against every color in the gradient. Check them against each color stop: at least 4.5:1 for text, 3:1 for large text (at least 24px, or at least 18.66px bold), and 3:1 for icons (WCAG 1.4.3 Contrast (Minimum), WCAG 1.4.11 Non-text Contrast). For more on contrast, see {{ GUIDE_REF("color") }}.
 
 ```css
 .myButton {
-  /* The contrast between the label color and both colors that make up the gradient exceeds the 4.5:1 threshold */
+  /* The label color has at least 4.5:1 contrast against both gradient stops. */
   color: #111111;
-  background: linear-gradient(#ffffff, #aaaaff);
+  background: linear-gradient(in oklab, #ffffff, #aaaaff);
 }
 ```

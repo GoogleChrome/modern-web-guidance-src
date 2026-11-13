@@ -3,6 +3,4 @@
 - A lighting or texture overlay uses `background-blend-mode`, or uses `mix-blend-mode` on an element inside an `isolation: isolate` stacking context.
 - Decorative patterns (such as stripes, dots, or checkerboards) are drawn with CSS gradients that use hard color stops, not with image or SVG files.
 - A chart drawn with a CSS gradient (such as a `conic-gradient()` pie) is accompanied by accessible text or markup (such as visible percentage labels, an accessible name or description, or a semantic `<table>`) that exposes the same data to assistive technologies.
-- For charts and graphs that use visual effects, the implementation MUST have a fallback text description for screen readers.
-- For charts and graphs that use visual effects, a semantic data table MUST be provide as an accessible alternative for the implementation.
-- When the implementation is used as a background effect, the contrast of any non-decorative content and the implementation MUST have a contrast ratio of 4.5:1 for normal text and 3:1 for large text (at least 24px, or at least 18.66px bold), and 3:1 for icons.
+- Text and icons over a gradient or pattern background, and text filled with a gradient, have a contrast ratio against each color stop of at least 4.5:1 for text, 3:1 for large text (at least 24px, or at least 18.66px bold), and 3:1 for icons.
