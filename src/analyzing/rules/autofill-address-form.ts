@@ -69,6 +69,8 @@ const SUPPORTED_EXTENSIONS = [
   '.tsx',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
 ];
 const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];

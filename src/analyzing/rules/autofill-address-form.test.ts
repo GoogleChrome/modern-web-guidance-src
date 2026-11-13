@@ -122,6 +122,23 @@ const title = "Checkout";
     assert.equal(findings[0]?.line, 7);
     assert.match(findings[0]?.message ?? '', /street-address/);
   });
+
+  await t.test('flags address inputs in .gts templates, except ones that spread ...attributes', () => {
+    const gts = [
+      'export default class Address extends Component {',
+      '  <template>',
+      '    <form>',
+      '      <input type="text" name="postal_code" />',
+      '      <input type="text" name="street_address" ...attributes />',
+      '    </form>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    const findings = scanFiles(new Map([['app/components/address.gts', gts]]), [autofillAddressFormRule]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 4);
+    assert.match(findings[0]?.message ?? '', /postal-code/);
+  });
 });
 
 void test('autofill-address-form: negative / exempt cases', async (t) => {

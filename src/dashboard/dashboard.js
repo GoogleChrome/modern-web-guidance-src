@@ -2006,11 +2006,15 @@ function renderBackButton() {
     return btn;
 }
 
+/** Counts `viewContent` calls, so one that finishes loading after a newer one has started leaves the modal to the newer one. */
+let contentViews = 0;
+
 /**
  * @param {string} fileName
  * @param {string} filePath
  */
 async function viewContent(fileName, filePath) {
+    const view = ++contentViews;
     const title = $('#modal-title');
     const body = $('#modal-body');
     const modal = $('dialog#modal');
@@ -2018,7 +2022,6 @@ async function viewContent(fileName, filePath) {
     title.textContent = fileName;
     modal.dataset.view = 'content';
     if (!modal.open) modal.showModal();
-    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     body.innerHTML = '';
     body.appendChild(renderBackButton());
@@ -2026,10 +2029,12 @@ async function viewContent(fileName, filePath) {
     const pre = document.createElement('pre');
     pre.className = 'log-content';
     pre.tabIndex = 0;
+    pre.textContent = 'Loading content...';
     body.appendChild(pre);
 
     try {
         const text = await api.getFileText(filePath);
+        if (view !== contentViews) return;
 
         // A capped patch is a one-line `# diff omitted: ...` placeholder with no `diff --git`
         // header, so it is shown as plain text rather than as an empty per-file diff.
@@ -2088,6 +2093,7 @@ async function viewContent(fileName, filePath) {
         pre.className = '';
 
     } catch (e) {
+        if (view !== contentViews) return;
         body.innerHTML = '';
         body.appendChild(renderBackButton());
         const error = document.createElement('div');

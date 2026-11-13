@@ -54,8 +54,8 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
       web-features:
-        specifier: ^3.45.0
-        version: 3.45.0
+        specifier: ^3.46.0
+        version: 3.46.0
     devDependencies:
       '@anthropic-ai/claude-code':
         specifier: ^2.1.316
@@ -1757,8 +1757,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  web-features@3.45.0:
-    resolution: {integrity: sha512-Atp/v77aPEuVIPsw7tYz9IrID8CztDcIleh8n/Z8r7HEkvNt7eYWHF8s4hlWQ0QskFzTPDjq81vjubXXCnBMSg==}
+  web-features@3.46.0:
+    resolution: {integrity: sha512-UXJz08ycij5sVoOL97e8kvzhnC/3kbo3SCGC1j84G5pqx7XXStbqPVNVli+BHwo8Gcb6SquKUGk5TJYsl0oRYw==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -3283,7 +3283,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  web-features@3.45.0: {}
+  web-features@3.46.0: {}
 
   webidl-conversions@3.0.1: {}
 

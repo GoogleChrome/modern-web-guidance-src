@@ -327,8 +327,8 @@ describe('runAnalyzeCli', () => {
   it('runs QUALIFIED_RULES by default and rejects unknown flags (--all, --experimental, --jsno)', async () => {
     await withTempDir(async (testDir) => {
       await writeFile(
-        join(testDir, 'mask.css'),
-        `.icon {\n  -webkit-mask-image: url('icon.svg');\n}`,
+        join(testDir, 'transform.css'),
+        `.card {\n  transform: translateX(10px) rotate(45deg);\n}`,
         'utf8',
       );
 

@@ -8,6 +8,7 @@ import autofillSignUpForm from './autofill-sign-up-form.ts';
 import calculateEventDifferentials from './calculate-event-differentials.ts';
 import checkbox from './checkbox.ts';
 import childStateBasedStyling from './child-state-based-styling.ts';
+import complexShapes from './complex-shapes.ts';
 import customTextDecorations from './custom-text-decorations.ts';
 import customizeScrollbarColorAndThickness from './customize-scrollbar-color-and-thickness.ts';
 import darkMode from './dark-mode.ts';
@@ -16,11 +17,13 @@ import declarativeDialogPopoverControl from './declarative-dialog-popover-contro
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
 import dialog from './dialog.ts';
 import dynamicSiblingAnimations from './dynamic-sibling-animations.ts';
+import dynamicSiblingStyling from './dynamic-sibling-styling.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
 import icons from './icons.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
+import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
 import interestTriggeredTooltips from './interest-triggered-tooltips.ts';
 import js from './js.ts';
@@ -33,6 +36,7 @@ import selectMenuInteraction from './select-menu-interaction.ts';
 import slider from './slider.ts';
 import softEdgeContentFade from './soft-edge-content-fade.ts';
 import stylingWebComponents from './styling-web-components.ts';
+import switchRules from './switch.ts';
 import validateInputAfterInteraction from './validate-input-after-interaction.ts';
 
 export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
@@ -44,6 +48,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   calculateEventDifferentials,
   checkbox,
   childStateBasedStyling,
+  complexShapes,
   customTextDecorations,
   customizeScrollbarColorAndThickness,
   darkMode,
@@ -52,11 +57,13 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   deliverOptimizedDecorativeImages,
   dialog,
   dynamicSiblingAnimations,
+  dynamicSiblingStyling,
   equalWidthTextLines,
   flickerFreeClientSideAbTesting,
   formFieldsAutomaticallyFitContents,
   icons,
   imeSafeEnterSubmit,
+  improveNextPageLoadPerformance,
   improveTextLayoutAndLegibility,
   interestTriggeredTooltips,
   js,
@@ -69,6 +76,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   slider,
   softEdgeContentFade,
   stylingWebComponents,
+  switchRules,
   validateInputAfterInteraction,
 ];
 

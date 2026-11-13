@@ -1,11 +1,28 @@
 import {
-  Node, SyntaxKind, VariableDeclarationKind, ts,
-  type ArrowFunction, type AsExpression, type BinaryExpression, type Block,
-  type CallExpression, type ElementAccessExpression, type ExportDeclaration,
-  type FunctionDeclaration, type FunctionExpression, type Identifier,
-  type ImportDeclaration, type MethodDeclaration, type NonNullExpression,
-  type ParameterDeclaration, type ParenthesizedExpression, type PropertyAccessExpression,
-  type SatisfiesExpression, type SourceFile, type Statement, type TypeAssertion,
+  Node,
+  SyntaxKind,
+  VariableDeclarationKind,
+  ts,
+  type ArrowFunction,
+  type AsExpression,
+  type BinaryExpression,
+  type Block,
+  type CallExpression,
+  type ElementAccessExpression,
+  type ExportDeclaration,
+  type FunctionDeclaration,
+  type FunctionExpression,
+  type Identifier,
+  type ImportDeclaration,
+  type MethodDeclaration,
+  type NonNullExpression,
+  type ParameterDeclaration,
+  type ParenthesizedExpression,
+  type PropertyAccessExpression,
+  type SatisfiesExpression,
+  type SourceFile,
+  type Statement,
+  type TypeAssertion,
   type VariableDeclaration,
 } from 'ts-morph';
 
@@ -191,7 +208,11 @@ export type LexicalBinding =
  * Walks enclosing lexical scopes from `startNode` up to `SourceFile` and returns
  * the innermost binding for `name` (or `null` if `name` is unbound / global).
  */
-export function resolveLexicalBinding(startNode: Node, name: string, beforePos?: number): LexicalBinding | null {
+export function resolveLexicalBinding(
+  startNode: Node,
+  name: string,
+  beforePos?: number,
+): LexicalBinding | null {
   for (let current = startNode.getParent(); current; current = current.getParent()) {
     if (isCallableScope(current)) {
       const param = current.getParameters().find((p) => hasBindingName(p, name));
@@ -342,7 +363,17 @@ function checkBinaryComparisonPolarity(expr: BinaryExpression): 'positive' | 'ne
   return null;
 }
 
-const BROWSER_GLOBAL_ROOTS = new Set(['window', 'document', 'navigator', 'HTMLElement', 'Element', 'Node', 'CSS', 'globalThis', 'self']);
+const BROWSER_GLOBAL_ROOTS = new Set([
+  'window',
+  'document',
+  'navigator',
+  'HTMLElement',
+  'Element',
+  'Node',
+  'CSS',
+  'globalThis',
+  'self',
+]);
 
 function matchesTokenExact(name: string | null | undefined, featureTokens: readonly string[]): boolean {
   if (!name) return false;
