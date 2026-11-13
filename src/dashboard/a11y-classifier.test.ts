@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { A11Y_SUBCATEGORIES, classifyAccessibilityCheck, classifyScenarioCheck, normalizeCheckMessage } from './a11y-classifier.js';
+import { A11Y_SUBCATEGORIES, classifyAccessibilityCheck, classifyCheck, normalizeCheckMessage } from './a11y-classifier.js';
 test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-cutting subcategories', () => {
     const cases: Array<[string, string, string, string]> = [
         ['accessibility', 'respect-os-text-scale', 'Document head opts into OS text scaling via meta text-scale element', 'motion_contrast_visual'],
@@ -119,12 +119,12 @@ test('normalizeCheckMessage strips markdown backticks and collapses whitespace',
     assert.strictEqual(normalizeCheckMessage(null), '');
     assert.strictEqual(normalizeCheckMessage(undefined), '');
 });
-test('classifyScenarioCheck ignores synthetic early-failure placeholder checks', () => {
-    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', isEarlyFailure: true, testId: 'chk-1' }, 'accordion').isAccessibility, false);
-    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', testId: '' }, 'accordion').isAccessibility, false);
-    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"' }, 'accordion').isAccessibility, false);
-    assert.strictEqual(classifyScenarioCheck({ message: 'Infrastructure error in focus ring container', id: 'ef-1', failureReason: 'Infrastructure error in focus ring container' }, 'accordion').isAccessibility, false);
-    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', testId: 'chk-1' }, 'accordion').isAccessibility, true);
-    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', id: 'chk-1' }, 'accordion').isAccessibility, true);
+test('classifyCheck ignores synthetic infra-error placeholder checks', () => {
+    assert.strictEqual(classifyCheck({ message: 'Trigger button sets aria-expanded="true"', isEarlyFailure: true, testId: 'chk-1' }, 'accordion').isAccessibility, false);
+    assert.strictEqual(classifyCheck({ message: 'Trigger button sets aria-expanded="true"', testId: '' }, 'accordion').isAccessibility, false);
+    assert.strictEqual(classifyCheck({ message: 'Trigger button sets aria-expanded="true"' }, 'accordion').isAccessibility, false);
+    assert.strictEqual(classifyCheck({ message: 'Infrastructure error in focus ring container', id: 'ef-1', failureReason: 'Infrastructure error in focus ring container' }, 'accordion').isAccessibility, false);
+    assert.strictEqual(classifyCheck({ message: 'Trigger button sets aria-expanded="true"', testId: 'chk-1' }, 'accordion').isAccessibility, true);
+    assert.strictEqual(classifyCheck({ message: 'Trigger button sets aria-expanded="true"', id: 'chk-1' }, 'accordion').isAccessibility, true);
     assert.strictEqual(A11Y_SUBCATEGORIES.length, 5);
 });

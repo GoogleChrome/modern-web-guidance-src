@@ -5,7 +5,7 @@ import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
 import { runAllManifests, injectPreviewShim } from './generate-manifests.js';
-import { extractSuiteSummary } from './summary-extractor.js';
+import { extractJobSummary } from './summary-extractor.js';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
   rootDir,
@@ -107,11 +107,11 @@ const MIME_TYPES = {
 };
 
 /**
- * @typedef {Partial<import('./summary-extractor.js').SuiteSummary> & {
+ * @typedef {Partial<import('./summary-extractor.js').JobSummary> & {
  *   id: string;
  *   source: import('./api.js').DataSource;
  *   timestamp?: string;
- * }} SuiteInfo
+ * }} JobInfo
  */
 
 /** @type {string | null} */
@@ -249,46 +249,46 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
-    /** @type {SuiteInfo[]} */
-    let suitesList = [];
+    /** @type {JobInfo[]} */
+    let jobsList = [];
 
     // Local
-    const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+    const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
     try {
-      if (fs.existsSync(localSuitesDir)) {
-        const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
+      if (fs.existsSync(localJobsDir)) {
+        const dirs = fs.readdirSync(localJobsDir, { withFileTypes: true })
           .filter(dirent => (dirent.isDirectory() || dirent.isSymbolicLink()) && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
-          const suiteDir = path.join(localSuitesDir, d);
-          const evalsJsonPath = path.join(suiteDir, 'evals.json');
+          const jobDir = path.join(localJobsDir, d);
+          const evalsJsonPath = path.join(jobDir, 'evals.json');
           let timestamp = null;
           try {
             if (fs.existsSync(evalsJsonPath)) {
               timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
               const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
-              const summary = extractSuiteSummary(d, rawData, timestamp);
+              const summary = extractJobSummary(d, rawData, timestamp);
               if (summary) {
-                suitesList.push({ ...summary, id: d, source: 'local' });
+                jobsList.push({ ...summary, id: d, source: 'local' });
                 return;
               }
             } else {
-              timestamp = fs.statSync(suiteDir).mtime.toISOString();
+              timestamp = fs.statSync(jobDir).mtime.toISOString();
             }
           } catch {
             timestamp = new Date().toISOString();
           }
-          suitesList.push({ id: d, source: 'local', timestamp });
+          jobsList.push({ id: d, source: 'local', timestamp });
         });
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      console.error('Error reading local suites:', message);
+      console.error('Error reading local jobs:', message);
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ suites: suitesList }));
+    res.end(JSON.stringify({ suites: jobsList }));
     return;
   }
 
@@ -352,7 +352,7 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        // Return 200 immediately so UI can track the run
+        // Return 200 immediately so UI can track the job
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
 
@@ -364,7 +364,7 @@ const server = http.createServer(async (req, res) => {
         const options = JSON.parse(body);
         fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(options, null, 2)};`);
 
-        console.log(`\n>>> Launching UI Eval Suite in background...`);
+        console.log(`\n>>> Launching UI Eval Job in background...`);
 
         const p = spawn('pnpm', [
           'gd',
@@ -410,8 +410,8 @@ const server = http.createServer(async (req, res) => {
     /** @type {string[]} */
     let files = [];
     if (source === 'local') {
-      const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
-      const targetDir = path.join(localSuitesDir, relativePath);
+      const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+      const targetDir = path.join(localJobsDir, relativePath);
       try {
         if (fs.existsSync(targetDir)) {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
@@ -454,8 +454,8 @@ const server = http.createServer(async (req, res) => {
     } else if (checkPath.startsWith('base_apps/')) {
       filePath = path.join(baseAppsDir, checkPath.substring(10));
     } else {
-      const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
-      filePath = path.join(localSuitesDir, checkPath);
+      const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+      filePath = path.join(localJobsDir, checkPath);
     }
 
     const absolutePath = path.resolve(filePath);
@@ -495,8 +495,8 @@ const server = http.createServer(async (req, res) => {
       localEvalViewPath = path.join(dashboardDir, 'index.html');
     }
 
-    // If the file exists in eval-view, serve it.
-    // Otherwise, assume it's a test result file in suitesDir
+    // If the file exists in dashboard, serve it.
+    // Otherwise, assume it's a trial result file in suitesDir
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
@@ -511,19 +511,19 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
-        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
+        // If this is an absolute navigation link (e.g. /menu) clicked from inside a trial result,
+        // it will lack the <job>/<trial>/... prefix. We must restore it from the referer.
         let finalRelativePath = relativePath;
         if (referer) {
             try {
                 const refererUrl = new URL(referer);
                 const refPath = refererUrl.pathname.substring(1); // remove leading slash
                 
-                // If referer is a test result (e.g. suite/1/task/guided/index.html)
-                // and the requested path does NOT start with the suite name
+                // If referer is a trial result (e.g. job/1/task/guided/index.html)
+                // and the requested path does NOT start with the job ID
                 const parts = refPath.split('/');
                 if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
-                    // Reconstruct the base path up to the run type directory
+                    // Reconstruct the base path up to the condition directory
                     const basePath = parts.slice(0, 4).join('/');
                     finalRelativePath = path.join(basePath, finalRelativePath);
                 }
@@ -532,8 +532,8 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
-        const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
-        filePath = path.join(localSuitesDir, finalRelativePath);
+        const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+        filePath = path.join(localJobsDir, finalRelativePath);
     }
   }
 
@@ -581,12 +581,12 @@ const server = http.createServer(async (req, res) => {
 
       if (err.code === 'ENOENT') {
         // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
-        // try to serve the index.html from the same base run directory instead.
+        // try to serve the index.html from the same condition directory instead.
         if (!extname || extname === '.html') {
             const pathParts = filePath.split(path.sep);
-            const runBaseIndex = pathParts.findIndex(p => p === 'guided' || p === 'unguided');
-            if (runBaseIndex !== -1) {
-                const basePath = pathParts.slice(0, runBaseIndex + 1).join(path.sep);
+            const conditionIndex = pathParts.findIndex(p => p === 'guided' || p === 'unguided');
+            if (conditionIndex !== -1) {
+                const basePath = pathParts.slice(0, conditionIndex + 1).join(path.sep);
                 const indexPath = path.join(basePath, 'index.html');
                 if (fs.existsSync(indexPath)) {
                     res.writeHead(200, { 'Content-Type': 'text/html' });

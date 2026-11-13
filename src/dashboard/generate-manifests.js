@@ -16,7 +16,7 @@ export function generateMapping(outputDir = defaultOutputDir) {
     }
     fs.mkdirSync(outputDir, { recursive: true });
     /** @type {Record<string, string[]>} */
-    const mapping = {}; // usecase -> [feature_ids]
+    const mapping = {}; // guide -> [feature_ids]
 
     /** @param {string} dir */
     function scanGuides(dir) {
@@ -54,39 +54,39 @@ export function generateMapping(outputDir = defaultOutputDir) {
  */
 export async function generateSuitesManifest(outputDir = defaultOutputDir, resultsSourceDir = suitesDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    const { extractSuiteSummary } = await import('./summary-extractor.js');
+    const { extractJobSummary } = await import('./summary-extractor.js');
     /** @type {Map<string, Record<string, any>>} */
-    const suitesMap = new Map();
+    const jobsMap = new Map();
     const outputPath = path.join(outputDir, 'suites.gen.json');
 
-    // Add suites from results dir
+    // Add jobs from results dir
     if (fs.existsSync(resultsSourceDir)) {
         const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
         for (const item of items) {
             if (item.isDirectory() || item.isSymbolicLink()) {
-                const suiteDir = path.join(resultsSourceDir, item.name);
-                const evalsPath = path.join(suiteDir, 'evals.json');
+                const jobDir = path.join(resultsSourceDir, item.name);
+                const evalsPath = path.join(jobDir, 'evals.json');
                 if (fs.existsSync(evalsPath)) {
                     try {
                         const rawData = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
-                        const summary = extractSuiteSummary(item.name, rawData);
+                        const summary = extractJobSummary(item.name, rawData);
                         if (summary) {
-                            suitesMap.set(item.name, summary);
+                            jobsMap.set(item.name, summary);
                         }
                     } catch (e) {
                         console.warn(`Failed to parse evals.json for ${item.name}:`, e);
-                        suitesMap.set(item.name, { testId: item.name, source: 'local' });
+                        jobsMap.set(item.name, { testId: item.name, source: 'local' });
                     }
                 }
             }
         }
     }
 
-    const sortedSuites = Array.from(suitesMap.values()).sort((a, b) => {
+    const sortedJobs = Array.from(jobsMap.values()).sort((a, b) => {
         return (a.testId || '').localeCompare(b.testId || '');
     });
-    fs.writeFileSync(outputPath, JSON.stringify(sortedSuites, null, 2));
-    return sortedSuites;
+    fs.writeFileSync(outputPath, JSON.stringify(sortedJobs, null, 2));
+    return sortedJobs;
 }
 
 export async function generateGroupedTasksManifest(outputDir = defaultOutputDir) {
@@ -251,7 +251,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
         generateDemosManifest(outputDir);
     }
 
-    console.log('🔄 Generating suites manifests...');
+    console.log('🔄 Generating jobs manifest...');
     await generateSuitesManifest(outputDir, resultsSourceDir);
 }
 

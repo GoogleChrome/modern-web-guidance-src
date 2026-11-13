@@ -1,10 +1,10 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip, getEffortLevel, isDefaultEffort, compareEffortLevels, pickHigherPrecedenceEffort } from './utils.js';
-import { extractSuiteSummary } from './summary-extractor.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseJobDateInfo, formatJobDate, getJobDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip, getEffortLevel, isDefaultEffort, compareEffortLevels, pickHigherPrecedenceEffort } from './utils.js';
+import { extractJobSummary } from './summary-extractor.js';
 import { ApiClient, isAuthRejection } from './api.js';
 import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
 
-/** @type {Record<string, GuideSuiteSummary>} */
-let allTestData = {}; // Cache all test data by testId
+/** @type {Record<string, GuideJobSummary>} */
+let allJobData = {}; // Cache all job summaries by testId
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -33,17 +33,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 reloadAsRemote();
                 return;
             }
-            await loadManifestTests('remote');
+            await loadManifestJobs('remote');
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
 
         if (resolveDataSource(params) === 'public') {
-            await loadManifestTests('public');
+            await loadManifestJobs('public');
         } else {
-            await loadLocalTests();
+            await loadLocalJobs();
             if (getAccessToken()) {
-                await loadManifestTests('remote');
+                await loadManifestJobs('remote');
             }
         }
         setupNavigationControls(guideName);
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * @typedef {Object} GuideSuiteSummary
+ * @typedef {Object} GuideJobSummary
  * @property {string} testId
  * @property {string} timestamp
  * @property {string} source
@@ -70,13 +70,13 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @param {any} summary
  * @param {string} source
  */
-function registerSuiteSummary(summary, source) {
+function registerJobSummary(summary, source) {
     const compoundKey = `${summary.testId}|||${source}`;
 
-    allTestData[compoundKey] = {
+    allJobData[compoundKey] = {
         testId: summary.testId,
         timestamp: (() => {
-            const info = parseSuiteDateInfo(summary.timestamp, summary.testId);
+            const info = parseJobDateInfo(summary.timestamp, summary.testId);
             if (!info) return summary.timestamp;
             return info.dateOnly ? info.date.toISOString().slice(0, 10) : info.date.toISOString();
         })(),
@@ -94,14 +94,14 @@ function registerSuiteSummary(summary, source) {
  * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
  * @param {string} [forcedTimestamp]
  */
-function registerTestData(testId, source, parsed, forcedTimestamp) {
-    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+function registerJobData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractJobSummary(testId, parsed, forcedTimestamp);
     if (summary) {
-        registerSuiteSummary(summary, source);
+        registerJobSummary(summary, source);
     }
 }
 
-async function loadLocalTests() {
+async function loadLocalJobs() {
     if (!isLocalServer()) return;
 
     try {
@@ -112,11 +112,11 @@ async function loadLocalTests() {
         if (!response.ok) {
             const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
             if (!staticRes.ok) return;
-            const suitesData = await staticRes.json();
-            if (Array.isArray(suitesData)) {
-                manifest = { suites: suitesData };
+            const jobsData = await staticRes.json();
+            if (Array.isArray(jobsData)) {
+                manifest = { suites: jobsData };
             } else {
-                manifest = suitesData;
+                manifest = jobsData;
             }
             useResultsPrefix = true;
         } else {
@@ -124,22 +124,22 @@ async function loadLocalTests() {
             manifest = Array.isArray(data) ? { suites: data } : data;
         }
 
-        for (const suite of manifest.suites) {
-            if (typeof suite === 'object' && suite.testId && suite.guides) {
-                registerSuiteSummary(suite, useResultsPrefix ? 'static' : 'local');
+        for (const job of manifest.suites) {
+            if (typeof job === 'object' && job.testId && job.guides) {
+                registerJobSummary(job, useResultsPrefix ? 'static' : 'local');
             } else {
-                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
-                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                const testId = typeof job === 'string' ? job : job.id || job.testId;
+                const jobTimestamp = typeof job === 'object' ? job.timestamp : undefined;
                 if (!testId) continue;
                 try {
                     const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
                     const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
                     if (response.ok) {
                         const parsed = await response.json();
-                        registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
+                        registerJobData(testId, useResultsPrefix ? 'static' : 'local', parsed, jobTimestamp);
                     }
                 } catch (e) {
-                    console.warn(`Failed to load local test ${testId}:`, e);
+                    console.warn(`Failed to load local job ${testId}:`, e);
                 }
             }
         }
@@ -149,22 +149,22 @@ async function loadLocalTests() {
 }
 
 /** @param {'remote' | 'public'} source */
-async function loadManifestTests(source) {
+async function loadManifestJobs(source) {
     try {
-        const manifest = await new ApiClient(source).getSuitesManifest();
+        const manifest = await new ApiClient(source).getJobsManifest();
         for (const item of manifest) {
             if (item && item.testId) {
-                registerSuiteSummary(item, source);
+                registerJobSummary(item, source);
             }
         }
     } catch (error) {
-        console.error(`Error loading ${source} suites:`, error);
+        console.error(`Error loading ${source} jobs:`, error);
         // The bucket rejected the token; show the public copy rather than nothing. Not on the
         // dev server's local view, so a stale token there does not mix out/public-evals/ into
         // local results. (Checked by mode rather than `=== 'remote'` because a 401 has already
         // cleared the token by this point.)
         if (source === 'remote' && resolveDataSource() !== 'local' && isAuthRejection(error)) {
-            await loadManifestTests('public');
+            await loadManifestJobs('public');
         }
     }
 }
@@ -207,10 +207,10 @@ function setupNavigationControls(currentGuide) {
     // Carry mode and data source forward so navigating between guides does not drop ?source=public.
     const querySuffix = `${isA11yMode ? '&mode=a11y' : ''}${sourceParam ? `&source=${encodeURIComponent(sourceParam)}` : ''}`;
     const guideSet = new Set();
-    Object.values(allTestData).forEach(run => {
-        if (run.guides) {
-            Object.keys(run.guides).forEach(g => {
-                if (!isA11yMode || run.guides[g]?.a11y) { guideSet.add(g); }
+    Object.values(allJobData).forEach(job => {
+        if (job.guides) {
+            Object.keys(job.guides).forEach(g => {
+                if (!isA11yMode || job.guides[g]?.a11y) { guideSet.add(g); }
             });
         }
     });
@@ -367,16 +367,16 @@ function renderGraphs(guideName) {
     const activeTask = params.get('task');
     const isA11yMode = params.get('mode') === 'a11y';
 
-    const testKeys = Object.keys(allTestData);
+    const jobKeys = Object.keys(allJobData);
 
     /**
      * The requested target's stats, or the guide roll-up when no target is requested.
      * When `?mode=a11y` is active, returns the `.a11y` check breakdown.
-     * @param {GuideSuiteSummary} run
+     * @param {GuideJobSummary} job
      * @returns {any}
      */
-    const getStats = (run) => {
-        const guideStats = run.guides?.[guideName];
+    const getStats = (job) => {
+        const guideStats = job.guides?.[guideName];
         if (!guideStats) return null;
         let targetStats = guideStats;
         if (activeTask) {
@@ -387,8 +387,8 @@ function renderGraphs(guideName) {
     };
 
     // Filter out jobs that don't have this guide, or have 0 trials for it
-    const filteredKeys = testKeys.filter(key => {
-        const g = getStats(allTestData[key]);
+    const filteredKeys = jobKeys.filter(key => {
+        const g = getStats(allJobData[key]);
         if (!g) return false;
         const gTotal = g.guidedTotal || 0;
         const uTotal = g.unguidedTotal || 0;
@@ -404,31 +404,31 @@ function renderGraphs(guideName) {
     /** @type {Map<string, Set<string>>} */
     const explicitEffortsByPair = new Map();
     filteredKeys.forEach(compoundKey => {
-        const run = allTestData[compoundKey];
-        if (!isDefaultEffort(run.reasoningEffort)) {
-            const pairKey = `${run.agent}|||${run.model}`;
+        const job = allJobData[compoundKey];
+        if (!isDefaultEffort(job.reasoningEffort)) {
+            const pairKey = `${job.agent}|||${job.model}`;
             let set = explicitEffortsByPair.get(pairKey);
             if (!set) {
                 set = new Set();
                 explicitEffortsByPair.set(pairKey, set);
             }
-            set.add(getEffortLevel(run.reasoningEffort));
+            set.add(getEffortLevel(job.reasoningEffort));
         }
     });
 
-    /** @type {Record<string, GuideSuiteSummary[]>} */
+    /** @type {Record<string, GuideJobSummary[]>} */
     const combinations = {};
     filteredKeys.forEach(compoundKey => {
-        const run = allTestData[compoundKey];
-        const pairKey = `${run.agent}|||${run.model}`;
+        const job = allJobData[compoundKey];
+        const pairKey = `${job.agent}|||${job.model}`;
         const splitByEffort = (explicitEffortsByPair.get(pairKey)?.size || 0) >= 2;
         const combKey = splitByEffort
-            ? `${pairKey}|||${getEffortLevel(run.reasoningEffort)}`
+            ? `${pairKey}|||${getEffortLevel(job.reasoningEffort)}`
             : pairKey;
         if (!combinations[combKey]) {
             combinations[combKey] = [];
         }
-        combinations[combKey].push(run);
+        combinations[combKey].push(job);
     });
 
     /**
@@ -436,33 +436,33 @@ function renderGraphs(guideName) {
      * @param {string} timestamp
      * @returns {string}
      */
-    const getDateKey = (timestamp) => getSuiteDayKey(timestamp);
+    const getDateKey = (timestamp) => getJobDayKey(timestamp);
 
-    // Group by date (keep latest run per day) and slice to last 50 for each combination
+    // Group by date (keep latest job per day) and slice to last 50 for each combination
     Object.keys(combinations).forEach(combKey => {
-        const runs = combinations[combKey];
-        runs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        const jobs = combinations[combKey];
+        jobs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         
-        const runsByDate = new Map();
-        runs.forEach(run => {
-            const dateKey = getDateKey(run.timestamp);
-            runsByDate.set(dateKey, run);
+        const jobsByDate = new Map();
+        jobs.forEach(job => {
+            const dateKey = getDateKey(job.timestamp);
+            jobsByDate.set(dateKey, job);
         });
         
-        let uniqueRuns = Array.from(runsByDate.values());
-        if (uniqueRuns.length > 50) {
-            uniqueRuns = uniqueRuns.slice(-50);
+        let uniqueJobs = Array.from(jobsByDate.values());
+        if (uniqueJobs.length > 50) {
+            uniqueJobs = uniqueJobs.slice(-50);
         }
-        combinations[combKey] = uniqueRuns;
+        combinations[combKey] = uniqueJobs;
     });
 
-    // Build the global timeline of unique dates from the sliced runs across all combinations
+    // Build the global timeline of unique dates from the sliced jobs across all combinations
     const globalDatesMap = new Map();
-    Object.values(combinations).forEach(runs => {
-        runs.forEach(run => {
-            const dateKey = getDateKey(run.timestamp);
+    Object.values(combinations).forEach(jobs => {
+        jobs.forEach(job => {
+            const dateKey = getDateKey(job.timestamp);
             if (!globalDatesMap.has(dateKey)) {
-                const shortDate = formatSuiteDate(run.timestamp, { month: 'short', day: 'numeric' });
+                const shortDate = formatJobDate(job.timestamp, { month: 'short', day: 'numeric' });
                 globalDatesMap.set(dateKey, {
                     dateKey: dateKey,
                     shortDate: shortDate === '-' ? dateKey : shortDate
@@ -488,10 +488,10 @@ function renderGraphs(guideName) {
     const globalWidth = Math.max(baseMinWidth, globalTimeline.length * 24);
 
     const sortedCombKeys = Object.keys(combinations).sort((keyA, keyB) => {
-        const runsA = combinations[keyA];
-        const runsB = combinations[keyB];
-        const newestA = new Date(runsA[runsA.length - 1].timestamp).getTime();
-        const newestB = new Date(runsB[runsB.length - 1].timestamp).getTime();
+        const jobsA = combinations[keyA];
+        const jobsB = combinations[keyB];
+        const newestA = new Date(jobsA[jobsA.length - 1].timestamp).getTime();
+        const newestB = new Date(jobsB[jobsB.length - 1].timestamp).getTime();
         if (newestB !== newestA) return newestB - newestA;
         const [, , effortA = 'default'] = keyA.split('|||');
         const [, , effortB = 'default'] = keyB.split('|||');
@@ -500,10 +500,10 @@ function renderGraphs(guideName) {
 
     // Filter out combinations that have no data points in the filtered timeline
     const activeCombKeys = sortedCombKeys.filter(combKey => {
-        const runs = combinations[combKey];
-        return runs.some(run => {
-            const runDateKey = getDateKey(run.timestamp);
-            return globalTimeline.some(t => t.dateKey === runDateKey);
+        const jobs = combinations[combKey];
+        return jobs.some(job => {
+            const jobDateKey = getDateKey(job.timestamp);
+            return globalTimeline.some(t => t.dateKey === jobDateKey);
         });
     });
 
@@ -515,9 +515,9 @@ function renderGraphs(guideName) {
 
     activeCombKeys.forEach(combKey => {
         const [agent, model, splitEffortLevel] = combKey.split('|||');
-        const runs = combinations[combKey];
-        let cardReasoningEffort = runs[runs.length - 1]?.reasoningEffort;
-        for (const r of runs) {
+        const jobs = combinations[combKey];
+        let cardReasoningEffort = jobs[jobs.length - 1]?.reasoningEffort;
+        for (const r of jobs) {
             cardReasoningEffort = pickHigherPrecedenceEffort(cardReasoningEffort, r.reasoningEffort);
         }
         const effortLevel = splitEffortLevel || getEffortLevel(cardReasoningEffort);
@@ -534,7 +534,7 @@ function renderGraphs(guideName) {
                 ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> <span class="guide-card-model-row">${escapeHtml(model)}${renderEffortChip(cardReasoningEffort)}</span>
             </h2>
             <div class="guide-card-subtitle">
-                ${runs.length} chronological jobs${isA11yMode ? ' · Accessibility checks' : ''}
+                ${jobs.length} chronological jobs${isA11yMode ? ' · Accessibility checks' : ''}
             </div>
         `;
         card.appendChild(header);
@@ -564,20 +564,20 @@ function renderGraphs(guideName) {
             `;
         });
 
-        globalTimeline.forEach((suite, i) => {
+        globalTimeline.forEach((dayEntry, i) => {
             const x = globalTimeline.length > 1 ? paddingX + i * stepX : globalWidth / 2;
             
-            const run = runs.find(r => getDateKey(r.timestamp) === suite.dateKey);
-            const stats = run ? getStats(run) : null;
+            const job = jobs.find(r => getDateKey(r.timestamp) === dayEntry.dateKey);
+            const stats = job ? getStats(job) : null;
 
-            const isHighlighted = run && run.testId === highlightTestId;
+            const isHighlighted = job && job.testId === highlightTestId;
             if (isHighlighted) {
                 svgContent += `
                     <rect x="${x - 12}" y="${paddingY - 5}" width="24" height="${plotHeight + 10}" fill="var(--color-primary)" style="opacity: 0.12; rx: 4px;" />
                 `;
             }
 
-            if (run && stats) {
+            if (job && stats) {
                 const yU = rateToY(stats.unguidedRate);
                 const yG = rateToY(stats.guidedRate);
                 const isPositive = stats.guidedRate >= stats.unguidedRate;
@@ -607,21 +607,21 @@ function renderGraphs(guideName) {
                     `;
                 }
 
-                const pointLabel = `${suite.shortDate}: open job`;
+                const pointLabel = `${dayEntry.shortDate}: open job`;
                 const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
                 const modeParam = isA11yMode ? '&mode=a11y' : '';
-                const runHref = `dashboard.html?testId=${encodeURIComponent(run.testId)}&source=${encodeURIComponent(run.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
+                const jobHref = `dashboard.html?testId=${encodeURIComponent(job.testId)}&source=${encodeURIComponent(job.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
                 svgContent += `
-                    <a class="timeline-point" href="${escapeHtml(runHref)}" interestfor="tooltip-container" aria-label="${escapeHtml(pointLabel)}" data-testid="${escapeHtml(run.testId)}" data-comb="${escapeHtml(combKey)}">
+                    <a class="timeline-point" href="${escapeHtml(jobHref)}" interestfor="tooltip-container" aria-label="${escapeHtml(pointLabel)}" data-testid="${escapeHtml(job.testId)}" data-comb="${escapeHtml(combKey)}">
                         <g class="timeline-marker">${elementHtml}</g>
-                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${escapeHtml(suite.shortDate)}</text>
+                        <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${escapeHtml(dayEntry.shortDate)}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
                     </a>
                 `;
             } else {
-                // Draw faded date label for missing runs to preserve axis alignment
+                // Draw faded date label for missing jobs to preserve axis alignment
                 svgContent += `
-                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" opacity="0.3">${escapeHtml(suite.shortDate)}</text>
+                    <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle" opacity="0.3">${escapeHtml(dayEntry.shortDate)}</text>
                 `;
             }
         });
@@ -661,25 +661,25 @@ function renderGraphs(guideName) {
     });
 
     /** @param {Element} point
- * @returns {boolean} whether the point resolved to a run */
+ * @returns {boolean} whether the point resolved to a job */
     renderTimelineTooltip = (point) => {
         const combKey = point.getAttribute('data-comb');
         const testId = point.getAttribute('data-testid');
         if (!combKey || !testId) return false;
-        const runData = combinations[combKey]?.find(r => r.testId === testId);
-        if (!runData) return false;
-        const stats = getStats(runData);
+        const jobData = combinations[combKey]?.find(r => r.testId === testId);
+        if (!jobData) return false;
+        const stats = getStats(jobData);
         if (!stats) return false;
-        const formatted = formatSuiteDate(runData.timestamp, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const formattedDate = formatted === '-' ? String(runData.timestamp || '') : formatted;
-        $('#tooltip-header').innerHTML = `<div class="guide-tooltip-title"> ${escapeHtml(runData.testId)} </div>`;
+        const formatted = formatJobDate(jobData.timestamp, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const formattedDate = formatted === '-' ? String(jobData.timestamp || '') : formatted;
+        $('#tooltip-header').innerHTML = `<div class="guide-tooltip-title"> ${escapeHtml(jobData.testId)} </div>`;
 
         const gPassed = stats.guidedPassed || 0;
         const gTotal = stats.guidedTotal || 0;
         const uPassed = stats.unguidedPassed || 0;
         const uTotal = stats.unguidedTotal || 0;
         const uplift = (gTotal > 0 && uTotal > 0) ? (stats.guidedRate - stats.unguidedRate) : null;
-        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>Reasoning Effort:</span> ${renderEffortChip(runData.reasoningEffort, { interactive: false, separator: false })} </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${uplift == null ? '' : (uplift > 0 ? 'positive' : (uplift < 0 ? 'negative' : ''))}"> ${uplift == null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`} </span> </div> </div>`;
+        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>Reasoning Effort:</span> ${renderEffortChip(jobData.reasoningEffort, { interactive: false, separator: false })} </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${uplift == null ? '' : (uplift > 0 ? 'positive' : (uplift < 0 ? 'negative' : ''))}"> ${uplift == null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`} </span> </div> </div>`;
         return true;
     };
 }

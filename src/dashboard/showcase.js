@@ -1,10 +1,10 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
-import { selectRecentSuites, getSuiteTimestamp, hasHeadlineStats } from './insights.js';
-/** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
+import { selectRecentJobs, getJobTimestamp, hasHeadlineStats } from './insights.js';
+/** @typedef {import('./summary-extractor.js').ShowcaseConditionTrial & { rate: number }} ShowcaseConditionTrial */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, jobId: string, date: string, curated?: boolean, unguided: ShowcaseConditionTrial, guided: ShowcaseConditionTrial, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
@@ -45,21 +45,21 @@ if (rootEl) {
     renderPending({ loading: true });
 }
 /**
- * Renders the Spotlight from each agent family's latest nightly suite, unfiltered. Suites carry
+ * Renders the Spotlight from each agent family's latest nightly job, unfiltered. Jobs carry
  * per-check results for the featured tasks in `summary.showcase` (from the published manifest,
  * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
  * match the rest of the page and avoid layout shifts.
- * @param {import('./insights.js').ManifestSuite[]} suites
+ * @param {import('./insights.js').ManifestJob[]} jobs
  * @param {{ hydrated?: boolean, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateShowcaseFromSuites(suites, { hydrated = false, source } = {}) {
+export function updateShowcaseFromJobs(jobs, { hydrated = false, source } = {}) {
     if (!rootEl) return;
     if (source) linkSource = source;
-    tasks = buildTasksFromRecentSuites(suites);
+    tasks = buildTasksFromRecentJobs(jobs);
     if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
         activeTaskId = tasks[0].id;
     }
-    const awaitingHydration = !hydrated && !tasks.length && hasUnhydratedRecentSuites(suites);
+    const awaitingHydration = !hydrated && !tasks.length && hasUnhydratedRecentJobs(jobs);
     if (awaitingHydration) {
         renderPending({ loading: true });
         rootEl.setAttribute('aria-busy', 'true');
@@ -69,21 +69,21 @@ export function updateShowcaseFromSuites(suites, { hydrated = false, source } = 
     rootEl.setAttribute('aria-busy', 'false');
 }
 
-/** @param {import('./insights.js').ManifestSuite[]} suites */
-function hasUnhydratedRecentSuites(suites) {
-    const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
+/** @param {import('./insights.js').ManifestJob[]} jobs */
+function hasUnhydratedRecentJobs(jobs) {
+    const recent = selectRecentJobs(jobs, { perAgentRecentN: 1 });
     return AGENT_FAMILIES.some(f => {
-        const suite = recent.get(f)?.[0];
-        return Boolean(suite && !hasHeadlineStats(suite));
+        const job = recent.get(f)?.[0];
+        return Boolean(job && !hasHeadlineStats(job));
     });
 }
 
 /**
- * @param {import('./insights.js').ManifestSuite[]} suites
+ * @param {import('./insights.js').ManifestJob[]} jobs
  * @returns {ShowcaseTask[]}
  */
-function buildTasksFromRecentSuites(suites) {
-    const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
+function buildTasksFromRecentJobs(jobs) {
+    const recent = selectRecentJobs(jobs, { perAgentRecentN: 1 });
     // Keep agent order aligned with headline AGENT_FAMILIES.
     const families = AGENT_FAMILIES.filter(f => recent.has(f));
     if (!families.length) return [];
@@ -95,14 +95,14 @@ function buildTasksFromRecentSuites(suites) {
         let prompt = '';
         let discipline = '';
         for (const family of families) {
-            const suite = recent.get(family)?.[0];
-            const slice = suite?.showcase?.[def.id];
+            const job = recent.get(family)?.[0];
+            const slice = job?.showcase?.[def.id];
             if (!slice || !slice.guided || !slice.unguided) continue;
             if (!prompt && slice.prompt) prompt = slice.prompt;
             if (!discipline && slice.discipline) discipline = slice.discipline;
-            const ts = getSuiteTimestamp(suite);
+            const ts = getJobTimestamp(job);
             const date = ts ? ts.slice(0, 10) : '';
-            const toRun = (/** @type {import('./summary-extractor.js').ShowcaseModeRun} */ r) => ({
+            const toTrial = (/** @type {import('./summary-extractor.js').ShowcaseConditionTrial} */ r) => ({
                 ...r,
                 rate: r.total > 0 ? Math.round((r.passed / r.total) * 100) : 0
             });
@@ -119,13 +119,13 @@ function buildTasksFromRecentSuites(suites) {
             agentPairs[family.id] = {
                 agentId: family.id,
                 agentLabel: family.label,
-                model: suite?.model || '',
-                reasoningEffort: suite?.reasoningEffort,
-                suiteId: suite?.testId || '',
+                model: job?.model || '',
+                reasoningEffort: job?.reasoningEffort,
+                jobId: job?.testId || '',
                 date,
-                curated: Boolean(suite?.curated),
-                unguided: toRun(slice.unguided),
-                guided: toRun(slice.guided),
+                curated: Boolean(job?.curated),
+                unguided: toTrial(slice.unguided),
+                guided: toTrial(slice.guided),
                 checks
             };
         }
@@ -294,8 +294,8 @@ function renderPromptBar(task, pair) {
     }
     if (metaEl) {
         const sourceQuery = linkSource ? `&source=${encodeURIComponent(linkSource)}` : '';
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}`;
+        const jobHref = `dashboard.html?testId=${encodeURIComponent(pair.jobId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.jobId)}${sourceQuery}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
@@ -307,8 +307,8 @@ function renderPromptBar(task, pair) {
         const effortChipHtml = pair.model
             ? renderEffortChip(pair.reasoningEffort)
             : '';
-        const runTypeLabel = pair.curated ? '1.0 baseline job' : 'nightly job';
-        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${runTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect job</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
+        const jobTypeLabel = pair.curated ? '1.0 baseline job' : 'nightly job';
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${jobTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${jobHref}">Inspect job</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
 /** @param {string} msg

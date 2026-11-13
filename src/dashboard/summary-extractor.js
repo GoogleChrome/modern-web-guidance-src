@@ -1,5 +1,5 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs, sanitizeReasoningEffort } from './utils.js';
-import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
+import { getTrialStats, isInfraErrorTrial, isUnguidedLeakTrial, getEligibleTaskIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs, sanitizeReasoningEffort } from './utils.js';
+import { A11Y_SUBCATEGORIES, classifyCheck } from './a11y-classifier.js';
 import { SHOWCASE_GUIDE_IDS } from './showcase-config.js';
 const TIMEOUT_MS = 900000;
 
@@ -24,7 +24,7 @@ const TIMEOUT_MS = 900000;
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
  * @property {number | null} uplift */
-/** @typedef {Object} SuiteA11yStats
+/** @typedef {Object} JobA11yStats
  * @property {number} guidedPassed
  * @property {number} guidedTotal
  * @property {number} guidedRate
@@ -35,7 +35,7 @@ const TIMEOUT_MS = 900000;
  * @property {number} guideCount
  * @property {Record<import('./a11y-classifier.js').A11ySubCategory, SubCategoryA11yStats>} bySubCategory */
 /**
- * @typedef {Object} SuiteEfficiencyStats
+ * @typedef {Object} JobEfficiencyStats
  * @property {{
  *   guidedMedianMs: number,
  *   unguidedMedianMs: number,
@@ -68,7 +68,7 @@ const TIMEOUT_MS = 900000;
  */
 
 /**
- * @typedef {Object} ShowcaseModeRun
+ * @typedef {Object} ShowcaseConditionTrial
  * @property {number} passed
  * @property {number} total
  * @property {number} a11yPassed
@@ -89,17 +89,17 @@ const TIMEOUT_MS = 900000;
  */
 /**
  * Compact per-check results for a featured A/B Spotlight task (see showcase-config.js), taken
- * from the first run of each mode so the published manifest can drive the Spotlight directly.
+ * from the first trial of each condition so the published manifest can drive the Spotlight directly.
  * @typedef {Object} ShowcaseSlice
  * @property {string} prompt
  * @property {string} discipline
- * @property {ShowcaseModeRun} unguided
- * @property {ShowcaseModeRun} guided
+ * @property {ShowcaseConditionTrial} unguided
+ * @property {ShowcaseConditionTrial} guided
  * @property {ShowcaseCheck[]} checks
  */
 
 /**
- * @typedef {Object} SuiteSummary
+ * @typedef {Object} JobSummary
  * @property {string} testId
  * @property {string} timestamp
  * @property {string} agent
@@ -108,30 +108,31 @@ const TIMEOUT_MS = 900000;
  * @property {import('./evals.d.ts').ReasoningEffort} [reasoningEffort]
  * @property {boolean} [curated]
  * @property {number} taskCount
- * @property {number} [pairedTaskCount] valid task-guide pairs included in pass rates
+ * @property {number} [pairedTaskCount] valid task pairs included in pass rates
  * @property {number} maxRuns
  * @property {{ passed: number, total: number }} guidedStats
  * @property {{ passed: number, total: number }} unguidedStats
- * @property {SuiteA11yStats} a11yStats
- * @property {SuiteEfficiencyStats} efficiencyStats
+ * @property {JobA11yStats} a11yStats
+ * @property {JobEfficiencyStats} efficiencyStats
  * @property {number} earlyFailureRate
  * @property {number} [earlyFailureCount]
  * @property {number} [guidedErrorRate]
  * @property {number} [unguidedErrorRate]
  * @property {number} [unguidedLeakRate]
  * @property {Record<string, GuideSummary>} guides
- * @property {Record<string, ShowcaseSlice>} showcase featured Spotlight tasks present in this suite
+ * @property {Record<string, ShowcaseSlice>} showcase featured Spotlight tasks present in this job
  * @property {ReturnType<typeof calculateChartData>} chartData
  */
+/** @typedef {JobSummary} SuiteSummary */
 
 /**
  * Extracts a compact summary object from an evals.json payload.
- * @param {string} testId
+ * @param {string} jobId
  * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean, curated?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
- * @returns {SuiteSummary|null}
+ * @returns {JobSummary|null}
  */
-export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
+export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
     if (!evalsData) return null;
 
     let serving = 'unknown';
@@ -142,19 +143,19 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     }
 
     const results = evalsData.results || {};
-    const scenarioKeys = Object.keys(results);
-    const eligibleScenarios = getEligibleScenarioIds(results);
+    const resultKeys = Object.keys(results);
+    const eligibleTasks = getEligibleTaskIds(results);
 
     let guidedPassed = 0;
     let guidedTotal = 0;
     let unguidedPassed = 0;
     let unguidedTotal = 0;
-    let maxRuns = 1;
-    let totalAllRuns = 0;
-    let guidedTotalRuns = 0;
-    let guidedEarlyFailures = 0;
-    let unguidedTotalRuns = 0;
-    let unguidedEarlyFailures = 0;
+    let maxTrials = 1;
+    let totalTrials = 0;
+    let guidedTrialCount = 0;
+    let guidedInfraErrors = 0;
+    let unguidedTrialCount = 0;
+    let unguidedInfraErrors = 0;
     let unguidedLeaks = 0;
 
     let a11yGuidedPassed = 0;
@@ -190,43 +191,43 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let unguidedCachedTokenSum = 0;
     /** @type {Record<string, { guidedMs: number[], unguidedMs: number[], guidedUncached: number[], unguidedUncached: number[] }>} */
     const pairedTaskEfficiency = {};
-    const distinctScenarios = new Set();
+    const distinctBaseApps = new Set();
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
-    const suiteGuides = {};
+    const jobGuides = {};
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
-    const suiteGuideA11y = {};
+    const jobGuideA11y = {};
     /** @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>} */
-    const suiteGuideTaskA11y = {};
+    const jobGuideTaskA11y = {};
     /**
-     * Per-task totals, so multi-target guides stay distinguishable after summing to guide level.
+     * Per-base-app totals, so multi-base-app guides stay distinguishable after summing to guide level.
      * @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>}
      */
-    const suiteGuideTasks = {};
-    /** First run of each mode for featured Spotlight guides, locked to the first task seen per guide.
+    const jobGuideTasks = {};
+    /** First trial of each condition for featured Spotlight guides, locked to the first task seen per guide.
      * @type {Record<string, { task: string, guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} */
-    const showcaseRuns = {};
+    const showcaseTrials = {};
 
-    scenarioKeys.forEach(key => {
+    resultKeys.forEach(key => {
         const parsedKey = parseResultKey(key);
-        const runs = results[key] || [];
-        totalAllRuns += runs.length;
-        if (runs.length > maxRuns) maxRuns = runs.length;
+        const trials = results[key] || [];
+        totalTrials += trials.length;
+        if (trials.length > maxTrials) maxTrials = trials.length;
 
         const isGuided = key.endsWith(' - guided');
         const isUnguided = key.endsWith(' - unguided');
 
         if (parsedKey) {
-            distinctScenarios.add(parsedKey.task);
+            distinctBaseApps.add(parsedKey.task);
             const { guide, task } = parsedKey;
-            if (!suiteGuides[guide]) {
-                suiteGuides[guide] = {
+            if (!jobGuides[guide]) {
+                jobGuides[guide] = {
                     guided: { passed: 0, total: 0 },
                     unguided: { passed: 0, total: 0 }
                 };
             }
-            if (!suiteGuideTasks[guide]) suiteGuideTasks[guide] = {};
-            if (task && !suiteGuideTasks[guide][task]) {
-                suiteGuideTasks[guide][task] = {
+            if (!jobGuideTasks[guide]) jobGuideTasks[guide] = {};
+            if (task && !jobGuideTasks[guide][task]) {
+                jobGuideTasks[guide][task] = {
                     guided: { passed: 0, total: 0 },
                     unguided: { passed: 0, total: 0 }
                 };
@@ -242,86 +243,86 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             }
         }
 
-        const isEligibleScenario = parsedKey ? eligibleScenarios.has(`${parsedKey.task} - ${parsedKey.guide}`) : true;
+        const isEligibleTask = parsedKey ? eligibleTasks.has(`${parsedKey.task} - ${parsedKey.guide}`) : true;
 
-        if (isGuided) guidedTotalRuns += runs.length;
-        else if (isUnguided) unguidedTotalRuns += runs.length;
+        if (isGuided) guidedTrialCount += trials.length;
+        else if (isUnguided) unguidedTrialCount += trials.length;
 
-        if (parsedKey && SHOWCASE_GUIDE_IDS.has(parsedKey.guide) && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided') && runs.length) {
-            const firstRun = runs.reduce((a, b) => ((b.runNumber ?? 0) < (a.runNumber ?? 0) ? b : a));
-            const entry = (showcaseRuns[parsedKey.guide] ||= { task: parsedKey.task });
-            if (entry.task === parsedKey.task) entry[parsedKey.runType] = firstRun;
+        if (parsedKey && SHOWCASE_GUIDE_IDS.has(parsedKey.guide) && (parsedKey.condition === 'guided' || parsedKey.condition === 'unguided') && trials.length) {
+            const firstTrial = trials.reduce((a, b) => ((b.runNumber ?? 0) < (a.runNumber ?? 0) ? b : a));
+            const entry = (showcaseTrials[parsedKey.guide] ||= { task: parsedKey.task });
+            if (entry.task === parsedKey.task) entry[parsedKey.condition] = firstTrial;
         }
-        runs.forEach((/** @type {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} */ run) => {
-            if (isEarlyFailureRun(run.results)) {
-                if (isGuided) guidedEarlyFailures++;
-                else if (isUnguided) unguidedEarlyFailures++;
+        trials.forEach((/** @type {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} */ trial) => {
+            if (isInfraErrorTrial(trial.results)) {
+                if (isGuided) guidedInfraErrors++;
+                else if (isUnguided) unguidedInfraErrors++;
             }
-            if (isUnguided && isUnguidedLeakRun(run, parsedKey?.guide)) {
+            if (isUnguided && isUnguidedLeakTrial(trial, parsedKey?.guide)) {
                 unguidedLeaks++;
             }
 
-            if (isEligibleScenario) {
-                const s = getRunStats(run.results);
+            if (isEligibleTask) {
+                const s = getTrialStats(trial.results);
                 if (isGuided) { guidedPassed += s.passed; guidedTotal += s.total; } else if (isUnguided) { unguidedPassed += s.passed; unguidedTotal += s.total; }
-                if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
-                    const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
+                if (parsedKey && (parsedKey.condition === 'guided' || parsedKey.condition === 'unguided')) {
+                    const condition = /** @type {'guided' | 'unguided'} */ (parsedKey.condition);
                     const { guide, task } = parsedKey;
-                    suiteGuides[guide][runType].passed += s.passed;
-                    suiteGuides[guide][runType].total += s.total;
+                    jobGuides[guide][condition].passed += s.passed;
+                    jobGuides[guide][condition].total += s.total;
 
-                    const taskStats = task && suiteGuideTasks[guide][task];
-                    if (taskStats) { taskStats[runType].passed += s.passed; taskStats[runType].total += s.total; }
-                    // Skip early-failure runs (zeroed by getRunStats) so a11y totals stay in sync with overall totals.
-                    if (s.total > 0) (run.results || []).forEach(check => {
-                        const cls = classifyScenarioCheck(check, guide, run.discipline);
+                    const taskStats = task && jobGuideTasks[guide][task];
+                    if (taskStats) { taskStats[condition].passed += s.passed; taskStats[condition].total += s.total; }
+                    // Skip infra-error trials (zeroed by getTrialStats) so a11y totals stay in sync with overall totals.
+                    if (s.total > 0) (trial.results || []).forEach(check => {
+                        const cls = classifyCheck(check, guide, trial.discipline);
                         if (cls.isAccessibility && cls.subCategory) {
                             a11yGuides.add(guide);
-                            if (!suiteGuideA11y[guide]) {
-                                suiteGuideA11y[guide] = {
+                            if (!jobGuideA11y[guide]) {
+                                jobGuideA11y[guide] = {
                                     guided: { passed: 0, total: 0 },
                                     unguided: { passed: 0, total: 0 }
                                 };
                             }
-                            suiteGuideA11y[guide][runType].total += 1;
-                            if (check.passed) suiteGuideA11y[guide][runType].passed += 1;
+                            jobGuideA11y[guide][condition].total += 1;
+                            if (check.passed) jobGuideA11y[guide][condition].passed += 1;
                             if (task) {
-                                if (!suiteGuideTaskA11y[guide]) suiteGuideTaskA11y[guide] = {};
-                                if (!suiteGuideTaskA11y[guide][task]) {
-                                    suiteGuideTaskA11y[guide][task] = {
+                                if (!jobGuideTaskA11y[guide]) jobGuideTaskA11y[guide] = {};
+                                if (!jobGuideTaskA11y[guide][task]) {
+                                    jobGuideTaskA11y[guide][task] = {
                                         guided: { passed: 0, total: 0 },
                                         unguided: { passed: 0, total: 0 }
                                     };
                                 }
-                                suiteGuideTaskA11y[guide][task][runType].total += 1;
-                                if (check.passed) suiteGuideTaskA11y[guide][task][runType].passed += 1;
+                                jobGuideTaskA11y[guide][task][condition].total += 1;
+                                if (check.passed) jobGuideTaskA11y[guide][task][condition].passed += 1;
                             }
-                            if (runType === 'guided') { a11yGuidedTotal += 1; if (check.passed) a11yGuidedPassed += 1; } else { a11yUnguidedTotal += 1; if (check.passed) a11yUnguidedPassed += 1; }
+                            if (condition === 'guided') { a11yGuidedTotal += 1; if (check.passed) a11yGuidedPassed += 1; } else { a11yUnguidedTotal += 1; if (check.passed) a11yUnguidedPassed += 1; }
                             const bucket = subCatTallies[cls.subCategory];
-                            if (bucket) { bucket[runType].total += 1; if (check.passed) bucket[runType].passed += 1; }
+                            if (bucket) { bucket[condition].total += 1; if (check.passed) bucket[condition].passed += 1; }
                         }
                     });
                 }
             }
 
-            if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
-                const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
+            if (parsedKey && (parsedKey.condition === 'guided' || parsedKey.condition === 'unguided')) {
+                const condition = /** @type {'guided' | 'unguided'} */ (parsedKey.condition);
                 const { guide, task } = parsedKey;
-                const runtimeMs = getAgentRuntimeMs(run);
-                const earlyFailed = isEarlyFailureRun(run.results);
+                const runtimeMs = getAgentRuntimeMs(trial);
+                const hasInfraError = isInfraErrorTrial(trial.results);
                 const timedOut = runtimeMs >= TIMEOUT_MS ||
-                    (earlyFailed && (run.results || []).some(c => /timeout/i.test(c.message || '')));
-                if (timedOut) { if (runType === 'guided') guidedTimeouts += 1; else unguidedTimeouts += 1; }
-                if (isEligibleScenario && !earlyFailed) {
+                    (hasInfraError && (trial.results || []).some(c => /timeout/i.test(c.message || '')));
+                if (timedOut) { if (condition === 'guided') guidedTimeouts += 1; else unguidedTimeouts += 1; }
+                if (isEligibleTask && !hasInfraError) {
                     const pairKey = `${task}|||${guide}`;
                     const pairBucket = pairedTaskEfficiency[pairKey];
                     if (runtimeMs > 0) {
-                        if (runType === 'guided') { guidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.guidedMs.push(runtimeMs); } else { unguidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.unguidedMs.push(runtimeMs); }
+                        if (condition === 'guided') { guidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.guidedMs.push(runtimeMs); } else { unguidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.unguidedMs.push(runtimeMs); }
                     }
 
-                    const tb = getTokenBreakdown(run.tokenUsage);
+                    const tb = getTokenBreakdown(trial.tokenUsage);
                     if (tb.total > 0) {
-                        if (runType === 'guided') {
+                        if (condition === 'guided') {
                             guidedUncachedTokens.push(tb.uncached);
                             guidedTotalTokens.push(tb.total);
                             guidedTotalTokenSum += tb.total;
@@ -363,13 +364,13 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
     /** @type {Record<string, GuideSummary>} */
     const guidesFormatted = {};
-    Object.keys(suiteGuides).forEach(guide => {
-        const stats = formatStats(suiteGuides[guide]);
-        const a11y = suiteGuideA11y[guide] ? formatStats(suiteGuideA11y[guide]) : undefined;
+    Object.keys(jobGuides).forEach(guide => {
+        const stats = formatStats(jobGuides[guide]);
+        const a11y = jobGuideA11y[guide] ? formatStats(jobGuideA11y[guide]) : undefined;
         const base = a11y ? { ...stats, a11y } : stats;
-        const taskNames = Object.keys(suiteGuideTasks[guide] || {});
+        const taskNames = Object.keys(jobGuideTasks[guide] || {});
 
-        // A guide with one task is fully described by its roll-up, so store just the name.
+        // A guide with one base app is fully described by its roll-up, so store just the name.
         if (taskNames.length === 1) {
             guidesFormatted[guide] = { ...base, taskName: taskNames[0] };
             return;
@@ -382,8 +383,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         /** @type {Record<string, GuideSummary>} */
         const tasks = {};
         taskNames.forEach(task => {
-            const taskStats = formatStats(suiteGuideTasks[guide][task]);
-            const taskA11y = suiteGuideTaskA11y[guide]?.[task];
+            const taskStats = formatStats(jobGuideTasks[guide][task]);
+            const taskA11y = jobGuideTaskA11y[guide]?.[task];
             tasks[task] = (taskA11y && (taskA11y.guided.total > 0 || taskA11y.unguided.total > 0))
                 ? { ...taskStats, a11y: formatStats(taskA11y) }
                 : taskStats;
@@ -467,21 +468,21 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             pairedTaskCount: pairedTokensCount
         }
     };
-    const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
-    const gFailures = evalsData.summary?.guidedEarlyFailures ?? guidedEarlyFailures;
-    const uFailures = evalsData.summary?.unguidedEarlyFailures ?? unguidedEarlyFailures;
-    const summaryEarlyFailures = gFailures + uFailures;
-    const earlyFailureRate = totalAllRuns > 0 ? Math.round((summaryEarlyFailures / totalAllRuns) * 100) : 0;
-    const guidedErrorRate = guidedTotalRuns > 0 ? Math.round((gFailures / guidedTotalRuns) * 100) : 0;
-    const unguidedErrorRate = unguidedTotalRuns > 0 ? Math.round((uFailures / unguidedTotalRuns) * 100) : 0;
-    const unguidedLeakRate = unguidedTotalRuns > 0 ? Math.round((unguidedLeaks / unguidedTotalRuns) * 100) : 0;
+    const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctBaseApps.size;
+    const gInfraErrors = evalsData.summary?.guidedEarlyFailures ?? guidedInfraErrors;
+    const uInfraErrors = evalsData.summary?.unguidedEarlyFailures ?? unguidedInfraErrors;
+    const summaryInfraErrors = gInfraErrors + uInfraErrors;
+    const infraErrorRate = totalTrials > 0 ? Math.round((summaryInfraErrors / totalTrials) * 100) : 0;
+    const guidedErrorRate = guidedTrialCount > 0 ? Math.round((gInfraErrors / guidedTrialCount) * 100) : 0;
+    const unguidedErrorRate = unguidedTrialCount > 0 ? Math.round((uInfraErrors / unguidedTrialCount) * 100) : 0;
+    const unguidedLeakRate = unguidedTrialCount > 0 ? Math.round((unguidedLeaks / unguidedTrialCount) * 100) : 0;
 
-    const chartData = calculateChartData(results, eligibleScenarios);
-    const showcase = buildShowcaseSlices(showcaseRuns);
+    const chartData = calculateChartData(results, eligibleTasks);
+    const showcase = buildShowcaseSlices(showcaseTrials);
     const reasoningEffort = sanitizeReasoningEffort(evalsData.reasoningEffort);
 
     return {
-        testId: testId,
+        testId: jobId,
         timestamp: evalsData.timestamp || forcedTimestamp || new Date().toISOString(),
         agent: evalsData.agent || 'unknown',
         serving: serving,
@@ -489,14 +490,14 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         ...(reasoningEffort ? { reasoningEffort } : {}),
         ...(evalsData.curated ? { curated: true } : {}),
         taskCount: taskCount,
-        pairedTaskCount: eligibleScenarios.size,
-        maxRuns: maxRuns,
+        pairedTaskCount: eligibleTasks.size,
+        maxRuns: maxTrials,
         guidedStats: { passed: guidedPassed, total: guidedTotal },
         unguidedStats: { passed: unguidedPassed, total: unguidedTotal },
         a11yStats,
         efficiencyStats,
-        earlyFailureRate: earlyFailureRate,
-        earlyFailureCount: summaryEarlyFailures,
+        earlyFailureRate: infraErrorRate,
+        earlyFailureCount: summaryInfraErrors,
         guidedErrorRate: guidedErrorRate,
         unguidedErrorRate: unguidedErrorRate,
         ...(unguidedLeakRate > 0 ? { unguidedLeakRate } : {}),
@@ -506,37 +507,40 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     };
 }
 
+/** @deprecated Alias kept for cross-boundary harness callers. */
+export const extractSuiteSummary = extractJobSummary;
+
 /**
- * @param {Record<string, { guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} runsByGuide
+ * @param {Record<string, { guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} trialsByGuide
  * @returns {Record<string, ShowcaseSlice>}
  */
-function buildShowcaseSlices(runsByGuide) {
+function buildShowcaseSlices(trialsByGuide) {
     /** @type {Record<string, ShowcaseSlice>} */
     const slices = {};
-    for (const [guide, { guided, unguided }] of Object.entries(runsByGuide)) {
+    for (const [guide, { guided, unguided }] of Object.entries(trialsByGuide)) {
         if (!guided || !unguided) continue;
-        /** @param {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} run */
-        const classify = (run) => (run.results || [])
+        /** @param {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} trial */
+        const classify = (trial) => (trial.results || [])
             .filter(c => !c.isEarlyFailure)
-            .map(c => ({ check: c, cls: classifyScenarioCheck(c, guide, run.discipline) }));
-        /** @param {import('../harness/lib/metrics.ts').RunResult & { guidesUsed?: string[] }} run @returns {ShowcaseModeRun} */
-        const toModeRun = (run) => {
-            const stats = getRunStats(run.results);
-            const a11y = classify(run).filter(x => x.cls.isAccessibility);
-            const tb = getTokenBreakdown(run.tokenUsage);
+            .map(c => ({ check: c, cls: classifyCheck(c, guide, trial.discipline) }));
+        /** @param {import('../harness/lib/metrics.ts').RunResult & { guidesUsed?: string[] }} trial @returns {ShowcaseConditionTrial} */
+        const toConditionTrial = (trial) => {
+            const stats = getTrialStats(trial.results);
+            const a11y = classify(trial).filter(x => x.cls.isAccessibility);
+            const tb = getTokenBreakdown(trial.tokenUsage);
             return {
                 passed: stats.passed,
                 total: stats.total,
                 a11yPassed: a11y.filter(x => x.check.passed).length,
                 a11yTotal: a11y.length,
-                runtimeMs: getAgentRuntimeMs(run),
+                runtimeMs: getAgentRuntimeMs(trial),
                 uncachedTokens: tb.uncached,
                 totalTokens: tb.total,
-                guidesUsed: Array.isArray(run.guidesUsed) ? run.guidesUsed : [],
-                earlyFailure: isEarlyFailureRun(run.results)
+                guidesUsed: Array.isArray(trial.guidesUsed) ? trial.guidesUsed : [],
+                earlyFailure: isInfraErrorTrial(trial.results)
             };
         };
-        // Align checks across modes by id (falling back to message); order follows whichever run was graded.
+        // Align checks across conditions by id (falling back to message); order follows whichever trial was graded.
         const gChecks = classify(guided);
         const uChecks = classify(unguided);
         const keyOf = (/** @type {{ id?: string, message?: string }} */ c) => c.id || c.message || '';
@@ -556,8 +560,8 @@ function buildShowcaseSlices(runsByGuide) {
         slices[guide] = {
             prompt: meta.prompt || /** @type {{ prompt?: string }} */ (unguided).prompt || '',
             discipline: meta.discipline || '',
-            unguided: toModeRun(unguided),
-            guided: toModeRun(guided),
+            unguided: toConditionTrial(unguided),
+            guided: toConditionTrial(guided),
             checks
         };
     }
