@@ -80,25 +80,31 @@ echo "mock-cli ran with args: $@"
     { skip: !canSandbox || process.env[UNSAFE_NO_SANDBOX_ENV] === '1' },
     async () => {
       const probeCli = path.join(tempDir, 'probe-cli');
-      const strayFile = path.join(rootDir, 'stray-sandbox-probe.txt');
+      const probeFile = path.join(rootDir, `.sandbox-probe-${process.pid}-${Date.now()}.txt`);
+      const originalContent = 'host repository probe';
       fs.writeFileSync(
         probeCli,
-        `#!/bin/sh\necho "PWD=$PWD"\nif touch "${strayFile}" 2>/dev/null; then echo "WROTE_ROOT"; rm -f "${strayFile}"; else echo "BLOCKED_ROOT"; fi\n`,
+        `#!/bin/sh\necho "PWD=$PWD"\ncat "${probeFile}" 2>/dev/null || echo "HIDDEN_ROOT"\nif printf 'sandbox probe write' > "${probeFile}" 2>/dev/null; then echo "WROTE_PRIVATE_ROOT"; else echo "BLOCKED_WRITE"; fi\n`,
         { mode: 0o755 }
       );
       config.environment.antigravityCliBin = probeCli;
       config.environment.jetskiCliBin = probeCli;
       try {
+        fs.writeFileSync(probeFile, originalContent);
         const output = await runAgent(getDefaultSolutionAgent(), 'probe', tempDir, {
           captureOutput: true,
           homeDir: tempDir,
         });
         assert.ok(output.includes(`PWD=${tempDir}`));
-        assert.ok(output.includes('BLOCKED_ROOT'));
-        assert.ok(!fs.existsSync(strayFile));
+        assert.ok(output.includes('HIDDEN_ROOT'));
+        assert.ok(!output.includes(originalContent));
+        // Linux may allow writes to the empty tmpfs hiding the repository.
+        // The host file must stay hidden and unchanged in either case.
+        assert.equal(fs.readFileSync(probeFile, 'utf8'), originalContent);
       } finally {
         config.environment.antigravityCliBin = mockCliPath;
         config.environment.jetskiCliBin = mockCliPath;
+        fs.rmSync(probeFile, { force: true });
       }
     }
   );
