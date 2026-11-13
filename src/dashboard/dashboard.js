@@ -784,7 +784,7 @@ function renderSummary(data) {
                 </div>
                 ${validPairsCount < tasksCount ? `<div class="narrative-metric-row"> <span>Valid task pairs</span> <strong class="text-warning">${validPairsCount} / ${tasksCount}</strong> </div>` : ''}
                 <div class="narrative-metric-row narrative-note">
-                    <span>Graded checks per mode differ when a trial encounters an infra error before grading (excluded from check totals).</span>
+                    <span>Graded checks per condition differ when a trial encounters an infra error before grading (excluded from check totals).</span>
                 </div>
                 ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected trials</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
                 ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalInfraErrors > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalInfraErrors > 0 ? 'text-warning' : 'text-success'}">${totalInfraErrorRate}% (${totalInfraErrors} invalid trial${totalInfraErrors === 1 ? '' : 's'})</strong> </div>` : ''}
