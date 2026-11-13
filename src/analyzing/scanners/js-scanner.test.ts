@@ -325,4 +325,17 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
       },
     );
   });
+
+  await t.test('matchJsRule throws if matcher.matchFile matches a file that matcher.fastTokens rejects', () => {
+    const brokenMatcher = createJsCallMatcher({
+      fastTokens: ['neverPresentToken'],
+      matchCall: (node) =>
+        node.getExpression().getText() === 'legacyCall' ? 'legacy call' : null,
+    });
+
+    assert.throws(
+      () => matchJsRule(brokenMatcher, 'recall-bug.ts', 'legacyCall();'),
+      /matchJsRule: matcher matched "recall-bug\.ts" .* but fastTokens .* rejected the file content/,
+    );
+  });
 });

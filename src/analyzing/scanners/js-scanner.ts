@@ -61,15 +61,26 @@ export function withVirtualSourceFile<T>(
 
 /**
  * Runs `matcher.matchFile` against `fileContent` using a shared reusable in-memory `Project`.
+ *
+ * Rather than short-circuiting to `[]` when `fastTokens` fails (which would let negative unit
+ * tests pass by accident whenever a short test snippet omits an unrelated fastToken, and would
+ * turn positive test failures into opaque `0 !== 1` count mismatches), this runs `matchFile`
+ * unconditionally and throws if `matchFile` emits a finding that `fastTokens` would have dropped.
  */
 export function matchJsRule(
   matcher: JsRuleMatcher,
   filePath: string,
   fileContent: string,
 ): AnalyzerMatch[] {
-  return withVirtualSourceFile(filePath, fileContent, (sourceFile) =>
+  const matches = withVirtualSourceFile(filePath, fileContent, (sourceFile) =>
     matcher.matchFile(sourceFile, { filePath, fileContent }),
   );
+  if (matches.length > 0 && !matchesFastTokens(fileContent, matcher.fastTokens)) {
+    throw new Error(
+      `matchJsRule: matcher matched "${filePath}" (${matches.length} finding(s)), but fastTokens ${JSON.stringify(matcher.fastTokens)} rejected the file content`,
+    );
+  }
+  return matches;
 }
 
 export interface JsCallMatcherConfig {
