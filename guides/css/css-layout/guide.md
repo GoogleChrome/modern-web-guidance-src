@@ -32,6 +32,7 @@ web-feature-ids:
 6. [6 Overflow tracking and layout stability](#6-overflow-tracking-and-layout-stability)
 7. [7 Viewport mechanics and track distribution](#7-viewport-mechanics-and-track-distribution)
 8. [8 Grid lanes (aka masonry)](#8-grid-lanes-aka-masonry)
+9. [9 Accessibility considerations](#9-accessibility-considerations)
 
 ## 1 Fundamentals
 
@@ -164,6 +165,14 @@ Page shell: `<main class="page-layout">` contains `<header>`, `<aside>`, a `<sec
 header  { grid-area: header; }
 aside   { grid-area: sidebar; }
 footer  { grid-area: footer; }
+
+/* One column at narrow widths, in DOM order. */
+@media (width < 40rem) {
+  .page-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: "header" "sidebar" "main" "footer";
+  }
+}
 
 .card-grid {
   grid-area: main;
@@ -325,3 +334,14 @@ The specification is in development under the name "grid lanes" (e.g., `display:
 ```
 
 {# Once guides/css/masonry-layout is authored, migrate §8 into it and replace this section with {{ GUIDE_REF("masonry-layout") }}. #}
+
+## 9 Accessibility considerations
+
+Layout decides the order in which people meet content, and whether it still fits when they zoom in, enlarge or space out text, or use a narrow screen.
+
+**Do:**
+
+- Write the HTML in the order the content should be read and focused, and keep the layout in that order. `order`, `*-reverse` directions, `grid-auto-flow: dense`, grid placement (`grid-area`, `grid-row`, `grid-column`), and absolute positioning change only the visual order: screen readers and the Tab key still follow the DOM. Don't use them to move focusable elements, or content whose order matters; change the DOM order instead (WCAG 1.3.2 Meaningful Sequence, WCAG 2.4.3 Focus Order).
+- Make layouts fit a viewport 320 CSS pixels wide (1280 pixels at 400% zoom) without horizontal scrolling: switch multi-column layouts to a single column at narrow widths, as in the [grid and subgrid example](#31-code-example-grid-and-subgrid) (WCAG 1.4.10 Reflow).
+- Use `min-block-size` rather than `height` or `block-size` on elements that contain text, so they grow when text is enlarged or spaced out instead of clipping or overlapping it (WCAG 1.4.4 Resize Text, WCAG 1.4.12 Text Spacing).
+- Set `scroll-padding-block-start` (or `scroll-padding-block-end`) on the scroll container to at least the height of any sticky or fixed header (or footer), so the browser scrolls focused elements clear of it (WCAG 2.4.11 Focus Not Obscured (Minimum)).
