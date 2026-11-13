@@ -28,6 +28,7 @@ export function gitExec(args: readonly string[], options?: GitExecOptions): stri
     maxBuffer,
     env: {
       ...process.env,
+      LC_ALL: 'C',
       ...(isolated ? { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: NULL_DEVICE } : {}),
       ...env,
     },
