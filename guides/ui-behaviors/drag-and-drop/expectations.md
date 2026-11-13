@@ -1,5 +1,6 @@
 - Dragging an item with a pointer, either from a dedicated drag handle or from the item itself, changes the item's DOM and visible position within the collection.
 - During a pointer drag, sibling items stay in place and a drop marker indicates where the dragged item will land without shifting layout, committing the DOM move once on release.
+- When an item gets dragged, where that item will be dropped towards is clearly communicated (such as with an explicit drop marker or reserved space) without using competing source and drop clones.
 - The drop marker is drawn with the list's own pseudo-elements rather than an element appended to `<body>`, and no marker is shown when the drop spot is the item's own slot.
 - Pressing `Escape` during a pointer drag cancels it, removes the marker, and leaves the item in its original position.
 - Reordering moves the existing DOM element rather than recreating it, preserving state in controls inside that item.

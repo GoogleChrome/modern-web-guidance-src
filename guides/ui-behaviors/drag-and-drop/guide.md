@@ -35,6 +35,7 @@ Keep the drag active and find the destination reliably:
 
 Don't reorder while the pointer moves: shifting siblings feel jittery. Keep the source item in its slot and show a drop marker. This is the default for a single-axis list:
 
+- **Communicate drop destination clearly.** When an item gets dragged, communicate where that item gets dropped towards. This can be done by reserving space, showing an explicit drop marker, or displaying a clone on the target position. When leaving a clone or placeholder on the source position, do not use a clone on the drop position to communicate where an item will be dropped—keep source-removal and drop-target affordances distinct so users are not confused by competing clones.
 - **Render a marker, not a shift.** Set `data-drop` on the list during a drag and draw the marker with its `::before` (ring) and `::after` (line), both `position: fixed; pointer-events: none`. Don't append an element to `<body>`.
 - **Place it in the gap.** On every drop-spot update and scroll step, set `--drop-x`, `--drop-y`, `--drop-w` and `--drop-h` from the neighbors' `getBoundingClientRect()`, centering the line in the gap between the previous and next item (on the inline axis, flipped in right-to-left, for rows). Don't use CSS anchor positioning (it drifts while autoscrolling), and keep `transform`, `filter` and `contain` off the list and its ancestors.
 - **Skip no-op drops.** Show no marker when the drop spot is the item's own slot. Remove `data-drop` and the custom properties when the drag ends.
