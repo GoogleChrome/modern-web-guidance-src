@@ -28,6 +28,23 @@ gd dev guides/<category>/<use-case-slug> --no-test
 gd dev guides/<category>/<use-case-slug> --targets daily-grind
 ```
 
+### Previewing solution and baseline patches: `gd preview`
+
+```bash
+gd preview guides/<category>/<slug>/targets/daily-grind/patches/claude-solution.patch
+gd preview guides/<category>/<slug>/targets/daily-grind/patches/zero-passrate.patch
+```
+
+The patch must belong to a registered guide target (with `task.md`). The command copies
+that target's base app into a temporary workspace and prints a local preview URL.
+Solution patches are applied on top of the target's zero-passrate patch when present,
+matching grader calibration; previewing the zero-passrate patch applies it only once.
+An empty baseline patch previews the unchanged base app. Dependencies and builds are
+handled by the same server helper used for grading, so framework apps require pnpm.
+Press Ctrl+C to stop the server and remove the temporary workspace. Source base apps
+and patches are left unchanged. Preview only patches you trust: app build and start
+scripts run locally.
+
 ### The 5-Step `gd dev` Pipeline:
 1. **Solutions Generation**: Generates golden solution patches and zero-passrate baseline patches across target base applications (`daily-grind`, `devtools-times`).
 2. **Grader Generation**: Generates Playwright test assertions in `grader.ts` based on `expectations.md`.
