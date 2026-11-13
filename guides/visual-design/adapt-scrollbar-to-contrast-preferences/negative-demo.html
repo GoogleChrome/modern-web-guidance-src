@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <title>Negative Example</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 50px;
+      background: #fff;
+    }
+    .content-box {
+      width: 400px;
+      height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #eee;
+    }
+    .inner {
+      height: 1000px;
+      background: linear-gradient(#fff, #fafafa);
+      padding: 20px;
+    }
+    .content-box::-webkit-scrollbar {
+      width: 8px;
+    }
+    .content-box::-webkit-scrollbar-track {
+      background: #f9f9f9;
+    }
+    .content-box::-webkit-scrollbar-thumb {
+      background: #f0f0f0;
+    }
+    @media (prefers-contrast: more) {
+      .content-box {
+        background: #fdfdfd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="content-box">
+    <div class="inner">
+      <p>This is a scrollable area with low-contrast custom scrollbars that do not adapt to user preferences.</p>
+    </div>
+  </div>
+</body>
+</html>

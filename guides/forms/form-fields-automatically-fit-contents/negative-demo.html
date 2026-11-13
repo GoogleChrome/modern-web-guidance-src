@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Example</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      max-width: 600px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 500;
+      align-items: stretch;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #999;
+      border-radius: 4px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      align-self: stretch;
+    }
+
+    select {
+      width: 100%;
+      align-self: stretch;
+    }
+
+    textarea {
+      height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Form Example</h1>
+  <form>
+    <label>
+      Name (Input):
+      <input type="text" placeholder="Your full name">
+    </label>
+
+    <label>
+      Message (Textarea):
+      <textarea placeholder="Write a long message here."></textarea>
+    </label>
+
+    <label>
+      Favorite Color (Select):
+      <select>
+        <option value="red">Red</option>
+        <option value="blue">Blue</option>
+        <option value="super-long-color">A ridiculously long color name just to test sizing</option>
+      </select>
+    </label>
+  </form>
+</body>
+</html>

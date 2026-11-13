@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+  <head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sortable table</title>
+    <style>
+      :root {
+        font-family: system-ui, -apple-system, sans-serif;
+        color-scheme: light dark;
+        --text: light-dark(#1e293b, #e2e8f0);
+        --surface: light-dark(#ffffff, #0f172a);
+        --border: color-mix(in oklab, var(--text) 25%, var(--surface));
+        --border-subtle: color-mix(in oklab, var(--text) 15%, var(--surface));
+        --tint: color-mix(in oklab, var(--text) 8%, var(--surface));
+        --accent: light-dark(#1d4ed8, #93c5fd);
+        --space: 0.75rem;
+      }
+
+      body {
+        max-inline-size: 50rem;
+        margin-block: 2rem;
+        margin-inline: auto;
+        padding-inline: 1rem;
+        color: var(--text);
+        background: var(--surface);
+      }
+
+      h1 {
+        text-wrap: balance;
+      }
+
+      p {
+        max-inline-size: 80ch;
+        text-wrap: pretty;
+      }
+
+      .requirements {
+        line-height: 1.5;
+        padding: 0.5rem 1rem;
+        border-inline-start: 4px solid var(--text);
+        background: var(--tint);
+      }
+
+      code {
+        font-size: 0.9em;
+      }
+
+      /* Scrolls horizontally on narrow screens instead of breaking the page layout. */
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+
+        &:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 2px;
+        }
+      }
+
+      table {
+        inline-size: 100%;
+        min-inline-size: 32rem;
+        border-collapse: collapse;
+
+        caption {
+          padding: var(--space);
+          text-align: start;
+          font-weight: 600;
+        }
+
+        th,
+        td {
+          padding: 0.6rem var(--space);
+          text-align: start;
+          border-block-start: 1px solid var(--border-subtle);
+        }
+
+        td.num,
+        th.num {
+          text-align: end;
+          font-variant-numeric: tabular-nums;
+        }
+
+        th.num button {
+          margin-inline-start: auto;
+        }
+
+        thead th {
+          font-weight: 600;
+
+          /* The button supplies the padding, so only sortable headers drop the cell padding. */
+          &:has(> button) {
+            padding: 0;
+          }
+
+          &[aria-sort] {
+            background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+          }
+        }
+      }
+
+      /* The header button fills the whole cell so the click target is large. */
+      thead button {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        inline-size: 100%;
+        min-block-size: 24px;
+        padding: 0.6rem var(--space);
+        font: inherit;
+        font-weight: 600;
+        color: inherit;
+        background: none;
+        border: 0;
+        cursor: pointer;
+
+        &:hover {
+          background: var(--tint);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: -2px;
+        }
+      }
+
+      /* Sort icon: arrows are inline SVG using currentColor, state comes from aria-sort. */
+      .sort-icon {
+        inline-size: 1em;
+        block-size: 1em;
+        flex: none;
+        opacity: 0.35;
+
+        .up,
+        .down {
+          fill: currentColor;
+        }
+      }
+
+      th[aria-sort] {
+        .sort-icon {
+          opacity: 1;
+        }
+
+        &[aria-sort='ascending'] .down,
+        &[aria-sort='descending'] .up {
+          opacity: 0.2;
+        }
+      }
+
+      @media (forced-colors: active) {
+        th[aria-sort] {
+          outline: 2px solid Highlight;
+          outline-offset: -2px;
+        }
+      }
+
+      /* Each row animates from its old position to its new one. */
+      tbody tr {
+        view-transition-name: match-element;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation: none;
+        }
+      }
+
+      .visually-hidden {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      /* Without invoker commands support the buttons do nothing, so disable pointer interaction. */
+      .no-invokers thead button {
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+    <h1>Sortable table</h1>
+
+    <section class="requirements">
+      <p>
+        <strong>Requirements:</strong> a plain, semantic <code>&lt;table&gt;</code> whose column
+        headers become buttons that sort the rows. The current sort is exposed with
+        <code>aria-sort</code> on the <code>&lt;th&gt;</code>, one polite
+        <code>role="status"</code> message is announced per sort, and focus stays on the header
+        button.
+      </p>
+      <p>
+        <strong>Platform features:</strong> Invoker Commands (<code>commandfor</code> +
+        custom <code>--sort</code> commands, handled by one <code>command</code> listener on the
+        table), element-scoped View Transitions with <code>view-transition-name: match-element</code>
+        for row animation, and <code>moveBefore()</code> to reorder the existing
+        <code>&lt;tr&gt;</code> nodes (falling back to <code>append()</code>). The table scrolls
+        horizontally in a wrapper on narrow screens, and the animation is disabled under
+        <code>prefers-reduced-motion</code>.
+      </p>
+    </section>
+
+    <div class="table-wrap" role="region" aria-labelledby="cap" tabindex="0">
+      <table id="planets">
+        <caption id="cap">Planets of the solar system</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-type="text">
+              <button type="button" commandfor="planets" command="--sort">
+                Name
+                <svg class="sort-icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path class="up" d="M8 2 12 7H4z" />
+                  <path class="down" d="M8 14 4 9h8z" />
+                </svg>
+              </button>
+            </th>
+            <th scope="col" data-type="text">
+              <button type="button" commandfor="planets" command="--sort">
+                Type
+                <svg class="sort-icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path class="up" d="M8 2 12 7H4z" />
+                  <path class="down" d="M8 14 4 9h8z" />
+                </svg>
+              </button>
+            </th>
+            <th scope="col" class="num" data-type="number">
+              <button type="button" commandfor="planets" command="--sort">
+                Diameter (km)
+                <svg class="sort-icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path class="up" d="M8 2 12 7H4z" />
+                  <path class="down" d="M8 14 4 9h8z" />
+                </svg>
+              </button>
+            </th>
+            <th scope="col" class="num" data-type="number">
+              <button type="button" commandfor="planets" command="--sort">
+                Moons
+                <svg class="sort-icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path class="up" d="M8 2 12 7H4z" />
+                  <path class="down" d="M8 14 4 9h8z" />
+                </svg>
+              </button>
+            </th>
+            <th scope="col">Symbol</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Mercury</td><td>Terrestrial</td><td class="num" data-value="4879">4,879</td><td class="num">0</td><td>☿</td></tr>
+          <tr><td>Venus</td><td>Terrestrial</td><td class="num" data-value="12104">12,104</td><td class="num">0</td><td>♀</td></tr>
+          <tr><td>Earth</td><td>Terrestrial</td><td class="num" data-value="12742">12,742</td><td class="num">1</td><td>⊕</td></tr>
+          <tr><td>Mars</td><td>Terrestrial</td><td class="num" data-value="6779">6,779</td><td class="num">2</td><td>♂</td></tr>
+          <tr><td>Jupiter</td><td>Gas giant</td><td class="num" data-value="139820">139,820</td><td class="num">95</td><td>♃</td></tr>
+          <tr><td>Saturn</td><td>Gas giant</td><td class="num" data-value="116460">116,460</td><td class="num">146</td><td>♄</td></tr>
+          <tr><td>Uranus</td><td>Ice giant</td><td class="num" data-value="50724">50,724</td><td class="num">28</td><td>⛢</td></tr>
+          <tr><td>Neptune</td><td>Ice giant</td><td class="num" data-value="49244">49,244</td><td class="num">16</td><td>♆</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p id="sort-status" role="status" class="visually-hidden"></p>
+    </main>
+
+    <script>
+      const table = document.getElementById('planets');
+      const tbody = table.tBodies[0];
+      const status = document.getElementById('sort-status');
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+      // Reorders the existing <tr> nodes; never recreates them.
+      function reorder(container, orderedNodes) {
+        const move =
+          'moveBefore' in Element.prototype
+            ? (node) => container.moveBefore(node, null)
+            : (node) => container.append(node);
+        for (const node of orderedNodes) move(node);
+      }
+
+      function reorderWithTransition(orderedNodes) {
+        const update = () => reorder(tbody, orderedNodes);
+        if (table.startViewTransition) {
+          table.startViewTransition(update);
+        } else if (document.startViewTransition) {
+          document.startViewTransition(update);
+        } else {
+          update();
+        }
+      }
+
+      function cellValue(row, index, type) {
+        const cell = row.cells[index];
+        const raw = cell.dataset.value ?? cell.textContent.trim();
+        return type === 'number' ? Number(raw) : raw;
+      }
+
+      table.addEventListener('command', (event) => {
+        if (event.command !== '--sort') return;
+
+        const th = event.source.closest('th');
+        const index = th.cellIndex;
+        const type = th.dataset.type;
+        const direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+        const factor = direction === 'ascending' ? 1 : -1;
+
+        const rows = [...tbody.rows].sort((a, b) => {
+          const x = cellValue(a, index, type);
+          const y = cellValue(b, index, type);
+          return factor * (type === 'number' ? x - y : collator.compare(x, y));
+        });
+
+        // Only one column carries aria-sort at a time.
+        for (const header of table.tHead.rows[0].cells) header.removeAttribute('aria-sort');
+        th.setAttribute('aria-sort', direction);
+
+        reorderWithTransition(rows);
+
+        const label = event.source.textContent.trim();
+        status.textContent = `Sorted by ${label}, ${direction}, ${rows.length} rows`;
+      });
+
+      // Header buttons are inert without Invoker Commands support.
+      if (!('CommandEvent' in window)) document.documentElement.classList.add('no-invokers');
+    </script>
+  </body>
+</html>

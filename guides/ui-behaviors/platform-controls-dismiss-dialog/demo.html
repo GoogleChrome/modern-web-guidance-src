@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+	<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Platform controls dismiss dialog</title>
+	</head>
+	<body>
+		<main>
+			<h1>Platform controls dismiss dialog</h1>
+			<p><button command="show-modal" commandfor="modal-default">Show default modal dialog</button></p>
+			<dialog id="modal-default" aria-labelledby="modal-default-label">
+				<h1 id="modal-default-label">Default modal dialog</h1>
+				<p>This modal dialog closes with close requests.</p>
+				<button command="close" commandfor="modal-default">Close</button>
+			</dialog>
+			<p><button command="show-modal" commandfor="modal-closedby-any">Show modal dialog with <code>closedby="any"</code></code></button></p>
+			<dialog id="modal-closedby-any" closedby="any" aria-labelledby="modal-closedby-any-label">
+				<h1 id="modal-closedby-any-label">Modal dialog with <code>closedby="any"</code></h1>
+				<p>This modal dialog closes with close requests and light dismiss.</p>
+				<button command="close" commandfor="modal-closedby-any">Close</button>
+			</dialog>
+		</main>
+	</body>
+</html>

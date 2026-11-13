@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <title>Optimize Preload Priority Demo</title>
+
+  <!-- 
+    1. Video Poster (High Priority)
+  -->
+  <link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
+
+  <!-- 
+    2. Critical Web Font (High Priority by default)
+  -->
+  <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
+
+  <!-- 
+    3. Secondary Web Font (Low Priority)
+  -->
+  <link rel="preload" as="font" type="font/woff2" href="secondary-font.woff2" crossorigin fetchpriority="low">
+
+
+</head>
+
+<body>
+  <h1>Video Landing Page</h1>
+  <video poster="poster.jpg" width="800" height="450" controls preload="none">
+    <source src="example-video.webm" type="video/webm">
+  </video>
+
+</body>
+
+</html>

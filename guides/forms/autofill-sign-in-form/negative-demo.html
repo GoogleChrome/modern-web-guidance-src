@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <title>Sign In</title>
+</head>
+<body>
+  <h1>Sign In</h1>
+  <div id="sign-in-box">
+    <section>
+      <span>Email</span>
+      <input id="email_input_1" name="email_input_1" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Confirm Email</span>
+      <input id="email_input_2" name="email_input_2" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Password</span>
+      <input id="pwd_input_1" name="pwd_input_1" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Confirm Password</span>
+      <input id="pwd_input_2" name="pwd_input_2" type="text" autocomplete="off">
+    </section>
+
+    <div class="submit">Continue</div>
+  </div>
+</body>
+</html>

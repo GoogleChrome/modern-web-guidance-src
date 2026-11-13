@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Responsive site navigation</title>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --page-background: light-dark(#fff, #111);
+      --surface: light-dark(#f4f4f5, #242424);
+      --surface-raised: light-dark(#fff, #2c2c2c);
+      --text: light-dark(#18181b, #f4f4f5);
+      --muted-text: light-dark(#52525b, #a1a1aa);
+      --border: light-dark(#d4d4d8, #444);
+      --accent: light-dark(#1d4ed8, #93c5fd);
+      --focus-ring: light-dark(#1d4ed8, #bfdbfe);
+      --icon-chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    }
+
+    :where(*, *::before, *::after) {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--page-background);
+      color: var(--text);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.5;
+    }
+
+    body {
+      min-block-size: 100dvh;
+      margin: 0;
+    }
+
+    :where(a, button):focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 3px;
+    }
+
+    :where(a) {
+      color: inherit;
+    }
+
+    :where(h1, h2, h3, h4, h5, h6) {
+      text-wrap: balance;
+    }
+
+    :where(p) {
+      text-wrap: pretty;
+    }
+
+    .site-header {
+      border-block-end: 1px solid var(--border);
+      background: var(--page-background);
+      /* is-wide is added by script when the inline row fits */
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      max-inline-size: 75rem;
+      min-block-size: 4.5rem;
+      margin-inline: auto;
+      padding-inline: clamp(1rem, 4vw, 3rem);
+    }
+
+    .header-inner > *,
+    .site-menu a,
+    .dropdown-trigger {
+      white-space: nowrap; /* Keep the row's natural width measurable */
+    }
+
+    .header-inner > * {
+      flex-shrink: 0;
+    }
+
+    .site-logo {
+      color: var(--text);
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .menu-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-inline-size: 24px;
+      min-block-size: 2.75rem;
+      padding-block: 0.6rem;
+      padding-inline: 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+
+      /*
+        Give the button an anchor name so the mobile popover
+        can align itself with the button.
+      */
+      anchor-name: --menu-button;
+    }
+
+    .menu-button:hover:not(:disabled) {
+      background: var(--surface-raised);
+    }
+
+    .menu-icon {
+      inline-size: 1.25rem;
+      block-size: 1.25rem;
+    }
+
+    .site-header:has(.site-menu:is(:popover-open, .\:popover-open)) {
+      border-block-end-color: var(--accent);
+    }
+
+    .site-menu {
+      align-content: start;
+      gap: 0.25rem;
+      inline-size: fit-content;
+      block-size: fit-content;
+      margin: 0;
+      padding-block: 0.5rem;
+      padding-inline: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      background: var(--surface-raised);
+      color: var(--text);
+      box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+      list-style: none;
+    }
+
+    .site-menu:is(:popover-open, .\:popover-open) {
+      display: grid;
+    }
+
+    .site-menu::backdrop {
+      background: transparent; /* Keeps the menu button visible and clickable */
+    }
+
+    /* :where() keeps the specificity of a single class, so later overrides still win. */
+
+    :where(.site-menu :is(a, button)) {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-inline-size: 24px;
+      min-block-size: 3rem;
+      padding-inline: 1rem;
+      border-radius: 0.5rem;
+      color: var(--muted-text);
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .site-menu :is(a, button):is(:hover, :focus-visible) {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    :where(.site-menu a)[aria-current="page"] {
+      color: var(--accent);
+    }
+
+    :where(.site-menu a)[aria-current="page"]::before {
+      position: absolute;
+      inset-block: 0.75rem;
+      inset-inline-start: 0.3rem;
+      inline-size: 0.2rem;
+      border-radius: 99rem;
+      background: currentColor;
+      content: "";
+    }
+
+    /* Nested dropdown styles */
+    .dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      inline-size: 100%;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-weight: 650;
+      text-align: start;
+      cursor: pointer;
+    }
+
+    .dropdown-trigger {
+      --icon-end: var(--icon-chevron-down);
+    }
+
+    .dropdown-trigger::after {
+      inline-size: 1.15rem;
+      block-size: 1.15rem;
+      background-color: currentColor;
+      content: "";
+      mask: var(--icon-chevron-down) no-repeat center / contain;
+      -webkit-mask: var(--icon-chevron-down) no-repeat center / contain;
+    }
+
+    .dropdown-trigger[aria-expanded="true"]::after {
+      rotate: 180deg;
+    }
+
+    .dropdown-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    main {
+      max-inline-size: 75rem;
+      margin-inline: auto;
+      padding-block: clamp(4rem, 10vw, 8rem);
+      padding-inline: clamp(1rem, 4vw, 3rem);
+      container-type: inline-size;
+    }
+
+    .hero {
+      max-inline-size: 48rem;
+    }
+
+    .hero h1 {
+      max-inline-size: 12ch;
+      margin-block: 0 1rem;
+      font-size: clamp(2.75rem, 8cqi, 5rem);
+      line-height: 0.95;
+    }
+
+    .hero p {
+      max-inline-size: 42rem;
+      margin: 0;
+      color: var(--muted-text);
+      font-size: clamp(1.1rem, 2cqi, 1.35rem);
+    }
+
+    .context-note {
+      max-inline-size: 42rem;
+      margin-block-start: 2rem;
+      padding-block-start: 1rem;
+      border-block-start: 1px solid var(--border);
+      color: var(--muted-text);
+    }
+
+    footer {
+      max-inline-size: 75rem;
+      margin-inline: auto;
+      padding-block: 1rem 2rem;
+      padding-inline: clamp(1rem, 4vw, 3rem);
+      color: var(--muted-text);
+      font-size: 0.95rem;
+    }
+
+    /*
+      Narrow layout.
+
+      The popover is up to 80% of the viewport width (capped at 24rem),
+      positioned below the menu button and aligned with its
+      right edge.
+    */
+    .site-header {
+      .site-menu {
+        position: fixed;
+        inset: auto;
+
+        /* Fallback followed by Anchor Positioning declarations. */
+        inset-block-start: 4.75rem; /* fallback */
+        inset-block-start: anchor(--menu-button bottom);
+        inset-inline-end: 1rem; /* fallback */
+        inset-inline-end: anchor(--menu-button end);
+
+        inline-size: min(80dvw, 24rem);
+        max-inline-size: calc(100dvw - 2rem);
+
+        block-size: fit-content;
+        max-block-size: calc(100dvh - 6rem);
+
+        margin-block-start: 0.5rem;
+        margin-inline: 0;
+
+        overflow: auto;
+      }
+
+      .dropdown-list {
+        display: grid;
+        gap: 0.25rem;
+        padding-block: 0.25rem;
+        padding-inline-start: 1.5rem;
+        /* Indented inline nested style for mobile */
+      }
+
+      .dropdown-list[hidden] {
+        display: none;
+      }
+    }
+
+    /*
+      Wide layout.
+
+      The same navigation element becomes part of the header
+      rather than an overlay.
+    */
+    .site-header.is-wide {
+      .menu-button {
+        display: none;
+      }
+
+      .site-menu {
+        position: static;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        inline-size: auto;
+        max-inline-size: none;
+        block-size: auto;
+        max-block-size: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+      }
+
+      .site-menu::backdrop {
+        display: none;
+      }
+
+      :where(.site-menu :is(a, button)) {
+        min-block-size: 2.75rem;
+        padding-inline: 0.8rem;
+      }
+
+      :where(.site-menu a)[aria-current="page"]::before {
+        inset-block: auto 0.1rem;
+        inset-inline: 0.8rem;
+        inline-size: auto;
+        block-size: 0.2rem;
+      }
+
+      /* Desktop flyout style for the native submenu popover. */
+      .dropdown-list[popover] {
+        position: absolute;
+        position-area: block-end span-inline-end;
+        position-try-fallbacks: flip-block, flip-inline;
+        inset: auto;
+        inset-block: auto;
+        height: auto;
+        clip-path: none;
+        gap: 0.25rem;
+        inline-size: max-content;
+        min-inline-size: 12rem;
+        max-height: max-content;
+        place-self: start;
+        align-self: start;
+        justify-self: start;
+        margin-block-start: 0.5rem;
+        padding: 0.5rem;
+        overflow: visible; /* Popovers clip by default, which would hide the hover bridge below. */
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background: var(--surface-raised);
+        box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
+      }
+
+      /* Also hides the list while it has no popover, so it cannot widen the measured row. */
+      .dropdown-list:not(:is(:popover-open, .\:popover-open)) {
+        display: none;
+      }
+
+      .dropdown-list:is(:popover-open, .\:popover-open) {
+        display: grid;
+      }
+
+      /* Fills the margin above the submenu so the pointer stays inside the <li>. */
+      .dropdown-list::before {
+        content: "";
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: 100%;
+        block-size: 0.5rem;
+      }
+
+      .dropdown-list a {
+        min-block-size: 2.5rem;
+        padding-inline: 0.75rem;
+      }
+
+      /* Without anchor positioning the script below sets left and top. */
+      @supports not (position-area: block-end) {
+        .dropdown-list[popover] {
+          position: fixed;
+          margin: 0;
+        }
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .dropdown-trigger::after {
+        transition: rotate 180ms;
+      }
+
+      .site-header.is-wide {
+        .site-menu {
+          opacity: 1;
+          translate: none;
+          transition: none;
+        }
+
+        .dropdown-list[popover] {
+          opacity: 0;
+          translate: 0 -0.25rem;
+          transition:
+            opacity,
+            translate,
+            display,
+            overlay;
+          transition-duration: 150ms;
+          /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+          transition-behavior: allow-discrete;
+        }
+
+        .dropdown-list[popover]:is(:popover-open, .\:popover-open) {
+          opacity: 1;
+          translate: none;
+
+          @starting-style {
+            opacity: 0;
+            translate: 0 -0.25rem;
+          }
+        }
+      }
+
+      .site-header {
+        .site-menu {
+          transition:
+            display,
+            overlay,
+            opacity,
+            translate;
+          transition-duration: 180ms;
+          /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+          transition-behavior: allow-discrete;
+          opacity: 0;
+          translate: 0 -0.5rem;
+        }
+
+        .site-menu:is(:popover-open, .\:popover-open) {
+          opacity: 1;
+          translate: none;
+        }
+
+        @starting-style {
+          .site-menu:is(:popover-open, .\:popover-open) {
+            opacity: 0;
+            translate: 0 -0.5rem;
+          }
+        }
+
+        /* Without keyword interpolation the slide would snap, so keep native [hidden] */
+        @supports (interpolate-size: allow-keywords) {
+          .dropdown-list {
+            interpolate-size: allow-keywords;
+            clip-path: inset(-6px); /* Clips the slide like overflow: clip, but leaves room for the focus ring; at least the ring's outline width plus offset */
+            transition:
+              block-size,
+              padding-block,
+              content-visibility;
+            transition-duration: 180ms;
+            /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+            transition-behavior: allow-discrete;
+          }
+
+          .dropdown-list[hidden] {
+            display: grid; /* Stay rendered so block-size can animate */
+            block-size: 0;
+            padding-block: 0;
+            content-visibility: hidden;
+          }
+        }
+      }
+    }
+
+    /* Measuring toggles the layout classes synchronously; do not animate those changes. */
+    .is-measuring * {
+      transition: none !important;
+    }
+
+    @media (forced-colors: active) {
+
+      .site-menu,
+      .menu-button,
+      .dropdown-list {
+        border-color: CanvasText;
+        box-shadow: none;
+      }
+
+      :where(.site-menu a)[aria-current="page"]::before {
+        background: Highlight;
+      }
+
+      .dropdown-trigger::after {
+        forced-color-adjust: none; /* Otherwise the masked background is dropped */
+        background-color: CanvasText; /* currentColor would keep the page's gray */
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="site-logo" href="index.html">
+        Acme
+      </a>
+
+      <nav class="site-nav" aria-label="Primary">
+        <button class="menu-button" type="button" popovertarget="site-menu" popovertargetaction="toggle"
+          aria-controls="site-menu">
+          <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+          </svg>
+
+          <span>Menu</span>
+        </button>
+
+        <ul id="site-menu" class="site-menu" popover="auto">
+          <li>
+            <a href="index.html" aria-current="page">
+              Home
+            </a>
+          </li>
+
+          <li>
+            <a href="about.html">
+              About
+            </a>
+          </li>
+
+          <li class="nav-dropdown">
+              <button
+                type="button"
+                class="dropdown-trigger"
+                aria-expanded="false"
+                aria-controls="services-menu"
+                popovertarget="services-menu"
+              >
+                <span>Services</span>
+              </button>
+              <ul id="services-menu" class="dropdown-list">
+                <li>
+                  <a href="design.html">Design</a>
+                </li>
+                <li>
+                  <a href="development.html">Development</a>
+                </li>
+                <li>
+                  <a href="marketing.html">Marketing</a>
+                </li>
+              </ul>
+          </li>
+
+          <li>
+            <a href="contact.html">
+              Contact
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <h1 id="page-title">
+        Build better experiences.
+      </h1>
+
+      <p>
+        A responsive site navigation using one semantic navigation
+        element and the native Popover API.
+      </p>
+
+      <aside class="context-note" aria-label="Navigation notes">
+        The current page is marked with <code>aria-current="page"</code>.
+        Resize the viewport to see the same navigation switch between an
+        anchored popover and an inline menu.
+      </aside>
+    </section>
+  </main>
+
+  <footer>
+    <small>Acme navigation example</small>
+  </footer>
+
+  <script>
+    const menu = document.querySelector("#site-menu");
+    const header = document.querySelector(".site-header");
+    const dropdown = document.querySelector(".nav-dropdown");
+    const trigger = dropdown.querySelector(".dropdown-trigger");
+    const submenu = dropdown.querySelector(".dropdown-list");
+
+    const setExpanded = (open) => trigger.setAttribute("aria-expanded", String(open));
+    // The polyfill cannot define :popover-open, so it sets a class instead
+    const isOpen = (el) => el.matches(":is(:popover-open, .\\:popover-open)");
+
+    // Narrow layout: the submenu is an inline disclosure, so the script toggles it.
+    // It is hidden by script, so without scripting the links stay visible.
+    submenu.hidden = true;
+    trigger.addEventListener("click", (event) => {
+      if (previewing) {
+        // Clicking a hover preview keeps it open instead of toggling it closed
+        previewing = false;
+        event.preventDefault();
+        return;
+      }
+      if (submenu.matches("[popover]")) return; // Wide layout: the native popover handles the click
+      submenu.hidden = !submenu.hidden;
+      setExpanded(!submenu.hidden);
+    });
+
+    // Wide layout: keep aria-expanded in step with the native popover
+    submenu.addEventListener("toggle", (event) => {
+      setExpanded(event.newState === "open");
+      if (event.newState === "closed") previewing = false;
+
+      if (event.newState === "open" && !CSS.supports("position-area", "block-end")) {
+        placeSubmenu();
+      }
+    });
+
+    // Fallback for browsers without Anchor Positioning: below the trigger,
+    // flipped above and clamped to the viewport on overflow.
+    function placeSubmenu() {
+      const anchor = trigger.getBoundingClientRect();
+      const size = submenu.getBoundingClientRect();
+      const gap = 8;
+      let top = anchor.bottom + gap;
+      if (top + size.height > innerHeight) top = Math.max(0, anchor.top - gap - size.height);
+      const left = Math.max(0, Math.min(anchor.left, innerWidth - size.width));
+      submenu.style.top = `${top}px`;
+      submenu.style.left = `${left}px`;
+    }
+
+    // Hover preview: wide layout and hover-capable pointers only. A submenu
+    // opened by click or keyboard is never closed by the pointer leaving.
+    const canHover = matchMedia("(hover: hover)");
+    let previewing = false;
+
+    dropdown.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "touch" || !canHover.matches) return;
+      if (!submenu.matches("[popover]") || isOpen(submenu)) return;
+      previewing = true;
+      submenu.showPopover({ source: trigger });
+    });
+
+    // Close the wide submenu once focus moves to an element outside the list item
+    dropdown.addEventListener("focusout", (event) => {
+      if (!isOpen(submenu) || !event.relatedTarget || dropdown.contains(event.relatedTarget)) return;
+      submenu.hidePopover();
+    });
+
+    dropdown.addEventListener("pointerleave", () => {
+      if (!previewing) return;
+      previewing = false;
+      submenu.hidePopover();
+    });
+
+    const inner = header.querySelector(".header-inner");
+    let lastWidth = -1;
+    let isWide;
+
+    // Collapse only when the inline row does not fit: show it inline and check for overflow.
+    function syncLayoutState() {
+      const wasOpen = isOpen(menu);
+      header.classList.add("is-measuring");
+      menu.removeAttribute("popover");
+      header.classList.add("is-wide");
+      const wide = inner.scrollWidth <= inner.clientWidth;
+      header.classList.toggle("is-wide", wide);
+      if (!wide) {
+        menu.setAttribute("popover", "auto");
+        if (wasOpen) menu.showPopover(); // Removing the attribute closed it; stay open while collapsed
+      }
+
+      requestAnimationFrame(() => header.classList.remove("is-measuring"));
+
+      if (wide === isWide) return;
+      isWide = wide;
+      if (wide) submenu.setAttribute("popover", "auto");
+      else submenu.removeAttribute("popover");
+      submenu.hidden = !wide;
+      setExpanded(false);
+    }
+
+    // While inline, any resize of the header or the row (including font loading) is remeasured.
+    // While collapsed, remeasure only when the header grows, so shrinking never flips to inline and back.
+    // Tradeoff: a collapsed menu that shrinks by itself stays collapsed until the header grows.
+    new ResizeObserver(() => {
+      const width = header.clientWidth;
+      const grew = width > lastWidth;
+      lastWidth = width;
+      if (isWide !== false || grew) syncLayoutState();
+    }).observe(header);
+    new ResizeObserver(() => {
+      if (isWide !== false) syncLayoutState();
+    }).observe(menu);
+  </script>
+</body>
+
+</html>

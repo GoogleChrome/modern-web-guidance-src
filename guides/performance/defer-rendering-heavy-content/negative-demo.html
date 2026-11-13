@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    
+    header {
+      content-visibility: auto;
+      padding: 2rem;
+      background: #f0f0f0;
+    }
+
+    .off-screen-card {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin: 20px;
+    }
+
+    .debug-panel {
+      display: none;
+      background: #333;
+      color: #fff;
+      padding: 10px;
+    }
+
+    .spacer {
+      height: 2000px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Dashboard</h1>
+  </header>
+
+  <div class="off-screen-card">
+    <h2>Data Overview</h2>
+    <p>Metrics for the current session.</p>
+  </div>
+  
+  <div class="off-screen-card">
+    <h2>System Status</h2>
+    <p>All systems operational.</p>
+  </div>
+
+  <div class="debug-panel">
+    <p>Memory usage: 42MB</p>
+  </div>
+
+  <div class="spacer"></div>
+</body>
+</html>

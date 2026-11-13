@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customize Scrollbar Color and Thickness Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+            background-color: #f7f9fc;
+            flex-wrap: wrap;
+        }
+
+        .container {
+            width: 300px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 1rem;
+            background-color: #e0f7fa;
+            color: #006064;
+            font-weight: bold;
+            border-bottom: 2px solid #b2ebf2;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        /* Adjust colors for the second container to differentiate */
+        .container:nth-child(2) .header {
+            background-color: #fce4ec;
+            color: #880e4f;
+            border-bottom: 2px solid #f8bbd0;
+        }
+
+        .scroller {
+            height: 200px;
+            overflow-y: auto;
+            padding: 1rem;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Draws the focus ring inside the scroller, because .container's
+           overflow: hidden clips anything drawn outside it */
+        .scroller:focus-visible {
+            outline-offset: -2px;
+        }
+
+        /* 1. Modern standards-compliant styling */
+        .scroller.custom-scrollbar {
+            /* DO: Use standard properties natively */
+            scrollbar-color: #00796b #e0f7fa;
+            scrollbar-width: thin;
+            /* DO: Force track background to be visible on macOS */
+            scrollbar-gutter: stable;
+        }
+        
+        .scroller.no-scrollbar {
+            scrollbar-width: none;
+        }
+
+        /* 2. Legacy WebKit/Blink styling hidden from modern browsers */
+        @supports not (scrollbar-color: auto) {
+            .scroller.custom-scrollbar::-webkit-scrollbar {
+                /* DO: Must be sized for custom colors to render, defines thickness */
+                width: 8px;
+            }
+
+            .scroller.custom-scrollbar::-webkit-scrollbar-track {
+                background: #e0f7fa;
+                border-radius: 4px;
+            }
+
+            .scroller.custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #00796b;
+                border-radius: 4px;
+            }
+
+            .scroller.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #00838f;
+            }
+            
+            .scroller.no-scrollbar::-webkit-scrollbar {
+                display: none;
+                width: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2 class="header" id="custom-scrollbar-heading">Custom Color & Thin</h2>
+        <div class="scroller custom-scrollbar" tabindex="0" role="region" aria-labelledby="custom-scrollbar-heading">
+            <p>
+                This box demonstrates a scrollable container with customized scrollbar color AND thickness.
+            </p>
+            <p>
+                In browsers that support the standard properties, `scrollbar-color` and `scrollbar-width: thin` are used.
+            </p>
+            <p>
+                In browsers that only support legacy vendor prefixes, `::-webkit-scrollbar` overrides both size and color within an isolating feature query.
+            </p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2 class="header" id="no-scrollbar-heading">No Scrollbar</h2>
+        <div class="scroller no-scrollbar" tabindex="0" role="region" aria-labelledby="no-scrollbar-heading">
+            <p>
+                This box demonstrates a scrollable container that has its scrollbar completely hidden, but remains scrollable!
+            </p>
+            <p>
+                In browsers that support standard properties, `scrollbar-width: none` is used.
+            </p>
+            <p>
+                In browsers that only support legacy webkit prefixes, `display: none` is applied directly to `::-webkit-scrollbar`.
+            </p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+            <p>More text to force scrolling...</p>
+        </div>
+    </div>
+
+</body>
+
+</html>

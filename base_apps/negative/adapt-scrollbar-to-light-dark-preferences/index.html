@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Negative Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    body {
+      font-family: sans-serif;
+      padding: 50px;
+      background-color: #ffffff;
+      color: #000000;
+    }
+
+    .scroller {
+      width: 300px;
+      height: 200px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 10px;
+      scrollbar-color: #eeeeee #ffffff;
+    }
+
+    .scroller::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .scroller::-webkit-scrollbar-track {
+      background: #ffffff;
+    }
+
+    .scroller::-webkit-scrollbar-thumb {
+      background: #eeeeee;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scroller">
+    <p>This is a scrollable area.</p>
+    <p>It uses hardcoded light colors for the scrollbar.</p>
+    <p>It does not support dark mode.</p>
+    <p>The scrollbar will be almost invisible if the system is in dark mode.</p>
+    <p>It lacks color-scheme definitions.</p>
+    <p>It lacks scrollbar-width and scrollbar-gutter.</p>
+    <p>It uses legacy webkit properties without feature detection.</p>
+    <p>More content to ensure scrolling works.</p>
+    <p>More content to ensure scrolling works.</p>
+    <p>More content to ensure scrolling works.</p>
+    <p>More content to ensure scrolling works.</p>
+    <p>More content to ensure scrolling works.</p>
+  </div>
+
+</body>
+</html>

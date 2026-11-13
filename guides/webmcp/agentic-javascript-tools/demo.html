@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebMCP Imperative Demo</title>
+  <style>
+    body {
+      font-family: system-ui;
+      padding: 2rem;
+    }
+
+    #status {
+      margin-top: 1rem;
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>WebMCP Imperative Demo</h1>
+  <p>Check the console or use a WebMCP-enabled browser assistant to interact with the <code>calculate_sum</code> tool.
+  </p>
+  <div id="status">Checking WebMCP support...</div>
+
+  <script type="module">
+    const status = document.getElementById('status');
+
+    if ('modelContext' in document && 'registerTool' in document.modelContext) {
+      // Mandatory: Use AbortController for lifecycle management
+      const controller = new AbortController();
+
+      await document.modelContext.registerTool({
+        name: "calculate_sum",
+        description: "Calculates the sum of two numbers.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            a: { type: "number", description: "The first number" },
+            b: { type: "number", description: "The second number" }
+          },
+          required: ["a", "b"]
+        },
+        execute(input) {
+          console.log('Tool invoked with:', input);
+          return input.a + input.b;
+        }
+      }, { signal: controller.signal });
+
+      status.textContent = 'WebMCP Imperative API is supported! Tool "calculate_sum" registered.';
+    } else {
+      status.textContent = 'WebMCP is not supported in this browser.';
+      status.style.color = 'red';
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrollbar Implementation</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 50px;
+            background: #eee;
+        }
+
+        .scroll-box {
+            width: 300px;
+            height: 200px;
+            overflow-y: scroll;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+        }
+
+        .scroll-box::-webkit-scrollbar {
+            width: 15px;
+        }
+
+        .scroll-box::-webkit-scrollbar-track {
+            background: #ff0000;
+        }
+
+        .scroll-box::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border: 2px solid #ff0000;
+        }
+
+        .scroll-box::-webkit-scrollbar-thumb:hover {
+            background: #00dd00;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scroll-box">
+        <p>Item 1</p>
+        <p>Item 2</p>
+        <p>Item 3</p>
+        <p>Item 4</p>
+        <p>Item 5</p>
+        <p>Item 6</p>
+        <p>Item 7</p>
+        <p>Item 8</p>
+        <p>Item 9</p>
+        <p>Item 10</p>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Scrollability Affordance Hints | Modern Web Guidance</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --surface: light-dark(white, #1e1f20);
+    --page: light-dark(#f0f2f5, #131314);
+    --border: light-dark(#dadce0, #444746);
+    --muted: light-dark(#5f6368, #a8abaf);
+    --shadow-color: light-dark(rgb(0 0 0 / .15), rgb(0 0 0 / .6));
+    font: 100%/1.5 system-ui, sans-serif;
+  }
+
+  body {
+    max-inline-size: 24rem;
+    margin: 2rem auto;
+    padding-inline: 1rem;
+    background: var(--page);
+  }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: .75rem;
+    background: var(--surface);
+    overflow: clip;
+
+    & > header,
+    & > footer {
+      padding: .75rem 1rem;
+      font-weight: 600;
+    }
+
+    & > header {
+      border-block-end: 1px solid var(--border);
+    }
+
+    & > footer {
+      border-block-start: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: normal;
+      font-size: .875rem;
+    }
+  }
+
+  /* Shadows: the list is bounded by a header and footer, and its text must stay legible */
+  .messages {
+    max-block-size: 16rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    container-type: scroll-state;
+    --shadow-size: .75rem;
+
+    &::before,
+    &::after {
+      content: "";
+      display: block;
+      position: sticky;
+      block-size: var(--shadow-size);
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .2s;
+    }
+
+    &::before {
+      inset-block-start: 0;
+      margin-block-end: calc(-1 * var(--shadow-size));
+      background: radial-gradient(farthest-side at 50% 0, var(--shadow-color), transparent);
+    }
+
+    &::after {
+      inset-block-end: 0;
+      margin-block-start: calc(-1 * var(--shadow-size));
+      background: radial-gradient(farthest-side at 50% 100%, var(--shadow-color), transparent);
+    }
+
+    & li {
+      padding: .75rem 1rem;
+
+      & + li {
+        border-block-start: 1px solid var(--border);
+      }
+    }
+
+    & strong {
+      display: block;
+    }
+
+    & span {
+      color: var(--muted);
+      font-size: .875rem;
+    }
+
+    /* Fallback without scroll-state queries: fade the shadows in with the scroll position */
+    @supports not (container-type: scroll-state) {
+      &::before,
+      &::after {
+        animation: show-shadow linear both;
+        animation-timeline: scroll();
+      }
+
+      &::before {
+        animation-range: 0 2rem;
+      }
+
+      &::after {
+        animation-direction: reverse;
+        animation-range: calc(100% - 2rem) 100%;
+      }
+    }
+
+    /* Last resort, without scroll-driven animations either: the list has a solid background */
+    @supports not ((container-type: scroll-state) or (animation-timeline: scroll())) {
+      background:
+        linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
+        linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem no-repeat local,
+        radial-gradient(farthest-side at 50% 0, var(--shadow-color), transparent) top / 100% var(--shadow-size) no-repeat,
+        radial-gradient(farthest-side at 50% 100%, var(--shadow-color), transparent) bottom / 100% var(--shadow-size) no-repeat,
+        var(--surface);
+    }
+  }
+
+  @container scroll-state(scrollable: block-start) {
+    .messages::before {
+      opacity: 1;
+    }
+  }
+
+  @container scroll-state(scrollable: block-end) {
+    .messages::after {
+      opacity: 1;
+    }
+  }
+
+  @keyframes show-shadow {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Fades: a row of items, on a background that is not a solid color */
+  .hero {
+    padding: 1rem;
+    border-radius: .75rem;
+    background: linear-gradient(135deg, light-dark(#d3e3fd, #0b3a7a), light-dark(#fde2f3, #5c1946));
+  }
+
+  @property --fade-start {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  @property --fade-end {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+  }
+
+  .chips {
+    display: flex;
+    gap: .5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+    --fade-size: 3rem;
+    /* Keeps focused chips out of the fades */
+    scroll-padding-inline: var(--fade-size);
+    /* An opaque layer that is not clipped to the box, minus a band at each end,
+       so a focus outline on the scroller stays visible */
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      linear-gradient(to right, black, transparent) 0 0 / var(--fade-start) 100% no-repeat no-clip,
+      linear-gradient(to right, transparent, black) 100% 0 / var(--fade-end) 100% no-repeat no-clip;
+    animation: reveal-fade-start linear both, hide-fade-end linear both;
+    animation-timeline: scroll(self inline);
+    animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+
+    /* Fallback without scroll-driven animations: script marks the edges with more content */
+    transition: --fade-start .2s, --fade-end .2s;
+
+    &.more-start {
+      --fade-start: var(--fade-size);
+    }
+
+    &.more-end {
+      --fade-end: var(--fade-size);
+    }
+
+    & button {
+      padding: .375rem .875rem;
+      border: 1px solid light-dark(rgb(0 0 0 / .15), rgb(255 255 255 / .2));
+      border-radius: 2rem;
+      background: light-dark(rgb(255 255 255 / .6), rgb(0 0 0 / .3));
+      font: inherit;
+      white-space: nowrap;
+
+      &:hover {
+        background: light-dark(rgb(255 255 255 / .9), rgb(0 0 0 / .5));
+      }
+
+      &[aria-pressed=true] {
+        background: light-dark(#0b57d0, #a8c7fa);
+        color: light-dark(white, #062e6f);
+        border-color: transparent;
+      }
+    }
+  }
+
+  @keyframes reveal-fade-start {
+    to {
+      --fade-start: var(--fade-size);
+    }
+  }
+
+  @keyframes hide-fade-end {
+    from {
+      --fade-end: var(--fade-size);
+    }
+  }
+</style>
+
+<h2>Shadow</h2>
+<section class="card">
+  <header><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>Inbox</header>
+  <ul class="messages">
+    <li><strong>Ada Lovelace</strong><span>Notes on the analytical engine</span></li>
+    <li><strong>Grace Hopper</strong><span>Found a moth in relay #70</span></li>
+    <li><strong>Alan Turing</strong><span>Can machines think?</span></li>
+    <li><strong>Katherine Johnson</strong><span>Trajectory numbers check out</span></li>
+    <li><strong>Tim Berners-Lee</strong><span>Information management: a proposal</span></li>
+    <li><strong>Margaret Hamilton</strong><span>Priority displays are working</span></li>
+    <li><strong>Dennis Ritchie</strong><span>hello, world</span></li>
+    <li><strong>Radia Perlman</strong><span>Algorhyme, a poem about spanning trees</span></li>
+  </ul>
+  <footer>8 messages</footer>
+</section>
+
+<h2>Fade</h2>
+<section class="hero">
+  <ul class="chips" aria-label="Filter by roast">
+    <li><button type="button" aria-pressed="true">All</button></li>
+    <li><button type="button" aria-pressed="false">Light roast</button></li>
+    <li><button type="button" aria-pressed="false">Medium roast</button></li>
+    <li><button type="button" aria-pressed="false">Dark roast</button></li>
+    <li><button type="button" aria-pressed="false">Espresso</button></li>
+    <li><button type="button" aria-pressed="false">Decaf</button></li>
+    <li><button type="button" aria-pressed="false">Single origin</button></li>
+  </ul>
+</section>
+
+<script type="module">
+  if (!CSS.supports('animation-timeline', 'scroll()')) {
+    for (const scroller of document.querySelectorAll('.chips')) {
+      // No chip is wider than the row, so the first and last chips are fully visible at their ends
+      const [first, last] = [scroller.firstElementChild, scroller.lastElementChild];
+      // rootMargin: without it, sub-pixel widths can leave an edge chip a fraction of a pixel short of fully visible
+      const observer = new IntersectionObserver(entries => {
+        for (const { target, intersectionRatio } of entries) {
+          scroller.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
+        }
+      }, { root: scroller, threshold: 1, rootMargin: '1px' });
+
+      observer.observe(first);
+      observer.observe(last);
+    }
+  }
+</script>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "My Old App",
+  "id": "https://old-app.example.com/",
+  "start_url": "/demo.html",
+  "display": "standalone",
+  "migrate_to": [
+    {
+      "id": "https://new-app.example.com/",
+      "install_url": "https://new-app.example.com/demo.html"
+    }
+  ]
+}
