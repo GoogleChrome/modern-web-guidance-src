@@ -16,8 +16,8 @@ const NON_JS_SCRIPT_TYPES: ReadonlySet<string> = new Set([
   'speculationrules',
 ]);
 
-const SCRIPT_TAG_REGEX = /<script(?=[\s/>])([^>]*)>([\s\S]*?)<\/script>/gi;
-const STYLE_TAG_REGEX = /<style(?=[\s/>])([^>]*)>([\s\S]*?)<\/style>/gi;
+const SCRIPT_TAG_REGEX = /<script(?=[\s/>])([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+const STYLE_TAG_REGEX = /<style(?=[\s/>])([^>]*)>([\s\S]*?)<\/style\s*>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
 const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
 const GLIMMER_COMMENT_REGEX = /\{\{~?!--[\s\S]*?--~?\}\}|\{\{~?![\s\S]*?\}\}/g;
@@ -134,11 +134,12 @@ function glimmerTemplateMarkup(content: string): string {
 }
 
 /** Template markup of a .gts/.gjs file with `<script>`/`<style>` blocks blanked, for linkedom. */
-function prepareGlimmerForDomScan(content: string): string {
+function prepareGlimmerForDomScan(relPath: string, content: string): string {
   const markup = glimmerTemplateMarkup(content);
+  const uncommented = blankHtmlComments(relPath, markup);
   return blankRanges(markup, [
-    ...findTagRanges(markup, SCRIPT_TAG_REGEX),
-    ...findTagRanges(markup, STYLE_TAG_REGEX),
+    ...findTagRanges(uncommented, SCRIPT_TAG_REGEX),
+    ...findTagRanges(uncommented, STYLE_TAG_REGEX),
   ]);
 }
 
@@ -173,6 +174,137 @@ function maskRanges(content: string, ranges: readonly MaskedRange[]): string {
   }
 
   return result;
+}
+
+// Elements whose content the HTML tokenizer reads as text up to the matching end tag (RCDATA,
+// RAWTEXT and script data). `noscript` is left out: its content is only text while scripting
+// is enabled, i.e. when it is not rendered; where it renders, its comments are comments.
+const RAW_TEXT_END_TAG_REGEXES: ReadonlyMap<string, RegExp> = new Map(
+  ['script', 'style', 'textarea', 'title', 'xmp', 'iframe', 'noembed', 'noframes'].map((name) => [
+    name,
+    new RegExp(`</${name}[\\t\\n\\f\\r />]`, 'gi'),
+  ]),
+);
+const TAG_NAME_REGEX = /[a-zA-Z][^\t\n\f\r />]*/y;
+const COMMENT_END_REGEX = /--!?>/g;
+
+/** HTML ASCII whitespace: tab, LF, FF, CR and space. */
+function isHtmlSpace(ch: string | undefined): boolean {
+  return ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r' || ch === '\f';
+}
+
+/** Index just past the `>` that closes a tag, skipping quoted attribute values. */
+function findTagEnd(markup: string, index: number): number {
+  let i = index;
+  while (i < markup.length) {
+    const ch = markup[i];
+    if (ch === '>') {
+      return i + 1;
+    }
+    i++;
+    if (ch === '=') {
+      while (isHtmlSpace(markup[i])) {
+        i++;
+      }
+      const quote = markup[i];
+      if (quote === '"' || quote === "'") {
+        const close = markup.indexOf(quote, i + 1);
+        if (close === -1) {
+          return markup.length;
+        }
+        i = close + 1;
+      }
+    }
+  }
+  return markup.length;
+}
+
+/** Index just past a comment whose `<!--` ends at `bodyStart`, or the end of the markup. */
+function findCommentEnd(markup: string, bodyStart: number): number {
+  // `<!-->` and `<!--->` are complete (abruptly closed) empty comments.
+  if (markup[bodyStart] === '>') {
+    return bodyStart + 1;
+  }
+  if (markup.startsWith('->', bodyStart)) {
+    return bodyStart + 2;
+  }
+  COMMENT_END_REGEX.lastIndex = bodyStart;
+  const match = COMMENT_END_REGEX.exec(markup);
+  return match ? match.index + match[0].length : markup.length;
+}
+
+/**
+ * Index just past a `<!…>` or `<?…>` that is not a comment. A bogus comment or DOCTYPE ends at
+ * the next `>`, a CDATA section (SVG/MathML) at `]]>`, and PHP code or an XML declaration at
+ * `?>`. Unterminated, it runs to the end: that can leave later comments in place, never hide
+ * live code.
+ */
+function findDeclarationEnd(markup: string, lt: number): number {
+  let terminator = '>';
+  if (markup.startsWith('<![CDATA[', lt)) {
+    // Outside SVG/MathML this is a bogus comment ending at `>`; `]]>` is deliberately conservative.
+    terminator = ']]>';
+  } else if (markup[lt + 1] === '?') {
+    terminator = '?>';
+  }
+  const close = markup.indexOf(terminator, lt + 2);
+  return close === -1 ? markup.length : close + terminator.length;
+}
+
+/**
+ * Finds the `<!-- … -->` comments of HTML-like markup from `fromIndex` on, in one linear,
+ * in-order pass that follows the HTML tokenizer closely enough not to mistake live code for
+ * a comment: `<!--` inside a quoted attribute value or the text of a raw text element (e.g. a
+ * legacy `<script><!-- … //--></script>` wrapper) does not open one, and a comment ends at
+ * the first `-->` (so downlevel-revealed `<!--[if !IE]><!-->…<!--<![endif]-->` leaves its
+ * content live). An unterminated comment runs to the end, as in the tokenizer. Other `<!…>`
+ * and `<?…?>` constructs (DOCTYPE, CDATA, PHP code) are skipped whole.
+ */
+function findHtmlCommentRanges(markup: string, fromIndex = 0): { start: number; end: number }[] {
+  const ranges: { start: number; end: number }[] = [];
+  let i = fromIndex;
+  while (i < markup.length) {
+    const lt = markup.indexOf('<', i);
+    if (lt === -1) {
+      break;
+    }
+    if (markup.startsWith('<!--', lt)) {
+      i = findCommentEnd(markup, lt + 4);
+      ranges.push({ start: lt, end: i });
+      continue;
+    }
+    if (markup[lt + 1] === '!' || markup[lt + 1] === '?') {
+      i = findDeclarationEnd(markup, lt);
+      continue;
+    }
+    const isEndTag = markup[lt + 1] === '/';
+    TAG_NAME_REGEX.lastIndex = isEndTag ? lt + 2 : lt + 1;
+    const tagName = TAG_NAME_REGEX.exec(markup)?.[0];
+    if (!tagName) {
+      // Not a tag (`a < b`): plain text.
+      i = lt + 1;
+      continue;
+    }
+    i = findTagEnd(markup, TAG_NAME_REGEX.lastIndex);
+    const rawTextEnd = isEndTag ? undefined : RAW_TEXT_END_TAG_REGEXES.get(tagName.toLowerCase());
+    if (rawTextEnd) {
+      rawTextEnd.lastIndex = i;
+      i = rawTextEnd.exec(markup)?.index ?? markup.length;
+    }
+  }
+  return ranges;
+}
+
+/**
+ * Markup of a file with its HTML comments blanked (offsets and newlines preserved), so that
+ * commented-out `<script>`/`<style>` blocks are not extracted. Astro frontmatter is not markup
+ * and is left as is.
+ */
+function blankHtmlComments(relPath: string, markup: string): string {
+  const frontmatterEnd = relPath.toLowerCase().endsWith('.astro')
+    ? (ASTRO_FRONTMATTER_REGEX.exec(markup)?.[0].length ?? 0)
+    : 0;
+  return blankRanges(markup, findHtmlCommentRanges(markup, frontmatterEnd));
 }
 
 /**
@@ -285,7 +417,8 @@ export function extractScriptBlocks(
     }
   }
 
-  for (const match of content.matchAll(SCRIPT_TAG_REGEX)) {
+  const markup = blankHtmlComments(relPath, content);
+  for (const match of markup.matchAll(SCRIPT_TAG_REGEX)) {
     const attrStr = match[1] ?? '';
     const body = match[2] ?? '';
     const attrs = parseTagAttributes(attrStr);
@@ -298,7 +431,7 @@ export function extractScriptBlocks(
 
       blocks.push({
         virtualPath,
-        blankedContent: blankOutsideRange(content, startOffset, endOffset),
+        blankedContent: blankOutsideRange(markup, startOffset, endOffset),
       });
     }
   }
@@ -526,7 +659,10 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
       : [];
   }
 
-  const markup = isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content;
+  const markup = blankHtmlComments(
+    relPath,
+    isGlimmerPath(relPath) ? glimmerTemplateMarkup(content) : content,
+  );
   const blocks: string[] = [];
   for (const match of markup.matchAll(STYLE_TAG_REGEX)) {
     const attrStr = match[1] ?? '';
@@ -566,7 +702,7 @@ const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
  */
 export function prepareHtmlForDomScan(relPath: string, content: string): string {
   if (isGlimmerPath(relPath)) {
-    return prepareGlimmerForDomScan(content);
+    return prepareGlimmerForDomScan(relPath, content);
   }
   const lowerPath = relPath.toLowerCase();
   if (
@@ -577,9 +713,11 @@ export function prepareHtmlForDomScan(relPath: string, content: string): string 
     return content;
   }
 
+  // Blocks are found outside comments, but the comments stay: linkedom skips them itself.
+  const uncommented = blankHtmlComments(relPath, content);
   const rangesToBlank: { start: number; end: number }[] = [
-    ...findTagRanges(content, SCRIPT_TAG_REGEX),
-    ...findTagRanges(content, STYLE_TAG_REGEX),
+    ...findTagRanges(uncommented, SCRIPT_TAG_REGEX),
+    ...findTagRanges(uncommented, STYLE_TAG_REGEX),
   ];
 
   if (lowerPath.endsWith('.vue')) {

@@ -1038,6 +1038,50 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     assert.equal(htmlDom.line, 14);
   });
 
+  await t.test('skips <script> and <style> blocks inside HTML comments, keeping line numbers', () => {
+    const findingsOf = (path: string, content: string) =>
+      scanFiles(new Map([[path, content]]), rules)
+        .map((f) => `${f.ruleId}:${f.line}`)
+        .sort();
+
+    const html = [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <!-- <style>p { anchor-name: --single-line; }</style> -->',
+      '  <!--',
+      '  <script>',
+      '    const old = Temporal.Now.instant();',
+      '  </script>',
+      '  -->',
+      '  <!-- <style> -->',
+      '  <style>',
+      '    p { anchor-name: --live; }',
+      '  </style>',
+      '  <script><!--',
+      '    const now = Temporal.Now.instant();',
+      '  //--></script>',
+      '</head>',
+      '<body><!-- <dialog open></dialog> --></body>',
+      '</html>',
+    ];
+    const expected = ['test-css-anchor:12', 'test-js-temporal:15'];
+    assert.deepEqual(findingsOf('public/index.html', html.join('\n')), expected);
+    assert.deepEqual(findingsOf('public/index.html', html.join('\r\n')), expected);
+
+    const vue = [
+      '<template>',
+      '  <!-- <style> -->',
+      '  <dialog open></dialog>',
+      '  <!-- <style>p { anchor-name: --commented; }</style> -->',
+      '</template>',
+      '<style>',
+      'p { anchor-name: --live; }',
+      '</style>',
+    ].join('\n');
+    assert.deepEqual(findingsOf('src/App.vue', vue), ['test-css-anchor:7', 'test-dom-dialog:3']);
+  });
+
   await t.test('scans Lit css tagged template literals in .ts file with exact line numbers', () => {
     const litTsContent = [
       "import { LitElement, html, css } from 'lit';",
