@@ -388,15 +388,15 @@ export function scanFiles(
       const ctx: FileContext = { relPath, content, repo, commit };
 
       if (!shouldScanFile(relPath, content, filterOpts)) {
-        // With ignoreAncestorDirs, vendored-library detection also sees only the file name.
-        const vendoredPath = filterOpts?.ignoreAncestorDirs ? basename(relPath) : relPath;
+        const libPath = filterOpts?.ignoreAncestorDirs ? basename(relPath) : relPath;
         if (
           depRules.length > 0 &&
-          !isBuildOrInstallPath(vendoredPath) &&
-          !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(vendoredPath))
+          !isBuildOrInstallPath(libPath) &&
+          !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(libPath))
         ) {
-          const hits = scanVendoredLibraryRules(vendoredPath, content, depRules);
-          findings.push(...materializeRuleMatches(ctx, hits));
+          findings.push(
+            ...materializeRuleMatches(ctx, scanVendoredLibraryRules(libPath, content, depRules)),
+          );
         }
         continue;
       }

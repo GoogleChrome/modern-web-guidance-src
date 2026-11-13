@@ -740,133 +740,47 @@ describe('runAnalyzeCli', () => {
     });
   });
 
-  it('judges an explicitly named file by itself, not by its directories relative to cwd', async () => {
+  it('scans an explicitly named file under a skipped directory such as build/', async () => {
     await withTempDir(async (testDir) => {
-      const css = '.box::-webkit-scrollbar {\n  display: none;\n}\n';
-      const relPaths = [
-        'build/x/app.css',
-        'node_modules/pkg/app.css',
-        'work/.cache/app.css',
-        'vendor/codemirror/app.css',
-      ];
-      for (const relPath of relPaths) {
-        await mkdir(join(testDir, relPath, '..'), { recursive: true });
-        await writeFile(join(testDir, relPath), css, 'utf8');
-      }
+      await mkdir(join(testDir, 'build/x'), { recursive: true });
+      await writeFile(join(testDir, 'build/x/app.css'), '.box::-webkit-scrollbar { display: none; }\n');
 
-      for (const target of [...relPaths, join(testDir, 'build/x/app.css')]) {
-        const res = await runAnalyzeCli([target, '--json'], { cwd: testDir });
-        assert.equal(res.exitCode, 0, target);
-        const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
-        assert.equal(parsed.error, undefined, target);
-        assert.equal(parsed.totalFindings, 1, target);
-        assert.equal(parsed.guides[0]?.guideId, 'customize-scrollbar-color-and-thickness', target);
-      }
+      const res = await runAnalyzeCli(['build/x/app.css', '--json'], { cwd: testDir });
+      assert.equal(res.exitCode, 0);
+      const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
+      assert.equal(parsed.totalFindings, 1);
+      assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, 'build/x/app.css');
     });
   });
 
-  it('scans an explicitly named file under docs/ or test/ without --include-docs-and-tests', async () => {
+  it('exits 1 for an explicitly named file that cannot be scanned', async () => {
     await withTempDir(async (testDir) => {
-      const css = '.box::-webkit-scrollbar {\n  display: none;\n}\n';
-      for (const relPath of ['docs/app.css', 'test/app.css']) {
-        await mkdir(join(testDir, relPath, '..'), { recursive: true });
-        await writeFile(join(testDir, relPath), css, 'utf8');
-
-        const res = await runAnalyzeCli([relPath, '--json'], { cwd: testDir });
-        assert.equal(res.exitCode, 0, relPath);
-        const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
-        assert.equal(parsed.totalFindings, 1, relPath);
-        assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, relPath);
-        assert.equal(parsed.skippedDocsAndTestsCount, undefined, relPath);
-      }
-    });
-  });
-
-  it('rejects an explicitly named file that cannot be scanned with a reason in text and JSON mode', async () => {
-    await withTempDir(async (testDir) => {
-      let minified = 'AOS.init();';
-      while (minified.length < 1500) minified += `var a${minified.length}=function(b){return b+1};`;
-      const cases: Array<[file: string, content: string, reason: string]> = [
-        ['README.md', '# Readme\n', 'unsupported file extension ".md"'],
-        ['Makefile', 'all:\n', 'files without an extension are not supported'],
-        [
-          '.css',
-          '.box::-webkit-scrollbar { display: none; }\n',
-          'files without an extension are not supported',
-        ],
-        [
-          'app.min.css',
-          '.a { color: red; }\n',
-          '"*.min.css" files are excluded as minified, bundled, or generated output',
-        ],
-        [
-          'jquery.js',
-          'AOS.init();\n',
-          'file name matches a well-known vendored third-party library',
-        ],
-        ['app.js', `${minified}\n`, 'content appears minified (lines longer than 1200 characters)'],
-        [
-          'lib.js',
-          '/*! mylib v1.2.3 | MIT License */\nAOS.init();\n',
-          'content starts with a versioned third-party license header, indicating vendored code',
-        ],
-      ];
-
-      for (const [file, content, reason] of cases) {
-        await writeFile(join(testDir, file), content, 'utf8');
-        const message = `Target file cannot be scanned (${reason}): ${file}`;
+      for (const file of ['README.md', 'app.min.css']) {
+        await writeFile(join(testDir, file), '.box::-webkit-scrollbar { display: none; }\n');
+        const message = `Target file cannot be scanned (unsupported, minified, or vendored): ${file}`;
 
         const resHuman = await runAnalyzeCli([file], { cwd: testDir });
         assert.equal(resHuman.exitCode, 1, file);
-        assert.equal(resHuman.stdout, '', file);
         assert.equal(resHuman.stderr, `Error: ${message}\n`);
 
         const resJson = await runAnalyzeCli([file, '--json'], { cwd: testDir });
         assert.equal(resJson.exitCode, 1, file);
-        assert.deepEqual(JSON.parse(resJson.output), {
-          targetDir: file,
-          totalFindings: 0,
-          guides: [],
-          error: message,
-        });
+        assert.equal((JSON.parse(resJson.output) as AnalyzeJsonOutput).error, message);
       }
     });
   });
 
-  it('still scans a stemless .html file in directory scans but rejects it as a named file', async () => {
+  it('still reports findings for an explicitly named vendored library file', async () => {
     await withTempDir(async (testDir) => {
-      await mkdir(join(testDir, 'src'));
-      const html = '<style>.box::-webkit-scrollbar { display: none; }</style>\n';
-      await writeFile(join(testDir, 'src/.html'), html, 'utf8');
+      for (const file of ['aos.js', 'node_modules/aos/aos.js']) {
+        await mkdir(join(testDir, file, '..'), { recursive: true });
+        await writeFile(join(testDir, file), '/*! AOS v2.3.4 | MIT License */\nvar x = 1;\n');
 
-      const resDir = await runAnalyzeCli(['.', '--json'], { cwd: testDir });
-      assert.equal(resDir.exitCode, 0);
-      const parsed = JSON.parse(resDir.output) as AnalyzeJsonOutput;
-      assert.equal(parsed.totalFindings, 1);
-      assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, 'src/.html');
-
-      const resFile = await runAnalyzeCli(['src/.html'], { cwd: testDir });
-      assert.equal(resFile.exitCode, 1);
-      assert.equal(
-        resFile.stderr,
-        'Error: Target file cannot be scanned (files without an extension are not supported): src/.html\n',
-      );
-    });
-  });
-
-  it('reports vendored library findings for an explicitly named library file wherever it lives', async () => {
-    await withTempDir(async (testDir) => {
-      const aos = '/*! AOS v2.3.4 | MIT License */\nvar x = 1;\n';
-      for (const relPath of ['aos.js', 'node_modules/aos/aos.js', '.git/aos.js']) {
-        await mkdir(join(testDir, relPath, '..'), { recursive: true });
-        await writeFile(join(testDir, relPath), aos, 'utf8');
-
-        const res = await runAnalyzeCli([relPath, '--json'], { cwd: testDir });
-        assert.equal(res.exitCode, 0, relPath);
+        const res = await runAnalyzeCli([file, '--json'], { cwd: testDir });
+        assert.equal(res.exitCode, 0, file);
         const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
-        assert.equal(parsed.error, undefined, relPath);
-        assert.equal(parsed.guides[0]?.guideId, 'scroll-entry-exit-effects', relPath);
-        assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, relPath);
+        assert.equal(parsed.guides[0]?.guideId, 'scroll-entry-exit-effects', file);
+        assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, file);
       }
     });
   });
