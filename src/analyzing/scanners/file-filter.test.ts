@@ -17,6 +17,7 @@ import {
   isExcludedCorpusNonAppPath,
   isMinifiedContent,
   isVendoredOrGeneratedPath,
+  mayContainJsx,
   shouldScanFile,
 } from './file-filter.ts';
 import { scanRepoFiles } from './index.ts';
@@ -355,6 +356,49 @@ describe('file-filter vendored and hashed asset exclusions', () => {
   it('rejects files exceeding 1 MB source cap', () => {
     assert.equal(shouldScanFile('src/small.js', 'const x = 1;\n'.repeat(100)), true);
     assert.equal(shouldScanFile('src/bundle.js', 'a'.repeat(1_000_001)), false);
+  });
+});
+
+describe('mayContainJsx', () => {
+  it('detects JSX elements and fragments in expression position', () => {
+    const jsx = [
+      'return (\n  <form action="/login">',
+      'const el = <div className="x" />;',
+      'items.map((item) => <li key={item}>{item}</li>)',
+      'return <Foo.Bar/>;',
+      'cond ? <></> : null',
+      'export default <App />;',
+      'ReactDOM.render(<App />, root);',
+      'ok && <input type="password" />',
+      'const page = await <Page />;',
+      'if (loading) return null; else <Spinner />;',
+      'const hidden = !<Banner />;',
+      'const label = prefix + <b>bold</b>;',
+      'const kind = typeof <Icon />;',
+      'void <Toast />;',
+      'if (ready) {}<div className="after-block" />',
+    ];
+    for (const source of jsx) {
+      assert.equal(mayContainJsx(source), true, source);
+    }
+  });
+
+  it('ignores comparisons, Flow generics, and markup inside strings or comments', () => {
+    const plain = [
+      'if (a < b && c > d) return a<b ? a : c;',
+      'for (let i = 0; i<10; i++) {}',
+      'function first<T>(xs: Array<T>): ?T { return xs[0]; }',
+      "const html = '<form><input type=\"password\"></form>';",
+      'const tpl = `<div class="card"></div>`;',
+      '// <input type="password" name="pw">',
+      "const stripped = s.replace(/<\\/?[a-z][^>]*>/gi, '');",
+      'const shifted = x << 2;',
+      'const ok = !a<b && a+b<c;',
+      'const wait = await fetchCount() < limit;',
+    ];
+    for (const source of plain) {
+      assert.equal(mayContainJsx(source), false, source);
+    }
   });
 });
 

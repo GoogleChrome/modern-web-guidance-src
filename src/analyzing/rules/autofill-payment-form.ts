@@ -79,11 +79,9 @@ const CARD_CSC_REGEX =
 const CARDHOLDER_NAME_REGEX =
   /(?:cc[-_]?name|cardholder[-_]?name|name[-_]?on[-_]?card|\bcardholder\b)/i;
 
-const SUPPORTED_EXTENSIONS = [
+const MARKUP_EXTENSIONS = [
   '.html',
   '.htm',
-  '.jsx',
-  '.tsx',
   '.vue',
   '.svelte',
   '.gts',
@@ -145,9 +143,10 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     // 1. High-precision file type constraint
+    //    (JSX elements only come from files the scanner treats as JSX: JSX_RULE_EXTENSIONS)
     const lowerPath = ctx.filePath.toLowerCase();
     if (
-      !SUPPORTED_EXTENSIONS.some((ext) => lowerPath.endsWith(ext)) ||
+      !(element.isJsx || MARKUP_EXTENSIONS.some((ext) => lowerPath.endsWith(ext))) ||
       TEST_PATH_SUBSTRINGS.some((sub) => lowerPath.includes(sub))
     ) {
       return null;

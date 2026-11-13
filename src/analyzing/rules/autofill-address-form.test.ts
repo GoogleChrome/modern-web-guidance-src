@@ -62,6 +62,22 @@ void test('autofill-address-form: positive brownfield matches', async (t) => {
     assert.match(matches[0]?.message ?? '', /postal-code/);
   });
 
+  await t.test('flags zipcode input inside JSX in a .js component', () => {
+    const code = `
+      export function AddressForm() {
+        return (
+          <form onSubmit={handleSubmit}>
+            <input type="text" name="zipcode" id="zipcode" />
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('AddressForm.js', code, (sourceFile) =>
+      scanJsx('AddressForm.js', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 1);
+  });
+
   await t.test('flags same-line <form><input ...></form> markup', () => {
     const html = `<form action="/quick"><input type="text" name="address1"></form>`;
     const matches = scanHtml('quick.html', html, [matcher]);

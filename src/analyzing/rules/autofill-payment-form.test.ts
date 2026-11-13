@@ -145,6 +145,22 @@ void test('autofill-payment-form: positive brownfield matches', async (suiteCont
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /cc-name/);
   });
+
+  await suiteContext.test('flags JSX cardholder name input in a .js component', () => {
+    const code = `
+      export function CheckoutForm() {
+        return (
+          <form onSubmit={handlePay}>
+            <input type="text" name="cardholder_name" id="cardholder_name" />
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('CheckoutForm.js', code, (sourceFile) =>
+      scanJsx('CheckoutForm.js', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 1);
+  });
 });
 
 void test('autofill-payment-form: negative / exempt cases', async (suiteContext) => {
