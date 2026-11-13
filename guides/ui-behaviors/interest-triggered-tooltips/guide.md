@@ -86,7 +86,7 @@ Give a toggletip both triggers: `interestfor` opens it on hover, focus, and long
 <div id="shipping-help" popover="hint">Free shipping applies to orders over $50. Orders placed before 2pm ship the same day.</div>
 ```
 
-- Use `popovertargetaction="show"`, not the default `toggle`: hover has usually opened the popover already, and a toggle would close it on the click that follows. When opened by hover or focus alone, losing interest closes it; when opened by click, tap, or `Enter`, `Escape` or light dismiss (clicking outside) closes it.
+- Use `popovertargetaction="show"`, not the default `toggle`: hover has usually opened the popover already, and a toggle would close it on the click that follows. `Escape`, light dismiss, and losing interest close it.
 - Keep `popover="hint"`: hovering across a toggletip must not close an open menu, which an `auto` popover would.
 - Position it like any tooltip. The button is the popover's implicit anchor through either attribute.
 
