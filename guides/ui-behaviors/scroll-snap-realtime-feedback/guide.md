@@ -4,6 +4,7 @@ description: Provide real-time visual feedback in linked UI elements while a use
 web-feature-ids:
   - scroll-snap-events
   - scroll-snap
+  - focusgroup
 ---
 
 # Scroll Snap Real-Time Feedback

@@ -7,6 +7,7 @@ web-feature-ids:
 - light-dark
 - light-dark-image
 - image-function
+- scrollbar-color
 - accent-color
 ---
 

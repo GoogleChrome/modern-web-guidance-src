@@ -147,6 +147,24 @@ export function parseArguments(argsString: string): string[] {
 }
 
 /**
+ * Returns the feature ID a macro references: the first argument of FEATURE, FEATURE_FALLBACKS,
+ * FEATURE_ISSUES, and BASELINE_STATUS, or the <id> of an INCLUDE of features/<id>.md.
+ */
+export function getMacroFeatureId(macroName: string, args: string[]): string | undefined {
+  const firstArg = args[0]?.trim();
+  if (!firstArg) return undefined;
+
+  if (macroName === "FEATURE" || macroName === "FEATURE_FALLBACKS" || macroName === "FEATURE_ISSUES" || macroName === "BASELINE_STATUS") {
+    return firstArg;
+  }
+  if (macroName === "INCLUDE") {
+    // Matches bare features/<id>.md or relative paths like ../../features/<id>.md (with optional #section)
+    return firstArg.match(/(?:^|\/)features\/([a-zA-Z0-9_-]+)\.md(?:#|$)/)?.[1];
+  }
+  return undefined;
+}
+
+/**
  * Extracts all feature IDs referenced in transclusion macros (FEATURE, FEATURE_FALLBACKS, FEATURE_ISSUES, and INCLUDE).
  */
 export function getTranscludedFeatureIds(content: string): string[] {
@@ -156,20 +174,11 @@ export function getTranscludedFeatureIds(content: string): string[] {
 
   for (const match of stripped.matchAll(MACRO_PATTERN)) {
     const macroName = match[1];
-    const rawArgs = match[2];
-    const args = parseArguments(rawArgs);
-    const firstArg = args[0];
-    if (!firstArg) continue;
+    // BASELINE_STATUS only renders a status line; it does not transclude feature content
+    if (macroName === "BASELINE_STATUS") continue;
 
-    if (macroName === "FEATURE" || macroName === "FEATURE_FALLBACKS" || macroName === "FEATURE_ISSUES") {
-      featureIds.add(firstArg.trim());
-    } else if (macroName === "INCLUDE") {
-      // Matches bare features/<id>.md or relative paths like ../../features/<id>.md (with optional #section)
-      const featureMatch = firstArg.match(/(?:^|\/)features\/([a-zA-Z0-9_-]+)\.md(?:#|$)/);
-      if (featureMatch) {
-        featureIds.add(featureMatch[1].trim());
-      }
-    }
+    const featureId = getMacroFeatureId(macroName, parseArguments(match[2]));
+    if (featureId) featureIds.add(featureId);
   }
 
   return Array.from(featureIds);

@@ -343,7 +343,11 @@ export function validateGuide(filePath: string): ValidationResult {
   const maskedBody = maskComments(body);
   const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
   errors.push(...validateCategory(filePath, relativePath));
-  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'devsite' } : {}));
+  errors.push(...validateMacros(maskedBody, relativePath, {
+    target: isPublished ? 'devsite' : undefined,
+    // Discipline guides may omit web-feature-ids, but features their macros reference must still be listed
+    webFeatureIds: Array.isArray(featureIds) ? featureIds : [],
+  }));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateHeadingHtmlTags(maskedBody, relativePath));
   errors.push(...validateSecureSrc(maskedBody, relativePath));

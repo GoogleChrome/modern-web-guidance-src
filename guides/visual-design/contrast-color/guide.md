@@ -3,6 +3,10 @@ name: contrast-color
 description: Select a readable text color with sufficient contrast on a dynamic background color.
 web-feature-ids:
   - contrast-color
+  - relative-color
+  - text-stroke-fill
+  - paint-order
+  - svg-filters
 ---
 
 # Ensure text readability with dynamic background colors
