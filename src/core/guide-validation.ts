@@ -3,7 +3,7 @@ import path from 'node:path';
 import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
-import { validateMacros, stripComments, maskComments, getFeatureMacroReferences } from './macros.ts';
+import { validateMacros, stripComments, maskComments } from './macros.ts';
 import { validateFeature, resolveFeatureId, getBaselineTargetsForGrader, type BaselineTarget } from './baseline.ts';
 import { isKnownCategory, CATEGORIES } from './categories.ts';
 import { buildHeadingMap } from './headings.ts';
@@ -339,13 +339,15 @@ export function validateGuide(filePath: string): ValidationResult {
       }
     }
   }
-  // Discipline guides may omit web-feature-ids, but any feature they reference must still be listed.
-  errors.push(...validateMacroFeatureIds(body, relativePath, Array.isArray(featureIds) ? featureIds : []));
 
   const maskedBody = maskComments(body);
   const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
   errors.push(...validateCategory(filePath, relativePath));
-  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'devsite' } : {}));
+  errors.push(...validateMacros(maskedBody, relativePath, {
+    target: isPublished ? 'devsite' : undefined,
+    // Discipline guides may omit web-feature-ids, but features their macros reference must still be listed
+    webFeatureIds: Array.isArray(featureIds) ? featureIds : [],
+  }));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateHeadingHtmlTags(maskedBody, relativePath));
   errors.push(...validateSecureSrc(maskedBody, relativePath));
@@ -1162,20 +1164,6 @@ export function validateBaselineClaims(body: string, relativePath: string, data?
   });
 
   return errors;
-}
-
-/**
- * Validates that every web feature referenced by a macro (BASELINE_STATUS, FEATURE, FEATURE_FALLBACKS,
- * FEATURE_ISSUES, or INCLUDE of features/<id>.md) is listed in the guide's `web-feature-ids` frontmatter.
- * Feature gating (origin trials, volatile features) reads only the frontmatter, so an unlisted feature
- * would ship ungated. Macros inside code spans and fenced code blocks count, since they are expanded at
- * build time too. Unknown feature IDs are skipped here because validateMacros already reports them.
- */
-export function validateMacroFeatureIds(body: string, relativePath: string, featureIds: readonly string[]): string[] {
-  const listed = new Set(featureIds);
-  return [...getFeatureMacroReferences(body)]
-    .filter(([id]) => !listed.has(id) && validateFeature(id).isValid)
-    .map(([id, macros]) => `Feature "${id}" is referenced by ${macros.join(', ')} but missing from "web-feature-ids" in frontmatter for ${relativePath}.`);
 }
 
 /**

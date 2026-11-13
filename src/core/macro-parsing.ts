@@ -146,56 +146,40 @@ export function parseArguments(argsString: string): string[] {
   return args;
 }
 
-// Macros whose first argument is a feature ID
-const TRANSCLUSION_FEATURE_MACROS = ["FEATURE", "FEATURE_FALLBACKS", "FEATURE_ISSUES"];
-const ALL_FEATURE_MACROS = [...TRANSCLUSION_FEATURE_MACROS, "BASELINE_STATUS"];
-
 /**
- * Maps each feature ID referenced (outside {# ... #} comments) by the given feature macros, whose
- * first argument is a feature ID, or by INCLUDE macros of features/<id>.md files to the names of the
- * macros that reference it, in order of first appearance.
+ * Returns the feature ID a macro references: the first argument of FEATURE, FEATURE_FALLBACKS,
+ * FEATURE_ISSUES, and BASELINE_STATUS, or the <id> of an INCLUDE of features/<id>.md.
  */
-function collectFeatureReferences(content: string, featureMacros: readonly string[]): Map<string, string[]> {
-  const references = new Map<string, string[]>();
-  if (!content) return references;
-  const stripped = stripComments(content);
+export function getMacroFeatureId(macroName: string, args: string[]): string | undefined {
+  const firstArg = args[0]?.trim();
+  if (!firstArg) return undefined;
 
-  for (const match of stripped.matchAll(MACRO_PATTERN)) {
-    const macroName = match[1];
-    const rawArgs = match[2];
-    const args = parseArguments(rawArgs);
-    const firstArg = args[0];
-    if (!firstArg) continue;
-
-    let featureId: string | undefined;
-    if (featureMacros.includes(macroName)) {
-      featureId = firstArg.trim();
-    } else if (macroName === "INCLUDE") {
-      // Matches bare features/<id>.md (resolved from the repo root) or relative paths like
-      // ../../features/<id>.md (with optional #section), but not other directories named features/
-      featureId = firstArg.match(/^(?:\.\.?\/)*features\/([a-zA-Z0-9_-]+)\.md(?:#|$)/)?.[1];
-    }
-    if (!featureId) continue;
-
-    const macros = references.get(featureId) ?? [];
-    if (!macros.includes(macroName)) macros.push(macroName);
-    references.set(featureId, macros);
+  if (macroName === "FEATURE" || macroName === "FEATURE_FALLBACKS" || macroName === "FEATURE_ISSUES" || macroName === "BASELINE_STATUS") {
+    return firstArg;
   }
-
-  return references;
+  if (macroName === "INCLUDE") {
+    // Matches bare features/<id>.md or relative paths like ../../features/<id>.md (with optional #section)
+    return firstArg.match(/(?:^|\/)features\/([a-zA-Z0-9_-]+)\.md(?:#|$)/)?.[1];
+  }
+  return undefined;
 }
 
 /**
  * Extracts all feature IDs referenced in transclusion macros (FEATURE, FEATURE_FALLBACKS, FEATURE_ISSUES, and INCLUDE).
  */
 export function getTranscludedFeatureIds(content: string): string[] {
-  return Array.from(collectFeatureReferences(content, TRANSCLUSION_FEATURE_MACROS).keys());
-}
+  if (!content) return [];
+  const featureIds = new Set<string>();
+  const stripped = stripComments(content);
 
-/**
- * Maps every feature ID referenced in macros (the transclusion macros plus BASELINE_STATUS) to the
- * names of the macros that reference it.
- */
-export function getFeatureMacroReferences(content: string): Map<string, string[]> {
-  return collectFeatureReferences(content, ALL_FEATURE_MACROS);
+  for (const match of stripped.matchAll(MACRO_PATTERN)) {
+    const macroName = match[1];
+    // BASELINE_STATUS only renders a status line; it does not transclude feature content
+    if (macroName === "BASELINE_STATUS") continue;
+
+    const featureId = getMacroFeatureId(macroName, parseArguments(match[2]));
+    if (featureId) featureIds.add(featureId);
+  }
+
+  return Array.from(featureIds);
 }

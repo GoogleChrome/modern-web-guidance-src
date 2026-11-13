@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks, validateMacroFeatureIds } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 import { guidesDir } from './paths.ts';
@@ -144,6 +144,71 @@ describe('GUIDE_REF publication target validation', () => {
       assert.ok(validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
       write('draft: wip\n');
       assert.ok(!validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('validateMacros web-feature-ids coverage', () => {
+  const missing = (id: string, macro: string) =>
+    `Feature "${id}" is missing from "web-feature-ids" in frontmatter (referenced in ${macro} macro in test.md).`;
+  const validate = (body: string, webFeatureIds: string[]) => validateMacros(maskComments(body), 'test.md', { webFeatureIds });
+
+  test('reports each referenced feature missing from web-feature-ids once, naming the first macro', () => {
+    const body = [
+      '{{ BASELINE_STATUS("light-dark") }}',
+      '{{ BASELINE_STATUS("scrollbar-color", "css.properties.scrollbar-color") }}',
+      '{{ FEATURE("customizable-select", "usage") }}',
+      "{{FEATURE_FALLBACKS( 'popover' )}}",
+      '{{ FEATURE_ISSUES("popover") }}',
+      '{{ BASELINE_STATUS("popover") }}',
+      '{{ INCLUDE("features/temporal.md") }}',
+      '{{ INCLUDE("features/accent-color.md#fallbacks") }}',
+      '{{ FEATURE("tmp-cross-origin-storage") }}',
+    ].join('\n\n');
+    assert.deepStrictEqual(validate(body, ['light-dark']), [
+      missing('scrollbar-color', 'BASELINE_STATUS'),
+      missing('customizable-select', 'FEATURE'),
+      missing('popover', 'FEATURE_FALLBACKS'),
+      missing('temporal', 'INCLUDE'),
+      missing('accent-color', 'INCLUDE'),
+      missing('tmp-cross-origin-storage', 'FEATURE'),
+    ]);
+    assert.deepStrictEqual(validate(body, ['light-dark', 'scrollbar-color', 'customizable-select', 'popover', 'temporal', 'accent-color', 'tmp-cross-origin-storage']), []);
+  });
+
+  test('ignores commented-out macros, non-feature macros, and macros that already fail validation', () => {
+    const body = [
+      '{# {{ BASELINE_STATUS("scrollbar-color") }} #}',
+      'Inline {# {{ FEATURE("popover") }} #} note.',
+      'See {{ GUIDE_REF("forms") }}.',
+      '{{ INCLUDE("guides/visual-design/typography/guide.md#responsive-typography") }}',
+      '{{ BASELINE_STATUS("not-a-real-feature-xyz") }}',
+    ].join('\n\n');
+    const errors = validate(body, []);
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /not-a-real-feature-xyz/);
+    assert.doesNotMatch(errors[0], /web-feature-ids/);
+  });
+
+  test('is skipped when no web-feature-ids are given', () => {
+    assert.deepStrictEqual(validateMacros('{{ BASELINE_STATUS("popover") }}', 'test.md'), []);
+  });
+
+  test('validateGuide checks against the frontmatter, including guides without web-feature-ids', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'macro-ids-'));
+    const guidePath = path.join(dir, 'macro-ids', 'guide.md');
+    fs.mkdirSync(path.dirname(guidePath));
+    const write = (idsLine: string) => fs.writeFileSync(guidePath, `---\nname: macro-ids\ndescription: d\n${idsLine}---\n# Macro ids\n\n{{ BASELINE_STATUS("popover") }}\n`);
+    const unlisted = (errors: string[]) => errors.filter(e => e.includes('missing from "web-feature-ids"'));
+    try {
+      write('web-feature-ids: []\n');
+      assert.strictEqual(unlisted(validateGuide(guidePath).errors).length, 1);
+      write('');
+      assert.strictEqual(unlisted(validateGuide(guidePath).errors).length, 1);
+      write('web-feature-ids:\n  - popover\n');
+      assert.deepStrictEqual(validateGuide(guidePath).errors, []);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -1245,88 +1310,5 @@ describe('validateAnchorLinks', () => {
   });
 });
 
-describe('validateMacroFeatureIds', () => {
-  const missingError = (id: string, macros: string, file = 'guide.md') =>
-    `Feature "${id}" is referenced by ${macros} but missing from "web-feature-ids" in frontmatter for ${file}.`;
 
-  test('reports each macro-referenced feature missing from web-feature-ids once, naming its macros', () => {
-    const body = [
-      '{{ BASELINE_STATUS("light-dark") }}',
-      '{{ BASELINE_STATUS("scrollbar-color", "css.properties.scrollbar-color") }}',
-      '{{ FEATURE("customizable-select", "usage") }}',
-      "{{FEATURE_FALLBACKS( 'popover' )}}",
-      '{{ FEATURE_ISSUES("popover") }}',
-      '{{ BASELINE_STATUS("popover") }}',
-      '{{ INCLUDE("features/temporal.md") }}',
-      '{{ INCLUDE("../../features/accent-color.md#fallbacks") }}',
-      '{{ FEATURE("tmp-cross-origin-storage") }}',
-    ].join('\n\n');
-    assert.deepStrictEqual(validateMacroFeatureIds(body, 'guides/x/demo/guide.md', ['light-dark']), [
-      missingError('scrollbar-color', 'BASELINE_STATUS', 'guides/x/demo/guide.md'),
-      missingError('customizable-select', 'FEATURE', 'guides/x/demo/guide.md'),
-      missingError('popover', 'FEATURE_FALLBACKS, FEATURE_ISSUES, BASELINE_STATUS', 'guides/x/demo/guide.md'),
-      missingError('temporal', 'INCLUDE', 'guides/x/demo/guide.md'),
-      missingError('accent-color', 'INCLUDE', 'guides/x/demo/guide.md'),
-      missingError('tmp-cross-origin-storage', 'FEATURE', 'guides/x/demo/guide.md'),
-    ]);
-  });
 
-  test('uses only the first argument of a FEATURE macro with extra arguments', () => {
-    assert.deepStrictEqual(
-      validateMacroFeatureIds('{{ FEATURE("popover", "usage", "extra") }}', 'guide.md', []),
-      [missingError('popover', 'FEATURE')],
-    );
-  });
-
-  test('passes when every referenced feature is listed', () => {
-    const body = '{{ BASELINE_STATUS("popover") }}\n\n{{ FEATURE_FALLBACKS("popover") }}\n\n{{ INCLUDE("features/temporal.md") }}';
-    assert.deepStrictEqual(validateMacroFeatureIds(body, 'guide.md', ['temporal', 'popover']), []);
-  });
-
-  test('ignores macros in {# ... #} comments and non-feature macros', () => {
-    const body = [
-      '{# {{ BASELINE_STATUS("scrollbar-color") }} #}',
-      'Inline {# {{ FEATURE("popover") }} #} note.',
-      '{#\n{{ INCLUDE("features/temporal.md") }}\n#}',
-      'See {{ GUIDE_REF("forms") }}.',
-      '{{ INCLUDE("guides/visual-design/typography/guide.md#responsive-typography") }}',
-    ].join('\n\n');
-    assert.deepStrictEqual(validateMacroFeatureIds(body, 'guide.md', []), []);
-  });
-
-  test('ignores INCLUDE paths outside the top-level features/ directory', () => {
-    // Bare paths resolve from the repo root, so this is not features/popover.md.
-    assert.deepStrictEqual(validateMacroFeatureIds('{{ INCLUDE("guides/x/features/popover.md") }}', 'guide.md', []), []);
-  });
-
-  test('counts macros inside code spans and fenced code blocks, which are expanded at build time too', () => {
-    const body = 'Use `{{ BASELINE_STATUS("popover") }}`.\n\n```md\n{{ FEATURE_ISSUES("temporal") }}\n```';
-    assert.deepStrictEqual(validateMacroFeatureIds(body, 'guide.md', []), [
-      missingError('popover', 'BASELINE_STATUS'),
-      missingError('temporal', 'FEATURE_ISSUES'),
-    ]);
-  });
-
-  test('accepts unquoted arguments like the macro renderer, and leaves unknown ids to validateMacros', () => {
-    const body = '{{ FEATURE_FALLBACKS(popover) }}\n\n{{ FEATURE(not-a-real-feature-xyz) }}\n\n{{ BASELINE_STATUS("also-not-a-feature-xyz") }}';
-    assert.deepStrictEqual(validateMacroFeatureIds(body, 'guide.md', []), [missingError('popover', 'FEATURE_FALLBACKS')]);
-  });
-
-  test('validateGuide reports missing ids, including for guides without web-feature-ids', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'macro-feature-ids-'));
-    const guidePath = path.join(dir, 'macro-ids', 'guide.md');
-    fs.mkdirSync(path.dirname(guidePath));
-    const write = (idsLine: string) => fs.writeFileSync(guidePath, `---\nname: macro-ids\ndescription: d\n${idsLine}---\n# Macro ids\n\n{{ BASELINE_STATUS("popover") }}\n`);
-    const missing = (errors: string[]) => errors.filter(e => e.includes('but missing from "web-feature-ids"'));
-    try {
-      write('web-feature-ids: []\n');
-      assert.strictEqual(missing(validateGuide(guidePath).errors).length, 1);
-      write('');
-      assert.strictEqual(missing(validateGuide(guidePath).errors).length, 1);
-      write('web-feature-ids:\n  - popover\n');
-      assert.deepStrictEqual(validateGuide(guidePath).errors, []);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-});

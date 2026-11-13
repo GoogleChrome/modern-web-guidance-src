@@ -1,16 +1,19 @@
 import { validateFeature, getStatusMessage, getFeatureName, pendingFeatures } from "./baseline.ts";
 import { getGuidesMap } from "./guide-validation.ts";
 import { resolveInclude } from "./include.ts";
-import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, getFeatureMacroReferences, stripComments, maskComments } from "./macro-parsing.ts";
+import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getMacroFeatureId, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
 
 // Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
-export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, getFeatureMacroReferences, stripComments, maskComments };
+export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments };
 
 export type BuildTarget = 'skills-cli' | 'devsite';
 
 export interface MacroOptions {
   target?: BuildTarget;
   includedFiles?: Set<string>;
+  // The guide's `web-feature-ids`. When set, validateMacros reports each feature referenced by an otherwise valid
+  // macro that is missing from it, since feature gating (origin trials, volatile features) reads only the frontmatter.
+  webFeatureIds?: readonly string[];
 }
 
 type MacroHandler = (args: string[], filePath: string, options?: MacroOptions) => string;
@@ -188,14 +191,14 @@ function defineFeatureMacro(name: string, {
  */
 function processMacros(
   content: string,
-  onMatch: (handler: MacroHandler, args: string[], match: string) => string | void
+  onMatch: (handler: MacroHandler, args: string[], match: string, name: string) => string | void
 ): string {
   return content.replace(MACRO_PATTERN, (match: string, name: string, argsString: string): string => {
     const handler = MACRO_HANDLERS[name];
     if (!handler) return match;
 
     const args = parseArguments(argsString);
-    const result = onMatch(handler, args, match);
+    const result = onMatch(handler, args, match, name);
     return typeof result === 'string' ? result : match;
   });
 }
@@ -208,9 +211,14 @@ function processMacros(
  */
 export function validateMacros(content: string, filePath: string, options: MacroOptions = {}): string[] {
   const errors: string[] = [];
-  processMacros(content, (handler, args, match) => {
+  const unlistedFeatures = new Map<string, string>(); // feature ID -> first macro referencing it
+  processMacros(content, (handler, args, match, name) => {
     try {
       handler(args, filePath, options);
+      const featureId = getMacroFeatureId(name, args);
+      if (featureId && options.webFeatureIds && !options.webFeatureIds.includes(featureId) && !unlistedFeatures.has(featureId)) {
+        unlistedFeatures.set(featureId, name);
+      }
     } catch (err: any) {
       if (err instanceof MacroError) {
         errors.push(err.message);
@@ -219,6 +227,9 @@ export function validateMacros(content: string, filePath: string, options: Macro
       }
     }
   });
+  for (const [featureId, name] of unlistedFeatures) {
+    errors.push(`Feature "${featureId}" is missing from "web-feature-ids" in frontmatter (referenced in ${name} macro in ${filePath}).`);
+  }
   return errors;
 }
 
