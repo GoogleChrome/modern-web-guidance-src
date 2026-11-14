@@ -26,6 +26,7 @@
 - The carousel has one HTML marker `<button>` per slide, and activating a marker button navigates to its corresponding slide.
 - Activating a marker button scrolls the track in the direction of the target slide's position in the slide sequence, passing the slides in between, including when the target is a parked end slide (for example, from the first slide, the last slide's marker scrolls forward).
 - Activating Next while a marker scroll to the last slide is still in progress ends on the first slide, and the activation is not lost.
+- Activating Next repeatedly in quick succession, without waiting for scrolling to settle, keeps looping past the last slide to the first, and ends on the slide that matches the number of activations.
 - Every marker button has an accessible name identifying its destination slide.
 - The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
