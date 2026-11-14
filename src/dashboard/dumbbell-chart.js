@@ -18,7 +18,7 @@ import { escapeHtml, formatDuration, isElementFullyVisible, scrollSvgLinkIntoVie
 
 /**
  * @typedef {Object} ChartGroupItem
- * @property {string} useCaseId
+ * @property {string} guideId
  * @property {string} [taskName]
  * @property {number} uVal
  * @property {number} gVal
@@ -289,23 +289,23 @@ export class DumbbellChart {
 
     labels.forEach((label, i) => {
         let taskName = label;
-        let useCaseId = "";
+        let guideId = "";
         const match = label.match(/^(.*) \(([^)]+)\)$/);
         if (match) {
             taskName = match[1];
-            useCaseId = match[2];
+            guideId = match[2];
         } else {
             const parts = label.split(' - ');
             if (parts.length >= 2) {
                 taskName = parts[0];
-                useCaseId = parts.slice(1).join(' - ');
+                guideId = parts.slice(1).join(' - ');
             }
         }
 
-        // Use useCaseId (guide name) for lookup in featuresMap, fallback to useCaseId if no feature found, and finally taskName
-        let featureName = useCaseId || taskName || 'Uncategorized';
-        if (featuresMap[useCaseId] && featuresMap[useCaseId].length > 0) {
-            featureName = featuresMap[useCaseId][0] || 'Uncategorized';
+        // Use guideId (guide name) for lookup in featuresMap, fallback to guideId if no feature found, and finally taskName
+        let featureName = guideId || taskName || 'Uncategorized';
+        if (featuresMap[guideId] && featuresMap[guideId].length > 0) {
+            featureName = featuresMap[guideId][0] || 'Uncategorized';
         }
 
         const uVal = unguidedSet.data[i] || 0;
@@ -328,7 +328,7 @@ export class DumbbellChart {
         if (!groups[featureName]) groups[featureName] = [];
         groups[featureName].push({
             taskName,
-            useCaseId,
+            guideId,
             uVal,
             gVal,
             uTokens,
@@ -597,10 +597,10 @@ export class DumbbellChart {
           if (!this.options.hideLabels) {
               hitArea = document.createElementNS("http://www.w3.org/2000/svg", "a");
               hitArea.setAttribute("class", "dc-hit");
-              hitArea.setAttribute("href", this.options.itemHref ? this.options.itemHref(item) : `#guide-${encodeURIComponent(item.useCaseId || featureName)}`);
+              hitArea.setAttribute("href", this.options.itemHref ? this.options.itemHref(item) : `#guide-${encodeURIComponent(item.guideId || featureName)}`);
               hitArea.setAttribute("interestfor", "dumbbell-tooltip");
-              const failedNote = (item.uFailed || item.gFailed) ? ', at least one run failed before grading' : '';
-              hitArea.setAttribute("aria-label", `${item.useCaseId || featureName} (${item.taskName}): open task${failedNote}`);
+              const failedNote = (item.uFailed || item.gFailed) ? ', at least one trial had an infra error before grading' : '';
+              hitArea.setAttribute("aria-label", `${item.guideId || featureName} (${item.taskName}): open task${failedNote}`);
               hitArea.appendChild(hitRect);
               scrollSvgLinkIntoViewOnFocus(hitArea, hitRect);
           }
@@ -625,7 +625,7 @@ export class DumbbellChart {
             const runtimeDeltaSign = runtimeDeltaPct > 0 ? "+" : "";
             const runtimeDeltaCls = runtimeDeltaPct <= 0 ? "text-success" : "";
             const fmtTime = (/** @type {number} */ ms) => (ms && ms > 0) ? formatDuration(ms) : '-';
-            tip.innerHTML = ` <div class="dumbbell-tooltip"> <div class="dumbbell-tooltip-left"> <div class="dumbbell-tooltip-title${item.uFailed || item.gFailed ? ' text-warning' : ''}">${escapeHtml(item.useCaseId)} (${escapeHtml(item.taskName)})</div> <div class="dumbbell-tooltip-feature">feature: ${escapeHtml(featureName)}</div> ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
+            tip.innerHTML = ` <div class="dumbbell-tooltip"> <div class="dumbbell-tooltip-left"> <div class="dumbbell-tooltip-title${item.uFailed || item.gFailed ? ' text-warning' : ''}">${escapeHtml(item.guideId)} (${escapeHtml(item.taskName)})</div> <div class="dumbbell-tooltip-feature">feature: ${escapeHtml(featureName)}</div> ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
                          <div class="dumbbell-tooltip-metrics">
                             ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<div>Duration (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span class="${runtimeDeltaCls}">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>` : ''}
                             ${(uUncached > 0 || gUncached > 0) ? `<div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span class="${uncachedDeltaCls}">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>` : ''}

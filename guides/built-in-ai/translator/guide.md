@@ -10,7 +10,6 @@ web-feature-ids:
 
 The **Translator API** allows developers to perform client-side text translation using built-in AI models in Chrome and Edge. This approach eliminates the need for cloud-based translation services for ephemeral content, reducing costs and improving privacy by keeping data on the user's device.
 
-
 ## Prerequisites & Requirements
 
 ### API Surface & Global Scope
@@ -46,6 +45,7 @@ To run Gemini Nano and associated models, the system needs:
 **User Gesture Requirement:** When calling `availability(options)` returns `'downloadable'` or `'downloading'`, calling `Translator.create()` triggers the download of the language pack and **strictly requires a user gesture** (such as a button click) to prevent a `NotAllowedError`.
 
 `Translator.availability(options)` returns one of four string statuses:
+
 - `'available'`: The language pair model is already downloaded on the device and ready for immediate translation.
 - `'downloadable'`: The language pair is supported, but the model needs to be downloaded. A user gesture is required to initiate `Translator.create()`.
 - `'downloading'`: The language pack is currently in the process of downloading. Calling `Translator.create()` with a user gesture attaches to the download.
@@ -160,12 +160,18 @@ The API supports a wide range of BCP 47 language codes: Here are the languages s
 - **zh**: Chinese
 - **zh-Hant**: Chinese (Traditional)
 
+## Accessibility considerations
+
+**MANDATORY:** Apply the `lang` attribute to the container element for the translated content, and make sure that its value matches the BCP 47 language code for the target language, for example `lang="es"` for Spanish.
+
 ## Security & Performance
 
 - **Permissions Policy:** Cross-origin iframes require explicit permission.
+
   ```html
   <iframe src="https://example.com/" allow="translator"></iframe>
   ```
+
 - **Web Workers:** Currently **not supported** due to Permission Policy
   complexities.
 - **Privacy:** No data is sent to Google servers during the translation process
@@ -185,9 +191,10 @@ if ('Translator' in self) {
 }
 ```
 
-If the `Translator` API is unsupported or availability checks return `'unavailable'`, you must gracefully fall back. 
+If the `Translator` API is unsupported or availability checks return `'unavailable'`, you must gracefully fall back.
 
 Recommended options:
+
 1. **Remote API Fallback**: Redirect the translation request to a server endpoint or cloud remote API (such as the Vertex AI Gemini API) to deliver translation functionality.
 2. **Graceful Degradation**: Visually disable translation control elements or buttons while showing an end-user friendly note (e.g., `"Client-side translation is currently unsupported in this browser"`). Do not allow unhandled exceptions.
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services.

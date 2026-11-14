@@ -1,10 +1,10 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior, renderEffortChip } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 import { SHOWCASE_TASKS } from './showcase-config.js';
-import { selectRecentSuites, getSuiteTimestamp, hasHeadlineStats } from './insights.js';
-/** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
+import { selectRecentJobs, getJobTimestamp, hasHeadlineStats } from './insights.js';
+/** @typedef {import('./summary-extractor.js').ShowcaseConditionTrial & { rate: number }} ShowcaseConditionTrial */
 /** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, suiteId: string, date: string, curated?: boolean, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, reasoningEffort?: import('./evals.d.ts').ReasoningEffort, jobId: string, date: string, curated?: boolean, unguided: ShowcaseConditionTrial, guided: ShowcaseConditionTrial, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
@@ -45,21 +45,21 @@ if (rootEl) {
     renderPending({ loading: true });
 }
 /**
- * Renders the Spotlight from each agent family's latest nightly suite, unfiltered. Suites carry
+ * Renders the Spotlight from each agent family's latest nightly job, unfiltered. Jobs carry
  * per-check results for the featured tasks in `summary.showcase` (from the published manifest,
  * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
  * match the rest of the page and avoid layout shifts.
- * @param {import('./insights.js').ManifestSuite[]} suites
+ * @param {import('./insights.js').ManifestJob[]} jobs
  * @param {{ hydrated?: boolean, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateShowcaseFromSuites(suites, { hydrated = false, source } = {}) {
+export function updateShowcaseFromJobs(jobs, { hydrated = false, source } = {}) {
     if (!rootEl) return;
     if (source) linkSource = source;
-    tasks = buildTasksFromRecentSuites(suites);
+    tasks = buildTasksFromRecentJobs(jobs);
     if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
         activeTaskId = tasks[0].id;
     }
-    const awaitingHydration = !hydrated && !tasks.length && hasUnhydratedRecentSuites(suites);
+    const awaitingHydration = !hydrated && !tasks.length && hasUnhydratedRecentJobs(jobs);
     if (awaitingHydration) {
         renderPending({ loading: true });
         rootEl.setAttribute('aria-busy', 'true');
@@ -69,21 +69,21 @@ export function updateShowcaseFromSuites(suites, { hydrated = false, source } = 
     rootEl.setAttribute('aria-busy', 'false');
 }
 
-/** @param {import('./insights.js').ManifestSuite[]} suites */
-function hasUnhydratedRecentSuites(suites) {
-    const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
+/** @param {import('./insights.js').ManifestJob[]} jobs */
+function hasUnhydratedRecentJobs(jobs) {
+    const recent = selectRecentJobs(jobs, { perAgentRecentN: 1 });
     return AGENT_FAMILIES.some(f => {
-        const suite = recent.get(f)?.[0];
-        return Boolean(suite && !hasHeadlineStats(suite));
+        const job = recent.get(f)?.[0];
+        return Boolean(job && !hasHeadlineStats(job));
     });
 }
 
 /**
- * @param {import('./insights.js').ManifestSuite[]} suites
+ * @param {import('./insights.js').ManifestJob[]} jobs
  * @returns {ShowcaseTask[]}
  */
-function buildTasksFromRecentSuites(suites) {
-    const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
+function buildTasksFromRecentJobs(jobs) {
+    const recent = selectRecentJobs(jobs, { perAgentRecentN: 1 });
     // Keep agent order aligned with headline AGENT_FAMILIES.
     const families = AGENT_FAMILIES.filter(f => recent.has(f));
     if (!families.length) return [];
@@ -95,14 +95,14 @@ function buildTasksFromRecentSuites(suites) {
         let prompt = '';
         let discipline = '';
         for (const family of families) {
-            const suite = recent.get(family)?.[0];
-            const slice = suite?.showcase?.[def.id];
+            const job = recent.get(family)?.[0];
+            const slice = job?.showcase?.[def.id];
             if (!slice || !slice.guided || !slice.unguided) continue;
             if (!prompt && slice.prompt) prompt = slice.prompt;
             if (!discipline && slice.discipline) discipline = slice.discipline;
-            const ts = getSuiteTimestamp(suite);
+            const ts = getJobTimestamp(job);
             const date = ts ? ts.slice(0, 10) : '';
-            const toRun = (/** @type {import('./summary-extractor.js').ShowcaseModeRun} */ r) => ({
+            const toTrial = (/** @type {import('./summary-extractor.js').ShowcaseConditionTrial} */ r) => ({
                 ...r,
                 rate: r.total > 0 ? Math.round((r.passed / r.total) * 100) : 0
             });
@@ -119,13 +119,13 @@ function buildTasksFromRecentSuites(suites) {
             agentPairs[family.id] = {
                 agentId: family.id,
                 agentLabel: family.label,
-                model: suite?.model || '',
-                reasoningEffort: suite?.reasoningEffort,
-                suiteId: suite?.testId || '',
+                model: job?.model || '',
+                reasoningEffort: job?.reasoningEffort,
+                jobId: job?.testId || '',
                 date,
-                curated: Boolean(suite?.curated),
-                unguided: toRun(slice.unguided),
-                guided: toRun(slice.guided),
+                curated: Boolean(job?.curated),
+                unguided: toTrial(slice.unguided),
+                guided: toTrial(slice.guided),
                 checks
             };
         }
@@ -185,7 +185,7 @@ function renderPending({ loading = false } = {}) {
     if (checksEl) {
         const naCell = '<span aria-hidden="true">—</span><span class="visually-hidden">not available</span>';
         const rowMsg = loading ? 'Loading…' : 'No data loaded';
-        checksEl.innerHTML = ` <div id="ab-checks-table-wrap" class="ab-checks-table-wrap" tabindex="0" role="region" aria-label="Deterministic grader checks"> <table class="ab-checks-table"> <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs</caption> <thead> <tr> <th scope="col" class="ab-col-num">#</th> <th scope="col">Grader assertion</th> <th scope="col" class="ab-col-status">Without MWG</th> <th scope="col" class="ab-col-status">With MWG</th> </tr> </thead> <tbody> <tr class="ab-check-row"> <td class="ab-check-num">—</td> <th scope="row" class="ab-check-msg">${rowMsg}</th> <td class="ab-check-cell" data-label="Without MWG">${naCell}</td> <td class="ab-check-cell" data-label="With MWG">${naCell}</td> </tr> </tbody> </table> </div> `;
+        checksEl.innerHTML = ` <div id="ab-checks-table-wrap" class="ab-checks-table-wrap" tabindex="0" role="region" aria-label="Deterministic grader checks"> <table class="ab-checks-table"> <caption class="visually-hidden">Playwright grader checks comparing unguided and guided trials</caption> <thead> <tr> <th scope="col" class="ab-col-num">#</th> <th scope="col">Grader check</th> <th scope="col" class="ab-col-status">Without MWG</th> <th scope="col" class="ab-col-status">With MWG</th> </tr> </thead> <tbody> <tr class="ab-check-row"> <td class="ab-check-num">—</td> <th scope="row" class="ab-check-msg">${rowMsg}</th> <td class="ab-check-cell" data-label="Without MWG">${naCell}</td> <td class="ab-check-cell" data-label="With MWG">${naCell}</td> </tr> </tbody> </table> </div> `;
     }
 }
 /** @param {HTMLElement} container */
@@ -294,8 +294,8 @@ function renderPromptBar(task, pair) {
     }
     if (metaEl) {
         const sourceQuery = linkSource ? `&source=${encodeURIComponent(linkSource)}` : '';
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}`;
+        const jobHref = `dashboard.html?testId=${encodeURIComponent(pair.jobId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.jobId)}${sourceQuery}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
@@ -307,8 +307,8 @@ function renderPromptBar(task, pair) {
         const effortChipHtml = pair.model
             ? renderEffortChip(pair.reasoningEffort)
             : '';
-        const runTypeLabel = pair.curated ? '1.0 baseline run' : 'nightly run';
-        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${runTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
+        const jobTypeLabel = pair.curated ? '1.0 baseline job' : 'nightly job';
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} ${jobTypeLabel} (<span class="ab-prov-model">${escapeHtml(pair.model)}${effortChipHtml}</span>)</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${jobHref}">Inspect job</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
 /** @param {string} msg
@@ -357,15 +357,15 @@ function renderScorecard(task, pair) {
     const uTone = u.earlyFailure ? 'low' : scoreTone(u.rate);
     const gTone = g.earlyFailure ? 'low' : scoreTone(g.rate);
     const uFailed = u.total - u.passed;
-    const a11yActionHtml = '<span class="visually-hidden">: show accessibility assertions</span>';
+    const a11yActionHtml = '<span class="visually-hidden">: show accessibility checks</span>';
     const uA11yHtml = u.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}">A11y ${u.a11yPassed}/${u.a11yTotal}${a11yActionHtml}</button>`
         : '';
     const gA11yHtml = g.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}${a11yActionHtml}</button>`
         : '';
-    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'run failed before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
-    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">run failed before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
+    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'infra error before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
+    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">infra error before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)} tokens</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
     rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => { btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair)); });
 }
 /** @param {ShowcaseTask} task
@@ -392,14 +392,14 @@ function renderChecks(task, pair) {
                 : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>');
         const a11yTag = c.isA11y ? `<span class="ab-a11y-tag">A11y · ${escapeHtml(c.a11yLabel || 'Accessibility')}</span>` : '';
         return ` <tr class="ab-check-row${c.flipped ? ' is-flipped' : ''}"${c.isA11y ? ' data-a11y="true"' : ''}> <td class="ab-check-num">${c.index}</td> <th scope="row" class="ab-check-msg"> <span>${escapeHtml(cleanCheckMessage(c.message))}</span> ${a11yTag} </th> <td class="ab-check-cell" data-label="Without MWG">${uBadge}</td> <td class="ab-check-cell" data-label="With MWG">${gBadge}</td> </tr>`;
-    }).join('') : ` <tr class="ab-check-row"> <td class="ab-check-num">—</td> <th scope="row" class="ab-check-msg">Run failed before grading</th> <td class="ab-check-cell" data-label="Without MWG">${ungradedCell}</td> <td class="ab-check-cell" data-label="With MWG">${ungradedCell}</td> </tr>`;
+    }).join('') : ` <tr class="ab-check-row"> <td class="ab-check-num">—</td> <th scope="row" class="ab-check-msg">Infra error before grading</th> <td class="ab-check-cell" data-label="Without MWG">${ungradedCell}</td> <td class="ab-check-cell" data-label="With MWG">${ungradedCell}</td> </tr>`;
     const collapsedLabel = a11yTotal > 0
         ? `Show all ${totalChecks} checks (${a11yTotal} a11y)`
         : `Show all ${totalChecks} checks`;
     const toggleHtml = canCollapse
         ? `<div class="ab-checks-toggle-bar"> <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}" aria-controls="ab-checks-table-wrap"> ${checksExpanded ? 'Show fewer checks' : collapsedLabel} </button> </div>`
         : '';
-    container.innerHTML = ` <div id="ab-checks-table-wrap" class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}"> <table class="ab-checks-table"> <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs for ${escapeHtml(task.label)} on ${escapeHtml(pair.agentLabel)}</caption> <thead> <tr> <th scope="col" class="ab-col-num">#</th> <th scope="col">Grader assertion</th> <th scope="col" class="ab-col-status">Without MWG</th> <th scope="col" class="ab-col-status">With MWG</th> </tr> </thead> <tbody>${rowsHtml}</tbody> </table> </div> ${toggleHtml} `;
+    container.innerHTML = ` <div id="ab-checks-table-wrap" class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}"> <table class="ab-checks-table"> <caption class="visually-hidden">Playwright grader checks comparing unguided and guided trials for ${escapeHtml(task.label)} on ${escapeHtml(pair.agentLabel)}</caption> <thead> <tr> <th scope="col" class="ab-col-num">#</th> <th scope="col">Grader check</th> <th scope="col" class="ab-col-status">Without MWG</th> <th scope="col" class="ab-col-status">With MWG</th> </tr> </thead> <tbody>${rowsHtml}</tbody> </table> </div> ${toggleHtml} `;
     const toggleBtn = document.getElementById('ab-checks-toggle');
     toggleBtn?.addEventListener('click', () => { checksExpanded = !checksExpanded; renderChecks(task, pair); document.getElementById('ab-checks-toggle')?.focus(); });
 }

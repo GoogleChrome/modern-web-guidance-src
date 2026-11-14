@@ -184,7 +184,7 @@ export async function generateGrader(targetDirRaw: string, baseApp?: string): Pr
 
   const apps = baseApp ? [baseApp] : SUPPORTED_BASE_APPS;
   for (const app of apps) {
-    console.log(cCyan(`\n--- Generating ${GRADER_FILE} for target base app: ${app} ---`));
+    console.log(cCyan(`\n--- Generating ${GRADER_FILE} for base app: ${app} ---`));
     await generateTargetGrader(targetDirAbs, app);
     console.log(cGreen(`✅ ${GRADER_FILE} generated for ${app}`));
   }

@@ -291,7 +291,9 @@ function querySelectorAllIncludingTemplates(
         child.tagName?.toLowerCase() === 'template' &&
         isLinkedomQueryableNode(child.content)
       ) {
-        results.push(...querySelectorAllIncludingTemplates(child.content, selector));
+        for (const nested of querySelectorAllIncludingTemplates(child.content, selector)) {
+          results.push(nested);
+        }
       } else {
         walk(child);
       }

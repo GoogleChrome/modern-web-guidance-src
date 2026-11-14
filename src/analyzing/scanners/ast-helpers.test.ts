@@ -2,9 +2,22 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Node, Project, SyntaxKind } from 'ts-morph';
 import {
+  areNodesEqual,
+  findImportBinding,
+  getAssignedTarget,
+  getAssignment,
+  getMemberAccess,
   getSafeModuleSpecifier,
+  getSemanticParent,
+  getSingleArgument,
+  getStaticNumber,
+  getStaticString,
+  hasBindingName,
+  isCallableNode,
   isDomClassOrAttrMutation,
+  isGlobalMember,
   isGlobalReference,
+  isIdentifierReference,
   isLibraryReference,
   isProtectedByFeatureGuard,
   isRequireOfPackage,
@@ -12,8 +25,12 @@ import {
   matchEventListenerCall,
   matchesPackageSpec,
   resolveCallableNode,
+  resolveLexicalBinding,
   resolveLocalExpression,
+  resolvesToBinding,
   unwrapExpression,
+  unwrapMethodCall,
+  unwrapPropertyAccess,
 } from './ast-helpers.ts';
 
 test('isProtectedByFeatureGuard: bare variable and negative early-return guards', async (t) => {
@@ -817,5 +834,330 @@ test('ast-helpers: AST combinators and branch-aware feature guards', async (t) =
       .getImportDeclarations()[0];
     assert.ok(imp2);
     assert.equal(getSafeModuleSpecifier(imp2), null);
+  });
+});
+
+test('shared AST helpers: static literals, member/method/assignment unwrapping, structural equality, and binding resolution', async (t) => {
+  const project = new Project({ useInMemoryFileSystem: true });
+
+  await t.test('getStaticString and getStaticNumber handle literals, unary signs, and non-literals safely', () => {
+    const source = project.createSourceFile(
+      'literals.ts',
+      'const a = ("hello" as const); const b = -42; const c = +7; const d = -foo; const e = -0;',
+      { overwrite: true },
+    );
+    const inits = source.getVariableDeclarations().map((d) => d.getInitializer());
+    assert.equal(getStaticString(inits[0]), 'hello');
+    assert.equal(getStaticString(inits[1]), null);
+    assert.equal(getStaticNumber(inits[1]), -42);
+    assert.equal(getStaticNumber(inits[2]), 7);
+    assert.equal(getStaticNumber(inits[3]), null);
+    assert.equal(getStaticNumber(inits[4]), 0);
+  });
+
+  await t.test('unwrapPropertyAccess, getMemberAccess, unwrapMethodCall, and getSingleArgument', () => {
+    const source = project.createSourceFile(
+      'members.ts',
+      `
+      const a = (el as any)['children'].length;
+      el.removeChild(child);
+      obj.multi(1, 2);
+      obj.spread(...items);
+      `,
+      { overwrite: true },
+    );
+    const lenExpr = source.getVariableDeclarationOrThrow('a').getInitializerOrThrow();
+    assert.equal(getMemberAccess(lenExpr)?.name, 'length');
+    const childrenAccess = unwrapPropertyAccess(getMemberAccess(lenExpr)?.expression, 'children');
+    assert.ok(childrenAccess);
+    assert.equal(unwrapPropertyAccess(lenExpr, 'other'), null);
+
+    const calls = source.getDescendantsOfKind(SyntaxKind.CallExpression);
+    assert.equal(unwrapMethodCall(calls[0], { methodName: 'removeChild', arity: 1 })?.methodName, 'removeChild');
+    assert.equal(unwrapMethodCall(calls[0], { methodName: new Set(['remove', 'removeChild']), arity: { min: 1, max: 2 } })?.args.length, 1);
+    assert.equal(unwrapMethodCall(calls[1], { methodName: 'multi', arity: 1 }), null);
+    assert.ok(getSingleArgument(calls[0]!));
+    assert.equal(getSingleArgument(calls[1]!), null);
+    assert.equal(getSingleArgument(calls[2]!), null);
+  });
+
+  await t.test('getSemanticParent, getAssignment, getAssignedTarget, and areNodesEqual', () => {
+    const source = project.createSourceFile(
+      'assign.ts',
+      `
+      const evt = (doc.createEvent('Event') as Event)!;
+      cached ??= getValue();
+      const same1 = arr[/* note */ idx + 1];
+      const same2 = (arr[idx + 1]);
+      const quote1 = obj['key'];
+      const quote2 = obj["key"];
+      const pos = +a;
+      const neg = -a;
+      const pos2 = +a;
+      const inc = i++;
+      const dec = i--;
+      const inc2 = i++;
+      `,
+      { overwrite: true },
+    );
+    const createCall = source.getDescendantsOfKind(SyntaxKind.CallExpression)[0]!;
+    const { parent } = getSemanticParent(createCall);
+    assert.ok(Node.isVariableDeclaration(parent));
+    assert.equal(getAssignedTarget(createCall)?.getText(), 'evt');
+
+    const cachedAssign = source.getDescendantsOfKind(SyntaxKind.BinaryExpression).find((b) =>
+      b.getOperatorToken().getKind() === SyntaxKind.QuestionQuestionEqualsToken,
+    )!;
+    assert.equal(getAssignment(cachedAssign)?.operator, SyntaxKind.QuestionQuestionEqualsToken);
+
+    const decls = source.getVariableDeclarations();
+    assert.equal(areNodesEqual(decls[1]!.getInitializer(), decls[2]!.getInitializer()), true);
+    assert.equal(areNodesEqual(decls[3]!.getInitializer(), decls[4]!.getInitializer()), true);
+    assert.equal(areNodesEqual(decls[1]!.getInitializer(), decls[3]!.getInitializer()), false);
+    assert.equal(areNodesEqual(decls[5]!.getInitializer(), decls[6]!.getInitializer()), false);
+    assert.equal(areNodesEqual(decls[5]!.getInitializer(), decls[7]!.getInitializer()), true);
+    assert.equal(areNodesEqual(decls[8]!.getInitializer(), decls[9]!.getInitializer()), false);
+    assert.equal(areNodesEqual(decls[8]!.getInitializer(), decls[10]!.getInitializer()), true);
+  });
+
+  await t.test('isGlobalMember, isCallableNode, hasBindingName, findImportBinding, isIdentifierReference, resolvesToBinding', () => {
+    const source = project.createSourceFile(
+      'bindings.ts',
+      `
+      import { AbortController as AC } from 'abort';
+      function outer(flag: boolean) {
+        const controller = new AbortController();
+        const obj = { controller: 1, err: new Error('x') };
+        if (flag) {
+          const { controller } = { controller: { abort() {} } };
+          controller.abort();
+        }
+        function innerHoist() {
+          if (flag) { var controller = { abort() {} }; }
+          controller.abort();
+        }
+        const cb = ({ controller }) => controller.abort();
+        obj.controller;
+        controller.abort();
+        return { controller, AC, err: new window.TypeError('bad') };
+      }
+      `,
+      { overwrite: true },
+    );
+    assert.ok(findImportBinding(source, 'AC'));
+    const outerFn = source.getFunctionOrThrow('outer');
+    assert.equal(isCallableNode(outerFn), true);
+    const decl = outerFn.getVariableDeclarationOrThrow('controller');
+    assert.equal(hasBindingName(decl, 'controller'), true);
+    assert.equal(resolveLexicalBinding(decl, 'AbortController'), null);
+
+    const newError = source.getDescendantsOfKind(SyntaxKind.NewExpression)[2];
+    assert.ok(newError);
+    assert.equal(isGlobalMember(newError.getExpression(), new Set(['Error', 'TypeError'])), 'TypeError');
+
+    const resolvedCalls = source
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .filter((id) => resolvesToBinding(id, decl))
+      .map((id) => id.getStartLineNumber());
+    assert.deepEqual(resolvedCalls, [16, 17]);
+
+    const objPropId = source
+      .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      .find((p) => p.getText() === 'obj.controller')
+      ?.getNameNode();
+    assert.ok(Node.isIdentifier(objPropId));
+    assert.equal(isIdentifierReference(objPropId), false);
+  });
+
+  await t.test('isProtectedByFeatureGuard recognizes typeof function, Reflect.has, hasOwnProperty, and polyfill blocks', () => {
+    const source = project.createSourceFile(
+      'guards-extended.ts',
+      `
+      function f1(el: any, flag: boolean) {
+        if (typeof el.replaceChildren === 'function') { el.replaceChildren(); return; }
+        el.innerHTML = '';
+
+        if (typeof el.replaceChildren !== 'function') { el.innerHTML = ''; }
+        if (Reflect.has(AbortSignal, 'timeout')) return AbortSignal.timeout(1);
+        new AbortController();
+
+        if (!AbortSignal.hasOwnProperty('timeout')) { new AbortController(); }
+        if (Object.hasOwn(AbortSignal, 'timeout')) { return; }
+        new AbortController();
+
+        Element.prototype.replaceChildren = function () { this.innerHTML = ''; };
+        AbortSignal.timeout ??= (ms: number) => {
+          const c = new AbortController();
+          return c.signal;
+        };
+        Object.defineProperty(AbortSignal, 'timeout', {
+          value() { return new AbortController().signal; },
+        });
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const innerHtmlAssigns = source
+      .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      .filter((p) => p.getName() === 'innerHTML');
+    assert.equal(innerHtmlAssigns.length, 3);
+    for (const p of innerHtmlAssigns) {
+      assert.equal(isProtectedByFeatureGuard(p, ['replaceChildren']), true);
+    }
+
+    const abortCtrls = source
+      .getDescendantsOfKind(SyntaxKind.NewExpression)
+      .filter((n) => n.getExpression().getText() === 'AbortController');
+    assert.equal(abortCtrls.length, 5);
+    for (const ac of abortCtrls) {
+      assert.equal(isProtectedByFeatureGuard(ac, ['timeout']), true);
+    }
+
+    const nonPolyfillSource = project.createSourceFile(
+      'non-polyfills.ts',
+      `
+      class Store {
+        private groupBy(xs: any[], key: (x: any) => string) {
+          return xs.reduce((acc, item) => {
+            const k = key(item);
+            (acc[k] ??= []).push(item);
+            return acc;
+          }, {} as Record<string, any[]>);
+        }
+
+        assignOnThis() {
+          (this as any).groupBy = () => new AbortController();
+        }
+      }
+
+      function localHelper() {
+        const helper: any = {};
+        helper.groupBy = (xs: any[]) => xs.reduce((a, b) => a, {});
+        Object.defineProperty(helper, 'timeout', {
+          value() { return new AbortController().signal; },
+        });
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const reduceCall = nonPolyfillSource
+      .getDescendantsOfKind(SyntaxKind.CallExpression)
+      .find((c) => c.getExpression().getText() === 'xs.reduce');
+    assert.ok(reduceCall);
+    assert.equal(isProtectedByFeatureGuard(reduceCall, ['groupBy']), false);
+
+    for (const ac of nonPolyfillSource
+      .getDescendantsOfKind(SyntaxKind.NewExpression)
+      .filter((n) => n.getExpression().getText() === 'AbortController')) {
+      assert.equal(isProtectedByFeatureGuard(ac, ['timeout', 'groupBy']), false);
+    }
+  });
+
+  await t.test('invalidates scope and token caches when a SourceFile is overwritten in-place', () => {
+    const sf1 = project.createSourceFile(
+      'in-place-overwrite.ts',
+      `
+        import lib from 'alpha-pkg';
+        function check() {
+          const lib2 = 'local';
+          return lib2 + lib + window.globalFlag;
+        }
+        el.innerHTML = '';
+      `,
+      { overwrite: true },
+    );
+
+    const call1Id = sf1
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'lib' && id.getParent()?.getKind() === SyntaxKind.BinaryExpression);
+    assert.ok(call1Id);
+    assert.equal(findImportBinding(sf1, 'lib')?.importedName, 'default');
+    assert.equal(resolveLexicalBinding(call1Id, 'lib')?.kind, 'import');
+    assert.equal(isLibraryReference(call1Id, 'lib', ['alpha-pkg']), true);
+
+    const innerHtml1 = sf1
+      .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      .find((p) => p.getName() === 'innerHTML');
+    assert.ok(innerHtml1);
+    assert.equal(isProtectedByFeatureGuard(innerHtml1, ['replaceChildren']), false);
+
+    // Overwrite the exact same virtual path so ts-morph mutates and returns the same SourceFile instance
+    const sf2 = project.createSourceFile(
+      'in-place-overwrite.ts',
+      `
+        import renamed from 'beta-pkg';
+        function check(lib: string) {
+          if (typeof el.replaceChildren === 'function') { return; }
+          el.innerHTML = lib + renamed;
+        }
+      `,
+      { overwrite: true },
+    );
+
+    assert.strictEqual(sf1, sf2, 'expected ts-morph overwrite:true to reuse SourceFile instance');
+    assert.equal(findImportBinding(sf2, 'lib'), null);
+    assert.equal(findImportBinding(sf2, 'renamed')?.importedName, 'default');
+
+    const innerHtml2 = sf2
+      .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      .find((p) => p.getName() === 'innerHTML');
+    assert.ok(innerHtml2);
+    const libRef2 = sf2
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'lib' && Node.isBinaryExpression(id.getParent()));
+    assert.ok(libRef2);
+    assert.equal(resolveLexicalBinding(libRef2, 'lib')?.kind, 'parameter');
+    assert.equal(isLibraryReference(libRef2, 'lib', ['alpha-pkg']), false);
+    assert.equal(isProtectedByFeatureGuard(innerHtml2, ['replaceChildren']), true);
+  });
+
+  await t.test('resolveLexicalBinding resolves constructor, setter, and getter parameters and isolates var hoisting', () => {
+    const sf = project.createSourceFile(
+      'ctor-setter-binding.ts',
+      `
+        class Panel {
+          constructor(frag: DocumentFragment) {
+            frag.innerHTML = '';
+          }
+          set target(el: HTMLTemplateElement) {
+            el.innerHTML = '';
+          }
+          get view() {
+            var leaked = 1;
+            return leaked;
+          }
+        }
+        function outer(leakedParam: string) {
+          const obj = {
+            set sink(val: string) {
+              var localOnly = val;
+              console.log(localOnly, leakedParam);
+            },
+          };
+          return localOnly;
+        }
+      `,
+      { overwrite: true },
+    );
+
+    const fragRef = sf
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'frag' && Node.isPropertyAccessExpression(id.getParent()));
+    assert.ok(fragRef);
+    assert.equal(resolveLexicalBinding(fragRef, 'frag')?.kind, 'parameter');
+
+    const elRef = sf
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'el' && Node.isPropertyAccessExpression(id.getParent()));
+    assert.ok(elRef);
+    assert.equal(resolveLexicalBinding(elRef, 'el')?.kind, 'parameter');
+
+    const localOnlyReturn = sf
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .find((id) => id.getText() === 'localOnly' && Node.isReturnStatement(id.getParent()));
+    assert.ok(localOnlyReturn);
+    assert.equal(resolveLexicalBinding(localOnlyReturn, 'localOnly'), null);
   });
 });

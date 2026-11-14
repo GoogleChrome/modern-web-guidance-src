@@ -9,10 +9,10 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
+  <meta name="description" content="Evaluation Job Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
   <meta property="og:site_name" content="Modern Web Guidance Evals">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Evaluation Suite Results — Modern Web Guidance Evals">
+  <meta property="og:title" content="Evaluation Job Results — Modern Web Guidance Evals">
   <meta property="og:description" content="Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
   <meta property="og:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
   <meta property="og:image:type" content="image/png">
@@ -20,11 +20,11 @@
   <meta property="og:image:height" content="1260">
   <meta property="og:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Evaluation Suite Results — Modern Web Guidance Evals">
+  <meta name="twitter:title" content="Evaluation Job Results — Modern Web Guidance Evals">
   <meta name="twitter:description" content="Inspect per-task guided vs. unguided uplift, automated accessibility check pass rates, completion time, and token usage.">
   <meta name="twitter:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
   <meta name="twitter:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
-  <title>Suite Results</title>
+  <title>Job Results</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
@@ -38,7 +38,7 @@
     <header>
       <div class="suite-header-row">
         <div id="test-header" class="suite-test-header" aria-busy="true">
-          <h1 class="suite-page-title">Evaluation Suite Results</h1>
+          <h1 class="suite-page-title">Evaluation Job Results</h1>
           <!-- Test ID and metadata will be injected here -->
         </div>
         <div class="suite-header-actions">
@@ -55,14 +55,14 @@
 
     <main id="main-content" tabindex="-1">
       <section id="chart-section" class="chart-container suite-chart-section" aria-labelledby="suite-summary-heading" aria-busy="true">
-        <h2 id="suite-summary-heading" class="visually-hidden">Suite summary</h2>
+        <h2 id="suite-summary-heading" class="visually-hidden">Job summary</h2>
         <div id="summary-side-panel" class="narrative-summary-grid"></div>
         <p class="dumbbell-legend suite-legend">
           <span class="legend-item"><span class="legend-dot unguided" aria-hidden="true"></span>Unguided (without MWG)</span>
           <span class="legend-item"><span class="legend-dot guided" aria-hidden="true"></span>Guided (with MWG)</span>
           <span class="legend-item"><span class="legend-line improved" aria-hidden="true"></span>Improved</span>
           <span class="legend-item"><span class="legend-line regressed" aria-hidden="true"></span>Regressed (dashed)</span>
-          <span class="legend-item legend-note"><span class="legend-glyph" aria-hidden="true">⚠</span>Run failed before grading; shaded band shows the possible pass-rate range</span>
+          <span class="legend-item legend-note"><span class="legend-glyph" aria-hidden="true">⚠</span>Infra error before grading; shaded band shows the possible pass-rate range</span>
           <span class="legend-item legend-note">Pass-rate change in percentage points (pp); duration and token change in %, lower is better.</span>
         </p>
         <div class="chart-toolbar">
@@ -103,7 +103,7 @@
     <footer class="dashboard-footer site-legal-footer">
       <a href="./" class="secondary-btn">← Back to results</a>
       <button id="view-gcs-artifacts-btn" class="secondary-btn" hidden>View source</button>
-      <button id="view-log-btn" class="secondary-btn">View full run log</button>
+      <button id="view-log-btn" class="secondary-btn">View full job log</button>
       <nav aria-label="Legal and privacy links" class="site-legal-nav">
         <a href="https://policies.google.com/privacy" class="site-legal-link" rel="noopener">Privacy</a>
         <span class="site-legal-sep" aria-hidden="true">·</span>
@@ -114,7 +114,7 @@
 
   <div id="dash-tooltip-a11y" popover="hint" class="hint-popover">
     <strong>Automated accessibility checks</strong><br>
-    Aggregates deterministic browser assertions that verify foundational platform accessibility mechanics across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of five dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; and Keyboard &amp; non-gesture operability. Automated checks catch common AI omissions in code but do not measure full WCAG compliance or replace manual and assistive-technology testing.
+    Aggregates deterministic browser checks that verify foundational platform accessibility mechanics across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of five dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; and Keyboard &amp; non-gesture operability. Automated checks catch common AI omissions in code but do not measure full WCAG compliance or replace manual and assistive-technology testing.
   </div>
   <div id="dash-tooltip-tokens" popover="hint" class="hint-popover">
     <strong>Uncached vs. total token accounting</strong><br>
@@ -127,9 +127,9 @@
       <form method="dialog" class="close-modal-form">
         <button class="close-modal" aria-label="Close modal">&times;</button>
       </form>
-      <h2 id="modal-title">Test Details</h2>
+      <h2 id="modal-title">Trial Details</h2>
       <div id="modal-body">
-        <!-- Detailed runs will be injected here -->
+        <!-- Detailed trials will be injected here -->
       </div>
     </div>
   </dialog>

@@ -4,6 +4,8 @@ The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idiom
 
 See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `legacy-scan`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, and the `rule-writing` and `held-out` splits).
 
+See [format-support.md](./format-support.md) for which file formats and embedded languages `legacy-scan` reads, what "supported" promises, and how to propose a new format.
+
 ---
 
 ## 1. Quickstart
@@ -28,13 +30,14 @@ npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |
+| `--skill-version <version>` | String | Passed by the bundled agent skill to report its version for update checks. Not meant for manual use. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
 
 ```text
 Modern Web Guidance Analyzer — /workspace/etherpad-lite
-Found 4 modernization opportunities across 3 guides:
+Found 4 modernization opportunities across 3 guides (scanned 37 guides with deterministic rules; ~20% of the guidance corpus):
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
 Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
 
@@ -72,6 +75,9 @@ Coding agents receive structured JSON containing exact file coordinates, message
 {
   "targetDir": "/workspace/etherpad-lite",
   "totalFindings": 1,
+  "activeRuleCount": 41,
+  "activeGuideCount": 37,
+  "note": "Checked 37 guides (41 deterministic rules; ~20% of the guidance corpus). Finding 1 item here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.",
   "guides": [
     {
       "guideId": "form-fields-automatically-fit-contents",
@@ -136,7 +142,7 @@ High-precision static analysis requires balancing high recall against low matche
 
 ```mermaid
 flowchart LR
-    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> StaticMatcher["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Zero LLM)"]
+    Source["Codebase Source Files<br/>(see format-support.md)"] --> StaticMatcher["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Zero LLM)"]
     StaticMatcher --> RawCards["Candidate Findings + verifierRubric<br/>(keepWhen / dropWhen)"]
     RawCards --> Verification["Contextual Verification<br/>Coding Agent (Runtime) / LLM Verifier (Eval)"]
     Verification --> Kept["Kept Modernization Findings"]
@@ -145,8 +151,8 @@ flowchart LR
 
 ### Static Matcher (High-Recall Deterministic Scanner)
 
-- **Speed & Breadth**: Scans thousands of files in milliseconds using token pre-filters (`fastTokens`) before parsing ASTs, with zero runtime LLM dependency.
-- **Multi-Modal Matchers**: Evaluates JavaScript/TypeScript syntax trees via `ts-morph`, DOM elements and JSX props via custom AST visitors, CSS stylesheets via declaration parsing, and package dependencies via `package.json`.
+- **Speed**: Cheap token pre-filters (`fastTokens`) run before any parsing, so files that can't match a rule are never parsed. Zero runtime LLM dependency.
+- **Multi-Modal Matchers**: Evaluates JavaScript/TypeScript syntax trees via `ts-morph`, HTML and SFC markup via `linkedom` (JSX elements via the TypeScript AST), CSS stylesheets via `cssomnom`, and dependencies via `package.json` and vendored library files. Which files and embedded languages each engine sees is described in [format-support.md](./format-support.md).
 - **Finding Identity**: Every finding receives a deterministic 12-character hex ID:
   $$\text{CardID} = \text{SHA256}(\text{repo} : \text{commit} : \text{guideId} : \text{file} : \text{line})[0..12]$$
   This provides stable tracking across repeat runs and evaluation datasets.
@@ -180,9 +186,9 @@ export interface AnalyzerRule {
 ### Supported Matcher Kinds
 
 1. **`JsRuleMatcher` (`kind: 'js'`):** Analyzes JavaScript and TypeScript files using `ts-morph` AST navigation.
-2. **`DomRuleMatcher` (`kind: 'dom'`):** Inspects HTML templates and JSX/TSX elements for tag names, attribute combinations, and missing modern platform attributes.
+2. **`DomRuleMatcher` (`kind: 'dom'`):** Inspects HTML and SFC template markup (via `linkedom`) and JSX/TSX elements for tag names, attribute combinations, and missing modern platform attributes.
 3. **`CssRuleMatcher` (`kind: 'css'`):** Checks CSS rules and style declarations for obsolete workarounds (e.g. manual `-webkit-line-clamp` fallbacks).
-4. **`DependencyRuleMatcher` (`kind: 'dependency'`):** Flags obsolete third-party npm packages whose functionality has been superseded by native web platform APIs.
+4. **`DependencyRuleMatcher` (`kind: 'dependency'`):** Flags obsolete third-party packages, in `package.json` or as vendored library files, whose functionality has been superseded by native web platform APIs.
 
 ### Example Rule Implementation
 
@@ -228,7 +234,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution
 
 To keep terminal false alarms low when run in developer environments, the analyzer enforces qualification gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** In both standard terminal CLI mode and `--json` mode, the analyzer ships rules in `src/analyzing/rules/` that clear the default-on qualification standard on the `held-out` split as scored by the multi-judge panel: Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns. In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** In both standard terminal CLI mode and `--json` mode, the analyzer ships only the rules in `src/analyzing/rules/` that clear the [qualification criteria](#qualification-criteria) below. [`rules/index.ts`](./rules/index.ts) is the list of what ships. In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
 
 ### Qualification Criteria
 
@@ -250,48 +256,6 @@ Every web platform standard in the catalog is classified across two orthogonal a
   - `widget-recipe`: Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget.
   - `n/a`: Applicable when detection is `no-legacy-pattern`.
 
-### Qualified Feature Guides
-
-*Scores are multi-judge panel consensus estimates on the `held-out` split.*
-
-| Guide ID | Rule ID | Matcher Kind | Split | Yield | Sampled ($n$ / kept $n$) | Static Matcher Precision (95% Wilson CI) | Post-Verifier Precision (95% Wilson CI) | Modern Platform Target |
-| :--- | :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
-| `deliver-optimized-decorative-images` | `deliver-optimized-decorative-images` | CSS | `held-out` | 482 | 35 / 35 | 100.0% ([90.1%, 100.0%]) | 100.0% ([90.1%, 100.0%]) | Standard CSS `image-set()` for decorative backgrounds and masks |
-| `improve-text-layout-and-legibility` | `improve-text-layout-and-legibility/package-text-balance` | Dependency | `held-out` | 32 | 32 / 32 | 100.0% ([89.3%, 100.0%]) | 100.0% ([89.3%, 100.0%]) | CSS `text-wrap: balance` and `text-wrap: pretty` |
-| `select-menu-interaction` | `select-menu-interaction/css-select-invalid` | CSS | `held-out` | 53 | 29 / 29 | 100.0% ([88.3%, 100.0%]) | 100.0% ([88.3%, 100.0%]) | CSS `select:user-invalid` and `:user-valid` for post-interaction validation |
-| `styling-web-components` | `styling-web-components` | CSS & JS | `held-out` | 150 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
-| `autofill-address-form` | `autofill-address-form` | DOM | `held-out` | 45 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
-| `dynamic-sibling-animations` | `dynamic-sibling-animations` | CSS | `held-out` | 20 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | CSS `sibling-index()` and `sibling-count()` for staggered delays |
-| `flicker-free-client-side-ab-testing` | `flicker-free-client-side-ab-testing` | CSS | `held-out` | 37 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | `<script async blocking="render">` in `<head>` replacing `.async-hide { opacity: 0 !important }` |
-| `scroll-entry-exit-effects` | `scroll-entry-exit-effects/package-scroll-reveal` | Dependency | `held-out` | 16 | 10 / 10 | 100.0% ([72.2%, 100.0%]) | 100.0% ([72.2%, 100.0%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| `child-state-based-styling` | `child-state-based-styling/js-parent-class` | JS | `held-out` | 11 | 8 / 8 | 100.0% ([67.6%, 100.0%]) | 100.0% ([67.6%, 100.0%]) | CSS `:has()` parent and container state selectors |
-| `declarative-dialog-popover-control` | `declarative-dialog-popover-control/click-listener` | JS | `held-out` | 19 | 8 / 7 | 100.0% ([67.6%, 100.0%]) | 100.0% ([64.6%, 100.0%]) | Declarative HTML `commandfor`/`command` and `popovertarget` attributes |
-| `soft-edge-content-fade` | `soft-edge-content-fade` | CSS | `held-out` | 9 | 6 / 6 | 100.0% ([61.0%, 100.0%]) | 100.0% ([61.0%, 100.0%]) | Standard CSS `mask-image: linear-gradient(...)` for soft-edge content fading |
-| `improve-text-layout-and-legibility` | `improve-text-layout-and-legibility/js-text-balance` | JS | `held-out` | 9 | 6 / 6 | 100.0% ([61.0%, 100.0%]) | 100.0% ([61.0%, 100.0%]) | CSS `text-wrap: balance` and `text-wrap: pretty` replacing JS `balanceText()` / `<Balancer>` |
-| `dialog` | `dialog` | JS | `held-out` | 10 | 5 / 5 | 100.0% ([56.6%, 100.0%]) | 100.0% ([56.6%, 100.0%]) | Declarative `<dialog closedby="any">` light dismiss |
-| `secure-external-subresources` | `secure-external-subresources` | DOM | `held-out` | 369 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | Subresource Integrity (`integrity` and `crossorigin`) on third-party scripts |
-| `scrollspy` | `scrollspy` | DOM | `held-out` | 206 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
-| `custom-text-decorations` | `custom-text-decorations` | CSS | `held-out` | 64 | 28 / 26 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.1%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
-| `form-fields-automatically-fit-contents` | `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 53 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
-| `validate-input-after-interaction` | `validate-input-after-interaction` | CSS | `held-out` | 48 | 26 / 26 | 96.2% ([81.1%, 99.3%]) | 96.2% ([81.1%, 99.3%]) | CSS `:user-invalid` and `:user-valid` for post-interaction validation styling |
-| `scroll-entry-exit-effects` | `scroll-entry-exit-effects/js-scroll-reveal` | JS | `held-out` | 58 | 25 / 25 | 96.0% ([80.5%, 99.3%]) | 96.0% ([80.5%, 99.3%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| `animate-to-intrinsic-sizes` | `animate-to-intrinsic-sizes` | CSS | `held-out` | 88 | 35 / 33 | 94.3% ([81.4%, 98.4%]) | 100.0% ([89.6%, 100.0%]) | CSS `interpolate-size: allow-keywords` and `calc-size()` for intrinsic size transitions |
-| `dark-mode` | `dark-mode` | CSS | `held-out` | 150 | 35 / 34 | 94.3% ([81.4%, 98.4%]) | 94.1% ([80.9%, 98.4%]) | `color-scheme: light dark` and `light-dark()` color function |
-| `interest-triggered-tooltips` | `interest-triggered-tooltips/js-tooltip` | JS | `held-out` | 69 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
-| `calculate-event-differentials` | `format-human-readable-durations/js-duration-formatter` | JS | `held-out` | 40 | 25 / 25 | 92.0% ([75.0%, 97.8%]) | 92.0% ([75.0%, 97.8%]) | Native `Temporal.Duration` and `Intl.DurationFormat` |
-| `ime-safe-enter-submit` | `ime-safe-enter-submit` | JS | `held-out` | 40 | 18 / 15 | 88.9% ([67.2%, 96.9%]) | 100.0% ([79.6%, 100.0%]) | `event.isComposing` guard on `keydown` Enter handlers for IME composition safety |
-| `autofill-sign-up-form` | `autofill-sign-up-form` | DOM | `held-out` | 219 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 96.6% ([82.8%, 99.4%]) | Standard `autocomplete="new-password"` on registration and sign-up password inputs |
-| `dark-mode-toggle` | `dark-mode-toggle` | JS | `held-out` | 73 | 21 / 21 | 90.5% ([71.1%, 97.3%]) | 90.5% ([71.1%, 97.3%]) | Theme toggle synchronizing `<meta name="color-scheme">` with CSS `light-dark()` |
-| `sanitize-untrusted-html` | `sanitize-untrusted-html/js-dompurify-innerhtml` | JS | `held-out` | 44 | 10 / 10 | 90.0% ([59.6%, 98.2%]) | 90.0% ([59.6%, 98.2%]) | Native Sanitizer API (`element.setHTML()`) |
-| `icons` | `icons` | CSS | `held-out` | 32 | 28 / 24 | 89.3% ([72.8%, 96.3%]) | 95.8% ([79.8%, 99.3%]) | CSS `mask-image` with `background-color: currentColor` or inline SVG replacing `filter: invert(...) sepia(...)` recoloring |
-| `checkbox` | `checkbox` | CSS, DOM & JS | `held-out` | 190 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
-| `autofill-sign-in-form` | `autofill-sign-in-form` | DOM | `held-out` | 351 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| `slider` | `slider/js-slider` | JS | `held-out` | 40 | 14 / 13 | 85.7% ([60.1%, 96.0%]) | 92.3% ([66.7%, 98.6%]) | Native `<input type="range">` styled with CSS replacing single-handle JS slider libraries (`noUiSlider`, `$.fn.slider`, `ionRangeSlider`) |
-| `progress` | `progress` | DOM | `held-out` | 132 | 26 / 24 | 84.6% ([66.5%, 93.9%]) | 91.7% ([74.2%, 97.7%]) | Native HTML `<progress>` element styled with CSS `accent-color` |
-| `equal-width-text-lines` | `equal-width-text-lines/js-fittext` | JS | `held-out` | 48 | 34 / 29 | 82.4% ([66.5%, 91.7%]) | 96.6% ([82.8%, 99.4%]) | CSS `text-fit: grow per-line-all` and `text-box: trim-both cap alphabetic` replacing JS `fitText` / `fitty` heading calls |
-| `customize-scrollbar-color-and-thickness` | `customize-scrollbar-color-and-thickness` | CSS | `held-out` | 903 | 35 / 27 | 80.0% ([64.1%, 90.0%]) | 96.3% ([81.7%, 99.3%]) | Standard CSS `scrollbar-color` and `scrollbar-width` replacing unguarded `::-webkit-scrollbar` rules |
-| `autofill-payment-form` | `autofill-payment-form` | DOM & JS | `held-out` | 53 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.7%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
-
 ---
 
 ## 5. Evaluation & Measurement Framework
@@ -301,7 +265,7 @@ The analyzer gates rules on evaluation against held-out repositories before any 
 ### Evaluation Subsystem (`src/analyzing/eval/`)
 
 - **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards to measure true-positive and matcher misfire rates with majority voting.
-- **`llm-verifier.ts`**: Implements the offline qualification and evaluation LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
+- **`llm-verifier.ts`** (in `src/analyzing/`): Implements the offline qualification and evaluation LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
 - **`stats.ts`**: Statistical foundations implementing Wilson binomial confidence intervals, sequential stopping decisions, and TPR/TNR metrics.
 - **`prompts.ts`**: Centralized prompt templates, thinking budgets, and content-hashed version tracking across all LLM evaluation passes.
 
@@ -335,7 +299,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 3. **Ground in real code**: Inspect only the `rule-writing` corpus. Do not inspect held-out code.
 
 ### Step 2: Static Matcher Authoring
-1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML/JSX DOM via `linkedom`), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json`).
+1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML and SFC markup via `linkedom`, JSX via the TypeScript AST), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json` and vendored library files).
 2. **Implement in `src/analyzing/rules/<guide-id>.ts`**:
    - Set `fastTokens` pre-filters to ensure fast string pre-screening.
    - Target high recall on the structural shape of the legacy idiom.
@@ -353,4 +317,4 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 2. **Run detection evaluation**: Multi-judge evaluation is run against `src/analyzing/eval/detection-eval.ts` on the evaluation decks.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active under evaluation and tightening prior to default shipping.
-   - **Qualified Rule**: Promoted to `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) in `src/analyzing/rules/` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns).
+   - **Qualified Rule**: Promoted to `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) in `src/analyzing/rules/` for default terminal shipping once it clears the [qualification criteria](#qualification-criteria).

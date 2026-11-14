@@ -1,5 +1,5 @@
 /// <reference path="./evals.d.ts" />
-import { classifyScenarioCheck } from './a11y-classifier.js';
+import { classifyCheck } from './a11y-classifier.js';
 import {
     sanitizeReasoningEffort,
     normalizeReasoningEffort,
@@ -26,18 +26,18 @@ const ZONELESS_RE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?
 const TEST_ID_DATETIME_RE = /(\d{4}-\d{2}-\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
 const TEST_ID_DATE_RE = /(\d{4}-\d{2}-\d{2})/;
 
-/** @typedef {{ date: Date, dateOnly: boolean }} SuiteDateInfo */
+/** @typedef {{ date: Date, dateOnly: boolean }} JobDateInfo */
 
 /**
- * Suite timestamps without an explicit offset (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM[:SS[.fff]]`)
+ * Job timestamps without an explicit offset (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM[:SS[.fff]]`)
  * are written by the harness in UTC. Distinguish bare calendar dates (`dateOnly: true`,
  * formatted in UTC so `"2026-10-09"` doesn't shift to `"Oct 8, 2026"` in US timezones)
  * from timestamps with a time-of-day (`dateOnly: false`).
  * @param {string | undefined | null} timestamp
  * @param {string} [testId='']
- * @returns {SuiteDateInfo | null}
+ * @returns {JobDateInfo | null}
  */
-export function parseSuiteDateInfo(timestamp, testId = '') {
+export function parseJobDateInfo(timestamp, testId = '') {
     const rawTs = typeof timestamp === 'string' ? timestamp.trim() : '';
     const isDateOnly = DATE_ONLY_RE.test(rawTs);
     const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(rawTs);
@@ -73,32 +73,32 @@ export function parseSuiteDateInfo(timestamp, testId = '') {
 /** @param {string | undefined | null} timestamp
  * @param {string} [testId='']
  * @returns {Date | null} */
-export function parseSuiteDate(timestamp, testId = '') {
-    return parseSuiteDateInfo(timestamp, testId)?.date ?? null;
+export function parseJobDate(timestamp, testId = '') {
+    return parseJobDateInfo(timestamp, testId)?.date ?? null;
 }
 
-/** @param {SuiteDateInfo | Date | string | null | undefined} dateLike
+/** @param {JobDateInfo | Date | string | null | undefined} dateLike
  * @param {string} [testId='']
- * @returns {SuiteDateInfo | null} */
-function resolveSuiteDateInfo(dateLike, testId = '') {
+ * @returns {JobDateInfo | null} */
+function resolveJobDateInfo(dateLike, testId = '') {
     if (dateLike instanceof Date) {
         return Number.isNaN(dateLike.getTime()) ? null : { date: dateLike, dateOnly: false };
     }
     if (typeof dateLike === 'object' && dateLike !== null && dateLike.date instanceof Date) {
         return Number.isNaN(dateLike.date.getTime()) ? null : dateLike;
     }
-    return parseSuiteDateInfo(typeof dateLike === 'string' ? dateLike : null, testId);
+    return parseJobDateInfo(typeof dateLike === 'string' ? dateLike : null, testId);
 }
 
-const DEFAULT_SUITE_DATE_OPTIONS = /** @type {Intl.DateTimeFormatOptions} */ ({ dateStyle: 'medium', timeStyle: 'short' });
-/** @param {SuiteDateInfo | Date | string | null | undefined} dateLike
+const DEFAULT_JOB_DATE_OPTIONS = /** @type {Intl.DateTimeFormatOptions} */ ({ dateStyle: 'medium', timeStyle: 'short' });
+/** @param {JobDateInfo | Date | string | null | undefined} dateLike
  * @param {string | Intl.DateTimeFormatOptions} [testIdOrOptions]
  * @param {string} [locale='en-US']
  * @returns {string} */
-export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
+export function formatJobDate(dateLike, testIdOrOptions, locale = 'en-US') {
     const testId = typeof testIdOrOptions === 'string' ? testIdOrOptions : '';
-    const options = typeof testIdOrOptions === 'object' && testIdOrOptions !== null ? testIdOrOptions : DEFAULT_SUITE_DATE_OPTIONS;
-    const info = resolveSuiteDateInfo(dateLike, testId);
+    const options = typeof testIdOrOptions === 'object' && testIdOrOptions !== null ? testIdOrOptions : DEFAULT_JOB_DATE_OPTIONS;
+    const info = resolveJobDateInfo(dateLike, testId);
     if (!info) return '-';
     if (info.dateOnly) {
         const { hour: _h, minute: _m, second: _s, hour12: _h12, timeStyle: _ts, ...dateOnly } = options;
@@ -106,10 +106,10 @@ export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
     }
     return new Intl.DateTimeFormat(locale, options).format(info.date);
 }
-/** @param {SuiteDateInfo | Date | string | null | undefined} dateLike
+/** @param {JobDateInfo | Date | string | null | undefined} dateLike
  * @param {string} [testId=''] */
-export function getSuiteDayKey(dateLike, testId = '') {
-    const info = resolveSuiteDateInfo(dateLike, testId);
+export function getJobDayKey(dateLike, testId = '') {
+    const info = resolveJobDateInfo(dateLike, testId);
     if (!info) return '';
     const { date, dateOnly } = info;
     const y = dateOnly ? date.getUTCFullYear() : date.getFullYear();
@@ -259,31 +259,31 @@ export function getTokenBreakdown(tokenUsage) {
     return { total, cached, uncached, cachedPct };
 }
 /** Extracts agent-only task duration in milliseconds (excluding fixed grader overhead).
- * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run */
-export function getAgentRuntimeMs(run) {
-    if (!run) return 0;
-    if (run.runtime && typeof run.runtime === 'object' && typeof run.runtime.agentRuntime === 'number' && run.runtime.agentRuntime > 0) { return run.runtime.agentRuntime; }
-    return (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) ? run.runtimeMs : 0;
+ * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} trial */
+export function getAgentRuntimeMs(trial) {
+    if (!trial) return 0;
+    if (trial.runtime && typeof trial.runtime === 'object' && typeof trial.runtime.agentRuntime === 'number' && trial.runtime.agentRuntime > 0) { return trial.runtime.agentRuntime; }
+    return (typeof trial.runtimeMs === 'number' && trial.runtimeMs > 0) ? trial.runtimeMs : 0;
 }
 /** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
-export function isEarlyFailureRun(checks) {
+export function isInfraErrorTrial(checks) {
     return !!(checks && checks.some(c => c.isEarlyFailure));
 }
 
 /**
- * @param {import('../harness/lib/metrics.ts').RunResult & { guideUsed?: { guidesUsed?: string[] } | null } | undefined | null} run
+ * @param {import('../harness/lib/metrics.ts').RunResult & { guideUsed?: { guidesUsed?: string[] } | null } | undefined | null} trial
  * @param {string} [fallbackGuide]
  */
-export function isUnguidedLeakRun(run, fallbackGuide = '') {
-    if (!run) return false;
-    const expected = run.guideName || fallbackGuide;
-    const guides = run.guidesUsed || (run.guideUsed && run.guideUsed.guidesUsed) || [];
+export function isUnguidedLeakTrial(trial, fallbackGuide = '') {
+    if (!trial) return false;
+    const expected = trial.guideName || fallbackGuide;
+    const guides = trial.guidesUsed || (trial.guideUsed && trial.guideUsed.guidesUsed) || [];
     return !!(expected && guides.includes(expected));
 }
 
 /** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
-export function getRunStats(checks) {
-    if (!checks || !checks.length || isEarlyFailureRun(checks)) return { rate: 0, passed: 0, total: 0 };
+export function getTrialStats(checks) {
+    if (!checks || !checks.length || isInfraErrorTrial(checks)) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
     const total = checks.length;
     return { rate: Math.round((passed / total) * 100), passed, total };
@@ -291,10 +291,10 @@ export function getRunStats(checks) {
 /** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @param {string} guideName
  * @param {string} [discipline=''] */
-export function getA11yRunStats(checks, guideName, discipline = '') {
+export function getA11yTrialStats(checks, guideName, discipline = '') {
     if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0, checks: [] };
     const classified = checks
-        .map(c => ({ ...c, a11y: classifyScenarioCheck(c, guideName, discipline) }))
+        .map(c => ({ ...c, a11y: classifyCheck(c, guideName, discipline) }))
         .filter(c => c.a11y.isAccessibility);
     const passed = classified.filter(c => c.passed).length;
     const total = classified.length;
@@ -510,22 +510,22 @@ export function timeAgo(date) {
 
 /**
  * @param {string} key
- * @returns {{ task: string, guide: string, runType: string } | null}
+ * @returns {{ baseApp: string, guide: string, condition: string } | null}
  */
 export function parseResultKey(key) {
     const parts = key.split(' - ');
     if (parts.length < 2 || parts.length > 3) return null;
-    let [task, guide, runType] = parts;
+    let [baseApp, guide, condition] = parts;
 
     const featuresMap = typeof window !== 'undefined' ? window.__featuresMapping : undefined;
     let isFlipped = false;
 
     if (featuresMap) {
         const isGuideValid = featuresMap[guide] !== undefined;
-        const isTaskValidGuide = featuresMap[task] !== undefined;
-        if (isTaskValidGuide && !isGuideValid) {
+        const isBaseAppValidGuide = featuresMap[baseApp] !== undefined;
+        if (isBaseAppValidGuide && !isGuideValid) {
             isFlipped = true;
-        } else if (!isGuideValid && !isTaskValidGuide) {
+        } else if (!isGuideValid && !isBaseAppValidGuide) {
             isFlipped = guide === 'task' || !!(guide && guide.endsWith('-task'));
         }
     } else {
@@ -533,71 +533,71 @@ export function parseResultKey(key) {
     }
 
     if (isFlipped) {
-        const temp = task;
-        task = guide;
+        const temp = baseApp;
+        baseApp = guide;
         guide = temp;
     }
 
-    return { task, guide, runType };
+    return { baseApp, guide, condition };
 }
 
 /**
- * Returns the set of `${task} - ${guide}` scenario IDs that have valid runs.
- * When both `guided` and `unguided` keys exist for a scenario, both must have at least one valid run.
+ * Returns the set of `${baseApp} - ${guide}` task IDs that have valid trials.
+ * When both `guided` and `unguided` keys exist for a task, both must have at least one valid trial.
  *
  * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
  * @returns {Set<string>}
  */
-export function getEligibleScenarioIds(results) {
+export function getEligibleTaskIds(results) {
     const eligible = new Set();
-    for (const [key, runs] of Object.entries(results)) {
+    for (const [key, trials] of Object.entries(results)) {
         const parsed = parseResultKey(key);
-        if (!parsed || (parsed.runType !== 'guided' && parsed.runType !== 'unguided')) continue;
+        if (!parsed || (parsed.condition !== 'guided' && parsed.condition !== 'unguided')) continue;
         const otherKey = key.endsWith(' - guided') ? key.replace(/ - guided$/, ' - unguided') : key.replace(/ - unguided$/, ' - guided');
-        if (runs.some(r => getRunStats(r.results).total > 0) &&
-            (!results[otherKey] || results[otherKey].some(r => getRunStats(r.results).total > 0))) {
-            eligible.add(`${parsed.task} - ${parsed.guide}`);
+        if (trials.some(t => getTrialStats(t.results).total > 0) &&
+            (!results[otherKey] || results[otherKey].some(t => getTrialStats(t.results).total > 0))) {
+            eligible.add(`${parsed.baseApp} - ${parsed.guide}`);
         }
     }
     return eligible;
 }
 
-/** @typedef {{ guided: number[], unguided: number[], guided_tokens: number[], unguided_tokens: number[], guided_uncached_tokens: number[], unguided_uncached_tokens: number[], guided_cached_pct: number[], unguided_cached_pct: number[], guided_runtime_ms: number[], unguided_runtime_ms: number[], guided_failed: boolean, unguided_failed: boolean, guided_err_rate: number, unguided_err_rate: number, a11y_total: number }} ChartAppData */
+/** @typedef {{ guided: number[], unguided: number[], guided_tokens: number[], unguided_tokens: number[], guided_uncached_tokens: number[], unguided_uncached_tokens: number[], guided_cached_pct: number[], unguided_cached_pct: number[], guided_runtime_ms: number[], unguided_runtime_ms: number[], guided_failed: boolean, unguided_failed: boolean, guided_err_rate: number, unguided_err_rate: number, a11y_total: number }} ChartTaskData */
 
 /**
  * @param {Record<string, Array<import('../harness/lib/metrics.ts').RunResult & { discipline?: string }>>} results
- * @param {{ onlyA11y?: boolean, eligibleScenarios?: Set<string> } | Set<string>} [optionsOrEligible={}]
+ * @param {{ onlyA11y?: boolean, eligibleTasks?: Set<string> } | Set<string>} [optionsOrEligible={}]
  */
 export function calculateChartData(results, optionsOrEligible = {}) {
     const isSet = optionsOrEligible instanceof Set;
     const onlyA11y = !isSet && Boolean(optionsOrEligible?.onlyA11y);
-    const eligibleScenarios = isSet
+    const eligibleTasks = isSet
         ? optionsOrEligible
-        : (optionsOrEligible?.eligibleScenarios || getEligibleScenarioIds(results));
-    /** @type {Record<string, ChartAppData>} */
-    const apps = {};
+        : (optionsOrEligible?.eligibleTasks || getEligibleTaskIds(results));
+    /** @type {Record<string, ChartTaskData>} */
+    const tasks = {};
     /** @type {Record<string, string>} */
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
         const parsedKey = parseResultKey(key);
         if (!parsedKey) return;
-        const { task: taskName, guide, runType } = parsedKey;
+        const { baseApp, guide, condition: rawCondition } = parsedKey;
 
-        if (runType !== 'guided' && runType !== 'unguided') return;
-        if (!eligibleScenarios.has(`${taskName} - ${guide}`)) return;
+        if (rawCondition !== 'guided' && rawCondition !== 'unguided') return;
+        if (!eligibleTasks.has(`${baseApp} - ${guide}`)) return;
         /** @type {'guided' | 'unguided'} */
-        const rType = runType;
-        const failedKey = rType === 'guided' ? 'guided_failed' : 'unguided_failed';
-        const errRateKey = rType === 'guided' ? 'guided_err_rate' : 'unguided_err_rate';
-        const tokensKey = rType === 'guided' ? 'guided_tokens' : 'unguided_tokens';
-        const uncachedKey = rType === 'guided' ? 'guided_uncached_tokens' : 'unguided_uncached_tokens';
-        const cachedPctKey = rType === 'guided' ? 'guided_cached_pct' : 'unguided_cached_pct';
-        const runtimeKey = rType === 'guided' ? 'guided_runtime_ms' : 'unguided_runtime_ms';
+        const condition = rawCondition;
+        const failedKey = condition === 'guided' ? 'guided_failed' : 'unguided_failed';
+        const errRateKey = condition === 'guided' ? 'guided_err_rate' : 'unguided_err_rate';
+        const tokensKey = condition === 'guided' ? 'guided_tokens' : 'unguided_tokens';
+        const uncachedKey = condition === 'guided' ? 'guided_uncached_tokens' : 'unguided_uncached_tokens';
+        const cachedPctKey = condition === 'guided' ? 'guided_cached_pct' : 'unguided_cached_pct';
+        const runtimeKey = condition === 'guided' ? 'guided_runtime_ms' : 'unguided_runtime_ms';
 
-        const scenario = `${taskName} (${guide})`;
-        if (!apps[scenario]) {
-            apps[scenario] = { 
+        const taskLabel = `${baseApp} (${guide})`;
+        if (!tasks[taskLabel]) {
+            tasks[taskLabel] = { 
                 guided: [], 
                 unguided: [], 
                 guided_tokens: [], 
@@ -616,55 +616,55 @@ export function calculateChartData(results, optionsOrEligible = {}) {
             };
         }
         
-        const runs = results[key];
-        if (runs.length > 0 && runs[0].taskName) {
-            taskNames[scenario] = runs[0].taskName;
+        const trials = results[key];
+        if (trials.length > 0 && trials[0].taskName) {
+            taskNames[taskLabel] = trials[0].taskName;
         }
         
-        let earlyFailureCount = 0;
+        let infraErrorCount = 0;
         let passed = 0;
         let total = 0;
-        for (const r of runs) {
-            if (isEarlyFailureRun(r.results)) {
-                earlyFailureCount++;
+        for (const t of trials) {
+            if (isInfraErrorTrial(t.results)) {
+                infraErrorCount++;
             } else if (onlyA11y) {
-                const a11yStats = getA11yRunStats(r.results, guide, r.discipline);
+                const a11yStats = getA11yTrialStats(t.results, guide, t.discipline);
                 passed += a11yStats.passed;
                 total += a11yStats.total;
             } else {
-                const s = getRunStats(r.results);
+                const s = getTrialStats(t.results);
                 passed += s.passed;
                 total += s.total;
             }
         }
         if (onlyA11y) {
-            apps[scenario].a11y_total += total;
+            tasks[taskLabel].a11y_total += total;
         }
 
-        if (earlyFailureCount > 0) {
-            apps[scenario][failedKey] = true;
-            apps[scenario][errRateKey] = Math.round((earlyFailureCount / runs.length) * 100);
+        if (infraErrorCount > 0) {
+            tasks[taskLabel][failedKey] = true;
+            tasks[taskLabel][errRateKey] = Math.round((infraErrorCount / trials.length) * 100);
         }
-        if (!onlyA11y || total > 0) { apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0); }
-        const validRuns = runs.filter(r => !isEarlyFailureRun(r.results));
-        const totalTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).total, 0);
-        const uncachedTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).uncached, 0);
-        const cachedTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).cached, 0);
-        const avgTokens = validRuns.length > 0 ? Math.round(totalTokens / validRuns.length) : 0;
-        const avgUncached = validRuns.length > 0 ? Math.round(uncachedTokens / validRuns.length) : 0;
+        if (!onlyA11y || total > 0) { tasks[taskLabel][condition].push(total > 0 ? (passed / total) * 100 : 0); }
+        const validTrials = trials.filter(t => !isInfraErrorTrial(t.results));
+        const totalTokens = validTrials.reduce((acc, t) => acc + getTokenBreakdown(t.tokenUsage).total, 0);
+        const uncachedTokens = validTrials.reduce((acc, t) => acc + getTokenBreakdown(t.tokenUsage).uncached, 0);
+        const cachedTokens = validTrials.reduce((acc, t) => acc + getTokenBreakdown(t.tokenUsage).cached, 0);
+        const avgTokens = validTrials.length > 0 ? Math.round(totalTokens / validTrials.length) : 0;
+        const avgUncached = validTrials.length > 0 ? Math.round(uncachedTokens / validTrials.length) : 0;
         const cachedPct = totalTokens > 0 ? Math.round((cachedTokens / totalTokens) * 100) : 0;
-        const totalRuntime = validRuns.reduce((acc, r) => acc + getAgentRuntimeMs(r), 0);
-        const avgRuntime = validRuns.length > 0 ? Math.round(totalRuntime / validRuns.length) : 0;
-        if (validRuns.length > 0) {
-            apps[scenario][tokensKey].push(avgTokens);
-            apps[scenario][uncachedKey].push(avgUncached);
-            apps[scenario][cachedPctKey].push(cachedPct);
-            apps[scenario][runtimeKey].push(avgRuntime);
+        const totalRuntime = validTrials.reduce((acc, t) => acc + getAgentRuntimeMs(t), 0);
+        const avgRuntime = validTrials.length > 0 ? Math.round(totalRuntime / validTrials.length) : 0;
+        if (validTrials.length > 0) {
+            tasks[taskLabel][tokensKey].push(avgTokens);
+            tasks[taskLabel][uncachedKey].push(avgUncached);
+            tasks[taskLabel][cachedPctKey].push(cachedPct);
+            tasks[taskLabel][runtimeKey].push(avgRuntime);
         }
     });
     
-    const labels = Object.keys(apps)
-        .filter(scenario => !onlyA11y || apps[scenario].a11y_total > 0)
+    const labels = Object.keys(tasks)
+        .filter(taskLabel => !onlyA11y || tasks[taskLabel].a11y_total > 0)
         .sort((a, b) => { const taskA = taskNames[a] || a; const taskB = taskNames[b] || b; return taskA.localeCompare(taskB); });
 
     /**
@@ -673,7 +673,7 @@ export function calculateChartData(results, optionsOrEligible = {}) {
      * @returns {number}
      */
     const getAvgField = (l, key) => {
-        const s = apps[l][key];
+        const s = tasks[l][key];
         return s && s.length > 0 ? Math.round(s.reduce((/** @type {number} */ acc, /** @type {number} */ b) => acc + b, 0) / s.length) : 0;
     };
 
@@ -689,10 +689,10 @@ export function calculateChartData(results, optionsOrEligible = {}) {
         unguided_cached_pct: labels.map(l => getAvgField(l, 'unguided_cached_pct')),
         guided_runtime_ms: labels.map(l => getAvgField(l, 'guided_runtime_ms')),
         unguided_runtime_ms: labels.map(l => getAvgField(l, 'unguided_runtime_ms')),
-        guided_failed: labels.map(l => apps[l].guided_failed),
-        unguided_failed: labels.map(l => apps[l].unguided_failed),
-        guided_err_rate: labels.map(l => apps[l].guided_err_rate),
-        unguided_err_rate: labels.map(l => apps[l].unguided_err_rate)
+        guided_failed: labels.map(l => tasks[l].guided_failed),
+        unguided_failed: labels.map(l => tasks[l].unguided_failed),
+        guided_err_rate: labels.map(l => tasks[l].guided_err_rate),
+        unguided_err_rate: labels.map(l => tasks[l].unguided_err_rate)
     };
 }
 
@@ -784,7 +784,7 @@ function renderAuthButton(authBtn) {
 /**
  * Drops the stored token and goes to the landing page as an unauthenticated visitor.
  * Navigating (rather than re-rendering) is deliberate: it clears any private data already on
- * the page, and the suite or guide being viewed may not exist in the public copy at all.
+ * the page, and the job or guide being viewed may not exist in the public copy at all.
  */
 export function signOut() {
     accessToken = null;
