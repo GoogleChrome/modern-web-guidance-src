@@ -18,9 +18,9 @@
         content: '';
         position: absolute;
         position-anchor: --active;
-        inset-block-start: calc(anchor(bottom) + .1lh);
-        inset-inline-start: anchor(left);
-        inset-inline-end: anchor(right);
+        inset-block-start: calc(anchor(self-end) + .1lh);
+        inset-inline-start: anchor(self-start);
+        inset-inline-end: anchor(self-end);
         border-block-end: .25lh solid red;
         @media (prefers-reduced-motion: no-preference){
           transition: inset ease-in-out .2s;
@@ -30,8 +30,15 @@
       ul li.active {
         anchor-name: --active;
         color: red;
-        @supports not (position-anchor: auto){
-          border-bottom: .25lh red solid;
+      }
+
+      @supports not ((position-anchor: --active) and (inset-inline-start: anchor(self-start))) {
+        ul::before {
+          content: none;
+        }
+
+        ul li.active {
+          border-block-end: .25lh solid currentColor;
         }
       }
 
@@ -66,7 +73,7 @@
     </style>
   </head>
   <body>
-    <p class="instructions">Click on any of the tabs below to see the red underline transition smoothly to the new active position.</p>
+    <p class="instructions">Select a tab to move the red underline. The underline slides when the browser supports anchor transitions and reduced motion is off.</p>
     <nav>
       <ul>
         <li class="active"><a href="#">Home</a></li>
