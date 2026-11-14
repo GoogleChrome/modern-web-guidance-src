@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { features, groups } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
-import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
+import type { Browsers, BrowserName, Identifier, SimpleSupportStatement, SupportBlock } from '@mdn/browser-compat-data';
 import pendingWebFeatures from '../../features/pending-web-features.json' with { type: 'json' };
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
@@ -318,6 +318,8 @@ function formatVersionWithMonth(browserKey: BrowserName, version: string): strin
   return version;
 }
 
+type BrowserSupport = Partial<Record<BrowserName, string>>;
+
 /**
  * Constructs a dense support map string from underlying BCD engines.
  * Note on Desktop vs. Mobile Consolidation: Empirical analysis across 1,156 BCD features reveals that
@@ -325,37 +327,71 @@ function formatVersionWithMonth(browserKey: BrowserName, version: string): strin
  * (~92–96% identical rollout dates). Therefore, cleanly consolidating mobile targets into desktop engine labels
  * when identical maximizes token density, dynamically splitting them out only upon divergence.
  */
-function formatSupportMap(support: Record<string, any> | undefined): string {
-  if (!support) return '';
+export function formatSupportMap(support: BrowserSupport | undefined, compatSupport?: SupportBlock): string {
+  if (!support && !compatSupport) return '';
+  const fullSupport = support ?? {};
   const supportedParts: string[] = [];
   const unsupportedParts: string[] = [];
+  const partialParts: string[] = [];
+  const prefixedParts = new Map<string, string[]>();
+  const caveats = new Map<BrowserName, SimpleSupportStatement[]>();
+
+  for (const key of ['chrome', 'edge', 'firefox', 'safari', 'safari_ios'] as BrowserName[]) {
+    const statements = compatSupport?.[key];
+    caveats.set(key, (Array.isArray(statements) ? statements : statements ? [statements] : []).filter(
+      entry => entry.version_added !== false && !entry.version_removed && !entry.flags?.length &&
+        !entry.alternative_name && (entry.prefix || entry.partial_implementation)
+    ));
+  }
 
   const keys = ['chrome', 'edge', 'firefox', 'safari'] as BrowserName[];
-  if (support.safari_ios && support.safari_ios !== support.safari) {
-    keys.push('safari_ios' as BrowserName);
+  if ((fullSupport.safari_ios && fullSupport.safari_ios !== fullSupport.safari) ||
+    JSON.stringify(caveats.get('safari_ios')) !== JSON.stringify(caveats.get('safari'))) {
+    keys.push('safari_ios');
   }
 
   for (const key of keys) {
     const label = formatBrowserTitle(key);
-    const ver = support[key];
+    const ver = fullSupport[key];
     if (ver && ver !== '-') {
       const formatted = formatVersionWithMonth(key, String(ver));
       supportedParts.push(`${label} ${formatted}`);
-    } else {
-      if (key !== 'safari_ios') {
+    } else if (!caveats.get(key)?.length) {
+      if (key !== 'safari_ios' || compatSupport) {
         unsupportedParts.push(label);
+      }
+    }
+
+    for (const entry of caveats.get(key) ?? []) {
+      const browser = `${label} ${formatVersionWithMonth(key, String(entry.version_added))}`;
+      if (entry.partial_implementation) {
+        const qualifier = entry.prefix ? ` with ${entry.prefix} prefix` : '';
+        const notes = Array.isArray(entry.notes) ? entry.notes.join(' ') : entry.notes;
+        partialParts.push(`Partial${qualifier} in ${browser}${notes ? `: ${notes}` : '.'}`);
+      } else if (entry.prefix) {
+        const browsers = prefixedParts.get(entry.prefix) ?? [];
+        browsers.push(browser);
+        prefixedParts.set(entry.prefix, browsers);
       }
     }
   }
 
+  const caveatParts = [
+    ...partialParts,
+    ...[...prefixedParts].map(([prefix, browsers]) => `With ${prefix} prefix: ${listFormatter.format(browsers)}.`),
+  ];
+
   let res = '';
   if (supportedParts.length > 0) {
     res += `\nSupported by: ${listFormatter.format(supportedParts)}.`;
-    if (unsupportedParts.length > 0) {
-      res += `\nUnsupported in: ${listFormatter.format(unsupportedParts)}.`;
-    }
-  } else {
-    res += `\nNot natively supported by any major browser yet.`;
+  } else if (caveatParts.length === 0) {
+    return '\nNot natively supported by any major browser yet.';
+  }
+  for (const part of caveatParts) {
+    res += `\n${part}`;
+  }
+  if (unsupportedParts.length > 0) {
+    res += `\nUnsupported in: ${listFormatter.format(unsupportedParts)}.`;
   }
   return res;
 }
@@ -363,10 +399,10 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: Record<string, any> }): string {
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: BrowserSupport }, compatSupport?: SupportBlock): string {
   const { baseline, releaseDate, shortLabel, support } = status;
   const resolvedSupport = (baseline === false && !support) ? {} : support;
-  const supportStr = formatSupportMap(resolvedSupport);
+  const supportStr = formatSupportMap(resolvedSupport, compatSupport);
 
   if (baseline !== false && releaseDate && releaseDate !== "-") {
     return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.${supportStr}`;
@@ -381,6 +417,7 @@ function formatStatusMessage(featureName: string, status: { baseline?: string | 
 
 /**
  * Gets a formatted status message for a feature or a specific BCD key.
+ * Explicit BCD keys also include current prefixed and partial implementations.
  */
 export function getStatusMessage(featureId: string, bcdKey?: string): string | undefined {
   if (bcdKey) {
@@ -394,7 +431,11 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
       releaseDate: status.baseline_low_date || '-',
       support: status.support
     };
-    return formatStatusMessage(`the ${bcdKey} capability`, mapped);
+    let compat: Identifier | undefined = bcd as unknown as Identifier;
+    for (const part of bcdKey.split('.')) {
+      compat = compat?.[part];
+    }
+    return formatStatusMessage(`the ${bcdKey} capability`, mapped, compat?.__compat?.support);
   }
 
   const feature = features[featureId] as Feature | undefined;
@@ -404,7 +445,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   if (!baselineStatus) return;
 
   const resolvedIds = resolveFeatureId(featureId);
-  let support: Record<string, any> | undefined;
+  let support: BrowserSupport | undefined;
   for (const id of resolvedIds) {
     const f = features[id] as Feature;
     if (f?.kind === 'feature' && f.status?.support) {
