@@ -59,8 +59,6 @@
             /* DO: Use standard properties natively */
             scrollbar-color: #00796b #e0f7fa;
             scrollbar-width: thin;
-            /* DO: Force track background to be visible on macOS */
-            scrollbar-gutter: stable;
         }
         
         .scroller.no-scrollbar {
@@ -69,6 +67,12 @@
 
         /* 2. Legacy WebKit/Blink styling hidden from modern browsers */
         @supports not (scrollbar-color: auto) {
+            .scroller.custom-scrollbar {
+                /* Reset thin so it does not disable ::-webkit-scrollbar in browsers
+                   that support scrollbar-width without scrollbar-color */
+                scrollbar-width: auto;
+            }
+
             .scroller.custom-scrollbar::-webkit-scrollbar {
                 /* DO: Must be sized for custom colors to render, defines thickness */
                 width: 8px;

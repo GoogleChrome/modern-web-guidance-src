@@ -64,17 +64,13 @@
     /* ---------------------------------------------------- */
     
     .scroller.adaptive-contrast {
-      /* Define default colors as CSS variables (subtle grey theme) */
+      /* Define default colors as CSS variables (subtle gray theme) */
       --scrollbar-thumb: #707070;
       --scrollbar-thumb-hover: #555;
       --scrollbar-track: #f1f1f1;
       
       /* Apply standard property natively */
       scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-      scrollbar-width: thin;
-      
-      /* Force track background to be visible on macOS */
-      scrollbar-gutter: stable;
     }
 
     /* ---------------------------------------------------- */
@@ -96,7 +92,7 @@
     /* Legacy WebKit/Blink styling hidden from modern browsers */
     @supports not (scrollbar-color: auto) {
       .scroller.adaptive-contrast::-webkit-scrollbar {
-        /* Must be sized for the custom colors to show up in Webkit */
+        /* Must be sized for the custom colors to show up in WebKit */
         width: 14px;
       }
 
