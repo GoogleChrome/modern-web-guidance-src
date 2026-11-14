@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import matter from '@11ty/gray-matter';
-import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
+import { guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { gitExec } from '../core/git-utils.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
-import { spawnAsync } from '../harness/lib/agent-shared.ts';
+import { ensureGuidedEvalDist } from '../harness/lib/eval-dist.ts';
 import { Agents, type SuiteConfig } from '../harness/config.ts';
 import { ensureFreshHostCodexAuth } from '../harness/agents/codex-cli-agent.ts';
 import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
@@ -613,14 +613,8 @@ async function runAgentTest(
     return;
   }
 
-  // Build workspace dependencies
-  console.log(`\nBuilding skills-cli dist...`);
-  const buildCode = await spawnAsync('pnpm', ['run', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
-
-  if (buildCode !== 0) {
-    console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));
-    return;
-  }
+  // Ensure teacher vectors exist and rebuild skills-cli dist before guided trials
+  await ensureGuidedEvalDist();
 
   resetGuidesMap();
   const taskMap = getTaskMap();
@@ -677,6 +671,7 @@ async function runAgentTest(
         tasks: tasksToRun.map(v => v.taskKey),
         numRuns: 1,
         guidedOnly,
+        skipSkillBuild: true,
         suiteConfig: {
           ...suiteConfig,
           agent,

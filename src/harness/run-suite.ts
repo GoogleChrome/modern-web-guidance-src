@@ -8,6 +8,7 @@ import { baseAppsDir, rootDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import { ensureGuidedEvalDist } from './lib/eval-dist.ts';
 import {
   ALLOWED_ENV_PREFIXES,
   ALLOWED_GRADER_ENV_KEYS,
@@ -44,6 +45,8 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
     return;
   }
 
+  await ensureGuidedEvalDist();
+
   console.log(`\n=== Running ${taskNameLabel} ===`);
   console.log(`Agent: ${agent}`);
   console.log(`Base app: ${templateDir}`);
@@ -79,6 +82,7 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
+  skipSkillBuild?: boolean;
   guidedOnly?: boolean;
   suiteConfig?: Partial<SuiteConfig>;
 }
@@ -86,6 +90,10 @@ export interface RunSuiteOptions {
 export async function runSuite(options: RunSuiteOptions = {}) {
   loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
   const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
+
+  if (!options.skipSkillBuild) {
+    await ensureGuidedEvalDist();
+  }
 
   // Create results directory if it doesn't exist
   if (!fs.existsSync(suitesDir)) {
@@ -648,8 +656,14 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   if (positionalArgs.length >= 1) {
-    runSuite({ tasks: positionalArgs }).catch(console.error);
+    runSuite({ tasks: positionalArgs }).catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
   } else {
-    runSuite().catch(console.error);
+    runSuite().catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
   }
 }
