@@ -33,6 +33,27 @@
       line-height: 1.5;
     }
 
+    .skip-link {
+      z-index: 1;
+      padding: 1rem;
+      outline-width: 2px;
+    }
+
+    .skip-link:not(:focus) {
+      display: inline-block;
+      height: 1px;
+      width: 1px;
+      min-width: auto;
+      max-width: fit-content;
+      overflow: hidden;
+      clip: rect(1px 1px 1px 1px);
+      clip: rect(1px, 1px, 1px, 1px);
+      padding: 0;
+      position: absolute;
+      right: 0;
+      top: -1rem;
+    }
+
     .feed-wrapper {
       width: 100%;
       display: flex;
@@ -115,7 +136,7 @@
     }
 
     /* Target Item Styles */
-    .item.target {
+    .item#target-item {
       scroll-initial-target: nearest;
       background: #fdf6e3;
       border: 2px solid #fbbf24;
@@ -157,11 +178,13 @@
   <main class="feed-wrapper">
     <div class="feed-mockup">
       <div class="feed-header">Creative Workspace</div>
+      <a class="skip-link" href="#target-item">Skip to pinned message</a>
       <div class="feed-container" id="feed">
         
         <div class="item received">
           <p>Hey team, I put together some moodboards for the new marketing campaign.</p>
           <span class="msg-time">10:00 AM</span>
+          <button>Actions</button>
         </div>
         
         <div class="item received">
@@ -171,6 +194,7 @@
               alt="Neon abstract art" width="400" height="200">
           </div>
           <span class="msg-time">10:02 AM</span>
+          <button>Actions</button>
         </div>
         
         <div class="item sent">
@@ -193,7 +217,7 @@
         </div>
 
         <!-- Target Media Item -->
-        <div class="item received target">
+        <div class="item received" id="target-item" tabindex="-1">
           <div class="target-indicator">Initial Target</div>
           <p>This is Option C. I think this perfectly captures the "Cybernetic" theme we are going for.</p>
           <div class="media-card large">
@@ -221,7 +245,7 @@
     // Fallback strategy for browsers that don't support scroll-initial-target
     document.addEventListener("DOMContentLoaded", () => {
       if (!CSS.supports('scroll-initial-target', 'nearest')) {
-        const feedTarget = document.querySelector('.feed-container .item.target');
+        const feedTarget = document.querySelector('.feed-container .item#target-item');
         if (feedTarget) {
           feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
         }
