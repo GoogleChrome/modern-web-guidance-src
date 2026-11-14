@@ -1,8 +1,9 @@
 import { SyntaxKind, ts } from 'ts-morph';
+import { MARKUP_EXTENSIONS } from './format-registry.ts';
 
 export interface ScriptBlock {
   readonly virtualPath: string;
-  readonly blankedContent: string;
+  readonly strippedContent: string;
 }
 
 const NON_JS_SCRIPT_TYPES: ReadonlySet<string> = new Set([
@@ -103,52 +104,56 @@ function findGlimmerTemplateRanges(content: string): readonly GlimmerTemplateRan
  * The brackets are valid both as a class member (a computed key) and as an expression
  * (an array literal), so the code around the template still parses.
  */
-function blankGlimmerTemplates(content: string): string {
+function stripGlimmerTemplates(content: string): string {
   let result = '';
   let lastIndex = 0;
   for (const { start, end } of findGlimmerTemplateRanges(content)) {
-    const blanked = content.slice(start, end).replace(/[^\r\n]/g, ' ');
-    result += `${content.slice(lastIndex, start)}[\`${blanked.slice(2, -2)}\`]`;
+    const stripped = content.slice(start, end).replace(/[^\r\n]/g, ' ');
+    result += `${content.slice(lastIndex, start)}[\`${stripped.slice(2, -2)}\`]`;
     lastIndex = end;
   }
   return result + content.slice(lastIndex);
 }
 
 /**
- * Keeps only the markup inside Glimmer templates, with Handlebars comments blanked,
+ * Keeps only the markup inside Glimmer templates, with template comments stripped,
  * at the original offsets.
  */
 function glimmerTemplateMarkup(content: string): string {
   const templateRanges = findGlimmerTemplateRanges(content);
-  const rangesToBlank: { start: number; end: number }[] = [];
+  const rangesToStrip: { start: number; end: number }[] = [];
   let lastIndex = 0;
   for (const { innerStart, innerEnd } of templateRanges) {
-    rangesToBlank.push({ start: lastIndex, end: innerStart });
+    rangesToStrip.push({ start: lastIndex, end: innerStart });
     for (const { start, end } of findTagRanges(content.slice(innerStart, innerEnd), GLIMMER_COMMENT_REGEX)) {
-      rangesToBlank.push({ start: innerStart + start, end: innerStart + end });
+      rangesToStrip.push({ start: innerStart + start, end: innerStart + end });
     }
     lastIndex = innerEnd;
   }
-  rangesToBlank.push({ start: lastIndex, end: content.length });
-  return blankRanges(content, rangesToBlank);
+  rangesToStrip.push({ start: lastIndex, end: content.length });
+  return stripRanges(content, rangesToStrip);
 }
 
-/** Template markup of a .gts/.gjs file with `<script>`/`<style>` blocks blanked, for linkedom. */
+/** Template markup of a .gts/.gjs file with `<script>`/`<style>` blocks stripped, for linkedom. */
 function prepareGlimmerForDomScan(content: string): string {
   const markup = glimmerTemplateMarkup(content);
-  return blankRanges(markup, [
+  return stripRanges(markup, [
     ...findTagRanges(markup, SCRIPT_TAG_REGEX),
     ...findTagRanges(markup, STYLE_TAG_REGEX),
   ]);
 }
 
-interface MaskedRange {
+export interface StrippedRange {
   readonly start: number;
   readonly end: number;
   readonly fillChar?: string;
 }
 
-function maskRanges(content: string, ranges: readonly MaskedRange[]): string {
+/**
+ * Replaces characters with spaces, like Node's type stripping, so offsets and line numbers are preserved.
+ * Uses fillChar (defaults to spaces) while preserving all newlines.
+ */
+export function stripRanges(content: string, ranges: readonly StrippedRange[]): string {
   if (ranges.length === 0) {
     return content;
   }
@@ -176,32 +181,22 @@ function maskRanges(content: string, ranges: readonly MaskedRange[]): string {
 }
 
 /**
- * Replaces characters in specified index ranges with spaces, preserving all newlines.
- */
-export function blankRanges(
-  content: string,
-  ranges: readonly { start: number; end: number }[],
-): string {
-  return maskRanges(content, ranges);
-}
-
-/**
  * Preserves characters within [startOffset, endOffset) and replaces all characters
- * outside this range with spaces (preserving all \r and \n).
+ * outside this range with spaces, like Node's type stripping, so offsets and line numbers are preserved.
  */
-export function blankOutsideRange(
+export function stripOutsideRange(
   content: string,
   startOffset: number,
   endOffset: number,
 ): string {
-  const ranges: { start: number; end: number }[] = [];
+  const ranges: StrippedRange[] = [];
   if (startOffset > 0) {
     ranges.push({ start: 0, end: startOffset });
   }
   if (endOffset < content.length) {
     ranges.push({ start: endOffset, end: content.length });
   }
-  return blankRanges(content, ranges);
+  return stripRanges(content, ranges);
 }
 
 /**
@@ -251,17 +246,18 @@ function shouldSkipScript(attrs: Record<string, string>, body: string): boolean 
 }
 
 /**
- * Extracts script blocks from HTML, Vue, Svelte, and Astro files as blanked virtual files.
+ * Extracts script blocks from HTML, Vue, Svelte, and Astro files as stripped virtual files.
  */
 export function extractScriptBlocks(
   relPath: string,
   content: string,
 ): readonly ScriptBlock[] {
   if (isGlimmerPath(relPath)) {
+    const strippedContent = stripGlimmerTemplates(content);
     return [
       {
         virtualPath: `${relPath}${relPath.toLowerCase().endsWith('.gts') ? '.ts' : '.js'}`,
-        blankedContent: blankGlimmerTemplates(content),
+        strippedContent,
       },
     ];
   }
@@ -277,9 +273,10 @@ export function extractScriptBlocks(
       const startOffset = firstNewline !== -1 ? firstNewline + 1 : 4;
       const endOffset = startOffset + fmMatch[1].length;
       if (endOffset > startOffset) {
+        const strippedContent = stripOutsideRange(content, startOffset, endOffset);
         blocks.push({
           virtualPath: `${relPath}.ts`,
-          blankedContent: blankOutsideRange(content, startOffset, endOffset),
+          strippedContent,
         });
       }
     }
@@ -295,10 +292,11 @@ export function extractScriptBlocks(
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
       const virtualPath = determineScriptVirtualPath(relPath, attrs, blocks.length);
+      const strippedContent = stripOutsideRange(content, startOffset, endOffset);
 
       blocks.push({
         virtualPath,
-        blankedContent: blankOutsideRange(content, startOffset, endOffset),
+        strippedContent,
       });
     }
   }
@@ -320,14 +318,14 @@ function scriptKindForPath(relPath: string): ts.ScriptKind {
   return ts.ScriptKind.TSX;
 }
 
-function maskLitCssTemplate(
+function stripLitCssTemplate(
   content: string,
   sourceFile: ts.SourceFile,
   template: ts.TemplateLiteral,
   innerStart: number,
   innerEnd: number,
 ): string {
-  const ranges: MaskedRange[] = [];
+  const ranges: StrippedRange[] = [];
   if (innerStart > 0) {
     ranges.push({ start: 0, end: innerStart });
   }
@@ -345,7 +343,7 @@ function maskLitCssTemplate(
   if (innerEnd < content.length) {
     ranges.push({ start: innerEnd, end: content.length });
   }
-  return maskRanges(content, ranges);
+  return stripRanges(content, ranges);
 }
 
 /**
@@ -379,7 +377,7 @@ function extractLitCssBlocks(relPath: string, content: string): readonly string[
         const innerStart = openQuote + 1;
         const innerEnd = templateEnd - 1;
         if (content.slice(innerStart, innerEnd).trim().length > 0) {
-          blocks.push(maskLitCssTemplate(content, sourceFile, template, innerStart, innerEnd));
+          blocks.push(stripLitCssTemplate(content, sourceFile, template, innerStart, innerEnd));
         }
       }
     }
@@ -392,15 +390,12 @@ function extractLitCssBlocks(relPath: string, content: string): readonly string[
 
 export function isMarkupPath(relPath: string): boolean {
   const lowerPath = relPath.toLowerCase();
-  return (
-    lowerPath.endsWith('.html') ||
-    lowerPath.endsWith('.htm') ||
-    lowerPath.endsWith('.php') ||
-    lowerPath.endsWith('.vue') ||
-    lowerPath.endsWith('.svelte') ||
-    lowerPath.endsWith('.astro') ||
-    isGlimmerPath(lowerPath)
-  );
+  for (const ext of MARKUP_EXTENSIONS) {
+    if (lowerPath.endsWith(ext)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const PREPROCESSOR_STYLE_LANGS: ReadonlySet<string> = new Set(['scss', 'less']);
@@ -453,7 +448,7 @@ function scanUrlFunctionEnd(content: string, urlStart: number, limit: number): n
  * preserving line/column offsets. Leaves `/* ... *\/` block comments, quoted strings,
  * `url(...)` bodies, and `scheme://\S` URLs untouched.
  */
-export function blankPreprocessorLineComments(
+export function stripPreprocessorLineComments(
   content: string,
   startOffset = 0,
   endOffset = content.length,
@@ -464,7 +459,7 @@ export function blankPreprocessorLineComments(
     return content;
   }
 
-  const commentRanges: { start: number; end: number }[] = [];
+  const commentRanges: StrippedRange[] = [];
   let i = start;
   while (i < end) {
     const ch = content[i];
@@ -512,7 +507,7 @@ export function blankPreprocessorLineComments(
     i++;
   }
 
-  return blankRanges(content, commentRanges);
+  return stripRanges(content, commentRanges);
 }
 
 /**
@@ -535,12 +530,12 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      const blanked = blankOutsideRange(markup, startOffset, endOffset);
+      const stripped = stripOutsideRange(markup, startOffset, endOffset);
       const lang = parseTagAttributes(attrStr).lang?.toLowerCase();
       blocks.push(
         lang !== undefined && PREPROCESSOR_STYLE_LANGS.has(lang)
-          ? blankPreprocessorLineComments(blanked, startOffset, endOffset)
-          : blanked,
+          ? stripPreprocessorLineComments(stripped, startOffset, endOffset)
+          : stripped,
       );
     }
   }
@@ -561,8 +556,8 @@ function findTagRanges(content: string, regex: RegExp): { start: number; end: nu
 const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
 
 /**
- * Prepares HTML content for DOM scanning by blanking out non-DOM blocks (scripts, styles)
- * and blanking all <template> tags in Vue SFCs so inner DOM elements remain attached in linkedom.
+ * Prepares HTML content for DOM scanning by stripping out non-DOM blocks (scripts, styles)
+ * and stripping all <template> tags in Vue SFCs so inner DOM elements remain attached in linkedom.
  */
 export function prepareHtmlForDomScan(relPath: string, content: string): string {
   if (isGlimmerPath(relPath)) {
@@ -577,19 +572,19 @@ export function prepareHtmlForDomScan(relPath: string, content: string): string 
     return content;
   }
 
-  const rangesToBlank: { start: number; end: number }[] = [
+  const rangesToStrip: StrippedRange[] = [
     ...findTagRanges(content, SCRIPT_TAG_REGEX),
     ...findTagRanges(content, STYLE_TAG_REGEX),
   ];
 
   if (lowerPath.endsWith('.vue')) {
-    rangesToBlank.push(...findTagRanges(content, VUE_TEMPLATE_TAG_REGEX));
+    rangesToStrip.push(...findTagRanges(content, VUE_TEMPLATE_TAG_REGEX));
   } else if (lowerPath.endsWith('.astro')) {
     const fmMatch = ASTRO_FRONTMATTER_REGEX.exec(content);
     if (fmMatch) {
-      rangesToBlank.push({ start: 0, end: fmMatch[0].length });
+      rangesToStrip.push({ start: 0, end: fmMatch[0].length });
     }
   }
 
-  return blankRanges(content, rangesToBlank);
+  return stripRanges(content, rangesToStrip);
 }

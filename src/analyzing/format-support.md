@@ -40,11 +40,13 @@ For smaller ecosystems, we lean on domain experts from that community to get the
 ## Boundaries (what we won't do)
 
 - **Declared, not guessed.** We only extract embedded CSS or markup when the syntax explicitly declares it (`<style>` and `<script>` tags, file extensions, or tagged templates like `css` and styled-components' `createGlobalStyle`). We never guess from variable names or "looks like CSS" heuristics. Where a file extension collides with an unrelated format, we should check content before treating it as code (see [Known gaps](#known-gaps)).
-- **Never compile or evaluate.** We don't run preprocessors, compilers, or template engines (Sass, Less, MDX, Pug, etc.). Preprocessor stylesheets like SCSS and Less are read as CSS-tolerant text with at most a cheap pre-pass (like masking `//` comments).
+- **Never compile or evaluate.** We don't run preprocessors, compilers, or template engines (Sass, Less, MDX, Pug, etc.). Preprocessor stylesheets like SCSS and Less are read as CSS-tolerant text with at most a cheap pre-pass (like stripping `//` comments).
 - **Stylesheets, not style objects.** Object-style CSS-in-JS (MUI `sx`, `makeStyles`, vanilla-extract) is `expected-skip` because our CSS rules match stylesheet rules, not JS objects.
 - **Web languages.** Non-web host languages (Python, Ruby, etc.) are `unsupported`. Server-side templates that are mostly HTML get evaluated one by one against the bar above.
 
 ## Current formats
+
+The single source of truth for all formats, applicable engines, and scan statuses is [`src/analyzing/scanners/format-registry.ts`](./scanners/format-registry.ts), which drives file filtering and scanner routing. The summary below reflects that table.
 
 | Format | Status | Notes |
 | --- | --- | --- |
@@ -56,8 +58,8 @@ For smaller ecosystems, we lean on domain experts from that community to get the
 | `.vue`, `.svelte`, `.astro`: script, style and template blocks | supported | |
 | `css` tagged templates in JS/TS (Lit, Emotion, styled-components' `css` helper) | supported | Bodies with no selector rarely match |
 | `.gts`, `.gjs` (Ember template tag) | supported | Well under `.astro`'s scale; taken on Ember-community input and small extraction cost |
-| `<style lang="scss">` / `lang="less"` blocks | supported | `//` comments masked |
-| `.scss`, `.less` | supported | `//` comments masked |
+| `<style lang="scss">` / `lang="less"` blocks | supported | `//` comments stripped |
+| `.scss`, `.less` | supported | `//` comments stripped |
 | `createGlobalStyle` (styled-components) | unsupported | Under review |
 | styled-components and Emotion component styles (`styled.div`) | expected-skip | Mostly bare declarations |
 | Object-style CSS-in-JS | expected-skip | |

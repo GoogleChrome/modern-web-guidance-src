@@ -117,8 +117,8 @@ function findEnclosingScopeNode(
 }
 
 /**
- * Extracts up to MAX_SFC_CONTEXT_LINES of non-blank lines from `<template>` / HTML / `<style>`
- * regions that were blanked in `sourceFile` outside the sliced JS scope.
+ * Extracts up to MAX_SFC_CONTEXT_LINES of non-empty lines from `<template>` / HTML / `<style>`
+ * regions that were stripped in `sourceFile` outside the sliced JS scope.
  */
 function extractSfcTemplateAndStyleLines(
   allLines: readonly string[],
@@ -182,7 +182,7 @@ function isTopLevelImportOrRequireStatement(stmt: Node): boolean {
 
 /**
  * AST-aware context slicer for JS/TS: extracts enclosing function/method/class + top-level imports
- * (both ESM `import` and CommonJS `require()`), plus unblanked SFC `<template>`/`<style>` context,
+ * (both ESM `import` and CommonJS `require()`), plus unstripped SFC `<template>`/`<style>` context,
  * capped cleanly with numbered lines and smart folding over 120 lines.
  */
 export function sliceJsAstContext(
@@ -278,7 +278,7 @@ export function sliceJsAstContext(
   sections.push('// --- Scope ---', ...scopeLines);
 
   // 3. When slicing an SFC (.vue, .svelte, .astro) or HTML <script> where non-script sections
-  // were blanked in sourceFile, append up to 40 lines of <template>/HTML/<style> context.
+  // were stripped in sourceFile, append up to 40 lines of <template>/HTML/<style> context.
   if (fileContent !== undefined && fileContent !== sourceText) {
     const sfcLines = extractSfcTemplateAndStyleLines(
       allLines,

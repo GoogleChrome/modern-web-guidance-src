@@ -11,7 +11,7 @@ import {
 } from './context-slicer.ts';
 
 describe('context-slicer', () => {
-  it('Bug 1: preserves unblanked <template> HTML and <style> CSS in Vue/Svelte/HTML script slices', () => {
+  it('Bug 1: preserves unstripped <template> HTML and <style> CSS in Vue/Svelte/HTML script slices', () => {
     const vueContent = [
       '<template>',
       '  <header id="site-header" class="sticky-top">',
@@ -41,7 +41,7 @@ describe('context-slicer', () => {
     assert.ok(block);
 
     const project = createInMemoryProject();
-    const sourceFile = project.createSourceFile(block.virtualPath, block.blankedContent, {
+    const sourceFile = project.createSourceFile(block.virtualPath, block.strippedContent, {
       overwrite: true,
     });
 
@@ -56,7 +56,7 @@ describe('context-slicer', () => {
     assert.match(contextSlice, /mounted\(\)/);
     assert.match(contextSlice, />   11 \|       header\.classList\.toggle\("is-stuck", window\.scrollY > 0\);/);
 
-    // Must also include the unblanked <template> and <style> context
+    // Must also include the unstripped <template> and <style> context
     assert.match(contextSlice, /\/\/ --- Template \/ Style Context ---/);
     assert.match(contextSlice, /<header id="site-header" class="sticky-top">/);
     assert.match(contextSlice, /#site-header\.is-stuck \{/);

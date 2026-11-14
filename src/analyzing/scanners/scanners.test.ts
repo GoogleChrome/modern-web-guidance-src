@@ -1512,7 +1512,7 @@ void test('ast-helpers: feature-guard AST blind spots and identifier resolution'
 });
 
 void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags preserving offsets', async (t) => {
-  await t.test('blanks nested template v-if and template v-for tags so ancestor selectors match', () => {
+  await t.test('strips nested template v-if and template v-for tags so ancestor selectors match', () => {
     const vue = `<template>
   <form id="checkout">
     <template v-if="showBilling">
