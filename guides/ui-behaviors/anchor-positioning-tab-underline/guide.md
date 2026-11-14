@@ -3,6 +3,7 @@ name: anchor-positioning-tab-underline
 description: Transition an element seamlessly between two target element positions. For example, moving a selected tab underline between the previously selected tab and the currently selected tab.
 web-feature-ids:
   - anchor-positioning
+  - anchor-positioning-animations
   - prefers-reduced-motion
 ---
 
@@ -40,15 +41,15 @@ ul::before {
 }
 ```
 
-Position the underline relative to the anchor using the inset properties and `anchor()` functions.
+Position the underline with logical insets and `anchor(self-start)` or `anchor(self-end)`. These keywords follow the underline's writing direction, including when only the tab list uses right-to-left layout.
 
 ```css
 ul::before {
   /* DO NOT use position-area, which can not be transitioned. */
-  /* Use calc() to offset the top slightly */
-  inset-block-start: calc(anchor(bottom) + .1lh);
-  inset-inline-start: anchor(left);
-  inset-inline-end: anchor(right);
+  /* Add a small gap between the indicator and the tab's block-end edge. */
+  inset-block-start: calc(anchor(self-end) + .1lh);
+  inset-inline-start: anchor(self-start);
+  inset-inline-end: anchor(self-end);
 }
 ```
 
@@ -90,15 +91,27 @@ This is only a visual indicator, and must not be a replacement for setting the a
 
 ## Fallback strategies
 
-{{ BASELINE_STATUS("anchor-positioning") }}
+### Anchor positioning
 
-If anchor positioning is not supported in the browser, use a `border-bottom` to add an underline. It will not be animated.
+{{ BASELINE_STATUS("anchor-positioning", "css.types.anchor") }}
+
+If the browser lacks the anchor positioning used here, hide the pseudo-element and draw a static `border-block-end` on the active tab. The border follows the tab's writing mode.
 
 ```css
-ul li.active {
-  @supports not (position-anchor: auto) {
+@supports not ((position-anchor: --active) and (inset-inline-start: anchor(self-start))) {
+  ul::before {
+    content: none;
+  }
+
+  ul li.active {
     /* Choose a color appropriate to the app theme. */
-    border-bottom: .25lh var(--primary) solid;
+    border-block-end: .25lh solid currentColor;
   }
 }
 ```
+
+### Anchor positioning animations
+
+{{ BASELINE_STATUS("anchor-positioning-animations") }}
+
+If the browser can position the underline but cannot transition `anchor()` values, keep the anchored underline. It moves directly to the new active tab when selection changes.
