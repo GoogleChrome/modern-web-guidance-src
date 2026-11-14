@@ -131,6 +131,7 @@ When the user toggles:
 2. If the target differs from the current system preference, store it literally.
 3. If the target matches the current system preference, the user is undoing their adjustment: remove the stored value. DO NOT store it — that would invisibly pin the scheme against future system changes.
 4. Set the `<meta>` content to the stored value, or `light dark` if none.
+5. Announce the new scheme via a polite live region (`role="status"`), as `display: none` label swaps on a focused `<button>` are not announced (and DO NOT use `aria-pressed` when the action label changes).
 
 IMPORTANT: Divergence must be checked only at storage time, never retroactively: a stored value that the system preference later changes to match MUST be kept.
 Many users' OS switches schemes automatically based on time of day; removing the stored value whenever the two happen to coincide would make it impossible to pin a scheme at all.
@@ -145,7 +146,7 @@ Example scenario, starting with the OS set to light:
 ### Three-state toggles
 
 When there is more space and users are already in the mindset of setting long-term preferences, a tri-state control can provide more clarity.
-In this case, the data model cleanly maps to the three UI options: system, light, and dark.
+In this case, the data model cleanly maps to the three UI options: system, light, and dark (implemented as a `<fieldset>` radio group or `<select>`).
 
 To reduce cognitive load, the "system" option should also display what the current system setting is, for example via:
 - Icon, e.g. a sun icon at the bottom right of the system icon
