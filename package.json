@@ -86,7 +86,6 @@
     "@webref/elements": "^2.7.1",
     "@webref/idl": "^3.82.0",
     "caniuse-lite": "1.0.30001806",
-    "colors": "^1.4.0",
     "glob": "^14.0.2",
     "marked": "^18.0.3",
     "mdn-data": "2.29.0",
