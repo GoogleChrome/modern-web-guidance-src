@@ -4,6 +4,7 @@ description: Build a menu component that displays a list of options or actions, 
 web-feature-ids:
   - popover
   - invoker-commands
+  - toggleevent-source
   - anchor-positioning
   - focusgroup
   - has
@@ -39,7 +40,7 @@ Make each trigger a command invoker with `commandfor` and `command="toggle-popov
 
 Place each popover immediately after its trigger. Browsers add an implicit `aria-details` relationship only when the popover is not the next sibling, so this placement avoids it without extra attributes.
 
-A menu with no trigger button opens from script with `showPopover({ source })`. `source` sets the implicit anchor, so pass the element the menu belongs to: the right-clicked card, or the focused element when a keyboard shortcut opens it. To open at a point instead (the pointer position, or the caret for an `@`-mention picker), anchor positioning still needs an element, so use a placeholder: an empty, zero-size `position: fixed` element kept directly before the menu, moved to the point with `left` and `top` on each open, and passed as `source`. A zero-size anchor puts the menu's corner at the point, as a native context menu does, and the flip fallbacks below still apply. Name the menu with `aria-label` instead of `aria-labelledby`. Everything else in this guide applies unchanged; where it says "trigger" for positioning, read the placeholder. {# PENDING_GUIDE_REF: For opening a menu from a right-click or long-press, see {{ GUIDE_REF("context-menu") }}. #}
+A menu with no trigger button opens from script with `showPopover({ source })`. `source` sets the implicit anchor, so pass the element the menu belongs to: the right-clicked card, or the focused element when a keyboard shortcut opens it. To open at a point instead (the pointer position, or the caret for an `@`-mention picker), anchor positioning still needs an element, so use a placeholder: an empty, zero-size `position: fixed` element kept directly before the menu, moved to the point with `left` and `top` on each open, and passed as `source`. A zero-size anchor puts the menu's corner at the point, as a native context menu does, and the flip fallbacks below still apply. Name the menu with `aria-label` instead of `aria-labelledby`. Everything else in this guide applies unchanged; where it says "trigger" for positioning, read the placeholder. For opening a menu from a right-click or long-press, see {{ GUIDE_REF("context-menu") }}.
 
 ```html
 <!-- Command invoker: the browser toggles the popover on click, Enter, and Space -->
@@ -349,6 +350,31 @@ if (!('focusGroup' in HTMLElement.prototype)) {
 
 {{ FEATURE_FALLBACKS("popover") }}
 
+The Popover polyfill can not fully emulate the top layer behavior. Avoid making the menus a containing block for any submenus, which can happen when adding a `translate` opening transition. Wrap any properties that create a containing block (`filter`, `translate`, `scale`, `transform`, etc.) in an `@supports selector(:popover-open)` query.
+
+```css
+[popover]:has(> [focusgroup~="menu"]){
+  @supports selector(:popover-open){
+    translate: 0 -.25rem;
+  }
+}
+```
+
+Use a `checkMatches` utility to use `element.matches()` without throwing on unsupported selectors.
+
+```javascript
+const checkMatches = (element, matches) => {
+  for(const match in matches){
+    try {
+      if(element.matches(matches[match])) return true
+    } catch (error) { /* Ignore */ }
+  }
+  return false;
+}
+
+ const isOpen = menu => checkMatches(menu, [':popover-open', '.\:popover-open']);
+```
+
 ### Fallbacks & browser support for Anchor positioning
 
 {{ BASELINE_STATUS("anchor-positioning") }}
@@ -359,21 +385,18 @@ Without CSS Anchor Positioning, a popover falls back to the UA's centered viewpo
 * Run it in the `toggle` handler when the menu opens, and apply the result as `left` and `top` on the menu. Use `position: fixed` with `inset: auto` and `margin: 0` so the coordinates are viewport-relative.
 * Keep these overrides inside `@supports not (position-area: block-end)`, so browsers with anchor positioning are unaffected.
 
-{{ BASELINE_STATUS("anchor-positioning", "api.HTMLElement.showPopover.options_source_parameter.implicit_anchor_reference") }}
+{{ BASELINE_STATUS("toggleevent-source") }}
+
+{# Note: ToggleEvent.prototype.source and the implicit anchor from `source` have different support, but we can use the named Web Feature as it is later, it matches the feature detection, and the impact is minimal. #}
 
 If targeting earlier implementations where `showPopover({ source })` does not establish an implicit anchor (no `source` on `ToggleEvent.prototype`), give each trigger a unique `anchor-name` and each menu a matching `position-anchor` from script, instead of writing per-menu CSS rules.
-
-For browsers without anchor positioning at all, see {{ GUIDE_REF("viewport-aware-dropdowns") }} for the polyfill route.
 
 ### Fallbacks & browser support for Invoker commands
 
 {{ BASELINE_STATUS("invoker-commands") }}
 
-Without invokers, `command="toggle-popover"` does nothing, so script must toggle the menu.
+Without invokers, `command="toggle-popover"` does nothing. Use `popovertarget` instead, which has longer support and is supported by the popover polyfill.
 
-* Feature-detect the interface, not an instance: `'commandForElement' in HTMLButtonElement.prototype`.
-* On each trigger `click`, call `preventDefault()` so a browser with invokers cannot toggle twice.
-* If the menu is open, close it with `closeAndRestore(menu)`. Otherwise call `menu.showPopover({ source: trigger })`.
 * Mark the menu in `enterOnOpen` unless the click came from the pressed trigger (`pointerTrigger`), so only keyboard opens enter the menu.
 * `Enter` and `Space` still work because they generate a click on buttons.
 

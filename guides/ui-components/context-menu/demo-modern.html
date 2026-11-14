@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Context Menu Demo - Modern</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1em;
+        align-items: center;
+        justify-content: center;
+        background-color: #f0f2f5;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        padding: 1rem;
+        box-sizing: border-box;
+      }
+
+      @media (max-width: 600px) {
+        body {
+          flex-direction: column;
+          align-items: center;
+        }
+      }
+
+      .card {
+        width: 300px;
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        text-align: center;
+        padding-bottom: 1rem;
+      }
+
+      .card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+      }
+
+      .card h2 {
+        margin: 1rem 0 0.5rem;
+        font-size: 1.25rem;
+      }
+
+      /* Anchor Positioning */
+      .menu-anchor {
+        position: fixed;
+        inline-size: 0;
+        block-size: 0;
+      }
+
+      [popover] {
+        position-area: block-end span-inline-end;
+        position-try-fallbacks: flip-inline, flip-block, --below;
+        inset: auto;
+        margin: 0;
+        padding: 0.25rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background: white;
+        min-width: 160px;
+      }
+
+      [popover][source="button" i] {
+        position-area: block-end span-inline-start;
+      }
+
+      @position-try --below {
+        position-area: block-end span-inline-end;
+        margin-inline-start: 1rem;
+        min-inline-size: 0;
+        max-inline-size: calc(100% - 1rem);
+      }
+
+      /* Animation */
+      @media (prefers-reduced-motion: no-preference) {
+        [popover] {
+          opacity: 0;
+          translate: 0 -0.25rem;
+          transition:
+            opacity 0.15s,
+            translate 0.15s,
+            display 0.15s allow-discrete,
+            overlay 0.15s allow-discrete;
+        }
+        [popover]:popover-open {
+          opacity: 1;
+          translate: 0 0;
+          transition-duration: 0.1s;
+          @starting-style {
+            opacity: 0;
+            translate: 0 -0.25rem;
+          }
+        }
+      }
+
+      /* Trigger Styles */
+      .trigger {
+        position: absolute;
+        inset-inline-end: 12px;
+        inset-block-start: 12px;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 1px solid;
+        border-radius: 50%;
+        background: white;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background-color 0.2s,
+          transform 0.1s,
+          opacity 0.4s;
+        z-index: 10;
+      }
+
+      .trigger:hover,
+      .trigger:focus-visible {
+        background-color: #ccc;
+      }
+
+      .trigger:active {
+        background-color: #999;
+      }
+
+      .trigger svg {
+        width: 20px;
+        height: 20px;
+        fill: #444;
+        pointer-events: none;
+      }
+
+      /* Menu Item Alignment */
+      [focusgroup~="menu"] button {
+        appearance: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        border: none;
+        background: none;
+        text-align: left;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+
+      [focusgroup~="menu"] button:hover,
+      [focusgroup~="menu"] button:focus-visible,
+      [focusgroup~="menu"] button:focus {
+        background-color: #d2d5ed;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <span class="menu-anchor"></span>
+      <button
+        id="trigger1"
+        class="trigger"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        commandfor="menu1"
+        command="toggle-popover"
+        aria-label="Actions for First Card"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          />
+        </svg>
+      </button>
+      <div id="menu1" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="trigger1">
+          <button type="button">Edit</button>
+          <button type="button">Share</button>
+          <hr aria-hidden="true"/>
+          <button type="button">Delete</button>
+        </div>
+      </div>
+      <img
+        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300"
+        alt="Card Image"
+      />
+      <h2>First Card</h2>
+    </div>
+
+    <div class="card">
+      <span class="menu-anchor"></span>
+      <button
+        id="trigger2"
+        class="trigger"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        commandfor="menu2"
+        command="toggle-popover"
+        aria-label="Actions for Second Card"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+          />
+        </svg>
+      </button>
+      <div id="menu2" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="trigger2">
+          <button type="button">Download</button>
+          <button type="button">Copy Link</button>
+        </div>
+      </div>
+      <img
+        src="https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=300"
+        alt="Card Image"
+      />
+      <h2>Second Card</h2>
+    </div>
+
+    <script type="module">
+      const enterOnOpen = new WeakSet();
+
+      // Helpers
+      const menuFor = (trigger) => {
+        const id = trigger.getAttribute("commandFor");
+        return id ? document.getElementById(id) : null;
+      };
+
+      // Toggle Handler (Focus & ARIA)
+      document.querySelectorAll("[popover]").forEach((menu) => {
+        // Move focus to the hovered button
+        const handlePointerMove = (event) => {
+          const item = event.target.closest("button");
+          if (
+            !item ||
+            item.closest("[popover]") !== menu ||
+            item === document.activeElement
+          )
+            return;
+          item.focus({ preventScroll: true, focusVisible: false });
+        };
+
+        menu.addEventListener("toggle", (event) => {
+          // When closing, event.source is not available
+          // const trigger = event.source;
+          const trigger = document.querySelector(
+            `button[commandFor="${menu.id}"]`,
+          );
+
+          if (event.newState === "open") {
+            if (trigger) trigger.setAttribute("aria-expanded", "true");
+            if (enterOnOpen.has(menu)) {
+              const firstItem = menu.querySelector("button:not([disabled])");
+              if (firstItem) {
+                firstItem.focus({ focusVisible: true });
+              }
+              enterOnOpen.delete(menu);
+            }
+            menu.addEventListener("pointermove", handlePointerMove);
+          } else {
+            if (trigger) trigger.setAttribute("aria-expanded", "false");
+            menu.removeEventListener("pointermove", handlePointerMove);
+          }
+        });
+
+        menu.addEventListener("beforetoggle", (event) => {
+          if (event.newState === "open") {
+            // Differentiate between sources, and make it styleable
+            menu.setAttribute("source", event.source?.tagName ?? "");
+          }
+        });
+      });
+
+      // When the button is triggered with a keyboard, add to `enterOnOpen` so focus moves.
+      const buttonTriggers = document.querySelectorAll("button[commandFor]");
+      buttonTriggers.forEach((buttonTrigger) => {
+        buttonTrigger.addEventListener("click", (event) => {
+          // event.detail === 0 when triggered by keyboard
+          if (event.detail !== 0) return;
+          const menu = menuFor(buttonTrigger);
+          if (!menu) return;
+          enterOnOpen.add(menu);
+        });
+      });
+
+      // Add non-native keyboard handling.
+      // ArrowDown on trigger opens and enters the menu
+      document.addEventListener("keydown", (event) => {
+        const trigger = event.target.closest("button[commandFor]");
+        const currentMenu = event.target.closest("[popover]");
+
+        // Arrow Down is not a natively supported method of opening or navigating into a popover
+        if (event.key === "ArrowDown" && trigger && !currentMenu) {
+          const menu = menuFor(trigger);
+          if (menu) {
+            event.preventDefault();
+            if (!menu.matches(":popover-open")) {
+              // If popover is closed, open and focus the first
+              enterOnOpen.add(menu);
+              menu.showPopover({ source: trigger });
+            } else {
+              // If popover is open, focus the first item
+              const firstItem = menu.querySelector("button:not([disabled])");
+              if (firstItem) firstItem.focus({ focusVisible: true });
+            }
+          }
+        }
+      });
+
+      // Right-click logic
+      const cards = document.querySelectorAll(".card");
+      cards.forEach((card) => {
+        const popover = card.querySelector("[popover]");
+        const anchor = card.querySelector(".menu-anchor");
+        const button = card.querySelector("button");
+
+        const openContextMenu = (event) => {
+          const x = event.clientX;
+          const y = event.clientY;
+
+          anchor.style.left = `${x}px`;
+          anchor.style.top = `${y}px`;
+
+          enterOnOpen.add(popover);
+          popover.showPopover({ source: anchor });
+        };
+
+        card.addEventListener('contextmenu', (e) => {
+          // Prevent the browser's default context menu
+          e.preventDefault();
+          // Context Menu will be opened in `mouseup` event listener.
+        });
+
+        card.addEventListener('mouseup', (e) => {
+          // button 2 = right mouse click
+          if (!(e.button === 2 || e.ctrlKey)) return;
+          openContextMenu(e);
+        });
+
+      });
+
+      // Clicking a menu item performs action and closes menu.
+      document
+        .querySelectorAll("[focusgroup~='menu'] button")
+        .forEach((btn) => {
+          btn.addEventListener("click", (event) => {
+            // If this button has a commandFor, it's a submenu trigger, not an action
+            if (btn.hasAttribute("commandFor")) return;
+
+            // Close root popover in the chain. No submenus in this demo, but worth being robust
+            let current = btn.closest("[popover]");
+            while (current) {
+              const root = current.parentElement?.closest("[popover]");
+              if (!root) {
+                current.hidePopover();
+                break;
+              }
+              current = root;
+            }
+            console.log(`Activated: ${btn.textContent}`);
+          });
+        });
+    </script>
+  </body>
+</html>

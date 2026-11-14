@@ -1,0 +1,17 @@
+- Each context menu container uses the `popover` attribute.
+- Each target item has its own context menu container with a unique `id` rather than sharing a single menu across multiple items.
+- Each context menu contains a nested container with `focusgroup="menu nomemory"`.
+- Context menu action items are `<button type="button">` elements inside the `focusgroup` container.
+- Each context menu has an accessible name via `aria-labelledby` (when paired with a visible trigger button) or `aria-label` (when right-click only).
+- The context menu popover resets `margin: 0` and `inset: auto`.
+- The context menu popover aligns to its anchor using `position-area`.
+- The context menu popover prevents viewport overflow using `position-try` or `position-try-fallbacks`.
+- Each target item contains a zero-sized, `position: absolute` anchor element for cursor positioning.
+- Right-clicking a target item suppresses the browser's default context menu via `preventDefault()` on the `contextmenu` event.
+- Right-clicking a target item sets the cursor anchor element's `left` and `top` style coordinates relative to the target container.
+- Right-clicking a target item (on `mouseup` or `pointerup`) opens its context menu popover with `showPopover({ source })` referencing the cursor anchor element.
+- A visible trigger `<button type="button">` toggles the context menu using `command="toggle-popover"` and `commandfor` matching the popover's `id`.
+- The visible trigger button sets `aria-haspopup="menu"`, `aria-expanded`, and an accessible label.
+- When paired with a visible trigger button, the context menu popover element is placed immediately after its trigger button in the DOM.
+- When a context menu supports both cursor and button triggers, opening it from the button trigger (detected via `event.source` in `beforetoggle`) adjusts its `position-area` styling compared to a cursor-triggered open.
+- A JavaScript coordinate fallback (`left` and `top`) positions the popover when CSS Anchor Positioning (`positionArea` in `document.documentElement.style`) is not supported.
