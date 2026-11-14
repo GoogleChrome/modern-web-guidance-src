@@ -304,6 +304,18 @@ function querySelectorAllIncludingTemplates(
   return results;
 }
 
+function hasMarkupSpreadAttribute(attributes: Readonly<Record<string, string>>): boolean {
+  if (Object.hasOwn(attributes, '...attributes') || Object.hasOwn(attributes, 'v-bind')) {
+    return true;
+  }
+  for (const key of Object.keys(attributes)) {
+    if (key.startsWith('{...') || /^\{[\s\S]*\.\.\./.test(key)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function createDomElementView(
   tagName: string,
   attributes: Readonly<Record<string, string>>,
@@ -311,13 +323,14 @@ function createDomElementView(
   column: number,
   jsx?: { readonly hasSpread: boolean; readonly dynamicAttrs: ReadonlySet<string> },
 ): DomElementView {
+  const hasSpread = jsx ? jsx.hasSpread : hasMarkupSpreadAttribute(attributes);
   return {
     tagName,
     attributes,
     line,
     column,
     isJsx: Boolean(jsx),
-    hasSpreadAttribute: jsx?.hasSpread ?? false,
+    hasSpreadAttribute: hasSpread,
     hasAttribute: (name: string) => Object.hasOwn(attributes, name.toLowerCase()),
     getAttribute: (name: string) => {
       const lower = name.toLowerCase();
@@ -381,13 +394,15 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
       }
       tokenIndex = matchRes.nextIndex;
 
-      // Glimmer's `...attributes` spreads the caller's attributes, like `{...props}` in JSX.
-      if (matcher.skipIfHasSpread && Object.hasOwn(elAttrs, '...attributes')) {
+      const { line, column } = matchRes.token;
+      const view = createDomElementView(tagLower, elAttrs, line, column);
+
+      // Markup spread attributes (Glimmer ...attributes, Svelte {...props}, Vue v-bind="...")
+      // behave the same as JSX {...props} when skipIfHasSpread is set.
+      if (matcher.skipIfHasSpread && view.hasSpreadAttribute) {
         continue;
       }
 
-      const { line, column } = matchRes.token;
-      const view = createDomElementView(tagLower, elAttrs, line, column);
       const result = matcher.matchElement(view, ctx);
       if (result) {
         results.push({

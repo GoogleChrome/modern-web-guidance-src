@@ -132,72 +132,19 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.d.ts',
 ];
 
-export const JS_RULE_EXTENSIONS = [
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.mts',
-  '.cts',
-  '.jsx',
-  '.tsx',
-  '.vue',
-  '.svelte',
-  '.gts',
-  '.gjs',
-  '.astro',
-  '.html',
-  '.htm',
-] as const;
+import {
+  CSS_RULE_EXTENSIONS,
+  DOM_RULE_EXTENSIONS,
+  JS_RULE_EXTENSIONS,
+  SUPPORTED_SOURCE_EXTENSIONS,
+} from './format-registry.ts';
 
-export const CSS_RULE_EXTENSIONS = [
-  '.css',
-  '.scss',
-  '.less',
-  '.vue',
-  '.svelte',
-  '.gts',
-  '.gjs',
-  '.astro',
-  '.html',
-  '.htm',
-] as const;
-
-export const DOM_RULE_EXTENSIONS = [
-  '.html',
-  '.htm',
-  '.vue',
-  '.svelte',
-  '.gts',
-  '.gjs',
-  '.astro',
-  '.jsx',
-  '.tsx',
-] as const;
-
-export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
-
-const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.mts',
-  '.cts',
-  '.jsx',
-  '.tsx',
-  '.html',
-  '.htm',
-  '.php',
-  '.vue',
-  '.svelte',
-  '.gts',
-  '.gjs',
-  '.astro',
-  '.css',
-  '.scss',
-  '.less',
-]);
+export {
+  CSS_RULE_EXTENSIONS,
+  DOM_RULE_EXTENSIONS,
+  JS_RULE_EXTENSIONS,
+  SUPPORTED_SOURCE_EXTENSIONS,
+};
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
   '.js',
@@ -437,6 +384,16 @@ export function hasVendoredLicenseHeader(
 
 export const MAX_SOURCE_FILE_BYTES = 1_000_000;
 
+const GERBER_HEADER_REGEX = /^\s*%(?:FS|MO)/m;
+
+/**
+ * Cheap content check for Gerber PCB files that collide with Ember's `.gts` extension.
+ * RS-274X Gerber files declare their coordinate format (`%FS`) and units (`%MO`) in the header.
+ */
+export function isGerberContent(content: string): boolean {
+  return GERBER_HEADER_REGEX.test(content.slice(0, 1024));
+}
+
 /**
  * Master predicate determining whether a file should be scanned by analyzer rules.
  */
@@ -464,7 +421,8 @@ export function shouldScanFile(
     if (
       Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES ||
       isMinifiedContent(content, options?.maxLineLength) ||
-      hasVendoredLicenseHeader(content, options)
+      hasVendoredLicenseHeader(content, options) ||
+      (normalized.endsWith('.gts') && isGerberContent(content))
     ) {
       return false;
     }

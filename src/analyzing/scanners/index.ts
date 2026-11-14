@@ -36,15 +36,20 @@ import {
   type FileFilterOptions,
 } from './file-filter.ts';
 import {
+  JS_EXTENSIONS,
+  JSX_EXTENSIONS,
+  STYLESHEET_EXTENSIONS,
+} from './format-registry.ts';
+import {
   createInMemoryProject,
   matchesFastTokens,
 } from './js-scanner.ts';
 import {
-  blankPreprocessorLineComments,
   extractScriptBlocks,
   extractStyleBlocks,
   isMarkupPath,
   prepareHtmlForDomScan,
+  stripPreprocessorLineComments,
 } from './sfc-extractor.ts';
 
 export * from './ast-helpers.ts';
@@ -285,10 +290,10 @@ function scanExtractedStyles(
     return [];
   }
   const findings: AnalyzerFinding[] = [];
-  for (const blankedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
-    if (!isMinifiedContent(blankedCss)) {
+  for (const strippedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
+    if (!isMinifiedContent(strippedCss)) {
       findings.push(
-        ...materializeRuleMatches(ctx, scanCssRules(ctx.relPath, blankedCss, rules, ctx.content)),
+        ...materializeRuleMatches(ctx, scanCssRules(ctx.relPath, strippedCss, rules, ctx.content)),
       );
     }
   }
@@ -314,9 +319,9 @@ function processMultiBlockFile(
 
   if (rules.js.length > 0) {
     for (const block of extractScriptBlocks(ctx.relPath, ctx.content)) {
-      if (!isMinifiedContent(block.blankedContent)) {
+      if (!isMinifiedContent(block.strippedContent)) {
         findings.push(
-          ...scanJsAst(ctx, block.virtualPath, block.blankedContent, rules.js, [], pool),
+          ...scanJsAst(ctx, block.virtualPath, block.strippedContent, rules.js, [], pool),
         );
       }
     }
@@ -325,9 +330,6 @@ function processMultiBlockFile(
   findings.push(...scanExtractedStyles(ctx, rules.css));
   return findings;
 }
-
-const JSX_EXTENSIONS = new Set(['.jsx', '.tsx']);
-const JS_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.jsx', '.tsx']);
 
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
   if (
@@ -413,12 +415,12 @@ export function scanFiles(
 
       const ext = extname(lowerPath);
 
-      if (ext === '.css' || ext === '.scss' || ext === '.less') {
+      if (STYLESHEET_EXTENSIONS.has(ext)) {
         if (cssRules.length > 0) {
-          // Blank SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
+          // Strip SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
           const cssContent =
             ext === '.scss' || ext === '.less'
-              ? blankPreprocessorLineComments(content)
+              ? stripPreprocessorLineComments(content)
               : content;
           findings.push(
             ...materializeRuleMatches(

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  blankOutsideRange,
-  blankPreprocessorLineComments,
-  blankRanges,
   extractScriptBlocks,
   extractStyleBlocks,
   prepareHtmlForDomScan,
+  stripOutsideRange,
+  stripPreprocessorLineComments,
+  stripRanges,
 } from './sfc-extractor.ts';
 
 void test('sfc-extractor: Lit CSS tag whitespace preserves source offsets', async (t) => {
@@ -70,7 +70,7 @@ void test('sfc-extractor: Lit CSS AST handles comments before backtick, JSX, and
     assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
   });
 
-  await t.test('masks ${...} interpolations containing closing braces in strings or nested templates', () => {
+  await t.test('strips ${...} interpolations containing closing braces in strings or nested templates', () => {
     const source = [
       'const styles = css`',
       '  .a { color: ${fn("}")}; }',
@@ -116,11 +116,11 @@ void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
     const block = blocks[0];
     assert.ok(block);
     assert.equal(block.virtualPath, 'src/pages/index.astro.ts');
-    assert.equal(block.blankedContent.includes('// --- Helpers ---'), true);
-    assert.equal(block.blankedContent.includes('const title = "Astro Page";'), true);
-    assert.equal(block.blankedContent.includes('import { helper } from "./utils.js";'), true);
-    // Content outside frontmatter must be blanked
-    assert.equal(block.blankedContent.includes('<h1>'), false);
+    assert.equal(block.strippedContent.includes('// --- Helpers ---'), true);
+    assert.equal(block.strippedContent.includes('const title = "Astro Page";'), true);
+    assert.equal(block.strippedContent.includes('import { helper } from "./utils.js";'), true);
+    // Content outside frontmatter must be stripped
+    assert.equal(block.strippedContent.includes('<h1>'), false);
   });
 
   await t.test('extracts standard Astro frontmatter cleanly', () => {
@@ -130,7 +130,7 @@ void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
     const block = blocks[0];
     assert.ok(block);
     assert.equal(block.virtualPath, 'src/pages/test.astro.ts');
-    assert.equal(block.blankedContent.includes('const x = 42;'), true);
+    assert.equal(block.strippedContent.includes('const x = 42;'), true);
   });
 });
 
@@ -139,7 +139,7 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     const vue = '<template><div></div></template>\n<script>\nexport default {};\n</script>\n<style>\n.btn { color: red; }\n</style>';
     const scriptBlocks = extractScriptBlocks('src/App.vue', vue);
     assert.equal(scriptBlocks.length, 1);
-    assert.equal(scriptBlocks[0]?.blankedContent.includes('export default {};'), true);
+    assert.equal(scriptBlocks[0]?.strippedContent.includes('export default {};'), true);
 
     const styleBlocks = extractStyleBlocks('src/App.vue', vue);
     assert.equal(styleBlocks.length, 1);
@@ -170,21 +170,21 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(blocks[2]?.virtualPath, 'src/index.html.block2.js');
   });
 
-  await t.test('blankOutsideRange, blankRanges, prepareHtmlForDomScan, and Lit css extraction', () => {
+  await t.test('stripOutsideRange, stripRanges, prepareHtmlForDomScan, and Lit css extraction', () => {
     const raw = 'line 1\nline 2: target\nline 3\n';
     const start = raw.indexOf('line 2: target');
     const end = start + 'line 2: target'.length;
-    const blanked = blankOutsideRange(raw, start, end);
-    assert.equal(blanked.length, raw.length);
-    assert.equal(blanked.split('\n').length, raw.split('\n').length);
-    assert.equal(blanked.slice(start, end), 'line 2: target');
+    const stripped = stripOutsideRange(raw, start, end);
+    assert.equal(stripped.length, raw.length);
+    assert.equal(stripped.split('\n').length, raw.split('\n').length);
+    assert.equal(stripped.slice(start, end), 'line 2: target');
 
     const multi = 'aaa\nbbb\nccc\nddd\n';
     const bbbStart = multi.indexOf('bbb');
-    const blankedRanges = blankRanges(multi, [{ start: bbbStart, end: bbbStart + 3 }]);
-    assert.equal(blankedRanges.length, multi.length);
-    assert.equal(blankedRanges.includes('bbb'), false);
-    assert.equal(blankedRanges.includes('ccc'), true);
+    const strippedRanges = stripRanges(multi, [{ start: bbbStart, end: bbbStart + 3 }]);
+    assert.equal(strippedRanges.length, multi.length);
+    assert.equal(strippedRanges.includes('bbb'), false);
+    assert.equal(strippedRanges.includes('ccc'), true);
 
     const vue =
       '<script>\nconst a = 1;\n</script>\n<template>\n  <button>Click</button>\n</template>\n<style>\nbutton { color: red; }\n</style>';
@@ -222,7 +222,7 @@ void test('sfc-extractor: custom elements whose names start with script- or styl
   await t.test('extracts only the real <script> body', () => {
     const blocks = extractScriptBlocks('App.vue', vue);
     assert.equal(blocks.length, 1);
-    const content = blocks[0]?.blankedContent ?? '';
+    const content = blocks[0]?.strippedContent ?? '';
     assert.equal(content.includes('const code = "";'), true);
     assert.equal(content.includes('v-model'), false);
     assert.equal(content.includes('<button>'), false);
@@ -248,14 +248,14 @@ void test('sfc-extractor: custom elements whose names start with script- or styl
   });
 });
 
-void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style> blocks', async (t) => {
-  await t.test('blanks // line comments while preserving offsets and CRLF newlines', () => {
+void test('sfc-extractor: stripPreprocessorLineComments and preprocessor <style> blocks', async (t) => {
+  await t.test('strips // line comments while preserving offsets and CRLF newlines', () => {
     const scss = ['// header', '.box { color: red; } // inline', '// footer'].join('\r\n');
-    const blanked = blankPreprocessorLineComments(scss);
-    assert.equal(blanked.length, scss.length);
-    assert.deepEqual(blanked.match(/\r\n/g), scss.match(/\r\n/g));
-    assert.equal(blanked.includes('//'), false);
-    assert.equal(blanked.includes('.box { color: red; }'), true);
+    const stripped = stripPreprocessorLineComments(scss);
+    assert.equal(stripped.length, scss.length);
+    assert.deepEqual(stripped.match(/\r\n/g), scss.match(/\r\n/g));
+    assert.equal(stripped.includes('//'), false);
+    assert.equal(stripped.includes('.box { color: red; }'), true);
   });
 
   await t.test('preserves // inside block comments, strings, and URLs', () => {
@@ -269,10 +269,10 @@ void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style>
       '$endpoint: https://api.example.com/v1;',
       '.f { color: blue; }',
     ].join('\n');
-    assert.equal(blankPreprocessorLineComments(scss), scss);
+    assert.equal(stripPreprocessorLineComments(scss), scss);
   });
 
-  await t.test('blanks // comments after (, whitespace-separated ://, and trailing after url()', () => {
+  await t.test('strips // comments after (, whitespace-separated ://, and trailing after url()', () => {
     const scss = [
       '.a { color: rgb(// red',
       '  255, 0, 0); }',
@@ -281,17 +281,17 @@ void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style>
       '.b:// comment',
       '.c { background: url( //cdn.example.com/b.png ); } // trailing',
     ].join('\n');
-    const blanked = blankPreprocessorLineComments(scss);
-    assert.equal(blanked.length, scss.length);
-    assert.equal(blanked.includes('// red'), false);
-    assert.equal(blanked.includes('// note'), false);
-    assert.equal(blanked.includes('// comment'), false);
-    assert.equal(blanked.includes('// trailing'), false);
-    assert.equal(blanked.includes('url( //cdn.example.com/b.png )'), true);
-    assert.equal(blanked.includes('255, 0, 0); }'), true);
+    const stripped = stripPreprocessorLineComments(scss);
+    assert.equal(stripped.length, scss.length);
+    assert.equal(stripped.includes('// red'), false);
+    assert.equal(stripped.includes('// note'), false);
+    assert.equal(stripped.includes('// comment'), false);
+    assert.equal(stripped.includes('// trailing'), false);
+    assert.equal(stripped.includes('url( //cdn.example.com/b.png )'), true);
+    assert.equal(stripped.includes('255, 0, 0); }'), true);
   });
 
-  await t.test('blanks // comments inside <style lang="scss|less"> only', () => {
+  await t.test('strips // comments inside <style lang="scss|less"> only', () => {
     for (const lang of ['scss', 'less']) {
       const vue = `<template><div/></template>\n<style lang="${lang}" scoped>\n// note\n.box { color: red; }\n</style>`;
       const blocks = extractStyleBlocks('App.vue', vue);
