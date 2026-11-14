@@ -7,18 +7,19 @@ web-feature-ids:
 
 # Language Model
 
-The Prompt API allows developers to run natural language processing tasks directly in the browser using **Gemini Nano**. This built-in AI approach ensures user privacy, reduces server costs, and enables offline functionality.
+The Prompt API allows developers to run natural language processing tasks directly in the browser using a language model that the browser provides. This built-in AI approach ensures user privacy, reduces server costs, and enables offline functionality.
 
 ## 1. Getting Started and Hardware Requirements
 
-The Prompt API is currently available in Chrome as of version 148 (Desktop) for Windows, macOS, Linux, and Chromebook Plus.
+For current browser support, see [6. Fallback strategies](#6-fallback-strategies).
 
 ### Hardware Prerequisites
 
-- **Storage**: 22 GB free space (for the initial profile and model).
-- **Memory/CPU**: 16 GB RAM and 4+ CPU cores.
-- **GPU**: 4 GB VRAM or more (Required for audio input).
-- **Network**: Required only for the initial model download.
+Which model a browser bundles, which platforms it supports, and which hardware it requires are **browser-specific implementation details that may change**. For example, at the time of writing, Chrome uses Gemini Nano and requires roughly 22 GB of free storage, 16 GB of RAM and 4+ CPU cores, or a GPU with more than 4 GB of VRAM. Other browsers may use different models with different requirements.
+
+- **Don't** hardcode browser versions, model names, or hardware thresholds, or attempt to detect them yourself.
+- **Do** call `LanguageModel.availability()` at runtime. It returns `'unavailable'` when the current device can't run the model.
+- **Network**: Typically required only for the initial model download.
 
 ### Initializing the API
 
@@ -403,5 +404,5 @@ if ('LanguageModel' in self) {
 
 If the Prompt API is unsupported or availability checks return 'unavailable', you must gracefully fall back:
 
-* Remote API Fallback: Redirect the detection request to a server endpoint or a cloud API (such as the Vertex AI Gemini API).
-* Local API Fallback: Redirect the detection request to a local endpoint, for example, using Transformers.js. 
+* Remote API Fallback: Redirect the prompt request to a server endpoint or cloud LLM API.
+* Local API Fallback: Redirect the prompt request to a local endpoint, for example, using Transformers.js. 
