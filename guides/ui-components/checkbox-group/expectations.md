@@ -1,0 +1,14 @@
+- The options and the master checkbox are grouped inside a `<fieldset>` that has a `<legend>` child.
+- Every checkbox, including the master checkbox, is a native `<input type="checkbox">` associated with a `<label>` (nested or via matching `for` and `id`).
+- The master checkbox has no `name` attribute, so it is not submitted with the form.
+- The master checkbox is checked and not indeterminate when enabled option checkboxes exist and all of them are checked.
+- The master checkbox has its `indeterminate` property set to true when some, but not all, enabled option checkboxes are checked.
+- The master checkbox is unchecked and not indeterminate when enabled option checkboxes exist and none are checked.
+- Clicking the master checkbox changes every enabled option checkbox to match the master's checked state.
+- A disabled option checkbox keeps its checked state when the master checkbox is clicked and is not counted when deriving the master's state.
+- The master checkbox state reflects the initially checked options on page load.
+- An `<output>` live region (or element with `aria-live`) inside the fieldset is updated with a count summary when the checked options change.
+- The master checkbox is `disabled` when there are no enabled option checkboxes, and its checked and indeterminate state mirrors the disabled options (unchecked for an empty list).
+- Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
+- Label text and any hints are aligned to the right (or left, in RTL) of the checkbox, with at least `3px` spacing from it, and their text does not wrap below the checkbox.
+- When an option has hint text, the hint is outside the option's `<label>` with an `id` that the input references via `aria-describedby`, aligned with the label text (to the right of the checkbox) in smaller, de-emphasized text.
