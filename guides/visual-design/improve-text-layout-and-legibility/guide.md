@@ -32,8 +32,8 @@ For `text-wrap: pretty`, select elements potentially containing long runs of tex
 | :--- | :--- | :--- | :--- |
 | **Best For** | Short blocks (Headings, Titles) | Long blocks (Paragraphs, Lists) | Performance-critical content |
 | **Visual Goal** | Symmetrical line lengths | Avoiding orphans ("runts") | Fast, standard wrapping |
-| **Line Constraints** | Up to 6–10 lines (algorithm limit) | Best for 3 to many lines | No limit |
-| **Perf Cost** | **High**: Binary search algorithm | **Medium**: Look-back algorithm | **Low**: Standard greedy algorithm |
+| **Line Constraints** | Browser-specific cap (e.g., up to 6–10 lines) | Best for 3 to many lines | No limit |
+| **Perf Cost** | **High**: Line-balancing heuristic (e.g. binary search) | **Medium**: Multi-line heuristic (e.g. look-back) | **Low**: Standard greedy algorithm |
 
 ### 2. **Apply the chosen wrapping**: 
 
@@ -47,7 +47,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 ```
 
-Use `text-wrap: pretty` to enable an optimized algorithm that evaluates the last few lines of a paragraph to find the best break points.
+Use `text-wrap: pretty` to enable an engine-specific line-breaking algorithm (evaluating the last few lines of a paragraph or the whole block) to find the best break points and prevent orphans.
 
 ```css
 /* Apply to multi-line text blocks to prevent orphaned words */
@@ -61,13 +61,13 @@ p, blockquote, li, .pretty-text {
 
 #### text-wrap: balance
 
-*   **Line Limit:** Browsers impose a limit on the number of lines they will attempt to balance to maintain performance (typically **6 lines** in Chromium and **10 lines** in Firefox). If the text exceeds this limit, the browser reverts to standard `wrap` behavior. Avoid using `text-wrap: balance` on text blocks that are likely to exceed these limits.
-*   **Targeted Application:** DO NOT apply `text-wrap: balance` globally (e.g., `* { text-wrap: balance; }`). The iterative "binary search" algorithm used by browsers is computationally expensive. Limit its use to specific, short text elements.
+*   **Line Limit:** Browsers impose an engine-specific limit on the number of lines they will attempt to balance to maintain performance (for example, typically **6 lines** in Chromium and **10 lines** in Firefox, though these thresholds are implementation details and subject to change). If the text exceeds this limit, the browser reverts to standard `wrap` behavior. Avoid using `text-wrap: balance` on text blocks that are likely to exceed these limits.
+*   **Targeted Application:** DO NOT apply `text-wrap: balance` globally (e.g., `* { text-wrap: balance; }`). The iterative line-balancing algorithm (such as binary search in Chromium) is computationally expensive and its exact heuristic is browser-specific. Limit its use to specific, short text elements.
 *   **Interaction with Width:** `text-wrap: balance` does not change the container's width (`inline-size`). It only affects how text wraps *within* that width. This can leave empty space at the end of the container, which may affect layouts relying on full-width text blocks.
 
 #### text-wrap: pretty
 
-*   **Performance vs. Quality**: MANDATORY: `text-wrap: pretty` is more computationally expensive than the default `wrap` (greedy) algorithm because it evaluates multiple lines (typically the last four) to optimize the break points. Avoid applying it globally to every element if your page has an extreme amount of text content.
+*   **Performance vs. Quality**: MANDATORY: `text-wrap: pretty` is more computationally expensive than the default `wrap` (greedy) algorithm because browser engines evaluate multiple lines (such as the last four lines in Chromium) or the full paragraph to optimize break points. Avoid applying it globally to every element if your page has an extreme amount of text content.
 *   **Best for multi-line text**: The benefits of `pretty` are most apparent in paragraphs of three or more lines. It has little to no effect on short, single-line text.
 *   **Browser-specific behavior**: Be aware that implementation details vary. Chromium-based browsers typically focus on the last four lines, while other engines may evaluate the entire paragraph.
 

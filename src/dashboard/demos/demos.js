@@ -24,6 +24,9 @@ const DWELL_MS = 120;
 /** Demos run with an opaque origin (no allow-same-origin) so they can't reach dashboard storage. */
 const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals';
 
+/** Permissions Policy features required by interactive demos (Built-in AI, WebMCP, Async Clipboard). */
+const ALLOW_POLICY = 'language-model; summarizer; language-detector; translator; tools; clipboard-read; clipboard-write';
+
 /**
  * createElement shorthand. Attributes go through setAttribute and string children become text nodes, so nothing is
  * ever parsed as HTML. Arrays of children are flattened one level; null/undefined/false children are skipped.
@@ -133,7 +136,7 @@ function mountIframe(card) {
   const wanted = /** @type {string} */ (card.dataset.src);
   let iframe = container.querySelector('iframe');
   if (!iframe) {
-    iframe = h('iframe', { sandbox: SANDBOX, title: `${card.id} demo`, src: wanted });
+    iframe = h('iframe', { sandbox: SANDBOX, allow: ALLOW_POLICY, title: `${card.id} demo`, src: wanted });
     container.append(iframe);
   } else if (iframe.getAttribute('src') !== wanted) {
     iframe.src = wanted;
