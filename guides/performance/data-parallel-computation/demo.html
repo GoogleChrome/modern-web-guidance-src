@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo: What if you do get lucky? A brute-force lottery simulation on the GPU</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 760px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    .note {
+      border-inline-start: 4px solid #f59e0b;
+      padding: 0.5rem 1rem;
+      background: color-mix(in srgb, #f59e0b 12%, transparent);
+    }
+    .controls { display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap; margin-block: 1rem; }
+    label { display: flex; flex-direction: column; font-weight: 600; gap: 0.25rem; }
+    input { font: inherit; padding: 0.35rem 0.5rem; width: 14ch; }
+    button {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    button.secondary { background: #475569; }
+    button[aria-disabled="true"] { background: #94a3b8; cursor: not-allowed; }
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>What if you do get lucky?</h1>
+    <p>
+      You buy a $1 lottery ticket every month (12 times a year) and compete against everyone else on
+      Earth. Every month, one random ticket wins, and the winner gets half of all the money collected.
+      How many years until you win, and will you have spent more than you win?
+    </p>
+
+    <p class="note">
+      <b>This demo is for demonstration purposes only.</b> A short math formula answers this question
+      instantly: on average you'd wait players &divide; 12 years (about 675 million years for 8.1 billion
+      players), and you'd come out ahead only about 39% of the time. Here, we deliberately simulate the
+      real games instead, one draw at a time, to show how fast the GPU runs billions of independent
+      draws, and to find out what happens to <em>you</em> in one particular lifetime of games. Every run
+      uses new random numbers, so try again: maybe this time you get lucky.
+    </p>
+
+    <div class="controls">
+      <label>
+        Players (including you)
+        <input id="players" type="number" min="2" max="100000000000" step="1" value="8100000000">
+      </label>
+      <button id="earth-btn" type="button" class="secondary">Earth (8.1 billion)</button>
+      <button id="city-btn" type="button" class="secondary">A city (1 million)</button>
+    </div>
+    <div class="controls">
+      <button id="play-btn" type="button">Play until I win</button>
+      <button id="stop-btn" type="button" class="secondary" aria-disabled="true">Stop</button>
+    </div>
+
+    <pre id="result" role="status">Choose the number of players, and press "Play until I win".</pre>
+
+    <p>
+      How it works: each month is one draw. To pick a random winner among all players, the GPU generates
+      a 64-bit random number per month, and you win when it falls in your share of the range
+      (1 in <i>players</i>). A Web Worker runs batches of up to 268 million months per GPU submission:
+      about 1 million GPU invocations each check 256 consecutive months, and an atomic operation records
+      the earliest winning month in each quarter of the batch. Only those 4 numbers are read back. The
+      last batch is usually shorter: the shader skips months past the batch's month count, and the
+      dispatch covers it with a partial last workgroup. Without WebGPU, the worker runs
+      the same draws on the CPU, which is much slower, so try a smaller number of players.
+    </p>
+
+    <h2>Test the CPU fallback</h2>
+    <ul>
+      <li><b>Any browser:</b> add <code>?cpu</code> to the page URL to skip WebGPU in this demo.</li>
+      <li><b>Chrome or Edge:</b> start the browser with WebGPU turned off, for example
+        <code>google-chrome --disable-features=WebGPU --user-data-dir=/tmp/no-webgpu</code>
+        (the separate profile directory makes the flag apply even if the browser is already running).</li>
+      <li><b>Firefox:</b> set <code>dom.webgpu.enabled</code> to <code>false</code> in <code>about:config</code>.</li>
+      <li><b>Safari:</b> turn off WebGPU in <b>Develop &gt; Feature Flags</b>.</li>
+    </ul>
+  </main>
+
+  <script type="module">
+    // The worker source is inlined so this demo stays a single file.
+    const workerSource = `
+      const WORKGROUP_SIZE = 64;
+      const DRAWS_PER_INVOCATION = 256;          // Consecutive months checked by one invocation
+      const WORKGROUPS_X = 4096;                 // 4096 * 64 invocations * 256 months = 2^26 months
+      const WINDOW = WORKGROUPS_X * WORKGROUP_SIZE * DRAWS_PER_INVOCATION;
+      const WINDOWS_PER_SUBMIT = 4;              // 2^28 months (~268 million) per GPU submission
+      const NO_WIN = 0xffffffff;
+
+      // PCG hash: the same integer math in WGSL and JavaScript, so both paths draw the same numbers.
+      function pcg(v) {
+        const s = (Math.imul(v >>> 0, 747796405) + 2891336453) >>> 0;
+        const w = Math.imul(((s >>> ((s >>> 28) + 4)) ^ s) >>> 0, 277803737) >>> 0;
+        return ((w >>> 22) ^ w) >>> 0;
+      }
+
+      // 64-bit random number for a month, as two 32-bit halves from two independent hash chains.
+      function draw(lo, hi, seed) {
+        const h1 = pcg(lo ^ pcg(hi ^ seed));
+        const h2 = pcg(pcg((lo + 0x68bc21eb) >>> 0) ^ hi ^ (seed ^ 0x9e3779b9));
+        return [h1, h2];
+      }
+
+      let cancelled = false;
+
+      // CPU path: the same draws, month by month, in chunks so the worker stays responsive.
+      async function playOnCpu(job, maxMonths, startMonth = 0) {
+        const chunk = 1 << 22;
+        const start = performance.now();
+        for (let base = startMonth; base < maxMonths; base += chunk) {
+          if (cancelled) return { cancelled: true, months: base };
+          for (let i = 0; i < chunk; i++) {
+            const month = base + i;
+            const [h1, h2] = draw(month >>> 0, Math.floor(month / 2 ** 32), job.seed);
+            if (h1 < job.thresholdHi || (h1 === job.thresholdHi && h2 < job.thresholdLo)) {
+              return { winMonth: month + 1, monthsChecked: month + 1, ms: performance.now() - start };
+            }
+          }
+          self.postMessage({ type: 'progress', months: base + chunk, ms: performance.now() - start });
+          await new Promise((resolve) => setTimeout(resolve)); // Let a "stop" message arrive
+        }
+        return { winMonth: null, months: maxMonths, ms: performance.now() - start };
+      }
+
+      async function createGpuDevice() {
+        if (!('gpu' in navigator)) return null;
+        try {
+          const adapter = await navigator.gpu.requestAdapter();
+          if (!adapter) return null;
+          return await adapter.requestDevice();
+        } catch {
+          return null;
+        }
+      }
+
+      let gpu = null;
+      let gpuFailure = null; // Why the GPU path stopped, or null while it's usable
+
+      async function setUpGpu() {
+        const device = await createGpuDevice();
+        if (!device) return null;
+        try {
+          const pipeline = await device.createComputePipelineAsync({
+            layout: 'auto',
+            compute: {
+              entryPoint: 'main',
+              module: device.createShaderModule({
+                code: \`
+                  struct Params { baseLo: u32, baseHi: u32, thresholdLo: u32, thresholdHi: u32, seed: u32, count: u32 };
+                  @group(0) @binding(0) var<uniform> params: Params;
+                  @group(0) @binding(1) var<storage, read_write> firstWin: array<atomic<u32>>;
+
+                  fn pcg(v: u32) -> u32 {
+                    let s = v * 747796405u + 2891336453u;
+                    let w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+                    return (w >> 22u) ^ w;
+                  }
+
+                  @compute @workgroup_size(\${WORKGROUP_SIZE})
+                  fn main(@builtin(global_invocation_id) id: vec3u) {
+                    let slot = id.y; // Which window of this submission
+                    let first = slot * \${WINDOW}u + id.x * \${DRAWS_PER_INVOCATION}u;
+                    if (first >= params.count) { return; } // Past the end of this batch
+                    for (var j = 0u; j < \${DRAWS_PER_INVOCATION}u; j++) {
+                      if (first + j >= params.count) { return; }
+                      // 64-bit month index = base + first + j, with carry into the high word.
+                      let lo = params.baseLo + first + j;
+                      let hi = params.baseHi + select(0u, 1u, lo < params.baseLo);
+                      let h1 = pcg(lo ^ pcg(hi ^ params.seed));
+                      let h2 = pcg(pcg(lo + 0x68bc21ebu) ^ hi ^ (params.seed ^ 0x9e3779b9u));
+                      if (h1 < params.thresholdHi || (h1 == params.thresholdHi && h2 < params.thresholdLo)) {
+                        atomicMin(&firstWin[slot], first - slot * \${WINDOW}u + j); // Offset within the window
+                        return; // Later months of this invocation can't be earlier
+                      }
+                    }
+                  }
+                \`,
+              }),
+            },
+          });
+
+          device.pushErrorScope('out-of-memory');
+          device.pushErrorScope('validation');
+          const paramsBuffer = device.createBuffer({ size: 24, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+          const resultBuffer = device.createBuffer({
+            size: WINDOWS_PER_SUBMIT * 4,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+          });
+          const stagingBuffer = device.createBuffer({ size: WINDOWS_PER_SUBMIT * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+          const bindGroup = device.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: [
+              { binding: 0, resource: { buffer: paramsBuffer } },
+              { binding: 1, resource: { buffer: resultBuffer } },
+            ],
+          });
+          const validationError = await device.popErrorScope(); // Scopes pop in reverse order
+          const oomError = await device.popErrorScope();
+          if (validationError || oomError) throw new Error('GPU setup failed');
+
+          // 2, 3: errors outside any scope, and device loss, stop the GPU path. The batch loop
+          // checks gpuFailure before every batch and continues on the CPU.
+          device.addEventListener('uncapturederror', () => { gpuFailure ??= 'GPU error'; });
+          device.lost.then((info) => {
+            if (info.reason !== 'destroyed') gpuFailure ??= 'GPU device lost';
+          });
+          return { device, pipeline, paramsBuffer, resultBuffer, stagingBuffer, bindGroup };
+        } catch {
+          device.destroy();
+          return null;
+        }
+      }
+
+      // Returns the outcome, or { failedAt } with the first month the GPU didn't finish.
+      async function playOnGpu(job, maxMonths, progress) {
+        const { device, pipeline, paramsBuffer, resultBuffer, stagingBuffer, bindGroup } = gpu;
+        const reset = new Uint32Array(WINDOWS_PER_SUBMIT).fill(NO_WIN);
+        const start = performance.now();
+        for (let base = 0; base < maxMonths; base += WINDOW * WINDOWS_PER_SUBMIT) {
+          progress.month = base; // Months before base are already checked
+          if (gpuFailure) return { failedAt: base };
+          if (cancelled) return { cancelled: true, months: base };
+          // The last batch is usually shorter. Cover its months with whole workgroups; the shader
+          // skips the months past count in the partial last workgroup.
+          const count = Math.min(WINDOW * WINDOWS_PER_SUBMIT, maxMonths - base);
+          const windows = Math.ceil(count / WINDOW);
+          const invocations = Math.ceil(Math.min(count, WINDOW) / DRAWS_PER_INVOCATION);
+          const workgroupsX = Math.ceil(invocations / WORKGROUP_SIZE);
+          device.queue.writeBuffer(paramsBuffer, 0, new Uint32Array([
+            base >>> 0, Math.floor(base / 2 ** 32), job.thresholdLo, job.thresholdHi, job.seed, count,
+          ]));
+          device.queue.writeBuffer(resultBuffer, 0, reset);
+
+          device.pushErrorScope('validation');
+          const encoder = device.createCommandEncoder();
+          const pass = encoder.beginComputePass();
+          pass.setPipeline(pipeline);
+          pass.setBindGroup(0, bindGroup);
+          pass.dispatchWorkgroups(workgroupsX, windows);
+          pass.end();
+          encoder.copyBufferToBuffer(resultBuffer, 0, stagingBuffer, 0, WINDOWS_PER_SUBMIT * 4);
+          device.queue.submit([encoder.finish()]);
+          if (await device.popErrorScope()) throw new Error('GPU run failed validation');
+
+          await stagingBuffer.mapAsync(GPUMapMode.READ);
+          const firstWin = new Uint32Array(stagingBuffer.getMappedRange().slice(0));
+          stagingBuffer.unmap();
+          if (gpuFailure) return { failedAt: base }; // Don't trust a batch that ended with an error
+
+          const slot = firstWin.findIndex((offset) => offset !== NO_WIN);
+          if (slot !== -1) {
+            return {
+              winMonth: base + slot * WINDOW + firstWin[slot] + 1,
+              monthsChecked: base + count, // The GPU checks whole batches
+              ms: performance.now() - start,
+            };
+          }
+          self.postMessage({ type: 'progress', months: base + count, ms: performance.now() - start });
+        }
+        return { winMonth: null, months: maxMonths, ms: performance.now() - start };
+      }
+
+      // Measures CPU speed on the same draws for about one second, for comparison.
+      function sampleCpuSpeed(job) {
+        const start = performance.now();
+        let month = 0;
+        let sink = 0; // Uses every result, so the JavaScript engine can't skip the work
+        while (performance.now() - start < 1000) {
+          for (let i = 0; i < 1 << 20; i++, month++) {
+            const [h1, h2] = draw(month >>> 0, Math.floor(month / 2 ** 32), job.seed);
+            if (h1 < job.thresholdHi || (h1 === job.thresholdHi && h2 < job.thresholdLo)) sink++;
+          }
+        }
+        self.sink = sink;
+        return month / ((performance.now() - start) / 1000);
+      }
+
+      let setupPromise = null;
+
+      self.addEventListener('message', async ({ data }) => {
+        if (data.type === 'stop') { cancelled = true; return; }
+        if (data.type !== 'play') return;
+        cancelled = false;
+        if (!data.forceCpu) {
+          setupPromise ??= setUpGpu().then((setup) => { gpu = setup; });
+          await setupPromise;
+        }
+
+        // Stop after 20 times the expected wait, so an unlucky run still ends.
+        const maxMonths = Math.min(data.job.players * 20, Number.MAX_SAFE_INTEGER);
+        let outcome = null;
+        let cpuStart = 0;
+        let backend = gpu && !gpuFailure && !data.forceCpu
+          ? 'WebGPU'
+          : data.forceCpu ? 'CPU (?cpu in the URL)' : 'CPU (' + (gpuFailure ?? 'WebGPU unavailable') + ')';
+        if (backend === 'WebGPU') {
+          const progress = { month: 0 };
+          const start = performance.now();
+          try {
+            outcome = await playOnGpu(data.job, maxMonths, progress);
+          } catch {
+            gpuFailure ??= 'GPU error';
+          }
+          if (!outcome || outcome.failedAt !== undefined) {
+            // Continue on the CPU from the first batch the GPU didn't finish.
+            cpuStart = outcome?.failedAt ?? progress.month;
+            backend = 'WebGPU, then CPU from game ' + (cpuStart + 1).toLocaleString('en-US') + ' (' + gpuFailure + ')';
+            gpu?.device.destroy(); // Its lost promise resolves with 'destroyed', which is ignored
+            gpu = null;
+            outcome = await playOnCpu(data.job, maxMonths, cpuStart);
+            outcome.ms = performance.now() - start; // Total time for both paths
+          }
+        }
+        outcome ??= await playOnCpu(data.job, maxMonths, cpuStart);
+        const cpuDrawsPerSecond = backend === 'WebGPU' && !outcome.cancelled ? sampleCpuSpeed(data.job) : null;
+        self.postMessage({ type: 'done', outcome, backend, cpuDrawsPerSecond, seed: data.job.seed });
+      });
+
+      self.postMessage({ type: 'ready' });
+    `;
+
+    const playersInput = document.getElementById('players');
+    const playBtn = document.getElementById('play-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const resultEl = document.getElementById('result');
+    const fmt = (n) => Math.round(n).toLocaleString('en-US');
+    const duration = (seconds) => (seconds < 1 ? `${Math.round(seconds * 1000)} ms` : `${seconds.toFixed(1)} s`);
+    const money = (n) => (n < 0 ? '-$' : '$') + fmt(Math.abs(n));
+    let busy = false;
+
+    const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+    const worker = new Worker(workerUrl, { type: 'module' });
+
+    function setBusy(value) {
+      busy = value;
+      playBtn.setAttribute('aria-disabled', String(value));
+      stopBtn.setAttribute('aria-disabled', String(!value));
+    }
+
+    document.getElementById('earth-btn').addEventListener('click', () => { playersInput.value = 8100000000; });
+    document.getElementById('city-btn').addEventListener('click', () => { playersInput.value = 1000000; });
+    stopBtn.addEventListener('click', () => { if (busy) worker.postMessage({ type: 'stop' }); });
+
+    worker.addEventListener('error', () => {
+      setBusy(false);
+      resultEl.textContent = 'The simulation worker failed to start.';
+    });
+
+    worker.addEventListener('message', ({ data }) => {
+      if (data.type === 'ready') {
+        URL.revokeObjectURL(workerUrl);
+      } else if (data.type === 'progress') {
+        resultEl.textContent =
+          `Still playing... ${fmt(data.months)} months simulated (${fmt(data.months / 12)} years), ` +
+          `${(data.months / (data.ms / 1000) / 1e6).toFixed(0)} million draws per second.`;
+      } else if (data.type === 'done') {
+        setBusy(false);
+        const players = Number(playersInput.value);
+        const { outcome, backend, cpuDrawsPerSecond } = data;
+        if (outcome.cancelled) {
+          resultEl.textContent = `Stopped after ${fmt(outcome.months)} months without a win.`;
+          return;
+        }
+        if (outcome.winMonth === null) {
+          resultEl.textContent = `No win in ${fmt(outcome.months / 12)} years. That's very unlucky.`;
+          return;
+        }
+        const years = Math.ceil(outcome.winMonth / 12);
+        const spent = outcome.winMonth; // $1 per month
+        const prize = players * 0.5;     // Half of all tickets in the winning month
+        const net = prize - spent;
+        const drawsPerSecond = outcome.monthsChecked / (outcome.ms / 1000);
+        const lines = [
+          `You won in year ${fmt(years)} (game ${fmt(outcome.winMonth)}).`,
+          `You spent ${money(spent)} on tickets and won ${money(prize)}.`,
+          net >= 0
+            ? `You came out ahead by ${money(net)}. Lucky you!`
+            : `You lost ${money(-net)} overall: you'd have been better off not playing.`,
+          '',
+          `Backend: ${backend}. Seed: ${data.seed}. Checked ${fmt(outcome.monthsChecked)} draws in ${duration(outcome.ms / 1000)} ` +
+            `(${(drawsPerSecond / 1e6).toFixed(0)} million draws per second).`,
+        ];
+        if (cpuDrawsPerSecond) {
+          lines.push(
+            `The CPU in this worker manages about ${(cpuDrawsPerSecond / 1e6).toFixed(0)} million draws per second, ` +
+            `so it would need about ${duration(outcome.winMonth / cpuDrawsPerSecond)} to play the ${fmt(outcome.winMonth)} games until your win.`,
+          );
+        }
+        resultEl.textContent = lines.join('\n');
+      }
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (busy) return;
+      const players = Math.floor(Number(playersInput.value));
+      if (!Number.isFinite(players) || players < 2 || players > 1e11) {
+        resultEl.textContent = 'Enter a number of players between 2 and 100,000,000,000.';
+        return;
+      }
+      // You win a month's draw when a 64-bit random number is below 2^64 / players,
+      // which happens with probability 1 / players.
+      const threshold = (1n << 64n) / BigInt(players);
+      // New luck on every run. Add ?seed=<number> to the URL to replay a specific run.
+      const seedParam = new URLSearchParams(location.search).get('seed');
+      const seed = seedParam !== null ? Number(seedParam) >>> 0 : crypto.getRandomValues(new Uint32Array(1))[0];
+      setBusy(true);
+      resultEl.textContent = 'Playing...';
+      worker.postMessage({
+        type: 'play',
+        forceCpu: new URLSearchParams(location.search).has('cpu'), // ?cpu skips WebGPU for testing
+        job: {
+          players,
+          seed,
+          thresholdHi: Number(threshold >> 32n),
+          thresholdLo: Number(threshold & 0xffffffffn),
+        },
+      });
+    });
+  </script>
+</body>
+</html>

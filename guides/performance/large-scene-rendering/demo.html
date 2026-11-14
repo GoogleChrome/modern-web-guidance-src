@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo: Render thousands of draw calls with a WebGPU render bundle</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 760px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    button {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    #status {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      background: color-mix(in srgb, currentColor 10%, transparent);
+      font-size: 0.9rem;
+    }
+    canvas {
+      width: 100%;
+      max-width: 640px;
+      aspect-ratio: 16 / 10;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #0f172a;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Render 1,000 draw calls with a <code>GPURenderBundle</code></h1>
+    <p>
+      The scene has 1,000 shapes: triangles, squares, and hexagons. Each shape is a separate
+      <code>draw()</code> call. The page records all 1,000 calls into a render bundle once, then
+      replays them every frame with one <code>renderPass.executeBundles()</code> call.
+    </p>
+    <ul>
+      <li>
+        <strong>Move and recolor</strong> writes new positions and colors into the uniform buffer
+        the bundle already uses. The bundle is reused, not re-recorded.
+      </li>
+      <li>
+        <strong>Change shapes</strong> changes which shape each object draws, which changes the
+        recorded draw calls, so the bundle is recorded again.
+      </li>
+    </ul>
+    <p>
+      Without WebGPU, or if GPU setup fails, the page renders the same scene with WebGL 2. WebGL 2 has no
+      render bundles, so JavaScript issues all 1,000 draw calls again on every frame. Compare the
+      JavaScript time per frame below. If WebGL 2 isn't available either, the page draws the shapes once
+      into a cached 2D canvas layer, without animation.
+    </p>
+    <p>
+      To see the fallbacks, add <code>?fallback=webgl2</code> or <code>?fallback=2d</code> to the URL.
+    </p>
+
+    <div class="toolbar">
+      <button id="update-btn" type="button">Move and recolor (same bundle)</button>
+      <button id="rerecord-btn" type="button">Change shapes (re-record bundle)</button>
+    </div>
+    <p id="status" role="status">Initializing…</p>
+    <p id="frame-time"></p>
+
+    <canvas
+      id="scene-canvas"
+      width="640"
+      height="400"
+      role="img"
+      aria-label="1,000 colored triangles, squares, and hexagons at random positions"
+    ></canvas>
+  </main>
+
+  <script type="module">
+    let canvas = document.getElementById('scene-canvas');
+    const statusEl = document.getElementById('status');
+    const updateBtn = document.getElementById('update-btn');
+    const rerecordBtn = document.getElementById('rerecord-btn');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const frameTimeEl = document.getElementById('frame-time');
+    const forcedFallback = new URLSearchParams(location.search).get('fallback'); // 'webgl2' or '2d'
+
+    const OBJECT_COUNT = 1000;
+    const ASPECT = canvas.width / canvas.height;
+
+    // Shape outlines with radius 1. Each shape is drawn as a triangle fan from its center.
+    function polygon(sides, startDeg) {
+      const points = [];
+      for (let k = 0; k < sides; k++) {
+        const a = ((startDeg + (360 * k) / sides) * Math.PI) / 180;
+        points.push([Math.cos(a), Math.sin(a)]);
+      }
+      return points;
+    }
+    const SHAPES = [polygon(3, 90), polygon(4, 45), polygon(6, 0)];
+
+    // All shapes share one vertex buffer; each shape is a range of vertices.
+    const shapeRanges = [];
+    const vertexList = [];
+    for (const outline of SHAPES) {
+      const first = vertexList.length / 2;
+      for (let k = 0; k < outline.length; k++) {
+        const [ax, ay] = outline[k];
+        const [bx, by] = outline[(k + 1) % outline.length];
+        vertexList.push(0, 0, ax, ay, bx, by);
+      }
+      shapeRanges.push({ first, count: vertexList.length / 2 - first });
+    }
+    const vertexData = new Float32Array(vertexList);
+
+    function randomizeLayout(objects) {
+      for (const o of objects) {
+        o.x = Math.random() * 1.9 - 0.95;
+        o.y = Math.random() * 1.9 - 0.95;
+        o.scale = 0.02 + Math.random() * 0.025;
+        o.color = [0.25 + Math.random() * 0.75, 0.25 + Math.random() * 0.75, 0.4 + Math.random() * 0.6];
+      }
+    }
+    function randomizeShapes(objects) {
+      for (const o of objects) o.shape = Math.floor(Math.random() * SHAPES.length);
+    }
+    const objects = Array.from({ length: OBJECT_COUNT }, () => ({}));
+    randomizeLayout(objects);
+    randomizeShapes(objects);
+
+    // ---------- WebGPU path ----------
+
+    const SHADER = /* wgsl */ `
+      struct Globals { pulse: f32, aspect: f32 };
+      struct ObjectData { offset: vec2f, scale: f32, color: vec4f };
+
+      @group(0) @binding(0) var<uniform> globals: Globals;
+      @group(1) @binding(0) var<uniform> obj: ObjectData;
+
+      struct VertexOut {
+        @builtin(position) position: vec4f,
+        @location(0) color: vec4f,
+      };
+
+      @vertex
+      fn vs(@location(0) pos: vec2f) -> VertexOut {
+        let p = pos * obj.scale * globals.pulse;
+        var out: VertexOut;
+        out.position = vec4f(obj.offset + vec2f(p.x / globals.aspect, p.y), 0.0, 1.0);
+        out.color = obj.color;
+        return out;
+      }
+
+      @fragment
+      fn fs(v: VertexOut) -> @location(0) vec4f {
+        return v.color;
+      }
+    `;
+
+    // Returns null when the GPU path isn't available, so the caller uses the fallback.
+    async function createGpuRenderer() {
+      if (forcedFallback || !('gpu' in navigator)) return null;
+      let device;
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) return null;
+        device = await adapter.requestDevice();
+      } catch {
+        return null;
+      }
+
+      try {
+        const format = navigator.gpu.getPreferredCanvasFormat();
+        // One uniform buffer for all objects, read with a dynamic offset per draw call.
+        const stride = Math.max(256, device.limits.minUniformBufferOffsetAlignment);
+
+        device.pushErrorScope('out-of-memory');
+        device.pushErrorScope('validation');
+
+        const globalsLayout = device.createBindGroupLayout({
+          entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: {} }],
+        });
+        const objectLayout = device.createBindGroupLayout({
+          entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { hasDynamicOffset: true, minBindingSize: 32 },
+          }],
+        });
+        const module = device.createShaderModule({ code: SHADER });
+        const pipeline = await device.createRenderPipelineAsync({
+          layout: device.createPipelineLayout({ bindGroupLayouts: [globalsLayout, objectLayout] }),
+          vertex: {
+            module,
+            entryPoint: 'vs',
+            buffers: [{ arrayStride: 8, attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x2' }] }],
+          },
+          fragment: { module, entryPoint: 'fs', targets: [{ format }] },
+          primitive: { topology: 'triangle-list' },
+        });
+
+        const vertexBuffer = device.createBuffer({
+          size: vertexData.byteLength,
+          usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+        });
+        const globalValues = new Float32Array([1, ASPECT, 0, 0]);
+        const globalBuffer = device.createBuffer({
+          size: globalValues.byteLength,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        const objectValues = new Float32Array((OBJECT_COUNT * stride) / 4);
+        const objectBuffer = device.createBuffer({
+          size: objectValues.byteLength,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        const globalsBindGroup = device.createBindGroup({
+          layout: globalsLayout,
+          entries: [{ binding: 0, resource: { buffer: globalBuffer } }],
+        });
+        const objectBindGroup = device.createBindGroup({
+          layout: objectLayout,
+          entries: [{ binding: 0, resource: { buffer: objectBuffer, size: 32 } }],
+        });
+
+        const validationError = await device.popErrorScope();
+        const oomError = await device.popErrorScope();
+        if (validationError || oomError) throw validationError || oomError;
+
+        device.queue.writeBuffer(vertexBuffer, 0, vertexData);
+
+        // Packs every object's data into one array and uploads it with one writeBuffer() call.
+        function writeObjectData() {
+          const floatsPerObject = stride / 4;
+          objects.forEach((o, i) => {
+            const base = i * floatsPerObject;
+            objectValues.set([o.x, o.y, o.scale, 0, ...o.color, 1], base);
+          });
+          device.queue.writeBuffer(objectBuffer, 0, objectValues);
+        }
+
+        // Records one draw call per object. Objects are sorted by shape, and each draw call
+        // reads its own uniforms through a dynamic offset recorded into the bundle.
+        async function recordBundle() {
+          const start = performance.now();
+          device.pushErrorScope('validation');
+          const encoder = device.createRenderBundleEncoder({ colorFormats: [format] });
+          encoder.setPipeline(pipeline);
+          encoder.setBindGroup(0, globalsBindGroup);
+          encoder.setVertexBuffer(0, vertexBuffer);
+          const order = objects.map((o, i) => i).sort((a, b) => objects[a].shape - objects[b].shape);
+          for (const i of order) {
+            const { first, count } = shapeRanges[objects[i].shape];
+            encoder.setBindGroup(1, objectBindGroup, [i * stride]);
+            encoder.draw(count, 1, first);
+          }
+          const bundle = encoder.finish();
+          const ms = performance.now() - start;
+          if (await device.popErrorScope()) throw new Error('Render bundle recording failed');
+          return { bundle, ms };
+        }
+
+        writeObjectData();
+        const firstRecording = await recordBundle();
+
+        // Get the WebGPU context only after setup succeeded, so the canvas
+        // can still get a 2D context if setup fails.
+        const context = canvas.getContext('webgpu');
+        context.configure({ device, format, alphaMode: 'opaque' });
+
+        return {
+          device, context, globalBuffer, globalValues,
+          writeObjectData, recordBundle,
+          bundle: firstRecording.bundle,
+          lastRecordMs: firstRecording.ms,
+        };
+      } catch {
+        device.destroy(); // Setup failed: use the fallback renderer
+        return null;
+      }
+    }
+
+    // ---------- WebGL 2 fallback: every draw call is issued from JavaScript, every frame ----------
+
+    function createWebGL2Renderer(targetCanvas) {
+      if (forcedFallback === '2d') return null;
+      const gl = targetCanvas.getContext('webgl2');
+      if (!gl) return null;
+      const compile = (type, source) => {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      };
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, `#version 300 es
+        layout(location = 0) in vec2 pos;
+        uniform vec2 offset;
+        uniform float scale;
+        uniform float pulse;
+        uniform float aspect;
+        void main() {
+          vec2 p = pos * scale * pulse;
+          gl_Position = vec4(offset + vec2(p.x / aspect, p.y), 0.0, 1.0);
+        }`));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, `#version 300 es
+        precision mediump float;
+        uniform vec4 color;
+        out vec4 outColor;
+        void main() { outColor = color; }`));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+
+      const vao = gl.createVertexArray();
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+      const loc = Object.fromEntries(['offset', 'scale', 'pulse', 'aspect', 'color']
+        .map((name) => [name, gl.getUniformLocation(program, name)]));
+      let order = [];
+
+      return {
+        gl,
+        // Sort by shape once per scene change, like the WebGPU bundle, so the draw order matches.
+        sceneChanged() {
+          order = objects.map((o, i) => i).sort((a, b) => objects[a].shape - objects[b].shape);
+        },
+        draw(pulse) {
+          gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+          gl.clearColor(0.06, 0.09, 0.16, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.useProgram(program);
+          gl.bindVertexArray(vao);
+          gl.uniform1f(loc.pulse, pulse);
+          gl.uniform1f(loc.aspect, ASPECT);
+          for (const i of order) { // 1,000 draw calls from JavaScript, every frame
+            const o = objects[i];
+            const { first, count } = shapeRanges[o.shape];
+            gl.uniform2f(loc.offset, o.x, o.y);
+            gl.uniform1f(loc.scale, o.scale);
+            gl.uniform4f(loc.color, o.color[0], o.color[1], o.color[2], 1);
+            gl.drawArrays(gl.TRIANGLES, first, count);
+          }
+        },
+      };
+    }
+
+    // ---------- 2D canvas fallback: a cached layer, redrawn only when the scene changes ----------
+
+    function createLayerCache() {
+      const cache = new OffscreenCanvas(canvas.width, canvas.height);
+      const ctx = cache.getContext('2d');
+      const { width, height } = cache;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, width, height);
+      for (const o of objects) {
+        const cx = ((o.x + 1) / 2) * width;
+        const cy = ((1 - o.y) / 2) * height;
+        const r = (o.scale * height) / 2; // Same size as the GPU paths
+        const [cr, cg, cb] = o.color.map((c) => Math.round(c * 255));
+        ctx.fillStyle = `rgb(${cr} ${cg} ${cb})`;
+        ctx.beginPath();
+        for (const [px, py] of SHAPES[o.shape]) ctx.lineTo(cx + px * r, cy - py * r);
+        ctx.fill();
+      }
+      return cache;
+    }
+
+    function drawFromCache(cache) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(cache, 0, 0);
+    }
+
+    // ---------- App ----------
+
+    let gpu = await createGpuRenderer();
+    let webgl = gpu ? null : createWebGL2Renderer(canvas);
+    webgl?.sceneChanged();
+    let layerCache = gpu || webgl ? null : createLayerCache();
+    let recordCount = gpu ? 1 : 0;
+    let frameRequest = 0;
+    let fallbackReason = forcedFallback
+      ? `forced with ?fallback=${forcedFallback}`
+      : webgl ? 'WebGPU is unavailable or GPU setup failed' : 'WebGPU and WebGL 2 are unavailable';
+
+    function showStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    // A canvas that already has a WebGPU or WebGL context can't get another kind of context.
+    function replaceCanvas() {
+      const fresh = canvas.cloneNode(false);
+      canvas.replaceWith(fresh);
+      canvas = fresh;
+    }
+
+    function useFallback(reason) {
+      cancelAnimationFrame(frameRequest);
+      fallbackReason = reason;
+      if (gpu) {
+        const { device } = gpu;
+        gpu = null;
+        device.destroy();
+        replaceCanvas();
+        webgl = createWebGL2Renderer(canvas);
+        webgl?.sceneChanged();
+      } else {
+        webgl = null;
+        replaceCanvas();
+      }
+      if (!webgl) layerCache = createLayerCache();
+      watchWebGLContext();
+      fallbackStatus();
+      requestRender();
+    }
+
+    function watchWebGLContext() {
+      canvas.addEventListener('webglcontextlost', (event) => {
+        event.preventDefault();
+        if (webgl) useFallback('the WebGL context was lost');
+      });
+    }
+
+    // Average JavaScript time spent issuing each frame's commands, shown once per second.
+    let frameJsTotal = 0;
+    let frameCount = 0;
+    let lastReport = performance.now();
+    function measureFrame(issueCommands) {
+      const start = performance.now();
+      issueCommands();
+      frameJsTotal += performance.now() - start;
+      frameCount++;
+      if (start - lastReport > 1000) {
+        frameTimeEl.textContent = `JavaScript time per frame: ${(frameJsTotal / frameCount).toFixed(2)} ms ` +
+          `(${gpu ? 'WebGPU, one executeBundles() call' : 'WebGL 2, 1,000 draw calls'}).`;
+        frameJsTotal = 0;
+        frameCount = 0;
+        lastReport = start;
+      }
+    }
+
+    function renderFrame(timeMs) {
+      const pulse = reducedMotion.matches ? 1 : 1 + 0.15 * Math.sin(timeMs * 0.003);
+      if (webgl) {
+        measureFrame(() => webgl.draw(pulse));
+        return;
+      }
+      measureFrame(() => {
+        gpu.globalValues[0] = pulse;
+        gpu.device.queue.writeBuffer(gpu.globalBuffer, 0, gpu.globalValues);
+
+        const commandEncoder = gpu.device.createCommandEncoder();
+        const pass = commandEncoder.beginRenderPass({
+          colorAttachments: [{
+            view: gpu.context.getCurrentTexture().createView(),
+            clearValue: { r: 0.06, g: 0.09, b: 0.16, a: 1 },
+            loadOp: 'clear',
+            storeOp: 'store',
+          }],
+        });
+        pass.executeBundles([gpu.bundle]);
+        pass.end();
+        gpu.device.queue.submit([commandEncoder.finish()]);
+      });
+    }
+
+    function animate(timeMs) {
+      if (!gpu && !webgl) return;
+      renderFrame(timeMs);
+      if (!reducedMotion.matches) frameRequest = requestAnimationFrame(animate);
+    }
+
+    function requestRender() {
+      cancelAnimationFrame(frameRequest);
+      if (gpu || webgl) {
+        frameRequest = requestAnimationFrame(animate);
+      } else {
+        frameTimeEl.textContent = '';
+        drawFromCache(layerCache); // Static: no animation loop
+      }
+    }
+
+    function gpuStatus(action) {
+      showStatus(
+        `WebGPU: ${OBJECT_COUNT.toLocaleString()} draw calls replayed with one executeBundles() call per frame. ` +
+        `${action ? action + ' ' : ''}Bundle recorded ${recordCount} time${recordCount === 1 ? '' : 's'} ` +
+        `(last recording: ${gpu.lastRecordMs.toFixed(1)} ms).`
+      );
+    }
+
+    function fallbackStatus(action) {
+      showStatus(webgl
+        ? `Fallback: WebGL 2 (${fallbackReason}). ${OBJECT_COUNT.toLocaleString()} draw calls issued from ` +
+          `JavaScript every frame.${action ? ' ' + action : ''}`
+        : `Fallback: cached 2D canvas layer (${fallbackReason}). ` +
+          `${action ? action + ' ' : ''}The layer is redrawn only when the scene changes.`);
+    }
+
+    if (gpu) {
+      gpu.device.lost.then((info) => {
+        if (info.reason !== 'destroyed') useFallback('the GPU device was lost');
+      });
+      gpu.device.addEventListener('uncapturederror', () => useFallback('a GPU error occurred'));
+      gpuStatus('');
+    } else {
+      watchWebGLContext();
+      fallbackStatus();
+    }
+
+    updateBtn.addEventListener('click', () => {
+      randomizeLayout(objects);
+      if (gpu) {
+        gpu.writeObjectData(); // Same buffer, same bundle
+        gpuStatus('Updated the uniform buffer; the bundle was reused.');
+      } else if (webgl) {
+        fallbackStatus('The next frame draws the new positions and colors.');
+      } else {
+        layerCache = createLayerCache();
+        fallbackStatus('Redrew the cached layer.');
+      }
+      requestRender();
+    });
+
+    rerecordBtn.addEventListener('click', async () => {
+      randomizeShapes(objects);
+      if (gpu) {
+        try {
+          const { bundle, ms } = await gpu.recordBundle();
+          gpu.bundle = bundle;
+          gpu.lastRecordMs = ms;
+          recordCount++;
+          gpuStatus('The draw calls changed, so the bundle was recorded again.');
+        } catch {
+          useFallback('re-recording the bundle failed');
+          return;
+        }
+      } else if (webgl) {
+        webgl.sceneChanged();
+        fallbackStatus('WebGL 2 has no bundle to re-record: the next frame issues the new draw calls.');
+      } else {
+        layerCache = createLayerCache();
+        fallbackStatus('Redrew the cached layer.');
+      }
+      requestRender();
+    });
+
+    // Start or stop the animation when the reduced-motion preference changes.
+    reducedMotion.addEventListener('change', requestRender);
+
+    requestRender();
+  </script>
+</body>
+</html>
