@@ -13,6 +13,45 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
+function extractInlineStyles(html: string): string {
+  const styles = Array.from(
+    html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi),
+    (m) => m[1],
+  );
+  return styles.length > 0 ? styles.join('\n') : html;
+}
+
+function stripCssComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+function extractFallbackSupportsBlocks(html: string): string[] {
+  const cleaned = stripCssComments(extractInlineStyles(html));
+  const blocks: string[] = [];
+  for (const match of cleaned.matchAll(/@supports(?![-\w])/gi)) {
+    const condStart = (match.index ?? 0) + match[0].length;
+    const openBrace = cleaned.indexOf('{', condStart);
+    if (openBrace === -1) break;
+    const semiBeforeBrace = cleaned.indexOf(';', condStart);
+    if (semiBeforeBrace !== -1 && semiBeforeBrace < openBrace) continue;
+
+    const condition = cleaned.slice(condStart, openBrace).trim();
+    if (!/^(?:\(\s*)?not\s*\(\s*scrollbar-color\s*:/i.test(condition)) continue;
+
+    let depth = 1;
+    let i = openBrace + 1;
+    while (i < cleaned.length && depth > 0) {
+      if (cleaned[i] === '{') depth++;
+      else if (cleaned[i] === '}') depth--;
+      i++;
+    }
+    if (depth === 0) {
+      blocks.push(cleaned.slice(openBrace + 1, i - 1));
+    }
+  }
+  return blocks;
+}
+
 test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
   // Static assertions
   test('Standard scrollbar-width property is used in CSS', async () => {
@@ -28,15 +67,19 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
   test('Legacy ::-webkit-scrollbar is wrapped in @supports not (scrollbar-color: auto)', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     // Check if @supports not (scrollbar-color: auto) exists and contains ::-webkit-scrollbar
-    const supportsMatch = html.match(/@supports\s+not\s*\(\s*scrollbar-color\s*:\s*auto\s*\)\s*{[^}]*::-webkit-scrollbar/s);
-    expect(supportsMatch).not.toBeNull();
+    const supportsBlocks = extractFallbackSupportsBlocks(html);
+    expect(supportsBlocks.some((block) => /::-webkit-scrollbar/i.test(block))).toBe(true);
   });
 
   test('Legacy ::-webkit-scrollbar has width or height defined for visibility', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     // We check for width or height inside the @supports block to ensure it's part of the correctly implemented fallback
-    const legacySizingMatch = html.match(/@supports\s+not\s*\(\s*scrollbar-color\s*:\s*auto\s*\)\s*{[^}]*::-webkit-scrollbar\s*{[^}]*(width|height)\s*:/s);
-    expect(legacySizingMatch).not.toBeNull();
+    const supportsBlocks = extractFallbackSupportsBlocks(html);
+    expect(
+      supportsBlocks.some((block) =>
+        /::-webkit-scrollbar(?![-\w])[^{]*\{[^}]*(?<![-\w])(?:width|height)\s*:/is.test(block),
+      ),
+    ).toBe(true);
   });
 
   // Setup browser testing

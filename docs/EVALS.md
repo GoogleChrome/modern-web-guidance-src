@@ -4,7 +4,7 @@ This document provides comprehensive instructions and configuration details for 
 
 ## Overview
 
-The evaluation harness measures how effectively AI coding agents adopt modern web APIs. It runs automated benchmarks across various agent runners and validates their implementation against outcome-based Playwright assertions.
+The evaluation harness measures how effectively AI coding agents adopt modern web APIs. It runs automated benchmarks across various agent harnesses and validates their implementation against outcome-based Playwright checks.
 
 Supported agents are defined in the `Agents` object within [`src/harness/config.ts`](../src/harness/config.ts).
 
@@ -100,7 +100,7 @@ ANTIGRAVITY_MODEL=gemini-3.8-flash-medium
 
 ### Reasoning Effort Recording & Conflict Rule
 
-Each run (`trajectory_summary.json`) and suite (`evals.json`) records `reasoningEffort: { level?: string, source: 'observed' | 'configured' | 'model-id' | 'agent-default' }` alongside `model` (precedence: `observed > configured > model-id > agent-default`):
+Each trial (`trajectory_summary.json`) and job (`evals.json`) records `reasoningEffort: { level?: string, source: 'observed' | 'configured' | 'model-id' | 'agent-default' }` alongside `model` (precedence: `observed > configured > model-id > agent-default`):
 
 - **Antigravity CLI (`ANTIGRAVITY_EFFORT`)**, **Jetski CLI (`JETSKI_EFFORT`)**, and **Claude Code (`CLAUDE_EFFORT`)** pass `--effort <level>`.
 - **Codex CLI (`CODEX_EFFORT`)** passes `-c model_reasoning_effort=<level>`.

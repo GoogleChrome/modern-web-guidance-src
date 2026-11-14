@@ -11,18 +11,22 @@ Everything lives under one directory on the same origin as the dashboard
 
 ```
 public-evals/
-  suites.gen.json                                  index of every published suite
+  suites.gen.json                                  index of every published job
   build-state.json                                 builder bookkeeping; front-ends ignore it
   <suiteId>/
-    evals.json                                     one suite's results
-    <run>/<guide>/<task>/<guided|unguided>/
-      agent.patch                                  code diff for that run (optional)
-      modern-web.log                               guides the agent requested (optional)
+    evals.json                                     one job's results
+    artifacts.json                                 every trial's agent.patch and modern-web.log
 ```
 
 - `<suiteId>` is the raw suite's folder name, e.g. `nightly-2026-10-20_20-43-48-codex_cli`.
-- `<run>` is the 1-based run number; `<guide>`, `<task>`, and the mode come from the
-  result key (see below). Example: `1/security/daily-grind/guided/agent.patch`.
+- `artifacts.json` is one JSON object per suite mapping
+  `<run>/<guide>/<task>/<guided|unguided>/<file>` to that file's text. `<run>` is
+  the 1-based run number; `<guide>`, `<task>`, and the mode come from the result
+  key (see below). Example key: `1/security/daily-grind/guided/agent.patch`.
+  It is one file rather than one per artifact because a suite has about 600
+  artifacts, and the number of published files is the suspected cause of slow
+  Pages deploys. The text is JSON-escaped, so parse the file before searching
+  it for a string.
 - `suites.gen.json` is the only index. Do not list the directory.
 - `build-state.json` lets the next build skip suites whose inputs have not
   changed. It holds suite ids, bucket generations, excluded guide names,
@@ -33,26 +37,28 @@ public-evals/
   was rejected.
 - Fetch with plain relative URLs: `fetch('public-evals/suites.gen.json')`. Add a
   10-minute bucketed cache-buster (`?t=<Math.floor(Date.now() / 600_000)>`) to
-  every `public-evals/` fetch; GitHub Pages caches for ~10 min, and bucketing
-  keeps repeat fetches within the same session cacheable.
+  every `public-evals/` fetch except `artifacts.json`; GitHub Pages caches for
+  ~10 min, and bucketing keeps repeat fetches within the same session cacheable.
+  Fetch `artifacts.json` without one: it is the largest file, and a changing URL
+  would download it again where a plain one is revalidated.
 
 ## `suites.gen.json`
 
-An array, sorted by `testId`, one entry per published suite. Produced by
+An array, sorted by `testId`, one entry per published job. Produced by
 `src/dashboard/summary-extractor.js#extractSuiteSummary`, so it is the same
 shape the private bucket's manifest has. Fields the landing page uses:
 
 | field | type | notes |
 |---|---|---|
 | `testId` | string | suite id; also the folder name |
-| `timestamp` | ISO string | when the suite ran |
+| `timestamp` | ISO string | when the job ran |
 | `agent` | string | `claude_code`, `codex_cli`, `antigravity_cli` only |
 | `model` | string | only values on the allowlist's `releasedModels` |
 | `reasoningEffort` | object | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; omitted on legacy suites without it |
 | `serving` | string | always `unknown` publicly; the field is not published in `evals.json` |
 | `taskCount`, `maxRuns` | number | |
-| `guidedStats`, `unguidedStats` | `{ passed, total }` | assertion counts |
-| `earlyFailureRate` | number | percent of runs that failed before grading |
+| `guidedStats`, `unguidedStats` | `{ passed, total }` | check counts |
+| `earlyFailureRate` | number | percent of trials with infra errors before grading |
 | `guides` | `Record<guide, GuideSummary>` | per-guide pass counts, rates, uplift; `tasks` sub-map when a guide has several |
 | `chartData` | object | precomputed series for the landing charts |
 
@@ -61,7 +67,7 @@ shape the private bucket's manifest has. Fields the landing page uses:
 Built fresh from an allowlist of fields; anything not listed below is never
 present. Types match `src/harness/lib/metrics.ts`.
 
-**Suite level**
+**Job level**
 
 | field | notes |
 |---|---|
@@ -84,16 +90,16 @@ the guide is always the middle part.
 | `guidesUsed`, `retrievedGuides`, `fileReadGuides`, `guidanceToolsUsed`, `expectedToolPrefixes` | guide/tool usage lists |
 | `runtime` | `{ agentRuntime?, graderRuntime? }` milliseconds |
 | `tokenUsage` | `{ total, cached }` |
-| `files` | which of `agent.patch`, `modern-web.log` exist for this run. **Use this; do not probe.** |
+| `files` | which of `agent.patch`, `modern-web.log` exist for this run in `artifacts.json`. **Use this; do not probe.** |
 | `results` | `PublicCheck[]` |
 
-**Per assertion (`PublicCheck`)**
+**Per check (`PublicCheck`)**
 
 | field | notes |
 |---|---|
-| `id`, `passed`, `message` | `message` is the assertion's title |
-| `isEarlyFailure`, `failureReason` | present when the run died before grading |
-| `error` | failing assertion's error text (failed checks only) |
+| `id`, `passed`, `message` | `message` is the check's title |
+| `isEarlyFailure`, `failureReason` | present when the trial died before grading |
+| `error` | failing check's error text (failed checks only) |
 | `errorLocation` | `guides/<discipline>/<guide>/targets/<task>/grader.ts:<line>` (or `guides/<discipline>/<guide>/grader.ts:<line>`), repo-relative |
 | `pageSnapshot` | accessibility-tree text of the page at failure; can be several KB, render collapsed |
 | `browserErrors` | console errors and failed requests captured during the check |
@@ -102,6 +108,8 @@ All strings have been path-scrubbed: anything that was under a home directory
 or the repo checkout is now repo-relative or `~/...`.
 
 ## `agent.patch` and `modern-web.log`
+
+Both are values in the suite's `artifacts.json`, not files of their own.
 
 - `agent.patch` is a `diff --git` unified patch. For runs that stored a built
   app instead of a patch, the builder generated a single-file diff of the
@@ -142,7 +150,8 @@ So nothing needs UI for it:
   is not churned in and out.
 - Builds are incremental: a suite is rebuilt only when its raw `evals.json`
   changes, its override changes, its own model is released or un-released, the
-  builder's field lists or scrub patterns change, or
+  builder's field lists or scrub patterns change, the builder's
+  `OUTPUT_REVISION` is bumped (as it is for a change of output layout), or
   `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. Releasing an additional
   model only builds the suites that were waiting on it. Changes to summary
   extraction or accessibility classification (`summary-extractor.js`,
@@ -171,9 +180,9 @@ pnpm public:build --all --source /tmp/store --allowlist /tmp/allowlist.json --ou
 ls /tmp/pe/public-evals
 ```
 
-The fixture store above has only `evals.json`, so the build writes one file per
-suite. Add `<run>/<guide>/<task>/<mode>/agent.patch` and `modern-web.log` under
-the suite folder to see per-run artifacts come through. `--suite <id>` builds a
+The fixture store above has only `evals.json`, so the build writes `evals.json`
+and an empty `artifacts.json` per suite. Add `<run>/<guide>/<task>/<mode>/agent.patch`
+and `modern-web.log` under the suite folder to see per-run artifacts come through. `--suite <id>` builds a
 single suite (skipping retention and state updates), provided the allowlist
 selects it.
 The dev server (`pnpm dashboard`) serves `out/public-evals/` at `/public-evals/`,

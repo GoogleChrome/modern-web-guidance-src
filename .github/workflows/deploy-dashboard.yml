@@ -8,12 +8,18 @@ on:
       - 'guides/**'
       - '.github/workflows/deploy-dashboard.yml'
 
-permissions:
-  contents: write
+concurrency:
+  group: deploy-dashboard
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   deploy:
+    name: Build and Push Dashboard
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,3 +46,12 @@ jobs:
           pnpm run deploy:dashboard
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: deploy
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-pages.yml

@@ -107,6 +107,15 @@ describe('file-filter vendored and hashed asset exclusions', () => {
 
     assert.equal(isExcludedCorpusNonAppPath('src/styles/aspect-ratio.css'), false);
     assert.equal(shouldScanFile('src/styles/aspect-ratio.css'), true);
+
+    assert.equal(isExcludedCorpusNonAppPath('src/styles/theme.scss'), false);
+    assert.equal(shouldScanFile('src/styles/theme.scss'), true);
+    assert.equal(shouldScanFile('src/styles/theme.less'), true);
+
+    assert.equal(shouldScanFile('src/styles/theme.min.scss'), false);
+    assert.equal(shouldScanFile('src/styles/theme.bundle.scss'), false);
+    assert.equal(shouldScanFile('src/styles/theme.min.less'), false);
+    assert.equal(shouldScanFile('src/styles/theme.bundle.less'), false);
   });
 
   it('excludes Coolite Datejs and 2-part versioned license headers (Card 004ac0a9d6f8)', () => {
@@ -210,12 +219,43 @@ describe('file-filter vendored and hashed asset exclusions', () => {
       'specs',
       'fixtures',
       '__fixtures__',
+      'testing',
+      'e2e',
     ];
     for (const seg of expectedSegments) {
       await t.test(`segment: ${seg}`, () => {
         assert.ok(DOCS_AND_TESTS_DIR_SEGMENTS.has(seg));
         assert.equal(isDocsOrTestsPath(`${seg}/file.ts`), true);
         assert.equal(isDocsOrTestsPath(`sub/${seg}/file.js`), true);
+      });
+    }
+
+    // Check *_test_runner dir segments and testrunner / tests filenames
+    const testRunnerAndTestsFiles = [
+      'front_end/legacy_test_runner/test_runner/TestRunner.ts',
+      'front_end/legacy_test_runner/helper.ts',
+      'front_end/legacy_test_runner/bindings_test_runner/AutomappingTestRunner.js',
+      'front_end/legacy_test_runner/console_test_runner/console_test_runner.js',
+      'front_end/integration_test_runner.html',
+      'front_end/Tests.js',
+      'extensions/cxx_debugging/e2e/OptionsPageTests.ts',
+      'src/FooTestRunner.ts',
+      'src/foo_test_runner.ts',
+      'TestRunner.js',
+      'BindingsTestRunner.js',
+      'console_test_runner.js',
+      'run-tests.js',
+      'setupTests.js',
+      'keeper.tests.ts',
+      'tests.js',
+      'Scripts/testrunner.ts',
+      'src/DOMTests.ts',
+    ];
+    for (const f of testRunnerAndTestsFiles) {
+      await t.test(`test-runner/tests path: ${f}`, () => {
+        assert.equal(isDocsOrTestsPath(f), true);
+        assert.equal(shouldScanFile(f), false);
+        assert.equal(shouldScanFile(f, undefined, { includeDocsAndTests: true }), true);
       });
     }
 
@@ -248,6 +288,14 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     assert.equal(isDocsOrTestsPath('src/testing.js'), false);
     assert.equal(isDocsOrTestsPath('special.js'), false);
     assert.equal(isDocsOrTestsPath('contest.js'), false);
+    assert.equal(isDocsOrTestsPath('contests.js'), false);
+    assert.equal(isDocsOrTestsPath('src/contests.js'), false);
+    assert.equal(isDocsOrTestsPath('src/protests.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/retests.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/latestrunner.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/fastestrunner.js'), false);
+    assert.equal(isDocsOrTestsPath('src/contestRunner.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/CONTESTS.JS'), false);
 
     // Minified files under docs/test are never scannable even with includeDocsAndTests: true
     assert.equal(
@@ -552,6 +600,41 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       const findings = await scanRepoFiles(subAppDir, [scanMeRule]);
 
       assert.deepEqual(findings.map((f) => f.file), ['app.js']);
+    });
+  });
+
+  it('skips vendored third_party candidate files from disk reads and maxFiles budget when no dependency rules are active', async () => {
+    await withTempDir('vendored-budget-', async (tempDir) => {
+      await mkdir(join(tempDir, 'front_end', 'third_party', 'lib'), { recursive: true });
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+
+      await writeFile(join(tempDir, 'front_end', 'third_party', 'lib', 'a.js'), 'scanMe();');
+      await writeFile(join(tempDir, 'front_end', 'third_party', 'lib', 'b.js'), 'scanMe();');
+      await writeFile(join(tempDir, 'front_end', 'third_party', 'lib', 'c.js'), 'scanMe();');
+      await writeFile(join(tempDir, 'src', 'app.js'), 'scanMe();');
+
+      // With maxFiles: 1 and no dependency rules, third_party files must not consume the budget.
+      const jsOnlyFindings = await scanRepoFiles(tempDir, [scanMeRule], { maxFiles: 1 });
+      assert.deepEqual(jsOnlyFindings.map((f) => f.file), ['src/app.js']);
+
+      // With a dependency rule active, checked-in vendored files remain candidates.
+      await writeFile(
+        join(tempDir, 'front_end', 'third_party', 'lib', 'jquery.fittext.js'),
+        '/*! FitText */\n',
+      );
+      const depRule: AnalyzerRule = {
+        id: 'test-fittext',
+        guideId: 'test-guide',
+        guideHash: '0123456789ab',
+        summary: 'Flags vendored fittext',
+        verifierRubric: { keepWhen: ['vendored'], dropWhen: [] },
+        matcher: { kind: 'dependency', packages: ['jquery-fittext', 'fittext'] },
+      };
+      const depFindings = await scanRepoFiles(tempDir, [depRule], { maxFiles: 10 });
+      assert.deepEqual(
+        depFindings.map((f) => f.file),
+        ['front_end/third_party/lib/jquery.fittext.js'],
+      );
     });
   });
 });

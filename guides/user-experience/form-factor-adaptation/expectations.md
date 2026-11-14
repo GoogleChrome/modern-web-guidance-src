@@ -9,3 +9,6 @@
 - At a viewport width of 320 CSS pixels, the document doesn't scroll horizontally.
 - At a viewport width of 320 CSS pixels, no visible heading, paragraph, button, or link has content that overflows its own box horizontally or vertically, ignoring any absolutely positioned pseudo-element that extends a control's hit area.
 - No visible button, link, or form control extends outside an ancestor whose computed `overflow` is `hidden` or `clip`.
+- If the page has a fixed bottom bar, every focusable element outside the bar is at least partly visible above the bar when it receives focus from the Tab key.
+- At a viewport width of 320 CSS pixels, no visible heading, paragraph, button, link, or form control outside a horizontal scroll container extends past the left or right edge of the viewport.
+- No two visible buttons or links have overlapping hit areas, counting any absolutely positioned pseudo-element that extends them.

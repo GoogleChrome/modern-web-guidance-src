@@ -16,7 +16,7 @@ const ROOT_DIR = rootDir; // modern-web-guidance-src/
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 
 // This controls what is published to https://github.com/GoogleChrome/modern-web-guidance.
-const GH_PUBLISH_PATTERNS = [
+export const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
@@ -28,6 +28,38 @@ const GH_PUBLISH_PATTERNS = [
   '!THIRD_PARTY_NOTICES',
   '!skills/modern-web-guidance/package.json',
 ];
+
+// Stripped allowlist for the `claude` branch tracked by claude.ai/directory/manage.
+// Unverified organizations are rejected if the branch contains non-allowed file types
+// (.toml, .svg) or non-Claude manifests/keys (package.json, .codex-plugin, etc.).
+export const GH_CLAUDE_PUBLISH_PATTERNS = [
+  '.claude-plugin/plugin.json',
+  'skills/**/*.md',
+  '!**/.cache/**',
+  '!**/tfjs-model-minilm/**',
+  '!**/static-model/**',
+  '!**/gen/**',
+  'README.md',
+  'CONTRIBUTING.md',
+  'LICENSE',
+  '.gitignore',
+  'assets/logo.png',
+];
+
+/**
+ * Mirrors globby's positive/negative pattern matching for dry-run previews and tests.
+ */
+export function filterPublishFiles(files: string[], patterns: string[]): string[] {
+  const positivePatterns = patterns.filter((p) => !p.startsWith('!'));
+  const negativePatterns = patterns.filter((p) => p.startsWith('!')).map((p) => p.slice(1));
+
+  return files
+    .filter((file) =>
+      positivePatterns.some((pattern) => minimatch(file, pattern, { dot: true })) &&
+      negativePatterns.every((pattern) => !minimatch(file, pattern, { dot: true })),
+    )
+    .sort((a, b) => a.localeCompare(b));
+}
 
 const isDryRun = process.argv.includes('--dry-run');
 
@@ -127,10 +159,11 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
 
 async function publishBranchToDistributionRepo(
   publishCliDir: string,
-  branch: 'main' | 'next',
+  branch: 'main' | 'next' | 'claude',
   message: string,
-  tag?: string,
+  opts: { tag?: string; src?: string[] } = {},
 ) {
+  const { tag, src = GH_PUBLISH_PATTERNS } = opts;
   // gh-pages keeps one clone per repo URL (it has no per-branch clone option) and that clone
   // is single-branch, so a second publish to another branch in the same run pushes a commit
   // based on the wrong branch and gets rejected. Start every publish from a fresh clone.
@@ -142,9 +175,10 @@ async function publishBranchToDistributionRepo(
         branch,
         repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
         dotfiles: true,
+        remove: '{**/*,**/.*/**/*,**/.[!.]*}',
         message,
         ...(tag ? { tag } : {}),
-        src: GH_PUBLISH_PATTERNS,
+        src,
       },
       (err) => {
         if (err) {
@@ -210,7 +244,15 @@ async function publishToDistributionRepo(
     publishCliDir,
     'main',
     `Release v${newVersion}`,
-    `v${newVersion}`,
+    { tag: `v${newVersion}` },
+  );
+
+  console.log(`\nPublishing stripped Claude plugin to GoogleChrome/modern-web-guidance (claude branch)...`);
+  await publishBranchToDistributionRepo(
+    publishCliDir,
+    'claude',
+    `Release v${newVersion} (claude)`,
+    { src: GH_CLAUDE_PUBLISH_PATTERNS },
   );
 
   console.log(`Syncing GoogleChrome/modern-web-guidance (next branch) with v${newVersion}...`);
@@ -340,20 +382,14 @@ async function main() {
     const useCasesCount = readyGuides.length;
 
     const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
-    const filteredFiles = files
+    const allRelativeFiles = files
       .filter(f => !f.parentPath.includes('node_modules') && f.isFile())
-      .map(f => path.relative(publishCliDir, path.join(f.parentPath, f.name)))
-      .filter(f => {
-        return GH_PUBLISH_PATTERNS.every(pattern => {
-          if (pattern.startsWith('!')) {
-            return !minimatch(f, pattern.slice(1), { dot: true });
-          }
-          return minimatch(f, pattern, { dot: true });
-        });
-      })
-      .sort((a,b) => a.localeCompare(b));
+      .map(f => path.relative(publishCliDir, path.join(f.parentPath, f.name)));
+    const filteredFiles = filterPublishFiles(allRelativeFiles, GH_PUBLISH_PATTERNS);
+    const claudeFiles = filterPublishFiles(allRelativeFiles, GH_CLAUDE_PUBLISH_PATTERNS);
 
-    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${filteredFiles.join('\n - ')}`);
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push to main:\n - ${filteredFiles.join('\n - ')}`);
+    console.log(`\n[Dry Run] Would push to claude (${claudeFiles.length} files):\n - ${claudeFiles.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
     console.log(`\n[Dry Run] Skills: ${skillsCount} (${skillNames.join(', ')})`);
     console.log(`\n[Dry Run] Features: ${featuresCount}, Use cases: ${useCasesCount}`);

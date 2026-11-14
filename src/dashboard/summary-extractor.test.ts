@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractSuiteSummary } from './summary-extractor.js';
+import { extractJobSummary } from './summary-extractor.js';
 import {
     sanitizeReasoningEffort,
     normalizeReasoningEffort,
@@ -12,9 +12,9 @@ import {
 } from './utils.js';
 
 /**
- * Builds a run whose grader results contain `passed` passes out of `total` checks.
+ * Builds a trial whose grader results contain `passed` passes out of `total` checks.
  */
-function mockRun(passed: number, total: number) {
+function mockTrial(passed: number, total: number) {
     return {
         runNumber: 1,
         results: Array.from({ length: total }, (_, i) => ({
@@ -25,24 +25,24 @@ function mockRun(passed: number, total: number) {
     };
 }
 
-test('extractSuiteSummary breaks multi-target guides down per task', () => {
-    const summary = extractSuiteSummary('run-1', {
+test('extractJobSummary breaks multi-base-app guides down per task', () => {
+    const summary = extractJobSummary('job-1', {
         results: {
-            'daily-grind - translator - guided': [mockRun(4, 5)],
-            'daily-grind - translator - unguided': [mockRun(1, 5)],
-            'devtools-times - translator - guided': [mockRun(2, 5)],
-            'devtools-times - translator - unguided': [mockRun(0, 5)],
+            'daily-grind - translator - guided': [mockTrial(4, 5)],
+            'daily-grind - translator - unguided': [mockTrial(1, 5)],
+            'devtools-times - translator - guided': [mockTrial(2, 5)],
+            'devtools-times - translator - unguided': [mockTrial(0, 5)],
         },
     });
 
     assert.ok(summary);
     const translator = summary.guides.translator;
 
-    // Guide-level totals stay as the roll-up across every target.
+    // Guide-level totals stay as the roll-up across every base app.
     assert.strictEqual(translator.guidedRate, 60);
     assert.strictEqual(translator.unguidedRate, 10);
 
-    // Each target is also reported on its own so trend views can isolate one.
+    // Each base app is also reported on its own so trend views can isolate one.
     assert.deepStrictEqual(Object.keys(translator.tasks ?? {}).sort(), ['daily-grind', 'devtools-times']);
     assert.strictEqual(translator.tasks?.['daily-grind'].guidedRate, 80);
     assert.strictEqual(translator.tasks?.['daily-grind'].unguidedRate, 20);
@@ -50,9 +50,9 @@ test('extractSuiteSummary breaks multi-target guides down per task', () => {
     assert.strictEqual(translator.tasks?.['devtools-times'].unguidedRate, 0);
 });
 
-test('extractSuiteSummary stores only a name for single-task guides', () => {
-    const summary = extractSuiteSummary('run-2', {
-        results: { 'task - preload-prerender - guided': [mockRun(3, 4)], 'task - preload-prerender - unguided': [mockRun(1, 4)], },
+test('extractJobSummary stores only a name for single-task guides', () => {
+    const summary = extractJobSummary('job-2', {
+        results: { 'task - preload-prerender - guided': [mockTrial(3, 4)], 'task - preload-prerender - unguided': [mockTrial(1, 4)], },
     });
 
     assert.ok(summary);
@@ -64,8 +64,8 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
     assert.strictEqual(guide.guidedRate, 75);
 });
 
-test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and exact unrounded uplift', () => {
-    const summary = extractSuiteSummary('run-3', {
+test('extractJobSummary computes a11yStats, agent-only efficiencyStats, and rounded-rate-consistent uplift', () => {
+    const summary = extractJobSummary('job-3', {
         results: {
             'daily-grind - scrollspy - unguided': [{
                 discipline: 'ui-behaviors',
@@ -99,7 +99,7 @@ test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and ex
     const scrollspy = summary.guides.scrollspy;
     assert.strictEqual(scrollspy.unguidedRate, 33);
     assert.strictEqual(scrollspy.guidedRate, 67);
-    assert.strictEqual(scrollspy.uplift, 33);
+    assert.strictEqual(scrollspy.uplift, 34);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 120000);
     assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
     assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
@@ -107,14 +107,14 @@ test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and ex
     assert.strictEqual(summary.efficiencyStats.tokens.guidedUncachedMedian, 40000);
     assert.strictEqual(summary.efficiencyStats.tokens.uncachedMedianDeltaPct, -20);
 });
-test('extractSuiteSummary excludes infra-errored task pairs from guide and suite rollups while counting agent-broken apps as 0/N', () => {
+test('extractJobSummary excludes infra-errored task pairs from guide and job rollups while counting agent-broken apps as 0/N', () => {
     // daily-grind: guided passed 5/5, unguided broke the app build (0/5 agent failure, not isEarlyFailure)
-    // devtools-times: guided had an infra error (isEarlyFailure: true -> 0 valid runs), unguided passed 1/5
-    // Paired task validity must exclude devtools-times from the translator rollup and suite rollup!
-    const summary = extractSuiteSummary('run-paired-validity', {
+    // devtools-times: guided had an infra error (isEarlyFailure: true -> 0 valid trials), unguided passed 1/5
+    // Paired task validity must exclude devtools-times from the translator rollup and job rollup!
+    const summary = extractJobSummary('job-paired-validity', {
         results: {
-            'daily-grind - translator - guided': [mockRun(5, 5)],
-            'daily-grind - translator - unguided': [mockRun(0, 5)],
+            'daily-grind - translator - guided': [mockTrial(5, 5)],
+            'daily-grind - translator - unguided': [mockTrial(0, 5)],
             'devtools-times - translator - guided': [
                 {
                     runNumber: 1,
@@ -123,7 +123,7 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
                     ]
                 }
             ],
-            'devtools-times - translator - unguided': [mockRun(1, 5)],
+            'devtools-times - translator - unguided': [mockTrial(1, 5)],
         },
     });
 
@@ -143,13 +143,13 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.strictEqual(translator.tasks?.['devtools-times'].guidedTotal, 0);
     assert.strictEqual(translator.tasks?.['devtools-times'].unguidedTotal, 0);
 
-    // Suite-level totals only include valid task pairs (daily-grind)
+    // Job-level totals only include valid task pairs (daily-grind)
     assert.strictEqual(summary.guidedStats.total, 5);
     assert.strictEqual(summary.guidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 5);
     assert.strictEqual(summary.unguidedStats.passed, 0);
 
-    // 1 out of 4 total runs was an early failure -> 25% (1/2 guided = 50%, 0/2 unguided = 0%)
+    // 1 out of 4 total trials was an infra error -> 25% (1/2 guided = 50%, 0/2 unguided = 0%)
     assert.strictEqual(summary.taskCount, 2);
     assert.strictEqual(summary.pairedTaskCount, 1);
     assert.strictEqual(summary.earlyFailureRate, 25);
@@ -157,7 +157,7 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.strictEqual(summary.guidedErrorRate, 50);
     assert.strictEqual(summary.unguidedErrorRate, 0);
 
-    // Chart data only includes the eligible scenario (daily-grind)
+    // Chart data only includes the eligible task (daily-grind)
     assert.deepStrictEqual(summary.chartData.labels, ['daily-grind (translator)']);
     assert.deepStrictEqual(summary.chartData.guided, [100]);
     assert.deepStrictEqual(summary.chartData.unguided, [0]);
@@ -165,43 +165,43 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.deepStrictEqual(summary.chartData.unguided_err_rate, [0]);
 });
 
-test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses expected guide', () => {
-    const summary = extractSuiteSummary('run-leak', {
+test('extractJobSummary computes unguidedLeakRate when unguided trial accesses expected guide', () => {
+    const summary = extractJobSummary('job-leak', {
         results: {
-            'daily-grind - translator - guided': [mockRun(5, 5)],
-            'daily-grind - translator - unguided': [{ ...mockRun(5, 5), guidesUsed: ['translator'] }],
-            'devtools-times - translator - guided': [mockRun(5, 5)],
-            'devtools-times - translator - unguided': [mockRun(0, 5)],
+            'daily-grind - translator - guided': [mockTrial(5, 5)],
+            'daily-grind - translator - unguided': [{ ...mockTrial(5, 5), guidesUsed: ['translator'] }],
+            'devtools-times - translator - guided': [mockTrial(5, 5)],
+            'devtools-times - translator - unguided': [mockTrial(0, 5)],
         },
     });
 
     assert.ok(summary);
-    // 1 out of 2 unguided runs leaked -> 50%, without altering pass rates
+    // 1 out of 2 unguided trials leaked -> 50%, without altering pass rates
     assert.strictEqual(summary.unguidedLeakRate, 50);
     assert.strictEqual(summary.unguidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
 });
-test('extractSuiteSummary counts distinct task-guide scenarios and excludes early failures from efficiency medians while counting timeouts', () => {
-    const summary = extractSuiteSummary('run-efficiency-hygiene', {
+test('extractJobSummary counts distinct base-app tasks and excludes infra errors from efficiency medians while counting timeouts', () => {
+    const summary = extractJobSummary('job-efficiency-hygiene', {
         results: {
             'task - preload-prerender - guided': [{
-                ...mockRun(4, 4),
+                ...mockTrial(4, 4),
                 runtime: { agentRuntime: 60000, graderRuntime: 5000 },
                 tokenUsage: { total: 100000, cached: 70000 },
             }],
             'task - preload-prerender - unguided': [{
-                ...mockRun(2, 4),
+                ...mockTrial(2, 4),
                 runtime: { agentRuntime: 90000, graderRuntime: 5000 },
                 tokenUsage: { total: 120000, cached: 70000 },
             }],
             'task - responsive-table - guided': [{
-                ...mockRun(4, 4),
+                ...mockTrial(4, 4),
                 runtime: { agentRuntime: 80000, graderRuntime: 5000 },
                 tokenUsage: { total: 110000, cached: 70000 },
             }],
             'task - responsive-table - unguided': [
                 {
-                    ...mockRun(1, 4),
+                    ...mockTrial(1, 4),
                     runtime: { agentRuntime: 110000, graderRuntime: 5000 },
                     tokenUsage: { total: 130000, cached: 70000 },
                 },
@@ -215,38 +215,38 @@ test('extractSuiteSummary counts distinct task-guide scenarios and excludes earl
         },
     } as never);
     assert.ok(summary);
-    // Without summary.taskCount, older evals.json files count distinct task names (both scenarios share `task`).
+    // Without summary.taskCount, older evals.json files count distinct base-app names (both tasks share `task`).
     assert.strictEqual(summary.taskCount, 1);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 100000);
     assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 55000);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);
     assert.strictEqual(summary.efficiencyStats.runtime.guidedTimeouts, 0);
 });
-test('extractSuiteSummary emits Spotlight slices only for featured guides, aligned by check id', () => {
-    const run = (checks: Array<[string, boolean]>, extra: Record<string, unknown> = {}) => ({
+test('extractJobSummary emits Spotlight slices only for featured guides, aligned by check id', () => {
+    const trial = (checks: Array<[string, boolean]>, extra: Record<string, unknown> = {}) => ({
         runNumber: 1,
-        prompt: 'add a search box',
-        discipline: 'ui-behaviors',
-        guidesUsed: ['highlight-text-ranges'],
+        prompt: 'add an action menu',
+        discipline: 'ui-components',
+        guidesUsed: ['menu'],
         runtime: { agentRuntime: 60000, graderRuntime: 5000 },
         tokenUsage: { total: 100000, cached: 60000 },
         results: checks.map(([id, passed]) => ({ id, passed, message: `check ${id}` })),
         ...extra,
     });
-    const summary = extractSuiteSummary('nightly-2026-10-28_01-55-42-claude_code', {
+    const summary = extractJobSummary('nightly-2026-10-28_01-55-42-claude_code', {
         results: {
-            'task - highlight-text-ranges - guided': [run([['a', true], ['b', true], ['c', false]])],
+            'task - menu - guided': [trial([['a', true], ['b', true], ['c', false]])],
             // Unguided lists checks in a different order; slices must align by id, not position.
-            'task - highlight-text-ranges - unguided': [run([['c', false], ['a', true], ['b', false]], { guidesUsed: [] })],
-            'task - not-featured - guided': [run([['x', true]])],
-            'task - not-featured - unguided': [run([['x', false]])],
+            'task - menu - unguided': [trial([['c', false], ['a', true], ['b', false]], { guidesUsed: [] })],
+            'task - not-featured - guided': [trial([['x', true]])],
+            'task - not-featured - unguided': [trial([['x', false]])],
         },
     } as never);
     assert.ok(summary);
-    assert.deepStrictEqual(Object.keys(summary.showcase), ['highlight-text-ranges']);
-    const slice = summary.showcase['highlight-text-ranges'];
-    assert.strictEqual(slice.prompt, 'add a search box');
-    assert.strictEqual(slice.discipline, 'ui-behaviors');
+    assert.deepStrictEqual(Object.keys(summary.showcase), ['menu']);
+    const slice = summary.showcase['menu'];
+    assert.strictEqual(slice.prompt, 'add an action menu');
+    assert.strictEqual(slice.discipline, 'ui-components');
     assert.deepStrictEqual([slice.unguided.passed, slice.unguided.total, slice.guided.passed, slice.guided.total], [1, 3, 2, 3]);
     assert.strictEqual(slice.guided.uncachedTokens, 40000);
     assert.strictEqual(slice.guided.earlyFailure, false);
@@ -257,38 +257,38 @@ test('extractSuiteSummary emits Spotlight slices only for featured guides, align
     ]);
 });
 
-test('extractSuiteSummary preserves valid reasoningEffort and omits absent or malformed values', () => {
+test('extractJobSummary preserves valid reasoningEffort and omits absent or malformed values', () => {
     const baseResults = {
-        'task - preload-prerender - guided': [mockRun(4, 4)],
-        'task - preload-prerender - unguided': [mockRun(2, 4)],
+        'task - preload-prerender - guided': [mockTrial(4, 4)],
+        'task - preload-prerender - unguided': [mockTrial(2, 4)],
     };
 
-    const legacy = extractSuiteSummary('legacy-suite', { results: baseResults });
+    const legacy = extractJobSummary('legacy-job', { results: baseResults });
     assert.ok(legacy);
     assert.strictEqual('reasoningEffort' in legacy, false);
 
-    const observed = extractSuiteSummary('observed-suite', {
+    const observed = extractJobSummary('observed-job', {
         results: baseResults,
         reasoningEffort: { level: 'high', source: 'observed' },
     });
     assert.ok(observed);
     assert.deepStrictEqual(observed.reasoningEffort, { level: 'high', source: 'observed' });
 
-    const configured = extractSuiteSummary('configured-suite', {
+    const configured = extractJobSummary('configured-job', {
         results: baseResults,
         reasoningEffort: { level: 'medium', source: 'configured' },
     });
     assert.ok(configured);
     assert.deepStrictEqual(configured.reasoningEffort, { level: 'medium', source: 'configured' });
 
-    const modelId = extractSuiteSummary('model-id-suite', {
+    const modelId = extractJobSummary('model-id-job', {
         results: baseResults,
         reasoningEffort: { level: 'low', source: 'model-id' },
     });
     assert.ok(modelId);
     assert.deepStrictEqual(modelId.reasoningEffort, { level: 'low', source: 'model-id' });
 
-    const agentDefault = extractSuiteSummary('agent-default-suite', {
+    const agentDefault = extractJobSummary('agent-default-job', {
         results: baseResults,
         reasoningEffort: { source: 'agent-default' },
     });
@@ -304,7 +304,7 @@ test('extractSuiteSummary preserves valid reasoningEffort and omits absent or ma
         { level: '   ', source: 'configured' },
         { level: '<script>alert(1)</script>', source: 'observed' },
     ]) {
-        const summary = extractSuiteSummary('malformed-suite', {
+        const summary = extractJobSummary('malformed-job', {
             results: baseResults,
             reasoningEffort: bad as never,
         });
@@ -313,12 +313,12 @@ test('extractSuiteSummary preserves valid reasoningEffort and omits absent or ma
     }
 });
 
-test('extractSuiteSummary preserves curated flag when present', () => {
-    const regular = extractSuiteSummary('regular-suite', { results: {} });
+test('extractJobSummary preserves curated flag when present', () => {
+    const regular = extractJobSummary('regular-job', { results: {} });
     assert.ok(regular);
     assert.strictEqual('curated' in regular, false);
 
-    const curated = extractSuiteSummary('curated-suite', {
+    const curated = extractJobSummary('curated-job', {
         results: {},
         curated: true,
     } as never);

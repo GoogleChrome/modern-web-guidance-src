@@ -15,8 +15,11 @@ import { getAccessToken } from './utils.js';
  * @typedef {'local' | 'remote' | 'static' | 'public'} DataSource
  */
 
-/** Path, relative to the dashboard, where the builder publishes sanitized suites. */
+/** Path, relative to the dashboard, where the builder publishes sanitized jobs. */
 export const PUBLIC_EVALS_BASE = 'public-evals';
+
+/** Per-job file mapping each trial artifact's path (`<trial>/<guide>/<task>/<condition>/agent.patch`) to its text. */
+export const PUBLIC_ARTIFACTS_FILE = 'artifacts.json';
 
 const VALID_SOURCES = new Set(['local', 'remote', 'static', 'public']);
 

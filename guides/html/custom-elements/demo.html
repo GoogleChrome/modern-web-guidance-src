@@ -8,10 +8,11 @@
     /* Hide the elements until their definitions have upgraded them, failing open after 2s. */
     my-counter:not(:defined),
     async-button:not(:defined) {
+      visibility: hidden;
       opacity: 0;
       animation: defined-fallback 0.2s 2s forwards;
     }
-    @keyframes defined-fallback { to { opacity: 1; } }
+    @keyframes defined-fallback { to { visibility: visible; opacity: 1; } }
 
     /* Consumer-facing styling hook: a custom state, not an attribute. */
     async-button:state(success) { outline: 2px solid seagreen; }
@@ -36,6 +37,8 @@
       <style>
         :host { display: inline-flex; gap: .5rem; align-items: center;
                 padding: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+        /* Lets the hidden attribute hide the element despite :host's display. */
+        :host([hidden]) { display: none; }
         button { cursor: pointer; }
       </style>
       <span>Count: <output id="value">0</output></span>
@@ -81,13 +84,19 @@
         /* The component styles its OWN states from inside the shadow tree. */
         :host(:state(busy)) button    { opacity: .6; pointer-events: none; }
         :host(:state(busy)) .spinner  { display: inline; }
-        :host(:state(success)) button { background: seagreen; color: white; }
+        :host(:state(success)) button { background: #2e7d32; color: white; }
+        .status { margin-inline-start: .5em; }
       </style>
-      <button type="button"><span class="spinner">⏳</span> <slot>Run</slot></button>
+      <button type="button"><span class="spinner" aria-hidden="true">⏳</span> <slot>Run</slot></button>
+      <!-- In the shadow tree from the start, so screen readers announce its changes.
+           The text also shows the result without relying on color. -->
+      <span class="status" role="status"></span>
     `;
 
     class AsyncButton extends HTMLElement {
       #internals;
+      #button;
+      #status;
       // Demo action: resolves after a short delay to simulate a network call.
       #action = () => new Promise((resolve) => setTimeout(resolve, 1200));
 
@@ -96,8 +105,9 @@
         this.#internals = this.attachInternals();
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.append(buttonTemplate.content.cloneNode(true));
-        this.shadowRoot.querySelector('button')
-          .addEventListener('click', () => this.run());
+        this.#button = this.shadowRoot.querySelector('button');
+        this.#status = this.shadowRoot.querySelector('.status');
+        this.#button.addEventListener('click', () => this.run());
       }
 
       // The host supplies the work to perform.
@@ -106,15 +116,24 @@
       async run() {
         if (this.#internals.states.has('busy')) return; // guard re-entry
         this.#internals.states.add('busy');
+        // Custom states only reach CSS, so expose busy to assistive technologies too.
+        this.#internals.ariaBusy = 'true';
+        // aria-disabled keeps the button focusable; the guard above ignores activation.
+        this.#button.setAttribute('aria-disabled', 'true');
+        this.#status.textContent = 'Working…';
         this.#internals.states.delete('success');
         this.#internals.states.delete('error');
         try {
           await this.#action();
           this.#internals.states.add('success'); // CustomStateSet composes states
+          this.#status.textContent = 'Done';
         } catch {
           this.#internals.states.add('error');
+          this.#status.textContent = 'Failed. Try again.';
         } finally {
           this.#internals.states.delete('busy');
+          this.#internals.ariaBusy = 'false';
+          this.#button.removeAttribute('aria-disabled');
         }
       }
     }
