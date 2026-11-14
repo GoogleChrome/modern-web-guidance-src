@@ -13,7 +13,7 @@
   },
   "scripts": {
     "postinstall": "node src/core/postinstall.ts",
-    "test": "node --test --test-reporter ${TEST_REPORTER:-dot} \"src/**/*.test.ts\"",
+    "test": "node src/core/run-tests.ts \"src/**/*.test.ts\"",
     "test:e2e": "playwright test -c src/dashboard/playwright.config.js",
     "build": "node src/build/build-guides.ts --target=skills-cli && pnpm run build-dist",
     "build-dist": "node src/build/build-dist.ts",
