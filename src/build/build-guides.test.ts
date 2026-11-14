@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  computePipelineHash,
   generateGuidesIndex,
   generateGuidesTocYaml,
   processSkillsCliGuide,
@@ -282,6 +283,27 @@ describe('processDevsiteGuide', () => {
       const bodyIdx = output.indexOf('Body content.');
       assert.ok(promoIdx !== -1 && otIdx > promoIdx && volatileIdx > otIdx && volatileIdx < bodyIdx);
       assert.strictEqual(output.match(/<aside class="caution">/g)?.length, 2);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('computePipelineHash incorporates custom chunkCacheDir contents', async () => {
+    const { saveChunkCache, STATIC_DIMS } = await import('../rag/guide-chunk-cache.ts');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-hash-cache-'));
+    try {
+      const cacheA = path.join(tmpDir, 'cache-a');
+      const cacheB = path.join(tmpDir, 'cache-b');
+      const vecA = new Float32Array(STATIC_DIMS);
+      vecA[0] = 1;
+      const vecB = new Float32Array(STATIC_DIMS);
+      vecB[1] = 1;
+      saveChunkCache(new Map([['hash-1', vecA]]), cacheA);
+      saveChunkCache(new Map([['hash-1', vecB]]), cacheB);
+
+      const hashA = await computePipelineHash([], 'skills-cli', false, undefined, true, cacheA);
+      const hashB = await computePipelineHash([], 'skills-cli', false, undefined, true, cacheB);
+      assert.notStrictEqual(hashA, hashB);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

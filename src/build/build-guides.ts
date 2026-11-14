@@ -26,7 +26,7 @@ import {
 } from "./devsite-markdown.ts";
 import type { UseCase } from "../rag/guides.ts";
 import type { EmbedderLike } from "../rag/search.ts";
-import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
+import { DEFAULT_CACHE_DIR, loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
 import {
   parseGuideFile,
   extractGuideChunks,
@@ -62,6 +62,7 @@ export interface BuildOptions {
   modelName?: string;
   noChunking?: boolean;
   failOnMissingVectors?: boolean;
+  chunkCacheDir?: string;
 }
 
 interface CachePaths {
@@ -95,10 +96,12 @@ export async function computePipelineHash(
   target: string,
   noChunking: boolean,
   modelName?: string,
-  failOnMissingVectors?: boolean
+  failOnMissingVectors?: boolean,
+  chunkCacheDir?: string
 ): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
+  const resolvedCacheDir = chunkCacheDir ?? DEFAULT_CACHE_DIR;
 
   const deps = [
     import.meta.filename,
@@ -106,9 +109,9 @@ export async function computePipelineHash(
     path.join(rootDir, "src/rag/guide-chunk-cache.ts"),
     path.join(rootDir, "src/rag/quantize.ts"),
     path.join(rootDir, "src/core/guide-chunks.ts"),
-    path.join(rootDir, "src/rag/gen/guide-chunk-cache.json"),
-    path.join(rootDir, "src/rag/gen/guide-chunk-cache.i8"),
-    path.join(rootDir, "src/rag/gen/guide-chunk-cache.scale.f32"),
+    path.join(resolvedCacheDir, "guide-chunk-cache.json"),
+    path.join(resolvedCacheDir, "guide-chunk-cache.i8"),
+    path.join(resolvedCacheDir, "guide-chunk-cache.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
@@ -346,7 +349,7 @@ export function generateGuidesTocYaml(guides: DevsiteGuideMetadata[]): string {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target: targetOpt, force, targetGuidePath, modelName, noChunking, failOnMissingVectors } = opts;
+  const { outputDir, target: targetOpt, force, targetGuidePath, modelName, noChunking, failOnMissingVectors, chunkCacheDir } = opts;
 
   const target = targetOpt || 'skills-cli';
   const isNoChunking = !!noChunking;
@@ -365,7 +368,8 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     target,
     isNoChunking,
     modelName,
-    failOnMissingVectors
+    failOnMissingVectors,
+    chunkCacheDir
   );
 
   // 3. Cache Evaluation
@@ -408,7 +412,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
-  const chunkCache = target !== 'devsite' && !modelName ? loadChunkCache() : null;
+  const chunkCache = target !== 'devsite' && !modelName ? loadChunkCache(chunkCacheDir) : null;
   const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
 
   console.log(target === 'devsite' ? "Exporting DevSite guides…" : "Generating embeddings…");

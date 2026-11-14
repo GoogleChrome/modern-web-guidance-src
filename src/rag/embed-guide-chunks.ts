@@ -37,6 +37,25 @@ export interface EmbedChunksOptions {
   force?: boolean;
   prune?: boolean;
   cacheDir?: string;
+  seedCacheDir?: string;
+  envPath?: string | null;
+  apiKey?: string;
+  scanChunks?: () => GuideChunk[];
+  postBatch?: (url: string, body: unknown) => Promise<unknown>;
+}
+
+function resolveGeminiApiKey(options: EmbedChunksOptions): string | undefined {
+  if (options.apiKey !== undefined) {
+    return options.apiKey.trim();
+  }
+  if (options.envPath !== null) {
+    try {
+      process.loadEnvFile(options.envPath ?? path.join(rootDir, ".env"));
+    } catch {
+      // .env is optional if key is already in process.env
+    }
+  }
+  return process.env.GEMINI_API_KEY?.trim();
 }
 
 export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promise<{
@@ -47,13 +66,24 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
   missing: GuideChunk[];
 }> {
   const cacheDir = options.cacheDir ?? DEFAULT_CACHE_DIR;
-  const allChunks = scanCorpusChunks("skills-cli");
+  const allChunks = (options.scanChunks ?? scanCorpusChunks)("skills-cli");
 
   const existingCache = options.force ? new Map<string, Float32Array>() : loadChunkCache(cacheDir);
+  const workingCache = new Map<string, Float32Array>(existingCache);
+
+  if (!options.force && options.seedCacheDir && path.resolve(options.seedCacheDir) !== path.resolve(cacheDir)) {
+    const activeHashes = new Set(allChunks.map((c) => c.hash));
+    const seedCache = loadChunkCache(options.seedCacheDir);
+    for (const [hash, vec] of seedCache) {
+      if (activeHashes.has(hash) && !workingCache.has(hash)) {
+        workingCache.set(hash, vec);
+      }
+    }
+  }
 
   // If check mode requested: verify that 100% of chunks are in cache without calling API
   if (options.check) {
-    const missing = allChunks.filter((c) => !existingCache.has(c.hash));
+    const missing = allChunks.filter((c) => !workingCache.has(c.hash));
     return {
       totalChunks: allChunks.length,
       cachedCount: allChunks.length - missing.length,
@@ -63,25 +93,20 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
     };
   }
 
-  const workingCache = new Map<string, Float32Array>(existingCache);
-
   // Identify missing chunks
   const missingChunks = allChunks.filter((c) => !workingCache.has(c.hash));
 
   let newEmbeds = 0;
   if (missingChunks.length > 0) {
-    try {
-      process.loadEnvFile(path.join(rootDir, ".env"));
-    } catch {
-      // .env is optional if key is already in process.env
-    }
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    const apiKey = resolveGeminiApiKey(options);
     if (!apiKey) {
+      const missingGuides = [...new Set(missingChunks.map((c) => c.guideId))];
       throw new Error(
-        `GEMINI_API_KEY is required in .env or environment to embed ${missingChunks.length} missing guide chunks.`
+        `GEMINI_API_KEY is required to embed ${missingChunks.length} missing chunk(s) across ${missingGuides.length} guide(s) (${missingGuides.join(", ")}). Set GEMINI_API_KEY in .env or your environment, or run 'node src/rag/embed-guide-chunks.ts' with GEMINI_API_KEY set.`
       );
     }
 
+    const postBatch = options.postBatch ?? postWithRetry;
     console.log(
       `Embedding ${missingChunks.length} missing chunks using ${TEACHER_MODEL} (${TASK_TYPE}, ${TEACHER_DIM}-d -> ${STATIC_DIMS}-d)...`
     );
@@ -104,7 +129,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
         })),
       };
 
-      const res = await postWithRetry(url, body);
+      const res = await postBatch(url, body);
       if (!isBatchEmbeddingResponse(res)) {
         throw new Error(`Invalid batchEmbedContents response shape from ${TEACHER_MODEL}`);
       }
@@ -136,7 +161,14 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
     prunedCount = 0;
   }
 
-  if (newEmbeds > 0 || prunedCount > 0 || options.force) {
+  const cacheChanged =
+    newEmbeds > 0 ||
+    prunedCount > 0 ||
+    Boolean(options.force) ||
+    targetCache.size !== existingCache.size ||
+    [...targetCache.keys()].some((hash) => !existingCache.has(hash));
+
+  if (cacheChanged) {
     const saveStats = saveChunkCache(targetCache, cacheDir);
     console.log(
       `Saved chunk cache to ${cacheDir}: ${saveStats.count} chunks (${(saveStats.bytes / 1024).toFixed(1)} KB)`
