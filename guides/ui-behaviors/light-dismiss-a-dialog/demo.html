@@ -69,7 +69,10 @@
           );
           
           if (!isInDialog) {
-            dialog.close();
+            // Let cancellation guards prevent backdrop dismissal, as they do for Escape.
+            if (dialog.dispatchEvent(new Event('cancel', { cancelable: true }))) {
+              dialog.close();
+            }
           }
         }
       });

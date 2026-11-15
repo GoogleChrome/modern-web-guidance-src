@@ -55,7 +55,7 @@ dialog::backdrop {
 - **DO**: Ensure that there is always a close button visible to provide people with a clear, alternative way to close the modal dialog.
 - **DO**: Use `aria-labelledby` or `aria-label` to provide an accessible name for the dialog.
 - **DO NOT**: Use `closedby` for non-modal dialogs (opened with `show()`), as they do not have a backdrop and won't trigger light-dismiss.
-- **DO NOT**: Use the `click` event for critical logic that should happen *before* closing; instead, listen for the `close` or `cancel` events.
+- **DO**: Handle dismissal guards in the `cancel` event and call `event.preventDefault()` to keep the dialog open. Use `close` only for work that should happen after the dialog has closed; it cannot prevent dismissal.
 
 Ensure that there aren't components in the modal dialog that themselves use the `Esc` key for interaction, as this may lead to the dialog being inadvertently closed. If the modal dialog does include components that use the `Esc` key (e.g. a menu or a combobox), ensure that when these components are focused, they capture the `Esc` key press and use it accordingly, and that the dialog is not closed accidentally.
 
@@ -87,8 +87,11 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
 
     if (isDialogContent) return;
 
-    // 3. Since the click was outside the content area (on the backdrop), manually close the dialog.
-    dialog.close();
+    // 3. Preserve cancel handlers, including guards that prevent dismissal.
+    // close() alone does not fire cancel; dispatch it before closing.
+    if (dialog.dispatchEvent(new Event('cancel', { cancelable: true }))) {
+      dialog.close();
+    }
   });
 }
 ```
