@@ -14,11 +14,17 @@
   "html-streaming-setters": {
     "reason": "recent-single-engine"
   },
+  "install": {
+    "reason": "pre-release"
+  },
   "languagedetector": {
     "reason": "built-in-ai"
   },
   "languagemodel": {
     "reason": "built-in-ai"
+  },
+  "navigator-install": {
+    "reason": "pre-release"
   },
   "scroll-axis-lock": {
     "reason": "recent-single-engine"
