@@ -228,6 +228,32 @@ describe('modern-web CLI', () => {
     }
   });
 
+  it('forwards --max-files to legacy-scan and caps eligible file findings', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
+    try {
+      for (const name of ['a.css', 'b.css', 'c.css']) {
+        fs.writeFileSync(
+          path.join(tempDir, name),
+          '.panel {\n  max-height: 0;\n  transition: max-height 0.25s ease;\n}',
+        );
+      }
+
+      const defaultRes = runCLI(['legacy-scan', tempDir, '--json']);
+      assert.strictEqual(defaultRes.status, 0, defaultRes.stderr);
+      const defaultData = JSON.parse(defaultRes.stdout);
+      assert.strictEqual(defaultData.targetDir, tempDir);
+      assert.strictEqual(defaultData.totalFindings, 3);
+
+      const cappedRes = runCLI(['legacy-scan', tempDir, '--max-files', '1', '--json']);
+      assert.strictEqual(cappedRes.status, 0, cappedRes.stderr);
+      const cappedData = JSON.parse(cappedRes.stdout);
+      assert.strictEqual(cappedData.targetDir, tempDir);
+      assert.strictEqual(cappedData.totalFindings, 1);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('only logs to modern-web.log when analyze or legacy-scan exits with code 0 and result.data is present', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));

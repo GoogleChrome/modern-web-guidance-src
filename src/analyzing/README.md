@@ -20,6 +20,9 @@ node bin/gd.ts legacy-scan [path/to/project] [options]
 
 # In any brownfield project via npx:
 npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]
+
+# In a repository with more than 5000 eligible files, raise the file limit:
+npx -y modern-web-guidance@latest legacy-scan [path/to/project] --max-files 20000
 ```
 
 ### CLI Options
@@ -30,6 +33,7 @@ npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |
+| `--max-files <count>` | String | Maximum number of eligible source files to scan (positive integer; defaults to 5000). |
 | `--skill-version <version>` | String | Passed by the bundled agent skill to report its version for update checks. Not meant for manual use. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 

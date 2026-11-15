@@ -46,6 +46,8 @@ describe('runAnalyzeCli', () => {
     assert.equal(res3.exitCode, 0);
     assert.match(res3.output, /Usage: modern-web-guidance legacy-scan/);
     assert.equal(res3.output, `${ANALYZE_CLI_HELP}\n`);
+
+    assert.match(ANALYZE_CLI_HELP, /--max-files <count>/);
   });
 
   it('handles non-existent target path with error and exit code 1', async () => {
@@ -387,6 +389,19 @@ describe('runAnalyzeCli', () => {
     const parsedGuide = JSON.parse(resGuide.output) as AnalyzeJsonOutput;
     assert.equal(parsedGuide.targetDir, 'other/dir');
     assert.match(parsedGuide.error ?? '', /Unknown option '--unknown-flag'/);
+
+    const resMaxFiles = await runAnalyzeCli([
+      '--max-files',
+      '2',
+      'project',
+      '--unknown-flag',
+      '--json',
+    ]);
+    assert.equal(resMaxFiles.exitCode, 1);
+    assert.ok(resMaxFiles.data);
+    const parsedMaxFiles = JSON.parse(resMaxFiles.output) as AnalyzeJsonOutput;
+    assert.equal(parsedMaxFiles.targetDir, 'project');
+    assert.match(parsedMaxFiles.error ?? '', /Unknown option '--unknown-flag'/);
 
     const resNoDir = await runAnalyzeCli([
       '--skill-version',
@@ -737,6 +752,111 @@ describe('runAnalyzeCli', () => {
       const parsedClean = JSON.parse(resClean.output) as AnalyzeJsonOutput;
       assert.equal(parsedClean.totalFindings, 0);
       assert.deepEqual(parsedClean.guides, []);
+    });
+  });
+
+  describe('--max-files', () => {
+    const capRule: AnalyzerRule = {
+      id: 'test-max-files/css-rule',
+      guideId: 'test-max-files',
+      guideHash: '444455556666',
+      summary: 'Summary for max-files cap rule',
+      matcher: {
+        kind: 'css',
+        fastTokens: ['.cap-target'],
+        matchRule: (rule) =>
+          rule.selectorText.includes('.cap-target') ? { message: 'Cap target found' } : null,
+      },
+      verifierRubric: {
+        keepWhen: ['Stylesheet uses .cap-target'],
+        dropWhen: ['Stylesheet does not use .cap-target'],
+      },
+    };
+
+    async function withThreeCssFiles(fn: (dir: string) => Promise<void>): Promise<void> {
+      await withTempDir(async (dir) => {
+        for (const name of ['a.css', 'b.css', 'c.css']) {
+          await writeFile(join(dir, name), '.cap-target { color: red; }', 'utf8');
+        }
+        await fn(dir);
+      });
+    }
+
+    async function countFindings(args: readonly string[], maxFiles?: number): Promise<number> {
+      const res = await runAnalyzeCli([...args, '--json'], {
+        rules: [capRule],
+        ...(maxFiles === undefined ? {} : { maxFiles }),
+      });
+      assert.equal(res.exitCode, 0, res.output);
+      return (JSON.parse(res.output) as AnalyzeJsonOutput).totalFindings;
+    }
+
+    it('caps eligible files with an explicit CLI value that overrides options.maxFiles', async () => {
+      await withThreeCssFiles(async (dir) => {
+        assert.equal(await countFindings([dir]), 3);
+        assert.equal(await countFindings([dir, '--max-files', '1']), 1);
+        assert.equal(await countFindings([dir, '--max-files=2']), 2);
+        assert.equal(await countFindings([dir, '--max-files', '0002']), 2);
+        assert.equal(await countFindings([dir], 1), 1);
+        assert.equal(await countFindings([dir, '--max-files', '2'], 1), 2);
+      });
+    });
+
+    it('keeps explicit single-file results intact with a valid cap', async () => {
+      await withThreeCssFiles(async (dir) => {
+        assert.equal(await countFindings([join(dir, 'a.css'), '--max-files', '1']), 1);
+      });
+    });
+
+    it('rejects invalid values before target filesystem access', async () => {
+      const missingTarget = join(tmpdir(), `non-existent-dir-${Date.now()}`);
+      const invalidArgs: readonly (readonly string[])[] = [
+        ['--max-files', '0'],
+        ['--max-files=-1'],
+        ['--max-files', '1.5'],
+        ['--max-files', 'abc'],
+        ['--max-files', '9007199254740992'],
+        ['--max-files', '1e3'],
+        ['--max-files', '0x10'],
+        ['--max-files', '+1'],
+        ['--max-files', ' 1'],
+        ['--max-files='],
+      ];
+
+      for (const flagArgs of invalidArgs) {
+        const resHuman = await runAnalyzeCli([missingTarget, ...flagArgs]);
+        assert.equal(resHuman.exitCode, 1, flagArgs.join(' '));
+        assert.equal(resHuman.stdout, '');
+        assert.equal(resHuman.data, undefined);
+        assert.match(resHuman.stderr ?? '', /^Error: .*--max-files/);
+        assert.doesNotMatch(resHuman.output, /Target path not found|Unknown option/);
+
+        const resJson = await runAnalyzeCli([missingTarget, ...flagArgs, '--json']);
+        assert.equal(resJson.exitCode, 1, flagArgs.join(' '));
+        assert.equal(resJson.stderr, '');
+        const parsed = JSON.parse(resJson.stdout ?? '') as AnalyzeJsonOutput;
+        assert.equal(parsed.targetDir, missingTarget);
+        assert.equal(parsed.totalFindings, 0);
+        assert.deepEqual(parsed.guides, []);
+        assert.match(parsed.error ?? '', /--max-files/);
+        assert.doesNotMatch(parsed.error ?? '', /Target path not found|Unknown option/);
+      }
+    });
+
+    it('reports a missing value through the argument parser', async () => {
+      await withTempDir(async (dir) => {
+        const resHuman = await runAnalyzeCli([dir, '--max-files']);
+        assert.equal(resHuman.exitCode, 1);
+        assert.match(resHuman.stderr ?? '', /^Error: .*--max-files/);
+        assert.doesNotMatch(resHuman.output, /Unknown option/);
+
+        const resJson = await runAnalyzeCli([dir, '--json', '--max-files']);
+        assert.equal(resJson.exitCode, 1);
+        const parsed = JSON.parse(resJson.stdout ?? '') as AnalyzeJsonOutput;
+        assert.equal(parsed.targetDir, dir);
+        assert.match(parsed.error ?? '', /--max-files/);
+        assert.doesNotMatch(parsed.error ?? '', /Unknown option/);
+      });
     });
   });
 });
