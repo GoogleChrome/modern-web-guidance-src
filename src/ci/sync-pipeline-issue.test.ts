@@ -705,6 +705,8 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openUseCaseIssues: [],
       openFeatureIssues: [],
       gitHistory: new Map(),
+      // Fixed history keeps the bar width independent of the real guide count on origin/main.
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 129, contentLanded: 129 }],
     });
 
     // Complete count includes accessibility/accessibility discipline guide
