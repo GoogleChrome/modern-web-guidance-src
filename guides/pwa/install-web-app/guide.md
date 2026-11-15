@@ -6,6 +6,8 @@ web-feature-ids:
   - navigator-install
   - beforeinstallprompt
   - manifest
+draft: blocked
+draft-reason: "<install> and navigator.install() have not shipped in a stable browser yet; unblock once they do (#3609)"
 ---
 
 # Installing web applications
