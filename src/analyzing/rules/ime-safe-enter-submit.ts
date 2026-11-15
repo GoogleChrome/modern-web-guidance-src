@@ -1,5 +1,5 @@
 /* oxlint-disable max-lines-per-function, max-depth */
-import { Node, SyntaxKind, type CallExpression, type JsxAttribute, type SourceFile } from 'ts-morph';
+import { Node, SyntaxKind, type CallExpression, type IfStatement, type JsxAttribute, type SourceFile } from 'ts-morph';
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
@@ -9,6 +9,13 @@ export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '99e3b42fb16a';
 // composition reports keyCode 229, so those handlers never fire mid-composition.
 const ENTER_CHECK_REGEX =
   /(?:key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+['"]Enter['"])/;
+
+// Same comparisons with a negated operator: `e.key !== 'Enter'`, `'Enter' != e.key`.
+const NEGATED_ENTER_CHECK_REGEX =
+  /(?:key\s*!==?\s*['"]Enter['"]|['"]Enter['"]\s*!==?\s*key|code\s*!==?\s*['"]Enter['"]|['"]Enter['"]\s*!==?\s*code)/;
+
+const UNSAFE_ENTER_MESSAGE =
+  'Keydown Enter listener triggers submission/action without checking event.isComposing or event.keyCode === 229 for IME composition safety';
 
 const SPACE_OR_BUTTON_KEY_REGEX =
   /\b(?:Space|Spacebar)\b|['"] ['"]|(?:keyCode|which)\s*===?\s*32\b|\b32\s*===?\s*(?:keyCode|which)/;
@@ -88,6 +95,150 @@ function requiresCtrlOrMetaModifier(condText: string): boolean {
 }
 
 /**
+ * Checks if an expression performs an action (invokes something) rather than only
+ * suppressing the event (preventDefault / stopPropagation) or returning.
+ */
+function isActionExpression(exprText: string): boolean {
+  if (!exprText.includes('(')) {
+    return false;
+  }
+  return !isSuppressOnlyBranch(exprText);
+}
+
+/**
+ * Checks if a `&&` expression sits where its right side runs as the handler's action:
+ * the body of an arrow/function expression, an expression statement, or a returned
+ * value — not inside a condition, where it is a guard rather than the action.
+ */
+function isInActionPosition(node: Node): boolean {
+  let current: Node = node;
+  for (;;) {
+    const parent = current.getParent();
+    if (!parent) {
+      return false;
+    }
+    if (Node.isParenthesizedExpression(parent)) {
+      current = parent;
+      continue;
+    }
+    if (
+      Node.isBinaryExpression(parent) &&
+      parent.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken
+    ) {
+      current = parent;
+      continue;
+    }
+    if (Node.isArrowFunction(parent) || Node.isFunctionExpression(parent)) {
+      return parent.getBody() === current;
+    }
+    return Node.isExpressionStatement(parent) || Node.isReturnStatement(parent);
+  }
+}
+
+/**
+ * Flattens a `||` chain into its operands; any other expression is a single operand.
+ */
+function flattenOrOperands(expr: Node): Node[] {
+  const unwrapped = unwrapExpression(expr);
+  if (
+    Node.isBinaryExpression(unwrapped) &&
+    unwrapped.getOperatorToken().getKind() === SyntaxKind.BarBarToken
+  ) {
+    return [...flattenOrOperands(unwrapped.getLeft()), ...flattenOrOperands(unwrapped.getRight())];
+  }
+  return [unwrapped];
+}
+
+/**
+ * Flattens a `&&` chain into its operands; any other expression is a single operand.
+ */
+function flattenAndOperands(expr: Node): Node[] {
+  const unwrapped = unwrapExpression(expr);
+  if (
+    Node.isBinaryExpression(unwrapped) &&
+    unwrapped.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken
+  ) {
+    return [...flattenAndOperands(unwrapped.getLeft()), ...flattenAndOperands(unwrapped.getRight())];
+  }
+  return [unwrapped];
+}
+
+/**
+ * Checks if an operand is a negated Enter comparison: `e.key !== 'Enter'`,
+ * `e.key != 'Enter'`, or `!(e.key === 'Enter')`.
+ */
+function isNegatedEnterCheck(operand: Node): boolean {
+  const node = unwrapExpression(operand);
+  if (Node.isBinaryExpression(node)) {
+    const kind = node.getOperatorToken().getKind();
+    if (
+      kind === SyntaxKind.ExclamationEqualsToken ||
+      kind === SyntaxKind.ExclamationEqualsEqualsToken
+    ) {
+      return NEGATED_ENTER_CHECK_REGEX.test(node.getText());
+    }
+    return false;
+  }
+  if (
+    Node.isPrefixUnaryExpression(node) &&
+    node.getOperatorToken() === SyntaxKind.ExclamationToken
+  ) {
+    return ENTER_CHECK_REGEX.test(unwrapExpression(node.getOperand()).getText());
+  }
+  return false;
+}
+
+/**
+ * Checks if an early-return guard operand forces a modifier key for the action to run:
+ * `!e.ctrlKey` (or `e.ctrlKey === false`) means the action only runs with Ctrl held.
+ */
+function isModifierRequiredOperand(operand: Node): boolean {
+  const text = operand.getText();
+  if (/!\s*(?:[a-zA-Z_$][\w$]*\.)?\b(?:ctrlKey|metaKey|altKey)\b/.test(text)) {
+    return true;
+  }
+  return /\b(?:ctrlKey|metaKey|altKey)\b\s*===?\s*false\b/.test(text);
+}
+
+/**
+ * Finds the statement after an early-return `if` in the same block, when it performs
+ * an action (calls something that is not just event suppression). Returns null when
+ * there is no such statement, or the next statement is control flow the other checks
+ * already cover.
+ */
+function nextActionStatement(ifStmt: IfStatement): Node | null {
+  const parent = ifStmt.getParent();
+  if (!parent || (!Node.isBlock(parent) && !Node.isSourceFile(parent))) {
+    return null;
+  }
+  const statements = parent.getStatements();
+  const index = statements.indexOf(ifStmt);
+  if (index < 0 || index + 1 >= statements.length) {
+    return null;
+  }
+  const next = statements[index + 1];
+  if (
+    Node.isIfStatement(next) ||
+    Node.isSwitchStatement(next) ||
+    Node.isReturnStatement(next) ||
+    Node.isForStatement(next) ||
+    Node.isWhileStatement(next) ||
+    Node.isDoStatement(next) ||
+    Node.isTryStatement(next) ||
+    Node.isThrowStatement(next)
+  ) {
+    return null;
+  }
+  if (next.getDescendantsOfKind(SyntaxKind.CallExpression).length === 0) {
+    return null;
+  }
+  if (isSuppressOnlyBranch(next.getText())) {
+    return null;
+  }
+  return next;
+}
+
+/**
  * Checks a handler function for an Enter key check lacking isComposing / keyCode 229 guards.
  */
 function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
@@ -108,8 +259,12 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
     return null;
   }
 
-  // Check if handler contains an Enter check
-  if (!ENTER_CHECK_REGEX.test(handlerText)) {
+  // Check if handler contains an Enter check, positive (`=== 'Enter'`) or negated
+  // (`!== 'Enter'` in an early-return guard)
+  if (
+    !ENTER_CHECK_REGEX.test(handlerText) &&
+    !NEGATED_ENTER_CHECK_REGEX.test(handlerText)
+  ) {
     return null;
   }
 
@@ -161,6 +316,85 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
         }
       }
     }
+  }
+
+  // Look for logical-AND shorthand: `e.key === 'Enter' && onSearch()` runs the action
+  // on the Enter that commits an IME candidate, exactly like the `if` form above.
+  for (const binary of handler.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+    if (binary.getOperatorToken().getKind() !== SyntaxKind.AmpersandAmpersandToken) {
+      continue;
+    }
+    // Only the outermost `&&` of a chain: a node that is the left operand of a
+    // parent `&&` is covered when that parent is examined.
+    const parent = binary.getParent();
+    if (
+      parent &&
+      Node.isBinaryExpression(parent) &&
+      parent.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken &&
+      parent.getLeft() === binary
+    ) {
+      continue;
+    }
+    if (!isInActionPosition(binary)) {
+      continue;
+    }
+    // The action is the last operand of the `&&` chain; it runs only when every
+    // earlier operand holds, so any Enter comparison among them gates the action.
+    const operands = flattenAndOperands(binary);
+    const action = operands[operands.length - 1];
+    if (!action || operands.length < 2) {
+      continue;
+    }
+    if (
+      !operands
+        .slice(0, -1)
+        .some((operand) => ENTER_CHECK_REGEX.test(operand.getText()))
+    ) {
+      continue;
+    }
+    const shorthandText = binary.getText();
+    if (
+      requiresCtrlOrMetaModifier(shorthandText) ||
+      SPACE_OR_BUTTON_KEY_REGEX.test(shorthandText)
+    ) {
+      continue;
+    }
+    if (!isActionExpression(action.getText())) {
+      continue;
+    }
+    return {
+      line: binary.getStartLineNumber(),
+      message: UNSAFE_ENTER_MESSAGE,
+    };
+  }
+
+  // Look for negated early returns: `if (e.key !== 'Enter' || busy) return; onSubmit();`
+  // runs the action on Enter just as the `if` form does, with the check inverted.
+  for (const ifStmt of ifStatements) {
+    if (ifStmt.getElseStatement()) {
+      continue;
+    }
+    const operands = flattenOrOperands(ifStmt.getExpression());
+    if (!operands.some((operand) => isNegatedEnterCheck(operand))) {
+      continue;
+    }
+    if (operands.some((operand) => isModifierRequiredOperand(operand))) {
+      continue;
+    }
+    if (SPACE_OR_BUTTON_KEY_REGEX.test(ifStmt.getExpression().getText())) {
+      continue;
+    }
+    const thenText = ifStmt.getThenStatement().getText();
+    if (!/\breturn\b/.test(thenText) || !isSuppressOnlyBranch(thenText)) {
+      continue;
+    }
+    if (!nextActionStatement(ifStmt)) {
+      continue;
+    }
+    return {
+      line: ifStmt.getStartLineNumber(),
+      message: UNSAFE_ENTER_MESSAGE,
+    };
   }
 
   return null;
@@ -331,7 +565,11 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];
     }
-    if (ctx.fileContent && !ENTER_CHECK_REGEX.test(ctx.fileContent)) {
+    if (
+      ctx.fileContent &&
+      !ENTER_CHECK_REGEX.test(ctx.fileContent) &&
+      !NEGATED_ENTER_CHECK_REGEX.test(ctx.fileContent)
+    ) {
       return [];
     }
 
