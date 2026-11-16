@@ -92,7 +92,7 @@ function tokenizeInputAttrWords(attrs: string): string[] {
   return tokenizeIdentifierWords(matches.map((m) => m[1] ?? m[2] ?? '').join(' '));
 }
 
-function maskCommentsAndScriptsPreservingLines(documentText: string): string {
+function stripCommentsAndScriptsPreservingLines(documentText: string): string {
   return documentText
     .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (m) => m.replace(/[^\n]/g, ' '));
@@ -117,8 +117,8 @@ export function findEnclosingFormContext(
   explicitFormId?: string,
   targetColumn?: number,
 ): EnclosingFormContext | null {
-  const masked = maskCommentsAndScriptsPreservingLines(documentText);
-  const lines = masked.split('\n');
+  const stripped = stripCommentsAndScriptsPreservingLines(documentText);
+  const lines = stripped.split('\n');
   let charOffsetAtTargetLineStart = 0;
   const lineLimit = Math.min(lines.length, Math.max(0, targetLine - 1));
   for (let i = 0; i < lineLimit; i++) {
@@ -138,7 +138,7 @@ export function findEnclosingFormContext(
 
   let match: RegExpExecArray | null;
   FORM_TAG_REGEX.lastIndex = 0;
-  while ((match = FORM_TAG_REGEX.exec(masked)) !== null) {
+  while ((match = FORM_TAG_REGEX.exec(stripped)) !== null) {
     const tagStart = match.index;
     const isClosing = match[0].startsWith('</');
     const attrs = match[2] ?? '';
@@ -147,7 +147,7 @@ export function findEnclosingFormContext(
       passedTarget = true;
       if (stack.length === 0) break;
       const top = stack[stack.length - 1]!;
-      chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: masked.length };
+      chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: stripped.length };
       chosenDepth = stack.length;
     }
 
@@ -164,13 +164,13 @@ export function findEnclosingFormContext(
 
   if (!passedTarget && stack.length > 0) {
     const top = stack[stack.length - 1]!;
-    chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: masked.length };
+    chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: stripped.length };
   }
 
   if (chosen !== null) {
     return {
       attrs: chosen.attrs,
-      body: masked.slice(chosen.bodyStart, chosen.bodyEnd),
+      body: stripped.slice(chosen.bodyStart, chosen.bodyEnd),
     };
   }
 
@@ -179,7 +179,7 @@ export function findEnclosingFormContext(
     if (!trimmedId) return { attrs: '', body: '' };
     const idAttrRegex = new RegExp(`\\bid\\s*=\\s*["']${escapeRegExp(trimmedId)}["']`);
     FORM_TAG_REGEX.lastIndex = 0;
-    while ((match = FORM_TAG_REGEX.exec(masked)) !== null) {
+    while ((match = FORM_TAG_REGEX.exec(stripped)) !== null) {
       if (!match[0].startsWith('</')) {
         const attrs = match[2] ?? '';
         if (idAttrRegex.test(attrs)) {

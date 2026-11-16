@@ -4,6 +4,7 @@ import type {
   DomMatcherContext,
   DomRuleMatcher,
 } from '../schema.ts';
+import { DOM_RULE_EXTENSIONS } from '../scanners/file-filter.ts';
 
 export const AUTOFILL_ADDRESS_FORM_GUIDE_HASH = '7e7270bbb89f';
 
@@ -13,11 +14,11 @@ const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
  * Checks whether an element line position is enclosed within an open `<form>` or `<Form>` tag.
  */
 function isEnclosedInForm(documentText: string, targetLine: number): boolean {
-  // Preserve line numbers when masking comments and script blocks
-  const maskedText = documentText
+  // Preserve line numbers when stripping comments and script blocks
+  const strippedText = documentText
     .replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\n]/g, ' '))
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => match.replace(/[^\n]/g, ' '));
-  const lines = maskedText.split('\n');
+  const lines = strippedText.split('\n');
   const textBefore = lines.slice(0, targetLine).join('\n');
 
   let depth = 0;
@@ -62,17 +63,6 @@ const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   'bind:autocomplete',
 ];
 
-const SUPPORTED_EXTENSIONS = [
-  '.html',
-  '.htm',
-  '.jsx',
-  '.tsx',
-  '.vue',
-  '.svelte',
-  '.gts',
-  '.gjs',
-  '.astro',
-];
 const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
 
 const NON_ADDRESS_INPUT_TYPES = new Set([
@@ -109,7 +99,7 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
     // 1. High-precision file type constraint: skip XML/XFA specs, test fixtures, or non-web templates
     const lowerPath = ctx.filePath.toLowerCase();
     if (
-      !SUPPORTED_EXTENSIONS.some((ext) => lowerPath.endsWith(ext)) ||
+      !DOM_RULE_EXTENSIONS.some((ext) => lowerPath.endsWith(ext)) ||
       TEST_PATH_SUBSTRINGS.some((sub) => lowerPath.includes(sub))
     ) {
       return null;
