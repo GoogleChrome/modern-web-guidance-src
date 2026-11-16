@@ -308,12 +308,12 @@ function hasMarkupSpreadAttribute(attributes: Readonly<Record<string, string>>):
   if (Object.hasOwn(attributes, '...attributes') || Object.hasOwn(attributes, 'v-bind')) {
     return true;
   }
-  for (const key of Object.keys(attributes)) {
-    if (key.startsWith('{...') || /^\{[\s\S]*\.\.\./.test(key)) {
-      return true;
-    }
-  }
-  return false;
+  const keys = Object.keys(attributes);
+  // Svelte `{...props}` arrives as one key; `{ ...props }` is split on whitespace into `{` and `...props`.
+  return (
+    keys.some((key) => key.startsWith('{...')) ||
+    (Object.hasOwn(attributes, '{') && keys.some((key) => key.startsWith('...')))
+  );
 }
 
 function createDomElementView(

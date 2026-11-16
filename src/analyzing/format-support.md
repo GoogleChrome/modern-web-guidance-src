@@ -39,7 +39,7 @@ For smaller ecosystems, we lean on domain experts from that community to get the
 
 ## Boundaries (what we won't do)
 
-- **Declared, not guessed.** We only extract embedded CSS or markup when the syntax explicitly declares it (`<style>` and `<script>` tags, file extensions, or tagged templates like `css` and styled-components' `createGlobalStyle`). We never guess from variable names or "looks like CSS" heuristics. Where a file extension collides with an unrelated format, we should check content before treating it as code (see [Known gaps](#known-gaps)).
+- **Declared, not guessed.** We only extract embedded CSS or markup when the syntax explicitly declares it (`<style>` and `<script>` tags, file extensions, or tagged templates like `css` and styled-components' `createGlobalStyle`). We never guess from variable names or "looks like CSS" heuristics. Where a file extension collides with an unrelated format, we check content before treating it as code (e.g. Gerber PCB files that use `.gts`).
 - **Never compile or evaluate.** We don't run preprocessors, compilers, or template engines (Sass, Less, MDX, Pug, etc.). Preprocessor stylesheets like SCSS and Less are read as CSS-tolerant text with at most a cheap pre-pass (like stripping `//` comments).
 - **Stylesheets, not style objects.** Object-style CSS-in-JS (MUI `sx`, `makeStyles`, vanilla-extract) is `expected-skip` because our CSS rules match stylesheet rules, not JS objects.
 - **Web languages.** Non-web host languages (Python, Ruby, etc.) are `unsupported`. Server-side templates that are mostly HTML get evaluated one by one against the bar above.
@@ -76,7 +76,6 @@ Why are styled-components and Emotion component styles `expected-skip` instead o
 
 - `css` tagged templates inside a `<script>` block of an HTML, Vue, Svelte or Astro file aren't extracted.
 - DOM rules don't run on JSX inside `<script lang="tsx">` / `lang="jsx"` blocks of SFCs.
-- `.gts` files that are actually Gerber PCB files (same extension) aren't filtered out by content yet. They produce no findings, but they shouldn't be parsed as code.
 
 ## Proposing a format
 

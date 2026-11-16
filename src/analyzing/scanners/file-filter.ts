@@ -146,6 +146,8 @@ export {
   SUPPORTED_SOURCE_EXTENSIONS,
 };
 
+export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
+
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
   '.js',
   '.mjs',

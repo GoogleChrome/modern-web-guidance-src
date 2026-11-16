@@ -523,7 +523,7 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
     });
   });
 
-  describe('gap 4c: Gerber PCB files with .gts extension are skipped', () => {
+  describe('Gerber PCB files with a .gts extension are skipped', () => {
     test('skips Gerber PCB files by their %FS / %MO header', () => {
       const gerber = [
         '%FSLAX34Y34*%',
@@ -550,7 +550,7 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
     });
   });
 
-  describe('gap 4d: hasSpreadAttribute and skipIfHasSpread in markup formats', () => {
+  describe('spread attributes in markup suppress skipIfHasSpread rules', () => {
     const testSpreadSkipRule: AnalyzerRule = {
       id: 'contract-spread-skip-rule',
       guideId: 'contract-test',
@@ -599,8 +599,8 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
       assert.equal(findings.length, 0);
     });
 
-    test('sets hasSpreadAttribute and respects skipIfHasSpread for Svelte {...props}', () => {
-      const svelte = '<custom-contract-element {...props} />';
+    for (const spread of ['{...props}', '{ ...props }']) test(`sets hasSpreadAttribute and respects skipIfHasSpread for Svelte ${spread}`, () => {
+      const svelte = `<custom-contract-element ${spread} />`;
       observedSpread = false;
       scanFiles(new Map([['src/Component.svelte', svelte]]), [testSpreadInspectRule]);
       assert.equal(observedSpread, true);
