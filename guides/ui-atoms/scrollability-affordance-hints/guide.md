@@ -97,7 +97,7 @@ Pseudo-elements can query their own originating element, so the scroller's `::be
 
 ## Fades
 
-Fade the content with a mask on the scroller itself: an opaque layer minus a gradient band at each end. Masking only the bands keeps everything else visible, including a focus outline on the scroller, which a single gradient clipped to the border box would hide. Animate each band's size with a scroll-driven animation on the scroller's own scroll position: each fade grows from 0 as the user scrolls away from that end, and shrinks back to 0 as they reach the other end. When the content fits, the scroll timeline is inactive and there is no fade.
+Fade the content with a mask on the scroller itself: an opaque layer minus a gradient band at each end. Animate each band's size with a scroll-driven animation on the scroller's own scroll position: each fade grows from 0 as the user scrolls away from that end, and shrinks back to 0 as they reach the other end. When the content fits, the scroll timeline is inactive and there is no fade.
 
 ```css
 @property --fade-start {
@@ -153,6 +153,10 @@ Fade the content with a mask on the scroller itself: an opaque layer minus a gra
 - Set `scroll-padding-inline` (or `scroll-padding-block`) to the fade size if the scroller uses scroll snapping or contains focusable items, so snapped and focused items never stop inside a fade.
 - For vertical scrollers, use `to bottom`, put the bands at `0 0` and `0 100%` with sizes `100% var(--fade-start)` and `100% var(--fade-end)`, and use `scroll(self block)` and `overflow-y`.
 - For right-to-left content, flip `--fade-dir` and swap the band positions, as in the `:dir(rtl)` rule above. The scroll timeline follows the writing direction, but gradient directions and mask positions are physical.
+
+### Keeping the focus ring visible
+
+{{ INCLUDE("guides/css/overflow-safe-masking/guide.md#keeping-the-focus-ring-visible") }}
 
 ## Accessibility considerations
 
