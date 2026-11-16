@@ -71,7 +71,11 @@ test.describe('Scroll Snap Realtime Feedback', () => {
       if (thumbnails.length < 3 || items.length < 3 || !gallery) {
         return { error: 'Insufficient elements or missing gallery' };
       }
-      
+
+      // Let the browser report the initial snap target first. Otherwise its scrollsnapchange
+      // for item 0 can arrive after the events below and reset the active thumbnail.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
       // Dispatch scrollsnapchange to target item 2
       const event = new Event('scrollsnapchange') as any;
       event.snapTargetInline = items[2];
