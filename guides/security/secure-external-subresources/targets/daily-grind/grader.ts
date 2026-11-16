@@ -219,128 +219,176 @@ test.describe('secure-external-subresources Target Grader', () => {
   });
 
   test.describe('Browser tests', () => {
-    test.beforeEach(async ({ page }) => {
-      await page.route('https://cdn.example.com/**', (route) => {
-        const url = route.request().url();
-        if (url.endsWith('.css')) {
-          return route.fulfill({
-            status: 200,
-            contentType: 'text/css',
-            headers: { 'access-control-allow-origin': '*' },
-            body: '',
-          });
-        }
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/javascript',
-          headers: { 'access-control-allow-origin': '*' },
-          body: '',
-        });
-      });
-    });
-
     test('Subresources whose content matches their declared Subresource Integrity digest load and apply in the page', async ({
       page,
       TARGET_URL,
     }) => {
-      const testCssContent = 'body { --sri-verified-marker: 1; }';
-      const validHash =
-        'sha384-D5w/zZ4m2A7Y+R8Q1X/V+3p0c6K9L2J5N8B4M7W1E0F3G6H9I2K5L8N1P4R7T0V3';
-      // Compute actual SHA-384 using Web Crypto inside node
-      const hashBuffer = await crypto.subtle.digest(
-        'SHA-384',
-        new TextEncoder().encode(testCssContent)
-      );
-      const computedHash =
-        'sha384-' + Buffer.from(hashBuffer).toString('base64');
-      void validHash;
+      const targetOrigin = new URL(TARGET_URL).origin;
+      const isExternal = (url: string) =>
+        (url.startsWith('http://') || url.startsWith('https://')) &&
+        new URL(url).origin !== targetOrigin;
 
-      await page.route('https://sri-test.example.com/valid.css', (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: 'text/css',
-          headers: { 'access-control-allow-origin': '*' },
-          body: testCssContent,
-        })
-      );
+      const isCheckedSubresourceType = (resourceType: string) =>
+        resourceType === 'script' || resourceType === 'stylesheet';
 
-      await page.goto(TARGET_URL);
+      const sriErrors: string[] = [];
+      const failedExternalRequests: string[] = [];
+      page.on('console', (msg) => {
+        if (
+          msg.type() === 'error' &&
+          /integrity|subresource/i.test(msg.text())
+        ) {
+          sriErrors.push(msg.text());
+        }
+      });
+      page.on('requestfailed', (req) => {
+        if (isExternal(req.url()) && isCheckedSubresourceType(req.resourceType())) {
+          failedExternalRequests.push(
+            `${req.url()} (${req.failure()?.errorText || 'failed'})`
+          );
+        }
+      });
+      page.on('response', (res) => {
+        if (
+          isExternal(res.url()) &&
+          isCheckedSubresourceType(res.request().resourceType()) &&
+          res.status() >= 400
+        ) {
+          failedExternalRequests.push(`${res.url()} (${res.status()})`);
+        }
+      });
 
-      const applied = await page.evaluate(
-        async ({ href, integrity }) => {
-          const hasSecuredSubresources =
-            document.querySelectorAll('script[src][integrity], link[href][integrity]').length > 0;
-          if (!hasSecuredSubresources) return false;
+      await page.goto(TARGET_URL, { waitUntil: 'networkidle' });
 
-          return await new Promise<boolean>((resolve) => {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            link.integrity = integrity;
-            link.crossOrigin = 'anonymous';
-            link.referrerPolicy = 'no-referrer';
-            link.onload = () => {
-              const val = getComputedStyle(document.body)
-                .getPropertyValue('--sri-verified-marker')
-                .trim();
-              resolve(val === '1' && link.sheet !== null);
-            };
-            link.onerror = () => resolve(false);
-            document.head.appendChild(link);
-          });
-        },
-        { href: 'https://sri-test.example.com/valid.css', integrity: computedHash }
-      );
+      const result = await page.evaluate(() => {
+        const origin = window.location.origin;
+        const isExt = (u: string) =>
+          (u.startsWith('http://') || u.startsWith('https://')) &&
+          new URL(u).origin !== origin;
 
-      expect(applied).toBe(true);
+        const extStylesheets = Array.from(
+          document.querySelectorAll('link[rel="stylesheet"][href]')
+        )
+          .filter((el) => isExt((el as HTMLLinkElement).href))
+          .map((el) => ({
+            href: (el as HTMLLinkElement).href,
+            integrity: el.getAttribute('integrity'),
+            hasSheet: Boolean((el as HTMLLinkElement).sheet),
+          }));
+
+        const extScripts = Array.from(document.querySelectorAll('script[src]'))
+          .filter((el) => isExt((el as HTMLScriptElement).src))
+          .map((el) => ({
+            src: (el as HTMLScriptElement).src,
+            integrity: el.getAttribute('integrity'),
+          }));
+
+        return { extStylesheets, extScripts };
+      });
+
+      expect(
+        result.extStylesheets.length + result.extScripts.length
+      ).toBeGreaterThan(0);
+      expect(
+        result.extStylesheets.every((s) => Boolean(s.integrity) && s.hasSheet)
+      ).toBe(true);
+      expect(result.extScripts.every((s) => Boolean(s.integrity))).toBe(true);
+      expect(sriErrors).toEqual([]);
+      expect(failedExternalRequests).toEqual([]);
     });
 
     test('When a subresource response does not match its declared Subresource Integrity digest, the browser blocks it from executing or applying', async ({
       page,
       TARGET_URL,
     }) => {
-      const tamperedCssContent = 'body { --sri-tampered-marker: 1; }';
-      const wrongHash =
-        'sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC';
+      const targetOrigin = new URL(TARGET_URL).origin;
+      const interceptedExternal: string[] = [];
 
-      await page.route('https://sri-test.example.com/tampered.css', (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: 'text/css',
-          headers: { 'access-control-allow-origin': '*' },
-          body: tamperedCssContent,
-        })
-      );
-
-      await page.goto(TARGET_URL);
-
-      const blocked = await page.evaluate(
-        async ({ href, integrity }) => {
-          const hasSecuredSubresources =
-            document.querySelectorAll('script[src][integrity], link[href][integrity]').length > 0;
-          if (!hasSecuredSubresources) return false;
-
-          return await new Promise<boolean>((resolve) => {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            link.integrity = integrity;
-            link.crossOrigin = 'anonymous';
-            link.referrerPolicy = 'no-referrer';
-            link.onload = () => resolve(false);
-            link.onerror = () => {
-              const val = getComputedStyle(document.body)
-                .getPropertyValue('--sri-tampered-marker')
-                .trim();
-              resolve(val === '' && link.sheet === null);
-            };
-            document.head.appendChild(link);
+      await page.route('**/*', (route) => {
+        const req = route.request();
+        const url = req.url();
+        if (
+          (url.startsWith('http://') || url.startsWith('https://')) &&
+          new URL(url).origin !== targetOrigin
+        ) {
+          const type = req.resourceType();
+          interceptedExternal.push(`${type}:${url}`);
+          if (type === 'stylesheet' || /\.css(?:$|\?)/i.test(url)) {
+            return route.fulfill({
+              status: 200,
+              contentType: 'text/css',
+              headers: { 'access-control-allow-origin': '*' },
+              body: ':root { --__sri-tampered-css: 1; }',
+            });
+          }
+          if (type === 'script' || /\.(?:m?js)(?:$|\?)/i.test(url)) {
+            return route.fulfill({
+              status: 200,
+              contentType: 'application/javascript',
+              headers: { 'access-control-allow-origin': '*' },
+              body: 'window.__sriTamperedScript = true;',
+            });
+          }
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/octet-stream',
+            headers: { 'access-control-allow-origin': '*' },
+            body: 'tampered-subresource-bytes',
           });
-        },
-        { href: 'https://sri-test.example.com/tampered.css', integrity: wrongHash }
-      );
+        }
+        return route.continue();
+      });
 
-      expect(blocked).toBe(true);
+      await page.goto(TARGET_URL, { waitUntil: 'networkidle' });
+
+      const result = await page.evaluate(() => {
+        const origin = window.location.origin;
+        const isExt = (u: string) =>
+          (u.startsWith('http://') || u.startsWith('https://')) &&
+          new URL(u).origin !== origin;
+
+        const extStylesheets = Array.from(
+          document.querySelectorAll('link[rel="stylesheet"][href]')
+        )
+          .filter((el) => isExt((el as HTMLLinkElement).href))
+          .map((el) => ({
+            href: (el as HTMLLinkElement).href,
+            hasSheet: Boolean((el as HTMLLinkElement).sheet),
+          }));
+
+        const extIntegrityEls = Array.from(
+          document.querySelectorAll('script[src][integrity], link[href][integrity]')
+        ).filter((el) => {
+          const u =
+            el.getAttribute('src') || el.getAttribute('href') || '';
+          return (
+            u.startsWith('http://') ||
+            u.startsWith('https://') ||
+            u.startsWith('//')
+          );
+        });
+
+        const tamperedCssApplied =
+          getComputedStyle(document.documentElement)
+            .getPropertyValue('--__sri-tampered-css')
+            .trim() !== '';
+
+        const tamperedScriptExecuted =
+          Boolean((window as any).__sriTamperedScript);
+
+        return {
+          extIntegrityCount: extIntegrityEls.length,
+          extStylesheets,
+          tamperedCssApplied,
+          tamperedScriptExecuted,
+        };
+      });
+
+      expect(result.extIntegrityCount).toBeGreaterThan(0);
+      expect(interceptedExternal.length).toBeGreaterThan(0);
+      expect(result.tamperedCssApplied).toBe(false);
+      expect(result.tamperedScriptExecuted).toBe(false);
+      expect(result.extStylesheets.every((s) => !s.hasSheet)).toBe(true);
     });
   });
 });

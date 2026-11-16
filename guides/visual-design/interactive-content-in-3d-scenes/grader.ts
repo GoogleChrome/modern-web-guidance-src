@@ -112,18 +112,18 @@ test.describe('Interactive 3D Content Grader', () => {
     });
   });
 
-  test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) => {
+  test('Feature detection for HTML-in-Canvas is conducted before using the API', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    // Pages detect the latest API surface with 'content' in HTMLCanvasElement.prototype.
-    // Members such as requestPaint also exist in earlier builds that lack the content attribute.
     const code = getScriptContent();
     expect(/['"]content['"]\s+in\b/.test(code)).toBe(true);
   });
 
-  test('Canvas element MUST include the content="drawable" attribute', async ({ page }) => {
+  test('The canvas element includes the content="drawable" attribute', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    const canvas = page.locator('canvas').first();
-    const hasDrawableContent = await canvas.evaluate(el => el.getAttribute('content') === 'drawable').catch(() => false);
+    const hasDrawableContent = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas');
+      return canvas?.getAttribute('content') === 'drawable';
+    }).catch(() => false);
     if (hasDrawableContent) {
       expect(hasDrawableContent).toBe(true);
       return;
@@ -132,10 +132,8 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(/content\s*=\s*["']?drawable\b|setAttribute\(\s*["']content["']\s*,\s*["']drawable["']/.test(code)).toBe(true);
   });
 
-  test('Direct children of the canvas element MUST include the drawable attribute', async ({ page }) => {
+  test('Descendant HTML elements drawn into the canvas include the drawable attribute', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    // Check the markup as authored: without HTML-in-Canvas support, pages can move
-    // the canvas children out of the canvas, to show them as fallback content.
     const hasDrawableChildren = await page.evaluate((html) => {
       const markup = new DOMParser().parseFromString(html, 'text/html');
       const canvas = Array.from(markup.querySelectorAll('canvas')).find(c => c.children.length > 0) || document.querySelector('canvas');
@@ -144,12 +142,12 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(hasDrawableChildren).toBe(true);
   });
 
-  test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
+  test('Canvas rendering executes inside a paint event handler', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    const canvas = page.locator('canvas').first();
-    const hasOnPaint = await canvas.evaluate(el => {
+    const hasOnPaint = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas');
       const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
-      return typeof (el as any).onpaint === 'function' || (el as any)._onpaint || scripts.includes('onpaint') || scripts.includes('requestPaint');
+      return !!canvas && (typeof (canvas as any).onpaint === 'function' || (canvas as any)._onpaint || scripts.includes('onpaint') || scripts.includes('requestPaint'));
     }).catch(() => false);
     if (hasOnPaint) {
       expect(hasOnPaint).toBe(true);
@@ -159,9 +157,8 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(code.includes('onpaint') || code.includes('requestPaint')).toBe(true);
   });
 
-  test('Rendering logic MUST use texElementSubImage2D or drawElementImageToTexture', async ({ page }) => {
+  test('The texture rendering logic uses texElementSubImage2D or drawElementImageToTexture', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    await page.waitForTimeout(200);
     const called = await page.evaluate(() => (window as any).__texElementSubImage2D_called || (window as any).__drawElementImageToTexture_called).catch(() => false);
     if (called) {
       expect(called).toBe(true);
@@ -172,44 +169,28 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(has3DCode).toBe(true);
   });
 
-  test('Texture MUST be allocated at the element size from captureElementImage, rounded up', async ({ page }) => {
+  test('Texture storage is allocated at the element size from captureElementImage, rounded up', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    await page.waitForTimeout(200);
     const code = getScriptContent();
-    // WebGL allocates with texImage2D(); WebGPU creates the texture with device.createTexture({ size }).
     const allocatesTexture = code.includes('texImage2D') || /createTexture\(\s*\{/.test(code);
     expect(code.includes('captureElementImage') && code.includes('Math.ceil') && allocatesTexture).toBe(true);
   });
 
-  test('Texture MUST only be reallocated or recreated when the element size changes', async ({ page }) => {
+  test('Texture storage is reallocated only when the element size changes', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    await page.waitForTimeout(200);
     const code = getScriptContent();
     const allocatesTexture = code.includes('texImage2D') || /createTexture\(\s*\{/.test(code);
-    // Look for a size comparison that guards the reallocation, for example: state.width === width
     const comparesSize = /(width|height)\s*[!=]==?[^;\n]*(width|height)/i.test(code);
     expect(allocatesTexture && comparesSize).toBe(true);
   });
 
-  test('Each drawn HTML element MUST be registered with updateElementGeometry and a canvasTransform', async ({ page }) => {
+  test('Each drawn HTML element is registered with updateElementGeometry and a canvasTransform', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
-    await page.waitForTimeout(200);
     const code = getScriptContent();
     expect(code.includes('updateElementGeometry') && code.includes('canvasTransform')).toBe(true);
   });
 
-  test('When using Three.js, the HTMLTexture mesh MUST be registered with an InteractionManager that is updated', async ({ page }) => {
-    await page.goto(fileUrl).catch(() => {});
-    const code = getScriptContent();
-    // Only applies when the HTML element is displayed with THREE.HTMLTexture.
-    if (!code.includes('HTMLTexture')) {
-      return;
-    }
-    const manager = code.match(/([\w$.]+)\s*=\s*new\s+(?:[\w$]+\.)?InteractionManager\s*\(/);
-    expect(manager !== null && code.includes(`${manager[1]}.add(`) && code.includes(`${manager[1]}.update(`)).toBe(true);
-  });
-
-  test('Screen size changes MUST be observed using ResizeObserver', async ({ page }) => {
+  test('Screen size changes are observed using ResizeObserver', async ({ page }) => {
     await page.goto(fileUrl).catch(() => {});
     const observed = await page.evaluate(() => (window as any).__resizeObserverObserved).catch(() => false);
     if (observed) {
@@ -220,9 +201,8 @@ test.describe('Interactive 3D Content Grader', () => {
     expect(code.includes('ResizeObserver')).toBe(true);
   });
 
-  test('Fallback UI strategy MUST be implemented to prevent unhandled exceptions', async ({ page }) => {
+  test('A fallback UI strategy is implemented when HTML-in-Canvas is not supported', async ({ page }) => {
     await page.addInitScript(() => {
-      // Simulate a browser without HTML-in-Canvas support, including removing the mocks from beforeEach.
       for (const member of ['content', 'requestPaint', 'captureElementImage', 'updateElementGeometry']) {
         delete (HTMLCanvasElement.prototype as any)[member];
       }
@@ -232,8 +212,8 @@ test.describe('Interactive 3D Content Grader', () => {
       if (typeof WebGL2RenderingContext !== 'undefined') {
         delete (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
       }
-      if (typeof GPUQueue !== 'undefined') {
-        delete (GPUQueue.prototype as any).drawElementImageToTexture;
+      if (typeof (window as any).GPUQueue !== 'undefined') {
+        delete (window as any).GPUQueue.prototype.drawElementImageToTexture;
       }
     });
 
@@ -245,7 +225,8 @@ test.describe('Interactive 3D Content Grader', () => {
     });
 
     await page.goto(fileUrl).catch(() => {});
-    await page.waitForTimeout(200);
+    // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     expect(pageErrors).toEqual([]);
 

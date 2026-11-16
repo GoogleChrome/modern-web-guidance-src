@@ -7,6 +7,7 @@
 export type SkillUpdateLevel = 'none' | 'warn' | 'insist';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const CLAUDE_MARKETPLACE_FREEZE_DATE = new Date(2026, 9, 12);
 
 function parseVersionDate(version: string | null): Date | null {
   const match = version?.match(/^(\d{4})_(\d{2})_(\d{2})/);
@@ -14,6 +15,15 @@ function parseVersionDate(version: string | null): Date | null {
 
   const [_, year, month, day] = match;
   return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+}
+
+/**
+ * Anthropic stopped updating third-party plugins in `claude-plugins-official` on
+ * 2026-10-12 (`v0.0.194` / `2026_10_12-dacb5911`), stranding existing installs.
+ */
+export function isFrozenClaudeMarketplaceVersion(callerVersion: string | null): boolean {
+  const callerDate = parseVersionDate(callerVersion);
+  return callerDate !== null && callerDate <= CLAUDE_MARKETPLACE_FREEZE_DATE;
 }
 
 /**

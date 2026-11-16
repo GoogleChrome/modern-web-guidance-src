@@ -53,16 +53,14 @@ test.describe(`Deprioritize Background Fetches Expectations: ${demoName}`, () =>
 
     await page.goto(demoUrl);
 
-    // Wait for DOMContentLoaded and then click the button
+    // Wait for DOMContentLoaded, click the button, and wait for fetches without fixed timeout
     await page.waitForLoadState('domcontentloaded');
-    await page.evaluate(async () => {
+    await page.evaluate(() => {
       (window as any).__fetches = []; // Clear any auto-fetches
       (document.querySelector('button') as HTMLElement)?.click();
-      // Wait briefly to allow fetches to queue
-      await new Promise(r => setTimeout(r, 50));
     });
+    await page.waitForFunction(() => ((window as any).__fetches?.length ?? 0) >= 2);
   });
-
 
   // Browser assertions
   test(`A fetch() call to /api/data is made without the priority: 'low' option.`, async ({ page }) => {
@@ -79,7 +77,7 @@ test.describe(`Deprioritize Background Fetches Expectations: ${demoName}`, () =>
     expect(isAnalyticsFetchLowPriority).toBe(true);
   });
 
-  test(`No fetch() calls use the deprecated importance option`, async ({ page }) => {
+  test(`No fetch() calls use the deprecated importance option.`, async ({ page }) => {
     const fetches = await getFetches(page);
     const hasImportance = fetches.some((f: any) => f.options.importance);
 

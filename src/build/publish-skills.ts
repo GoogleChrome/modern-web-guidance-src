@@ -1,31 +1,103 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { parseArgs } from 'node:util';
 import ghpages from 'gh-pages';
-import { buildDist } from './build-dist.ts';
+import { buildDist, processSkills, type DistTag } from './build-dist.ts';
 import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
 import { rootDir } from '../core/paths.ts';
+import { embedGuideChunks } from '../rag/embed-guide-chunks.ts';
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 
 // This controls what is published to https://github.com/GoogleChrome/modern-web-guidance.
-const GH_PUBLISH_PATTERNS = [
+export const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
-  '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/static-model/**',
+  '!**/gen/**',
+  '!**/*.{js,mjs,ts,bin,map,gz,i8,f32}',
   '!**/guides.json',
   '!**/skill-version.txt',
   '!THIRD_PARTY_NOTICES',
   '!skills/modern-web-guidance/package.json',
 ];
 
+// Stripped allowlist for the `claude` branch tracked by claude.ai/directory/manage.
+// Unverified organizations are rejected if the branch contains non-allowed file types
+// (.toml, .svg) or non-Claude manifests/keys (package.json, .codex-plugin, etc.).
+export const GH_CLAUDE_PUBLISH_PATTERNS = [
+  '.claude-plugin/plugin.json',
+  'skills/**/*.md',
+  '!**/.cache/**',
+  '!**/tfjs-model-minilm/**',
+  '!**/static-model/**',
+  '!**/gen/**',
+  'README.md',
+  'CONTRIBUTING.md',
+  'LICENSE',
+  '.gitignore',
+  'assets/logo.png',
+];
+
+/**
+ * Mirrors globby's positive/negative pattern matching for dry-run previews and tests.
+ */
+export function filterPublishFiles(files: string[], patterns: string[]): string[] {
+  const positivePatterns = patterns.filter((p) => !p.startsWith('!'));
+  const negativePatterns = patterns.filter((p) => p.startsWith('!')).map((p) => p.slice(1));
+
+  return files
+    .filter((file) =>
+      positivePatterns.some((pattern) => minimatch(file, pattern, { dot: true })) &&
+      negativePatterns.every((pattern) => !minimatch(file, pattern, { dot: true })),
+    )
+    .sort((a, b) => a.localeCompare(b));
+}
+
 const isDryRun = process.argv.includes('--dry-run');
+
+export type { DistTag };
+
+export interface PublishOptions {
+  distTag: DistTag;
+  explicitVersion?: string;
+}
+
+export function parsePublishOptions(
+  argv: string[] = process.argv.slice(2),
+  env: NodeJS.ProcessEnv = process.env,
+): PublishOptions {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      tag: { type: 'string' },
+      version: { type: 'string' },
+    },
+    strict: false,
+  });
+
+  const rawTag = (typeof values.tag === 'string' ? values.tag : (env.DIST_TAG ?? env.NPM_DIST_TAG))?.trim();
+  const rawVersion = (typeof values.version === 'string' ? values.version : env.RELEASE_VERSION)?.trim();
+
+  const distTag = (rawTag || 'latest') as DistTag;
+  if (distTag !== 'latest' && distTag !== 'next') {
+    throw new Error(`Invalid dist-tag "${distTag}". Expected "latest" or "next".`);
+  }
+
+  const explicitVersion = rawVersion ? rawVersion.replace(/^v/, '') : undefined;
+  if (explicitVersion !== undefined && !/^\d+\.\d+\.\d+$/.test(explicitVersion)) {
+    throw new Error(`Invalid explicit version "${rawVersion}". Expected X.Y.Z semver (e.g. 1.0.0).`);
+  }
+
+  return { distTag, explicitVersion };
+}
 
 function incrementVersion(version: string): string {
   const parts = version.split('.');
@@ -85,19 +157,28 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   return newVersion;
 }
 
-async function publishToDistributionRepo(publishCliDir: string, newVersion: string, latestTag: string) {
-  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
-
+async function publishBranchToDistributionRepo(
+  publishCliDir: string,
+  branch: 'main' | 'next' | 'claude',
+  message: string,
+  opts: { tag?: string; src?: string[] } = {},
+) {
+  const { tag, src = GH_PUBLISH_PATTERNS } = opts;
+  // gh-pages keeps one clone per repo URL (it has no per-branch clone option) and that clone
+  // is single-branch, so a second publish to another branch in the same run pushes a commit
+  // based on the wrong branch and gets rejected. Start every publish from a fresh clone.
+  ghpages.clean();
   await new Promise<void>((resolve, reject) => {
     ghpages.publish(
       publishCliDir,
       {
-        branch: 'main',
+        branch,
         repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
         dotfiles: true,
-        message: `Release v${newVersion}`,
-        tag: `v${newVersion}`,
-        src: GH_PUBLISH_PATTERNS,
+        remove: '{**/*,**/.*/**/*,**/.[!.]*}',
+        message,
+        ...(tag ? { tag } : {}),
+        src,
       },
       (err) => {
         if (err) {
@@ -108,12 +189,89 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
       },
     );
   });
+}
 
-const releaseNotes = await generateReleaseNotes({
-  previousTag: latestTag,
-  newVersion,
-  publishCliDir,
-});
+function getLatestDistributionReleaseTag(fallbackTag: string): string {
+  try {
+    const ghLatestRelease = execSync(
+      'gh release view -R GoogleChrome/modern-web-guidance --json tagName -q .tagName',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    if (ghLatestRelease) {
+      execSync(`git rev-parse -q --verify "refs/tags/${ghLatestRelease}"`, { stdio: 'ignore' });
+      return ghLatestRelease;
+    }
+  } catch {
+    // Fall back to git ls-remote when gh CLI is unavailable or unauthenticated
+  }
+  try {
+    const remoteTags = execSync(
+      `git ls-remote --tags --refs --sort=-v:refname ${DIST_REPO_URL} "v*.*.*"`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    const firstLine = remoteTags.split('\n')[0];
+    const match = firstLine?.match(/refs\/tags\/(v\S+)$/);
+    if (match) {
+      execSync(`git rev-parse -q --verify "refs/tags/${match[1]}"`, { stdio: 'ignore' });
+      return match[1];
+    }
+  } catch {
+    // Fall back to local git tag if offline
+  }
+  return fallbackTag;
+}
+
+async function publishToDistributionRepo(
+  publishCliDir: string,
+  newVersion: string,
+  latestTag: string,
+  distTag: DistTag = 'latest',
+) {
+  if (distTag === 'next') {
+    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (next branch)...`);
+    await publishBranchToDistributionRepo(
+      publishCliDir,
+      'next',
+      `Release v${newVersion} (next)`,
+    );
+    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance (next branch)!`);
+    return;
+  }
+
+  const previousReleaseTag = getLatestDistributionReleaseTag(latestTag);
+  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
+  await publishBranchToDistributionRepo(
+    publishCliDir,
+    'main',
+    `Release v${newVersion}`,
+    { tag: `v${newVersion}` },
+  );
+
+  console.log(`\nPublishing stripped Claude plugin to GoogleChrome/modern-web-guidance (claude branch)...`);
+  await publishBranchToDistributionRepo(
+    publishCliDir,
+    'claude',
+    `Release v${newVersion} (claude)`,
+    { src: GH_CLAUDE_PUBLISH_PATTERNS },
+  );
+
+  console.log(`Syncing GoogleChrome/modern-web-guidance (next branch) with v${newVersion}...`);
+  processSkills(publishCliDir, 'next');
+  try {
+    await publishBranchToDistributionRepo(
+      publishCliDir,
+      'next',
+      `Release v${newVersion}`,
+    );
+  } finally {
+    processSkills(publishCliDir, 'latest');
+  }
+
+  const releaseNotes = await generateReleaseNotes({
+    previousTag: previousReleaseTag,
+    newVersion,
+    publishCliDir,
+  });
 
   // Attempt to create formal GitHub release on the distribution repo if gh CLI is authenticated
   try {
@@ -136,36 +294,86 @@ const releaseNotes = await generateReleaseNotes({
 /**
  * Validate using the local build.
  */
-async function validate(newVersion: string) {
+export interface ValidateDeps {
+  dryRun?: boolean;
+  distTag?: DistTag;
+  embedChunks?: typeof embedGuideChunks;
+  runBuildDist?: typeof buildDist;
+  runDistTests?: () => void;
+}
+
+export async function validate(newVersion: string, deps: ValidateDeps = {}) {
+  const {
+    dryRun = isDryRun,
+    distTag = 'latest',
+    embedChunks = embedGuideChunks,
+    runBuildDist = buildDist,
+    runDistTests = () =>
+      execSync('node --test src/build/dist.test.ts', {
+        cwd: ROOT_DIR,
+        stdio: 'inherit',
+        env: { ...process.env, TEST_REPORTER: 'spec' },
+      }),
+  } = deps;
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
-  console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
+  if (dryRun) {
+    console.log(`\nChecking cached teacher vectors (dry run)...`);
+    const checkResult = await embedChunks({ check: true });
+    if (checkResult.missing.length > 0) {
+      const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
+      console.warn(
+        `⚠️  [Dry Run] ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors ` +
+          `(indexed for BM25 only, vector: []; real publish will embed them):\n` +
+          missingGuides.map((g) => `  - ${g}`).join("\n")
+      );
+    }
+  } else {
+    console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
+    const embedResult = await embedChunks({ prune: true });
+    if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
+      console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
+    }
+  }
+
+  console.log(`\nRebuilding distribution with version ${newVersion} (dist-tag: ${distTag})...`);
+  const result = await runBuildDist({
+    publishRoot: publishCliDir,
+    version: newVersion,
+    failOnMissingVectors: !dryRun,
+    distTag,
+  });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
 
   console.log(`\nVerifying built distribution with dist.test.ts suite...`);
-  execSync('node --test src/build/dist.test.ts', {
-    cwd: ROOT_DIR,
-    stdio: 'inherit' ,
-    env: { ...process.env, TEST_REPORTER: 'spec' }
-  });
+  runDistTests();
 
   return result;
 }
 
 async function main() {
+  const { distTag, explicitVersion } = parsePublishOptions();
   const latestTag = getLatestGitTag();
-  let newVersion = await getNextVersion();
+  let newVersion: string;
 
-  // Self-healing loop: ensure the version tag doesn't exist locally or on remote repos
-  while (gitTagExists(newVersion)) {
-    console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
-    newVersion = incrementVersion(newVersion);
+  if (explicitVersion) {
+    if (gitTagExists(explicitVersion)) {
+      throw new Error(`Version v${explicitVersion} has already been tagged!`);
+    }
+    newVersion = explicitVersion;
+    console.log(`Using explicit version override: ${newVersion} (dist-tag: ${distTag})`);
+  } else {
+    newVersion = await getNextVersion();
+    // Self-healing loop: ensure the version tag doesn't exist locally or on remote repos
+    while (gitTagExists(newVersion)) {
+      console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
+      newVersion = incrementVersion(newVersion);
+    }
   }
 
-  const { skillsCount, skillNames } = await validate(newVersion);
+  const { skillsCount, skillNames } = await validate(newVersion, { distTag });
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   if (isDryRun) {
@@ -174,27 +382,22 @@ async function main() {
     const useCasesCount = readyGuides.length;
 
     const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
-    const filteredFiles = files
+    const allRelativeFiles = files
       .filter(f => !f.parentPath.includes('node_modules') && f.isFile())
-      .map(f => path.relative(publishCliDir, path.join(f.parentPath, f.name)))
-      .filter(f => {
-        return GH_PUBLISH_PATTERNS.every(pattern => {
-          if (pattern.startsWith('!')) {
-            return !minimatch(f, pattern.slice(1), { dot: true });
-          }
-          return minimatch(f, pattern, { dot: true });
-        });
-      })
-      .sort((a,b) => a.localeCompare(b));
+      .map(f => path.relative(publishCliDir, path.join(f.parentPath, f.name)));
+    const filteredFiles = filterPublishFiles(allRelativeFiles, GH_PUBLISH_PATTERNS);
+    const claudeFiles = filterPublishFiles(allRelativeFiles, GH_CLAUDE_PUBLISH_PATTERNS);
 
-    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${filteredFiles.join('\n - ')}`);
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push to main:\n - ${filteredFiles.join('\n - ')}`);
+    console.log(`\n[Dry Run] Would push to claude (${claudeFiles.length} files):\n - ${claudeFiles.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
     console.log(`\n[Dry Run] Skills: ${skillsCount} (${skillNames.join(', ')})`);
     console.log(`\n[Dry Run] Features: ${featuresCount}, Use cases: ${useCasesCount}`);
 
-    console.log(`\n[Dry Run] Generating release notes using Gemini for v${newVersion} (diff against ${latestTag})...`);
+    const previousReleaseTag = getLatestDistributionReleaseTag(latestTag);
+    console.log(`\n[Dry Run] Generating release notes using Gemini for v${newVersion} (diff against ${previousReleaseTag})...`);
     const releaseNotes = await generateReleaseNotes({
-      previousTag: latestTag,
+      previousTag: previousReleaseTag,
       newVersion,
       publishCliDir,
     });
@@ -216,15 +419,15 @@ async function main() {
     // Update both the distribution bundle README and the source repo README
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
 
-    await publishToDistributionRepo(publishCliDir, newVersion, latestTag);
+    await publishToDistributionRepo(publishCliDir, newVersion, latestTag, distTag);
 
     console.log('Committing automated documentation updates to source repo...');
     try {
-      execSync('git diff --quiet README.md src/build/eval-results-summary.json', { cwd: ROOT_DIR });
-      console.log("No changes in README.md or src/build/eval-results-summary.json to commit.");
+      execSync('git diff --quiet README.md src/build/eval-results-summary.json src/rag/gen/guide-chunk-cache.json src/rag/gen/guide-chunk-cache.i8 src/rag/gen/guide-chunk-cache.scale.f32', { cwd: ROOT_DIR });
+      console.log("No changes in README.md, src/build/eval-results-summary.json, or static chunk cache to commit.");
     } catch (err) {
-      console.log("Changes found in README.md or eval-results-summary.json, committing...");
-      execSync('git add README.md src/build/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
+      console.log("Changes found in README.md, eval-results-summary.json, or static chunk cache, committing...");
+      execSync('git add README.md src/build/eval-results-summary.json src/rag/gen/guide-chunk-cache.json src/rag/gen/guide-chunk-cache.i8 src/rag/gen/guide-chunk-cache.scale.f32', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git pull --rebase origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });

@@ -36,7 +36,7 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     await page.goto(TARGET_URL);
   });
 
-  test('Header container should use position: sticky', async ({ page }) => {
+  test('Header container uses position: sticky', async ({ page }) => {
     const elements = page.locator('.sticky-container');
     const count = await elements.count();
     expect(count).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Header container should define container-type: scroll-state', async ({ page }) => {
+  test('Header container defines container-type: scroll-state', async ({ page }) => {
     const elements = page.locator('.sticky-container');
     const count = await elements.count();
     expect(count).toBeGreaterThan(0);
@@ -59,7 +59,7 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Header container should define a container-name', async ({ page }) => {
+  test('Header container defines a container-name', async ({ page }) => {
     const elements = page.locator('.sticky-container');
     const count = await elements.count();
     expect(count).toBeGreaterThan(0);
@@ -73,7 +73,7 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Header visual style should change when stuck at the top', async ({ page }) => {
+  test('Header visual style changes when stuck at the top', async ({ page }) => {
     const header = page.locator('.sticky-header').first();
     
     // Ensure we start at the top (unstuck)
@@ -196,27 +196,22 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
       window.scrollTo(0, args.top + args.height / 2);
     }, containerRect);
 
-    // Give the two-pass scroll-state update a moment to settle
-    await page.waitForTimeout(500);
-
-    const stuck = await readLayout();
-    const layoutChanged = stuck !== unstuck;
-
     const parentOverflowAnchor = await container.evaluate(el =>
       getComputedStyle(el.parentElement!).overflowAnchor
     );
 
-    if (layoutChanged) {
-      // The guide requires disabling scroll anchoring on the parent when
-      // stuck styles change layout, otherwise the header oscillates.
-      expect(parentOverflowAnchor).toBe('none');
-    } else {
-      // No layout change means scroll anchoring must stay enabled.
-      expect(parentOverflowAnchor).not.toBe('none');
-    }
+    await expect.poll(async () => {
+      const stuck = await readLayout();
+      const layoutChanged = stuck !== unstuck;
+      if (layoutChanged) {
+        return parentOverflowAnchor === 'none';
+      } else {
+        return parentOverflowAnchor !== 'none';
+      }
+    }).toBe(true);
   });
 
-  test('Visual style changes should be implemented using @container scroll-state(...)', async ({ page }) => {
+  test('Visual style changes are implemented using @container scroll-state(...)', async ({ page }) => {
     const hasScrollStateQuery = await page.evaluate(() => {
       const sheets = Array.from(document.styleSheets);
       return sheets.some(sheet => {
@@ -227,9 +222,8 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
             const condition = rule.conditionText || '';
             const normalized = condition.replace(/\s+/g, '');
             const hasScrollState = normalized.includes('scroll-state');
-            const hasValidStuck = normalized.includes('stuck:top') || 
-                                  normalized.includes('stuck:inset-block-start') || 
-                                  normalized.includes('stuck:inset-inline-start');
+            const hasValidStuck = normalized.includes('stuck:top') ||
+                                  normalized.includes('stuck:block-start');
             
             if (hasScrollState && hasValidStuck) {
               return true;
@@ -239,9 +233,8 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
             if (rule.constructor.name === 'CSSContainerRule') {
                const cssText = rule.cssText.replace(/\s+/g, '');
                const hasCssScrollState = cssText.includes('scroll-state');
-               const hasCssValidStuck = cssText.includes('stuck:top') || 
-                                        cssText.includes('stuck:inset-block-start') || 
-                                        cssText.includes('stuck:inset-inline-start');
+               const hasCssValidStuck = cssText.includes('stuck:top') ||
+                                        cssText.includes('stuck:block-start');
                return hasCssScrollState && hasCssValidStuck;
             }
             return false;
@@ -254,7 +247,7 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
     expect(hasScrollStateQuery).toBe(true);
   });
 
-  test('Stuck styles must come from the container query, not JS', async ({ page }) => {
+  test('Stuck styles come from the container query, not JS', async ({ page }) => {
     const header = page.locator('.sticky-header').first();
     
     const headerRect = await header.evaluate(el => {
@@ -291,9 +284,8 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
           const condition = r.conditionText || '';
           const normalized = condition.replace(/\s+/g, '');
           
-          const hasValidStuck = normalized.includes('stuck:top') || 
-                                normalized.includes('stuck:inset-block-start') || 
-                                normalized.includes('stuck:inset-inline-start');
+          const hasValidStuck = normalized.includes('stuck:top') ||
+                                normalized.includes('stuck:block-start');
           
           if (normalized.includes('scroll-state') && hasValidStuck) {
             // Delete the rule from its parent list
@@ -325,20 +317,19 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
 
     // Second arm: scroll away and back and verify it DOES NOT re-acquire stuck styles
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(300); // let any scroll handler run
-    
     await page.evaluate((args) => {
       window.scrollTo(0, args.top + args.height + 50);
     }, headerRect);
-    await page.waitForTimeout(300);
 
-    const stillHasStuckLook = await header.evaluate((el, args) => {
-      const style = getComputedStyle(el);
-      return style.backgroundColor !== args.initialBg;
-    }, { initialBg: initialStyles.backgroundColor });
+    await expect.poll(async () => {
+      return header.evaluate((el, args) => {
+        const style = getComputedStyle(el);
+        return style.backgroundColor !== args.initialBg;
+      }, { initialBg: initialStyles.backgroundColor });
+    }).toBe(false);
+  });
 
-    expect(stillHasStuckLook).toBe(false);
-  });  test('Existing navigation bar should remain intact', async ({ page }) => {
+  test('Existing navigation bar remains intact', async ({ page }) => {
     const nav = page.locator('nav').first();
     await expect(nav).toBeVisible();
     
@@ -350,6 +341,92 @@ test.describe(`State-Aware Sticky Headers Expectations: ${demoName}`, () => {
       return getComputedStyle(el).containerType || getComputedStyle(el).getPropertyValue('container-type');
     });
     expect(containerType).not.toContain('scroll-state');
+  });
+
+  test('`scroll-padding-top` is used to ensure that elements that receive focus aren\'t obscured by the sticky header.', async ({ page }) => {
+    await page.addStyleTag({
+      content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
+    });
+
+    const result = await page.evaluate(async () => {
+      const raf = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
+      const htmlPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+      const bodyPadding = parseFloat(getComputedStyle(document.body).scrollPaddingTop) || 0;
+      const scrollPaddingTop = Math.max(htmlPadding, bodyPadding);
+
+      const sticky = document.querySelector('.sticky-container');
+      if (!sticky) {
+        return {
+          hasSticky: false,
+          scrollPaddingTop,
+          stickyBottom: 0,
+          hasTarget: false,
+          focusedTop: 0,
+        };
+      }
+
+      const spacer = document.createElement('div');
+      spacer.style.height = '1500px';
+      document.body.appendChild(spacer);
+
+      try {
+        const stickyDocTop = sticky.getBoundingClientRect().top + window.scrollY;
+        const focusables = Array.from(
+          document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+        ).filter((el): el is HTMLElement => {
+          if (el.closest('nav') || el.closest('.sticky-container')) return false;
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && r.top + window.scrollY > stickyDocTop;
+        });
+
+        window.scrollTo({ top: stickyDocTop + 120, behavior: 'instant' });
+        await raf();
+        const stickyBottom = sticky.getBoundingClientRect().bottom;
+
+        const target = focusables[0];
+        if (!target) {
+          return {
+            hasSticky: true,
+            scrollPaddingTop,
+            stickyBottom,
+            hasTarget: false,
+            focusedTop: 0,
+          };
+        }
+
+        const targetDocY = target.getBoundingClientRect().top + window.scrollY;
+        // Position target in the bottom sliver behind the stuck header so undersized scroll-padding fails to scroll.
+        window.scrollTo({ top: Math.max(0, targetDocY - Math.max(4, stickyBottom - 4)), behavior: 'instant' });
+        await raf();
+        target.blur();
+        target.focus();
+        await raf();
+
+        const focusedTop = target.getBoundingClientRect().top;
+        return {
+          hasSticky: true,
+          scrollPaddingTop,
+          stickyBottom,
+          hasTarget: true,
+          focusedTop,
+        };
+      } finally {
+        spacer.remove();
+      }
+    });
+
+    expect(result.hasSticky, 'Expected a .sticky-container element').toBe(true);
+    expect(result.scrollPaddingTop, 'Expected non-zero scroll-padding-top').toBeGreaterThan(0);
+    expect(
+      result.scrollPaddingTop,
+      `scroll-padding-top (${result.scrollPaddingTop}px) should be >= stuck sticky header bottom (${result.stickyBottom}px)`,
+    ).toBeGreaterThanOrEqual(result.stickyBottom - 0.5);
+    expect(result.hasTarget, 'Expected a focusable element below the sticky header').toBe(true);
+    expect(
+      result.focusedTop,
+      `Focused element top (${result.focusedTop}px) should be >= stuck sticky header bottom (${result.stickyBottom}px)`,
+    ).toBeGreaterThanOrEqual(result.stickyBottom - 1);
   });
 
 });

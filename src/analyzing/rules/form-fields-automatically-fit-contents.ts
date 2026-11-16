@@ -6,6 +6,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
+  getCallAndBinaryDescendants,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
@@ -242,7 +243,7 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
-    sourceFile.forEachDescendant((node) => {
+    for (const node of getCallAndBinaryDescendants(sourceFile)) {
       const message =
         Node.isCallExpression(node) && isAutosizeCall(node)
           ? 'Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.'
@@ -251,14 +252,14 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
             : null;
 
       if (!message || isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-        return;
+        continue;
       }
       const line = node.getStartLineNumber();
       if (!visitedLines.has(line)) {
         visitedLines.add(line);
         matches.push({ line, message });
       }
-    });
+    }
 
     return matches;
   },

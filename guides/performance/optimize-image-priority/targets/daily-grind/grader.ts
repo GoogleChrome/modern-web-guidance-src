@@ -5,80 +5,89 @@ import {
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 
-// @ts-ignore - import.meta.url is supported by Playwright/Node ESM runner
+import type { Document } from 'linkedom';
+
+// @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getHtmlDocs() {
-  return getHtmlDocuments(targetFiles);
-}
-
-function getAllElements(selector: string): any[] {
-  return getHtmlDocs().flatMap((d) => Array.from(d.document.querySelectorAll(selector)));
+function getMainDocument(): Document {
+  const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+  const indexDoc = docs.find((d) => /(?:^|[\\/])index\.html$/i.test(d.file) && !/[\\/]dist[\\/]/i.test(d.file));
+  return (indexDoc || docs[0])?.document;
 }
 
 test.describe('optimize-image-priority Target Grader', () => {
-  test('Hero LCP image exists and has fetchpriority="high"', () => {
-    const heroImgs = getAllElements('.hero img, header.hero img');
-    const hasHighPriorityHero = heroImgs.some(
-      (img) => img.getAttribute('fetchpriority')?.toLowerCase() === 'high'
+  test('The primary Largest Contentful Paint (LCP) hero <img> element has the fetchpriority="high" attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const heroImgs = Array.from<any>(doc.querySelectorAll('.hero img, header.hero img, header img'));
+    expect(heroImgs.length).toBeGreaterThan(0);
+    const hasHighPriority = heroImgs.some(
+      (img) => img.getAttribute('fetchpriority')?.trim().toLowerCase() === 'high'
     );
-    expect(hasHighPriorityHero).toBe(true);
+    expect(hasHighPriority).toBe(true);
   });
 
-  test('Hero LCP image does NOT have loading="lazy"', () => {
-    const heroImgs = getAllElements('.hero img, header.hero img');
-    const validHeroImg =
-      heroImgs.length > 0 &&
-      heroImgs.every((img) => img.getAttribute('loading')?.toLowerCase() !== 'lazy');
-    expect(validHeroImg).toBe(true);
+  test('The primary Largest Contentful Paint (LCP) hero <img> element does NOT have the loading="lazy" attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const heroImgs = Array.from<any>(doc.querySelectorAll('.hero img, header.hero img, header img'));
+    expect(heroImgs.length).toBeGreaterThan(0);
+    for (const img of heroImgs) {
+      expect(img.getAttribute('loading')?.trim().toLowerCase()).not.toBe('lazy');
+    }
   });
 
-  test('At least one and no more than two img elements have fetchpriority="high"', () => {
-    const allImgs = getAllElements('img');
-    const highPriorityCount = allImgs.filter(
-      (img) => img.getAttribute('fetchpriority')?.toLowerCase() === 'high'
-    ).length;
-    expect(highPriorityCount >= 1 && highPriorityCount <= 2).toBe(true);
-  });
-
-  test('Any initially hidden above-the-fold images have fetchpriority="low" while visible hero images are prioritized', () => {
-    const heroImgs = getAllElements('.hero img, header.hero img');
-    const hiddenAboveFoldImgs = getAllElements(
-      'nav [hidden] img, nav .dropdown img, nav .mega-menu img, dialog img, .modal img, .carousel [hidden] img, .carousel .inactive img'
+  test('No more than two <img> elements on the page have the fetchpriority="high" attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const allImgs = Array.from<any>(doc.querySelectorAll('img'));
+    expect(allImgs.length).toBeGreaterThan(0);
+    const highPriorityImgs = allImgs.filter(
+      (img) => img.getAttribute('fetchpriority')?.trim().toLowerCase() === 'high'
     );
-    const isValid =
-      heroImgs.length > 0 &&
-      hiddenAboveFoldImgs.every(
-        (img) => img.getAttribute('fetchpriority')?.toLowerCase() === 'low'
-      );
-    expect(isValid).toBe(true);
+    expect(highPriorityImgs.length).toBeGreaterThan(0);
+    expect(highPriorityImgs.length).toBeLessThanOrEqual(2);
   });
 
-  test('Below-the-fold card images use loading="lazy"', () => {
-    const belowFoldImgs = getAllElements('.card img, main img, footer img');
-    const allLazy =
-      belowFoldImgs.length > 0 &&
-      belowFoldImgs.every((img) => img.getAttribute('loading')?.toLowerCase() === 'lazy');
-    expect(allLazy).toBe(true);
+  test('Initially hidden or off-screen above-the-fold <img> elements have the fetchpriority="low" attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const navImgs = Array.from<any>(doc.querySelectorAll('nav img, details img'));
+    expect(navImgs.length).toBeGreaterThan(0);
+    for (const img of navImgs) {
+      expect(img.getAttribute('fetchpriority')?.trim().toLowerCase()).toBe('low');
+    }
   });
 
-  test('Below-the-fold card images do NOT have the fetchpriority attribute', () => {
-    const belowFoldImgs = getAllElements('.card img, main img, footer img');
-    const noneHaveFetchPriority =
-      belowFoldImgs.length > 0 &&
-      belowFoldImgs.every((img) => !img.hasAttribute('fetchpriority'));
-    expect(noneHaveFetchPriority).toBe(true);
+  test('Standard below-the-fold <img> elements use the loading="lazy" attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const belowFoldImgs = Array.from<any>(doc.querySelectorAll('.card img, .grid img, main img, footer img'));
+    expect(belowFoldImgs.length).toBeGreaterThanOrEqual(3);
+    for (const img of belowFoldImgs) {
+      expect(img.getAttribute('loading')?.trim().toLowerCase()).toBe('lazy');
+    }
   });
 
-  test('No img elements use deprecated importance attribute or invalid loading="auto" attribute', () => {
-    const allImgs = getAllElements('img');
-    const allClean =
-      allImgs.length > 0 &&
-      allImgs.every(
-        (img) =>
-          !img.hasAttribute('importance') &&
-          img.getAttribute('loading')?.toLowerCase() !== 'auto'
-      );
-    expect(allClean).toBe(true);
+  test('Standard below-the-fold <img> elements do NOT have the fetchpriority attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const belowFoldImgs = Array.from<any>(doc.querySelectorAll('.card img, .grid img, main img, footer img'));
+    expect(belowFoldImgs.length).toBeGreaterThanOrEqual(3);
+    for (const img of belowFoldImgs) {
+      expect(img.hasAttribute('fetchpriority')).toBe(false);
+    }
+  });
+
+  test('No <img> elements have the deprecated importance attribute or invalid loading="auto" attribute', () => {
+    const doc = getMainDocument();
+    expect(doc).toBeDefined();
+    const allImgs = Array.from<any>(doc.querySelectorAll('img'));
+    expect(allImgs.length).toBeGreaterThan(0);
+    for (const img of allImgs) {
+      expect(img.hasAttribute('importance')).toBe(false);
+      expect(img.getAttribute('loading')?.trim().toLowerCase()).not.toBe('auto');
+    }
   });
 });

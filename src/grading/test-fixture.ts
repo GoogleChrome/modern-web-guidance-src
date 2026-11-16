@@ -1,23 +1,113 @@
-import { test as base, type Page, type BrowserContext } from '@playwright/test';
+import { test as base, chromium, type Page, type Browser, type BrowserContext, type Request } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawn, spawnSync } from 'child_process';
-import * as net from 'net';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'url';
-import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
-import { parse, CSSStyleSheet, CSSStyleDeclaration } from 'cssomnom';
-import { checkBaseline } from '../core/baseline.ts';
+import type { Project } from 'ts-morph';
+import type {
+  CSSStyleSheet,
+  CSSRule,
+  RuleRoot,
+  AnyRuleConstructor,
+} from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
+import {
+  startTargetServer,
+  spawnPlainTargetServer,
+  getSessionAndTreePids,
+  killServerProcessTree,
+  isProcessRunning,
+  type TargetServer,
+  type StartedTargetServer,
+} from './target-server.ts';
 
-export { expect } from '@playwright/test';
+const require = createRequire(import.meta.url);
+
+export {
+  expect,
+} from '@playwright/test';
+
+export {
+  startTargetServer,
+  spawnPlainTargetServer,
+  getSessionAndTreePids,
+  killServerProcessTree,
+  isProcessRunning,
+  type TargetServer,
+  type StartedTargetServer,
+};
 
 export function skipUnless(conditions: { unsupported: string }): void {
   const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
   if (conditions.unsupported) {
+    const { checkBaseline } = require('../core/baseline.ts') as typeof import('../core/baseline.ts');
     const tokens = conditions.unsupported.split(',').map(s => s.trim()).filter(Boolean);
     const anyUnsupported = tokens.some(t => !checkBaseline(current, t));
     base.skip(!anyUnsupported, `Requires unsupported: ${conditions.unsupported} (current target: ${current})`);
+  }
+}
+
+export interface PageLoadResult {
+  ok: boolean;
+  errors: string[];
+  buildWarning?: string;
+  noPage?: boolean;
+}
+
+export interface CheckPageLoadOptions {
+  gotoTimeoutMs?: number;
+  networkIdleTimeoutMs?: number;
+}
+
+export interface ExpectNeverOptions<Arg = undefined> {
+  forMs: number;
+  arg?: Arg;
+  message?: string;
+}
+
+/**
+ * Continually observes `predicate` in the page on every animation frame (or at
+ * most every 16ms) for `forMs` milliseconds, failing immediately if `predicate`
+ * ever evaluates to a truthy value.
+ */
+export async function expectNever<Arg = undefined>(
+  page: Page,
+  predicate: (arg: Arg) => unknown,
+  options: ExpectNeverOptions<Arg>,
+): Promise<void> {
+  const { forMs, arg, message } = options;
+  if (!Number.isFinite(forMs) || forMs <= 0) {
+    throw new Error(`expectNever requires a positive finite forMs (got ${String(forMs)})`);
+  }
+
+  const start = performance.now();
+  while (true) {
+    const matched = Boolean(await page.evaluate<unknown, any>(predicate, arg));
+    if (matched) {
+      const elapsed = Math.round(performance.now() - start);
+      const prefix = message ? `${message}: ` : '';
+      throw new Error(
+        `${prefix}expectNever failed: predicate became truthy after ${elapsed}ms (observation window: ${forMs}ms)`,
+      );
+    }
+
+    const elapsed = performance.now() - start;
+    const remaining = forMs - elapsed;
+    if (remaining <= 0) {
+      return;
+    }
+
+    await page.evaluate(
+      (maxWaitMs) =>
+        new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, maxWaitMs);
+          requestAnimationFrame(() => {
+            clearTimeout(timer);
+            resolve();
+          });
+        }),
+      Math.min(16, remaining),
+    );
   }
 }
 
@@ -25,17 +115,243 @@ export type ServerWorkerFixtures = {
   TARGET_URL: string;
 };
 
-async function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, () => {
-      const addr = srv.address() as net.AddressInfo;
-      const port = addr.port;
-      srv.close(() => resolve(port));
-    });
-  });
+const ANALYTICS_BEACON_URL = 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/analytics';
+
+async function installHermeticRoutes(context: BrowserContext): Promise<void> {
+  await context.route(ANALYTICS_BEACON_URL, (route) =>
+    route.fulfill({
+      status: 204,
+      headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' },
+    }));
+}
+
+function isBrowser(browserOrContext: Browser | BrowserContext): browserOrContext is Browser {
+  return 'newContext' in browserOrContext;
+}
+
+const RESERVED_PLACEHOLDER_DOMAINS = ['example.com', 'example.net', 'example.org'];
+const RESERVED_PLACEHOLDER_TLDS = ['.test', '.example', '.invalid'];
+
+/**
+ * Returns true if `hostname` is an RFC 2606 / RFC 6761 reserved placeholder domain
+ * (`example.com`, `example.net`, `example.org` and their subdomains, or `.test`, `.example`, `.invalid` TLDs).
+ */
+export function isReservedPlaceholderHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  if (!host) return false;
+  if (RESERVED_PLACEHOLDER_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`))) {
+    return true;
+  }
+  if (host === 'test' || host === 'example' || host === 'invalid') {
+    return true;
+  }
+  return RESERVED_PLACEHOLDER_TLDS.some((tld) => host.endsWith(tld));
+}
+
+function isIgnoredPlaceholderScriptFailure(urlStr: string, errorText: string): boolean {
+  if (!errorText.includes('ERR_NAME_NOT_RESOLVED')) {
+    return false;
+  }
+  try {
+    const parsed = new URL(urlStr);
+    return isReservedPlaceholderHost(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+export async function checkPageLoad(
+  browserOrContext: Browser | BrowserContext,
+  url: string,
+  options: CheckPageLoadOptions = {},
+): Promise<PageLoadResult> {
+  const gotoTimeoutMs = options.gotoTimeoutMs ?? 15000;
+  const networkIdleTimeoutMs = options.networkIdleTimeoutMs ?? 3000;
+  const errors: string[] = [];
+  const failedScriptRequests = new WeakSet<Request>();
+
+  const ownsContext = isBrowser(browserOrContext);
+  let context: BrowserContext | undefined;
+  let page: Page | undefined;
+
+  const onPageError = (err: Error) => {
+    errors.push(`[pageerror] ${err.stack || err.message || String(err)}`);
+  };
+  const onRequestFailed = (req: Request) => {
+    if (req.resourceType() === 'script' && !failedScriptRequests.has(req)) {
+      const failure = req.failure();
+      const errorText = failure?.errorText || 'failed';
+      if (isIgnoredPlaceholderScriptFailure(req.url(), errorText)) {
+        return;
+      }
+      failedScriptRequests.add(req);
+      errors.push(`[requestfailed] ${req.method()} ${req.url()}: ${errorText}`);
+    }
+  };
+  const onResponse = (res: { status(): number; statusText(): string; url(): string; request(): Request }) => {
+    const req = res.request();
+    if (req.resourceType() === 'script' && res.status() >= 400 && !failedScriptRequests.has(req)) {
+      failedScriptRequests.add(req);
+      errors.push(`[response ${res.status()}] ${req.method()} ${res.url()} ${res.statusText()}`.trim());
+    }
+  };
+
+  try {
+    try {
+      context = ownsContext ? await browserOrContext.newContext() : browserOrContext;
+      if (ownsContext) {
+        await installHermeticRoutes(context);
+      }
+      page = await context.newPage();
+    } catch (err) {
+      errors.push(`[browser] ${(err as Error).message || String(err)}`);
+      return { ok: false, errors };
+    }
+
+    page.on('pageerror', onPageError);
+    page.on('requestfailed', onRequestFailed);
+    page.on('response', onResponse);
+
+    try {
+      const response = await page.goto(url, { waitUntil: 'load', timeout: gotoTimeoutMs });
+      if (response && response.status() >= 400) {
+        errors.push(`[document ${response.status()}] GET ${url} ${response.statusText()}`.trim());
+      }
+      // Bounded networkidle wait so async module graphs and deferred scripts settle without fixed sleeps.
+      await page.waitForLoadState('networkidle', { timeout: networkIdleTimeoutMs }).catch(() => {});
+    } catch (err) {
+      errors.push(`[navigation] ${(err as Error).message || String(err)}`);
+    }
+  } finally {
+    if (page) {
+      page.off('pageerror', onPageError);
+      page.off('requestfailed', onRequestFailed);
+      page.off('response', onResponse);
+      await page.close().catch(() => {});
+    }
+    if (ownsContext && context) {
+      await context.close().catch(() => {});
+    }
+  }
+
+  const uniqueErrors = Array.from(new Set(errors));
+  return { ok: uniqueErrors.length === 0, errors: uniqueErrors };
+}
+
+async function diagnosePageLoadAfterBuildFailure(
+  targetDir: string,
+  buildWarning: string,
+  browser: Browser,
+): Promise<PageLoadResult> {
+  let diagSrv: TargetServer | undefined;
+  try {
+    diagSrv = await spawnPlainTargetServer(targetDir, { exportTargetUrlEnv: false });
+  } catch (err: any) {
+    return {
+      ok: false,
+      errors: [`[server] ${buildWarning}\n${err.message || String(err)}`],
+      buildWarning,
+    };
+  }
+
+  try {
+    const checkResult = await checkPageLoad(browser, diagSrv.url);
+    return {
+      ...checkResult,
+      buildWarning,
+    };
+  } finally {
+    await diagSrv.stop();
+  }
+}
+
+export async function checkTargetPageLoad(
+  targetDir: string,
+  existingBrowser?: Browser,
+  options?: { serverUrl?: string; buildWarning?: string },
+): Promise<PageLoadResult | undefined> {
+  const pkgJsonPath = path.join(targetDir, 'package.json');
+  if (!fs.existsSync(pkgJsonPath)) {
+    return undefined;
+  }
+  let pkgJson: any;
+  try {
+    pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+  } catch (err) {
+    return { ok: false, errors: [`[server] Failed to parse package.json in ${targetDir}: ${(err as Error).message}`] };
+  }
+  if (!pkgJson.scripts || !pkgJson.scripts.start) {
+    return undefined;
+  }
+
+  const ownsBrowser = !existingBrowser;
+  let browser: Browser | undefined = existingBrowser;
+
+  if (options?.serverUrl) {
+    try {
+      if (!browser) {
+        browser = await chromium.launch();
+      }
+      return await checkPageLoad(browser, options.serverUrl);
+    } catch (err) {
+      return {
+        ok: false,
+        errors: [`[browser] ${(err as Error).message || String(err)}`],
+      };
+    } finally {
+      if (ownsBrowser && browser) {
+        await browser.close().catch(() => {});
+      }
+    }
+  }
+
+  let srv: TargetServer | undefined;
+  // A caller whose own install + build already failed passes that warning, so the build isn't repeated just to fail again.
+  let buildWarning = options?.buildWarning;
+  if (!buildWarning) {
+    try {
+      srv = await startTargetServer(targetDir, { quiet: true, exportTargetUrlEnv: false });
+    } catch (err: any) {
+      const msg = err.message || String(err);
+      if (msg.includes('Failed to build target app')) {
+        buildWarning = msg;
+      } else {
+        return { ok: false, errors: [`[server] ${msg}`] };
+      }
+    }
+  }
+
+  try {
+    if (buildWarning) {
+      if (!browser) {
+        browser = await chromium.launch();
+      }
+      return await diagnosePageLoadAfterBuildFailure(targetDir, buildWarning, browser);
+    }
+    if (!srv?.url) {
+      return {
+        ok: false,
+        errors: [`[server] Target server failed to start`],
+      };
+    }
+    if (!browser) {
+      browser = await chromium.launch();
+    }
+    return await checkPageLoad(browser, srv.url);
+  } catch (err) {
+    return {
+      ok: false,
+      errors: [`[browser] ${(err as Error).message || String(err)}`],
+      ...(buildWarning ? { buildWarning } : {}),
+    };
+  } finally {
+    if (ownsBrowser && browser) {
+      await browser.close().catch(() => {});
+    }
+    if (srv) {
+      await srv.stop();
+    }
+  }
 }
 
 export const test = base.extend<{ page: Page; context: BrowserContext }, ServerWorkerFixtures>({
@@ -44,11 +360,7 @@ export const test = base.extend<{ page: Page; context: BrowserContext }, ServerW
   // so every browser test logged a CORS error + failed request. Answer it locally so grading stays
   // hermetic and console/network errors only show real problems. The script itself still loads and runs.
   context: async ({ context }, use) => {
-    await context.route('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/analytics', (route) =>
-      route.fulfill({
-        status: 204,
-        headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' },
-      }));
+    await installHermeticRoutes(context);
     await use(context);
   },
 
@@ -99,102 +411,26 @@ export const test = base.extend<{ page: Page; context: BrowserContext }, ServerW
       }
     }
   },
+
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
-    const targetDir = process.cwd();
-
-    const pkgJsonPath = path.join(targetDir, 'package.json');
-    if (!fs.existsSync(pkgJsonPath)) {
-      if (process.env.TARGET_FILE) {
-        const fallbackUrl = `http://localhost/${path.basename(process.env.TARGET_FILE)}`;
-        process.env.TARGET_URL = fallbackUrl;
-        await use(fallbackUrl);
-        return;
-      }
-      throw new Error(`package.json not found in target directory: ${targetDir}`);
+    if (process.env.GD_PREBUILT_TARGET_ERROR) {
+      throw new Error(process.env.GD_PREBUILT_TARGET_ERROR);
+    }
+    const prebuiltUrl = process.env.GD_PREBUILT_TARGET_URL;
+    if (prebuiltUrl) {
+      process.env.TARGET_URL = prebuiltUrl;
+      await use(prebuiltUrl);
+      return;
     }
 
-    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-
-    if (pkgJson.scripts && pkgJson.scripts.build) {
-      // Running install on base app
-      console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-      // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, which would fail
-      // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
-      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force', '--no-frozen-lockfile'], {
-        cwd: targetDir,
-        stdio: 'pipe',
-        encoding: 'utf8',
-        shell: process.platform === 'win32'
-      });
-      if (installResult.status !== 0) {
-        const output = [installResult.stdout, installResult.stderr].filter(Boolean).join('\n').trim();
-        console.warn(`[TEST-FIXTURE] pnpm install failed in ${targetDir}${output ? `:\n${output}` : ''}`);
-      }
-
-      const buildResult = spawnSync('pnpm', ['--ignore-workspace', 'run', 'build'], {
-        cwd: targetDir,
-        stdio: 'pipe',
-        encoding: 'utf8',
-        shell: process.platform === 'win32'
-      });
-      if (buildResult.status !== 0) {
-        const output = [buildResult.stdout, buildResult.stderr].filter(Boolean).join('\n').trim();
-        throw new Error(`Failed to build target app in ${targetDir}${output ? `:\n${output}` : ''}`);
-      }
-    }
-
-    if (!pkgJson.scripts || !pkgJson.scripts.start) {
-      throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
-    }
-
-    const port = await getFreePort();
-    const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
-      cwd: targetDir,
-      env: { ...process.env, PORT: port.toString() },
-      detached: true,
-      stdio: 'ignore',
-      shell: process.platform === 'win32'
-    });
-
-    let isReady = false;
-    let baseUrlPath = '/';
-    const configPath = path.join(targetDir, 'astro.config.mjs');
-    if (fs.existsSync(configPath)) {
-      const configContent = fs.readFileSync(configPath, 'utf8');
-      const baseMatch = configContent.match(/base:\s*['"`](.*?)['"`]/);
-      if (baseMatch) {
-        baseUrlPath = '/' + baseMatch[1].replace(/^\/|\/$/g, '') + '/';
-      }
-    }
-
-    const url = `http://localhost:${port}${baseUrlPath}`;
-    for (let i = 0; i < 30; i++) {
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
-        if (res.ok) {
-          isReady = true;
-          break;
-        }
-      } catch (e) {
-        // ignore
-      }
-      await new Promise(r => setTimeout(r, 1000));
-    }
-
-    if (!isReady) {
-      if (serverProcess.pid) {
-        try { process.kill(-serverProcess.pid); } catch (e) {}
-      }
-      throw new Error(`Server in ${targetDir} failed to start on port ${port}`);
-    }
-
+    const { url, stop } = await startTargetServer(process.cwd(), { targetFile: process.env.TARGET_FILE });
     process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env
 
-    await use(url);
-
-    if (serverProcess.pid) {
-      try { process.kill(-serverProcess.pid); } catch (e) {}
+    try {
+      await use(url);
+    } finally {
+      await stop();
     }
   }, { scope: 'worker', timeout: 60000 }]
 });
@@ -212,13 +448,9 @@ const BASE_APP_DEFAULT_FILES: Record<string, string[]> = {
 
 export function getTargetFiles(testFileUrl: string): string[] {
   const patchFile = process.env.PATCH_FILE;
-  if (!patchFile) {
-    throw new Error('PATCH_FILE environment variable not set.');
-  }
-
   const rootDir = process.cwd();
   const baseAppName = path.basename(path.dirname(fileURLToPath(testFileUrl)));
-  const patchTargetFiles = extractTargetFilesFromPatch(patchFile);
+  const patchTargetFiles = patchFile ? extractTargetFilesFromPatch(patchFile) : [];
   const defaultFiles = BASE_APP_DEFAULT_FILES[baseAppName] || [];
   const targetFiles = Array.from(new Set([...patchTargetFiles, ...defaultFiles]));
   return targetFiles.map((f: string) => path.resolve(rootDir, f));
@@ -255,11 +487,53 @@ function parseHtmlDocument(file: string, content: string): any {
           return `${attr}="${classes}"`;
         })
     : content;
+  const { parseHTML } = require('linkedom') as typeof import('linkedom');
   const { document } = parseHTML(processingInstructionsToComments(normalized));
   document.querySelectorAll('[class\\:list]').forEach((el: any) => {
     el.classList.add(...el.getAttribute('class:list').split(/\s+/).filter(Boolean));
   });
   return document;
+}
+
+
+const cssStyleSheetCache = new Map<string, CSSStyleSheet>();
+
+function computeFilesCacheKey(files: string[]): string {
+  return files
+    .map((f) => {
+      try {
+        const stat = fs.statSync(f);
+        return `${f}:${stat.mtimeMs}:${stat.size}`;
+      } catch {
+        return `${f}:missing`;
+      }
+    })
+    .join('\0');
+}
+
+/**
+ * Recursively collects rules matching the given RuleClass in depth-first pre-order.
+ * When passed an array of file paths (string[]), automatically parses and caches
+ * the consolidated CSSStyleSheet via getCssStyleSheet(files).
+ */
+export function getRules(root: RuleRoot | string[]): CSSRule[];
+export function getRules<T extends CSSRule>(root: RuleRoot | string[], ruleType: AnyRuleConstructor<T>): T[];
+export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructor<any>): any[] {
+  if (Array.isArray(root) && root.length === 0) {
+    return [];
+  }
+  let actualRoot: RuleRoot;
+  if (Array.isArray(root)) {
+    if (typeof root[0] === 'string') {
+      actualRoot = getCssStyleSheet(root as string[]);
+    } else {
+      actualRoot = root as unknown as CSSRule[];
+    }
+  } else {
+    actualRoot = root;
+  }
+  const { getRules: cssomGetRules } = require('cssomnom') as typeof import('cssomnom');
+  return ruleType ? cssomGetRules(actualRoot, ruleType) : cssomGetRules(actualRoot);
 }
 
 function unwrapGlobalPseudo(css: string): string {
@@ -285,12 +559,18 @@ function unwrapGlobalPseudo(css: string): string {
   return result;
 }
 
-
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
+ * Results are memoized by file path, mtime, and file size.
  */
 export function getCssStyleSheet(files: string[]): CSSStyleSheet {
+  const cacheKey = computeFilesCacheKey(files);
+  const cached = cssStyleSheetCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const { parse, CSSStyleDeclaration } = require('cssomnom') as typeof import('cssomnom');
   const cssBlocks: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
@@ -347,10 +627,17 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
   }
   // Parse each block in isolation so CSS EOF error recovery closes any unterminated
   // block, string, url(, or comment at its own boundary instead of swallowing later blocks.
-  const isolatedRules = cssBlocks.flatMap((block) =>
-    Array.from(parse(unwrapGlobalPseudo(block)).cssRules, (rule) => rule.cssText)
-  );
-  return parse(isolatedRules.join('\n'));
+  // Preserves full AST instances (including duplicate/fallback declarations) without re-serializing.
+  const sheet = parse('', { allowUnknownPseudos: true });
+  for (const block of cssBlocks) {
+    const parsedBlock = parse(unwrapGlobalPseudo(block), { allowUnknownPseudos: true });
+    for (const rule of Array.from(parsedBlock.cssRules)) {
+      (rule as any)._parentStyleSheet = sheet;
+      (sheet as any)._rules.push(rule);
+    }
+  }
+  cssStyleSheetCache.set(cacheKey, sheet);
+  return sheet;
 }
 
 export function populateJsProject(project: Project, files: string[]): void {
@@ -383,6 +670,7 @@ export function populateJsProject(project: Project, files: string[]): void {
 }
 
 export function getJsProject(files: string[]): Project {
+  const { Project } = require('ts-morph') as typeof import('ts-morph');
   const project = new Project({ useInMemoryFileSystem: true });
   populateJsProject(project, files);
   return project;

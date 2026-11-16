@@ -15,52 +15,22 @@ import {
   expect,
   getTargetFiles,
   getCssStyleSheet,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
+  closestRule,
   CSSStyleRule,
-  CSSGroupingRule,
   CSSLayerBlockRule,
   CSSLayerStatementRule,
-  type CSSRule,
 } from 'cssomnom';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule) {
-      result.push(...getAllStyleRules(Array.from(rule.cssRules)));
-    }
-  }
-  return result;
-}
-
-function findWildcardOutsideReset(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const wildcards: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSLayerBlockRule && rule.name.trim() === 'reset') {
-      continue;
-    }
-    if (rule instanceof CSSStyleRule && rule.selectorText.trim() === '*') {
-      wildcards.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule) {
-      wildcards.push(...findWildcardOutsideReset(Array.from(rule.cssRules)));
-    }
-  }
-  return wildcards;
-}
-
 test.describe('CSS: Modern Architecture - Daily Grind Grader', () => {
 
   test('Expectation 1: The implementation uses CSS logical properties for layout spacing and sizing', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(Array.from(stylesheet.cssRules));
+    const rules = getRules(targetFiles, CSSStyleRule);
     const logicalSpacingProps = [
       'margin-inline', 'margin-inline-start', 'margin-inline-end',
       'margin-block', 'margin-block-start', 'margin-block-end',
@@ -92,22 +62,22 @@ test.describe('CSS: Modern Architecture - Daily Grind Grader', () => {
   });
 
   test('Expectation 5: The implementation uses :is() or :where() to group selectors or fallbacks', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(Array.from(stylesheet.cssRules));
+    const rules = getRules(targetFiles, CSSStyleRule);
     const hasIsOrWhere = rules.some(rule => /:(is|where)\(/.test(rule.selectorText));
     expect(hasIsOrWhere).toBe(true);
   });
 
   test('Expectation 6: The implementation uses :not() to exclude irrelevant states or targets', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(Array.from(stylesheet.cssRules));
+    const rules = getRules(targetFiles, CSSStyleRule);
     const hasNotSelector = rules.some(rule => /:not\(/.test(rule.selectorText));
     expect(hasNotSelector).toBe(true);
   });
 
   test('Expectation 8: Global wildcard reset declarations are encapsulated inside a low-priority @layer reset block', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
-    const unlayeredWildcards = findWildcardOutsideReset(Array.from(stylesheet.cssRules));
+    const unlayeredWildcards = getRules(stylesheet, CSSStyleRule).filter(
+      r => r.selectorText.trim() === '*' && closestRule(r, CSSLayerBlockRule)?.name.trim() !== 'reset'
+    );
     const hasResetLayer = Array.from(stylesheet.cssRules).some(
       r => (r instanceof CSSLayerStatementRule && r.nameList.includes('reset')) ||
            (r instanceof CSSLayerBlockRule && r.name.trim() === 'reset')

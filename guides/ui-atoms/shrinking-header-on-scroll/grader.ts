@@ -31,7 +31,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
 
 
 
-  test(`MANDATORY: The agent has defined an @keyframes block that animates the header or nav.`, async ({ page }) => {
+  test(`The agent has defined an @keyframes block that animates the header or nav`, async ({ page }) => {
     const animationName = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
       const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
@@ -41,7 +41,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     expect(animationName).not.toBe('none');
   });
 
-  test(`MANDATORY: The agent has applied the animation using animation-timeline: scroll() or scroll(block root).`, async ({ page }) => {
+  test(`The agent has applied the animation using animation-timeline: scroll() or scroll(block root)`, async ({ page }) => {
     const animationTimeline = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
       const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
@@ -51,7 +51,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     expect(animationTimeline).toContain('scroll');
   });
 
-  test(`MANDATORY: The agent has used animation-range to specify the scroll distance.`, async ({ page }) => {
+  test(`The agent has used animation-range to specify the scroll distance`, async ({ page }) => {
     const animationRange = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
       const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
@@ -61,7 +61,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     expect(animationRange).not.toBe('normal');
   });
 
-  test(`MANDATORY: The header or nav element has position: fixed or position: sticky.`, async ({ page }) => {
+  test(`The header or nav element has position: fixed or position: sticky`, async ({ page }) => {
     const position = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
       const pos = elements.map(el => window.getComputedStyle(el).position);
@@ -70,13 +70,13 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     expect(position).toBe('sticky'); // or fixed, but we just check it found at least one
   });
 
-  test(`MANDATORY: The implementation includes feature detection using @supports or CSS.supports for scroll-driven animations.`, async () => {
+  test(`The implementation includes feature detection using @supports or CSS.supports for scroll-driven animations`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const hasSupports = html.includes('@supports') || html.includes('CSS.supports');
     expect(hasSupports).toBe(true);
   });
 
-  test(`MANDATORY: The implementation respects user preferences for reduced motion or provides valid fallback.`, async ({ page }) => {
+  test(`The implementation respects user preferences for reduced motion or provides valid fallback`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const respectsReducedMotion = await page.evaluate(() => {
       const elements = Array.from(document.querySelectorAll('header, nav'));

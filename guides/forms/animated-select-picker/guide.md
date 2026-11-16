@@ -17,7 +17,7 @@ To implement an animated select picker:
 
 1. **Opt-in to customization:** Apply `appearance: base-select` to both the `<select>` element and the `::picker(select)` pseudo-element.
 2. **Enable auto-sizing transitions (Optional):** Define `interpolate-size: allow-keywords` (usually on `:root`) to allow the browser to transition between discrete metric values like `height: auto` and `height: 0`.
-3. **Animate the top-layer container:** Apply standard entry/exit styles to `::picker(select)`. To make sure the opacity transition works when moving between `display: none` and `display: block`, you must use `transition-behavior: allow-discrete` (often written inline as `transition: display 0.3s allow-discrete`).
+3. **Animate the top-layer container:** Apply standard entry/exit styles to `::picker(select)`. Include `display` and `overlay` in the `transition` property and set `transition-behavior: allow-discrete` so the picker stays rendered in the top layer when transitioning between `display: none` and `display: block`.
 4. **Hook into the opening state with `@starting-style`:** Use `@starting-style` to define the baseline styles the browser should compute *before* the transition begins. For example, if you want it to fade in, set the opacity to `0` inside the `@starting-style` block.
 5. **Rotate the icon:** Use pseudo-element focus or active selectors like `:open::picker-icon` to apply transitions (such as rotation or translation) to the arrow indicator.
 
@@ -98,20 +98,23 @@ The following example demonstrates a custom select styled with standard page ani
  * Uses top-layer animations with `allow-discrete` visibility hooks
  */
 .animated-select::picker(select) {
+  /* Set a text color with the background so options stay readable on pages with a dark color scheme */
   background: white;
+  color: black;
   border-radius: 12px;
   box-shadow: 0 10px 25px -3px rgba(0,0,0,0.1);
   padding: 0.5rem;
   margin-top: 0.25rem;
   width: anchor-size(width);
-  overflow: hidden;
 
-  /* The crucial transition setting for popover animations */
   transition:
-    display 0.4s allow-discrete,
-    overlay 0.4s allow-discrete,
-    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    display,
+    overlay,
+    opacity cubic-bezier(0.16, 1, 0.3, 1),
+    height cubic-bezier(0.16, 1, 0.3, 1);
+  transition-duration: 0.4s;
+  /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
+  transition-behavior: allow-discrete;
   opacity: 0;
   height: 0;
 }
@@ -142,6 +145,7 @@ The following example demonstrates a custom select styled with standard page ani
 .animated-select option:checked {
   font-weight: 700;
   background-color: #f1f5f9;
+  color: black;
 }
 
 /* Ensure copy-paste safety for users with motion sensitivities */
@@ -156,7 +160,9 @@ The following example demonstrates a custom select styled with standard page ani
 ## Strategic Implementation & Best Practices
 
 - **DO** use `@starting-style` when you need animations to trigger exactly when an element transitions from `display: none` to visible.
+- **DO NOT** use `allow-discrete` in the `transition` shorthand — it will make older browsers ignore the entire `transition` declaration. Except in use cases where that is desirable, use a separate `transition-behavior: allow-discrete` declaration.
 - **DO NOT** use ad-hoc scroll locking. Top-layer elements managed by ‘base-select’ should allow natural backdrop dismiss behaviors.
+- **DO NOT** set `overflow: hidden` on `::picker(select)`. The picker must stay scrollable so that options that don't fit in the available space, for example at high zoom or in a short viewport, can still be reached.
 - **DO** verify reduced motion preferences. Always wrap animation constraints in a `prefers-reduced-motion` media query to ensure accessible environments for those affected by motion sickness.
 {{ FEATURE("customizable-select", "usage") }}
 

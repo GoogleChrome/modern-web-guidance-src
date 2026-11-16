@@ -175,8 +175,11 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const rendersProviderIcon = sourceFiles.some((sf) => {
-      const filePath = sf.getFilePath().toLowerCase();
-      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+      const hasCredentialContext = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
+        const name = id.getText().toLowerCase();
+        return name.includes('passkey') || name.includes('credential') || name.includes('aaguid');
+      });
+      if (!hasCredentialContext) return false;
       const jsxElements = [
         ...sf.getDescendantsOfKind(SyntaxKind.JsxElement),
         ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
@@ -201,8 +204,11 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const rendersName = sourceFiles.some((sf) => {
-      const filePath = sf.getFilePath().toLowerCase();
-      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+      const hasCredentialContext = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
+        const name = id.getText().toLowerCase();
+        return name.includes('passkey') || name.includes('credential') || name.includes('aaguid');
+      });
+      if (!hasCredentialContext) return false;
       const jsxExpressions = sf.getDescendantsOfKind(SyntaxKind.JsxExpression);
       return jsxExpressions.some((expr) => {
         const ids = expr.getDescendantsOfKind(SyntaxKind.Identifier).map((id) => id.getText());
@@ -219,8 +225,11 @@ test.describe('Passkey Management Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const rendersFormattedLastUsed = sourceFiles.some((sf) => {
-      const filePath = sf.getFilePath().toLowerCase();
-      if (!filePath.includes('passkey') && !filePath.includes('credential')) return false;
+      const hasCredentialContext = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => {
+        const name = id.getText().toLowerCase();
+        return name.includes('passkey') || name.includes('credential') || name.includes('aaguid');
+      });
+      if (!hasCredentialContext) return false;
       const hasLastUsed = sf.getDescendantsOfKind(SyntaxKind.Identifier).some((id) =>
         id.getText().toLowerCase().includes('lastused')
       );

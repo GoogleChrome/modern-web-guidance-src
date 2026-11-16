@@ -10,7 +10,18 @@ import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 import { rootDir } from '../../core/paths.ts';
 import { extractTestTitles } from '../../core/grader-coverage.ts';
 import { isSpecSkipped } from '../../grading/run-grader.ts';
-import { type ScenarioCheck } from './metrics.ts';
+import { type PageLoadResult, type ScenarioCheck } from './metrics.ts';
+import {
+  pickHigherPrecedenceEffort,
+  resolveReasoningEffort,
+  sanitizeReasoningEffort,
+  type ReasoningEffort,
+} from './reasoning-effort.ts';
+import {
+  ensureFreshTrajectorySummarySync,
+  hasRawSessionLogs,
+  NORMALIZER_VERSION,
+} from './trajectory-normalizer.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -27,6 +38,35 @@ export function extractModelFromResults(resultsDir: string): string {
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
   return 'unknown';
+}
+
+export function extractReasoningEffortFromResults(resultsDir: string): ReasoningEffort | undefined {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  let parsedVersion: number | undefined;
+  let existingEffort: ReasoningEffort | undefined;
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    parsedVersion = summary?.normalizerVersion;
+    existingEffort = sanitizeReasoningEffort(summary?.reasoningEffort);
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
+
+  if (existingEffort && parsedVersion === NORMALIZER_VERSION) {
+    return existingEffort;
+  }
+  const rawLogsPresent = hasRawSessionLogs(resultsDir);
+  if (existingEffort && !rawLogsPresent) {
+    return existingEffort;
+  }
+  if (rawLogsPresent) {
+    const refreshed = ensureFreshTrajectorySummarySync(resultsDir);
+    const refreshedEffort = sanitizeReasoningEffort(refreshed?.reasoningEffort);
+    if (refreshedEffort) {
+      return refreshedEffort;
+    }
+  }
+  return existingEffort;
 }
 
 export function extractTokenUsageFromResults(resultsDir: string): { total: number; cached: number } | null {
@@ -398,12 +438,8 @@ export function evaluateScenarioResults(
             continue;
           }
 
-          // Strip ANSI colors and local paths (repo root, temp grading dir, home) so diagnostics are portable and shareable.
-          const clean = (text: string) => stripVTControlCharacters(text)
-            .replaceAll(rootDir + path.sep, '')
-            .replace(/\/tmp\/grade-run-[^/]+\//g, '')
-            .replaceAll(os.homedir(), '~')
-            .trim();
+          // Strip ANSI colors and local paths (repo root, temp grading dir, agent homes, home) so diagnostics are portable and shareable.
+          const clean = sanitizeDiagnosticText;
           // A timeout reports "Test timeout exceeded" first (no location) and the action that was cut off second.
           const errors: { message?: string; location?: { file: string; line: number } }[] = lastResult?.errors ?? [];
           const rawError = errors.map(e => e.message).filter(Boolean).join('\n\n');
@@ -440,6 +476,39 @@ export function evaluateScenarioResults(
     console.error(`Error processing results for ${dir}:`, err);
     return makeAgentFailures(err.message || 'System Error');
   }
+}
+
+export function sanitizeDiagnosticText(text: string): string {
+  return stripVTControlCharacters(String(text))
+    .replaceAll(`file://${rootDir}${path.sep}`, '')
+    .replaceAll(`file://${rootDir}`, '')
+    .replaceAll(rootDir + path.sep, '')
+    .replace(/file:\/\/\/tmp\/(?:grade-run|ghh)-[^/]+\//g, '')
+    .replace(/\/tmp\/(?:grade-run|ghh)-[^/]+\//g, '')
+    .replaceAll(`file://${os.homedir()}`, '~')
+    .replaceAll(os.homedir(), '~')
+    .trim();
+}
+
+function extractPageLoadFromResults(graderResults: string): PageLoadResult | undefined {
+  if (!fs.existsSync(graderResults)) return undefined;
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+    const raw = json?.pageLoad;
+    if (raw && typeof raw === 'object' && typeof raw.ok === 'boolean' && Array.isArray(raw.errors)) {
+      if (raw.noPage) return undefined;
+      return {
+        ok: raw.ok,
+        errors: raw.errors.map((e: unknown) => sanitizeDiagnosticText(String(e))),
+        ...(typeof raw.buildWarning === 'string' && raw.buildWarning
+          ? { buildWarning: sanitizeDiagnosticText(raw.buildWarning) }
+          : {}),
+      };
+    }
+  } catch {
+    // ignore malformed or unreadable results file
+  }
+  return undefined;
 }
 
 function readRuntimeData(dir: string): any | undefined {
@@ -530,6 +599,7 @@ async function collectTaskRunEntry(
   const testName = `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
   const tokenUsage = extractTokenUsageFromResults(dir);
   const runtimeData = readRuntimeData(dir);
+  const pageLoad = extractPageLoadFromResults(ctx.graderResults);
 
   const payload = {
     runNumber,
@@ -548,6 +618,7 @@ async function collectTaskRunEntry(
     files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
     runtime: runtimeData,
     tokenUsage,
+    ...(pageLoad ? { pageLoad } : {}),
   };
 
   return { testName, payload };
@@ -557,11 +628,26 @@ async function collectAllResults(
   resultsDir: string,
   runDirs: string[],
   taskMap: Map<string, any>
-): Promise<{ allResults: Record<string, any[]>; model: string }> {
+): Promise<{
+  allResults: Record<string, any[]>;
+  model: string;
+  reasoningEffort?: ReasoningEffort;
+  hasAnySummary: boolean;
+}> {
   const allResults: Record<string, any[]> = {};
   let model = 'unknown';
+  let bestEffort: ReasoningEffort | undefined;
+  let hasAnySummary = false;
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    const extractedEffort = extractReasoningEffortFromResults(dir);
+    if (extractedEffort) {
+      bestEffort = pickHigherPrecedenceEffort(bestEffort, extractedEffort);
+      hasAnySummary = true;
+    } else if (!hasAnySummary && fs.existsSync(path.join(dir, 'trajectory_summary.json'))) {
+      hasAnySummary = true;
+    }
+
     if (model === 'unknown') {
       const extracted = extractModelFromResults(dir);
       if (extracted !== 'unknown') {
@@ -578,19 +664,33 @@ async function collectAllResults(
     allResults[entry.testName].push(entry.payload);
   }
 
-  return { allResults, model };
+  return { allResults, model, reasoningEffort: bestEffort, hasAnySummary };
 }
 
-export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
+export async function collectResults(resultsDir: string, suiteConfig?: SuiteConfig) {
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
   const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
   await executeParallelGrading(resultsDir, graderPackages);
-  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
+  const { allResults, model, reasoningEffort: runEffort, hasAnySummary } = await collectAllResults(
+    resultsDir,
+    runDirs,
+    taskMap,
+  );
+
+  const reasoningEffort =
+    runEffort && runEffort.source !== 'agent-default'
+      ? runEffort
+      : resolveReasoningEffort({
+          agent: suiteConfig?.agent,
+          model,
+          fallback: runEffort,
+          ...(hasAnySummary ? { env: {} } : {}),
+        });
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);
 
-  return { allResults, numRuns: runDirs.length, model, totalRuntime: estimatedRuntime };
+  return { allResults, numRuns: runDirs.length, model, reasoningEffort, totalRuntime: estimatedRuntime };
 }
 

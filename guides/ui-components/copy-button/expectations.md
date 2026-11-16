@@ -1,0 +1,12 @@
+- Each copy button is a `<button>` with `type="button"`.
+- Each copy button has a `command` attribute whose value starts with `--` and a `commandfor` attribute that references the id of an existing element.
+- Clicking a copy button writes the rendered text content of its `commandfor` target, preserving rendered line breaks, to the clipboard (`navigator.clipboard.writeText`).
+- Every copy button has a non-empty accessible name that is exposed in the accessibility tree even when the button shows only an icon.
+- A live region (`role="status"` or `aria-live`) exists on the page, starts empty, and becomes non-empty after a successful copy.
+- The live region is not a descendant of any copy button.
+- When the clipboard write fails, the live region reports a failure message.
+- When the clipboard write fails, the clicked button does not gain its copied state.
+- Each visible copy button is at least 24 by 24 CSS pixels.
+- Clicking a copy button does not disable the button while feedback is shown.
+- After a successful copy the clicked button gains a visual copied state (such as a `data-copied` attribute or class) that is removed again after a timeout.
+- When `invoker-commands` is unsupported, clicking a copy button still copies the text of its `commandfor` target to the clipboard.

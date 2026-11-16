@@ -1,4 +1,10 @@
 {
+  "agent": "antigravity_cli",
+  "model": "gemini-4-argon",
+  "reasoningEffort": {
+    "level": "high",
+    "source": "observed"
+  },
   "summary": {
     "unguidedMedian": 67,
     "guidedMedian": 67,

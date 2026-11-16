@@ -6,14 +6,14 @@ The canonical domain language for the Modern Web Guidance Analyzer (`src/analyzi
 
 ### Modernize
 
-The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards across three steps: **Detection** (via `analyze`), **Verification** (reviewing findings against `verifierRubric`), and **Update** (retrieving `guide.md`, updating the code, and verifying the result). Distinct from **`analyze`**, which is the detection step only.
+The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards across three steps: **Detection** (via `legacy-scan`), **Verification** (reviewing findings against `verifierRubric`), and **Update** (retrieving `guide.md`, updating the code, and verifying the result). Distinct from **`legacy-scan`**, which is the detection step only.
 
 * _Reference_: `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`, `src/analyzing/README.md#2-modernize-workflow`
 * _Avoid_: `Modern Web Refactor`, `Refactor` (as a feature or workflow name), `Uplift`, `Modern Web Uplift`
 
-### `analyze`
+### `legacy-scan` (formerly `analyze`)
 
-The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for legacy web platform patterns matching qualified rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
+The CLI subcommand (`modern-web-guidance legacy-scan`, supporting `analyze` as an alias) that scans a codebase for legacy web platform patterns matching qualified rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
 
 * _Reference_: `src/analyzing/cli.ts#runAnalyzeCli`, `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`
 * _Avoid_: `modern-web-guidance refactor`, `modern-web-guidance uplift`, `scan` (as a CLI command name)
@@ -154,7 +154,7 @@ A rule under active evaluation and tightening that has not yet cleared the quali
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**.
+A rule in `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) shipped by default in `npx modern-web-guidance legacy-scan` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**.
 
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_RULES`, `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`

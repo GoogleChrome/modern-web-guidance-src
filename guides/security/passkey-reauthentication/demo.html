@@ -44,7 +44,7 @@
         });
 
         if (credential) {
-          const encodedResponse = credential.JSON();
+          const encodedResponse = credential.toJSON();
           const verifyResponse = await fetch('/api/reauth/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@
               // Segregated signalUnknownCredential only on explicit server 404
               if (PublicKeyCredential.signalUnknownCredential) {
                 await PublicKeyCredential.signalUnknownCredential({
-                  rpId,
+                  rpId: publicKey.rpId ?? 'example.com',
                   credentialId: encodedResponse.id
                 });
               }

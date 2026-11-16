@@ -13,9 +13,6 @@ let polyfillRequested = false;
 test.beforeEach(async ({ page }) => {
   polyfillRequested = false;
 
-  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
-  page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
-
   await page.route('http://localhost/**', async route => {
     const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
     const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
@@ -62,6 +59,18 @@ test.beforeEach(async ({ page }) => {
             (window as any).__temporalSpies.disambiguationOptions.push(args[1].disambiguation);
           }
           return originalZonedDateTimeFrom.apply(this, args);
+        };
+      }
+
+      // PlainDateTime.prototype.toZonedDateTime
+      if (T.PlainDateTime && T.PlainDateTime.prototype && typeof T.PlainDateTime.prototype.toZonedDateTime === 'function') {
+        const origToZdt = T.PlainDateTime.prototype.toZonedDateTime;
+        T.PlainDateTime.prototype.toZonedDateTime = function(this: any, ...args: any[]) {
+          (window as any).__temporalSpies.zonedDateTimeFromCalled++;
+          if (args[1] && args[1].disambiguation) {
+            (window as any).__temporalSpies.disambiguationOptions.push(args[1].disambiguation);
+          }
+          return origToZdt.apply(this, args);
         };
       }
 
@@ -141,7 +150,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('should conditionally load polyfill only if native support is absent', async ({ page }) => {
+test('The implementation conditionally loads the Temporal polyfill only if native support is absent', async ({ page }) => {
   // Inject the native mock BEFORE loading the page so that typeof Temporal !== 'undefined'
   await page.addInitScript(() => {
     const mockZdt = {
@@ -166,67 +175,73 @@ test('should conditionally load polyfill only if native support is absent', asyn
   });
 
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
+  await expect.poll(async () => {
+    return await page.evaluate(() => typeof (window as any).Temporal !== 'undefined');
+  }, { timeout: 2000 }).toBe(true);
 
   // Assert that polyfill was NOT requested when native Temporal was present
   expect(polyfillRequested).toBe(false);
 });
 
-test('should use Temporal.ZonedDateTime as the primary type for scheduling and managing events', async ({ page }) => {
+test('The implementation uses Temporal.ZonedDateTime as the primary type for scheduling and managing events', async ({ page }) => {
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
-
-  const spies = await page.evaluate(() => (window as any).__temporalSpies);
-  expect(spies.zonedDateTimeFromCalled).toBeGreaterThan(0);
+  await expect.poll(async () => {
+    const spies = await page.evaluate(() => (window as any).__temporalSpies);
+    return spies?.zonedDateTimeFromCalled > 0;
+  }, { timeout: 2000 }).toBe(true);
 });
 
-test('should NOT use Temporal.PlainDateTime for scheduling global events', async ({ page }) => {
+test('The implementation does not use Temporal.PlainDateTime for scheduling global events', async ({ page }) => {
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
+  await expect.poll(async () => {
+    const spies = await page.evaluate(() => (window as any).__temporalSpies);
+    return spies?.zonedDateTimeFromCalled > 0;
+  }, { timeout: 2000 }).toBe(true);
 
   const spies = await page.evaluate(() => (window as any).__temporalSpies);
   const usedZonedDateTime = spies.zonedDateTimeFromCalled > 0 && spies.withTimeZoneCalled > 0;
   expect(spies.plainDateTimeAddCalled === 0 && (spies.plainDateTimeFromCalled === 0 || usedZonedDateTime)).toBe(true);
 });
 
-test('should use disambiguation: reject option in Temporal.ZonedDateTime.from() for conflict detection', async ({ page }) => {
+test('The implementation uses disambiguation: reject option in Temporal.ZonedDateTime.from() or toZonedDateTime() for conflict detection', async ({ page }) => {
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
-
-  const spies = await page.evaluate(() => (window as any).__temporalSpies);
-  expect(spies.disambiguationOptions).toContain('reject');
+  await expect.poll(async () => {
+    const spies = await page.evaluate(() => (window as any).__temporalSpies);
+    return spies?.disambiguationOptions?.includes('reject');
+  }, { timeout: 2000 }).toBe(true);
 });
 
-test('should use the .withTimeZone() method to convert a ZonedDateTime instance to another time zone', async ({ page }) => {
+test('The implementation uses the .withTimeZone() method to convert a ZonedDateTime instance to another time zone', async ({ page }) => {
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
-
-  const spies = await page.evaluate(() => (window as any).__temporalSpies);
-  expect(spies.withTimeZoneCalled).toBeGreaterThan(0);
+  await expect.poll(async () => {
+    const spies = await page.evaluate(() => (window as any).__temporalSpies);
+    return spies?.withTimeZoneCalled > 0;
+  }, { timeout: 2000 }).toBe(true);
 });
 
-test('should NOT attempt to modify Temporal instances directly as they are immutable', async ({ page }) => {
+test('The implementation does not attempt to modify Temporal instances directly as they are immutable', async ({ page }) => {
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
+  await expect.poll(async () => {
+    const spies = await page.evaluate(() => (window as any).__temporalSpies);
+    return spies?.zonedDateTimeFromCalled > 0;
+  }, { timeout: 2000 }).toBe(true);
 
   const spies = await page.evaluate(() => (window as any).__temporalSpies);
   expect(spies.mutationsAttempted).toBe(0);
 });
 
-test('should display correct DST-aware converted time for Tokyo', async ({ page }) => {
+test('The implementation displays correct DST-aware converted time for Tokyo', async ({ page }) => {
   await page.goto(targetUrl);
-  await page.waitForTimeout(1000);
 
   // Input meeting details on active DST date (July 1, 2025) at 14:00, host America/New_York
   await page.fill('#dateInput', '2025-07-01');
   await page.fill('#timeInput', '14:00');
   await page.selectOption('#hostTzSelect', 'America/New_York');
-  await page.waitForTimeout(500);
 
   const tokyoCard = page.locator('#grid > *', { hasText: 'Tokyo' }).first();
-  const cardText = await tokyoCard.innerText();
-  const match = cardText.match(/(\d+:\d+\s*(?:AM|PM))/i);
-  const timeStr = match ? match[1].toUpperCase().replace(/\s+/g, '') : '';
-
-  expect(timeStr).toBe('3:00AM');
+  await expect.poll(async () => {
+    const cardText = await tokyoCard.innerText().catch(() => '');
+    const match = cardText.match(/(\d+:\d+\s*(?:AM|PM))/i);
+    return match ? match[1].toUpperCase().replace(/\s+/g, '') : '';
+  }, { timeout: 2000 }).toBe('3:00AM');
 });

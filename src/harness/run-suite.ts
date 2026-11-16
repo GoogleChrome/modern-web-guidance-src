@@ -1,13 +1,20 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { spawn, spawnSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { baseAppsDir, suitesDir } from '../core/paths.ts';
+import { baseAppsDir, rootDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import {
+  ALLOWED_ENV_PREFIXES,
+  ALLOWED_GRADER_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  filterAllowedEnv,
+  loadAllowedEnvFile,
+} from './lib/secret-guard.ts';
 import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
 import { determineAgent } from '../cli/telemetry/detect-agent.ts';
@@ -18,7 +25,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, do NOT ask clarifying questions (make reasonable assumptions and proceed non-interactively), and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -33,13 +40,13 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   const promptContent = promptContentRaw + COMMON_APPEND_PROMPT;
 
   if (!fs.existsSync(templateDir)) {
-    console.error(`❌ Template directory not found: ${templateDir}`);
+    console.error(`❌ Base app directory not found: ${templateDir}`);
     return;
   }
 
   console.log(`\n=== Running ${taskNameLabel} ===`);
   console.log(`Agent: ${agent}`);
-  console.log(`Template: ${templateDir}`);
+  console.log(`Base app: ${templateDir}`);
   console.log(`Target: ${targetDir}\n`);
 
   if (!fs.existsSync(targetDir)) {
@@ -77,6 +84,7 @@ export interface RunSuiteOptions {
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
+  loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
   const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
 
   // Create results directory if it doesn't exist
@@ -103,7 +111,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const originalConsoleMethods = setupLogging(logFilePath);
   const suiteStart = Date.now();
 
-  console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
+  console.log(`\n=== Evaluation Job Starting with ID: ${testID} ===`);
   console.log(`Results will be saved to: ${testDir}\n`);
   console.log(`Log file: ${logFilePath}\n`);
 
@@ -112,7 +120,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     const numRuns = options.numRuns ?? suiteConfig.numRuns;
     const endRun = 1 + numRuns;
 
-    console.log(`\nStarting execution for ${numRuns} runs`);
+    console.log(`\nStarting execution for ${numRuns} ${numRuns === 1 ? 'trial per condition' : 'trials per condition'}`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
       if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -246,9 +254,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
+      console.log(`\n❌ Evaluation job completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
-      console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
+      console.log(`\n✅ Evaluation job complete! Results saved to: ${testDir}`);
     }
 
     if (!options.skipEval) {
@@ -262,7 +270,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       process.exitCode = 1;
     }
   } catch (e) {
-    console.error('❌ Error during suite execution:', e);
+    console.error('❌ Error during job execution:', e);
   } finally {
     restoreLogging(originalConsoleMethods);
   }
@@ -322,12 +330,18 @@ function restoreLogging(originals: any) {
 }
 
 async function runCommand(command: string, args: string[] = [], envOverrides?: Record<string, string>, cwd?: string) {
+  const sanitizedEnv = filterAllowedEnv(
+    process.env,
+    ALLOWED_WRAPPER_ENV_KEYS,
+    ALLOWED_ENV_PREFIXES,
+    envOverrides,
+  );
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: 'inherit',
       shell: process.platform === 'win32',
       cwd,
-      env: envOverrides ? { ...process.env, ...envOverrides } : process.env
+      env: sanitizedEnv,
     });
 
     childProcess.on('close', (code) => {
@@ -435,10 +449,17 @@ export function generateTransientPackage(
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
+  const secretGuardModuleUrl = pathToFileURL(path.join(rootDir, 'src/harness/lib/secret-guard.ts')).href;
   const runnerContent = `import { spawnSync } from 'child_process';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import {
+  ALLOWED_ENV_PREFIXES,
+  ALLOWED_GRADER_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  filterAllowedEnv,
+} from ${JSON.stringify(secretGuardModuleUrl)};
 
 const args = [
 ...${JSON.stringify([
@@ -450,7 +471,12 @@ const args = [
 ])}
 ];
 
-const env = { ...process.env${baselineTarget ? `, BASELINE_TARGET: ${JSON.stringify(baselineTarget)}` : ''} };
+const env = filterAllowedEnv(
+  process.env,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  ALLOWED_ENV_PREFIXES,
+  ${baselineTarget ? `{ BASELINE_TARGET: ${JSON.stringify(baselineTarget)} }` : 'undefined'},
+);
 
 const start = Date.now();
 let result;
@@ -504,7 +530,12 @@ let graderStatus = null;
 
 if (result.status === 0) {
   const gradeStart = Date.now();
-  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeEnv = filterAllowedEnv(
+    process.env,
+    ALLOWED_GRADER_ENV_KEYS,
+    ALLOWED_ENV_PREFIXES,
+    { PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') },
+  );
   const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status ?? 1;
@@ -573,7 +604,9 @@ function reuseUnguidedRunForBaselineVariant(opts: {
 
   if (!fs.existsSync(path.join(variantUnguidedDir, 'generation_failed.json'))) {
     const gradeStart = Date.now();
-    const gradeEnv = { ...process.env, PATCH_FILE: path.join(variantUnguidedDir, 'agent.patch') };
+    const gradeEnv = filterAllowedEnv(process.env, ALLOWED_GRADER_ENV_KEYS, ALLOWED_ENV_PREFIXES, {
+      PATCH_FILE: path.join(variantUnguidedDir, 'agent.patch'),
+    });
     const gradeResult = spawnSync(process.execPath, ['grade.mjs'], {
       stdio: 'inherit',
       cwd: variantUnguidedDir,
@@ -599,7 +632,6 @@ const AGENT_SCRIPTS: Record<string, string> = {
   [Agents.JETSKI_CLI]: 'jetski-cli-agent.ts',
   [Agents.PI]: 'pi-agent.ts',
   [Agents.ANTIGRAVITY_CLI]: 'antigravity-cli-agent.ts',
-  [Agents.GEMINI_CLI]: 'gemini-cli-agent.ts',
 };
 
 function getAgentScript(agent: string): string {

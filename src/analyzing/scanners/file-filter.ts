@@ -6,23 +6,12 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'build',
   'out',
   '_generated',
-  '.git',
-  '.cache',
-  '.next',
-  '.nuxt',
-  '.output',
   'coverage',
-  '.worktrees',
-  '.worktree',
-  '.venv',
   'venv',
-  '.nyc_output',
   'test-results',
   'playwright-report',
   'tmp',
   'temp',
-  '.tmp',
-  '.temp',
   'gen',
   'generated',
   'snapshots',
@@ -70,36 +59,72 @@ export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'specs',
   'fixtures',
   '__fixtures__',
+  'testing',
+  'e2e',
 ]);
 
-const TEST_OR_SPEC_FILE_RE = /(?:^|\.)(?:test|spec)\./i;
+const TEST_OR_SPEC_FILE_RE =
+  /(?:(?:^|\.)(?:test|spec)\.|_test_runner\.(?:js|ts|html)$|(?:^|[._-])(?:testrunner|tests)\.(?:js|ts)$)/i;
+const CAMEL_TEST_FILE_RE = /[A-Za-z0-9](?:TestRunner|Tests)\.(?:js|ts)$/;
 
 function normalizePath(relPath: string): string {
   return relPath.replace(/\\/g, '/').toLowerCase();
 }
 
+function splitPathSegments(relPath: string): string[] {
+  return normalizePath(relPath)
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
+}
+
+function hasMatchingDirSegment(
+  relPath: string,
+  segmentsSet: ReadonlySet<string>,
+): boolean {
+  const segments = splitPathSegments(relPath);
+  return (
+    segments.slice(0, -1).some((seg) => segmentsSet.has(seg)) ||
+    (segments.length === 1 && segmentsSet.has(segments[0] ?? ''))
+  );
+}
+
+function hasDotDirSegment(relPath: string): boolean {
+  const segments = relPath.replace(/\\/g, '/').split('/');
+  return segments
+    .slice(0, -1)
+    .some((seg) => seg !== '.' && seg !== '..' && seg.startsWith('.'));
+}
+
 /**
  * Returns `true` if `relPath` (relative to the target directory) represents a documentation,
- * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file.
+ * example, demo, test, spec, testing, e2e, or fixtures path or is a test/spec/test-runner file.
  */
 export function isDocsOrTestsPath(relPath: string): boolean {
-  const segments = normalizePath(relPath)
+  const rawSegments = relPath
+    .replace(/\\/g, '/')
     .split('/')
-    .filter((s) => s && s !== '.');
-  if (segments.length === 0) {
+    .filter((s) => s && s !== '.' && s !== '..');
+  if (rawSegments.length === 0) {
     return false;
   }
+  const lowerDirs = rawSegments.slice(0, -1).map((s) => s.toLowerCase());
+  const rawBaseName = rawSegments.at(-1) ?? '';
   return (
-    segments.slice(0, -1).some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg)) ||
-    TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? '')
+    lowerDirs.some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg) || seg.endsWith('_test_runner')) ||
+    TEST_OR_SPEC_FILE_RE.test(rawBaseName) ||
+    CAMEL_TEST_FILE_RE.test(rawBaseName)
   );
 }
 
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.min.js',
   '.min.css',
+  '.min.scss',
+  '.min.less',
   '.bundle.js',
   '.bundle.css',
+  '.bundle.scss',
+  '.bundle.less',
   '.pack.js',
   '-opt.js',
   '.opt.js',
@@ -118,6 +143,8 @@ export const JS_RULE_EXTENSIONS = [
   '.tsx',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.html',
   '.htm',
@@ -125,8 +152,12 @@ export const JS_RULE_EXTENSIONS = [
 
 export const CSS_RULE_EXTENSIONS = [
   '.css',
+  '.scss',
+  '.less',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.html',
   '.htm',
@@ -137,6 +168,8 @@ export const DOM_RULE_EXTENSIONS = [
   '.htm',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.jsx',
   '.tsx',
@@ -158,8 +191,12 @@ const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.php',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.css',
+  '.scss',
+  '.less',
 ]);
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
@@ -246,17 +283,6 @@ export interface FileFilterOptions {
   readonly includeDocsAndTests?: boolean;
 }
 
-function hasPathSegment(
-  normalizedPath: string,
-  segmentsSet: ReadonlySet<string>,
-): boolean {
-  const segments = normalizedPath.split('/').filter(Boolean);
-  return (
-    segments.slice(0, -1).some((seg) => segmentsSet.has(seg)) ||
-    (segments.length === 1 && segmentsSet.has(segments[0] ?? ''))
-  );
-}
-
 /**
  * Returns `true` if `relPath` is a known vendored third-party library file,
  * vendored library directory subpath, or framework-published hashed asset bundle.
@@ -282,7 +308,7 @@ export function isExcludedCorpusNonAppPath(relPath: string): boolean {
 export function isCorpusNonAppPath(relPath: string): boolean {
   const normalized = normalizePath(relPath);
   return (
-    hasPathSegment(normalized, CORPUS_NON_APP_DIR_SEGMENTS) ||
+    hasMatchingDirSegment(normalized, CORPUS_NON_APP_DIR_SEGMENTS) ||
     /(?:^|\/)(?:docs|doc|site|website|gh-pages)\//i.test(normalized) ||
     /(?:^|\/)content\/.*\/docs\//i.test(normalized)
   );
@@ -297,13 +323,12 @@ export function isVendoredOrGeneratedPath(
   options?: FileFilterOptions,
 ): boolean {
   const normalized = normalizePath(relPath);
-  const segments = normalized.split('/').filter(Boolean);
   const ignoredDirs = options?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
-  const dirSegments = segments.slice(0, -1);
 
   return (
     isExcludedCorpusNonAppPath(normalized) ||
-    dirSegments.some((seg) => ignoredDirs.has(seg)) ||
+    hasDotDirSegment(normalized) ||
+    hasMatchingDirSegment(normalized, ignoredDirs) ||
     (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized)) ||
     DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext))
   );
@@ -449,18 +474,21 @@ export function shouldScanFile(
 }
 
 /**
- * Returns true if the path is inside a build or package manager install directory
- * (e.g. node_modules, dist, build, out, .cache) that should never be scanned.
+ * Returns true if the path is inside a build, package manager install, or dot directory
+ * (e.g. node_modules, dist, build, out, .git, .cache) that should never be scanned.
  */
 export function isBuildOrInstallPath(relPath: string): boolean {
-  return hasPathSegment(normalizePath(relPath), BUILD_OR_INSTALL_DIR_SEGMENTS);
+  return (
+    hasDotDirSegment(relPath) ||
+    hasMatchingDirSegment(relPath, BUILD_OR_INSTALL_DIR_SEGMENTS)
+  );
 }
 
 /**
  * Returns true if the path is inside a checked-in vendor directory (e.g. vendor, third_party, libs).
  */
 export function isCheckedInVendorPath(relPath: string): boolean {
-  return hasPathSegment(normalizePath(relPath), CHECKED_IN_VENDOR_DIR_SEGMENTS);
+  return hasMatchingDirSegment(relPath, CHECKED_IN_VENDOR_DIR_SEGMENTS);
 }
 
 /**

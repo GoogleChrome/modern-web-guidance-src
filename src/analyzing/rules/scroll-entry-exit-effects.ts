@@ -15,7 +15,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const SCROLL_ENTRY_EXIT_EFFECTS_GUIDE_HASH = '72311e501787';
+export const SCROLL_ENTRY_EXIT_EFFECTS_GUIDE_HASH = '8cb1e6c53a72';
 
 const SCROLL_REVEAL_PACKAGES = [
   'aos',
@@ -75,7 +75,7 @@ export const scrollEntryExitEffectsPackageMatcher: DependencyRuleMatcher =
   );
 
 export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['AOS.init', 'ScrollReveal', 'new WOW'],
+  fastTokens: ['AOS', 'aos', 'ScrollReveal', 'scrollreveal', 'WOW', 'wowjs', 'wow.js'],
   featureGuardTokens: SCROLL_TIMELINE_GUARD_TOKENS,
   matchCall: matchScrollRevealCall,
 });

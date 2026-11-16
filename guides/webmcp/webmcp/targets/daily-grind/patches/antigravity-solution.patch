@@ -1,0 +1,645 @@
+diff --git a/index.html b/index.html
+index 66c9173..46c95d5 100644
+--- a/index.html
++++ b/index.html
+@@ -126,8 +126,12 @@
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +139,86 @@
+       background: #3e2723;
+     }
+ 
++    .price-tag {
++      font-weight: bold;
++      color: var(--primary);
++      margin: 8px 0 12px;
++      font-size: 1.05rem;
++    }
++
++    .order-form {
++      margin-top: 12px;
++      text-align: left;
++      border-top: 1px solid var(--secondary);
++      padding-top: 12px;
++    }
++
++    .form-group {
++      margin-bottom: 10px;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-group select,
++    .form-group input[type="number"] {
++      width: 100%;
++      padding: 7px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #fff;
++    }
++
++    .order-form .btn {
++      width: 100%;
++      margin-top: 8px;
++      text-align: center;
++    }
++
++    .order-status {
++      margin-top: 10px;
++      font-size: 0.88rem;
++      min-height: 1.4em;
++      padding: 6px 8px;
++      border-radius: 4px;
++    }
++
++    .order-status:empty {
++      display: none;
++    }
++
++    .order-status.success {
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #c8e6c9;
++    }
++
++    .order-status.error {
++      background-color: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ffcdd2;
++    }
++
++    .seasonal-order-summary {
++      margin-top: 24px;
++      background: white;
++      border-radius: 8px;
++      padding: 16px 20px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      text-align: center;
++    }
++
++    .seasonal-order-summary:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +259,176 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-coffee-id="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="price-tag" data-price-display="maple-oat-latte">$5.50</p>
++          <form
++            class="order-form"
++            id="form-maple-oat-latte"
++            toolname="order-maple-oat-latte"
++            tooldescription="Place an order for a Maple Oat Latte when the user wants to purchase this seasonal maple-sweetened oat milk espresso drink."
++          >
++            <div class="form-group">
++              <label for="maple-size">Cup Size</label>
++              <select
++                id="maple-size"
++                name="size"
++                required
++                toolparamdescription="Cup volume selection, where small is a compact 8 oz pour, medium is the standard 12 oz balance of espresso and oat milk, and large is a generous 16 oz serving with an extra espresso shot."
++              >
++                <option value="small">Small (8 oz) - $4.75</option>
++                <option value="medium" selected>Medium (12 oz) - $5.50</option>
++                <option value="large">Large (16 oz) - $6.25</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="maple-temperature">Preparation</label>
++              <select
++                id="maple-temperature"
++                name="temperature"
++                required
++                toolparamdescription="Serving preparation style, where hot uses velvety steamed oat milk and iced is poured chilled over artisanal cube ice."
++              >
++                <option value="hot" selected>Hot</option>
++                <option value="iced">Iced</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="maple-quantity">Quantity</label>
++              <input
++                type="number"
++                id="maple-quantity"
++                name="quantity"
++                min="1"
++                max="10"
++                value="1"
++                required
++                toolparamdescription="Number of Maple Oat Latte cups to prepare for this order."
++              >
++            </div>
++            <button type="submit" class="btn">Order Maple Oat Latte</button>
++          </form>
++          <div class="order-status" id="status-maple-oat-latte" role="status" aria-live="polite"></div>
+         </div>
+-        <div class="card">
++
++        <div class="card" data-coffee-id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="price-tag" data-price-display="dark-roast-espresso">$3.75</p>
++          <form
++            class="order-form"
++            id="form-dark-roast-espresso"
++            toolname="order-dark-roast-espresso"
++            tooldescription="Place an order for a Dark Roast Espresso when the user wants to purchase a bold, smoky dark-roasted espresso beverage."
++          >
++            <div class="form-group">
++              <label for="espresso-size">Pull Size</label>
++              <select
++                id="espresso-size"
++                name="size"
++                required
++                toolparamdescription="Extraction pull volume, where small is a concentrated single ristretto shot, medium is a classic double shot, and large is an extended triple lungo pull."
++              >
++                <option value="small">Single Shot (Small) - $3.00</option>
++                <option value="medium" selected>Double Shot (Medium) - $3.75</option>
++                <option value="large">Triple Shot (Large) - $4.50</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="espresso-temperature">Serving Style</label>
++              <select
++                id="espresso-temperature"
++                name="temperature"
++                required
++                toolparamdescription="Serving style for the espresso, where hot is served in a preheated demitasse cup and iced is flash-chilled over ice."
++              >
++                <option value="hot" selected>Hot</option>
++                <option value="iced">Iced</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="espresso-quantity">Quantity</label>
++              <input
++                type="number"
++                id="espresso-quantity"
++                name="quantity"
++                min="1"
++                max="10"
++                value="1"
++                required
++                toolparamdescription="Number of Dark Roast Espresso beverages to pull for this order."
++              >
++            </div>
++            <button type="submit" class="btn">Order Dark Roast Espresso</button>
++          </form>
++          <div class="order-status" id="status-dark-roast-espresso" role="status" aria-live="polite"></div>
+         </div>
+-        <div class="card">
++
++        <div class="card" data-coffee-id="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="price-tag" data-price-display="cold-brew">$4.75</p>
++          <form
++            class="order-form"
++            id="form-cold-brew"
++            toolname="order-cold-brew"
++            tooldescription="Place an order for a Cold Brew when the user wants to purchase a smooth, slow-steeped cold brew coffee."
++          >
++            <div class="form-group">
++              <label for="cold-brew-size">Cup Size</label>
++              <select
++                id="cold-brew-size"
++                name="size"
++                required
++                toolparamdescription="Serving glass volume for the steeped cold brew, where small is a 10 oz glass, medium is a 14 oz glass, and large is a 20 oz tumbler."
++              >
++                <option value="small">Small (10 oz) - $4.00</option>
++                <option value="medium" selected>Medium (14 oz) - $4.75</option>
++                <option value="large">Large (20 oz) - $5.50</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="cold-brew-ice">Ice Level</label>
++              <select
++                id="cold-brew-ice"
++                name="iceLevel"
++                required
++                toolparamdescription="Ice dilution preference, where light maximizes undiluted cold brew concentrate volume, regular provides balanced chilling, and extra keeps the beverage cold longer."
++              >
++                <option value="light">Light Ice</option>
++                <option value="regular" selected>Regular Ice</option>
++                <option value="extra">Extra Ice</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="cold-brew-quantity">Quantity</label>
++              <input
++                type="number"
++                id="cold-brew-quantity"
++                name="quantity"
++                min="1"
++                max="10"
++                value="1"
++                required
++                toolparamdescription="Number of Cold Brew cups to prepare for this order."
++              >
++            </div>
++            <button type="submit" class="btn">Order Cold Brew</button>
++          </form>
++          <div class="order-status" id="status-cold-brew" role="status" aria-live="polite"></div>
+         </div>
+       </div>
++      <div
++        id="seasonal-order-summary"
++        class="seasonal-order-summary"
++        role="region"
++        aria-label="Seasonal Order Summary"
++        aria-live="polite"
++      ></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +442,356 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const MENU_CATALOG = {
++        'maple-oat-latte': {
++          id: 'maple-oat-latte',
++          toolName: 'order-maple-oat-latte',
++          title: 'Maple Oat Latte',
++          description:
++            'Place an order for a Maple Oat Latte when the user wants to purchase this seasonal maple-sweetened oat milk espresso drink.',
++          prices: { small: 4.75, medium: 5.5, large: 6.25 },
++          optionField: 'temperature',
++          validOptions: ['hot', 'iced'],
++          defaultOption: 'hot',
++          optionDescription:
++            'Serving preparation style, where hot uses velvety steamed oat milk and iced is poured chilled over artisanal cube ice.',
++          sizeDescription:
++            'Cup volume selection, where small is a compact 8 oz pour, medium is the standard 12 oz balance of espresso and oat milk, and large is a generous 16 oz serving with an extra espresso shot.',
++          quantityDescription: 'Number of Maple Oat Latte cups to prepare for this order.'
++        },
++        'dark-roast-espresso': {
++          id: 'dark-roast-espresso',
++          toolName: 'order-dark-roast-espresso',
++          title: 'Dark Roast Espresso',
++          description:
++            'Place an order for a Dark Roast Espresso when the user wants to purchase a bold, smoky dark-roasted espresso beverage.',
++          prices: { small: 3.0, medium: 3.75, large: 4.5 },
++          optionField: 'temperature',
++          validOptions: ['hot', 'iced'],
++          defaultOption: 'hot',
++          optionDescription:
++            'Serving style for the espresso, where hot is served in a preheated demitasse cup and iced is flash-chilled over ice.',
++          sizeDescription:
++            'Extraction pull volume, where small is a concentrated single ristretto shot, medium is a classic double shot, and large is an extended triple lungo pull.',
++          quantityDescription: 'Number of Dark Roast Espresso beverages to pull for this order.'
++        },
++        'cold-brew': {
++          id: 'cold-brew',
++          toolName: 'order-cold-brew',
++          title: 'Cold Brew',
++          description:
++            'Place an order for a Cold Brew when the user wants to purchase a smooth, slow-steeped cold brew coffee.',
++          prices: { small: 4.0, medium: 4.75, large: 5.5 },
++          optionField: 'iceLevel',
++          validOptions: ['light', 'regular', 'extra'],
++          defaultOption: 'regular',
++          optionDescription:
++            'Ice dilution preference, where light maximizes undiluted cold brew concentrate volume, regular provides balanced chilling, and extra keeps the beverage cold longer.',
++          sizeDescription:
++            'Serving glass volume for the steeped cold brew, where small is a 10 oz glass, medium is a 14 oz glass, and large is a 20 oz tumbler.',
++          quantityDescription: 'Number of Cold Brew cups to prepare for this order.'
++        }
++      };
++
++      const VALID_SIZES = ['small', 'medium', 'large'];
++      const MIN_QUANTITY = 1;
++      const MAX_QUANTITY = 10;
++      const RATE_LIMIT_WINDOW_MS = 1000;
++      const RATE_LIMIT_MAX_REQUESTS = 8;
++
++      const orderHistory = [];
++      const requestTimestamps = [];
++
++      function isRateLimited() {
++        const now = Date.now();
++        while (requestTimestamps.length > 0 && now - requestTimestamps[0] > RATE_LIMIT_WINDOW_MS) {
++          requestTimestamps.shift();
++        }
++        if (requestTimestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
++          return true;
++        }
++        requestTimestamps.push(now);
++        return false;
++      }
++
++      function renderCardStatus(itemId, message, isError) {
++        const statusEl = document.getElementById('status-' + itemId);
++        if (!statusEl) return;
++        statusEl.textContent = message;
++        statusEl.className = 'order-status ' + (isError ? 'error' : 'success');
++      }
++
++      function renderOrderSummary() {
++        const summaryEl = document.getElementById('seasonal-order-summary');
++        if (!summaryEl) return;
++        if (orderHistory.length === 0) {
++          summaryEl.textContent = '';
++          return;
++        }
++        const totalCups = orderHistory.reduce(function (sum, entry) {
++          return sum + entry.quantity;
++        }, 0);
++        const totalCost = orderHistory.reduce(function (sum, entry) {
++          return sum + entry.totalPrice;
++        }, 0);
++        const latest = orderHistory[orderHistory.length - 1];
++        summaryEl.textContent =
++          'Cart Summary: ' +
++          totalCups +
++          (totalCups === 1 ? ' item' : ' items') +
++          ' ($' +
++          totalCost.toFixed(2) +
++          ') — Latest: ' +
++          latest.quantity +
++          'x ' +
++          latest.size +
++          ' ' +
++          latest.title +
++          ' (' +
++          latest.customization +
++          ')';
++      }
++
++      function syncFormControls(itemConfig, size, optionValue, quantity) {
++        const form = document.getElementById('form-' + itemConfig.id);
++        if (!form) return;
++        const sizeControl = form.elements.namedItem('size');
++        if (sizeControl) {
++          sizeControl.value = size;
++        }
++        const optionControl = form.elements.namedItem(itemConfig.optionField);
++        if (optionControl) {
++          optionControl.value = optionValue;
++        }
++        const quantityControl = form.elements.namedItem('quantity');
++        if (quantityControl) {
++          quantityControl.value = String(quantity);
++        }
++        const priceEl = document.querySelector('[data-price-display="' + itemConfig.id + '"]');
++        if (priceEl && itemConfig.prices[size]) {
++          priceEl.textContent = '$' + (itemConfig.prices[size] * quantity).toFixed(2);
++        }
++      }
++
++      function processCoffeeOrder(itemId, rawInput) {
++        const itemConfig = MENU_CATALOG[itemId];
++        if (!itemConfig) {
++          return {
++            isError: true,
++            content: [
++              {
++                type: 'text',
++                text: 'Unknown seasonal item requested. Please choose a valid seasonal coffee tool and retry.'
++              }
++            ]
++          };
++        }
++
++        if (isRateLimited()) {
++          const rateMsg =
++            'Too many orders submitted in a short period. Please wait a moment and retry placing the order for ' +
++            itemConfig.title +
++            '.';
++          renderCardStatus(itemId, rateMsg, true);
++          return {
++            isError: true,
++            content: [{ type: 'text', text: rateMsg }]
++          };
++        }
++
++        const input = rawInput && typeof rawInput === 'object' ? rawInput : {};
++        const rawSize = typeof input.size === 'string' ? input.size.trim().toLowerCase() : '';
++
++        if (!rawSize || VALID_SIZES.indexOf(rawSize) === -1) {
++          const sizeError =
++            'Invalid or missing size for ' +
++            itemConfig.title +
++            '. Please retry with size set to one of: ' +
++            VALID_SIZES.join(', ') +
++            '.';
++          renderCardStatus(itemId, sizeError, true);
++          return {
++            isError: true,
++            content: [{ type: 'text', text: sizeError }]
++          };
++        }
++
++        const rawQuantity = input.quantity === undefined || input.quantity === '' ? 1 : Number(input.quantity);
++        if (!Number.isInteger(rawQuantity) || rawQuantity < MIN_QUANTITY || rawQuantity > MAX_QUANTITY) {
++          const quantityError =
++            'Invalid quantity for ' +
++            itemConfig.title +
++            '. Please retry with a whole number quantity between ' +
++            MIN_QUANTITY +
++            ' and ' +
++            MAX_QUANTITY +
++            '.';
++          renderCardStatus(itemId, quantityError, true);
++          return {
++            isError: true,
++            content: [{ type: 'text', text: quantityError }]
++          };
++        }
++
++        const rawOption =
++          input[itemConfig.optionField] === undefined || input[itemConfig.optionField] === ''
++            ? itemConfig.defaultOption
++            : String(input[itemConfig.optionField]).trim().toLowerCase();
++
++        if (itemConfig.validOptions.indexOf(rawOption) === -1) {
++          const optionError =
++            'Invalid ' +
++            itemConfig.optionField +
++            ' for ' +
++            itemConfig.title +
++            '. Please retry with ' +
++            itemConfig.optionField +
++            ' set to one of: ' +
++            itemConfig.validOptions.join(', ') +
++            '.';
++          renderCardStatus(itemId, optionError, true);
++          return {
++            isError: true,
++            content: [{ type: 'text', text: optionError }]
++          };
++        }
++
++        const unitPrice = itemConfig.prices[rawSize];
++        const totalPrice = Number((unitPrice * rawQuantity).toFixed(2));
++        const orderEntry = {
++          id: itemConfig.id,
++          title: itemConfig.title,
++          size: rawSize,
++          customization: rawOption,
++          quantity: rawQuantity,
++          unitPrice: unitPrice,
++          totalPrice: totalPrice,
++          status: 'confirmed'
++        };
++
++        orderHistory.push(orderEntry);
++
++        // Update UI state synchronously before returning
++        syncFormControls(itemConfig, rawSize, rawOption, rawQuantity);
++        const confirmationText =
++          'Ordered ' +
++          rawQuantity +
++          'x ' +
++          rawSize +
++          ' ' +
++          itemConfig.title +
++          ' (' +
++          rawOption +
++          ') — $' +
++          totalPrice.toFixed(2);
++        renderCardStatus(itemId, confirmationText, false);
++        renderOrderSummary();
++
++        return {
++          isError: false,
++          content: [
++            {
++              type: 'text',
++              text: confirmationText
++            }
++          ],
++          order: orderEntry
++        };
++      }
++
++      // Wire up interactive form submissions and live price updates
++      Object.keys(MENU_CATALOG).forEach(function (itemId) {
++        const itemConfig = MENU_CATALOG[itemId];
++        const form = document.getElementById('form-' + itemId);
++        if (!form) return;
++
++        form.addEventListener('change', function () {
++          const sizeControl = form.elements.namedItem('size');
++          const quantityControl = form.elements.namedItem('quantity');
++          const priceEl = document.querySelector('[data-price-display="' + itemId + '"]');
++          if (!sizeControl || !quantityControl || !priceEl) return;
++          const selectedSize = sizeControl.value;
++          const qty = Math.max(1, Math.min(10, parseInt(quantityControl.value, 10) || 1));
++          if (itemConfig.prices[selectedSize]) {
++            priceEl.textContent = '$' + (itemConfig.prices[selectedSize] * qty).toFixed(2);
++          }
++        });
++
++        form.addEventListener('submit', function (event) {
++          event.preventDefault();
++          const formData = new FormData(form);
++          const payload = {
++            size: formData.get('size'),
++            quantity: formData.get('quantity')
++          };
++          payload[itemConfig.optionField] = formData.get(itemConfig.optionField);
++          processCoffeeOrder(itemId, payload);
++        });
++      });
++
++      // Register imperative WebMCP tools via document.modelContext with AbortSignal cleanup
++      const toolAbortController = new AbortController();
++
++      function buildToolDefinition(itemConfig) {
++        const properties = {
++          size: {
++            type: 'string',
++            enum: VALID_SIZES,
++            description: itemConfig.sizeDescription
++          },
++          quantity: {
++            type: 'integer',
++            minimum: MIN_QUANTITY,
++            maximum: MAX_QUANTITY,
++            description: itemConfig.quantityDescription
++          }
++        };
++        properties[itemConfig.optionField] = {
++          type: 'string',
++          enum: itemConfig.validOptions,
++          description: itemConfig.optionDescription
++        };
++
++        return {
++          name: itemConfig.toolName,
++          description: itemConfig.description,
++          inputSchema: {
++            type: 'object',
++            properties: properties,
++            required: ['size', 'quantity']
++          },
++          execute: async function (input) {
++            return processCoffeeOrder(itemConfig.id, input);
++          }
++        };
++      }
++
++      function registerSeasonalTools() {
++        const modelContext = document.modelContext;
++        if (!modelContext || typeof modelContext.registerTool !== 'function') {
++          return;
++        }
++        Object.keys(MENU_CATALOG).forEach(function (itemId) {
++          const itemConfig = MENU_CATALOG[itemId];
++          modelContext.registerTool(buildToolDefinition(itemConfig), {
++            signal: toolAbortController.signal
++          });
++        });
++      }
++
++      registerSeasonalTools();
++
++      window.addEventListener(
++        'pagehide',
++        function () {
++          toolAbortController.abort();
++        },
++        { once: true }
++      );
++    })();
++  </script>
+ </body>
+ 
+ </html>

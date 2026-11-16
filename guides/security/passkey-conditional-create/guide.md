@@ -34,8 +34,9 @@ if (capabilities.conditionalCreate) {
 ```
 
 ### 3. Create a passkey with Conditional Create
-* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
+* Ensure the server's registration options endpoint includes the predefined RP ID in `rp.id` so `publicKey.rp.id` is populated if `PublicKeyCredential.signalUnknownCredential()` runs in Step 6, because omitting `rp.id` in WebAuthn creation options leaves `publicKey.rp.id` undefined on the client.
 * Populate `excludeCredentials` with the user's existing passkey credential IDs to avoid registering duplicate keys.
+* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
 
 ### 4. Silent Error Handling
 * Wrap the passkey creation prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
@@ -44,7 +45,7 @@ if (capabilities.conditionalCreate) {
 * The server-side verification endpoint MUST relax the User Presence (UP) requirement (`requireUserPresence: false`) **ONLY** when verifying credentials produced by a conditional-create trigger. Strict presence verification must remain active for standard explicit creations.
 
 ### 6. Handle Failed Server Verification gracefully
-* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential()` to prevent orphaned credentials from lingering in the passkey provider.
+* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rp.id, credentialId: encodedResponse.id })` to prevent orphaned credentials from lingering in the passkey provider. Always read `rpId` from `publicKey.rp.id` in the server's creation options; **DO NOT** derive `rpId` from `window.location.hostname` on the client, which can mismatch a parent-domain or related-origin RP ID.
 
 ## Code Example
 
@@ -61,7 +62,7 @@ async function triggerConditionalCreate(loginAbortController) {
   // 1. Abort any active autofill conditional-get controllers to clear the WebAuthn pipeline
   loginAbortController.abort();
 
-  // 2. Fetch creation options signaling the backend that this is a conditional request
+  // 2. Fetch creation options signaling the backend that this is a conditional request (server options must include rp.id)
   const creationOptionsJSON = await optionsFetch({ conditional: true });
   const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
 
@@ -89,7 +90,7 @@ async function triggerConditionalCreate(loginAbortController) {
       // If the server verification fails, clean up using Signal API
       if (PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
-          rpId, // RP ID must match the one defined on the server
+          rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
           credentialId: encodedResponse.id
         });
       }
@@ -98,7 +99,7 @@ async function triggerConditionalCreate(loginAbortController) {
     console.error('Verification network failure:', serverErr);
     if (PublicKeyCredential.signalUnknownCredential) {
       await PublicKeyCredential.signalUnknownCredential({
-        rpId, // RP ID must match the one defined on the server
+        rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
         credentialId: encodedResponse.id
       });
     }
@@ -112,12 +113,14 @@ async function triggerConditionalCreate(loginAbortController) {
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
 
-```js 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
-``` 
+```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
 
 ### Signal API Synchronization Fallback
 
@@ -130,9 +133,11 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseCreationOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.parseCreationOptionsFromJSON()` and `PublicKeyCredential.prototype.toJSON()` are available whenever `PublicKeyCredential` is supported:
 
-```js 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
-``` 
+```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.

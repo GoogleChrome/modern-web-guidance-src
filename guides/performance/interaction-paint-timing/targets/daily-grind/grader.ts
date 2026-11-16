@@ -72,74 +72,140 @@ test.describe('Measure interaction and soft-navigation paint timing Target Grade
     expect(isFeatureDetected).toBe(true);
   });
 
-  test('Registers a PerformanceObserver with type interaction-contentful-paint and buffered true', () => {
-    const project = getJsProject(targetFiles);
-    const sourceFiles = getAppSourceFiles(project);
+  function hasObserveForType(sourceFiles: SourceFile[], targetType: string): boolean {
+    const resolveStrings = (node: import('ts-morph').Node | undefined, sf: SourceFile, seen = new Set<string>()): string[] => {
+      if (!node) return [];
+      const key = `${sf.getFilePath()}:${node.getStart()}:${node.getKind()}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
 
-    const registersIcpObserver = sourceFiles.some((sf) => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((call) => {
+      if (node.isKind(SyntaxKind.StringLiteral) || node.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
+        return [node.getLiteralValue()];
+      }
+      if (node.isKind(SyntaxKind.ArrayLiteralExpression)) {
+        return node.getElements().flatMap((el) => resolveStrings(el, sf, seen));
+      }
+      if (node.isKind(SyntaxKind.Identifier)) {
+        const name = node.getText();
+        const out: string[] = [];
+
+        // Variable declarations in file
+        for (const decl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+          if (decl.getName() === name) {
+            if (decl.getInitializer()) {
+              out.push(...resolveStrings(decl.getInitializer(), sf, seen));
+            }
+            // for (const name of expr)
+            const declList = decl.getParent();
+            const forOf = declList?.getParent();
+            if (forOf && forOf.isKind(SyntaxKind.ForOfStatement)) {
+              out.push(...resolveStrings(forOf.getExpression(), sf, seen));
+            }
+          }
+        }
+
+        // Function/arrow/method parameters
+        for (const param of sf.getDescendantsOfKind(SyntaxKind.Parameter)) {
+          if (param.getName() !== name) continue;
+          const fn = param.getParent();
+          const params = (fn as any).getParameters?.() as import('ts-morph').ParameterDeclaration[] | undefined;
+          const idx = params ? params.indexOf(param) : -1;
+          if (idx < 0) continue;
+
+          let fnName: string | undefined;
+          if (fn.isKind(SyntaxKind.FunctionDeclaration) || fn.isKind(SyntaxKind.MethodDeclaration)) {
+            fnName = fn.getName();
+          } else if (fn.isKind(SyntaxKind.ArrowFunction) || fn.isKind(SyntaxKind.FunctionExpression)) {
+            const parent = fn.getParent();
+            if (parent?.isKind(SyntaxKind.VariableDeclaration)) {
+              fnName = parent.getName();
+            }
+          }
+          if (!fnName) continue;
+
+          for (const otherSf of sourceFiles) {
+            for (const call of otherSf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+              const callee = call.getExpression();
+              const calleeName = callee.isKind(SyntaxKind.Identifier)
+                ? callee.getText()
+                : callee.isKind(SyntaxKind.PropertyAccessExpression)
+                  ? callee.getName()
+                  : undefined;
+              if (calleeName === fnName) {
+                out.push(...resolveStrings(call.getArguments()[idx], otherSf, seen));
+              }
+            }
+          }
+        }
+        return out;
+      }
+      return [];
+    };
+
+    const resolveObjectLiterals = (node: import('ts-morph').Node | undefined, sf: SourceFile): import('ts-morph').ObjectLiteralExpression[] => {
+      if (!node) return [];
+      if (node.isKind(SyntaxKind.ObjectLiteralExpression)) return [node];
+      if (node.isKind(SyntaxKind.Identifier)) {
+        const name = node.getText();
+        return sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)
+          .filter((d) => d.getName() === name)
+          .flatMap((d) => {
+            const init = d.getInitializer();
+            return init?.isKind(SyntaxKind.ObjectLiteralExpression) ? [init] : [];
+          });
+      }
+      return [];
+    };
+
+    return sourceFiles.some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
         const expr = call.getExpression();
         const isObserve =
           (expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'observe') ||
           expr.getText().endsWith('.observe');
         if (!isObserve) return false;
 
-        return call.getArguments().some((arg) => {
-          if (arg.isKind(SyntaxKind.ObjectLiteralExpression)) {
-            const typeProp = arg.getProperty('type');
-            const bufferedProp = arg.getProperty('buffered');
+        return call.getArguments().some((arg) =>
+          resolveObjectLiterals(arg, sf).some((obj) => {
+            const typeProp = obj.getProperty('type');
+            const bufferedProp = obj.getProperty('buffered');
             if (!typeProp || !bufferedProp) return false;
 
-            const hasIcpType =
-              typeProp.isKind(SyntaxKind.PropertyAssignment) &&
-              typeProp.getInitializer()?.getText().replace(/['"`]/g, '') === 'interaction-contentful-paint';
             const hasBufferedTrue =
-              bufferedProp.isKind(SyntaxKind.PropertyAssignment) &&
-              bufferedProp.getInitializer()?.getKind() === SyntaxKind.TrueKeyword;
+              (bufferedProp.isKind(SyntaxKind.PropertyAssignment) &&
+                bufferedProp.getInitializer()?.getKind() === SyntaxKind.TrueKeyword) ||
+              (bufferedProp.isKind(SyntaxKind.ShorthandPropertyAssignment) &&
+                sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration).some(
+                  (d) =>
+                    d.getName() === 'buffered' &&
+                    d.getInitializer()?.getKind() === SyntaxKind.TrueKeyword
+                ));
+            if (!hasBufferedTrue) return false;
 
-            return hasIcpType && hasBufferedTrue;
-          }
-          return false;
-        });
-      });
-    });
+            if (typeProp.isKind(SyntaxKind.PropertyAssignment)) {
+              return resolveStrings(typeProp.getInitializer(), sf).includes(targetType);
+            }
+            if (typeProp.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+              return resolveStrings(typeProp.getNameNode(), sf).includes(targetType);
+            }
+            return false;
+          })
+        );
+      })
+    );
+  }
 
-    expect(registersIcpObserver).toBe(true);
+  test('Registers a PerformanceObserver with type interaction-contentful-paint and buffered true', () => {
+    const project = getJsProject(targetFiles);
+    const sourceFiles = getAppSourceFiles(project);
+    expect(hasObserveForType(sourceFiles, 'interaction-contentful-paint')).toBe(true);
   });
 
   test('Registers a PerformanceObserver with type soft-navigation and buffered true without relying on performance.getEntriesByType', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = getAppSourceFiles(project);
 
-    const registersSoftNavObserver = sourceFiles.some((sf) => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some((call) => {
-        const expr = call.getExpression();
-        const isObserve =
-          (expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'observe') ||
-          expr.getText().endsWith('.observe');
-        if (!isObserve) return false;
-
-        return call.getArguments().some((arg) => {
-          if (arg.isKind(SyntaxKind.ObjectLiteralExpression)) {
-            const typeProp = arg.getProperty('type');
-            const bufferedProp = arg.getProperty('buffered');
-            if (!typeProp || !bufferedProp) return false;
-
-            const hasSoftNavType =
-              typeProp.isKind(SyntaxKind.PropertyAssignment) &&
-              typeProp.getInitializer()?.getText().replace(/['"`]/g, '') === 'soft-navigation';
-            const hasBufferedTrue =
-              bufferedProp.isKind(SyntaxKind.PropertyAssignment) &&
-              bufferedProp.getInitializer()?.getKind() === SyntaxKind.TrueKeyword;
-
-            return hasSoftNavType && hasBufferedTrue;
-          }
-          return false;
-        });
-      });
-    });
+    const registersSoftNavObserver = hasObserveForType(sourceFiles, 'soft-navigation');
 
     const usesGetEntriesByTypeSoftNav = sourceFiles.some((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);

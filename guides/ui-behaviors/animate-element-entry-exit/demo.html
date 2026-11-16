@@ -103,9 +103,10 @@
         properties like display.
       */
       transition:
-        display 0.4s,
-        opacity 0.4s ease-out,
-        transform 0.4s ease-out;
+        display,
+        opacity ease-out,
+        transform ease-out;
+      transition-duration: 0.4s;
       transition-behavior: allow-discrete;
       opacity: 1;
       transform: translateY(0) scale(1);

@@ -1,0 +1,165 @@
+diff --git a/index.html b/index.html
+index 66c9173..119a287 100644
+--- a/index.html
++++ b/index.html
+@@ -28,6 +28,14 @@
+     }
+ 
+     /* Navigation */
++    /* Truncation flag set by the scroll-driven animation below.
++       Registered so it does not inherit into nested elements. */
++    @property --truncated {
++      syntax: "<integer>";
++      inherits: false;
++      initial-value: 0;
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -35,12 +43,15 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      gap: 20px;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
++      flex: none;
++      white-space: nowrap;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+@@ -48,24 +59,86 @@
+ 
+     nav ul {
+       display: flex;
++      justify-content: flex-end;
++      gap: 20px;
+       list-style: none;
++      /* Let the list shrink below its content so the items can truncate */
++      min-inline-size: 0;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      /* The truncated element is the link inside, so the flex item must be allowed to shrink */
++      min-inline-size: 0;
+     }
+ 
+     nav a {
++      display: block;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      /* Sets --truncated only while the text overflows */
++      animation: truncated linear both;
++      animation-timeline: scroll(self inline);
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    @keyframes truncated {
++      from,
++      to {
++        --truncated: 1;
++      }
++    }
++
++    /* Script fallback (no scroll-driven animations): same flag as the keyframes */
++    nav a.truncated {
++      --truncated: 1;
++    }
++
++    /* Reveal the full text by scrolling it inside its box, on hover and keyboard focus */
++    @media (prefers-reduced-motion: no-preference) {
++      /* Outside the query: a container cannot query itself */
++      nav a:is(:hover, :focus-visible) {
++        text-overflow: clip;
++      }
++
++      @container style(--truncated: 1) {
++        nav a:is(:hover, :focus-visible) > span {
++          /* Needs its own box to be moved. It stays inline otherwise, so the ellipsis renders. */
++          display: inline-block;
++          /* Forward by the link's width, then back by the text's own width */
++          margin-inline-start: 100%;
++          /* 1px short, so the text still overflows and the timeline stays active */
++          translate: calc(1px - 100%);
++          /* Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
++          transition: margin-inline-start 1.5s ease-in, translate 1.5s ease-in;
++        }
++
++        nav a:is(:hover, :focus-visible):dir(rtl) > span {
++          translate: calc(100% - 1px);
++        }
++      }
++
++      /* Fallback for browsers without style queries: the class is set from script */
++      nav a.truncated:is(:hover, :focus-visible) > span {
++        display: inline-block;
++        margin-inline-start: 100%;
++        translate: calc(1px - 100%);
++        transition: margin-inline-start 1.5s ease-in, translate 1.5s ease-in;
++      }
++
++      nav a.truncated:is(:hover, :focus-visible):dir(rtl) > span {
++        translate: calc(100% - 1px);
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,11 +233,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span>Menu</span></a></li>
++      <li><a href="/locations"><span>Locations</span></a></li>
++      <li><a href="/rewards"><span>Rewards</span></a></li>
++      <li><a href="/account"><span>My Account</span></a></li>
++      <li><a href="/logout" class="logout-link"><span>Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +280,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Flags truncated navigation links with a class. This drives the reveal in browsers
++    // without container style queries (which cannot be feature-detected) and stands in
++    // for the scroll-driven animation where that is unsupported.
++    (() => {
++      const observer = new ResizeObserver(entries => {
++        for (const { target } of entries) {
++          target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
++        }
++      });
++
++      for (const link of document.querySelectorAll('nav a')) {
++        observer.observe(link);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

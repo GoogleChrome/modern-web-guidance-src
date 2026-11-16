@@ -108,11 +108,17 @@ test.describe('devtools-times cpp-on-the-web Target Grader', () => {
   test('The Emscripten build uses release optimizations (-O2, -O3, -Os, or -Oz) with -flto and no -g debug flags', () => {
     const buildContents = getEmscriptenBuildContents(targetFiles);
     const hasReleaseOptWithLto = buildContents
-      .flatMap((c) => [c, ...c.replace(/\\\r?\n/g, ' ').split(/\r?\n/)])
+      .flatMap((c) => [
+        c,
+        ...c
+          .replace(/\\\r?\n/g, ' ')
+          .replace(/\(([^()]*)\)/g, (_, inner: string) => `(${inner.replace(/\r?\n/g, ' ')})`)
+          .split(/\r?\n/),
+      ])
       .some((content) => {
-        const hasOpt = /(?:^|[\s'"])-O(?:2|3|s|z)\b/.test(content);
-        const hasLto = /(?:^|[\s'"])-flto\b/.test(content);
-        const hasDebugFlag = /(?:^|[\s'"])-g(?:1|2|3|source-map|line-tables-only)?(?=[\s'"\\]|$)/.test(content);
+        const hasOpt = /(?:^|[\s'"(])-O(?:2|3|s|z)\b/.test(content);
+        const hasLto = /(?:^|[\s'"(])-flto\b/.test(content);
+        const hasDebugFlag = /(?:^|[\s'"(])-g(?:1|2|3|source-map|line-tables-only)?(?=[\s'"\\)]|$)/.test(content);
         const hasAssertions = /-s\s*ASSERTIONS(?!=0)\b/.test(content);
         return hasOpt && hasLto && !hasDebugFlag && !hasAssertions;
       });

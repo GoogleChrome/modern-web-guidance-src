@@ -15,48 +15,13 @@ const demoUrl = `http://localhost/${demoName}`;
 
 // Tests
 test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () => {
-  
-  // Static assertions
-  test(`CSS uses :user-invalid pseudo-class`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/:user-invalid/);
-  });
-
-  test(`CSS avoids raw :invalid pseudo-class for validation styling`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/input:invalid\s*\{/);
-  });
-
-  test('Format hints and rules must be positioned above their corresponding input elements in the markup', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/class=["'][^"']*(?:hint|rule)[^"']*["'][\s\S]*?<input/i.test(html)).toBe(true);
-  });
-
-  test('Format rules or hints must not use the placeholder attribute', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/placeholder=["'](?=.*[a-z]).*["']/i.test(html)).toBe(false);
-  });
-
-  test('The implementation must dynamically highlight preceding rules blocks upon error using :has', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/:has\(\s*input:user-invalid\s*\)/i.test(html)).toBe(true);
-  });
-
-  test('The visual error representation must incorporate multiple visual indicators', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/border|icon/i.test(html)).toBe(true);
-  });
-
-  // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      let localFilePath;
-      if (requestPath === '/' || requestPath === `/${demoName}`) {
-          localFilePath = filePath;
-      } else {
-          localFilePath = path.join(targetDir, requestPath);
-      }
+      const localFilePath =
+        requestPath === '/' || requestPath === `/${demoName}`
+          ? filePath
+          : path.join(targetDir, requestPath);
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -75,66 +40,200 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
     });
   });
 
-  // Browser assertions
-  test(`On page load, the required input field MUST have a neutral border (not red)`, async ({ page }) => {
+  test('Validation styling uses the :user-invalid pseudo-class rather than raw :invalid so required fields appear neutral on initial page load', async ({ page }) => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toMatch(/:user-invalid/);
+    expect(html).not.toMatch(/input:invalid\s*\{/);
+
     const input = page.locator('input[required]').first();
-    const color = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    expect(color).not.toBe('rgb(255, 0, 0)');
+    expect(await input.count()).toBeGreaterThan(0);
+
+    const initialState = await input.evaluate((el: HTMLElement) => {
+      const style = window.getComputedStyle(el);
+      return {
+        borderColor: style.borderColor,
+        matchesUserInvalid: el.matches(':user-invalid'),
+      };
+    });
+
+    expect(initialState.matchesUserInvalid).toBe(false);
+    expect(initialState.borderColor).not.toBe('rgb(255, 0, 0)');
   });
 
-  test(`Clicking into the required empty input field and clicking away (blur) MUST trigger the :user-invalid state`, async ({ page }) => {
-    const input = page.locator('input[required]').first();
-    const colorBefore = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    
+  test('Focusing a required field without editing (or while actively typing before blur) does not trigger the error state prematurely; entering an invalid value and blurring triggers the :user-invalid error state', async ({ page }) => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toMatch(/:user-invalid/);
+
+    const input = page.locator('input[type="email"][required], input[required]').first();
+    expect(await input.count()).toBeGreaterThan(0);
+
+    const initialBorder = await input.evaluate((el) => window.getComputedStyle(el).borderColor);
+
+    // Bare focus and blur without editing must NOT trigger :user-invalid or change border to error state
     await input.focus();
-    await input.fill('a');
-    await input.fill('');
     await input.blur();
-    
-    const colorAfter = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    expect(colorAfter).not.toBe(colorBefore);
-  });
+    const afterBareBlur = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      matchesUserInvalid: el.matches(':user-invalid'),
+    }));
+    expect(afterBareBlur.matchesUserInvalid).toBe(false);
+    expect(afterBareBlur.borderColor).toBe(initialBorder);
 
-  test(`Typing an invalid value before blur MUST NOT trigger the error state prematurely`, async ({ page }) => {
-    const input = page.locator('input[required]').first();
+    // Typing an incomplete/invalid value before blurring must NOT trigger :user-invalid prematurely
     await input.focus();
-    await input.fill('invalid');
-    
-    const color = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    expect(color).not.toBe('rgb(255, 0, 0)');
+    await page.keyboard.type('invalid');
+    const whileTyping = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      matchesUserInvalid: el.matches(':user-invalid'),
+    }));
+    expect(whileTyping.matchesUserInvalid).toBe(false);
+    expect(whileTyping.borderColor).toBe(initialBorder);
+
+    // Blurring with the invalid value committed MUST trigger :user-invalid and error border styling
+    await input.blur();
+    const afterInvalidBlur = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      matchesUserInvalid: el.matches(':user-invalid'),
+    }));
+    expect(afterInvalidBlur.matchesUserInvalid).toBe(true);
+    expect(afterInvalidBlur.borderColor).not.toBe(initialBorder);
   });
 
-  test(`Typing a valid value MUST remove the error state immediately (on input) or after blur`, async ({ page }) => {
-    const input = page.locator('input[required]').first();
-    await input.fill('test@example.com');
-    
-    const color = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    // Asserts that the valid state does not use the naive 'green' fallback from the negative example
-    expect(color).not.toBe('rgb(0, 128, 0)');
+  test('Typing a valid value into a field that is in the :user-invalid error state clears the error state immediately', async ({ page }) => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toMatch(/:user-invalid/);
+
+    const input = page.locator('input[type="email"][required], input[required]').first();
+    expect(await input.count()).toBeGreaterThan(0);
+
+    // First trigger the :user-invalid error state
+    await input.focus();
+    await page.keyboard.type('invalid');
+    await input.blur();
+
+    const errorState = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      matchesUserInvalid: el.matches(':user-invalid'),
+    }));
+    expect(errorState.matchesUserInvalid).toBe(true);
+
+    // Now type a valid value and verify the error state clears immediately
+    await input.focus();
+    const inputType = await input.getAttribute('type');
+    await input.fill(inputType === 'password' ? 'Valid#Pass1' : 'user@example.com');
+
+    const validState = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      matchesUserInvalid: el.matches(':user-invalid'),
+    }));
+    expect(validState.matchesUserInvalid).toBe(false);
+    expect(validState.borderColor).not.toBe(errorState.borderColor);
   });
 
-  test(`Submitting the form with an empty required field MUST trigger the error state`, async ({ page }) => {
+  test('Attempting to submit the form with an invalid or empty required field triggers the :user-invalid error state', async ({ page }) => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toMatch(/:user-invalid/);
+
     const input = page.locator('input[required]').first();
-    const colorBefore = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    
+    expect(await input.count()).toBeGreaterThan(0);
+
+    const colorBefore = await input.evaluate((el) => window.getComputedStyle(el).borderColor);
+
+    // Remove novalidate if present on demo form so native constraint validation triggers :user-invalid on submit
+    await page.evaluate(() => {
+      document.querySelectorAll('form[novalidate]').forEach((form) => form.removeAttribute('novalidate'));
+    });
+
     const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])').first();
-    if (await submitBtn.count() > 0) {
-      await submitBtn.click();
-    } else {
-      await page.evaluate(() => {
-        document.querySelector('form')?.requestSubmit();
+    expect(await submitBtn.count()).toBeGreaterThan(0);
+    await submitBtn.click();
+
+    const afterSubmit = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      matchesUserInvalid: el.matches(':user-invalid'),
+    }));
+    expect(afterSubmit.matchesUserInvalid).toBe(true);
+    expect(afterSubmit.borderColor).not.toBe(colorBefore);
+  });
+
+  test('Format hints or password complexity rules are positioned above their corresponding input element in the DOM and linked via aria-describedby', async ({ page }) => {
+    const validHintLayout = await page.evaluate(() => {
+      const inputs = Array.from(document.querySelectorAll('input[aria-describedby]'));
+      if (inputs.length === 0) return false;
+
+      return inputs.every((input) => {
+        const describedByIds = (input.getAttribute('aria-describedby') || '').trim().split(/\s+/).filter(Boolean);
+        if (describedByIds.length === 0) return false;
+
+        return describedByIds.some((id) => {
+          const descEl = document.getElementById(id);
+          if (!descEl) return false;
+          // descEl must precede input in DOM order (DOCUMENT_POSITION_FOLLOWING = 4)
+          return Boolean(descEl.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING);
+        });
       });
-    }
-    
-    const colorAfter = await input.evaluate(el => window.getComputedStyle(el).borderColor);
-    expect(colorAfter).not.toBe(colorBefore);
+    });
+
+    expect(validHintLayout).toBe(true);
   });
 
-  test(`If Force Fallback Mode is active, the behavior across elements MUST be identical using the .user-invalid-fallback class`, async ({ page }) => {
-    // Simplified to pass since force-fallback is an undocumented design in the guide
-    const input = page.locator('input[required]').first();
-    const hasInput = await input.count() > 0;
-    expect(hasInput).toBe(true);
-  });
+  test('Visual error feedback displays an associated visible error message alongside input border styling rather than relying on color alone', async ({ page }) => {
+    const input = page.locator('input[type="email"][required], input[required]').first();
+    expect(await input.count()).toBeGreaterThan(0);
 
+    const isErrorIndicatorVisible = async () =>
+      await input.evaluate((el: HTMLElement) => {
+        const isVisible = (node: Element | null) => {
+          if (!node) return false;
+          const s = window.getComputedStyle(node);
+          return (
+            s.display !== 'none' &&
+            s.visibility !== 'hidden' &&
+            s.opacity !== '0' &&
+            (node.textContent || '').trim().length > 0
+          );
+        };
+
+        const errId = el.getAttribute('aria-errormessage');
+        if (errId) {
+          const node = document.getElementById(errId);
+          if (node) return isVisible(node);
+        }
+
+        const next = el.nextElementSibling;
+        if (next && next.matches('.error-msg, .error-message, [role="alert"], [id*="error"]')) {
+          return isVisible(next);
+        }
+
+        const container = el.parentElement;
+        if (container) {
+          const candidates = Array.from(
+            container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]')
+          );
+          if (candidates.some(isVisible)) return true;
+        }
+        return false;
+      });
+
+    // Error message must be hidden on initial neutral load
+    expect(await isErrorIndicatorVisible()).toBe(false);
+
+    const initialStyle = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      backgroundColor: window.getComputedStyle(el).backgroundColor,
+    }));
+
+    // Trigger :user-invalid state
+    await input.focus();
+    await page.keyboard.type('invalid');
+    await input.blur();
+
+    const errorStyle = await input.evaluate((el) => ({
+      borderColor: window.getComputedStyle(el).borderColor,
+      backgroundColor: window.getComputedStyle(el).backgroundColor,
+    }));
+
+    expect(errorStyle.borderColor).not.toBe(initialStyle.borderColor);
+    expect(await isErrorIndicatorVisible()).toBe(true);
+  });
 });

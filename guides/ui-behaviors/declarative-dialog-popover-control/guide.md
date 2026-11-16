@@ -32,6 +32,8 @@ Popovers can be toggled open and closed using a single button.
 
 If you need to control opening and closing with separate buttons, you can use the `show-popover` and `hide-popover` commands.
 
+**IMPORTANT:** Do NOT combine `popovertarget` and `commandfor` on the same `<button>`, for the same popover. This will double-toggle it, breaking functionality.
+
 ```html
 <!-- MANDATORY: Use 'show-popover' to explicitly open the popover. It will not close the popover if clicked again. -->
 <button commandfor="my-explicit-popover" command="show-popover">
@@ -48,6 +50,8 @@ If you need to control opening and closing with separate buttons, you can use th
 </div>
 ```
 
+Hiding a popover, using a button inside the popover itself, will result in a loss of focus as the button will be hidden and won't retain focus. In this situation, provide additional scripting to return focus to the trigger/show control, so that people can continue to navigate from where they were previously.
+
 ## Implementing Declarative Modal Dialogs
 
 Unlike popovers, modal dialogs typically use separate buttons for opening and closing. Use the `show-modal` command specifically when you need to open a dialog as a modal.
@@ -63,11 +67,16 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
   <p>Are you sure you want to proceed?</p>
 
   <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
-  <button commandfor="confirm-dialog" command="close">
+  <!-- type="button" keeps this working if the dialog content is later wrapped in a <form>. -->
+  <button type="button" commandfor="confirm-dialog" command="close">
     Cancel
   </button>
 </dialog>
 ```
+
+MANDATORY: Any button with `commandfor` and `command` that is inside a `<form>` (including the common `<form method="dialog">` wrapper) MUST set an explicit `type`: `type="button"` to run the command. Do not put a `command="close"` button inside `<form method="dialog">`— pick one strategy. A button with `type="submit"` will submit the form, and not also run the command. A command button with no `type` inside a `<form>` or with a `form` attribute does nothing, so older browsers which don't support commands don't submit the form by accident.
+
+{# The HTML Standard's `button` activation behavior returns early for a button in the Auto type state with `command`/`commandfor` and a form owner. Lifting this is tracked in https://github.com/whatwg/html/issues/10832. See https://github.com/GoogleChrome/modern-web-guidance-src/issues/3091. #}
 
 ## Fallback strategies
 
@@ -107,6 +116,6 @@ For projects without a bundler, dynamically import the polyfill directly from a 
 **Invokers Polyfill Limitations**
 MANDATORY: This polyfill does not handle the ARIA states (e.g., `aria-expanded`) of the command button the way native browsers do. You are strongly encouraged to handle these states yourself to ensure your site is fully accessible.
 
-{{ INCLUDE("../custom-button-actions/guide.md#fallback-strategies") }}
+{{ INCLUDE("../custom-button-actions/guide.md#manually-manage-aria-states-in-your-listener") }}
 
 {{ FEATURE_FALLBACKS("popover") }}

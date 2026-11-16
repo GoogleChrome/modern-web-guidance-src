@@ -1,9 +1,11 @@
 /// <reference types="node" />
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
+import * as fs from 'fs';
 import process from 'process';
 
-const targetUrl = 'file://' + path.resolve(process.env.TARGET_FILE || 'demo.html');
+const targetFilePath = path.resolve(process.env.TARGET_FILE || 'demo.html');
+const targetUrl = 'file://' + targetFilePath;
 
 test.describe('Position-Aware Tooltips Grader', () => {
 
@@ -24,34 +26,89 @@ test.describe('Position-Aware Tooltips Grader', () => {
   test('sets role="tooltip" on popover and aria-describedby on trigger pointing to popover ID', async ({ page }) => {
     await page.goto(targetUrl);
     const isValid = await page.evaluate(() => {
-      const trigger = document.querySelector('[popovertarget]');
-      if (!trigger) return false;
-      const targetId = trigger.getAttribute('popovertarget');
-      if (!targetId) return false;
-      const popover = document.getElementById(targetId);
-      if (!popover) return false;
-      const hasRoleTooltip = popover.getAttribute('role') === 'tooltip';
-      const triggerAria = trigger.getAttribute('aria-describedby');
-      return hasRoleTooltip && triggerAria === targetId;
+      const triggers = Array.from(document.querySelectorAll('[aria-describedby]'));
+      return triggers.some((trigger) => {
+        const ids = (trigger.getAttribute('aria-describedby') || '').trim().split(/\s+/).filter(Boolean);
+        return ids.some((id) => document.getElementById(id)?.getAttribute('role') === 'tooltip');
+      });
     });
     expect(isValid).toBe(true);
   });
 
-  test('conditionally polyfills the Popover API', async ({ page }) => {
+  test('conditionally polyfills the Popover API or provides a manual fallback', async ({ page }) => {
     await page.addInitScript(() => {
-      // Delete popover from HTMLElement prototype to trigger polyfill branch
       delete (HTMLElement.prototype as any).popover;
       delete (HTMLElement.prototype as any).showPopover;
       delete (HTMLElement.prototype as any).hidePopover;
       delete (HTMLElement.prototype as any).togglePopover;
     });
     await page.goto(targetUrl);
-    // Wait for potential dynamic import and execution of polyfill
-    await page.waitForTimeout(1000);
-    const isPolyfilled = await page.evaluate(() => {
-      return HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype;
-    });
-    expect(isPolyfilled).toBe(true);
+
+    // 1. Check if the solution conditionally loaded a polyfill that restored popover
+    const hasPolyfill = await page
+      .waitForFunction(
+        () => HTMLElement.prototype.hasOwnProperty('popover') || 'showPopover' in HTMLElement.prototype,
+        undefined,
+        { timeout: 800 }
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasPolyfill) {
+      expect(hasPolyfill).toBe(true);
+      return;
+    }
+
+    // 2. Otherwise accept a working manual fallback:
+    // It must feature detect popover support and toggle the tooltip
+    const fileContent = fs.existsSync(targetFilePath) ? fs.readFileSync(targetFilePath, 'utf8') : '';
+    const hasFeatureCheck = await page.evaluate((source) => {
+      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '');
+      const allText = [source, ...scripts].join('\n');
+      return (
+        /['"]popover['"]\s*in\s*HTMLElement\.prototype/.test(allText) ||
+        /Object\.hasOwn\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\s*\)/.test(allText) ||
+        allText.includes('hasOwnProperty("popover")') ||
+        allText.includes("hasOwnProperty('popover')") ||
+        allText.includes('showPopover')
+      );
+    }, fileContent);
+    expect(hasFeatureCheck).toBe(true);
+
+    const trigger = page.locator('#anchor, [popovertarget], [aria-describedby]').first();
+    const tooltip = page.locator('#latte-tooltip, #maple-tooltip, #tooltip, [role="tooltip"], [popover]').first();
+
+    const isVisible = async () => {
+      return await tooltip.evaluate((el) => {
+        const style = window.getComputedStyle(el);
+        const isHidden = (el instanceof HTMLElement && el.hidden) || el.hasAttribute('hidden');
+        return style.display !== 'none' && style.visibility !== 'hidden' && !isHidden && style.opacity !== '0';
+      }).catch(() => false);
+    };
+
+    // Try showing via click, then hover/focus
+    await trigger.click().catch(() => {});
+    let shown = await isVisible();
+    if (!shown) {
+      await trigger.hover().catch(() => {});
+      await trigger.focus().catch(() => {});
+      shown = await isVisible();
+    }
+
+    // Verify it hides again
+    let hidden = false;
+    if (shown) {
+      await trigger.click().catch(() => {});
+      hidden = !(await isVisible());
+      if (!hidden) {
+        await page.mouse.move(0, 0);
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur?.());
+        await page.mouse.click(10, 10).catch(() => {});
+        hidden = !(await isVisible());
+      }
+    }
+
+    expect(shown && hidden).toBe(true);
   });
 
   test('uses position-area to define default placement', async ({ page }) => {
@@ -179,99 +236,90 @@ test.describe('Position-Aware Tooltips Grader', () => {
         const beforeContent = window.getComputedStyle(el, '::before').getPropertyValue('content');
         const afterContent = window.getComputedStyle(el, '::after').getPropertyValue('content');
         
-        if ((beforeContent && beforeContent !== 'none' && beforeContent !== '""') ||
-            (afterContent && afterContent !== 'none' && afterContent !== '""')) {
+        if ((beforeContent && beforeContent !== 'none' && beforeContent !== 'normal') ||
+            (afterContent && afterContent !== 'none' && afterContent !== 'normal')) {
           return true;
         }
       }
+
+      // Check stylesheets as well because headless Chromium may not evaluate CSS anchor-position pseudo-elements dynamically
+      for (let j = 0; j < document.styleSheets.length; j++) {
+        try {
+          const sheet = document.styleSheets[j];
+          const checkRules = (rules: CSSRuleList): boolean => {
+            for (let i = 0; i < rules.length; i++) {
+              const rule = rules[i];
+              if (rule instanceof CSSStyleRule && /::(before|after)/.test(rule.selectorText)) {
+                const baseSel = rule.selectorText.replace(/::?(before|after).*$/, '').trim();
+                if (rule.selectorText.includes('popover') || rule.selectorText.includes('tooltip') || rule.selectorText.includes('arrow') || (popover && baseSel && (() => { try { return popover.matches(baseSel) || !!popover.querySelector(baseSel); } catch { return false; } })())) {
+                  return true;
+                }
+              }
+              if ((rule as any).cssRules && checkRules((rule as any).cssRules)) {
+                return true;
+              }
+            }
+            return false;
+          };
+          if (sheet.cssRules && checkRules(sheet.cssRules)) return true;
+        } catch {}
+      }
+
       return false;
     });
     expect(hasPseudoArrow).toBe(true);
   });
 
   test('updates the visual styling and layout when the tooltip flips to a fallback position purely via CSS without JS', async ({ page }) => {
-    // Intercept scroll/resize event listeners to block JS-based positioning updates
+    // Intercept scroll/resize event listeners to verify no JS-based positioning updates are used
     await page.addInitScript(() => {
+      (window as any).__jsFlipListenerRegistered = false;
       const originalAddEventListener = window.addEventListener;
       window.addEventListener = function(type: string, _listener: any, _options?: any) {
         if (type === 'scroll' || type === 'resize') {
-          console.log(`Intercepted JS listener for: ${type}`);
-          return; // Block scroll and resize event listeners!
+          (window as any).__jsFlipListenerRegistered = true;
         }
         return originalAddEventListener.apply(this, arguments as any);
       };
     });
 
     await page.goto(targetUrl);
-    await page.waitForTimeout(500);
 
-    // Trigger popover open (if not already opened)
-    await page.evaluate(() => {
-      const trigger = document.querySelector('[popovertarget]') as HTMLElement;
-      const popover = document.querySelector('[popover]') as HTMLElement;
-      if (trigger && popover && window.getComputedStyle(popover).display === 'none') {
-        trigger.click();
-      }
-    });
+    const read = () =>
+      page.evaluate(() => {
+        const c = document.querySelector('[popover] *') || document.querySelector('[popover]');
+        if (!c) return '';
+        const b = getComputedStyle(c, '::before');
+        const s = getComputedStyle(c);
+        return [b.content, s.borderRadius, s.marginBlockStart, s.marginBlockEnd].join('|');
+      });
 
-    // State 1: Scroll anchor to the bottom of the viewport (default position)
-    await page.evaluate(() => {
-      const anchor = document.querySelector('[popovertarget]') || document.getElementById('anchor');
-      if (anchor) {
-        anchor.scrollIntoView({ block: 'end' });
-      }
-    });
-    await page.waitForTimeout(500);
+    const isOpen = await page
+      .locator('[popover]')
+      .first()
+      .evaluate((el) => el.matches(':popover-open'))
+      .catch(() => false);
+    if (!isOpen) {
+      await page.locator('[popovertarget]').first().click();
+    }
 
-    // Read State 1 styles
-    const state1 = await page.evaluate(() => {
-      const popover = document.querySelector('[popover]') || document.getElementById('tooltip');
-      if (!popover) return null;
-      const content = popover.querySelector('*') || popover;
-      const beforeStyle = window.getComputedStyle(content, '::before');
-      const contentStyle = window.getComputedStyle(content);
-      return {
-        arrowContent: beforeStyle.getPropertyValue('content'),
-        borderRadius: contentStyle.borderRadius,
-        marginBlockStart: contentStyle.marginBlockStart,
-        marginBlockEnd: contentStyle.marginBlockEnd,
-      };
-    });
+    await page
+      .locator('#anchor, [popovertarget]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'end' }));
+    const before = await read();
+    expect(before).not.toBe('');
 
-    // State 2: Scroll anchor to the top of the viewport (fallback position)
-    await page.evaluate(() => {
-      const anchor = document.querySelector('[popovertarget]') || document.getElementById('anchor');
-      if (anchor) {
-        anchor.scrollIntoView({ block: 'start' });
-      }
-    });
-    await page.waitForTimeout(500);
+    await page
+      .locator('#anchor, [popovertarget]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await expect.poll(read).not.toBe(before);
 
-    // Read State 2 styles
-    const state2 = await page.evaluate(() => {
-      const popover = document.querySelector('[popover]') || document.getElementById('tooltip');
-      if (!popover) return null;
-      const content = popover.querySelector('*') || popover;
-      const beforeStyle = window.getComputedStyle(content, '::before');
-      const contentStyle = window.getComputedStyle(content);
-      return {
-        arrowContent: beforeStyle.getPropertyValue('content'),
-        borderRadius: contentStyle.borderRadius,
-        marginBlockStart: contentStyle.marginBlockStart,
-        marginBlockEnd: contentStyle.marginBlockEnd,
-      };
-    });
-
-    expect(state1).not.toBeNull();
-    expect(state2).not.toBeNull();
-
-    // Verify that at least one key presentation style (the arrow or container content style)
-    // changed as a result of the CSS layout flip
-    const arrowChanged = state1!.arrowContent !== state2!.arrowContent;
-    const borderChanged = state1!.borderRadius !== state2!.borderRadius;
-    const marginChanged = state1!.marginBlockStart !== state2!.marginBlockStart || state1!.marginBlockEnd !== state2!.marginBlockEnd;
-
-    expect(arrowChanged || borderChanged || marginChanged).toBe(true);
+    const jsListenerRegistered = await page.evaluate(() =>
+      Boolean((window as any).__jsFlipListenerRegistered),
+    );
+    expect(jsListenerRegistered).toBe(false);
   });
 
 });

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 export interface MwgConfig {
   allowOriginTrials?: boolean;
+  allowVolatileFeatures?: boolean;
   /** Target Baseline threshold ('widely', 'newly', 'limited', or a 4-digit year like '2024'). */
   baseline?: string;
   [key: string]: unknown;

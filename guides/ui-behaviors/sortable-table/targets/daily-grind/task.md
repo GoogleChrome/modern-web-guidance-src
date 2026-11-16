@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section in index.html to include a sortable table with id="seasonal-drinks" detailing the featured drinks (Maple Oat Latte, Dark Roast Espresso, and Cold Brew), allowing customers to sort the rows by clicking on column headers.

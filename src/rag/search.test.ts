@@ -1,10 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { outDir } from "../core/paths.ts";
-import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.ts";
+import { loadVectors, searchUseCases, type EmbedderLike } from "./search.ts";
 
 describe("searchUseCases", () => {
   it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
@@ -20,15 +21,14 @@ describe("searchUseCases", () => {
   });
 
   it("corpus vectors are all L2-normalized unit vectors (norm ~ 1.0)", () => {
-    const vectorsFile = path.join(outDir, "build/skills-cli/use-cases.vectors.gen.json.gz");
-    const compressed = fs.readFileSync(vectorsFile);
-    const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString("utf-8"));
+    const items = loadVectors(path.join(outDir, "build/skills-cli"));
     assert.ok(items.length > 0, "Corpus must have vector entries");
 
     for (const item of items) {
+      if (item.vector.length === 0) continue;
       let sumSq = 0;
-      for (const val of item.vector) {
-        sumSq += val * val;
+      for (let i = 0; i < item.vector.length; i++) {
+        sumSq += item.vector[i] * item.vector[i];
       }
       const norm = Math.sqrt(sumSq);
       assert.ok(
@@ -38,9 +38,30 @@ describe("searchUseCases", () => {
     }
   });
 
+  it("loadVectors throws an informative error when binary vector files are corrupted", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-guide-chunks-"));
+    try {
+      const dummyChunks = [
+        { id: "g1", description: "d1", category: "css", featuresUsed: [], tokenCount: 10, chunkContent: "c1" },
+        { id: "g2", description: "d2", category: "css", featuresUsed: [], tokenCount: 10, chunkContent: "c2" },
+      ];
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.json.gz"), zlib.gzipSync(JSON.stringify(dummyChunks)));
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.i8"), Buffer.alloc(100)); // not divisible by 2 * 256
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.scale.f32"), Buffer.alloc(4)); // wrong scale byteLength (4 !== 2 * 4)
+
+      assert.throws(() => loadVectors(tmpDir), /Corrupt vector scale file/);
+
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.scale.f32"), Buffer.alloc(8));
+      fs.writeFileSync(path.join(tmpDir, "guide-chunks.i8"), Buffer.alloc(3)); // not divisible by 2
+      assert.throws(() => loadVectors(tmpDir), /Corrupt vector i8 file/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("works with a custom mock EmbedderLike", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     const results = await searchUseCases("test query", 5, 0.0, mockEmbedder);
     assert.ok(Array.isArray(results));
@@ -48,7 +69,7 @@ describe("searchUseCases", () => {
 
   it("returns empty array when dense top-1 is below floor AND BM25 has no matches", async () => {
     const mockEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // Nonce query with zero BM25 lexical matches in the guide corpus
     const results = await searchUseCases("xyznonexistentunmatchedterm998877", 5, 0.3, mockEmbedder);
@@ -57,7 +78,7 @@ describe("searchUseCases", () => {
 
   it("fuses and returns results when dense is below floor but BM25 matches", async () => {
     const zeroEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form".
     const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
@@ -69,7 +90,7 @@ describe("searchUseCases", () => {
 
   it("excludes sub-floor dense list and returns only BM25 matches when topDenseSim < minSimilarity", async () => {
     const zeroEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
+      embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // "i18n pluralization" has 1 BM25 match and 0 dense similarity (below floor).
     // When dense is below floor, only BM25 matches are returned without sub-floor dense padding.
@@ -79,13 +100,22 @@ describe("searchUseCases", () => {
     assert.strictEqual(results[0].similarity, 0);
   });
 
+  it("returns results for queries matching uncached BM25-only guide entries", async () => {
+    // Queries against real guide text return results even if simulated with 0 dense vector
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 256 }, () => 0),
+    };
+    const results = await searchUseCases("payment card checkout", 5, 0.3, zeroEmbedder);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
+  });
+
   it("above-floor behavior is unchanged and preserves dense similarities", async () => {
     const results = await searchUseCases("autofill address form", 5, 0.3);
     assert.ok(results.length > 0);
     assert.strictEqual(results[0].id, "autofill-address-form");
     assert.ok(results[0].similarity > 0.3);
   });
-
   it("keeps sibling guides on a cluster query", async () => {
     const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
     assert.ok(
@@ -95,9 +125,16 @@ describe("searchUseCases", () => {
   });
 
   it("surfaces guides matching by web feature ID via enriched chunk content", async () => {
-    // details-name is a web-feature-id on search-hidden-content, enriched in chunk header
+    // details-name is a web-feature-id on accordion and search-hidden-content, enriched in chunk header
     const results = await searchUseCases("details-name", 5);
     assert.ok(results.length > 0, "Should return results for web feature ID query");
-    assert.strictEqual(results[0].id, "search-hidden-content");
+    assert.strictEqual(results[0].id, "accordion");
+  });
+
+  it("returns results for single-token API queries", async () => {
+    for (const q of ["fetchpriority", "startViewTransition", "WebGPU", "LCP", "INP", "webmcp", "content-visibility", "@starting-style", "field-sizing", "bento"]) {
+      const results = await searchUseCases(q, 5);
+      assert.ok(results.length > 0, `Single-token API query "${q}" should return results`);
+    }
   });
 });

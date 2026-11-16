@@ -2,10 +2,10 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, type CSSStyleSheet, type CSSRule } from 'cssomnom';
+import { CSSStyleRule, type RuleRoot } from 'cssomnom';
 
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -28,19 +28,6 @@ interface PseudoElementWithAlt {
 }
 
 const PSEUDO_ELEMENT_REGEX = /(::|:)(before|after)\b/i;
-
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const styleRules: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      styleRules.push(rule);
-    }
-    if ('cssRules' in rule && (rule as any).cssRules) {
-      styleRules.push(...getAllStyleRules((rule as any).cssRules));
-    }
-  }
-  return styleRules;
-}
 
 function parseContentValue(contentValue: string): ParsedContent {
   const trimmed = contentValue.trim();
@@ -98,8 +85,8 @@ function getHostSelectors(selectorText: string): string[] {
     .filter(Boolean);
 }
 
-function getPseudoElementRulesWithAlt(sheet: CSSStyleSheet): PseudoElementWithAlt[] {
-  const allRules = getAllStyleRules(sheet.cssRules);
+function getPseudoElementRulesWithAlt(sheet: RuleRoot | string[]): PseudoElementWithAlt[] {
+  const allRules = getRules(sheet, CSSStyleRule);
   const results: PseudoElementWithAlt[] = [];
 
   for (const rule of allRules) {
@@ -202,8 +189,7 @@ function isValidAltSyntax(
 
 test.describe('accessible-generated-content Target Grader', () => {
   test('Stylesheets define ::before or ::after pseudo-element rules using content alternative text syntax to silence decorative text', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rulesWithAlt = getPseudoElementRulesWithAlt(stylesheet);
+    const rulesWithAlt = getPseudoElementRulesWithAlt(targetFiles);
     const decorativeSilencedRules = rulesWithAlt.filter(
       (r) => r.alt === '' && !/url\s*\(/i.test(r.primary)
     );
@@ -211,9 +197,8 @@ test.describe('accessible-generated-content Target Grader', () => {
   });
 
   test('Elements styled with pseudo-elements using alternative text convey meaningful label or state through DOM text or ARIA attributes', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const rulesWithAlt = getPseudoElementRulesWithAlt(stylesheet);
+    const rulesWithAlt = getPseudoElementRulesWithAlt(targetFiles);
     const hostElements = getHostElementsForRules(rulesWithAlt, docs);
 
     const allHaveAccessibleContent =
@@ -222,9 +207,8 @@ test.describe('accessible-generated-content Target Grader', () => {
   });
 
   test('Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const rulesWithAlt = getPseudoElementRulesWithAlt(stylesheet);
+    const rulesWithAlt = getPseudoElementRulesWithAlt(targetFiles);
 
     const allValid =
       rulesWithAlt.length > 0 &&

@@ -10,13 +10,9 @@
   <h1>Language Detection</h1>
   <p lang="es">Hola, ¿cómo estás?</p>
   <p lang="de">Hallo, wie geht's?</p>
-  <form id="detect-form">
-    <button type="submit">Detect Language</button>
-  </form>
-  <div id="results"></div>
 
   <button id="detect-btn">Detect Page Languages</button>
-  <div id="output"></div>
+  <div id="output" aria-live="polite" aria-atomic="true"></div>
  
   <script type="module">
     document.getElementById('detect-btn').addEventListener('click', async () => {
@@ -43,12 +39,17 @@
         
         output.innerHTML = '';
         for (const p of document.querySelectorAll('p')) {
-          const result = await languageDetector.detect(p.textContent);
+          const text = p.textContent;
+          const result = await languageDetector.detect(text);
           const mostLikely = result[0];
-          const resultText = `${p.textContent} -> Detected: ${mostLikely.detectedLanguage} (${Math.round(mostLikely.confidence * 100)}% confidence)`;
-          console.log(resultText);
+          const resultText = `Detected: ${mostLikely.detectedLanguage} (${Math.round(mostLikely.confidence * 100)}% confidence)`;
+          console.log(text, "->", resultText);
           const div = document.createElement('div');
+          const span = document.createElement('span');
+          span.setAttribute('lang', mostLikely.detectedLanguage);
+          span.textContent = text + " ";
           div.textContent = resultText;
+          div.insertAdjacentElement("afterbegin", span);
           output.append(div);
         }
       } catch (e) {

@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseBooleanEnv } from '../core/env.ts';
+import { gitExec, readGitObjectsBatch } from '../core/git-utils.ts';
 import {
   classifyGuide,
   detectEvals,
@@ -219,14 +220,38 @@ export function formatShortDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
+function hasAnySubstantiveDiff(cwd: string, evalSha: string, expSha: string, filePaths: readonly string[]): boolean {
+  try {
+    gitExec(
+      [
+        'diff',
+        '--quiet',
+        '--unified=0',
+        '--find-renames',
+        '--ignore-blank-lines',
+        '--ignore-matching-lines=Basic presence:',
+        evalSha,
+        expSha,
+        '--',
+        ...filePaths,
+      ],
+      { cwd, stdio: 'ignore' }
+    );
+    return false;
+  } catch (error) {
+    // `git diff --quiet` exits 1 when any file differs; any other status is a real failure.
+    if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
+    return true;
+  }
+}
+
 function collectGitGuideHistory(): Map<string, GitFileHistory> {
   const cwd = rootDir;
   const history = new Map<string, GitFileHistory>();
   const fallbackEval = new Map<string, { evalSha: string; evalTs: number; evalDate: string }>();
-  const output = child_process.execFileSync(
-    'git',
+  const output = gitExec(
     ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
-    { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+    { cwd }
   );
 
   for (const block of output.split('\nCOMMIT|')) {
@@ -292,29 +317,9 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
 
   for (const [slug, entry] of history.entries()) {
     if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;
-    try {
-      child_process.execFileSync(
-        'git',
-        [
-          'diff',
-          '--quiet',
-          '--unified=0',
-          '--find-renames',
-          '--ignore-blank-lines',
-          '--ignore-matching-lines=Basic presence:',
-          entry.evalSha,
-          entry.expSha,
-          '--',
-          `guides/${slug}/${EXPECTATIONS_FILE}`,
-        ],
-        { cwd, encoding: 'utf8', stdio: 'ignore' }
-      );
-      entry.isSubstantiveDiff = false;
-    } catch (error) {
-      // `git diff --quiet` exits 1 when the files differ; any other status is a real failure.
-      if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
-      entry.isSubstantiveDiff = true;
-    }
+    entry.isSubstantiveDiff = hasAnySubstantiveDiff(cwd, entry.evalSha, entry.expSha, [
+      `guides/${slug}/${EXPECTATIONS_FILE}`,
+    ]);
   }
 
   return history;
@@ -361,16 +366,13 @@ export function countGen2Evals(guides: GuideInventory[]): {
 }
 
 const EMPTY_BLOB_SHA = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+const EMPTY_GUIDE_META = parseGuideMetadata('', undefined, true);
+const guideMetaByBlobSha = new Map<string, ReturnType<typeof parseGuideMetadata>>();
+const commitAnalysisCache = new Map<string, CommitAnalysis>();
+const weeklyHistoryCache = new Map<string, WeeklyProgressPoint[]>();
 
-/** Counts guides with evals landed / needing evals at a commit. */
-function analyzeCommit(commitSha: string): CommitAnalysis {
-  const cwd = rootDir;
-  const lsOutput = child_process.execFileSync('git', ['ls-tree', '-r', commitSha, 'guides/'], {
-    cwd,
-    encoding: 'utf8',
-    maxBuffer: 50 * 1024 * 1024,
-  });
-
+function readCommitGuideTrees(cwd: string, commitSha: string): Map<string, Map<string, string>> {
+  const lsOutput = gitExec(['ls-tree', '-r', commitSha, 'guides/'], { cwd });
   const guideFiles = new Map<string, Map<string, string>>();
 
   for (const line of lsOutput.trim().split('\n')) {
@@ -388,60 +390,73 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
     }
     files.set(parsed.relPath, blobSha);
   }
+  return guideFiles;
+}
 
-  const guideBlobsToFetch: { slug: string; blobSha: string }[] = [];
-  for (const [slug, files] of guideFiles) {
-    const guideBlobSha = files.get(GUIDE_FILE);
-    if (guideBlobSha && guideBlobSha !== EMPTY_BLOB_SHA) {
-      guideBlobsToFetch.push({ slug, blobSha: guideBlobSha });
+function hydrateGuideMetadataCache(cwd: string, trees: Iterable<Map<string, Map<string, string>>>): void {
+  const uncachedBlobs = new Set<string>();
+  for (const guideFiles of trees) {
+    for (const files of guideFiles.values()) {
+      const sha = files.get(GUIDE_FILE);
+      if (sha && sha !== EMPTY_BLOB_SHA && !guideMetaByBlobSha.has(sha)) {
+        uncachedBlobs.add(sha);
+      }
+    }
+  }
+  if (uncachedBlobs.size === 0) return;
+
+  const objects = readGitObjectsBatch(cwd, [...uncachedBlobs]);
+  for (const [sha, obj] of objects) {
+    if (!obj) throw new Error(`Missing guide blob ${sha} in git object database`);
+    guideMetaByBlobSha.set(sha, parseGuideMetadata(obj.content.toString('utf8'), undefined, true));
+  }
+}
+
+/** Counts guides with evals landed / needing evals across one or more commits. */
+function analyzeCommitsBatch(cwd: string, commitShas: readonly string[]): Map<string, CommitAnalysis> {
+  const results = new Map<string, CommitAnalysis>();
+  const missingTrees = new Map<string, Map<string, Map<string, string>>>();
+
+  for (const sha of commitShas) {
+    const cacheKey = `${cwd}\0${sha}`;
+    const cached = commitAnalysisCache.get(cacheKey);
+    if (cached) {
+      results.set(sha, cached);
+    } else if (!missingTrees.has(sha)) {
+      missingTrees.set(sha, readCommitGuideTrees(cwd, sha));
     }
   }
 
-  const guideContentMap = new Map<string, string>();
+  hydrateGuideMetadataCache(cwd, missingTrees.values());
 
-  if (guideBlobsToFetch.length > 0) {
-    const inputBuf = Buffer.from(guideBlobsToFetch.map(b => b.blobSha).join('\n') + '\n');
-    const catBuf = child_process.execFileSync('git', ['cat-file', '--batch'], {
-      cwd,
-      input: inputBuf,
-      maxBuffer: 50 * 1024 * 1024,
-    });
+  for (const [sha, guideFiles] of missingTrees) {
+    let complete = 0;
+    let needsEvals = 0;
 
-    let pos = 0;
-    for (let i = 0; i < guideBlobsToFetch.length; i++) {
-      const headerEnd = catBuf.indexOf(0x0a, pos);
-      if (headerEnd === -1) break;
-      const header = catBuf.toString('utf8', pos, headerEnd);
-      const parts = header.split(' ');
-      const size = parseInt(parts[2], 10);
-      const contentStart = headerEnd + 1;
-      const contentBuf = catBuf.subarray(contentStart, contentStart + size);
-      pos = contentStart + size + 1;
+    for (const files of guideFiles.values()) {
+      const guideBlobSha = files.get(GUIDE_FILE);
+      const meta =
+        !guideBlobSha || guideBlobSha === EMPTY_BLOB_SHA
+          ? EMPTY_GUIDE_META
+          : guideMetaByBlobSha.get(guideBlobSha) ?? EMPTY_GUIDE_META;
+      const expBlobSha = files.get(EXPECTATIONS_FILE);
+      const hasExpectations = files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
+      const evals = detectEvals(files.keys());
+      const status = classifyGuide({ ...meta, ...evals, hasExpectations });
 
-      const slug = guideBlobsToFetch[i].slug;
-      guideContentMap.set(slug, contentBuf.toString('utf8'));
+      if (status === 'complete') {
+        complete++;
+      } else if (status === 'needs-calibration' || status === 'needs-test') {
+        needsEvals++;
+      }
     }
+
+    const analysis = { complete, needsEvals };
+    commitAnalysisCache.set(`${cwd}\0${sha}`, analysis);
+    results.set(sha, analysis);
   }
 
-  let complete = 0;
-  let needsEvals = 0;
-
-  for (const [slug, files] of guideFiles) {
-    const guideContent = guideContentMap.get(slug) ?? '';
-    const expBlobSha = files.get(EXPECTATIONS_FILE);
-    const hasExpectations = files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
-    const meta = parseGuideMetadata(guideContent, undefined, true);
-    const evals = detectEvals(files.keys());
-    const status = classifyGuide({ ...meta, ...evals, hasExpectations });
-
-    if (status === 'complete') {
-      complete++;
-    } else if (status === 'needs-calibration' || status === 'needs-test') {
-      needsEvals++;
-    }
-  }
-
-  return { complete, needsEvals };
+  return results;
 }
 
 /**
@@ -450,40 +465,65 @@ function analyzeCommit(commitSha: string): CommitAnalysis {
  * two files newest-first and stops at the first commit where the guide wasn't landed.
  */
 function findReadySince(slugs: string[]): Map<string, string> {
+  if (slugs.length === 0) return new Map();
   const cwd = rootDir;
+  const targetSlugSet = new Set(slugs);
+  const pathSpecs = slugs.flatMap(slug => [`guides/${slug}/${GUIDE_FILE}`, `guides/${slug}/${EXPECTATIONS_FILE}`]);
+
+  const logOut = gitExec(['log', '--format=COMMIT|%H|%cs', '--name-only', 'HEAD', '--', ...pathSpecs], { cwd });
+  const commitsBySlug = new Map<string, Array<{ sha: string; date: string }>>();
+  const specsToFetch = new Set<string>();
+
+  for (const block of logOut.split('\nCOMMIT|')) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    const lines = trimmed.split('\n');
+    const header = lines[0].startsWith('COMMIT|') ? lines[0].slice('COMMIT|'.length) : lines[0];
+    const [sha = '', date = ''] = header.split('|');
+    const touchedSlugs = new Set<string>();
+
+    for (let i = 1; i < lines.length; i++) {
+      const parsed = parseGuidePath(lines[i].trim());
+      if (!parsed || !targetSlugSet.has(parsed.slug)) continue;
+      if (parsed.relPath === GUIDE_FILE || parsed.relPath === EXPECTATIONS_FILE) {
+        touchedSlugs.add(parsed.slug);
+      }
+    }
+
+    for (const slug of touchedSlugs) {
+      let list = commitsBySlug.get(slug);
+      if (!list) {
+        list = [];
+        commitsBySlug.set(slug, list);
+      }
+      list.push({ sha, date });
+      specsToFetch.add(`${sha}:guides/${slug}/${GUIDE_FILE}`);
+      specsToFetch.add(`${sha}:guides/${slug}/${EXPECTATIONS_FILE}`);
+    }
+  }
+
+  const objects = readGitObjectsBatch(cwd, [...specsToFetch]);
   const result = new Map<string, string>();
+
   for (const slug of slugs) {
     const guidePath = `guides/${slug}/${GUIDE_FILE}`;
     const expPath = `guides/${slug}/${EXPECTATIONS_FILE}`;
-    const log = child_process
-      .execFileSync('git', ['log', '--format=%H %cs', 'HEAD', '--', guidePath, expPath], { cwd, encoding: 'utf8' })
-      .trim()
-      .split('\n')
-      .filter(Boolean);
     let since: string | undefined;
-    for (const line of log) {
-      const [sha, date] = line.split(' ');
-      const treeLines = child_process
-        .execFileSync('git', ['ls-tree', sha, '--', guidePath, expPath], { cwd, encoding: 'utf8' })
-        .trim()
-        .split('\n')
-        .filter(Boolean);
-      const blobsByPath = new Map(
-        treeLines.map(l => {
-          const parts = l.split(/\s+/);
-          return [parts[3], parts[2]];
-        })
-      );
-      if (!blobsByPath.has(guidePath) || !blobsByPath.has(expPath)) break;
-      const guideContent = child_process.execFileSync('git', ['show', `${sha}:${guidePath}`], { cwd, encoding: 'utf8' });
-      const meta = parseGuideMetadata(guideContent, undefined, true);
+
+    for (const { sha, date } of commitsBySlug.get(slug) ?? []) {
+      const guideObj = objects.get(`${sha}:${guidePath}`);
+      const expObj = objects.get(`${sha}:${expPath}`);
+      if (!guideObj || !expObj) break;
+
+      const meta = parseGuideMetadata(guideObj.content.toString('utf8'), undefined, true);
       const status = classifyGuide({
         ...meta,
-        hasExpectations: blobsByPath.get(expPath) !== EMPTY_BLOB_SHA,
+        hasExpectations: expObj.content.length > 0,
       });
       if (status === 'stub' || status === 'incomplete' || status === 'needs-expectations') break;
       since = date;
     }
+
     if (!since) throw new Error(`findReadySince: ${slug} is not landed at HEAD`);
     result.set(slug, since);
   }
@@ -553,8 +593,15 @@ export function renderTwoRowProgressBar(params: {
 }
 
 export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
+  const cwd = rootDir;
   const end = new Date();
   const endLaDate = getLaDateString(end);
+  const originMainSha = gitExec(['rev-parse', '--verify', 'origin/main'], { cwd }).trim();
+  const cacheKey = `${cwd}\0${originMainSha}\0${endLaDate}`;
+  const cached = weeklyHistoryCache.get(cacheKey);
+  if (cached) {
+    return cached.map(p => ({ ...p }));
+  }
 
   const dates: string[] = [endLaDate];
   let cur = new Date(end.getTime());
@@ -572,21 +619,27 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   }
   dates.reverse();
 
-  const points: WeeklyProgressPoint[] = [];
-  for (const d of dates) {
-    const ts = `${d}T23:59:59Z`;
-    const sha = child_process
-      .execFileSync('git', ['rev-list', '--max-count=1', `--before=${ts}`, 'origin/main'], { cwd: rootDir, encoding: 'utf8' })
-      .trim();
-    const analysis = analyzeCommit(sha);
-    points.push({
-      date: d,
-      label: formatShortDate(d),
-      complete: analysis.complete,
-      contentLanded: analysis.complete + analysis.needsEvals,
-    });
-  }
-  return points;
+  const dateShas = dates.map(date => ({
+    date,
+    sha: gitExec(['rev-list', '--max-count=1', `--before=${date}T23:59:59Z`, originMainSha], { cwd }).trim(),
+  }));
+  const analyses = analyzeCommitsBatch(
+    cwd,
+    dateShas.map(d => d.sha)
+  );
+
+  const points: WeeklyProgressPoint[] = dateShas.map(({ date, sha }) => {
+    const { complete, needsEvals } = analyses.get(sha) ?? { complete: 0, needsEvals: 0 };
+    return {
+      date,
+      label: formatShortDate(date),
+      complete,
+      contentLanded: complete + needsEvals,
+    };
+  });
+
+  weeklyHistoryCache.set(cacheKey, points);
+  return points.map(p => ({ ...p }));
 }
 
 export function renderProgressChart(points: WeeklyProgressPoint[], scaleMax?: number): string {
