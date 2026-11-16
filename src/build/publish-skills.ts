@@ -157,6 +157,23 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   return newVersion;
 }
 
+export async function withGitHubPackageManifest(
+  publishCliDir: string,
+  publish: () => Promise<void>,
+) {
+  const packagePath = path.join(publishCliDir, 'package.json');
+  const original = await fs.readFile(packagePath, 'utf8');
+  const manifest: Record<string, unknown> = JSON.parse(original);
+  // GitHub distributions omit the CLI runtime; npm still needs its bin entry.
+  delete manifest.bin;
+  try {
+    await fs.writeFile(packagePath, JSON.stringify(manifest, null, 2) + '\n');
+    await publish();
+  } finally {
+    await fs.writeFile(packagePath, original);
+  }
+}
+
 async function publishBranchToDistributionRepo(
   publishCliDir: string,
   branch: 'main' | 'next' | 'claude',
@@ -168,7 +185,7 @@ async function publishBranchToDistributionRepo(
   // is single-branch, so a second publish to another branch in the same run pushes a commit
   // based on the wrong branch and gets rejected. Start every publish from a fresh clone.
   ghpages.clean();
-  await new Promise<void>((resolve, reject) => {
+  await withGitHubPackageManifest(publishCliDir, () => new Promise<void>((resolve, reject) => {
     ghpages.publish(
       publishCliDir,
       {
@@ -188,7 +205,7 @@ async function publishBranchToDistributionRepo(
         }
       },
     );
-  });
+  }));
 }
 
 function getLatestDistributionReleaseTag(fallbackTag: string): string {

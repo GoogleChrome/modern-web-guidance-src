@@ -10,9 +10,42 @@ import {
   GH_PUBLISH_PATTERNS,
   parsePublishOptions,
   validate,
+  withGitHubPackageManifest,
   type DistTag,
 } from './publish-skills.ts';
 import { processSkills } from './build-dist.ts';
+
+for (const fails of [false, true]) {
+  test(`GitHub publishing omits the missing CLI bin and restores npm metadata after ${fails ? 'failure' : 'success'}`, async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'guidance-manifest-'));
+    const packagePath = path.join(dir, 'package.json');
+    const manifest = {
+      name: 'modern-web-guidance',
+      version: '1.0.0',
+      bin: { 'modern-web-guidance': 'skills/modern-web-guidance/modern-web.mjs' },
+      contributes: { chatSkills: [{ path: './skills/modern-web-guidance/SKILL.md' }] },
+    };
+    const original = JSON.stringify(manifest, null, 2) + '\n';
+    const failure = new Error('publish failed');
+    try {
+      await fs.writeFile(packagePath, original);
+      const publishing = withGitHubPackageManifest(dir, async () => {
+        const actual = JSON.parse(await fs.readFile(packagePath, 'utf8'));
+        assert.deepStrictEqual(actual, {
+          name: manifest.name,
+          version: manifest.version,
+          contributes: manifest.contributes,
+        });
+        if (fails) throw failure;
+      });
+      if (fails) await assert.rejects(publishing, (error) => error === failure);
+      else await publishing;
+      assert.strictEqual(await fs.readFile(packagePath, 'utf8'), original);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+}
 
 test('getNextVersion derive from git tag', async () => {
   const mockGetTag = () => 'v0.0.22';
