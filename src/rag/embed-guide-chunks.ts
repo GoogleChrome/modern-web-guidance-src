@@ -41,7 +41,7 @@ export interface EmbedChunksOptions {
   seedCacheDir?: string;
   envPath?: string | null;
   apiKey?: string;
-  scanChunks?: () => GuideChunk[];
+  scanChunks?: typeof scanCorpusChunks;
   postBatch?: (url: string, body: unknown) => Promise<unknown>;
 }
 

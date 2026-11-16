@@ -395,6 +395,11 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
+  // Ensure teacher vectors exist and rebuild skills-cli dist upfront when running tests
+  if (options.test !== false) {
+    await ensureGuidedEvalDist();
+  }
+
   // Step 2: Parallel target generation and calibration across targets
   const calibrationFailures = new Map<string, string>();
   const calibrationResults = await Promise.all(
@@ -612,9 +617,6 @@ async function runAgentTest(
     console.log(cYellow(`No supported base apps found in ${targetsDir}. Skipping agent tests.`));
     return;
   }
-
-  // Ensure teacher vectors exist and rebuild skills-cli dist before guided trials
-  await ensureGuidedEvalDist();
 
   resetGuidesMap();
   const taskMap = getTaskMap();

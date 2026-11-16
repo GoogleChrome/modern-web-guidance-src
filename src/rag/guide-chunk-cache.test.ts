@@ -290,6 +290,30 @@ describe("guide-chunk-cache", () => {
       assert.strictEqual(secondRunCalls, 0);
       assert.strictEqual(res2.newEmbeds, 0);
       assert.strictEqual(res2.cachedCount, 2);
+
+      // Starting from an empty evalDir when seedDir already holds all active chunks still persists evalDir with 0 API calls.
+      const freshEvalDir = path.join(tmpRoot, "eval-seeded-only");
+      const fullSeedDir = path.join(tmpRoot, "seed-complete");
+      saveChunkCache(evalAfter, fullSeedDir);
+      let seededOnlyCalls = 0;
+      const res3 = await embedGuideChunks({
+        cacheDir: freshEvalDir,
+        seedCacheDir: fullSeedDir,
+        prune: true,
+        apiKey: "",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async () => {
+          seededOnlyCalls++;
+          return { embeddings: [] };
+        },
+      });
+      assert.strictEqual(seededOnlyCalls, 0);
+      assert.strictEqual(res3.newEmbeds, 0);
+      assert.strictEqual(res3.cachedCount, 2);
+      const freshLoaded = loadChunkCache(freshEvalDir);
+      assert.strictEqual(freshLoaded.size, 2);
+      assert.ok(freshLoaded.has("hash-seeded") && freshLoaded.has("hash-uncached"));
     } finally {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
