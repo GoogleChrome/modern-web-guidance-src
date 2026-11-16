@@ -7,7 +7,6 @@
 - Clicking the master checkbox changes every enabled option checkbox to match the master's checked state.
 - A disabled option checkbox keeps its checked state when the master checkbox is clicked and is not counted when deriving the master's state.
 - The master checkbox state reflects the initially checked options on page load.
-- An `<output>` live region (or element with `aria-live`) inside the fieldset is updated with a count summary when the checked options change.
 - The master checkbox is `disabled` when there are no enabled option checkboxes, and its checked and indeterminate state mirrors the disabled options (unchecked for an empty list).
 - Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
 - Label text and any hints are aligned to the right (or left, in RTL) of the checkbox, with at least `3px` spacing from it, and their text does not wrap below the checkbox.
