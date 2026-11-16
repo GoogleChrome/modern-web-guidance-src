@@ -66,7 +66,7 @@ Derive the master's state from the options whenever any option changes, and appl
   * None checked: both `false`.
 * When the master is directly toggled by the user, copy its `checked` value onto every enabled option. Do not re-derive the master afterwards; the options now match it. No special case is needed for the mixed state: clicking an indeterminate checkbox clears `indeterminate` and toggles `checked` before `change` fires, so a mixed master becomes checked and selects all options.
 * Never read or write disabled options. If no option is enabled, disable the master and give it the state the disabled options would produce (unchecked when the list is empty).
-* After each derive, update the `<output>` text with the count of checked versus enabled options, for example "2 of 4 available units active".
+* If the group has a summary `<output>`, update its text whenever the options change. When the master updates the options, update the text once, after all of them have changed, so the new count is announced once. Use the count of checked versus enabled options, for example "2 of 4 available units active".
 * Compute the enabled set at derive time, not once at setup, so options disabled or enabled at runtime stay in sync.
 
 ### When and how to include a master checkbox
