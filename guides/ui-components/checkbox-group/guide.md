@@ -20,8 +20,7 @@ MANDATORY: Default to a `<fieldset>` of `<label>`s with nested `<input type="che
 * The group has a master checkbox.
 * The list is long. Keep the checkboxes and bound the list's height in a scroll container (see section 4) instead of switching patterns.
 
-{# Customizable `<select multiple>` listbox (`tmp-customizable-select-listbox`) guidance is pending a11y SME review (#1092 / #1237). #}
-DO NOT replace a checkbox group with `<select multiple>`: native listboxes have no indeterminate master control and rely on platform-dependent multi-select interactions (such as holding a modifier key on desktop). Use labeled checkboxes unless the use case explicitly requires a listbox.
+DO NOT replace a checkbox group with `<select multiple>`: native listboxes have no indeterminate master control, rely on platform-dependent multi-select interactions (such as holding a modifier key on desktop), and can't give an option separate hint text, because all of an option's content becomes its accessible name. Use labeled checkboxes unless the use case explicitly requires a listbox.
 
 ## 1. Group with `<fieldset>` and `<legend>`
 
