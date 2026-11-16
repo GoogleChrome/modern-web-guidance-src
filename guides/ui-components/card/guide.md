@@ -25,7 +25,7 @@ Choose semantics for the content and its interaction separately:
 - keep links and buttons for independent actions as separate native controls inside the card.
 - use a radio button or checkbox with an associated `<label>`, or an `option` in a native `<select>`, when the card is a choice.
 
-Keep media, title, supporting content, and actions in meaningful source order; don't use CSS `order` to contradict it (see {{ GUIDE_REF("css-layout") }}).
+Keep title, media, supporting content, and actions in meaningful source order. Visually placing non-interactive media first with CSS is fine, provided interactive controls stay in their DOM focus order (see {{ GUIDE_REF("css-layout") }}).
 
 ## Implementation
 
