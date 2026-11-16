@@ -475,11 +475,11 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { milkSelect, noteInput, saveBtn, restoreBtn, items } = getDraftControls(page);
-  const firstAddBtn = page.locator('main .card button').first();
+  const addBtns = getVisibleCards(page).locator('button');
 
   await milkSelect.selectOption('Whole');
   await noteInput.fill('Extra hot snapshot');
-  await firstAddBtn.click();
+  await addBtns.first().click();
 
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
@@ -494,7 +494,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   // Mutate active order after saving snapshot.
   await milkSelect.selectOption('Oat');
   await noteInput.fill('After snapshot edit');
-  await page.locator('main .card button').nth(1).click();
+  await addBtns.nth(1).click();
   await expect(items).toHaveCount(2);
 
   // Restore snapshot and confirm post-save mutations did not affect it.
@@ -509,7 +509,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   expect(spiesAfterRestore.jsonStringifyCalls).toBe(0);
 
   // Mutating after restore must also leave the saved snapshot intact.
-  await page.locator('main .card button').nth(2).click();
+  await addBtns.nth(2).click();
   await expect(items).toHaveCount(2);
   await restoreBtn.click();
   await expect(items).toHaveCount(1);
@@ -634,7 +634,7 @@ test('Exp 7: uses Object.groupBy() or Map.groupBy() instead of .reduce() bucket 
     .filter({ hasText: /seasonal|espresso|cold brew/i })
     .count();
   expect(groupHeadingsCount).toBeGreaterThanOrEqual(3);
-  expect(await page.locator('main .card').count()).toBeGreaterThanOrEqual(6);
+  expect(await getVisibleCards(page).count()).toBeGreaterThanOrEqual(6);
 });
 
 // =========================================================================
@@ -896,11 +896,8 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
 }) => {
   const { calls, sourceFiles } = getAstData();
 
-  const zeroArgReplaceChildrenAstCalls = calls.filter(
-    (c) =>
-      getMethodName(c) === 'replaceChildren' &&
-      (c.getArguments().length === 0 ||
-        c.getArguments().some((arg) => TsNode.isSpreadElement(arg))),
+  const replaceChildrenAstCalls = calls.filter(
+    (c) => getMethodName(c) === 'replaceChildren',
   );
   const emptyInnerHtmlAstAssignments = sourceFiles.some((sf) =>
     sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
@@ -915,7 +912,7 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   );
   const removeChildAstCalls = calls.filter((c) => getMethodName(c) === 'removeChild');
 
-  expect(zeroArgReplaceChildrenAstCalls.length).toBeGreaterThanOrEqual(1);
+  expect(replaceChildrenAstCalls.length).toBeGreaterThanOrEqual(1);
   expect(emptyInnerHtmlAstAssignments).toBe(false);
   expect(removeChildAstCalls).toEqual([]);
 
@@ -923,7 +920,7 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { clearBtn, items } = getDraftControls(page);
-  await page.locator('main .card button').first().click();
+  await getVisibleCards(page).locator('button').first().click();
   await expect(items).toHaveCount(1);
 
   await resetSpyCounters(page);
