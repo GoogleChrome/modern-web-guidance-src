@@ -40,6 +40,7 @@ export const DISCIPLINE_GUIDES = new Set([
   'css',
   'forms',
   'html',
+  'js',
   'performance',
   'privacy',
   'security',

@@ -454,6 +454,7 @@ interface ScanRepoState {
   readonly fileMap: Map<string, string>;
   readonly maxFiles: number;
   readonly fileFilterOptions?: FileFilterOptions;
+  readonly hasDependencyRules: boolean;
   skippedDocsAndTestsCount: number;
 }
 
@@ -482,7 +483,7 @@ function classifyCandidatePath(
 
   if (
     shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
-    isCandidateVendoredFile(relPath)
+    (state.hasDependencyRules && isCandidateVendoredFile(relPath))
   ) {
     return 'candidate';
   }
@@ -496,7 +497,7 @@ function classifyCandidatePath(
 async function tryReadFileContent(
   fullPath: string,
   relPath: string,
-  filterOptions?: FileFilterOptions,
+  state: ScanRepoState,
 ): Promise<string | undefined> {
   try {
     const handle = await open(fullPath, 'r');
@@ -507,8 +508,8 @@ async function tryReadFileContent(
       }
       const content = await handle.readFile('utf8');
       if (
-        shouldScanFile(relPath, content, filterOptions) ||
-        isCandidateVendoredFile(relPath, content)
+        shouldScanFile(relPath, content, state.fileFilterOptions) ||
+        (state.hasDependencyRules && isCandidateVendoredFile(relPath, content))
       ) {
         return content;
       }
@@ -551,7 +552,7 @@ async function readCandidatePathsIntoState(
 
     const contents = await Promise.all(
       batch.map((relPath) =>
-        tryReadFileContent(join(repoRoot, relPath), relPath, state.fileFilterOptions),
+        tryReadFileContent(join(repoRoot, relPath), relPath, state),
       ),
     );
     for (let i = 0; i < batch.length; i++) {
@@ -654,6 +655,7 @@ export async function scanRepoFiles(
     fileMap,
     maxFiles: options?.maxFiles ?? 5000,
     fileFilterOptions,
+    hasDependencyRules: rules.some((r) => r.matcher.kind === 'dependency'),
     skippedDocsAndTestsCount: 0,
   };
 
