@@ -106,6 +106,14 @@ export const FORMAT_REGISTRY: readonly FormatEntry[] = [
     engines: ['dom', 'js', 'css'],
     status: 'supported',
   },
+  {
+    // DOM rules run via JSX-DOM bridge, only on files that pass the cheap mayContainJsx gate.
+    // The TS family is left out: `<T>expr` is a type assertion outside .tsx.
+    id: 'jsx-in-js',
+    extensions: ['.js', '.mjs', '.cjs'],
+    engines: ['dom'],
+    status: 'supported',
+  },
 
   // Package Manifest
   {
@@ -218,6 +226,8 @@ const SCRIPT_FORMAT_IDS: ReadonlySet<string> = new Set([
 
 const JSX_FORMAT_IDS: ReadonlySet<string> = new Set(['jsx', 'tsx']);
 
+const GATED_JSX_FORMAT_IDS: ReadonlySet<string> = new Set(['jsx-in-js']);
+
 const STYLESHEET_FORMAT_IDS: ReadonlySet<string> = new Set(['css', 'scss', 'less']);
 
 const SUPPORTED_ENTRIES = FORMAT_REGISTRY.filter((f) => f.status === 'supported');
@@ -237,6 +247,13 @@ export const JSX_EXTENSIONS: ReadonlySet<string> = new Set(
   SUPPORTED_ENTRIES.filter((f) => JSX_FORMAT_IDS.has(f.id)).flatMap((f) => f.extensions),
 );
 
+/** Script extensions whose JSX is scanned only when the content passes `mayContainJsx`. */
+export const GATED_JSX_EXTENSIONS: ReadonlySet<string> = new Set(
+  SUPPORTED_ENTRIES.filter(
+    (f) => GATED_JSX_FORMAT_IDS.has(f.id) && f.engines.includes('dom'),
+  ).flatMap((f) => f.extensions),
+);
+
 /** File extensions for standalone stylesheets (.css, .scss, .less). */
 export const STYLESHEET_EXTENSIONS: ReadonlySet<string> = new Set(
   SUPPORTED_ENTRIES.filter((f) => STYLESHEET_FORMAT_IDS.has(f.id)).flatMap((f) => f.extensions),
@@ -247,20 +264,21 @@ export const MARKUP_EXTENSIONS: ReadonlySet<string> = new Set(
   SUPPORTED_ENTRIES.filter((f) => MARKUP_FORMAT_IDS.has(f.id)).flatMap((f) => f.extensions),
 );
 
-// .php is excluded from *_RULE_EXTENSIONS: downstream corpus sampling depends on their exact contents.
-const NON_PHP_SUPPORTED = SUPPORTED_ENTRIES.filter((f) => f.id !== 'php');
+// .php and JSX in .js are excluded from *_RULE_EXTENSIONS: downstream corpus sampling depends on their exact contents.
+const RULE_EXTENSION_EXCLUDED_IDS: ReadonlySet<string> = new Set(['php', 'jsx-in-js']);
+const RULE_EXTENSION_ENTRIES = SUPPORTED_ENTRIES.filter((f) => !RULE_EXTENSION_EXCLUDED_IDS.has(f.id));
 
 /** File extensions where the JS AST scanner runs (contents kept stable for downstream corpus sampling). */
 export const JS_RULE_EXTENSIONS: readonly string[] = [
   ...new Set(
-    NON_PHP_SUPPORTED.filter((f) => f.engines.includes('js')).flatMap((f) => f.extensions),
+    RULE_EXTENSION_ENTRIES.filter((f) => f.engines.includes('js')).flatMap((f) => f.extensions),
   ),
 ];
 
 /** File extensions where whole stylesheets or <style> blocks are scanned for CSS rules. */
 export const CSS_RULE_EXTENSIONS: readonly string[] = [
   ...new Set(
-    NON_PHP_SUPPORTED.filter(
+    RULE_EXTENSION_ENTRIES.filter(
       (f) =>
         f.engines.includes('css') &&
         (STYLESHEET_FORMAT_IDS.has(f.id) || MARKUP_FORMAT_IDS.has(f.id)),
@@ -271,7 +289,7 @@ export const CSS_RULE_EXTENSIONS: readonly string[] = [
 /** File extensions where DOM rules run (contents kept stable for downstream corpus sampling). */
 export const DOM_RULE_EXTENSIONS: readonly string[] = [
   ...new Set(
-    NON_PHP_SUPPORTED.filter((f) => f.engines.includes('dom')).flatMap((f) => f.extensions),
+    RULE_EXTENSION_ENTRIES.filter((f) => f.engines.includes('dom')).flatMap((f) => f.extensions),
   ),
 ];
 

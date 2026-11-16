@@ -52,8 +52,8 @@ The single source of truth for all formats, applicable engines, and scan statuse
 | --- | --- | --- |
 | `.css` | supported | |
 | `.html`, `.htm`, `.php` (incl. `.blade.php`) | supported | |
-| `.js`, `.mjs`, `.cjs`, `.ts`, `.mts`, `.cts`, `.jsx`, `.tsx` | supported | DOM rules run on JSX in `.jsx`/`.tsx` only |
-| JSX inside `.js`, `.mjs`, `.cjs` (DOM rules) | unsupported | Under review |
+| `.js`, `.mjs`, `.cjs`, `.ts`, `.mts`, `.cts`, `.jsx`, `.tsx` | supported | DOM rules run on JSX in `.jsx`/`.tsx`, and in `.js`/`.mjs`/`.cjs` (row below) |
+| JSX inside `.js`, `.mjs`, `.cjs` (DOM rules) | supported | Only files that pass a cheap `mayContainJsx` check are parsed for DOM rules. Not in `DOM_RULE_EXTENSIONS` |
 | `package.json` | supported | Dependency rules |
 | `.vue`, `.svelte`, `.astro`: script, style and template blocks | supported | |
 | `css` tagged templates in JS/TS (Lit, Emotion, styled-components' `css` helper) | supported | Bodies with no selector rarely match |
@@ -76,6 +76,8 @@ Why are styled-components and Emotion component styles `expected-skip` instead o
 
 - `css` tagged templates inside a `<script>` block of an HTML, Vue, Svelte or Astro file aren't extracted.
 - DOM rules don't run on JSX inside `<script lang="tsx">` / `lang="jsx"` blocks of SFCs.
+- The address and payment autofill rules don't fire on JSX in `.js`/`.mjs`/`.cjs`: they only accept files in `DOM_RULE_EXTENSIONS`.
+- JSX in `.js`/`.mjs`/`.cjs` with no recognizable lead-in (e.g. a comment between `return` and the tag) isn't scanned.
 
 ## Proposing a format
 

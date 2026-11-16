@@ -480,6 +480,26 @@ function extractJsxAttributes(
 }
 
 /**
+ * A JSX opening tag or fragment (`<div `, `<Foo.Bar/>`, `<>`) in expression position:
+ * at line start or after `=`, `(`, `,`, `:`, `?`, `!`, `+`, `&&`, `||`, `{`, `}`, `[`,
+ * `;`, `=>`, `return`, `default`, `yield`, `await`, `else`, `typeof` or `void`.
+ * Comparisons (`a<b`), Flow generics (`Array<T>`) and markup inside quoted strings do
+ * not match. Markup after `}` inside template literals (`${x}<div>`) does, which only
+ * costs a parse.
+ */
+const JSX_IN_EXPRESSION_POSITION_RE =
+  /(?:^|[=(,:?!+&|{}[;]|=>|\b(?:return|default|yield|await|else|typeof|void))\s*<(?:>|[A-Za-z][\w.:-]*[\s/>])/m;
+
+/**
+ * Cheap pre-parse check for whether script content plausibly contains JSX. Gates DOM
+ * rules (and the full parse they force) on `.js`/`.mjs`/`.cjs` files; false positives
+ * only cost a parse, never findings.
+ */
+export function mayContainJsx(content: string): boolean {
+  return JSX_IN_EXPRESSION_POSITION_RE.test(content);
+}
+
+/**
  * Scans a JSX/TSX SourceFile using the static JSX-DOM bridge against rules in a single pass.
  */
 export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(

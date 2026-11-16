@@ -9,12 +9,12 @@ import type {
   DomRuleMatcher,
   JsRuleMatcher,
 } from '../schema.ts';
-import { shouldScanFile } from './file-filter.ts';
+import { DOM_RULE_EXTENSIONS, shouldScanFile } from './file-filter.ts';
 import {
   FORMAT_REGISTRY,
   type FormatEngine,
 } from './format-registry.ts';
-import { scanFiles } from './index.ts';
+import { createInMemoryProject, scanFiles } from './index.ts';
 
 const CONTRACT_DOM_SNIPPET = '<custom-contract-element></custom-contract-element>';
 const CONTRACT_JS_SNIPPET = '__contractJsTest__();';
@@ -344,6 +344,17 @@ const SHELLS: Readonly<Record<string, FormatShell>> = {
       '`;',
     ].join('\n'),
   },
+  'jsx-in-js': {
+    extension: 'js',
+    build: ({ dom = '<div className="container">Hello</div>' }) => [
+      "import React from 'react';",
+      'export function Widget() {',
+      '  return (',
+      `    ${dom}`,
+      '  );',
+      '}',
+    ].join('\n'),
+  },
   'package.json': {
     extension: 'json',
     build: ({ dependency = '"neutral-pkg": "^1.0.0"' }) => [
@@ -513,6 +524,57 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
       ].join('\n');
 
       assert.equal(shouldScanFile('card.gts', glimmer), true);
+    });
+  });
+
+  describe('JSX in .js/.mjs/.cjs is gated by mayContainJsx', () => {
+    const jsxComponent = SHELLS['jsx-in-js']!.build({ dom: CONTRACT_DOM_SNIPPET });
+    const jsxFree = [
+      `// ${CONTRACT_DOM_SNIPPET}`,
+      `const markup = '${CONTRACT_DOM_SNIPPET}';`,
+      'export const isShort = (a, b) => a<b && markup.length < 100;',
+    ].join('\n');
+
+    for (const ext of ['.js', '.mjs', '.cjs']) {
+      test(`JSX in ${ext} yields the same DOM finding as in .jsx`, () => {
+        const [reference] = scanFiles(new Map([['src/app/Widget.jsx', jsxComponent]]), [testDomRule]);
+        const findings = scanFiles(new Map([[`src/app/Widget${ext}`, jsxComponent]]), [testDomRule]);
+        assert.ok(reference);
+        assert.equal(findings.length, 1);
+        assert.equal(findings[0]?.line, reference.line);
+        assert.equal(findings[0]?.lineContent, reference.lineContent);
+        assert.equal(findings[0]?.codeSnippet, reference.codeSnippet);
+      });
+
+      test(`JSX-free ${ext} with markup in strings and comments is not parsed for DOM rules`, (t) => {
+        const project = createInMemoryProject();
+        const createSourceFile = t.mock.method(project, 'createSourceFile');
+        const findings = scanFiles(new Map([[`src/app/plain${ext}`, jsxFree]]), [testDomRule], {
+          project,
+        });
+        assert.deepEqual(findings, []);
+        assert.equal(createSourceFile.mock.callCount(), 0);
+      });
+    }
+
+    for (const ext of ['.ts', '.mts', '.cts']) {
+      test(`JSX-looking code in ${ext} produces 0 DOM findings (type assertions)`, () => {
+        const findings = scanFiles(new Map([[`src/app/view${ext}`, jsxComponent]]), [testDomRule]);
+        assert.deepEqual(findings, []);
+      });
+    }
+
+    test('known limitation: .js JSX with no detectable lead-in is skipped (.jsx is not)', () => {
+      // A comment between `return` and the tag hides the expression position from the gate.
+      const hidden = `export const Widget = () => { return /* x */ ${CONTRACT_DOM_SNIPPET}; };`;
+      assert.equal(scanFiles(new Map([['src/app/Hidden.jsx', hidden]]), [testDomRule]).length, 1);
+      assert.deepEqual(scanFiles(new Map([['src/app/Hidden.js', hidden]]), [testDomRule]), []);
+    });
+
+    test('DOM_RULE_EXTENSIONS keeps .js/.mjs/.cjs out (content-gated, not extension-based)', () => {
+      for (const ext of ['.js', '.mjs', '.cjs']) {
+        assert.equal(DOM_RULE_EXTENSIONS.includes(ext), false, ext);
+      }
     });
   });
 

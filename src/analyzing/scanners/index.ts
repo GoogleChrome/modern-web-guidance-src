@@ -22,7 +22,7 @@ import {
   scanPackageJsonRules,
   scanVendoredLibraryRules,
 } from './dependency-scanner.ts';
-import { scanHtmlRules, scanJsxRules } from './dom-scanner.ts';
+import { mayContainJsx, scanHtmlRules, scanJsxRules } from './dom-scanner.ts';
 import {
   BUILD_OR_INSTALL_DIR_SEGMENTS,
   CORPUS_NON_APP_DIR_SEGMENTS,
@@ -36,6 +36,7 @@ import {
   type FileFilterOptions,
 } from './file-filter.ts';
 import {
+  GATED_JSX_EXTENSIONS,
   JS_EXTENSIONS,
   JSX_EXTENSIONS,
   STYLESHEET_EXTENSIONS,
@@ -438,7 +439,9 @@ export function scanFiles(
       }
 
       if (JS_EXTENSIONS.has(ext)) {
-        const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
+        const scansJsx =
+          JSX_EXTENSIONS.has(ext) || (GATED_JSX_EXTENSIONS.has(ext) && mayContainJsx(content));
+        const activeDom = scansJsx ? ruleBundle.dom : [];
         findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, pool));
         findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
       }
