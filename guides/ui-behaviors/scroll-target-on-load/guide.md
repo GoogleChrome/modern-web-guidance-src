@@ -41,14 +41,14 @@ In this example, a feed starts scrolled to a specific "featured" item rather tha
 
 ## Accessibility considerations
 
-In addition to visibly scrolling the content into view, focus must also be moved to the visually prioritised content.
+Because `scroll-initial-target` only updates the visual scroll offset, give keyboard and screen reader users a direct way to move focus to the visually prioritized content. Do not call `focus()` automatically on initial page load when preceding page content (such as a header or navigation) exists, as doing so bypasses earlier landmarks.
 
-Depending on the content, there are two primary ways to ensure focus moves to the visually prioritised content:
+Choose the focus pattern that matches the component's semantics:
 
-* If the prioritised content sits inside a component that is part of a larger screen (e.g. the prioritised content is a recent message that is part of a live chat component, inside a shopping website), then upon entering component, use a skip link and pair it with a roving tabindex. The skip link will redirect focus to the prioritised content and trigger a screen reader announcement. The roving tabindex will ensure only one primary control in the component receives focus by default, following which, people can navigate using the arrow keys.
-* If the prioritised content is directly part of the primary content (e.g. the prioritised content is a message directly inside a live chat application), then provide a control to move focus to the visually prioritised content. If there is navigation UI around the visually prioritised content, and the navigation controls receive focus without changing the visually prioritised content, then it would be sufficient to provide a control alongside the pre-existing navigational controls, which when activated, would move focus to the visually prioritised content. If there isn't navigation UI visible at the same time, then a skip link could be provided at the start of the DOM to allow people to quickly navigate to the visually prioritised content.
+* **Composite widgets** (such as a date picker strip starting on today, a thumbnail `toolbar`, or a selectable `listbox` or `tablist`): apply `focusgroup` with the matching behavior token (for example, `focusgroup="listbox"` or `focusgroup="toolbar"`, adding `nomemory` and moving `focusgroupstart` if the active item can change externally) and set `focusgroupstart` on the `scroll-initial-target` control. Tabbing into the widget then lands directly on the prioritized item without needing a skip link, and users can move between items with the arrow keys.
+* **Content feeds and message streams** (such as a live chat thread or media feed, whether embedded in a larger page or serving as the primary view): do not apply `focusgroup` or a roving `tabindex` to static prose items that lack a composite widget role. Instead, make the prioritized item programmatically focusable with `tabindex="-1"` (or target its heading or first control) and provide either a skip link before the feed or a jump control alongside surrounding navigation UI to move focus to it while preserving normal sequential `Tab` order.
 
-If the prioritised content is not the most recent content (e.g. the latest message in a chat application), provide a way to indicate why this content is being displayed on render, such as a pin icon to convey that an older message has been pinned.
+If the prioritized content is not the expected starting point (for example, an older pinned message rather than the latest message in a chat thread), indicate why it is shown first using visible or accessible text—such as a "Pinned message" label rather than an unlabeled pin icon alone.
 
 ## Fallback Strategy
 

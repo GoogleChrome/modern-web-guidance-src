@@ -34,24 +34,28 @@
     }
 
     .skip-link {
-      z-index: 1;
-      padding: 1rem;
-      outline-width: 2px;
+      position: relative;
+      z-index: 20;
+      align-self: flex-start;
+      margin: 0.5rem 1rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+      outline-offset: 2px;
     }
 
-    .skip-link:not(:focus) {
-      display: inline-block;
-      height: 1px;
-      width: 1px;
-      min-width: auto;
-      max-width: fit-content;
-      overflow: hidden;
-      clip: rect(1px 1px 1px 1px);
-      clip: rect(1px, 1px, 1px, 1px);
-      padding: 0;
+    .skip-link:not(:focus, :active) {
       position: absolute;
-      right: 0;
-      top: -1rem;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
     }
 
     .feed-wrapper {
@@ -136,7 +140,7 @@
     }
 
     /* Target Item Styles */
-    .item#target-item {
+    .item.target {
       scroll-initial-target: nearest;
       background: #fdf6e3;
       border: 2px solid #fbbf24;
@@ -178,7 +182,7 @@
   <main class="feed-wrapper">
     <div class="feed-mockup">
       <div class="feed-header">Creative Workspace</div>
-      <a class="skip-link" href="#target-item">Skip to pinned message</a>
+      <a class="skip-link" href="#msg-6">Skip to pinned message</a>
       <div class="feed-container" id="feed">
         
         <div class="item received">
@@ -217,7 +221,7 @@
         </div>
 
         <!-- Target Media Item -->
-        <div class="item received" id="target-item" tabindex="-1">
+        <div class="item received target" id="msg-6" tabindex="-1">
           <div class="target-indicator">Initial Target</div>
           <p>This is Option C. I think this perfectly captures the "Cybernetic" theme we are going for.</p>
           <div class="media-card large">
