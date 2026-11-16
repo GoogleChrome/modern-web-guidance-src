@@ -59,6 +59,7 @@ interface DailyGrindSpies {
   urlSearchParamsCalls: number;
   zeroArgReplaceChildrenCalls: number;
   withArgsReplaceChildrenCalls: number;
+  trackedOrderListReplaceChildrenCalls: number;
   removeChildCalls: number;
   emptyInnerHtmlCalls: number;
   connectedAppendChildCalls: number;
@@ -133,6 +134,7 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
     urlSearchParamsCalls: 0,
     zeroArgReplaceChildrenCalls: 0,
     withArgsReplaceChildrenCalls: 0,
+    trackedOrderListReplaceChildrenCalls: 0,
     removeChildCalls: 0,
     emptyInnerHtmlCalls: 0,
     connectedAppendChildCalls: 0,
@@ -235,6 +237,9 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
           } else {
             spies.withArgsReplaceChildrenCalls += 1;
           }
+          if (this instanceof Element && this.hasAttribute('data-gd-tracked-order-list')) {
+            spies.trackedOrderListReplaceChildrenCalls += 1;
+          }
         }
         return origReplaceChildren.apply(this, nodes);
       };
@@ -328,6 +333,7 @@ async function resetSpyCounters(page: Page): Promise<void> {
     spies.urlSearchParamsCalls = 0;
     spies.zeroArgReplaceChildrenCalls = 0;
     spies.withArgsReplaceChildrenCalls = 0;
+    spies.trackedOrderListReplaceChildrenCalls = 0;
     spies.removeChildCalls = 0;
     spies.emptyInnerHtmlCalls = 0;
     spies.connectedAppendChildCalls = 0;
@@ -923,14 +929,26 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   await getVisibleCards(page).locator('button').first().click();
   await expect(items).toHaveCount(1);
 
+  await items.first().evaluate((itemEl) => {
+    const draftRoot = itemEl.closest('#draft-order');
+    let cur = itemEl.parentElement;
+    if (!cur) throw new Error('Expected order item to have a parent container.');
+    if (cur === draftRoot) {
+      cur.setAttribute('data-gd-tracked-order-list', '1');
+      return;
+    }
+    while (cur && cur !== draftRoot) {
+      cur.setAttribute('data-gd-tracked-order-list', '1');
+      cur = cur.parentElement;
+    }
+  });
+
   await resetSpyCounters(page);
   await clearBtn.click();
 
   await expect(items).toHaveCount(0);
   const spies = await readSpies(page);
-  expect(
-    spies.zeroArgReplaceChildrenCalls + spies.withArgsReplaceChildrenCalls,
-  ).toBeGreaterThanOrEqual(1);
+  expect(spies.trackedOrderListReplaceChildrenCalls).toBeGreaterThanOrEqual(1);
   expect(spies.removeChildCalls).toBe(0);
   expect(spies.emptyInnerHtmlCalls).toBe(0);
 });
