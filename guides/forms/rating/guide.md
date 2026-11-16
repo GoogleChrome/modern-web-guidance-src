@@ -12,11 +12,16 @@ guides:
 
 # Star rating
 
-Build a 5-star rating that supports half stars. Use a native `<input type="range">` for input and a native `<meter>` for read-only display, and draw the stars with CSS. Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` roles: the range input already provides keyboard, pointer, touch, and assistive technology behavior.
+Build a 5-star rating that supports half stars. Pick exactly one variant from the task before writing any markup or CSS:
 
-## 1. Draw the stars with a mask and a gradient
+* **Interactive** (`<input type="range">`): the task collects a rating ("rate", "let users rate", feedback, a form). Build sections 1, 2, and 5. This is the default when the task is ambiguous.
+* **Read-only** (`<meter>`): the task displays an existing score ("average", "shows", a product card, a summary). Build sections 1, 3, 4 (optional), and 5.
 
-Store the star as an SVG data URI in a custom property (the same icon-token approach as {{ GUIDE_REF("icons") }}). Repeat it five times as a `mask` over a hard-stop gradient. The gradient's filled portion is driven by a registered `--rating` number, so any fractional value, including half stars, renders correctly with no extra markup.
+Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` roles—the native range input already provides keyboard, pointer, touch, and assistive technology behavior.
+
+## 1. Draw the stars with a mask and a gradient (shared)
+
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled, empty, and outline colors for light and dark schemes, and `--icon-star` holding a star SVG data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` five times as a `mask` over a hard-stop `linear-gradient` driven by a registered `--rating` `<number>`. Because a `mask` clips anything outside the star silhouette, draw the outline with chained `drop-shadow()` filters on a wrapper element rather than on the masked element itself.
 
 ```css
 /* Registered so the value is a typed number that calc() can use */
@@ -26,151 +31,83 @@ Store the star as an SVG data URI in a custom property (the same icon-token appr
   initial-value: 0;
 }
 
-:root {
-  --star-filled: #fbbf24;
-  --star-empty: light-dark(#c9c9d4, #4a4a58);
-  --star-outline: light-dark(#3a3a46, #c9c9d4);
-  --star-size: clamp(2.5rem, 14vw, 3rem); /* example values; at 3rem each half star is 1.5rem (24px), the minimum touch target; shrinks only on very narrow screens so five stars fit a phone */
-  --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
-}
-
 .stars {
   inline-size: calc(var(--star-size) * 5);
   block-size: var(--star-size);
-  /* Two stops at the same position make a hard edge at rating/5 of the width */
+  /* Hard stop at rating/5 of the width fills partial and half stars */
   background: linear-gradient(to right in oklch,
       var(--star-filled) calc(var(--rating) / 5 * 100%),
       var(--star-empty) 0);
   mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
 }
 
-/* A mask keeps only alpha, so the outline is drop-shadows on a wrapper (a filter on the masked element itself would be clipped) */
+/* Outline via wrapper drop-shadows so the mask does not clip it.
+   List `.rating` only in the interactive variant and `.star-frame` only in the read-only variant. */
 .star-frame,
 .rating {
   filter: drop-shadow(1px 0 0 var(--star-outline)) drop-shadow(-1px 0 0 var(--star-outline)) drop-shadow(0 1px 0 var(--star-outline)) drop-shadow(0 -1px 0 var(--star-outline));
-}
-
-.star-frame {
-  display: inline-block;
 }
 ```
 
 The outline, not the fill, is the star's boundary, so it must have at least 3:1 contrast against the background in light and dark schemes. This is what lets the fill be a bright yellow.
 
-## 2. Interactive rating: a transparent range input over the stars
+## 2. Interactive rating: a transparent range input over the stars (interactive only)
 
-MANDATORY: use `<input type="range" min="0" max="5" step="0.5">` with a visible `<label>`. The `step` is what enables half stars; use `step="1"` for whole stars only.
-
-Make the input invisible (`opacity: 0`), stretch it over the stars (not the gutters beside them), and collapse the thumb to zero width so the pointer position maps exactly to the value. Paint the stars on a `::before` of the wrapper, not on the input or the wrapper itself: a `mask` would clip the focus ring.
+MANDATORY: use `<input type="range" min="0" max="5" step="0.5">` with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` at `0`). Use `step="1"` for whole stars only. If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
 
 ```html
 <label for="rate">Rate this product</label>
 <span class="rating" id="rating-wrap">
-  <input type="range" id="rate" min="0" max="5" step="0.5" value="0" />
+  <input type="range" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated" />
 </span>
-<!-- Hidden from assistive technology: <output> is a live region, so it would announce every change a second time. The range's aria-valuetext already speaks the value. -->
 <output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
 ```
 
+Style `.rating` with `position: relative; display: inline-block;` and horizontal `padding-inline` gutters (e.g. `--rating-gutter: 0.75rem`) for easy `0` and `5` clicks. Paint the `.stars` mask and gradient on `.rating::before` (`content: ""; display: block; pointer-events: none;`) rather than on the input or wrapper, so the mask never clips the wrapper's focus ring, and style `.rating:has(:focus-visible)` with a visible `outline` and `outline-offset`. Position the range input over it (`position: absolute; inset-block: 0; margin: 0; padding: 0; border: 0; opacity: 0; appearance: none;`), excluding the gutters and collapsing the thumb to zero width so pointer coordinates map 1:1 to values:
+
 ```css
-.rating {
-  --rating-gutter: 0.75rem; /* clickable space either side of the stars, for 0 and 5 */
-  position: relative;
-  display: inline-block;
-  padding-inline: var(--rating-gutter);
-  /* Optional: because --rating is registered, the fill can ease to the new value (example duration) */
-  transition: --rating 0.25s ease-out;
+.rating input[type="range"] {
+  inset-inline-start: var(--rating-gutter);
+  inline-size: calc(var(--star-size) * 5);
+  block-size: 100%;
 
-  /* Same painting as .stars, on a pseudo-element so the focus ring is not masked */
-  &::before {
-    content: "";
-    display: block;
-    pointer-events: none;
-    inline-size: calc(var(--star-size) * 5);
-    block-size: var(--star-size);
-    background: linear-gradient(to right in oklch,
-        var(--star-filled) calc(var(--rating) / 5 * 100%),
-        var(--star-empty) 0);
-    mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
-  }
-
-  /* The input is invisible, so draw the focus ring on the wrapper */
-  &:has(:focus-visible) {
-    outline: 3px solid;
-    outline-offset: 6px;
-  }
-
-  & input[type="range"] {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: var(--rating-gutter);
-    inline-size: calc(var(--star-size) * 5);
-    block-size: 100%;
-    margin: 0;
-    opacity: 0;
-    cursor: pointer;
+  /* Zero-width thumb keeps value-to-position mapping exact */
+  &::-webkit-slider-thumb {
     appearance: none;
+    inline-size: 0;
+    block-size: 0;
+  }
 
-    /* A zero-width thumb keeps the value-to-position mapping exact */
-    &::-webkit-slider-thumb {
-      appearance: none;
-      inline-size: 0;
-      block-size: 0;
-    }
-
-    &::-moz-range-thumb {
-      inline-size: 0;
-      block-size: 0;
-      border: 0;
-    }
+  &::-moz-range-thumb {
+    inline-size: 0;
+    block-size: 0;
+    border: 0;
   }
 }
 ```
 
-MANDATORY: mirror the value into `--rating` and give it a human-readable `aria-valuetext`, because "2.5" alone does not say what the scale is.
+MANDATORY: on `input` (and on initial load), mirror `range.value` into `--rating` via `wrap.style.setProperty('--rating', value)` and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
+
+Optional: a native range snaps clicks to the nearest step, so clicking the right side of a star can pick the left half. On pointer clicks (`event.detail !== 0`, keeping keyboard behavior native), you can snap up to the clicked half and unfill by `0.5` if the user clicks the current value again:
 
 ```js
-const range = document.getElementById('rate');
-const wrap = document.getElementById('rating-wrap');
-const out = document.getElementById('rate-out');
-
-function update() {
-  const value = Number(range.value);
-  const text = value === 0 ? 'Not rated' : `${value} out of 5 stars`;
-  wrap.style.setProperty('--rating', value);
-  range.setAttribute('aria-valuetext', text);
-  out.textContent = text;
-}
-range.addEventListener('input', update);
-update();
-```
-
-Optional: a native range snaps a click to the nearest step, so clicking the right side of a star can give the left half. Worth adding for star ratings, because people expect a click to fill the half they hit and a second click on the last filled half to unfill it. It is not needed when a nearest-step result is acceptable.
-
-```js
-// Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
 let valueBefore = 0;
 wrap.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
 wrap.addEventListener('click', (event) => {
-  if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
+  if (event.detail === 0) return;
   const { left, width } = range.getBoundingClientRect();
-  // Snap up to the half under the pointer; the gutters beside the stars clamp to 0 and 5
   const half = Math.min(10, Math.max(0, Math.ceil(((event.clientX - left) / width) * 10))) / 2;
   range.value = half === valueBefore ? half - 0.5 : half;
   update();
 });
 ```
 
-## 3. Read-only rating: a meter
+## 3. Read-only rating: a meter (read-only only)
 
-For an average or other non-editable score, use `<meter min="0" max="5" value="3.5">` with the `.stars` class, wrapped in `<span class="star-frame">` for the outline, and an accessible name (`aria-labelledby` or a label). Put a text value inside the element as fallback content. Remove the native appearance, and make the WebKit bar and value pseudo-elements transparent so only the mask-and-gradient stars show.
+For an average or non-editable score (skip this section entirely when building only the interactive rating), use `<meter class="stars" min="0" max="5" value="3.5">` inside `<span class="star-frame">` (with `display: inline-block` for the outline), an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--rating` from `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
 
 ```css
 meter.stars {
-  appearance: none;
-  display: block;
-  border: 0;
-  /* Reads the value attribute as a number so no script is needed */
   --rating: attr(value type(<number>), 0);
 
   &::-webkit-meter-bar,
@@ -189,18 +126,17 @@ meter.stars {
 }
 ```
 
-## 4. Optional: animate the meter from zero
+## 4. Optional: animate the meter from zero (read-only only)
 
-Worth adding when the score is a highlight (a product header or review summary) and not when many meters appear in a list. Because `--rating` is a registered `<number>`, it can be animated like any other value. Leave the keyframe's `to` out so it animates to whatever the meter's value is, and gate the animation behind a class so the trigger is yours to choose.
+Skip this section entirely when building only the interactive rating. Worth adding when the score is a highlight (such as a product header or review summary) rather than repeated in a list. Because `--rating` is a registered `<number>`, animate it from `0` using a keyframe with no `to` stop so it settles at the meter's own `--rating` value, gated behind an `.animate` class and disabled under `prefers-reduced-motion: reduce`:
 
 ```css
 @keyframes fill-stars {
   from { --rating: 0; }
 }
 
-/* Duration and easing are example values */
 meter.stars.animate {
-  animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both; /* example timing */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -208,36 +144,11 @@ meter.stars.animate {
 }
 ```
 
-Starting or restarting the animation is just adding the class, so any trigger works. Removing and re-adding the class (with a forced reflow in between) restarts it.
+Trigger the animation by adding `.animate` in the markup on load, once via `IntersectionObserver` when scrolled into view, or by removing and re-adding `.animate` (with a forced reflow) to replay. Do not re-animate from zero when the meter's value updates later.
 
-```js
-function replay(el) {
-  el.classList.remove('animate');
-  void el.offsetWidth; // forces a reflow so the animation restarts
-  el.classList.add('animate');
-}
-```
+## 5. Forced colors and motion (shared)
 
-Pick the trigger that fits:
-
-* **On page load:** put `class="stars animate"` in the markup. Use this for meters visible without scrolling.
-* **When scrolled into view:** use an `IntersectionObserver` that calls `replay(meter)` once, then disconnects. Use this for meters below the fold, so the animation isn't spent before the user sees it.
-* **On another event** (a tab opening, data finishing loading, a "replay" button): call `replay(meter)` from that handler.
-
-```js
-new IntersectionObserver((entries, observer) => {
-  if (entries.some((entry) => entry.isIntersecting)) {
-    replay(meter);
-    observer.disconnect();
-  }
-}, { threshold: 0.6 }).observe(meter); // threshold is an example value
-```
-
-If the meter's value changes later, do not animate from zero again; the range-input path already updates `--rating` directly.
-
-## 5. Forced colors and motion
-
-In forced-colors mode, background colors are overridden, so the stars would lose their filled and empty distinction. Re-declare the gradient with system colors and opt out of adjustment.
+In forced-colors mode, background colors are overridden, so clear the drop-shadow filter and redraw the stars with system colors while opting out of color adjustment (keep only the selectors for the variant you built). Under `prefers-reduced-motion: reduce`, also disable any `--rating` transition or press animation on `.rating`.
 
 ```css
 @media (forced-colors: active) {
@@ -254,17 +165,9 @@ In forced-colors mode, background colors are overridden, so the stars would lose
 }
 ```
 
-Disable the `--rating` transition on `.rating` and any other star animation (for example a scale on press) under `prefers-reduced-motion: reduce`, as the meter animation above does.
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  .rating { transition: none; }
-}
-```
-
 ## Fallbacks
 
-### attr()
+### attr() (read-only only)
 
 {{ BASELINE_STATUS("attr") }}
 
@@ -280,7 +183,7 @@ if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
 
 The experience is identical; only the mechanism differs. The interactive range input does not depend on `attr()` because its script already sets `--rating`.
 
-### Registered custom properties
+### Registered custom properties (shared)
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
