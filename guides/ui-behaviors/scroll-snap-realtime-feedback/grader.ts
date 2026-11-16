@@ -263,8 +263,8 @@ test.describe('Scroll Snap Realtime Feedback', () => {
   test('When scrollsnapchanging is unsupported, the fallback toggles pending on the thumbnail corresponding to the gallery-item nearest the viewport center during scrolling', async ({ page }) => {
     // Disable native scrollsnapchanging support
     await page.addInitScript(() => {
-      delete (Element.prototype as any).onscrollsnapchanging;
-      delete (Element.prototype as any).onscrollsnapchange;
+      delete (HTMLElement.prototype as any).onscrollsnapchanging;
+      delete (HTMLElement.prototype as any).onscrollsnapchange;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
@@ -304,7 +304,7 @@ test.describe('Scroll Snap Realtime Feedback', () => {
   test('When scrollsnapchanging is unsupported, the fallback promotes the thumbnail to active when scrolling settles', async ({ page }) => {
     // Disable native scrollsnapchanging support
     await page.addInitScript(() => {
-      delete (Element.prototype as any).onscrollsnapchanging;
+      delete (HTMLElement.prototype as any).onscrollsnapchanging;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
