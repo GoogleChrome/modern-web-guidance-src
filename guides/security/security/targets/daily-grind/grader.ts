@@ -19,6 +19,9 @@
  * Expectation 18: SKIPPED: No external versioned <script> tags exist in the base application or task.md
  * Expectation 19: SKIPPED: No CORS endpoints exist in the base application or task.md
  * Expectation 20: TESTED - Logout endpoint (/logout) sends Clear-Site-Data header with "cookies", "storage", and "cache"
+ * Expectation 21: SKIPPED: No WebSocket connections exist in the base application or task.md
+ * Expectation 22: SKIPPED: No WebSocket endpoints exist in the base application or task.md
+ * Expectation 23: SKIPPED: No authenticated WebSocket connections exist in the base application or task.md
  */
 
 import {
