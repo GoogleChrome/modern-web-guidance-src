@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { getSkillUpdateLevel } from "./skill-version.ts";
+import { getSkillUpdateLevel, isFrozenClaudeMarketplaceVersion } from "./skill-version.ts";
 
 const NOW = new Date(2026, 4, 16).getTime(); // 2026_05_16
 
@@ -48,5 +48,16 @@ describe("getSkillUpdateLevel", () => {
 
   it("warns across dates even when the SHAs share a prefix", () => {
     assert.strictEqual(getSkillUpdateLevel("2026_05_09-c5e7870", "2026_05_16-c5e78707", NOW), "warn");
+  });
+});
+
+describe("isFrozenClaudeMarketplaceVersion", () => {
+  it("matches versions on or before the 2026-10-12 claude-plugins-official freeze", () => {
+    assert.strictEqual(isFrozenClaudeMarketplaceVersion("2026_10_12-dacb5911"), true);
+    assert.strictEqual(isFrozenClaudeMarketplaceVersion("2026_09_01-older123"), true);
+    assert.strictEqual(isFrozenClaudeMarketplaceVersion("2026_10_13-newer123"), false);
+    assert.strictEqual(isFrozenClaudeMarketplaceVersion("2026_11_09-5bcc021b"), false);
+    assert.strictEqual(isFrozenClaudeMarketplaceVersion(null), false);
+    assert.strictEqual(isFrozenClaudeMarketplaceVersion("SKILL_VERSION"), false);
   });
 });

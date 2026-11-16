@@ -79,7 +79,7 @@ For browsers that do not yet support the API, use a JavaScript fallback. Note th
 document.addEventListener("DOMContentLoaded", () => {
   // Check for native CSS support
   if (!CSS.supports("scroll-initial-target", "nearest")) {
-    const targetContent = document.querySelector('.main-content.target');
+    const targetContent = document.querySelector('.main-content');
     if (targetContent) {
       // Use behavior: "instant" to mimic the native CSS behavior
       // 'block: start' should match your CSS 'scroll-snap-align' (or expected top position)

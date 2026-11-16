@@ -55,7 +55,7 @@ modern-web-guidance-src/
   docs/                       # Context, ATL, evaluation, and release documentation
   dist/                       # Built distribution packages (gitignored)
   out/                        # Transient build artifacts (gitignored)
-  results/                    # Guide and suite evaluation results (gitignored)
+  results/                    # Guide and job evaluation results (gitignored)
 ```
 
 ---
@@ -70,9 +70,9 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 |---|---|---|
 | `guide.md` | SME (human) | The guidance itself, read by coding agents via Skills (`SKILL.md` is reserved for the entrypoint and standalone skills). Normative rules and build-time macros (`BASELINE_STATUS`, `INCLUDE`, `FEATURE`, `FEATURE_FALLBACKS`, `FEATURE_ISSUES`, `GUIDE_REF`) are specified in [`project-guides`](../.agents/skills/project-guides/SKILL.md). |
 | `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
-| `expectations.md` | SME (human) | Natural-language bulleted list of observable assertions used as input for grader generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)). |
+| `expectations.md` | SME (human) | Natural-language bulleted list of observable checks used as input for grader generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)). |
 | `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` / `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`, empty for almost every guide so calibration runs against the untouched starting app). Used for grader calibration. |
-| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated so every golden patch passes every test and the untouched starting app (`zero-passrate.patch`) passes none, except a `MUST NOT` check it already satisfies (paired with a positive presence check). |
+| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades base applications against expectations. Calibrated so every golden patch passes every test and the untouched starting app (`zero-passrate.patch`) passes none, except a `MUST NOT` check it already satisfies (paired with a positive presence check). |
 | `targets/<base_app>/task.md` | Generated (`gd dev`) | Single `- ` bullet developer prompt tailored to `<base_app>` fed to evaluation agents (no YAML frontmatter). |
 | `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
@@ -127,13 +127,13 @@ pnpm link --global && gd setup-completion
 | Command | What it does |
 |---|---|
 | `gd dev <dir>` | Runs the 5-step Stage 3 pipeline (`src/authoring/dev.ts`): generates target solutions/tasks across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`, or `--targets <apps>`), generates and calibrates `grader.ts` (calibrated so every golden passes and the untouched starting app passes none), runs guided vs. unguided evaluations, and writes `results/guides/<category>/<slug>/report.md`. |
-| `gd dev <dir> --test-grader` | Runs calibration check across target apps without full agent evals. |
+| `gd dev <dir> --test-grader` | Runs calibration check across base apps without full agent evals. |
 | `gd pr <dir>` | Opens or updates a GitHub Pull Request with auto-labeled classification (`gd-dev-content` / `gd-dev-eval`, removing `needs-dev-rerun`) and `report.md` body. |
 | `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-dev-rerun`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |
-| `gd eval [tasks...]` | Runs the evaluation suite across discovered or specified target tasks (`--config <path>` overrides `src/harness/config.ts`). |
-| `gd compare <runA> <runB>` | Compares two local or remote GCS evaluation run directories to diagnose behavioral differences and performance variance. |
+| `gd eval [tasks...]` | Runs the evaluation dataset across discovered or specified target tasks (`--config <path>` overrides `src/harness/config.ts`). |
+| `gd compare <trialA> <trialB>` | Compares two local or remote GCS evaluation trial directories to diagnose behavioral differences and performance variance. |
 | `gd dashboard` | Starts the evaluation results dashboard (`src/dashboard/`). |
-| `gd run <template> <prompt>` | Runs an ad-hoc agent test against a template directory. |
+| `gd run <base-app> <prompt>` | Runs an ad-hoc agent trial against a base app directory. |
 | `gd baselinestatus <query>` | Queries browser support and Baseline status for web platform features. |
 
 For detailed `gd dev`, `gd eval`, and `gd compare` pipeline mechanics and runner architecture, see **[`src/harness/README.md`](../src/harness/README.md)**. For agent installation and `.env` credential setup (`Antigravity CLI`, `Jetski CLI`, `Claude Code`, `Codex CLI`), see **[`docs/EVALS.md`](./EVALS.md)**.
@@ -152,7 +152,7 @@ The code in `src/build/`, `src/cli/`, and `src/rag/` compiles `guide.md` and `SK
 ## 5. Key Architectural Decisions
 
 - **CLI Agents in Isolated Sandboxes**: Grader, solution, and evaluation runs invoke CLI coding agents inside isolated `/tmp/` `HOME` directories (`setupGuideDevWorkDir()`) wrapped in OS-level filesystem sandboxes (`bwrap` on Linux, `sandbox-exec` on macOS; `src/harness/lib/sandbox.ts`) so agents cannot inspect repo source files or graders. During `gd dev`, golden solutions are generated across three distinct agent families to calibrate graders against model-diverse implementations.
-- **Playwright for Outcome Grading**: Graders are Playwright test suites so assertions can verify real browser rendering, computed styles, DOM state, and runtime behavior alongside static AST checks, with an automated retry loop (up to 5 attempts / 4 retries) during calibration.
+- **Playwright for Outcome Grading**: Graders are Playwright tests whose checks verify real browser rendering, computed styles, DOM state, and runtime behavior alongside static AST checks, with an automated retry loop (up to 5 attempts / 4 retries) during calibration.
 - **Standalone Skills CLI Serving**: Serving guidance via Agent Skills and `dist/skills-cli` provides deterministic, portable tool access across all supported coding agents without external server dependencies.
 
 ---

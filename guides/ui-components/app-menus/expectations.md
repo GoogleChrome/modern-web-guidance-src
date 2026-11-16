@@ -1,6 +1,7 @@
 # Application menu bar expectations
 
 - The top-level triggers are direct children of a container with `role="menubar"` and an accessible name, and no `[popover]` element has `role="menubar"`.
+- The top-level triggers have an accessible name that includes their visible text labels, along with `role="menuitem"`
 - Exactly one top-level trigger in the menubar is in the `Tab` order (`tabindex="0"`) and every other top-level trigger has `tabindex="-1"`.
 - Each top-level trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, immediately followed by its `popover="auto"` menu, which contains an element with `focusgroup="menu nomemory"` labeled by the trigger via `aria-labelledby`.
 - Focusing a top-level trigger previews its menu and sets `aria-expanded="true"` without moving focus into the menu, and blurring a trigger that is only previewing closes that menu and sets `aria-expanded="false"`.

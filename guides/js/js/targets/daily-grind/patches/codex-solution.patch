@@ -1,0 +1,514 @@
+diff --git a/index.html b/index.html
+index 66c9173..cca908b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,143 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .toolbar-grid {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 14px 20px;
++      align-items: center;
++      justify-content: space-between;
++      margin-top: 22px;
++      padding: 14px 18px;
++      background: #fbf8f6;
++      border: 2px solid #e6dcd5;
++      border-radius: 6px;
++    }
++
++    .toolbar-grid label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .toolbar-grid select {
++      font: inherit;
++      padding: 6px 10px;
++      border-radius: 4px;
++      border: 1px solid #8d6e63;
++      background: white;
++      color: var(--text);
++    }
++
++    .counts-row {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: flex-start;
++      gap: 10px;
++      margin-top: 14px;
++      font-size: 0.85rem;
++    }
++
++    .count-pill {
++      background: #ede7e3;
++      padding: 4px 12px;
++      border-radius: 4px;
++      font-weight: 600;
++    }
++
++    .item-specs {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin: 10px 0 6px;
++      font-size: 0.85rem;
++      color: #4e342e;
++      font-weight: 600;
++    }
++
++    .card button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .grouped-stack {
++      display: block;
++    }
++
++    .category-bucket {
++      margin-top: 26px;
++    }
++
++    .category-bucket > h3 {
++      margin-bottom: 12px;
++      color: var(--primary);
++      border-bottom: 1px dashed var(--secondary);
++      padding-bottom: 4px;
++    }
++
++    .draft-workbench {
++      margin-top: 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 6px;
++      border: 1px solid #d7ccc8;
++    }
++
++    .draft-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      margin: 14px 0;
++    }
++
++    .draft-toolbar select,
++    .draft-toolbar input,
++    .draft-toolbar button {
++      font: inherit;
++      padding: 8px 12px;
++      border-radius: 4px;
++      border: 1px solid #8d6e63;
++    }
++
++    .draft-toolbar button {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .draft-toolbar button.ghost-btn {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    .draft-queue {
++      list-style: none;
++      margin-top: 12px;
++      display: grid;
++      gap: 8px;
++    }
++
++    .draft-queue li {
++      padding: 10px 12px;
++      background: #f4efec;
++      border-radius: 4px;
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      font-size: 0.9rem;
++    }
++
++    .meta-status {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
+   </style>
+ </head>
+ 
+@@ -177,7 +314,36 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div id="menu-controls" class="toolbar-grid">
++        <label>
++          Category
++          <select id="category-picker">
++            <option value="all">All</option>
++            <option value="seasonal">Seasonal</option>
++            <option value="espresso">Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <label>
++          Sort
++          <select id="sort-picker">
++            <option value="featured">Featured</option>
++            <option value="price_asc">Price: Low to High</option>
++            <option value="price_desc">Price: High to Low</option>
++            <option value="alpha">Name: A to Z</option>
++          </select>
++        </label>
++        <label>
++          <input type="checkbox" id="reverse-toggle">
++          Reverse Order
++        </label>
++        <label>
++          <input type="checkbox" id="group-toggle">
++          Group by Category
++        </label>
++      </div>
++      <div id="category-badges" class="counts-row"></div>
++      <div id="drink-grid" class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -195,8 +361,46 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="draft-order" class="draft-workbench">
++      <h2>Draft Order Builder</h2>
++      <div class="draft-toolbar">
++        <label>
++          Milk
++          <select id="milk-choice">
++            <option value="Oat">Oat</option>
++            <option value="Whole">Whole</option>
++            <option value="Soy">Soy</option>
++          </select>
++        </label>
++        <label>
++          Special Instructions
++          <input type="text" id="special-note" placeholder="Extra shot, no foam...">
++        </label>
++        <button type="button" id="snapshot-save">Save Snapshot</button>
++        <button type="button" id="snapshot-restore" class="ghost-btn">Restore Snapshot</button>
++        <button type="button" id="draft-clear" class="ghost-btn">Clear Order</button>
++      </div>
++      <ul id="draft-list" class="draft-queue"></ul>
++      <p id="draft-placeholder">No drinks added to draft order.</p>
++      <p id="snapshot-msg" class="meta-status">No snapshot saved.</p>
++    </section>
+   </main>
+ 
++  <template id="card-template">
++    <div class="card">
++      <h3 data-field="name"></h3>
++      <div class="item-specs">
++        <span data-field="category"></span>
++        <span data-field="price"></span>
++      </div>
++      <p data-field="description"></p>
++      <button type="button" class="btn" data-action="add">Add to Order</button>
++    </div>
++  </template>
++
++  <script type="module" src="./scripts/app.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+diff --git a/scripts/app.js b/scripts/app.js
+new file mode 100644
+index 0000000..dfea6eb
+--- /dev/null
++++ b/scripts/app.js
+@@ -0,0 +1,275 @@
++const DRINKS = [
++  {
++    id: 'maple-oat-latte',
++    name: 'Maple Oat Latte',
++    category: 'seasonal',
++    categoryName: 'Seasonal',
++    price: 5.65,
++    description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++  },
++  {
++    id: 'dark-roast-espresso',
++    name: 'Dark Roast Espresso',
++    category: 'espresso',
++    categoryName: 'Espresso',
++    price: 3.45,
++    description: 'Bold, smokey, and perfect for a morning boost.',
++  },
++  {
++    id: 'cold-brew',
++    name: 'Cold Brew',
++    category: 'cold-brew',
++    categoryName: 'Cold Brew',
++    price: 4.40,
++    description: 'Steeped for 18 hours for maximum smoothness.',
++  },
++  {
++    id: 'toasted-pecan-macchiato',
++    name: 'Toasted Pecan Macchiato',
++    category: 'seasonal',
++    categoryName: 'Seasonal',
++    price: 6.10,
++    description: 'Espresso marked with steamed milk and toasted pecan praline.',
++  },
++  {
++    id: 'ristretto-cortado',
++    name: 'Ristretto Cortado',
++    category: 'espresso',
++    categoryName: 'Espresso',
++    price: 4.25,
++    description: 'Sweet ristretto shots equalized with silky microfoam.',
++  },
++  {
++    id: 'salted-caramel-cold-brew',
++    name: 'Salted Caramel Cold Brew',
++    category: 'cold-brew',
++    categoryName: 'Cold Brew',
++    price: 5.45,
++    description: 'Slow-steeped cold brew swirled with sea-salt caramel.',
++  },
++];
++
++const CATEGORY_DEFINITIONS = [
++  { id: 'seasonal', label: 'Seasonal' },
++  { id: 'espresso', label: 'Espresso' },
++  { id: 'cold-brew', label: 'Cold Brew' },
++];
++
++function getInitialFilters() {
++  const url = new URL(window.location.href);
++  return {
++    filter: url.searchParams.get('filter') || 'all',
++    order: url.searchParams.get('order') || 'featured',
++    desc: url.searchParams.get('desc') === '1',
++    grouped: url.searchParams.get('grouped') === '1',
++  };
++}
++
++function syncBrowserUrl(filters) {
++  const url = new URL(window.location.href);
++  if (filters.filter === 'all') url.searchParams.delete('filter');
++  else url.searchParams.set('filter', filters.filter);
++
++  if (filters.order === 'featured') url.searchParams.delete('order');
++  else url.searchParams.set('order', filters.order);
++
++  if (filters.desc) url.searchParams.set('desc', '1');
++  else url.searchParams.delete('desc');
++
++  if (filters.grouped) url.searchParams.set('grouped', '1');
++  else url.searchParams.delete('grouped');
++
++  window.history.replaceState(null, '', url.pathname + url.search + url.hash);
++}
++
++const filters = getInitialFilters();
++let orderState = {
++  lines: [],
++  tags: new Set(['pickup']),
++  lastModified: new Date(),
++};
++let storedSnapshot = null;
++
++const controlsPanel = document.getElementById('menu-controls');
++const categoryPicker = document.getElementById('category-picker');
++const sortPicker = document.getElementById('sort-picker');
++const reverseToggle = document.getElementById('reverse-toggle');
++const groupToggle = document.getElementById('group-toggle');
++const badgesContainer = document.getElementById('category-badges');
++const drinkGrid = document.getElementById('drink-grid');
++const cardTemplate = document.getElementById('card-template');
++
++const milkChoice = document.getElementById('milk-choice');
++const specialNote = document.getElementById('special-note');
++const snapshotSaveBtn = document.getElementById('snapshot-save');
++const snapshotRestoreBtn = document.getElementById('snapshot-restore');
++const draftClearBtn = document.getElementById('draft-clear');
++const draftList = document.getElementById('draft-list');
++const draftPlaceholder = document.getElementById('draft-placeholder');
++const snapshotMsg = document.getElementById('snapshot-msg');
++
++function deriveDisplayedDrinks() {
++  const matching = DRINKS.filter(
++    (item) => filters.filter === 'all' || item.category === filters.filter,
++  );
++
++  let sorted = matching;
++  switch (filters.order) {
++    case 'price_asc':
++      sorted = matching.toSorted((a, b) => a.price - b.price);
++      break;
++    case 'price_desc':
++      sorted = matching.toSorted((a, b) => b.price - a.price);
++      break;
++    case 'alpha':
++      sorted = matching.toSorted((a, b) => a.name.localeCompare(b.name));
++      break;
++    default:
++      break;
++  }
++
++  return filters.desc ? sorted.toReversed() : sorted;
++}
++
++function instantiateCard(drink) {
++  const fragment = cardTemplate.content.cloneNode(true);
++  const card = fragment.firstElementChild;
++  card.querySelector('[data-field="name"]').textContent = drink.name;
++  card.querySelector('[data-field="category"]').textContent = drink.categoryName;
++  card.querySelector('[data-field="price"]').textContent = `$${drink.price.toFixed(2)}`;
++  card.querySelector('[data-field="description"]').textContent = drink.description;
++  card.querySelector('[data-action="add"]').addEventListener('click', () => {
++    orderState.lines.push({
++      id: drink.id,
++      name: drink.name,
++      price: drink.price,
++      prefs: {
++        milk: milkChoice.value,
++        note: specialNote.value.trim() || 'Regular',
++        extras: new Set([milkChoice.value]),
++      },
++      createdAt: new Date(),
++    });
++    orderState.lastModified = new Date();
++    renderDraft();
++  });
++  return card;
++}
++
++function renderDrinks() {
++  const displayed = deriveDisplayedDrinks();
++  const groupedMap = Map.groupBy(displayed, (d) => d.category);
++
++  const badgeNodes = CATEGORY_DEFINITIONS.map((cat) => {
++    const items = groupedMap.get(cat.id) ?? [];
++    const badge = document.createElement('span');
++    badge.className = 'count-pill';
++    badge.textContent = `${cat.label}: ${items.length}`;
++    return badge;
++  });
++  badgesContainer.replaceChildren(...badgeNodes);
++
++  if (filters.grouped) {
++    drinkGrid.className = 'grouped-stack';
++    const sectionNodes = [];
++    for (const cat of CATEGORY_DEFINITIONS) {
++      const bucket = groupedMap.get(cat.id) ?? [];
++      if (bucket.length === 0) continue;
++      const groupSection = document.createElement('section');
++      groupSection.className = 'category-bucket';
++      const title = document.createElement('h3');
++      title.textContent = `${cat.label} (${bucket.length})`;
++      const cardsWrap = document.createElement('div');
++      cardsWrap.className = 'grid';
++      cardsWrap.replaceChildren(...bucket.map(instantiateCard));
++      groupSection.replaceChildren(title, cardsWrap);
++      sectionNodes.push(groupSection);
++    }
++    drinkGrid.replaceChildren(...sectionNodes);
++  } else {
++    drinkGrid.className = 'grid';
++    drinkGrid.replaceChildren(...displayed.map(instantiateCard));
++  }
++}
++
++function renderDraft() {
++  if (orderState.lines.length === 0) {
++    draftList.replaceChildren();
++    draftPlaceholder.hidden = false;
++    return;
++  }
++
++  draftPlaceholder.hidden = true;
++  const listNodes = orderState.lines.map((line) => {
++    const li = document.createElement('li');
++    const title = document.createElement('span');
++    title.textContent = `${line.name} (${line.prefs.milk}, ${line.prefs.note})`;
++    const meta = document.createElement('span');
++    meta.textContent = `$${line.price.toFixed(2)} • ${line.createdAt.toLocaleTimeString()}`;
++    li.replaceChildren(title, meta);
++    return li;
++  });
++  draftList.replaceChildren(...listNodes);
++}
++
++function emitStateEvent() {
++  const ev = new CustomEvent('daily-grind:filter-change', {
++    detail: { ...filters },
++    bubbles: true,
++    cancelable: false,
++  });
++  controlsPanel.dispatchEvent(ev);
++}
++
++function onFilterUpdated() {
++  syncBrowserUrl(filters);
++  renderDrinks();
++  emitStateEvent();
++}
++
++categoryPicker.value = filters.filter;
++sortPicker.value = filters.order;
++reverseToggle.checked = filters.desc;
++groupToggle.checked = filters.grouped;
++
++categoryPicker.addEventListener('change', () => {
++  filters.filter = categoryPicker.value;
++  onFilterUpdated();
++});
++
++sortPicker.addEventListener('change', () => {
++  filters.order = sortPicker.value;
++  onFilterUpdated();
++});
++
++reverseToggle.addEventListener('change', () => {
++  filters.desc = reverseToggle.checked;
++  onFilterUpdated();
++});
++
++groupToggle.addEventListener('change', () => {
++  filters.grouped = groupToggle.checked;
++  onFilterUpdated();
++});
++
++snapshotSaveBtn.addEventListener('click', () => {
++  storedSnapshot = structuredClone(orderState);
++  snapshotMsg.textContent = `Saved snapshot with ${storedSnapshot.lines.length} drink(s).`;
++});
++
++snapshotRestoreBtn.addEventListener('click', () => {
++  if (!storedSnapshot) return;
++  orderState = structuredClone(storedSnapshot);
++  renderDraft();
++  snapshotMsg.textContent = `Restored snapshot with ${orderState.lines.length} drink(s).`;
++});
++
++draftClearBtn.addEventListener('click', () => {
++  orderState.lines = [];
++  orderState.lastModified = new Date();
++  draftList.replaceChildren();
++  draftPlaceholder.hidden = false;
++});
++
++renderDrinks();
++renderDraft();

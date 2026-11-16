@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { getNextVersion, parsePublishOptions, validate, type DistTag } from './publish-skills.ts';
+import {
+  filterPublishFiles,
+  getNextVersion,
+  GH_CLAUDE_PUBLISH_PATTERNS,
+  GH_PUBLISH_PATTERNS,
+  parsePublishOptions,
+  validate,
+  type DistTag,
+} from './publish-skills.ts';
 import { processSkills } from './build-dist.ts';
 
 test('getNextVersion derive from git tag', async () => {
@@ -147,6 +155,58 @@ test('validate release embeds missing chunks with prune: true and enforces failO
 
   assert.deepStrictEqual(embedCalls, [{ prune: true }]);
   assert.deepStrictEqual(buildCalls, [{ version: '0.0.198', failOnMissingVectors: true, distTag: 'next' }]);
+});
+
+test('GH_CLAUDE_PUBLISH_PATTERNS strips disallowed file types and non-Claude manifests', () => {
+  const sampleFiles = [
+    '.claude-plugin/plugin.json',
+    '.claude-plugin/marketplace.json',
+    '.codex-plugin/plugin.json',
+    '.agents/plugins/marketplace.json',
+    '.cursor-plugin/plugin.json',
+    '.github/plugin/plugin.json',
+    '.github/img/modern-web-guidance.svg',
+    '.grok-plugin/marketplace.json',
+    '.gitignore',
+    'CONTRIBUTING.md',
+    'LICENSE',
+    'README.md',
+    'THIRD_PARTY_NOTICES',
+    'assets/logo.png',
+    'gemini-extension.json',
+    'kimi.plugin.json',
+    'package.json',
+    'plugin.json',
+    'policies/modern-web-guidance.toml',
+    'skills/chrome-extensions/SKILL.md',
+    'skills/chrome-extensions/references/extensions/popup-ui.md',
+    'skills/modern-web-guidance/SKILL.md',
+    'skills/modern-web-guidance/guides/forms/autofill.md',
+    'skills/modern-web-guidance/guides.json',
+    'skills/modern-web-guidance/modern-web.mjs',
+    'skills/modern-web-guidance/package.json',
+    'skills/modern-web-guidance/skill-version.txt',
+    'skills/modern-web-guidance/.cache/notes.md',
+    'skills/modern-web-guidance/gen/query-words.json',
+  ];
+
+  assert.deepStrictEqual(filterPublishFiles(sampleFiles, GH_CLAUDE_PUBLISH_PATTERNS), [
+    '.claude-plugin/plugin.json',
+    '.gitignore',
+    'assets/logo.png',
+    'CONTRIBUTING.md',
+    'LICENSE',
+    'README.md',
+    'skills/chrome-extensions/references/extensions/popup-ui.md',
+    'skills/chrome-extensions/SKILL.md',
+    'skills/modern-web-guidance/guides/forms/autofill.md',
+    'skills/modern-web-guidance/SKILL.md',
+  ]);
+
+  const mainFiles = filterPublishFiles(sampleFiles, GH_PUBLISH_PATTERNS);
+  assert.ok(mainFiles.includes('package.json'));
+  assert.ok(mainFiles.includes('.claude-plugin/marketplace.json'));
+  assert.ok(!mainFiles.includes('skills/modern-web-guidance/modern-web.mjs'));
 });
 
 
