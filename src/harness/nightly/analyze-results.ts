@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { extractJobSummary } from '../../dashboard/summary-extractor.js';
-import { isInfraErrorTrial, isUnguidedLeakTrial, parseResultKey } from '../../dashboard/utils.js';
+import { formatRatePct } from '../../dashboard/utils.js';
 import type { EvalsReport } from '../lib/metrics.ts';
 
 interface GenerationError {
@@ -9,37 +9,27 @@ interface GenerationError {
   message: string;
 }
 
-function formatPct(n: number, d: number): number {
-  const raw = d > 0 ? (n / d) * 100 : 0;
-  return raw > 0 && raw < 1 ? Number(raw.toFixed(1)) : Math.round(raw);
-}
-
 export function formatSuiteSummary(data: Partial<EvalsReport>): string {
-  let totalTrials = 0;
-  let unguidedTrials = 0;
-  let leaks = 0;
-  let infraErrors = 0;
-  for (const [key, runs] of Object.entries(data.results ?? {})) {
-    totalTrials += runs.length;
-    const isUnguided = key.endsWith(' - unguided');
-    if (isUnguided) unguidedTrials += runs.length;
-    const guide = isUnguided ? parseResultKey(key)?.guide : undefined;
-    for (const r of runs) {
-      if (isInfraErrorTrial(r.results)) infraErrors++;
-      if (isUnguided && isUnguidedLeakTrial(r, guide)) leaks++;
-    }
-  }
-  if (totalTrials === 0 || infraErrors === totalTrials) return '';
-  const s = extractJobSummary('suite', data);
-  if (!s) return '';
-  const { unguidedStats: u, guidedStats: g } = s;
-  const uRate = u.total > 0 ? `${Math.round((u.passed / u.total) * 100)}% (${u.passed}/${u.total})` : 'N/A';
-  const gRate = g.total > 0 ? `${Math.round((g.passed / g.total) * 100)}% (${g.passed}/${g.total})` : 'N/A';
+  const summary = extractJobSummary('suite', data);
+  const totalTrials = summary?.totalTrials ?? 0;
+  const infraErrors = summary?.earlyFailureCount ?? 0;
+  if (!summary || totalTrials === 0 || infraErrors === totalTrials) return '';
+
+  const { unguidedStats, guidedStats } = summary;
+  const unguidedRate = unguidedStats.total > 0
+    ? `${Math.round((unguidedStats.passed / unguidedStats.total) * 100)}% (${unguidedStats.passed}/${unguidedStats.total})`
+    : 'N/A';
+  const guidedRate = guidedStats.total > 0
+    ? `${Math.round((guidedStats.passed / guidedStats.total) * 100)}% (${guidedStats.passed}/${guidedStats.total})`
+    : 'N/A';
+  const leakRate = formatRatePct(summary.unguidedLeakCount ?? 0, summary.unguidedTrialCount ?? 0);
+  const errorRate = formatRatePct(infraErrors, totalTrials);
+
   return [
-    `Unguided pass rate: ${uRate}`,
-    `Guided pass rate: ${gRate}`,
-    `Leak rate: ${formatPct(leaks, unguidedTrials)}%`,
-    `Error rate: ${formatPct(infraErrors, totalTrials)}%`,
+    `Unguided pass rate: ${unguidedRate}`,
+    `Guided pass rate: ${guidedRate}`,
+    `Leak rate: ${leakRate}%`,
+    `Error rate: ${errorRate}%`,
   ].join('\n');
 }
 
