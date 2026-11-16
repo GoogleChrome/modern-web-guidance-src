@@ -438,6 +438,7 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       openUseCaseIssues,
       openFeatureIssues: [],
       gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
     });
 
     assert.equal(report.needsGuidancePrs.length, 1);
@@ -705,6 +706,14 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openUseCaseIssues: [],
       openFeatureIssues: [],
       gitHistory: new Map(),
+      weeklyProgressPoints: [
+        {
+          date: '2026-07-22',
+          label: 'Jul 22',
+          complete: EXPECTED_BASELINE_COMPLETE,
+          contentLanded: EXPECTED_BASELINE_COMPLETE,
+        },
+      ],
     });
 
     // Complete count includes accessibility/accessibility discipline guide
@@ -954,6 +963,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openUseCaseIssues: [],
       openFeatureIssues: [],
       gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
     });
 
     // Content landed = 1 complete + 2 needsEvals = 3
@@ -1000,6 +1010,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openUseCaseIssues: [],
       openFeatureIssues: [],
       gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
     });
     const markdown = renderPipelineIssueBody(report);
     assert.match(markdown, /#### Blocked \(1\)[\s\S]*\*\*forms\/button-group\*\*.* · listbox &lt;select&gt; lacks horizontal nav \(#1275\)/);
@@ -1031,6 +1042,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
         },
       ],
       gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
     });
 
     const markdown = renderPipelineIssueBody(report);
