@@ -48,7 +48,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
     </label>
   </div>
 
-  <output aria-live="polite"></output>
+  <output></output>
 </fieldset>
 ```
 
