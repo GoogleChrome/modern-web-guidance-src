@@ -474,8 +474,7 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
       assert.equal(findings[0]?.line, 3);
     });
 
-    // Marked as todo: style blocks inside HTML comments currently produce false positives on main (fix in PR #3588)
-    test.todo('style block inside HTML comment produces zero findings (pending PR #3588)', () => {
+    test('style block inside HTML comment produces zero findings', () => {
       const html = [
         '<!--',
         '<style>',
