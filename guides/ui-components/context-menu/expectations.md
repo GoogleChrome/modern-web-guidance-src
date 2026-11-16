@@ -6,7 +6,7 @@
 - The context menu popover resets `margin: 0` and `inset: auto`.
 - The context menu popover aligns to its anchor using `position-area`.
 - The context menu popover prevents viewport overflow using `position-try` or `position-try-fallbacks`.
-- Each target item contains a zero-sized, `position: absolute` anchor element for cursor positioning.
+- Each target item contains a zero-sized, `position: fixed` anchor element for cursor positioning.
 - Right-clicking a target item suppresses the browser's default context menu via `preventDefault()` on the `contextmenu` event.
 - Right-clicking a target item sets the cursor anchor element's `left` and `top` style coordinates relative to the target container.
 - Right-clicking a target item (on `mouseup` or `pointerup`) opens its context menu popover with `showPopover({ source })` referencing the cursor anchor element.

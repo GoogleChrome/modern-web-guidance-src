@@ -425,15 +425,6 @@
       if (first && isOpen(menu)) first.focus({ preventScroll: true });
     }
 
-    // Close a menu level and put focus back on its trigger. HTML only restores focus for the
-    // first popover in a light-dismiss stack, so nested submenus need this explicitly. Focus
-    // moves first: focus arriving from inside the menu does not start a new preview. A pointer
-    // activation restores focus without a ring; keyboard activations keep the browser's ring.
-    function closeAndRestore(menu, { fromPointer = false } = {}) {
-      triggerFor(menu)?.focus(fromPointer ? { preventScroll: true, focusVisible: false } : { preventScroll: true });
-      menu.hidePopover();
-    }
-
     // Safe triangle: when the pointer leaves a submenu trigger, CSS draws an invisible triangle from
     // that point to the submenu's near edge. Script only reports the pointer and decides how long the
     // bridge lives, on hover-capable devices. The apex stays where the pointer left: an apex that
@@ -513,6 +504,11 @@
       trigger.addEventListener('keydown', event => {
         if (event.key === 'Tab') closeAllMenus();
       });
+      // Keyboard-initiated opens should enter on open
+      trigger.addEventListener('click', event => {
+        const menu = menuFor(trigger);
+        if(event.detail === 0) enterOnOpen.add(menu)
+      })
     });
 
     // Top-level triggers are ordinary buttons: focusing one does nothing, and nothing links them.
@@ -573,7 +569,7 @@
         if (enterOnOpen.delete(menu)) focusFirst(menu);
         // Pointer open: keep focus on the trigger (no ring) so arrow keys work. The menu is already
         // open, so a submenu trigger's focus listener does not start a second preview.
-        else if (!menu.contains(document.activeElement)) trigger?.focus({ preventScroll: true, focusVisible: false });
+        else if (!menu.contains(document.activeElement)) trigger?.focus({ preventScroll: true });
       });
 
       // Hover follows focus: the pointed-at item takes focus without a ring, so hover and focus
@@ -585,7 +581,7 @@
         // The target can be stale: the move that leaves a submenu trigger is hit-tested before the
         // bridge exists, so check what is under the pointer now.
         if (!item.contains(document.elementFromPoint(event.clientX, event.clientY))) return;
-        item.focus({ preventScroll: true, focusVisible: false });
+        item.focus({ preventScroll: true });
       });
 
       // Focus landing on any other item in this menu closes its open submenus, including ones that
@@ -604,11 +600,6 @@
         if (event.key === 'Tab') {
           // Leave the menu system: close everything, then let Tab continue from the trigger.
           closeAllMenus();
-        } else if ((event.key === 'Home' || event.key === 'End') && menuItems(menu).includes(active)) {
-          // Home and End move to the first and last enabled item in this level.
-          event.preventDefault();
-          const items = menuItems(menu);
-          (event.key === 'Home' ? items[0] : items.at(-1)).focus({ preventScroll: true });
         } else if (event.key === 'ArrowRight' && activeSubmenu) {
           event.preventDefault();
           event.stopPropagation();
@@ -621,7 +612,9 @@
           // Close only this level; the parent menu stays open.
           event.preventDefault();
           event.stopPropagation();
-          closeAndRestore(menu);
+          // HTML only returns focus on the root trigger, so manually move focus to the trigger. UA handles focusVisible automatically. 
+          triggerFor(menu)?.focus({ preventScroll: true });
+          menu.hidePopover();
         }
       });
 
@@ -648,12 +641,11 @@
         lastKey = null;
         // A keyboard-initiated click has detail 0.
         const root = rootMenuOf(menu);
-        const fromPointer = event.detail > 0;
         // Selecting a checkable item changes its check mark: hold the menu open briefly so it is seen.
         if (role === 'menuitemcheckbox' || role === 'menuitemradio') {
-          setTimeout(() => { if (isOpen(root)) closeAndRestore(root, { fromPointer }); }, 300);
+          setTimeout(() => { if (isOpen(root)) root.hidePopover(); }, 300);
         } else {
-          closeAndRestore(root, { fromPointer });
+          root.hidePopover();
         }
       });
     });

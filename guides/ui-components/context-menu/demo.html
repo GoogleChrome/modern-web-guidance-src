@@ -137,6 +137,12 @@
         background-color: #ccc;
       }
 
+      /* Keyboard-only ring, separate from the active style. */
+      :focus-visible {
+        outline: .2rem solid #f90;
+        outline-offset: -.2rem;
+      }
+
       .trigger:active {
         background-color: #999;
       }
@@ -165,8 +171,7 @@
       }
 
       [focusgroup~="menu"] button:hover,
-      [focusgroup~="menu"] button:focus-visible,
-      [focusgroup~="menu"] button:focus {
+      [focusgroup~="menu"] button:focus-visible {
         background-color: #d2d5ed;
       }
     </style>
@@ -243,6 +248,12 @@
         return id ? document.getElementById(id) : null;
       };
 
+      const popovers = [...document.querySelectorAll('[popover]')];
+
+      function closeAllMenus() {
+        popovers.filter(menu=>menu.matches(':popover-open')).forEach(menu => menu.hidePopover());
+      }
+
       // Toggle Handler (Focus & ARIA)
       document.querySelectorAll("[popover]").forEach((menu) => {
         // Move focus to the hovered button
@@ -254,7 +265,7 @@
             item === document.activeElement
           )
             return;
-          item.focus({ preventScroll: true, focusVisible: false });
+          item.focus({ preventScroll: true });
         };
 
         menu.addEventListener("toggle", (event) => {
@@ -292,10 +303,21 @@
       const buttonTriggers = document.querySelectorAll("button[popovertarget]");
       buttonTriggers.forEach((buttonTrigger) => {
         buttonTrigger.addEventListener("click", (event) => {
-          // event.detail === 0 when triggered by keyboard
-          if (event.detail !== 0) return;
           const menu = menuFor(buttonTrigger);
           if (!menu) return;
+          if(!'source' in ToggleEvent.prototype){
+            menu.style.setAttribute('position-area', 'block-end span-inline-start;')
+          }
+          // Position the dropdown when anchor positioning is not supported.
+          if(!CSS.supports("anchor-name: --a")){
+            const {right, width, bottom: y} = event.target.getBoundingClientRect();
+            const x = document.body.clientWidth - right;
+            menu.style.removeProperty('left');
+            menu.style.right = `${x}px`;
+            menu.style.top = `${y}px`;
+          }
+          // event.detail === 0 when triggered by keyboard
+          if (event.detail !== 0) return;
           enterOnOpen.add(menu);
         });
       });
@@ -322,6 +344,9 @@
             }
           }
         }
+        if (event.key === 'Tab'){
+          closeAllMenus()
+        }
       });
 
       // Right-click logic
@@ -334,9 +359,14 @@
         const openContextMenu = (event) => {
           const x = event.clientX;
           const y = event.clientY;
-
-          anchor.style.left = `${x}px`;
-          anchor.style.top = `${y}px`;
+          if(CSS.supports("anchor-name: --a")){
+            anchor.style.left = `${x}px`;
+            anchor.style.top = `${y}px`;
+          } else {
+            popover.style.removeProperty('right');
+            popover.style.left = `${x}px`;
+            popover.style.top = `${y}px`;
+          }
 
           enterOnOpen.add(popover);
           popover.showPopover({ source: anchor });
@@ -360,7 +390,7 @@
         .querySelectorAll("[focusgroup~='menu'] button")
         .forEach((btn) => {
           btn.addEventListener("click", (event) => {
-            // If this button has a commandFor, it's a submenu trigger, not an action
+            // If this button has a popovertarget, it's a submenu trigger, not an action
             if (btn.hasAttribute("popovertarget")) return;
 
             // Close root popover in the chain. No submenus in this demo, but worth being robust

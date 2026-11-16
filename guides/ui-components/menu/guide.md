@@ -162,13 +162,14 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
 1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only. On a pointer open, `toggle` focuses the trigger without a ring instead, because `pointerdown` prevented focus and arrow keys must still work.
 2. **Submenu preview on focus.** Focusing a submenu trigger calls `showPopover({ source: trigger })` so the submenu anchors to it. Ignore focus returning from inside the trigger's own submenu (after `Escape`), or from another window (flag on window `blur`, cleared a tick after window `focus`). Hide a previewed submenu on `blur` unless focus moved into it. Top-level triggers get no preview: focusing them does nothing.
 3. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
-4. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`. After a pointer activation, restore focus without a ring (`focus({ focusVisible: false })`), or the trigger shows the keyboard focus outline after a mouse click; keyboard activations keep the ring. A click with `event.detail === 0` came from the keyboard.
-5. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
+4. **Restore focus to submenus trigger yourself.** HTML returns focus to the trigger when closing the root menu, but not to submenus. Focus the trigger before `hidePopover()`.
+5. **Don't override `focusVisible`.** The UA determines whether focus should be visible based on the user's input- do not duplicate or override the expected behavior.
+6. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
 
 ### Pointer handling
 
-1. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus. Remember which trigger was pressed. Clicking a closed trigger opens it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
-2. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway. Pointer focus on a submenu trigger runs the same submenu preview as keyboard focus, after a short delay so a pointer crossing the item does not flash its submenu.
+1. **Pointer click toggles.** Clicking a closed trigger opens it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
+2. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus()`; browsers will not match `:focus-visible` on focus changes coming from a mouse, but will match on keyboard-initiated focus changes. Pointer focus on a submenu trigger runs the same submenu preview as keyboard focus, after a short delay so a pointer crossing the item does not flash its submenu.
 3. **Safe triangle.** A static CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Let CSS draw a triangle from where the pointer left the trigger, and use script only to place it:
    * Run this only when `matchMedia('(hover: hover)').matches`; it is irrelevant to touch and keyboard.
    * Start on `pointerleave` of a submenu trigger whose submenu is open, at the event's position. Skip a `--below` submenu, which has no side edge.
@@ -239,7 +240,7 @@ Also:
 * **Outside focus.** Close every open menu when focus lands outside the menu system (a `document` `focusin` listener).
 * **Command activation.** Announce it, then hide the root menu and restore focus to its trigger, without a ring if the activation came from a pointer. For checkable items (`menuitemcheckbox`, `menuitemradio`), wait about 300 ms before closing so the changed check mark is visible. Style a closed trigger as active only on `:focus-visible`; otherwise the restored (ringless) focus leaves it highlighted after a pointer selection.
 * **`aria-expanded`.** Set it only in the `toggle` listener. It covers preview and open states, and a trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
-* **Helpers.** The fallbacks below assume helpers you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `closeAndRestore(menu, { fromPointer })` (focus the trigger, without a ring when `fromPointer`, then `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
+* **Helpers.** The fallbacks below assume helpers you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
 
 ### Submenus
 

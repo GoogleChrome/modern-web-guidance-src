@@ -131,6 +131,11 @@
       .trigger:focus-visible {
         background-color: #ccc;
       }
+      /* Keyboard-only ring, separate from the active style. */
+      :focus-visible {
+        outline: .2rem solid #f90;
+        outline-offset: -.2rem;
+      }
 
       .trigger:active {
         background-color: #999;
@@ -241,6 +246,12 @@
         return id ? document.getElementById(id) : null;
       };
 
+      const popovers = [...document.querySelectorAll('[popover]')];
+
+      function closeAllMenus() {
+        popovers.filter(menu=>menu.matches(':popover-open')).forEach(menu => menu.hidePopover());
+      }
+
       // Toggle Handler (Focus & ARIA)
       document.querySelectorAll("[popover]").forEach((menu) => {
         // Move focus to the hovered button
@@ -252,7 +263,7 @@
             item === document.activeElement
           )
             return;
-          item.focus({ preventScroll: true, focusVisible: false });
+          item.focus({ preventScroll: true });
         };
 
         menu.addEventListener("toggle", (event) => {
@@ -267,7 +278,7 @@
             if (enterOnOpen.has(menu)) {
               const firstItem = menu.querySelector("button:not([disabled])");
               if (firstItem) {
-                firstItem.focus({ focusVisible: true });
+                firstItem.focus();
               }
               enterOnOpen.delete(menu);
             }
@@ -316,9 +327,12 @@
             } else {
               // If popover is open, focus the first item
               const firstItem = menu.querySelector("button:not([disabled])");
-              if (firstItem) firstItem.focus({ focusVisible: true });
+              if (firstItem) firstItem.focus();
             }
           }
+        }
+        if (event.key === 'Tab'){
+          closeAllMenus()
         }
       });
 

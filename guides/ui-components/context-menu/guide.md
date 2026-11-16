@@ -164,22 +164,67 @@ If your Baseline target does not support Invoker Commands, use `popovertarget`.
 ```
 
 ### Fallback for Anchor Positioning and ToggleEvent source
-TODO: THIS IS WHERE I LEFT OFF
+
 {{ BASELINE_STATUS("anchor-positioning") }}
+
+If your Baseline target does not support CSS Anchor Positioning, you must manually calculate the `inset` coordinates of the popover in JavaScript. When triggered with a right click, set the insets in `openContextMenu` to the click position. When triggered by a button click, set the insets to the bottom edge of the button. This allows you to differentiate placement based on the trigger, but note that this does not handle overflow. 
+
+```js
+const openContextMenu = (event) => {
+  const x = event.clientX;
+  const y = event.clientY;
+  if(CSS.supports("anchor-name: --a") ){
+    anchor.style.left = `${x}px`;
+    anchor.style.top = `${y}px`;
+  } else {
+    popover.style.removeProperty('right');
+    popover.style.left = `${x}px`;
+    popover.style.top = `${y}px`;
+  }
+
+  enterOnOpen.add(popover);
+  popover.showPopover({ source: anchor });
+};
+
+buttonTrigger.addEventListener("click", (event) => {
+  const menu = menuFor(buttonTrigger);
+  if (!menu) return;
+  // Position the dropdown when anchor positioning is not supported.
+  if(!CSS.supports("anchor-name: --a")){
+    const {right, width, bottom: y} = event.target.getBoundingClientRect();
+    const x = document.body.clientWidth - right;
+    menu.style.removeProperty('left');
+    menu.style.right = `${x}px`;
+    menu.style.top = `${y}px`;
+  }
+});
+```
 
 {{ BASELINE_STATUS("toggleevent-source") }}
 
-If your Baseline target does not support CSS Anchor Positioning, you must manually calculate the `inset` coordinates of the popover in JavaScript. Use the `beforetoggle` event to handle this for both cursor and button triggers. Note that this does not handle overflow.
-
-If your Baseline target does not support the ToggleEvent source property, TODO.
+To differentiate the position based on trigger when `ToggleEvent` source is not available, but anchor positioning is, set the `position-area` in each of the triggers.
 
 ```js
-popover.addEventListener('beforetoggle', (event)=>{
-  if (event.newState === "open" && !("positionArea" in document.documentElement.style)) {
-    const rect = event.source.getBoundingClientRect();
-    popover.style.left = `${rect.left}px`;
-    popover.style.top = `${rect.bottom}px`;
+const openContextMenu = (event) => {
+  const x = event.clientX;
+  const y = event.clientY;
+  if(CSS.supports("anchor-name: --a") ){
+    anchor.style.left = `${x}px`;
+    anchor.style.top = `${y}px`;
+    if(!'source' in ToggleEvent.prototype){
+      popover.style.setAttribute('position-area', 'block-end span-inline-end')
+    }
+  } 
+  // ...
+};
+
+buttonTrigger.addEventListener("click", (event) => {
+  const menu = menuFor(buttonTrigger);
+  if (!menu) return;
+  if(!'source' in ToggleEvent.prototype){
+    menu.style.setAttribute('position-area', 'block-end span-inline-start')
   }
+  // ...
 });
 ```
 
