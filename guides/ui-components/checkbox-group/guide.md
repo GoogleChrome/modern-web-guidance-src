@@ -78,7 +78,7 @@ The master is a convenience control. The options remain the source of truth, and
 * Keep the label static ("Select all ..."). A label that flips between "Select all" and "Deselect all" is announced as a change in meaning to screen reader users, while the checked and mixed states already convey the current status.
 * Give the master no `name` attribute so it is not submitted with the form. Only the options carry `name` and `value`.
 * If there are no enabled options (including an empty list), set `disabled` on the master and give it the checked or mixed state the disabled options would produce (unchecked for an empty list).
-* For filtered or paginated lists, filter `options` to the visible, enabled items only, name that scope in the label (for example "Select all 12 shown"), and re-run `sync()` whenever the visible or enabled set changes.
+* For filtered or paginated lists, filter `options` to the visible, enabled items only, name that scope in the label (for example "Select all 12 shown"), and re-derive the master state whenever the visible or enabled set changes.
 
 ## 3. Styling
 
@@ -157,7 +157,7 @@ Align the hint with the label text, not the checkbox: use `display: block` and `
 
 ### Radio groups
 
-A radio group (mutually exclusive choice) uses the same structure: a `<fieldset>` with a `<legend>`, labeled native `<input type="radio">` elements sharing one `name`, the same layout, hint text, and `accent-color` styling. Omit the master checkbox, the indeterminate state, and the `sync()` script, and preselect a default option when one makes sense.
+A radio group (mutually exclusive choice) uses the same structure: a `<fieldset>` with a `<legend>`, labeled native `<input type="radio">` elements sharing one `name`, the same layout, hint text, and `accent-color` styling. Omit the master checkbox and preselect a default option when one makes sense.
 
 ### Long lists
 
