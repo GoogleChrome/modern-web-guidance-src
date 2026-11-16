@@ -175,7 +175,7 @@ Without a visible cue, a list cut exactly between rows looks complete and overla
 
 Pad the scroll container's inline-start edge by at least the focus ring's outline width plus offset, because `overflow` clips the ring where the checkboxes touch the edge.
 
-Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it.
+Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. Depending on the browser, the scroll container itself can also be in the tab order, so give it `role="group"` and an accessible name, for example with `aria-labelledby` pointing to the `<legend>`. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it in browsers that don't add the container to the tab order automatically.
 
 ## Fallback strategies
 
