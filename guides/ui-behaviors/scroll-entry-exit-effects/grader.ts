@@ -16,9 +16,10 @@ const demoUrl = `http://localhost/${demoName}`;
 interface AnimationStyles {
   animationNames: string[];
   animationTimeline: string;
+  declaredViewTimelines: string[];
   animationRangeStart: string;
   animationRangeEnd: string;
-  keyframesRules: string[];
+  keyframesRules: { name: string; selectors: string[] }[];
   hasSupports: boolean;
   supportsCondition: string;
   hasMedia: boolean;
@@ -32,6 +33,7 @@ async function getPageAnimationStyles(page: Page): Promise<AnimationStyles> {
       return {
         animationNames: [],
         animationTimeline: '',
+        declaredViewTimelines: [],
         animationRangeStart: '',
         animationRangeEnd: '',
         keyframesRules: [],
@@ -47,7 +49,16 @@ async function getPageAnimationStyles(page: Page): Promise<AnimationStyles> {
     const animationRangeStart = comp.getPropertyValue('animation-range-start') || (comp as any).animationRangeStart || '';
     const animationRangeEnd = comp.getPropertyValue('animation-range-end') || (comp as any).animationRangeEnd || '';
 
-    const keyframesRules: string[] = [];
+    const declaredViewTimelines: string[] = [];
+    for (const node of Array.from(document.querySelectorAll('*'))) {
+      const vtName = (window.getComputedStyle(node) as any).viewTimelineName || '';
+      for (const token of String(vtName).split(',')) {
+        const trimmed = token.trim();
+        if (trimmed.startsWith('--')) declaredViewTimelines.push(trimmed);
+      }
+    }
+
+    const keyframesRules: { name: string; selectors: string[] }[] = [];
     let hasSupports = false;
     let supportsCondition = '';
     let hasMedia = false;
@@ -55,9 +66,13 @@ async function getPageAnimationStyles(page: Page): Promise<AnimationStyles> {
 
     function traverse(rule: any) {
       if (rule instanceof CSSKeyframesRule) {
-        keyframesRules.push(rule.name);
+        const selectors: string[] = [];
+        for (let k = 0; k < rule.cssRules.length; k++) {
+          selectors.push((rule.cssRules[k] as CSSKeyframeRule).keyText || '');
+        }
+        keyframesRules.push({ name: rule.name, selectors });
       } else if (rule instanceof CSSSupportsRule) {
-        if (rule.conditionText.includes('animation-timeline')) {
+        if (rule.conditionText.includes('animation-timeline') || rule.conditionText.includes('view-timeline')) {
           hasSupports = true;
           supportsCondition = rule.conditionText;
         }
@@ -96,6 +111,7 @@ async function getPageAnimationStyles(page: Page): Promise<AnimationStyles> {
     return {
       animationNames,
       animationTimeline,
+      declaredViewTimelines,
       animationRangeStart,
       animationRangeEnd,
       keyframesRules,
@@ -105,6 +121,11 @@ async function getPageAnimationStyles(page: Page): Promise<AnimationStyles> {
       mediaCondition,
     };
   });
+}
+
+function hasEntryAndExitSelectors(selectors: string[]): boolean {
+  const joined = selectors.join(' ');
+  return /\bentry\b/.test(joined) && /\bexit\b/.test(joined);
 }
 
 // Tests
@@ -126,36 +147,50 @@ test.describe(`Scroll-Driven Animations Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('has defined separate @keyframes for entry and exit effects', async ({ page }) => {
+  test('Keyframes define entry and exit effects (two @keyframes or single @keyframes with entry/exit selectors)', async ({ page }) => {
     const data = await getPageAnimationStyles(page);
-    expect(data.keyframesRules.length).toBeGreaterThanOrEqual(2);
+    const hasTwoKeyframes = data.keyframesRules.length >= 2;
+    const hasSingleRangeKeyframes = data.keyframesRules.some(kf => hasEntryAndExitSelectors(kf.selectors));
+    expect(hasTwoKeyframes || hasSingleRangeKeyframes).toBe(true);
   });
 
-  test('has applied both animations to the target elements', async ({ page }) => {
+  test('Target elements attach entry and exit animation(s)', async ({ page }) => {
     const data = await getPageAnimationStyles(page);
-    expect(data.animationNames.length).toBeGreaterThanOrEqual(2);
+    const hasTwoAnimations = data.animationNames.length >= 2;
+    const hasSingleRangeAnimation = data.animationNames.length >= 1 && data.keyframesRules.some(
+      kf => data.animationNames.includes(kf.name) && hasEntryAndExitSelectors(kf.selectors)
+    );
+    expect(hasTwoAnimations || hasSingleRangeAnimation).toBe(true);
   });
 
-  test('has used animation-timeline: view() or view(inline) to link animations to the view timeline', async ({ page }) => {
+  test('Target elements link animations to an anonymous view() timeline or named view-timeline', async ({ page }) => {
     const data = await getPageAnimationStyles(page);
-    expect(data.animationTimeline).toMatch(/view\(/);
+    const usesAnonymousView = /view\(/.test(data.animationTimeline);
+    const usesNamedViewTimeline = data.animationTimeline.split(',')
+      .map(t => t.trim())
+      .some(t => t.startsWith('--') && data.declaredViewTimelines.includes(t));
+    expect(usesAnonymousView || usesNamedViewTimeline).toBe(true);
   });
 
-  test('has used animation-range: entry, exit to restrict animations', async ({ page }) => {
+  test('Animations are restricted to entry and exit via animation-range or keyframe selectors', async ({ page }) => {
     const data = await getPageAnimationStyles(page);
     const combinedRange = `${data.animationRangeStart} ${data.animationRangeEnd}`;
-    const hasEntryAndExit = combinedRange.includes('entry') && combinedRange.includes('exit');
-    expect(hasEntryAndExit).toBe(true);
+    const hasRangeProperty = combinedRange.includes('entry') && combinedRange.includes('exit');
+    const hasRangeKeyframes = data.keyframesRules.some(
+      kf => data.animationNames.includes(kf.name) && hasEntryAndExitSelectors(kf.selectors)
+    );
+    expect(hasRangeProperty || hasRangeKeyframes).toBe(true);
   });
 
-  test('includes feature detection using @supports', async ({ page }) => {
+  test('Feature detection uses @supports for scroll-driven timeline support and animation-range', async ({ page }) => {
     const data = await getPageAnimationStyles(page);
-    const hasCorrectSupports = data.hasSupports && 
-                               data.supportsCondition.includes('animation-timeline');
-    expect(hasCorrectSupports).toBe(true);
+    const cond = data.supportsCondition;
+    const hasTimeline = cond.includes('animation-timeline') || cond.includes('view-timeline');
+    const hasRange = cond.includes('animation-range');
+    expect(data.hasSupports && hasTimeline && hasRange).toBe(true);
   });
 
-  test('respects user preferences for reduced motion using @media', async ({ page }) => {
+  test('User preferences for reduced motion are respected using @media (prefers-reduced-motion)', async ({ page }) => {
     const data = await getPageAnimationStyles(page);
     const hasCorrectMedia = data.hasMedia && data.mediaCondition.includes('prefers-reduced-motion');
     expect(hasCorrectMedia).toBe(true);

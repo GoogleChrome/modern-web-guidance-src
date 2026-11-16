@@ -5,8 +5,6 @@ import path from 'path';
 import os from 'os';
 import { extractTokenUsageFromResults, extractModelFromResults } from './collection.ts';
 import {
-  collectGeminiToolsFromTrajectory,
-  collectGeminiGuidesFromTrajectory,
   collectClaudeToolsFromTrajectory,
   collectClaudeGuidesFromTrajectory,
   collectCodexToolsFromTrajectory,
@@ -79,34 +77,6 @@ test('Jetski CLI real trajectory parsing sanity check', async (t) => {
 
     assert.doesNotThrow(() => collectJetskiCliToolsFromTrajectory(tempDir));
     await assert.doesNotReject(async () => collectJetskiCliGuidesFromTrajectory(tempDir));
-  } finally {
-    cleanupTempDir(tempDir);
-  }
-});
-
-test('Gemini CLI real trajectory parsing sanity check', async (t) => {
-  const baseDir = path.join(os.homedir(), '.gemini', 'tmp');
-  const recentFiles = getMostRecentFiles(baseDir, '*/chats/*.{json,jsonl}');
-
-  if (recentFiles.length === 0) {
-    t.skip('No recent Gemini CLI trajectories found in ~/.gemini/tmp');
-    return;
-  }
-
-  const tempDir = setupTempSessionDir(recentFiles);
-  try {
-    const usage = extractTokenUsageFromResults(tempDir);
-    if (usage) {
-      assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
-      assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
-      assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
-    }
-
-    const model = extractModelFromResults(tempDir);
-    assert.ok(typeof model === 'string', 'Model extracted as string');
-
-    assert.doesNotThrow(() => collectGeminiToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectGeminiGuidesFromTrajectory(tempDir));
   } finally {
     cleanupTempDir(tempDir);
   }

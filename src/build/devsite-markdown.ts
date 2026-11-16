@@ -1,4 +1,11 @@
 import { marked, type Token, type Tokens } from "marked";
+import { getFeatureName } from "../core/baseline.ts";
+import {
+  FEATURE_GATES,
+  type FeatureGateId,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from "../core/feature-gates.ts";
 import { isGithubAlertType, type GithubAlertType } from "../core/guide-validation.ts";
 
 function isOrderedList(token: Token): token is Tokens.List {
@@ -298,4 +305,77 @@ function ensureBlankLineBeforeBlock(out: string[], prevToken: Token | undefined,
       out[lastIndex] = last + "\n".repeat(needed);
     }
   }
+}
+
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export interface DevsiteGateNoticesInput {
+  originTrials: readonly OriginTrialMetadata[];
+  volatileFeatures: readonly VolatileFeatureMetadata[];
+}
+
+function formatChromestatusSentence(originTrials: readonly OriginTrialMetadata[]): string {
+  const uniqueLinks = new Map<string, string>();
+  for (const trial of originTrials) {
+    if (!trial.chromestatus_url || uniqueLinks.has(trial.chromestatus_url)) {
+      continue;
+    }
+    uniqueLinks.set(trial.chromestatus_url, trial.name ?? getFeatureName(trial.id));
+  }
+  if (uniqueLinks.size === 0) return "";
+  if (uniqueLinks.size === 1) {
+    const [url] = uniqueLinks.keys();
+    return ` See the <a href="${escapeHtml(url)}">ChromeStatus entry</a> for current trial status and timeline.`;
+  }
+  const anchors = [...uniqueLinks.entries()]
+    .map(([url, label]) => `<a href="${escapeHtml(url)}">${escapeHtml(label)}</a>`)
+    .join(", ");
+  return ` See the ChromeStatus entries for current trial status and timeline: ${anchors}.`;
+}
+
+function formatGateCautionAside(gateKey: FeatureGateId, bodyHtml: string): string {
+  const gate = FEATURE_GATES[gateKey];
+  const heading = gate.headingLabel.charAt(0).toUpperCase() + gate.headingLabel.slice(1);
+  const command = `npx modern-web-guidance@latest ${gate.cliCommand}`;
+  return [
+    '<aside class="caution">',
+    `  <p><b>Caution: ${escapeHtml(heading)} require explicit project opt-in.</b></p>`,
+    `  <p>${bodyHtml}</p>`,
+    `  <p>To enable ${escapeHtml(gate.promptLabel)} for your project, run this command in your terminal:</p>`,
+    `  <pre class="prettyprint lang-shell">${escapeHtml(command)}</pre>`,
+    `  <p>This writes <code>{"${escapeHtml(gate.optInKey)}": true}</code> to your project's <code>.mwgrc</code> configuration.</p>`,
+    "</aside>",
+  ].join("\n");
+}
+
+/** Formats DevSite caution notices for Origin Trial and volatile features. */
+export function formatDevsiteGateNotices({
+  originTrials,
+  volatileFeatures,
+}: DevsiteGateNoticesInput): string[] {
+  const entries: Array<{ gateKey: FeatureGateId; active: boolean; bodyHtml: string }> = [
+    {
+      gateKey: "origin-trials",
+      active: originTrials.length > 0,
+      bodyHtml:
+        "This guide covers an active Origin Trial, which is experimental and subject to change. To prevent coding agents from adopting unstable APIs without developer consent, the Modern Web Guidance skill gates this guidance by default." +
+        formatChromestatusSentence(originTrials),
+    },
+    {
+      gateKey: "volatile-features",
+      active: volatileFeatures.length > 0,
+      bodyHtml:
+        "This guide covers a volatile feature that is shipped in only a single browser engine and may still change. To prevent coding agents from introducing single-engine dependencies without developer consent, the Modern Web Guidance skill gates this guidance by default.",
+    },
+  ];
+  return entries
+    .filter((entry) => entry.active)
+    .map((entry) => formatGateCautionAside(entry.gateKey, entry.bodyHtml));
 }

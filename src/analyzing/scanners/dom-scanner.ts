@@ -291,7 +291,9 @@ function querySelectorAllIncludingTemplates(
         child.tagName?.toLowerCase() === 'template' &&
         isLinkedomQueryableNode(child.content)
       ) {
-        results.push(...querySelectorAllIncludingTemplates(child.content, selector));
+        for (const nested of querySelectorAllIncludingTemplates(child.content, selector)) {
+          results.push(nested);
+        }
       } else {
         walk(child);
       }
@@ -334,6 +336,7 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
   filePath: string,
   htmlContent: string,
   rules: readonly T[],
+  rawDocumentText?: string,
 ): { rule: T; match: AnalyzerMatch }[] {
   const activeRules = rules.filter((r) =>
     matchesFastTokens(htmlContent, r.matcher.fastTokens),
@@ -349,7 +352,7 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
   }
   const ctx: DomMatcherContext = {
     filePath,
-    documentText: htmlContent,
+    documentText: rawDocumentText ?? htmlContent,
   };
 
   const results: { rule: T; match: AnalyzerMatch }[] = [];
@@ -378,6 +381,11 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
       }
       tokenIndex = matchRes.nextIndex;
 
+      // Glimmer's `...attributes` spreads the caller's attributes, like `{...props}` in JSX.
+      if (matcher.skipIfHasSpread && Object.hasOwn(elAttrs, '...attributes')) {
+        continue;
+      }
+
       const { line, column } = matchRes.token;
       const view = createDomElementView(tagLower, elAttrs, line, column);
       const result = matcher.matchElement(view, ctx);
@@ -405,11 +413,13 @@ export function scanHtml(
   filePath: string,
   htmlContent: string,
   rules: readonly DomRuleMatcher[],
+  rawDocumentText?: string,
 ): AnalyzerMatch[] {
   return scanHtmlRules(
     filePath,
     htmlContent,
     rules.map((matcher) => ({ matcher })),
+    rawDocumentText,
   ).map(({ match }) => match);
 }
 

@@ -1,3 +1,4 @@
-1. The `LanguageDetector` API should be available in the browser on `window.LanguageDetector`, but not on `window.ai.languageDetector`.
-1. The `LanguageDetector.availability()` function should return `available` or `downloadable` or `downloading` or `unavailable`.
-1. The `LanguageDetector.detect()` function should return an array of `LanguageDetectionResult` objects, each containing the detected language and confidence score.
+1. The page should use the `LanguageDetector` API on `window.LanguageDetector`, and must not access the deprecated `window.ai.languageDetector` API.
+1. The implementation should check API availability via `LanguageDetector.availability()`.
+1. The implementation should create a detector with `LanguageDetector.create()` and call `detect()` with the input text.
+1. The page should display the detected language result.

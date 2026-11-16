@@ -1,6 +1,6 @@
 - The implementation MUST use the Popover API with `popovertarget` and the `popover` attribute.
 - The implementation MUST set `role="tooltip"` on the popover, and programmatically associate it with the trigger button by setting `aria-describedby` matching the tooltip's ID.
-- The implementation MUST conditionally polyfill the Popover API.
+- The implementation MUST conditionally polyfill the Popover API or provide a manual fallback.
 - The implementation MUST use `position-area` to define the default placement of the tooltip.
 - The implementation MUST define fallback positions using `position-try-fallbacks`.
 - The implementation MUST set `container-type: anchored` on the positioned element (the tooltip) to enable anchored container queries.

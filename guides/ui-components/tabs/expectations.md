@@ -1,16 +1,34 @@
-- The implementation MUST NOT use the WAI-ARIA tabs pattern when the “tabs” cause page navigation.
-- The implementation SHOULD use `focusgroup` with its `tablist` behaviour which applies the `tablist` and `tab` semantics, as well as, `tablist` focus behaviour.
-- The implementation SHOULD use the `@microsoft/focusgroup-polyfill` instead of manually implementing a roving tab index pattern and the tablist/tab semantics.
-- The implementation MUST ensure any `<button>` elements that are tabs are not also form submitters (e.g. when nested in a form or as a reusable component, use `type=button`).
-- The implementation MUST associate a tab with its corresponding tab panel using `aria-controls` on the tab and `aria-labelledby` on the tab panel.
-- The implementation MUST set `role=tabpanel` for the tab panels.
-- The implementation MUST apply `aria-selected` semantics to the tabs and sync the visibility of the associated tab panel.
-- The implementation SHOULD use `nomemory` and sync `focusgroupstart` on the current selected tab when selection follows focus.
-- The implementation SHOULD use manual activation if tab panels are lazy loaded.
-- The implementation MUST provide an accessible name for the `focusgroup=tablist` element using `aria-label` or `aria-labelledby`.
-- The implementation SHOULD set `tabindex=0` on the current tab panel if it does not contain any focusable elements.
-- The implementation MUST NOT set `tabindex=0` on hidden tab panels.
-- The implementation SHOULD use the ARIAMixin `ariaLabelledByElements` and `ariaControlsElements` properties instead of IDRefs if support is available. Otherwise, use the `aria-labellbedby` and `aria-controls` attributes.
-- The implementation SHOULD only use `hidden=until-found` when the tab panel contents should be searchable with browser find-in-page.
-- When `hidden=until-found` is used for tab panel visibility, the implementation MUST listen for the `beforematch` event to sync the current selected tab state (i.e. `aria-selected` and `focusgroupstart`) and reset `hidden=until-found` on other tab panels.
-- The implementation MUST NOT apply box styles (e.g. padding, borders, margin) to tab panels that have `hidden=until-found` and MUST make appropriate layout considerations (e.g. if the parent layout is a grid or flexbox, elements with `hidden=until-found` do participate in those layouts and properties like `gap` will cause extra space).
+- Tabs are `<button>` elements, not links.
+- Every tab `<button>` has `type="button"`.
+- The tablist container has a `focusgroup` attribute whose value includes `tablist`.
+- The tablist container has an accessible name from `aria-label` or `aria-labelledby`.
+- The tablist container contains no focusable elements other than the tabs.
+- Every tab panel has `role="tabpanel"`.
+- Every tab panel is labelled by its tab via `aria-labelledby` or `ariaLabelledByElements`.
+- With JavaScript disabled, exactly one tab has `aria-selected="true"`.
+- With JavaScript disabled, every tab panel except the one associated with the selected tab is hidden.
+- After a tab is selected, it is the only tab with `aria-selected="true"`.
+- After a tab is selected, its tab panel is the only visible tab panel.
+- Hidden tab panels use the `hidden` attribute, with or without the value `until-found`.
+- After a tab is selected, it is the only tab with the `focusgroupstart` attribute.
+- The tablist's `focusgroup` attribute value includes `nomemory`.
+- Pressing `Tab` from before the tablist moves focus to the selected tab.
+- Pressing `Tab` while a tab is focused moves focus out of the tablist.
+- Pressing `ArrowRight` while a tab is focused moves focus to the next tab.
+- Pressing `ArrowLeft` while a tab is focused moves focus to the previous tab.
+- Pressing `Home` while a tab is focused moves focus to the first tab.
+- Pressing `End` while a tab is focused moves focus to the last tab.
+- Tabs are selected either when they receive focus (selection follows focus) or when the focused tab is activated with `Enter` or `Space` (selection by activation), and the same pattern is used consistently for every tab.
+- Clicking a tab selects it.
+- The visible tab panel has `tabindex="0"` when it contains no focusable elements.
+- No hidden tab panel has `tabindex="0"`.
+- Dispatching a `beforematch` event on a hidden tab panel sets `aria-selected="true"` on its tab.
+- Dispatching a `beforematch` event on a hidden tab panel sets `focusgroupstart` on its tab.
+- Dispatching a `beforematch` event on a hidden tab panel hides every other tab panel.
+- Every tab panel has a computed padding, border width, and margin of 0.
+- The selected tab is distinguished from the unselected tabs by more than color: it, its `::before`/`::after`, or a tablist pseudo-element anchored to it has a visible border or `text-decoration` that the unselected tabs lack.
+- With `forced-colors: active` emulated, the selected tab's indicator is still drawn with a border or `text-decoration`, not only with `box-shadow` or a background.
+- At a viewport narrower than the combined width of the tabs, all tabs are laid out on a single row (same `offsetTop`).
+- At a viewport narrower than the combined width of the tabs, every tab remains reachable: either the tablist scrolls horizontally, or the tabs that do not fit are listed in a menu opened by a button outside the tablist.
+- At a viewport narrower than the combined width of the tabs, the selected tab is fully visible within the tablist after it is selected by click, keyboard, or a `beforematch` event.
+- Native `focusGroup` support is detected with `Object.hasOwn(HTMLElement.prototype, 'focusGroup')`, and the `@microsoft/focusgroup-polyfill` polyfill is conditionally loaded only when native support is missing.

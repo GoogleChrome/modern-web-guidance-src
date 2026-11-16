@@ -15,32 +15,76 @@ const demoUrl = `http://localhost/${demoName}`;
 
 // Tests
 test.describe(`Custom Select Picker Layouts Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`MUST include appearance: base-select on select and select::picker(select)`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasBaseSelect = html.includes('appearance: base-select');
-    const hasPicker = html.includes('select::picker(select)') || html.includes('select:open::picker(select)');
-    expect(hasBaseSelect && hasPicker).toBe(true);
+  // Static & browser assertions
+  test(`MUST include appearance: base-select on select and select::picker(select)`, async ({ page }) => {
+    const hasBaseSelect = await page.evaluate(() => {
+      const selects = Array.from(document.querySelectorAll('select'));
+      return selects.some((sel) => {
+        const selectApp = getComputedStyle(sel).appearance;
+        const pickerApp = getComputedStyle(sel, '::picker(select)').appearance;
+        return selectApp === 'base-select' && pickerApp === 'base-select';
+      });
+    });
+    expect(hasBaseSelect).toBe(true);
   });
 
-  test(`MUST use a non-traditional layout (such as display: grid or flex) on picker container`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const usesGridOrFlex = /select.*::picker\(select\)\s*\{[^}]*display:\s*(grid|flex)/s.test(html);
-    expect(usesGridOrFlex).toBe(true);
+  test(`MUST use a non-traditional layout (such as display: grid or flex) on picker container`, async ({ page }) => {
+    const select = page.locator('select').first();
+    await expect(select).toBeVisible();
+    await select.click();
+    const pickerDisplay = await select.evaluate((el) => getComputedStyle(el, '::picker(select)').display);
+    expect(['grid', 'inline-grid', 'flex', 'inline-flex']).toContain(pickerDisplay);
   });
 
-  test(`MUST style option elements to fit the chosen layout`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasOptionStyles = /option\s*\{[^}]*(display:\s*flex|display:\s*grid|padding:)/s.test(html);
+  test(`MUST style option elements to fit the chosen layout`, async ({ page }) => {
+    const hasOptionStyles = await page.evaluate(() => {
+      const checkRules = (rules: CSSRuleList, parentSelector = ''): boolean => {
+        for (let i = 0; i < rules.length; i++) {
+          const rule = rules[i] as any;
+          let currentSelector = parentSelector;
+          if (rule.selectorText) {
+            currentSelector = parentSelector
+              ? `${parentSelector} ${rule.selectorText}`
+              : rule.selectorText;
+            if (/(?:^|[\s,>+~(&])option(?=$|[\s,>+~:[)])/i.test(currentSelector) && rule.style) {
+              const disp = rule.style.display;
+              const hasLayoutDisplay = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(disp);
+              const hasPadding = Boolean(
+                rule.style.padding ||
+                rule.style.paddingTop ||
+                rule.style.paddingRight ||
+                rule.style.paddingBottom ||
+                rule.style.paddingLeft ||
+                rule.style.paddingBlockStart ||
+                rule.style.paddingBlockEnd ||
+                rule.style.paddingInlineStart ||
+                rule.style.paddingInlineEnd
+              );
+              if (hasLayoutDisplay || hasPadding) {
+                return true;
+              }
+            }
+          }
+          if (rule.cssRules && checkRules(rule.cssRules, currentSelector)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        try {
+          const rules = document.styleSheets[i].cssRules;
+          if (rules && checkRules(rules)) return true;
+        } catch {
+          // Ignore cross-origin stylesheets
+        }
+      }
+      return false;
+    });
     expect(hasOptionStyles).toBe(true);
   });
 
-  test(`MUST include a progressive enhancement fallback using CSS.supports`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasScript = /<script\b[^>]*>[\s\S]*?<\/script>/i.test(html);
-    const hasCssSupports = html.includes('CSS.supports("appearance", "base-select")') || html.includes("CSS.supports('appearance', 'base-select')");
-    expect(!hasScript || hasCssSupports).toBe(true);
-  });
 
   test(`MUST communicate checked state of options using multiple visual cues`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');

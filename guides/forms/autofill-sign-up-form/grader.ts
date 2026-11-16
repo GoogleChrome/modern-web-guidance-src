@@ -30,7 +30,7 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Input elements MUST be within a <form> element', async ({ page }) => {
+  test('Input elements are within a `<form>` element.', async ({ page }) => {
     const allInputsInForm = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll('input'));
       if (inputs.length === 0) return false;
@@ -39,11 +39,11 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
     expect(allInputsInForm).toBe(true);
   });
 
-  test('The form MUST have a submit button', async ({ page }) => {
+  test('The form has a submit button using `<button>` or `<input type="submit">`.', async ({ page }) => {
     await expect(page.locator('form button:not([type]), form button[type="submit"], form input[type="submit"]').first()).toBeVisible();
   });
 
-  test('Every <input> in the form MUST be labeled using a <label> element', async ({ page }) => {
+  test('Every `<input>` in the form is labeled using a `<label>` element.', async ({ page }) => {
     const allLabeled = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll('form input:not([type="submit"]):not([type="button"]):not([type="hidden"])'));
       if (inputs.length === 0) return false;
@@ -52,7 +52,7 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
     expect(allLabeled).toBe(true);
   });
 
-  test('Every <label> MUST have a "for" attribute matching an input "id"', async ({ page }) => {
+  test('Every `<label>` has a `for` attribute matching an input `id`.', async ({ page }) => {
     const labelsValid = await page.evaluate(() => {
       const labels = Array.from(document.querySelectorAll('label'));
       if (labels.length === 0) return false;
@@ -64,39 +64,39 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
     expect(labelsValid).toBe(true);
   });
 
-  test('The email input MUST have type="email"', async ({ page }) => {
+  test('The email input has `type="email"`.', async ({ page }) => {
     await expect(page.locator('input[type="email"]').first()).toBeVisible();
   });
 
-  test('The email input MUST have autocomplete="username"', async ({ page }) => {
+  test('The email input has `autocomplete="username"`.', async ({ page }) => {
     await expect(page.locator('input[type="email"]').first()).toHaveAttribute('autocomplete', /\busername\b/);
   });
 
-  test('The password input MUST have type="password"', async ({ page }) => {
+  test('The password input has `type="password"`.', async ({ page }) => {
     await expect(page.locator('input[type="password"]').first()).toBeVisible();
   });
 
-  test('The password input MUST have autocomplete="new-password"', async ({ page }) => {
+  test('The password input has `autocomplete="new-password"`.', async ({ page }) => {
     await expect(page.locator('input[type="password"]').first()).toHaveAttribute('autocomplete', /\bnew-password\b/);
   });
 
-  test('The email input MUST have the "required" attribute', async ({ page }) => {
+  test('The email input has the `required` attribute.', async ({ page }) => {
     await expect(page.locator('input[type="email"]').first()).toHaveJSProperty('required', true);
   });
 
-  test('The password input MUST have the "required" attribute', async ({ page }) => {
+  test('The password input has the `required` attribute.', async ({ page }) => {
     await expect(page.locator('input[type="password"]').first()).toHaveJSProperty('required', true);
   });
 
-  test('There MUST be exactly one email input', async ({ page }) => {
+  test('There is exactly one email input.', async ({ page }) => {
     await expect(page.locator('input[type="email"]')).toHaveCount(1);
   });
 
-  test('There MUST be exactly one password input', async ({ page }) => {
+  test('There is exactly one password input.', async ({ page }) => {
     await expect(page.locator('input[type="password"]')).toHaveCount(1);
   });
 
-  test('Name input pattern MUST NOT restrict to Latin-only characters', async ({ page }) => {
+  test('Name input pattern allows Unicode characters and does not restrict to Latin-only.', async ({ page }) => {
     const isValid = await page.evaluate(() => {
       const form = document.querySelector('form');
       if (!form) return false;

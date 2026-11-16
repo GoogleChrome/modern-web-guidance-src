@@ -5,7 +5,7 @@ import type {
   DomRuleMatcher,
 } from '../schema.ts';
 
-export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = '2548c8a287fc';
+export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = 'b673d8824bbc';
 
 const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
@@ -86,6 +86,8 @@ const SUPPORTED_EXTENSIONS = [
   '.tsx',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.php',
 ];
@@ -109,7 +111,36 @@ const NON_PAYMENT_INPUT_TYPES = new Set([
 export const autofillPaymentFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input',
-  fastTokens: ['card', 'cvv', 'cvc', 'csc', 'exp', 'credit', 'cc-'],
+  fastTokens: [
+    'card',
+    'Card',
+    'CARD',
+    'cvv',
+    'CVV',
+    'cvc',
+    'CVC',
+    'csc',
+    'CSC',
+    'exp',
+    'Exp',
+    'EXP',
+    'credit',
+    'Credit',
+    'CREDIT',
+    'cc-',
+    'cc_',
+    'ccNum',
+    'ccExp',
+    'ccCsc',
+    'ccCvv',
+    'ccCvc',
+    'ccName',
+    'CC-',
+    'CC_',
+    'security_code',
+    'security-code',
+    'securityCode',
+  ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

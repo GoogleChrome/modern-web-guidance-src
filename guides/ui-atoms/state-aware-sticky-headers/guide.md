@@ -77,7 +77,7 @@ Use the `@container scroll-state(...)` query to apply styles when the header is 
 }
 ```
 
-**Tip:** You can also use logical properties like `stuck: inset-block-start` or `stuck: inset-inline-start` to better support internationalization (i18n) and right-to-left (RTL) layouts by querying flow-relative edges rather than physical ones.
+**Tip:** You can also use logical properties like `stuck: block-start` or `stuck: inline-start` to better support internationalization (i18n) and right-to-left (RTL) layouts by querying flow-relative edges rather than physical ones.
 
 ### Notes on Dimension Changes
 

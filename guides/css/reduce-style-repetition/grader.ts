@@ -249,7 +249,26 @@ test.describe("CSS Function Grader", () => {
 
     const errorMsg = await page.evaluate((getCssInfoStr) => {
       const getCssInfo = new Function(`return (${getCssInfoStr})()`)();
-      const mainEl = document.querySelector('main .grid') || document.querySelector('.grid') || document.querySelector('main');
+      const { functions, elementDecls } = getCssInfo;
+      if (functions.length === 0) {
+        return 'No CSS @functions defined in the stylesheets.';
+      }
+
+      const candidates = [
+        document.querySelector('main'),
+        document.querySelector('main .grid'),
+        document.querySelector('.grid'),
+      ].filter(Boolean) as Element[];
+
+      const mainEl = candidates.find(el => {
+        return elementDecls.some((entry: any) =>
+          entry.elements.includes(el) &&
+          entry.decls.some((decl: any) =>
+            decl.property === 'grid-template-columns' &&
+            functions.some((fnName: string) => decl.value.includes(fnName + '('))
+          )
+        );
+      }) || document.querySelector('main .grid') || document.querySelector('.grid') || document.querySelector('main');
       if (!mainEl) return 'main element not found.';
 
       // 1. Verify computed grid-template-columns has exactly 1 column
@@ -259,13 +278,7 @@ test.describe("CSS Function Grader", () => {
         return `At 400px viewport, main grid-template-columns has ${tracks.length} tracks instead of 1: "${gridStyle}"`;
       }
 
-      // 2. Parse CSS
-      const { functions, elementDecls } = getCssInfo;
-      if (functions.length === 0) {
-        return 'No CSS @functions defined in the stylesheets.';
-      }
-
-      // 3. Verify main uses a custom @function for grid-template-columns
+      // 2. Verify main uses a custom @function for grid-template-columns
       const usesFunction = elementDecls.some((entry: any) => {
         if (!entry.elements.includes(mainEl)) return false;
         return entry.decls.some((decl: any) => {
@@ -292,27 +305,36 @@ test.describe("CSS Function Grader", () => {
 
     const errorMsg = await page.evaluate((getCssInfoStr) => {
       const getCssInfo = new Function(`return (${getCssInfoStr})()`)();
-      const mainEl = document.querySelector('main .grid') || document.querySelector('.grid') || document.querySelector('main');
-      if (!mainEl) return 'main element not found.';
-
-      // 1. Verify computed grid-template-columns has exactly 2 columns of equal width
-      const gridStyle = window.getComputedStyle(mainEl).gridTemplateColumns;
-      const tracks = gridStyle.trim().split(/\s+/).filter(Boolean);
-      if (tracks.length !== 2) {
-        return `At 1000px viewport, main grid-template-columns has ${tracks.length} tracks instead of 2: "${gridStyle}"`;
-      }
-
-      if (tracks[0] !== tracks[1]) {
-        return `At 1000px viewport, main grid columns are not of equal width: "${gridStyle}"`;
-      }
-
-      // 2. Parse CSS
       const { functions, elementDecls } = getCssInfo;
       if (functions.length === 0) {
         return 'No CSS @functions defined in the stylesheets.';
       }
 
-      // 3. Verify main uses a custom @function for grid-template-columns
+      const candidates = [
+        document.querySelector('main'),
+        document.querySelector('main .grid'),
+        document.querySelector('.grid'),
+      ].filter(Boolean) as Element[];
+
+      const mainEl = candidates.find(el => {
+        return elementDecls.some((entry: any) =>
+          entry.elements.includes(el) &&
+          entry.decls.some((decl: any) =>
+            decl.property === 'grid-template-columns' &&
+            functions.some((fnName: string) => decl.value.includes(fnName + '('))
+          )
+        );
+      }) || document.querySelector('main .grid') || document.querySelector('.grid') || document.querySelector('main');
+      if (!mainEl) return 'main element not found.';
+
+      // 1. Verify computed grid-template-columns has exactly 2 columns of equal width
+      const gridStyle = window.getComputedStyle(mainEl).gridTemplateColumns;
+      const tracks = gridStyle.trim().split(/\s+/).filter(Boolean);
+      if (tracks.length !== 2 || tracks[0] !== tracks[1]) {
+        return `At 1000px viewport, main grid-template-columns is not two equal columns: "${gridStyle}"`;
+      }
+
+      // 2. Verify main uses a custom @function for grid-template-columns
       const usesFunction = elementDecls.some((entry: any) => {
         if (!entry.elements.includes(mainEl)) return false;
         return entry.decls.some((decl: any) => {

@@ -18,6 +18,7 @@ import {
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
 import { findGraderFiles } from '../core/grader-lint.ts';
+import { replaceMacros } from '../core/macros.ts';
 import {
   type GuideInventory,
   GUIDE_FILE,
@@ -448,9 +449,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         }
 
         if (res.sharedFailingTests && res.sharedFailingTests.length > 0) {
-          console.error(cRed(`❌ All golden solutions failed the same assertion(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
+          console.error(cRed(`❌ All golden solutions failed the same check(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
           console.error(cYellow(`Aborting calibration immediately (0 retries). Presuming guide.md / expectations.md misalignment or broken test.`));
-          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared test assertions.');
+          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared grader checks.');
           return false;
         }
 
@@ -491,6 +492,13 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   return overallSuccess;
 }
 
+export function prepareTargetGuide(guideDirAbs: string, workDir: string): void {
+  const guidePath = path.join(guideDirAbs, GUIDE_FILE);
+  const rawGuide = fs.readFileSync(guidePath, 'utf-8');
+  const expandedGuide = replaceMacros(rawGuide, guidePath, { target: 'skills-cli' });
+  fs.writeFileSync(path.join(workDir, GUIDE_FILE), expandedGuide);
+}
+
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
   if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -498,7 +506,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    prepareTargetGuide(guideDirAbs, workDir);
 
     let prompt: string;
     if (patchType === 'zero-passrate') {
@@ -788,7 +796,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   console.log(`   ${GUIDE_FILE.padEnd(28)} \u2705 exists`);
   
   if (!inv.hasExpectations || inv.expectationsEmpty) {
-    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding checks)`);
   } else {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u2705 exists`);
   }

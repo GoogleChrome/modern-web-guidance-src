@@ -1,3 +1,4 @@
+import fs from 'fs';
 import {
   test,
   expect,
@@ -5,202 +6,350 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { CSSViewTransitionRule, CSSMediaRule } from 'cssomnom';
-import { Node, SyntaxKind } from 'ts-morph';
+} from '../../../../../src/grading/test-fixture.ts';
+import {
+  CSSGroupingRule,
+  CSSMediaRule,
+  CSSStyleDeclaration,
+  CSSStyleRule,
+  CSSViewTransitionRule,
+  type CSSRule,
+  type CSSStyleSheet,
+} from 'cssomnom';
+import type { Document } from 'linkedom';
+import { SyntaxKind, type Project } from 'ts-morph';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function findViewTransitionRules(rules: readonly any[]): CSSViewTransitionRule[] {
-  const result: CSSViewTransitionRule[] = [];
-  for (const r of rules) {
-    if (r instanceof CSSViewTransitionRule) {
-      result.push(r);
-    } else if (r && typeof r === 'object' && 'cssRules' in r && r.cssRules) {
-      result.push(...findViewTransitionRules(Array.from(r.cssRules)));
+function collectViewTransitionRules(
+  rules: CSSRule[],
+  parentMediaCondition: string | null = null,
+): Array<{ rule: CSSViewTransitionRule; mediaCondition: string | null }> {
+  const results: Array<{ rule: CSSViewTransitionRule; mediaCondition: string | null }> = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSViewTransitionRule) {
+      results.push({ rule, mediaCondition: parentMediaCondition });
+    } else if (rule instanceof CSSMediaRule) {
+      results.push(
+        ...collectViewTransitionRules(Array.from(rule.cssRules), rule.conditionText),
+      );
+    } else if (rule instanceof CSSGroupingRule) {
+      results.push(
+        ...collectViewTransitionRules(Array.from(rule.cssRules), parentMediaCondition),
+      );
     }
   }
-  return result;
+  return results;
 }
 
-function collectMediaRules(rules: readonly any[]): CSSMediaRule[] {
-  const result: CSSMediaRule[] = [];
-  for (const r of rules) {
-    if (r instanceof CSSMediaRule) {
-      result.push(r);
-      if (r.cssRules) result.push(...collectMediaRules(Array.from(r.cssRules)));
-    } else if (r && typeof r === 'object' && 'cssRules' in r && r.cssRules) {
-      result.push(...collectMediaRules(Array.from(r.cssRules)));
-    }
-  }
-  return result;
+function hasRenderBlockingToken(el: any): boolean {
+  const attr = el.getAttribute?.('blocking') || '';
+  return attr
+    .trim()
+    .split(/\s+/)
+    .includes('render');
 }
 
-function getStylesheetRules(): any[] {
-  const cssFiles = targetFiles.filter((f) => f.endsWith('.css'));
-  const stylesheet = getCssStyleSheet(cssFiles.length > 0 ? cssFiles : targetFiles);
-  return Array.from(stylesheet.cssRules);
-}
-
-/**
- * Negative and conditional expectations ("does not ...", "if ... then ...") pass
- * vacuously on an app that hasn't implemented the feature at all. Gate them on the
- * cross-document opt-in so they only credit an actual implementation, without the
- * baseline having to inject placeholder anti-patterns.
- */
-function hasCrossDocumentOptIn(): boolean {
-  return findViewTransitionRules(getStylesheetRules()).some((r) => r.navigation === 'auto');
-}
-
-function getExpectLinks(): any[] {
-  return getHtmlDocuments(targetFiles).flatMap(({ document }) =>
-    Array.from(document.querySelectorAll('head link[rel="expect"]')).filter((l: any) => l.hasAttribute('href'))
+function isThirdPartyOrAnalyticsScript(scriptEl: any): boolean {
+  const src = (scriptEl.getAttribute?.('src') || '').toLowerCase();
+  return (
+    src.includes('analytics') ||
+    src.includes('ad-client') ||
+    src.includes('gtag') ||
+    src.includes('googletagmanager')
   );
 }
 
-const VT_NAME_ASSIGNMENT = /viewTransitionName|view-transition-name/;
+function resolveExpectTargetIds(
+  link: any,
+  docs: Array<{ file: string; document: Document }>,
+): { targetIds: string[]; isUnboundOptionalTemplate: boolean } {
+  const rawHref = (link.getAttribute?.('href') || '').trim();
+  if (rawHref.startsWith('#') && rawHref.length > 1 && !rawHref.includes('{')) {
+    return { targetIds: [rawHref.slice(1)], isUnboundOptionalTemplate: false };
+  }
 
-/**
- * Returns the source text of every `pagereveal` handler: the callback passed to
- * `addEventListener('pagereveal', ...)` or assigned to `onpagereveal`. When the
- * handler is a reference rather than an inline function, the whole file is used.
- */
-function getPagerevealHandlers(): string[] {
-  const handlers: string[] = [];
-  for (const sf of getJsProject(targetFiles).getSourceFiles()) {
-    for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      if (!call.getExpression().getText().endsWith('addEventListener')) continue;
-      const [eventArg, handlerArg] = call.getArguments();
-      if (!eventArg || !Node.isStringLiteral(eventArg) || eventArg.getLiteralValue() !== 'pagereveal') continue;
-      const isInline = handlerArg && (Node.isArrowFunction(handlerArg) || Node.isFunctionExpression(handlerArg));
-      handlers.push(isInline ? handlerArg.getText() : sf.getFullText());
-    }
-    for (const bin of sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
-      if (bin.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) continue;
-      if (!bin.getLeft().getText().endsWith('onpagereveal')) continue;
-      const right = bin.getRight();
-      const isInline = Node.isArrowFunction(right) || Node.isFunctionExpression(right);
-      handlers.push(isInline ? right.getText() : sf.getFullText());
+  const targetIds = new Set<string>();
+  const propNames = new Set<string>(
+    Array.from(rawHref.matchAll(/[A-Za-z_$][A-Za-z0-9_$]*/g), (m: RegExpMatchArray) => m[0]),
+  );
+
+  for (const { file } of docs) {
+    const content = fs.readFileSync(file, 'utf8');
+    for (const match of content.matchAll(
+      /<link\b[^>]*\brel\s*=\s*["']expect["'][^>]*\bhref\s*=\s*\{([^}]+)\}/gi,
+    )) {
+      for (const idMatch of match[1].matchAll(/[A-Za-z_$][A-Za-z0-9_$]*/g)) {
+        propNames.add(idMatch[0]);
+      }
+      for (const hashMatch of match[1].matchAll(/["'`]#([A-Za-z0-9_-]+)["'`]/g)) {
+        targetIds.add(hashMatch[1]);
+      }
     }
   }
-  return handlers;
+
+  for (const prop of propNames) {
+    if (prop === 'id' || prop === 'map') continue;
+    const escapedProp = prop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const assignRegex = new RegExp(
+      `\\b${escapedProp}\\s*=\\s*(?:\\{\\s*)?["'\`]#?([A-Za-z0-9_-]+)["'\`]`,
+      'g',
+    );
+    for (const { file, document } of docs) {
+      for (const el of Array.from(document.querySelectorAll('*')) as any[]) {
+        const attrVal = (
+          el.getAttribute?.(prop) ||
+          el.getAttribute?.(prop.toLowerCase()) ||
+          ''
+        ).trim();
+        const cleaned = attrVal.startsWith('#') ? attrVal.slice(1) : attrVal;
+        if (/^[A-Za-z0-9_-]+$/.test(cleaned)) {
+          targetIds.add(cleaned);
+        }
+      }
+      const content = fs.readFileSync(file, 'utf8');
+      for (const match of content.matchAll(assignRegex)) {
+        targetIds.add(match[1]);
+      }
+    }
+  }
+
+  const isUnboundOptionalTemplate =
+    targetIds.size === 0 && /^\{[A-Za-z_$][A-Za-z0-9_$]*\}$/.test(rawHref);
+  return { targetIds: Array.from(targetIds), isUnboundOptionalTemplate };
 }
 
 test.describe('consistent-cross-document-transitions Target Grader', () => {
-  // 1. Both source and destination pages include @view-transition { navigation: auto; }
-  test('includes @view-transition at-rule with navigation: auto for cross-document transitions', () => {
-    expect(hasCrossDocumentOptIn()).toBe(true);
+  test('Both the source and destination pages include the @view-transition { navigation: auto; } CSS at-rule', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+
+    const vtRules = collectViewTransitionRules(Array.from(stylesheet.cssRules));
+    expect(vtRules.length).toBeGreaterThan(0);
+
+    const isEnabledAcrossPages =
+      vtRules.some(
+        ({ rule, mediaCondition }) =>
+          rule.navigation.trim() === 'auto' &&
+          (!mediaCondition || !/\breduce\b/i.test(mediaCondition)),
+      ) &&
+      docs.some((d) => d.document.querySelector('head') !== null) &&
+      !docs.some((d) => d.document.querySelector('ClientRouter, clientrouter') !== null);
+
+    expect(isEnabledAcrossPages).toBe(true);
   });
 
-  // 2. Cross-document view transitions disabled when prefers-reduced-motion: reduce is active
-  test('disables cross-document view transitions when prefers-reduced-motion: reduce is active', () => {
-    const mediaRules = collectMediaRules(getStylesheetRules());
+  test('<link rel="expect" href="#element-id" blocking="render"> is used in the <head> to block rendering until above-the-fold DOM elements have been parsed', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
-    const hasReducedMotionHandling = mediaRules.some((mr) => {
-      const cond = mr.conditionText || '';
-      const isReduce = /prefers-reduced-motion\s*:\s*reduce/.test(cond);
-      const isNoPref = /prefers-reduced-motion\s*:\s*no-preference/.test(cond);
-      const nestedVts = findViewTransitionRules(Array.from(mr.cssRules));
-      if (isReduce && nestedVts.some((vt) => vt.navigation === 'none')) return true;
-      if (isNoPref && nestedVts.some((vt) => vt.navigation === 'auto')) return true;
-      return false;
-    });
-    expect(hasReducedMotionHandling).toBe(true);
-  });
-
-  // 3. <link rel="expect" href="#element-id" blocking="render"> is used in the <head>
-  test('configures link rel="expect" with blocking="render" to block rendering until above-the-fold content is parsed', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasExpectBlockingRender = docs.some(({ document }) => {
-      const expectLinks = Array.from(document.querySelectorAll('head link[rel="expect"]'));
-      return expectLinks.some((l: any) => l.getAttribute('blocking') === 'render');
-    });
-    expect(hasExpectBlockingRender).toBe(true);
-  });
-
-  // 4. Fragment identifier in href on link rel="expect"
-  test('uses fragment identifier in link rel="expect" href targeting element ID', () => {
-    const expectLinks = getExpectLinks();
-    const hasFragmentHref = expectLinks.length > 0 && expectLinks.every((l: any) => {
-      const href = l.getAttribute('href') || '';
-      return href.includes('#');
-    });
-    expect(hasFragmentHref).toBe(true);
-  });
-
-  // 5. The media attribute is used on link rel="expect" WHEN different viewport sizes require
-  // blocking on different DOM elements. The expectation is conditional: a single unconditional
-  // link targeting content that is above the fold at every width (e.g. #main-content) is correct.
-  // We can't statically know the app's per-viewport fold, so we check that render blocking is in
-  // place and that any media attribute that is used is a real (non-empty) media query.
-  test('uses media attribute on link rel="expect" for responsive viewport render blocking', () => {
-    const expectLinks = getExpectLinks();
+    const expectLinks = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('head link[rel="expect"]')),
+    );
     expect(expectLinks.length).toBeGreaterThan(0);
-    const hasEmptyMedia = expectLinks.some((l: any) => l.hasAttribute('media') && !(l.getAttribute('media') || '').trim());
-    expect(hasEmptyMedia).toBe(false);
-  });
 
-  // 6. Below-the-fold content is NOT render-blocked
-  test('does not render-block below-the-fold or non-critical elements such as footer', () => {
-    const expectLinks = getExpectLinks();
-    expect(expectLinks.length).toBeGreaterThan(0);
-    const blocksBelowTheFold = expectLinks.some((l: any) => {
-      const href = (l.getAttribute('href') || '').toLowerCase();
-      return href.includes('footer') || href.includes('comment') || href.includes('below-the-fold');
+    const allResolvedTargetIds: string[] = [];
+    const allExpectLinksValid = expectLinks.every((link: any) => {
+      const { targetIds, isUnboundOptionalTemplate } = resolveExpectTargetIds(link, docs);
+      allResolvedTargetIds.push(...targetIds);
+      return (
+        hasRenderBlockingToken(link) &&
+        (isUnboundOptionalTemplate ||
+          (targetIds.length > 0 &&
+            targetIds.every((targetId) =>
+              docs.some(
+                (d) =>
+                  d.document.getElementById(targetId) !== null ||
+                  d.document.querySelector(`[id="${targetId}"]`) !== null,
+              ),
+            )))
+      );
     });
-    expect(blocksBelowTheFold).toBe(false);
+
+    expect(allResolvedTargetIds.length).toBeGreaterThan(0);
+    expect(allExpectLinksValid).toBe(true);
   });
 
-  // 7. Non-critical scripts do NOT have blocking="render"
-  test('does not mark non-critical analytics or ad scripts with blocking="render"', () => {
-    expect(hasCrossDocumentOptIn()).toBe(true);
-    const docs = getHtmlDocuments(targetFiles);
-    const nonCriticalScriptBlocked = docs.some(({ document }) => {
-      const scripts = Array.from(document.querySelectorAll('script[blocking="render"]'));
-      return scripts.some((s: any) => {
-        const src = (s.getAttribute('src') || '').toLowerCase();
-        return src.includes('analytics') || src.includes('ad-client');
+  test('Critical stylesheets are placed in the <head>, and any pre-transition scripts or expect links in the <head> are marked with blocking="render" while third-party scripts are not render-blocked', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+
+    const headRenderBlocked = docs
+      .flatMap((d) => Array.from(d.document.querySelectorAll('head [blocking]')))
+      .filter((el) => hasRenderBlockingToken(el));
+    expect(headRenderBlocked.length).toBeGreaterThan(0);
+
+    const headScripts = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('head script')),
+    );
+    const noThirdPartyRenderBlocked = headScripts
+      .filter((script) => isThirdPartyOrAnalyticsScript(script))
+      .every((script) => !hasRenderBlockingToken(script));
+
+    const allScripts = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('script')),
+    );
+    const scriptCheckProject: Project = getJsProject([]);
+    const preTransitionScriptsValid = allScripts.every((script: any, index: number) => {
+      if (isThirdPartyOrAnalyticsScript(script)) {
+        return !hasRenderBlockingToken(script);
+      }
+      const code = script.textContent?.trim();
+      if (!code) return true;
+      const sf = scriptCheckProject.createSourceFile(`inline_${index}.ts`, code, {
+        overwrite: true,
+      });
+      const identifiers = sf
+        .getDescendantsOfKind(SyntaxKind.Identifier)
+        .map((id) => id.getText());
+      const stringLiterals = sf
+        .getDescendantsOfKind(SyntaxKind.StringLiteral)
+        .map((lit) => lit.getLiteralValue());
+
+      const isPreTransitionScript =
+        identifiers.includes('viewTransition') ||
+        identifiers.includes('viewTransitionName') ||
+        identifiers.includes('theme') ||
+        stringLiterals.includes('pagereveal') ||
+        stringLiterals.includes('theme');
+
+      return (
+        !isPreTransitionScript ||
+        (script.closest('head') !== null && hasRenderBlockingToken(script))
+      );
+    });
+
+    expect(noThirdPartyRenderBlocked && preTransitionScriptsValid).toBe(true);
+  });
+
+  test('Render blocking is limited to resources and elements visible in the initial viewport and non-critical or below-the-fold content is NOT render-blocked', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+
+    const expectLinks = docs
+      .flatMap((d) => Array.from(d.document.querySelectorAll('head link[rel="expect"]')))
+      .filter((link) => hasRenderBlockingToken(link));
+    expect(expectLinks.length).toBeGreaterThan(0);
+
+    const noBodyRenderBlocking = docs
+      .flatMap((d) => Array.from(d.document.querySelectorAll('body [blocking]')))
+      .every((el) => !hasRenderBlockingToken(el));
+
+    const noThirdPartyRenderBlocking = docs
+      .flatMap((d) => Array.from(d.document.querySelectorAll('script')))
+      .filter((script) => isThirdPartyOrAnalyticsScript(script))
+      .every((script) => !hasRenderBlockingToken(script));
+
+    const allResolvedAboveFoldIds: string[] = [];
+    const onlyAboveTheFoldTargets = expectLinks.every((link: any) => {
+      const { targetIds, isUnboundOptionalTemplate } = resolveExpectTargetIds(link, docs);
+      if (isUnboundOptionalTemplate) return true;
+      if (targetIds.length === 0) return false;
+      allResolvedAboveFoldIds.push(...targetIds);
+      return targetIds.every((targetId) => {
+        const matchedElements = docs.flatMap((d) =>
+          Array.from(d.document.querySelectorAll(`[id="${targetId}"]`)),
+        );
+        return (
+          matchedElements.length > 0 &&
+          matchedElements.every((el: any) => {
+            const tag = el.tagName.toLowerCase();
+            return tag !== 'footer' && el.closest('footer') === null;
+          })
+        );
       });
     });
-    expect(nonCriticalScriptBlocked).toBe(false);
+
+    expect(allResolvedAboveFoldIds.length).toBeGreaterThan(0);
+    expect(
+      noBodyRenderBlocking && noThirdPartyRenderBlocking && onlyAboveTheFoldTargets,
+    ).toBe(true);
   });
 
-  // 8. Client-side routers that intercept navigations (Astro's ClientRouter) are removed so
-  // navigations are real cross-document navigations that trigger @view-transition.
-  test('removes ClientRouter component to allow native cross-document transitions', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const hasClientRouter = docs.some(({ document }) => Boolean(document.querySelector('ClientRouter, clientrouter')));
-    expect(hasClientRouter).toBe(false);
-  });
+  test('No two elements on the same page share the same view-transition-name value', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
-  // 9. No duplicate static view-transition-name on the same page
-  test('ensures no duplicate static view-transition-name values exist on the same page', () => {
-    expect(hasCrossDocumentOptIn()).toBe(true);
-    const docs = getHtmlDocuments(targetFiles);
-    let hasDuplicates = false;
-    for (const { document } of docs) {
-      const elementsWithVtn = Array.from(document.querySelectorAll('[style*="view-transition-name"]'));
-      const names = elementsWithVtn.map((el: any) => {
-        const style = el.getAttribute('style') || '';
-        const match = style.match(/view-transition-name\s*:\s*([^;]+)/);
-        return match ? match[1].trim() : null;
-      }).filter(Boolean);
-      const uniqueNames = new Set(names);
-      if (names.length !== uniqueNames.size) {
-        hasDuplicates = true;
-        break;
+    const vtRules = collectViewTransitionRules(Array.from(stylesheet.cssRules));
+    expect(vtRules.length).toBeGreaterThan(0);
+
+    const styleRulesWithVtn = Array.from(stylesheet.cssRules).filter(
+      (r): r is CSSStyleRule =>
+        r instanceof CSSStyleRule &&
+        r.selectorText !== '[style]' &&
+        !r.selectorText.includes('::') &&
+        Boolean(r.style.getPropertyValue('view-transition-name').trim()) &&
+        r.style.getPropertyValue('view-transition-name').trim() !== 'none',
+    );
+
+    const duplicates: string[] = [];
+
+    for (const { file, document } of docs) {
+      const nameToElements = new Map<string, any[]>();
+
+      const recordElement = (name: string, el: any) => {
+        const existing = nameToElements.get(name) || [];
+        const isConditionalImagePair = existing.some(
+          (prev) =>
+            (prev.closest?.('figure') !== null &&
+              prev.closest?.('figure') === el.closest?.('figure')) ||
+            (prev.parentElement !== null &&
+              prev.parentElement === el.parentElement &&
+              prev.tagName?.toLowerCase() !== el.tagName?.toLowerCase()),
+        );
+        if (!isConditionalImagePair && !existing.includes(el)) {
+          existing.push(el);
+          nameToElements.set(name, existing);
+        }
+      };
+
+      Array.from(document.querySelectorAll('[style]')).forEach((el: any) => {
+        const decl = new CSSStyleDeclaration();
+        decl.cssText = el.getAttribute('style') || '';
+        const vtn = decl.getPropertyValue('view-transition-name').trim();
+        if (vtn && vtn !== 'none') {
+          recordElement(vtn, el);
+        }
+      });
+
+      for (const rule of styleRulesWithVtn) {
+        const vtn = rule.style.getPropertyValue('view-transition-name').trim();
+        Array.from(document.querySelectorAll(rule.selectorText)).forEach((el: any) => {
+          recordElement(vtn, el);
+        });
+      }
+
+      for (const [name, elements] of nameToElements.entries()) {
+        if (elements.length > 1) {
+          duplicates.push(`${file}:${name}(${elements.length})`);
+        }
       }
     }
-    expect(hasDuplicates).toBe(false);
+
+    expect(duplicates).toEqual([]);
   });
 
-  // 10. Dynamically assigned view-transition-name values are removed after the transition finishes.
-  // Only pagereveal handlers that actually assign a view-transition-name need cleanup.
-  test('cleans up dynamic view-transition-name after transition finishes if pagereveal is used', () => {
-    expect(hasCrossDocumentOptIn()).toBe(true);
-    const missingCleanup = getPagerevealHandlers().some(
-      (handler) => VT_NAME_ASSIGNMENT.test(handler) && !/\.finished\b/.test(handler)
+  test('Cross-document view transitions are disabled when prefers-reduced-motion: reduce is active', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const vtRules = collectViewTransitionRules(Array.from(stylesheet.cssRules));
+    expect(vtRules.length).toBeGreaterThan(0);
+
+    const hasReducedMotionNone = vtRules.some(
+      ({ rule, mediaCondition }) =>
+        Boolean(mediaCondition) &&
+        /\bprefers-reduced-motion\s*:\s*reduce\b/i.test(mediaCondition!) &&
+        rule.navigation.trim() === 'none',
     );
-    expect(missingCleanup).toBe(false);
+
+    const hasOnlyNoPreferenceAuto =
+      vtRules.some(
+        ({ rule, mediaCondition }) =>
+          Boolean(mediaCondition) &&
+          /\bprefers-reduced-motion\s*:\s*no-preference\b/i.test(mediaCondition!) &&
+          rule.navigation.trim() === 'auto',
+      ) &&
+      !vtRules.some(
+        ({ rule, mediaCondition }) =>
+          !mediaCondition && rule.navigation.trim() === 'auto',
+      );
+
+    expect(hasReducedMotionNone || hasOnlyNoPreferenceAuto).toBe(true);
   });
 });

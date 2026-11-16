@@ -3,7 +3,7 @@ import { Node, SyntaxKind, type CallExpression, type JsxAttribute, type SourceFi
 import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
-export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '0616906d0788';
+export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '99e3b42fb16a';
 
 // keyCode/which === 13 checks are deliberately absent: the keydown that confirms an IME
 // composition reports keyCode 229, so those handlers never fire mid-composition.
@@ -324,13 +324,14 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     ['keydown', 'onkeydown', 'onKeyDown'],
-    ['Enter'],
+    ["'Enter'", '"Enter"'],
+    ['key', 'code', 'case '],
   ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];
     }
-    if (ctx.fileContent && !/['"]Enter['"]/.test(ctx.fileContent)) {
+    if (ctx.fileContent && !ENTER_CHECK_REGEX.test(ctx.fileContent)) {
       return [];
     }
 

@@ -6,3 +6,4 @@
 - A progressive enhancement JavaScript fallback MUST be included. It MUST evaluate native CSS capability using `!CSS.supports("scroll-initial-target", "nearest")` before executing any scroll logic.
 - The fallback script MUST execute as soon as possible after the scroll container HTML is declared, and no later than `DOMContentLoaded`.
 - Inside the fallback check, the script MUST scroll to the main content element using `element.scrollIntoView({ behavior: 'instant', block: 'start' })` to precisely mimic the native `scroll-initial-target` position.
+- Each pull to reveal interaction also has an associated trigger `<button>` for revealing the to be revealed content.

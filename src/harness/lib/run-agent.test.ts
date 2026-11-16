@@ -129,7 +129,6 @@ console.log('ok');
       PI_CODING_AGENT: 'true',
       PI_CODING_AGENT_DIR: '/tmp/host/.pi/agent',
       CLAUDE_CODE_USE_VERTEX: '1',
-      GEMINI_CLI_TRUST_WORKSPACE: 'true',
       ANTIGRAVITY_GCP_PROJECT: 'eval-proj',
       PATH: `/home/host/.pi/agent/bin${path.delimiter}${process.env.PATH || ''}`,
     };
@@ -152,7 +151,6 @@ console.log('ok');
       assert.strictEqual(claudeChildEnv.PI_CODING_AGENT_DIR, undefined);
       assert.ok(!claudeChildEnv.PATH.includes('.pi/agent'));
       assert.strictEqual(claudeChildEnv.CLAUDE_CODE_USE_VERTEX, '1');
-      assert.strictEqual(claudeChildEnv.GEMINI_CLI_TRUST_WORKSPACE, 'true');
       assert.strictEqual(claudeChildEnv.ANTIGRAVITY_GCP_PROJECT, 'eval-proj');
 
       await runAgent(Agents.PI, 'test', tempDir, { captureOutput: true, homeDir: tempDir });

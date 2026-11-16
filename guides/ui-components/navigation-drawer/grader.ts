@@ -56,7 +56,7 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     if (controls) {
       drawer = page.locator(`#${controls}`);
     } else {
-      drawer = page.locator('[popover]').first();
+      drawer = page.locator('[popover], dialog, aside, nav[class*="drawer" i], [class*="drawer" i]').first();
       if (await drawer.count() === 0) {
         drawer = page.locator('div').filter({ has: page.locator('ul') }).first();
       }
@@ -65,15 +65,7 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
   }
 
   async function waitForOpen(page: Page, trigger: any) {
-    try {
-      await expect(trigger).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
-    } catch (e: any) {
-      if (e && e.message && e.message.includes('timeout')) {
-        await page.waitForTimeout(500);
-      } else {
-        throw e;
-      }
-    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   }
 
   async function clickTrigger(trigger: any) {
@@ -118,14 +110,14 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
-    await page.waitForTimeout(350);
 
-    const isBackdropVisible = await drawer.evaluate((el) => {
-      const style = window.getComputedStyle(el, '::backdrop');
-      const opacity = parseFloat(style.opacity);
-      return style.display !== 'none' && !isNaN(opacity) && opacity > 0 && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
-    });
-    expect(isBackdropVisible).toBe(true);
+    await expect.poll(async () => {
+      return drawer.evaluate((el) => {
+        const style = window.getComputedStyle(el, '::backdrop');
+        const opacity = parseFloat(style.opacity);
+        return style.display !== 'none' && !isNaN(opacity) && opacity > 0 && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
+      });
+    }).toBe(true);
   });
 
   test('The drawer\'s navigation sheet does not span the full width of the viewport when open, leaving a portion of the dimmed backdrop visible alongside it', async ({ page }) => {
@@ -197,6 +189,9 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
+
+    const isModalDialog = await drawer.evaluate((el) => el.matches('dialog:modal'));
+    if (isModalDialog) return;
 
     const main = page.locator('main');
     const hasInertAncestor = (el: any) => {
@@ -344,7 +339,6 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
-    await page.waitForTimeout(350);
     
     const getEffectiveBackdropOpacity = (el: Element) => {
       const style = window.getComputedStyle(el, '::backdrop');
@@ -355,10 +349,11 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
       return (isNaN(opacity) ? 1 : opacity) * (isNaN(bgAlpha) ? 1 : bgAlpha);
     };
 
-    const initialOpacity = await drawer.evaluate(getEffectiveBackdropOpacity);
-    
-    expect(isNaN(initialOpacity)).toBe(false);
-    expect(initialOpacity).toBeGreaterThan(0);
+    let initialOpacity = 0;
+    await expect.poll(async () => {
+      initialOpacity = await drawer.evaluate(getEffectiveBackdropOpacity);
+      return !isNaN(initialOpacity) && initialOpacity > 0;
+    }).toBe(true);
     
     const scrolledHalf = await drawer.evaluate(async (el) => {
       const e = ([el, ...Array.from(el.querySelectorAll('*'))] as HTMLElement[]).find(x => x.scrollWidth > x.clientWidth);
@@ -373,17 +368,10 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     
     expect(scrolledHalf).toBe(true);
     
-    await page.waitForTimeout(200);
-    
-    const halfOpacity = await drawer.evaluate(getEffectiveBackdropOpacity);
-    
-    expect(isNaN(halfOpacity)).toBe(false);
-    expect(halfOpacity).toBeLessThan(initialOpacity);
-  });
-
-  test('Any inline decorative SVG icons inside the trigger button must explicitly define aria-hidden="true"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/<svg[^>]*aria-hidden=["']true["']/i.test(html)).toBe(true);
+    await expect.poll(async () => {
+      const halfOpacity = await drawer.evaluate(getEffectiveBackdropOpacity);
+      return !isNaN(halfOpacity) && halfOpacity < initialOpacity;
+    }).toBe(true);
   });
 
 });

@@ -19,7 +19,8 @@
     "bin/**/*",
     "src/**/*",
     "guides/**/*",
-    ".agents/skills/coherence-auditor/scripts/coherence-audit.ts"
+    ".agents/skills/coherence-auditor/scripts/coherence-audit.ts",
+    ".agents/skills/grader-replay/scripts/replay.ts"
   ],
 
   "exclude": [

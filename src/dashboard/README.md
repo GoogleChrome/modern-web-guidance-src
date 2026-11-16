@@ -1,6 +1,6 @@
 # Eval-View Dashboard
 
-The Eval-View Dashboard lets you visualize test results from the Modern Web Guidance eval harness.
+The Eval-View Dashboard lets you visualize evaluation results from the Modern Web Guidance eval harness.
 
 The dashboard can be view in two different ways:
 
@@ -21,7 +21,7 @@ When you visit the site, there is a button to sign in with your Google account. 
 The application fetches evaluation data directly from the private Google Cloud Storage bucket (`guidance-evals`) in the `chrome-kiwi-air-force-dev` GCP project.
 
 > [!IMPORTANT]
-> To view the suites and results on the dashboard, **your Google email address must be granted access** in the Google Cloud Console. You will need at minimum the `Storage Object Viewer` role on the `guidance-evals` bucket in the `chrome-kiwi-air-force-dev` project.
+> To view jobs and results on the dashboard, **your Google email address must be granted access** in the Google Cloud Console. You will need at minimum the `Storage Object Viewer` role on the `guidance-evals` bucket in the `chrome-kiwi-air-force-dev` project.
 
 ## Local Development
 

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { StaticEmbedder, STATIC_EMBEDDING_DIMS } from "./static-embedder.ts";
 import { dotProduct } from "./search.ts";
-import { quantizeAndExportStaticModel } from "./train-static-model.ts";
+import { quantizeAndExportStaticModel } from "./train-query-words.ts";
 
 test("StaticEmbedder initializes and produces 256-d unit vectors", () => {
   const embedder = StaticEmbedder.getInstance();

@@ -1,8 +1,17 @@
 {
+  "canvas-html": {
+    "reason": "recent-single-engine"
+  },
   "connection-allowlists": {
     "reason": "recent-single-engine"
   },
   "frame-sizing": {
+    "reason": "recent-single-engine"
+  },
+  "html-setters": {
+    "reason": "recent-single-engine"
+  },
+  "html-streaming-setters": {
     "reason": "recent-single-engine"
   },
   "languagedetector": {

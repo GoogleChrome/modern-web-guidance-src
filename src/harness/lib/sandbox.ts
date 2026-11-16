@@ -136,7 +136,7 @@ export function buildSandboxPolicy(
   ];
 
   const readOnlyPaths = [
-    // Agent CLI binaries (claude/codex/gemini) and their pnpm-linked dependencies.
+    // Agent CLI binaries (claude/codex/pi) and their pnpm-linked dependencies.
     path.join(repoRoot, 'node_modules'),
   ];
   const writablePaths: string[] = [];

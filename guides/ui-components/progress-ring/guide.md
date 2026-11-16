@@ -29,14 +29,19 @@ See the {{ GUIDE_REF("spinner") }} for handling indeterminate loading states.
 Use a wrapper to hold both the visual ring and the optional center content. The `<progress>` element remains the semantic source of truth. Use a utility class to visually hide the native progress bar while keeping it accessible.
 
 ```html
-<div class="ring-wrapper">
+<div class="progress-ring-wrapper">
   <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
-  <!-- Optional: Content to display in the center -->
-  <div class="ring-content">
+  <!-- Optional: Content to display in the center. Hidden from assistive
+       technologies because it repeats the value of the <progress> element. -->
+  <div class="progress-ring-content" aria-hidden="true">
     75%
   </div>
 </div>
 ```
+
+Hide the center content from assistive technologies with `aria-hidden="true"`. The `<progress>` element already exposes its value, so screen readers would otherwise announce it twice.
+
+If the center content shows the value in another form, such as "3 of 5 files" or a percentage, set the same text in `aria-valuetext` on the `<progress>` element whenever you update it, otherwise screen readers only get the number.
 
 ### 2. Styles
 
@@ -45,19 +50,19 @@ To style the `<progress>` element as a progress ring, first hide the default bro
 
 ```css
 /* Hide native bars */
-progress.loading-spinner:indeterminate::-webkit-progress-bar {
+progress.progress-ring::-webkit-progress-bar {
   display: none;
   background: none;
 }
-progress.loading-spinner:indeterminate::-webkit-progress-value {
+progress.progress-ring::-webkit-progress-value {
   display: none;
   background: none;
 }
-progress.loading-spinner:indeterminate::-moz-progress-bar {
+progress.progress-ring::-moz-progress-bar {
   display: none;
   background: none;
 }
-progress.loading-spinner:indeterminate::slider-fill {
+progress.progress-ring::slider-fill {
   display: none;
   background: none;
 }
@@ -65,7 +70,7 @@ progress.loading-spinner:indeterminate::slider-fill {
 
 #### Container and Ring
 
-The wrapper provides the positioning context. The `<progress>` element handles the visual gradient.
+The wrapper provides the positioning context. The `<progress>` element handles the visual gradient. Forced colors mode removes background gradients, so in `@media (forced-colors: active)`, opt the ring out with `forced-color-adjust: none` and draw it with system colors, or the ring disappears.
 
 ```css
 .progress-ring-wrapper {
@@ -95,6 +100,13 @@ progress.progress-ring {
   background-clip: border-area;
   border: var(--thickness) solid transparent;
   background-origin: border-box;
+
+  @media (forced-colors: active) {
+    /* Keeps the gradient, which forced colors mode removes, and draws it in system colors */
+    forced-color-adjust: none;
+    --fill-color: CanvasText;
+    --track-color: Canvas;
+  }
 }
 
 .progress-ring-content {

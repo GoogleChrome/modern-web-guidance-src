@@ -24,9 +24,6 @@ if ('content' in HTMLCanvasElement.prototype) {
 }
 ```
 
-> [!NOTE]
-> HTML-in-Canvas is supported from Chrome 157.
-
 2. Initialize `<canvas>` to support descendant HTML elements by adding the `content="drawable"` attribute to the `<canvas>` HTML element. Place your HTML content inside the `<canvas>` element, and add the `drawable` attribute to every element that you draw. An element with `drawable` captures its subtree, except nested descendants that are also `drawable`:
 
 ```html
@@ -257,9 +254,6 @@ if ('content' in HTMLCanvasElement.prototype) {
   // Use fallback strategy
 }
 ```
-
-> [!NOTE]
-> HTML-in-Canvas is supported from Chrome 157.
 
 2. Create a custom geometry and material for the HTML content.
 
