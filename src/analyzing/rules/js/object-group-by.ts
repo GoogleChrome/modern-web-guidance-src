@@ -459,6 +459,7 @@ export const objectGroupByMatcher: JsRuleMatcher = createJsAstMatcher({
 export const objectGroupByRule: AnalyzerRule = {
   id: 'js/object-group-by',
   guideId: 'js',
+  section: 'object-group-by',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace manual object-accumulator grouping loops and .reduce() calls with Object.groupBy().',
   matcher: objectGroupByMatcher,

@@ -477,6 +477,7 @@ export const jsUrlSearchParamsMatcher: JsRuleMatcher = createJsCallMatcher({
 export const jsUrlSearchParamsRule: AnalyzerRule = {
   id: 'js/url-search-params',
   guideId: 'js',
+  section: 'url-search-params',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace hand-rolled query-string parsing on location.search or location.href with URLSearchParams.',
   matcher: jsUrlSearchParamsMatcher,

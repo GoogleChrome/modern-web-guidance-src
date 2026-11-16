@@ -56,7 +56,7 @@ For specialized temporal, scheduling, and security workflows, consult the dedica
 
 ## 1. Immutable Data, Deep Cloning, and Grouping
 
-### Deep Cloning with `structuredClone()`
+### Deep Cloning with `structuredClone()` {#structured-clone}
 
 Use `structuredClone(value)` to deep-copy nested objects, arrays, and built-in platform types without round-tripping through a JSON string.
 
@@ -101,7 +101,7 @@ console.assert('optionalNote' in copy && copy.optionalNote === undefined);
 
 ---
 
-### Non-Mutating Array Copies and Reverse Search
+### Non-Mutating Array Copies and Reverse Search {#copying-array-methods}
 
 Use the copying array methods (`.toSorted()`, `.toReversed()`, `.toSpliced()`, `.with()`) and reverse search methods (`.findLast()`, `.findLastIndex()`) to transform or query arrays without mutating the source reference or allocating intermediate shallow clones.
 
@@ -139,7 +139,7 @@ const lastCompletedIndex = tasks.findLastIndex((task) => task.status === 'done')
 
 ---
 
-### Grouping Iterable Collections (`Object.groupBy()` and `Map.groupBy()`)
+### Grouping Iterable Collections (`Object.groupBy()` and `Map.groupBy()`) {#object-group-by}
 
 Use `Object.groupBy(items, callbackFn)` and `Map.groupBy(items, callbackFn)` to partition any iterable into array buckets in a single step.
 
@@ -176,7 +176,7 @@ const byTier = Map.groupBy(deliveries, (item) =>
 
 ## 2. Asynchronous Coordination, Cancellation, and Error Chaining
 
-### Externalized Promise Settlement (`Promise.withResolvers()`)
+### Externalized Promise Settlement (`Promise.withResolvers()`) {#promise-with-resolvers}
 
 Use `Promise.withResolvers()` when a promise's `resolve` and `reject` callbacks must be stored or invoked outside the `new Promise` executor scope (such as in event listeners, worker message handlers, stream queues, or cancellation tokens).
 
@@ -201,7 +201,7 @@ export function createRequestGate() {
 
 ---
 
-### Declarative Timeout and Composite Cancellation (`AbortSignal.timeout()` and `AbortSignal.any()`)
+### Declarative Timeout and Composite Cancellation (`AbortSignal.timeout()` and `AbortSignal.any()`) {#abort-signal-timeout}
 
 Use `AbortSignal.timeout(ms)` for time-bounded asynchronous operations and `AbortSignal.any(signals)` to combine multiple cancellation sources without manual timer bookkeeping.
 
@@ -238,7 +238,7 @@ export async function fetchJsonWithDeadline(url, userSignal, timeoutMs = 5_000) 
 
 ---
 
-### Chaining Error Causes with Error Cause Options
+### Chaining Error Causes with Error Cause Options {#error-cause}
 
 Attach the original caught error via the `{ cause }` options parameter whenever wrapping and re-throwing an exception across architectural layers.
 
@@ -275,7 +275,7 @@ export async function loadUserProfile(userId, readRecord) {
 
 ## 3. URL Query Manipulation and Binary Text Encoding
 
-### Parsing and Constructing Query Strings (`URLSearchParams`)
+### Parsing and Constructing Query Strings (`URLSearchParams`) {#url-search-params}
 
 Use `URLSearchParams` (and `new URL(input, base).searchParams`) to parse, inspect, mutate, and serialize query strings instead of manual `.split('&')` / `.split('=')` loops and `decodeURIComponent`.
 
@@ -311,7 +311,7 @@ endpoint.searchParams.append('limit', '50');
 
 ---
 
-### Binary UTF-8 Text Decoding and Encoding (`TextDecoder` and `TextEncoder`)
+### Binary UTF-8 Text Decoding and Encoding (`TextDecoder` and `TextEncoder`) {#text-decoder}
 
 Use `TextDecoder` and `TextEncoder` to convert between `Uint8Array` byte buffers and JavaScript strings.
 
@@ -350,7 +350,7 @@ export async function readUtf8Stream(readableStream) {
 
 ## 4. DOM Child Replacement and Custom Events
 
-### Atomic Child Replacement and Clearing (`Element.prototype.replaceChildren()`)
+### Atomic Child Replacement and Clearing (`Element.prototype.replaceChildren()`) {#replace-children}
 
 Use `element.replaceChildren(...nodesOrStrings)` to clear a container or replace all of its existing children in a single operation.
 
@@ -385,7 +385,7 @@ export function clearTemplate(templateEl) {
 
 ---
 
-### Constructing Standard and Custom Events (`new Event()` and `new CustomEvent()`)
+### Constructing Standard and Custom Events (`new Event()` and `new CustomEvent()`) {#create-event}
 
 Use `new Event(type, options)`, `new CustomEvent(type, options)`, and specialized WebIDL event constructors instead of the deprecated `document.createEvent()` and `initEvent()` / `initCustomEvent()` methods.
 

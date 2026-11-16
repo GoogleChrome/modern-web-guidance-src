@@ -184,6 +184,7 @@ export const promiseWithResolversMatcher: JsRuleMatcher = createJsCallMatcher({
 export const jsPromiseWithResolversRule: AnalyzerRule = {
   id: 'js/promise-with-resolvers',
   guideId: 'js',
+  section: 'promise-with-resolvers',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace deferred new Promise() executors that assign resolve/reject externally with Promise.withResolvers().',
   matcher: promiseWithResolversMatcher,

@@ -289,6 +289,7 @@ export const jsErrorCauseMatcher: JsRuleMatcher = createJsCallMatcher({
 export const jsErrorCauseRule: AnalyzerRule = {
   id: 'js/error-cause',
   guideId: 'js',
+  section: 'error-cause',
   guideHash: JS_GUIDE_HASH,
   summary: 'Pass `{ cause: err }` as the second argument to `new Error(...)` instead of attaching `.cause` manually or concatenating the cause only into the message string.',
   matcher: jsErrorCauseMatcher,

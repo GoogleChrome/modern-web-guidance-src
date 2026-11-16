@@ -366,6 +366,7 @@ export const abortSignalTimeoutMatcher: JsRuleMatcher = createJsCallMatcher({
 export const abortSignalTimeoutRule: AnalyzerRule = {
   id: 'js/abort-signal-timeout',
   guideId: 'js',
+  section: 'abort-signal-timeout',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace manual AbortController + setTimeout timeout scaffolding with AbortSignal.timeout(ms).',
   matcher: abortSignalTimeoutMatcher,

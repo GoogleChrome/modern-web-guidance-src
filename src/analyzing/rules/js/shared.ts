@@ -14,7 +14,7 @@ import {
   unwrapPropertyAccess,
 } from '../../scanners/ast-helpers.ts';
 
-export const JS_GUIDE_HASH = '78d968c460dd';
+export const JS_GUIDE_HASH = 'abb1452d316f';
 
 export const TEMPLATE_NAME_RE = /(?:^|_|[a-z0-9])(?:template|tpl|tmpl)(?:El|Elem|Element|Node|Ref)?$/i;
 export const DOM_TYPE_RE = new RegExp(

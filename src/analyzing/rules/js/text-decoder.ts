@@ -375,6 +375,7 @@ export const jsTextDecoderMatcher: JsRuleMatcher = createJsAstMatcher({
 export const jsTextDecoderRule: AnalyzerRule = {
   id: 'js/text-decoder',
   guideId: 'js',
+  section: 'text-decoder',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace legacy decodeURIComponent(escape(...)), manual UTF-8 byte loops, and String.fromCharCode byte buffer decoding with TextDecoder.',
   matcher: jsTextDecoderMatcher,

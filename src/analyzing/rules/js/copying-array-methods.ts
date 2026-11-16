@@ -632,6 +632,7 @@ export const copyingArrayMethodsMatcher = createJsCallMatcher({
 export const copyingArrayMethodsRule: AnalyzerRule = {
   id: 'js/copying-array-methods',
   guideId: 'js',
+  section: 'copying-array-methods',
   guideHash: JS_COPYING_ARRAY_METHODS_GUIDE_HASH,
   summary: 'Replace shallow-copy array sorting, reversing, and reverse search with toSorted(), toReversed(), findLast(), and findLastIndex().',
   matcher: copyingArrayMethodsMatcher,

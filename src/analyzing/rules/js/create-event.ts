@@ -301,6 +301,7 @@ export const jsCreateEventMatcher: JsRuleMatcher = createJsCallMatcher({
 export const jsCreateEventRule: AnalyzerRule = {
   id: 'js/create-event',
   guideId: 'js',
+  section: 'create-event',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace legacy document.createEvent() + init*Event() sequences with standard Event constructors.',
   matcher: jsCreateEventMatcher,

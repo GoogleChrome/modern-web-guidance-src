@@ -456,6 +456,7 @@ export const jsReplaceChildrenMatcher: JsRuleMatcher = createJsAstMatcher({
 export const jsReplaceChildrenRule: AnalyzerRule = {
   id: 'js/replace-children',
   guideId: 'js',
+  section: 'replace-children',
   guideHash: JS_REPLACE_CHILDREN_GUIDE_HASH,
   summary:
     'Replace loops that remove all child nodes one by one (including forward live-collection loops that ' +

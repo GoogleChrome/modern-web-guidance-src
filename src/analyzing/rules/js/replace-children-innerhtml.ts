@@ -162,6 +162,7 @@ export const jsReplaceChildrenInnerHtmlMatcher: JsRuleMatcher = createJsAstMatch
 export const jsReplaceChildrenInnerHtmlRule: AnalyzerRule = {
   id: 'js/replace-children-innerhtml',
   guideId: 'js',
+  section: 'replace-children',
   guideHash: JS_REPLACE_CHILDREN_GUIDE_HASH,
   summary:
     'Replace standalone empty innerHTML assignments (el.innerHTML = "") with el.replaceChildren() to avoid ' +

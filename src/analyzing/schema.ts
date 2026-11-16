@@ -170,6 +170,7 @@ export type RuleMatcher =
 export interface AnalyzerRule {
   readonly id: string;
   readonly guideId: string;
+  readonly section?: string;
   readonly guideHash: string;
   readonly summary: string;
   readonly matcher: RuleMatcher;

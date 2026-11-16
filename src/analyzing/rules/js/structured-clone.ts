@@ -379,6 +379,7 @@ export const structuredCloneMatcher: JsRuleMatcher = createJsCallMatcher({
 export const structuredCloneRule: AnalyzerRule = {
   id: 'js/structured-clone',
   guideId: 'js',
+  section: 'structured-clone',
   guideHash: JS_GUIDE_HASH,
   summary: 'Replace JSON.parse(JSON.stringify(x)) deep-copy workarounds with structuredClone(x).',
   matcher: structuredCloneMatcher,
