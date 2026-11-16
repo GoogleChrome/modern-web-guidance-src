@@ -116,6 +116,9 @@ const TIMEOUT_MS = 900000;
  * @property {JobEfficiencyStats} efficiencyStats
  * @property {number} earlyFailureRate
  * @property {number} [earlyFailureCount]
+ * @property {number} [totalTrials]
+ * @property {number} [unguidedTrialCount]
+ * @property {number} [unguidedLeakCount]
  * @property {number} [guidedErrorRate]
  * @property {number} [unguidedErrorRate]
  * @property {number} [unguidedLeakRate]
@@ -213,8 +216,8 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
         totalTrials += trials.length;
         if (trials.length > maxTrials) maxTrials = trials.length;
 
-        const isGuided = key.endsWith(' - guided');
-        const isUnguided = key.endsWith(' - unguided');
+        const isGuided = parsedKey ? parsedKey.condition === 'guided' : key.endsWith(' - guided');
+        const isUnguided = parsedKey ? parsedKey.condition === 'unguided' : key.endsWith(' - unguided');
 
         if (parsedKey) {
             distinctBaseApps.add(parsedKey.baseApp);
@@ -498,6 +501,9 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
         efficiencyStats,
         earlyFailureRate: infraErrorRate,
         earlyFailureCount: summaryInfraErrors,
+        totalTrials,
+        unguidedTrialCount,
+        ...(unguidedLeaks > 0 ? { unguidedLeakCount: unguidedLeaks } : {}),
         guidedErrorRate: guidedErrorRate,
         unguidedErrorRate: unguidedErrorRate,
         ...(unguidedLeakRate > 0 ? { unguidedLeakRate } : {}),

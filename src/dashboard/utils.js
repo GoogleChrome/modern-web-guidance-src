@@ -281,6 +281,17 @@ export function isUnguidedLeakTrial(trial, fallbackGuide = '') {
     return !!(expected && guides.includes(expected));
 }
 
+/**
+ * Formats `count / total` as a percentage, preserving one decimal place for non-zero sub-1% rates.
+ * @param {number} count
+ * @param {number} total
+ * @returns {number}
+ */
+export function formatRatePct(count, total) {
+    const raw = total > 0 ? (count / total) * 100 : 0;
+    return raw > 0 && raw < 1 ? Number(raw.toFixed(1)) : Math.round(raw);
+}
+
 /** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
 export function getTrialStats(checks) {
     if (!checks || !checks.length || isInfraErrorTrial(checks)) return { rate: 0, passed: 0, total: 0 };
