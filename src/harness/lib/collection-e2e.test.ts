@@ -435,13 +435,15 @@ base_app: test-app
 
         // Unguided: only what run-suite writes before the agent starts.
         fs.writeFileSync(path.join(unguidedDir, 'run.mjs'), '');
+        fs.writeFileSync(path.join(unguidedDir, 'grade.mjs'), '// pre-created before agent starts');
         fs.writeFileSync(path.join(unguidedDir, 'package.json'), JSON.stringify({ scripts: { 'run-agent': 'node run.mjs' } }));
 
         const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
 
         assert.ok(allResults[`task - ${guideName} - guided`]);
         assert.strictEqual(allResults[`task - ${guideName} - unguided`], undefined);
-        assert.ok(!fs.existsSync(path.join(unguidedDir, 'grade.mjs')), 'unrun dir must not be set up for grading');
+        const unguidedPkg = JSON.parse(fs.readFileSync(path.join(unguidedDir, 'package.json'), 'utf8'));
+        assert.strictEqual(unguidedPkg.scripts?.['run-grader'], undefined, 'unrun dir must not be wired for grading');
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
