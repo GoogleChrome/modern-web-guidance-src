@@ -210,6 +210,10 @@ test('Manifest source paths resolve relative to dist directory', async () => {
 test('README template and dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   assert.ok(readmeRaw.includes('Modern Web Guidance'), 'README should contain title');
+  assert.ok(
+    readmeRaw.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'),
+    'README Updating section should include Claude Code official-marketplace migration snippet',
+  );
   
   // When dynamic coverage is injected (e.g. during publish-skills validation), verify its format
   if (readmeRaw.includes('#### The full list')) {

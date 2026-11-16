@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 import { guidesDir } from './paths.ts';
@@ -675,6 +675,31 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('scanAllGuides', () => {
+  test('scans the provided directory instead of the default guides directory', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-all-guides-test-'));
+    const guideDir = path.join(tmpDir, 'performance', 'my-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(guideDir, 'guide.md'),
+      `---\nname: my-guide\ndescription: A test guide\nweb-feature-ids: []\n---\n\n# My Guide\n`,
+    );
+
+    try {
+      const guides = scanAllGuides(tmpDir);
+      assert.strictEqual(guides.length, 1);
+      assert.strictEqual(guides[0].dir, guideDir);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('returns an empty list when the provided directory does not exist', () => {
+    const missingDir = path.join(os.tmpdir(), 'scan-all-guides-missing-' + Date.now());
+    assert.deepStrictEqual(scanAllGuides(missingDir), []);
   });
 });
 
