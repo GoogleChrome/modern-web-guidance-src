@@ -1,172 +1,126 @@
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
-import { rootDir, suitesDir } from '../core/paths.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { rootDir } from '../core/paths.ts';
 
-const ALLOWED_AGENTS = ['claude_code', 'codex_cli', 'antigravity_cli'];
-
-// Compare case-insensitively and ignore '-'/'_' so spelling variants (e.g. claude-code) still match.
-const normalizeAgent = (name: string) => name.toLowerCase().replace(/[-_]/g, '');
-const NORMALIZED_ALLOWED_AGENTS = new Set(ALLOWED_AGENTS.map(normalizeAgent));
-
-function isAgentAllowed(agent: string): boolean {
-  return NORMALIZED_ALLOWED_AGENTS.has(normalizeAgent(agent));
-}
-
-
+const ALLOWED_AGENTS = new Set(['claude_code', 'codex_cli', 'antigravity_cli']);
 const OUTPUT_PATH = path.join(rootDir, 'src/build/eval-results-summary.json');
+const PUBLIC_EVALS_REF = 'refs/remotes/origin/gh-pages';
 
-interface EvalsSummary {
+export interface EvalsSummary {
   testId: string;
   timestamp: string;
   agent: string;
-  serving: string;
   model: string;
   taskCount: number;
   assertionCount: number;
   unguidedPassRate: number;
   guidedPassRate: number;
-  skillVersion?: string;
-  cliVersion?: string;
 }
 
-function pullRecentGcsSuites(): string[] {
-  console.log(`Querying GCS (gs://guidance-evals) for the latest nightly evaluation suites...`);
-  if (!fs.existsSync(suitesDir)) {
-    fs.mkdirSync(suitesDir, { recursive: true });
-  }
-
-  try {
-    const lsOutput = execSync(`gcloud storage ls gs://guidance-evals/`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-    const lines = lsOutput.split('\n');
-    const targetFolders: string[] = [];
-
-    for (const line of lines) {
-      const clean = line.trim();
-      if (!clean) continue;
-      const match = clean.match(/gs:\/\/guidance-evals\/(nightly-[^/]+)\//);
-      if (match) {
-        targetFolders.push(match[1]);
-      }
-    }
-
-    targetFolders.sort((a, b) => b.localeCompare(a));
-
-    const topRecent = targetFolders.slice(0, 10);
-    console.log(`Discovered ${targetFolders.length} remote suites. Syncing evals.json for top ${topRecent.length} most recent suites...`);
-
-    for (const folderName of topRecent) {
-      const localSuiteDir = path.join(suitesDir, folderName);
-      const targetEvalsPath = path.join(localSuiteDir, 'evals.json');
-
-      if (fs.existsSync(targetEvalsPath)) {
-        console.log(`  - ${folderName}: evals.json already cached locally.`);
-        continue;
-      }
-
-      fs.mkdirSync(localSuiteDir, { recursive: true });
-      console.log(`  - ${folderName}: copying evals.json from GCS...`);
-      try {
-        execSync(`gcloud storage cp gs://guidance-evals/${folderName}/evals.json ${targetEvalsPath}`, { stdio: 'ignore' });
-      } catch (syncErr) {
-        console.warn(`    ⚠️ Failed to copy evals.json for ${folderName}`);
-      }
-    }
-    console.log(`✅ Successfully synced evals.json for top 10 recent nightly evaluation runs from GCS.`);
-    return topRecent;
-  } catch (err: any) {
-    console.error(`❌ Error: Failed to list GCS bucket gs://guidance-evals. Cannot collect evaluation results without access to remote GCS data.`);
-    process.exit(1);
-  }
+export interface PublicSuiteManifestEntry {
+  testId?: string;
+  timestamp?: string;
+  agent?: string;
+  model?: string;
+  taskCount?: number;
+  guidedStats?: { passed?: number; total?: number };
+  unguidedStats?: { passed?: number; total?: number };
 }
 
-function collectResults() {
-  const targetSuites = pullRecentGcsSuites();
-
-  console.log(`Aggregating results from ${targetSuites.length} verified suites...`);
+export function collectSummariesFromPublicEvals(
+  manifest: PublicSuiteManifestEntry[],
+  limit = 10,
+): EvalsSummary[] {
   const summaries: EvalsSummary[] = [];
 
-  for (let folderName of targetSuites) {
-    const suiteDir = path.join(suitesDir, folderName);
-    const evalsPath = path.join(suiteDir, 'evals.json');
+  for (const entry of manifest) {
+    const testId = typeof entry?.testId === 'string' ? entry.testId.trim() : '';
+    if (!/^nightly-[^/]+$/.test(testId)) continue;
 
-    if (!fs.existsSync(evalsPath)) {
-      console.warn(`Missing evals.json in ${folderName}`);
-      continue;
-    }
+    const agent = entry.agent ?? '';
+    if (!ALLOWED_AGENTS.has(agent)) continue;
 
-    try {
-      const content = fs.readFileSync(evalsPath, 'utf8');
-      const data = JSON.parse(content);
+    const taskCount = entry.taskCount ?? 0;
+    const guidedTotal = entry.guidedStats?.total ?? 0;
+    const unguidedTotal = entry.unguidedStats?.total ?? 0;
+    if (taskCount < 60 || guidedTotal < 500 || unguidedTotal === 0) continue;
 
-      let agent = data.agent || 'unknown';
-      if (agent.startsWith('jetski')) {
-        agent = 'antigravity_cli';
-        folderName = folderName.replace('jetski_cli', 'antigravity_cli');
-      }
+    const guidedPassRate = Math.round(((entry.guidedStats?.passed ?? 0) / guidedTotal) * 100);
+    const unguidedPassRate = Math.round(((entry.unguidedStats?.passed ?? 0) / unguidedTotal) * 100);
+    if (guidedPassRate === 0 || unguidedPassRate === 0) continue;
 
-      if (!isAgentAllowed(agent)) {
-        console.log(`Skipping ${folderName} (agent ${agent} not in allowlist)`);
-        continue;
-      }
+    const timestamp = entry.timestamp ?? '';
+    if (!timestamp || Number.isNaN(Date.parse(timestamp))) continue;
 
-      const summary = data.summary;
-      if (!summary) {
-        console.warn(`Missing summary in ${folderName}/evals.json`);
-        continue;
-      }
-
-      const taskCount = summary.taskCount || 0;
-      if (taskCount < 60) {
-        console.log(`Skipping ${folderName} (taskCount ${taskCount} < 60)`);
-        continue;
-      }
-      // broken run.
-      if (summary.unguidedPassRate == 0 || summary.guidedPassRate == 0 || summary.guidedTotal < 500) {
-        console.log(`Skipping ${folderName} (broken run probably)`);
-        continue;
-      }
-
-      // Historical runs may record a now-removed serving approach (e.g. `mcp`).
-      const serving = data.serving || 'unknown';
-
-      summaries.push({
-        testId: folderName,
-        timestamp: data.timestamp || new Date().toISOString(),
-        agent: agent,
-        serving: serving,
-        model: data.model || 'unknown',
-        taskCount: taskCount,
-        assertionCount: summary.guidedTotal ?? 0,
-        unguidedPassRate: summary.unguidedPassRate ?? 0,
-        guidedPassRate: summary.guidedPassRate ?? 0,
-        skillVersion: data.skillVersion,
-        cliVersion: data.cliVersion,
-      });
-    } catch (e) {
-      console.error(`Error reading/parsing ${folderName}/evals.json:`, e);
-    }
+    summaries.push({
+      testId,
+      timestamp,
+      agent,
+      model: entry.model || 'unknown',
+      taskCount,
+      assertionCount: guidedTotal,
+      unguidedPassRate,
+      guidedPassRate,
+    });
   }
 
-  // Sort by timestamp descending
-  summaries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  summaries.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+  return summaries.slice(0, limit);
+}
 
-  console.log(`Collected ${summaries.length} nightly runs.`);
+function fetchPublicEvalsManifest(): PublicSuiteManifestEntry[] {
+  execFileSync(
+    'git',
+    ['fetch', '--quiet', '--no-tags', 'origin', `+refs/heads/gh-pages:${PUBLIC_EVALS_REF}`],
+    { cwd: rootDir, stdio: ['pipe', 'pipe', 'pipe'] },
+  );
+  const rawManifest = execFileSync(
+    'git',
+    ['show', `${PUBLIC_EVALS_REF}:public-evals/suites.gen.json`],
+    { cwd: rootDir, encoding: 'utf8', maxBuffer: 50 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] },
+  );
+  const parsed = JSON.parse(rawManifest);
+  if (!Array.isArray(parsed)) {
+    throw new Error('public-evals/suites.gen.json is not a JSON array');
+  }
+  return parsed as PublicSuiteManifestEntry[];
+}
 
-  // Ensure directory exists
-  fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-
-  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(summaries, null, 2));
-  console.log(`Saved summary to ${OUTPUT_PATH}`);
-
-  console.log(`\nVerifying collected summary against evaluation regression guardrails...`);
+export function collectResults() {
+  let manifest: PublicSuiteManifestEntry[];
   try {
-    execSync('node --test src/build/eval-regression.test.ts', { cwd: rootDir, stdio: 'inherit' });
-    console.log(`✅ Regression guardrail checks passed successfully.`);
+    manifest = fetchPublicEvalsManifest();
   } catch (err) {
-    console.error(`\n❌ EVALUATION REGRESSION DETECTED! Please review the failures above before committing.`);
+    console.error(
+      'Failed to read public-evals/suites.gen.json from origin/gh-pages:',
+      err instanceof Error ? err.message : err,
+    );
+    process.exit(1);
+  }
+
+  const summaries = collectSummariesFromPublicEvals(manifest);
+  if (summaries.length === 0) {
+    console.error('No valid nightly evaluation runs found in public-evals/suites.gen.json.');
+    process.exit(1);
+  }
+
+  fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
+  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(summaries, null, 2) + '\n');
+  console.log(`Saved ${summaries.length} nightly eval summaries to ${OUTPUT_PATH}`);
+
+  try {
+    execFileSync(process.execPath, ['--test', 'src/build/eval-regression.test.ts'], {
+      cwd: rootDir,
+      stdio: 'inherit',
+    });
+  } catch {
+    console.error('Evaluation regression detected.');
     process.exit(1);
   }
 }
 
-collectResults();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  collectResults();
+}

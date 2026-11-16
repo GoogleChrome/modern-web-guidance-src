@@ -26,7 +26,7 @@ pnpm run publish-skills --tag latest --version 1.0.0
 ```
 
 **What the publishing pipeline does under the hood:**
-1. Collects the latest nightly eval benchmark summary from GCS.
+1. Collects the latest nightly eval benchmark summary from `gh-pages` (`public-evals/suites.gen.json`).
 2. Resolves the target version (`vX.Y.Z`, either explicit `--version` or auto-incremented patch) and updates all distribution and plugin manifests.
 3. Compiles source guides and skills into the distribution format (`dist/skills-cli/`).
 4. Runs distribution validation and installation test suites.
