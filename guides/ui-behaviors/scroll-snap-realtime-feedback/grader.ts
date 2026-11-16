@@ -133,12 +133,8 @@ test.describe('Scroll Snap Realtime Feedback', () => {
     const context2 = await page.context().browser()!.newContext();
     const page2 = await context2.newPage();
     await page2.addInitScript(() => {
-      // The handlers are defined on HTMLElement.prototype (GlobalEventHandlers) in supporting
-      // browsers, so remove them there too, or the feature still looks supported.
-      for (const proto of [HTMLElement.prototype, Element.prototype] as any[]) {
-        delete proto.onscrollsnapchanging;
-        delete proto.onscrollsnapchange;
-      }
+      delete (HTMLElement.prototype as any).onscrollsnapchanging;
+      delete (HTMLElement.prototype as any).onscrollsnapchange;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
