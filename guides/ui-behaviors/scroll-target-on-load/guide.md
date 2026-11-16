@@ -4,6 +4,7 @@ description: Build a scrollable list of elements (e.g. a carousel of images or a
 web-feature-ids:
   - scroll-initial-target
   - scroll-into-view
+  - focusgroup
 ---
 
 # Set a scroll target for the initial render
@@ -71,3 +72,5 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 ```
+
+{{ FEATURE_FALLBACKS("focusgroup") }}
