@@ -1,4 +1,4 @@
-- The card root is an `<article>`; a single link may wrap it only if the card contains no other interactive elements.
+- The card root is an `<article>`, or a `<label>` when the entire card is a radio or checkbox choice; a single link may wrap an `<article>` card only if it contains no other interactive elements.
 - A card's regions (media, heading or header, content, footer) are direct children of the card. A region with a single element is that element itself, not wrapped, and a wrapper appears only around multiple elements.
 - A card's descendants adapt with `@container` rules, and the size container is the card itself, not the grid or list parent.
 - A card with media stacks its media above its text content in a single column when its container is narrow, regardless of viewport width.

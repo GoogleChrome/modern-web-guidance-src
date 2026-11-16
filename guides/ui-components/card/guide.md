@@ -44,7 +44,7 @@ For card images or video that should fill a fixed-ratio area, set `aspect-ratio`
 
 Base the layout on the card's available space, not the viewport. To adapt the card's descendants (media, text, actions), make the card the size container (`container-type: inline-size`) and write `@container` rules against its children. Avoid sizing from the grid or list parent: the card's actual width can depend on column count, gaps and so on, making parent-based breakpoints are noisy.
 
-In a narrow container, stack the regions in source order. In a wide container, place the media in a side column beside the other regions, but only for cards that have media: scope those rules with `:has()` on the media child (for example `.card:has(> img)`) so the column definitions and `grid-column` placements never apply to a card without media. A card without media stays single-column at every width, and must not reserve an empty media column.
+In a narrow container, stack the regions in a single column with media visually at the top, followed by the remaining regions in source order. In a wide container, place the media in a side column beside the other regions, but only for cards that have media: scope those rules with `:has()` on the media child (for example `.card:has(> img)`) so the column definitions and `grid-column` placements never apply to a card without media. A card without media stays single-column at every width, and must not reserve an empty media column.
 
 ### Align cards in a grid
 
@@ -140,9 +140,18 @@ Style the selected card with `:has(:checked)`. Never change layout-affecting pro
   &:has(> :checked) {
     border-color: var(--accent);
   }
+
+  > input:focus-visible {
+    outline: none;
+  }
+
+  &:has(> input:focus-visible) {
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: 4px;
+  }
 }
 ```
 
-The visible checkbox or radio is itself a non-color indicator of selection, so the color change alone is sufficient. If the control is visually hidden (keep it focusable and in the accessibility tree, never `display: none`), add a non-color indicator that does not affect layout, such as a check icon or a thicker `outline`.
+The visible checkbox or radio is itself a non-color indicator of selection, so the color change alone is sufficient. If the control is visually hidden, keep it focusable and in the accessibility tree without `:not(:focus-within)` reveal rules that shift layout on focus, never use `display: none`, and add a non-color selection indicator that does not affect layout or overwrite the focus `outline`, such as a check icon or `box-shadow`.
 
 When choices belong in a dropdown picker whose options are laid out as cards, use a native `<select>` with `appearance: base-select` and style `::picker(select)` and `<option>` elements rather than replacing the select with `<div>` cards; see {{ GUIDE_REF("custom-select-picker-layouts") }} for more details and fallbacks.
