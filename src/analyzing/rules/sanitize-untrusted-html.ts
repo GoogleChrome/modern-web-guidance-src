@@ -6,6 +6,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
+  getCallAndBinaryDescendants,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
@@ -112,17 +113,18 @@ function matchDomInsertionSink(callExpr: CallExpression): AnalyzerMatch | null {
 
 export const sanitizerJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane'],
+  fastTokens: [
+    ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane'],
+    ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'html'],
+  ],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
-    sourceFile.forEachDescendant((node) => {
+    for (const node of getCallAndBinaryDescendants(sourceFile)) {
       const match = Node.isBinaryExpression(node)
         ? matchHtmlPropertyAssignment(node)
-        : Node.isCallExpression(node)
-          ? matchDomInsertionSink(node)
-          : null;
+        : matchDomInsertionSink(node);
       if (
         match &&
         !visitedLines.has(match.line) &&
@@ -131,7 +133,7 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
         visitedLines.add(match.line);
         matches.push(match);
       }
-    });
+    }
 
     return matches;
   },

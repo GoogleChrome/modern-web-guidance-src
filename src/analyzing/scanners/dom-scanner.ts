@@ -291,7 +291,9 @@ function querySelectorAllIncludingTemplates(
         child.tagName?.toLowerCase() === 'template' &&
         isLinkedomQueryableNode(child.content)
       ) {
-        results.push(...querySelectorAllIncludingTemplates(child.content, selector));
+        for (const nested of querySelectorAllIncludingTemplates(child.content, selector)) {
+          results.push(nested);
+        }
       } else {
         walk(child);
       }
@@ -378,6 +380,11 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
         continue;
       }
       tokenIndex = matchRes.nextIndex;
+
+      // Glimmer's `...attributes` spreads the caller's attributes, like `{...props}` in JSX.
+      if (matcher.skipIfHasSpread && Object.hasOwn(elAttrs, '...attributes')) {
+        continue;
+      }
 
       const { line, column } = matchRes.token;
       const view = createDomElementView(tagLower, elAttrs, line, column);

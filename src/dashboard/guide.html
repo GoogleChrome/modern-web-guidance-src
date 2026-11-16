@@ -9,6 +9,20 @@
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
+  <meta property="og:site_name" content="Modern Web Guidance Evals">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Guide Performance Trend — Modern Web Guidance Evals">
+  <meta property="og:description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
+  <meta property="og:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="2400">
+  <meta property="og:image:height" content="1260">
+  <meta property="og:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Guide Performance Trend — Modern Web Guidance Evals">
+  <meta name="twitter:description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
+  <meta name="twitter:image" content="https://googlechrome.github.io/modern-web-guidance-src/og-image.png">
+  <meta name="twitter:image:alt" content="Modern Web Guidance Evals: Lantern logo beside a dumbbell chart illustrating paired A/B pass-rate lift with Modern Web Guidance across Claude Code, Codex CLI, and Antigravity CLI.">
   <title>Guide Performance Trend</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
@@ -144,7 +158,7 @@
       </div>
 
       <div id="empty-state" class="empty-state" hidden>
-        <p>No historical runs found for this guide.</p>
+        <p>No historical jobs found for this guide.</p>
       </div>
     </main>
 
@@ -171,7 +185,7 @@
     // token. See vendor/README.md.
     // Known polyfill limit: its touch long-press only matches button[interestfor], so without native
     // interestfor (Firefox, Safari) the SVG <a> timeline points don't preview on touch; tapping
-    // still opens the run, whose page shows the same rates.
+    // still opens the job, whose page shows the same rates.
     if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
       import("./vendor/interestfor.js").catch(() => {});
     }

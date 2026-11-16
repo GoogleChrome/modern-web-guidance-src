@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { USE_CASES } from '../rag/guides.ts';
+import { DETECTED_AGENT_ENV_VARS } from './telemetry/detect-agent.ts';
 
 const scriptPath = path.resolve(import.meta.dirname, './modern-web.ts');
 const smallUngated = USE_CASES.find(
@@ -12,10 +13,10 @@ const smallUngated = USE_CASES.find(
 )?.id ?? 'accessible-generated-content';
 
 describe('modern-web CLI', () => {
-  const runCLI = (args: string[]) => {
+  const runCLI = (args: string[], envOverrides?: Record<string, string | undefined>) => {
     const result = spawnSync('node', [scriptPath, ...args], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', DISABLE_TELEMETRY: '1' }
+      env: { ...process.env, NO_COLOR: '1', DISABLE_TELEMETRY: '1', ...envOverrides }
     });
     return result;
   };
@@ -23,7 +24,39 @@ describe('modern-web CLI', () => {
   it('prints usage when no arguments provided', () => {
     const { stdout } = runCLI([]);
     assert.ok(stdout.includes('Usage: modern-web-guidance <command> [args]'));
+    assert.ok(stdout.includes('search <query>            Search use cases by English query'));
     assert.ok(stdout.includes('legacy-scan [path] [options]'));
+  });
+
+  it('hints on stderr when non-English search queries return empty or low results', () => {
+    // Pure Japanese query returns [] on stdout and emits English query hint on stderr
+    const japaneseRes = runCLI(['search', 'ダイアログを外側クリックで閉じる']);
+    assert.strictEqual(japaneseRes.status, 0);
+    assert.deepStrictEqual(JSON.parse(japaneseRes.stdout.trim()), []);
+    assert.ok(
+      japaneseRes.stderr.includes('Note: Search queries must be in English (e.g., search "light dismiss dialog").'),
+      `Expected English query hint in stderr, got: ${japaneseRes.stderr}`
+    );
+
+    // Mixed Japanese + single ASCII acronym query emits English query hint on stderr
+    const mixedRes = runCLI(['search', '信頼できないHTMLをサニタイズ']);
+    assert.strictEqual(mixedRes.status, 0);
+    const mixedResults = JSON.parse(mixedRes.stdout.trim());
+    assert.ok(Array.isArray(mixedResults) && mixedResults.length > 0);
+    assert.ok(
+      mixedRes.stderr.includes('Note: Search queries must be in English (e.g., search "light dismiss dialog").'),
+      `Expected English query hint in stderr for mixed query, got: ${mixedRes.stderr}`
+    );
+
+    // Normal English queries (including typographic punctuation and zero-result queries) do not emit the hint on stderr
+    for (const englishQuery of ['light dismiss dialog', '“light dismiss dialog”', 'light dismiss dialog — popover', 'nonexistent-query-xyz123']) {
+      const res = runCLI(['search', englishQuery]);
+      assert.strictEqual(res.status, 0);
+      assert.ok(
+        !res.stderr.includes('Note: Search queries must be in English'),
+        `Unexpected warning on stderr for "${englishQuery}": ${res.stderr}`
+      );
+    }
   });
 
   it('lists use cases in compact format with id and description', () => {
@@ -147,13 +180,32 @@ describe('modern-web CLI', () => {
 
   it('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
-    fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
+    const clearedAgentEnv = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map((k) => [k, undefined]));
+    fs.writeFileSync(versionPath, '2026_11_12-latest12\n');
     try {
-      const res = runCLI(['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help']);
-      assert.strictEqual(res.status, 0);
-      assert.ok(res.stdout.includes('Usage: modern-web-guidance legacy-scan'));
-      assert.ok(res.stderr.includes('Warning: a new SKILL.md is available'));
-      assert.ok(res.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      const nonClaudeRes = runCLI(['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help'], clearedAgentEnv);
+      assert.strictEqual(nonClaudeRes.status, 0);
+      assert.ok(nonClaudeRes.stdout.includes('Usage: modern-web-guidance legacy-scan'));
+      assert.ok(nonClaudeRes.stderr.includes('Warning: a new SKILL.md is available'));
+      assert.ok(nonClaudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      assert.strictEqual(nonClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'), false);
+
+      const frozenClaudeRes = runCLI(
+        ['--skill-version', '2026_10_12-dacb5911', 'legacy-scan', '--help'],
+        { ...clearedAgentEnv, CLAUDECODE: '1' },
+      );
+      assert.strictEqual(frozenClaudeRes.status, 0);
+      assert.ok(frozenClaudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      assert.ok(frozenClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'));
+      assert.ok(frozenClaudeRes.stderr.includes('/plugin install modern-web-guidance@googlechrome'));
+
+      const recentClaudeRes = runCLI(
+        ['--skill-version', '2026_11_01-newsha', 'legacy-scan', '--help'],
+        { ...clearedAgentEnv, CLAUDECODE: '1' },
+      );
+      assert.strictEqual(recentClaudeRes.status, 0);
+      assert.ok(recentClaudeRes.stderr.includes('Warning: a new SKILL.md is available'));
+      assert.strictEqual(recentClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'), false);
     } finally {
       fs.rmSync(versionPath, { force: true });
     }

@@ -1,6 +1,6 @@
 /**
  * Single source of truth for coding-agent display names, badges, and headline families.
- * Add or rename agents here so the hero, A/B spotlight, and suite tables stay in sync.
+ * Add or rename agents here so the hero, A/B spotlight, and job tables stay in sync.
  */
 
 /** @typedef {'gemini' | 'openai' | 'claude' | 'pi'} AgentBadgeKind */
@@ -48,7 +48,7 @@ const BADGE_GLYPHS = { gemini: '✦', openai: '❂', claude: '✱', pi: 'π' };
 
 /**
  * Falls back to substring matching for agent ids that aren't registered (e.g. ad hoc
- * suites that report a model vendor rather than a CLI id).
+ * jobs that report a model vendor rather than a CLI id).
  * @param {string} name
  * @returns {AgentBadgeKind | undefined} */
 function inferBadgeKind(name) {
@@ -120,7 +120,7 @@ export function sanitizeReasoningEffort(raw) {
 }
 
 /**
- * Normalizes a missing or untrusted `reasoningEffort` for UI readers so legacy suites
+ * Normalizes a missing or untrusted `reasoningEffort` for UI readers so legacy jobs
  * without `reasoningEffort` behave identically to `{ source: 'agent-default' }`.
  * @param {unknown} raw
  * @returns {import('./evals.d.ts').ReasoningEffort}
