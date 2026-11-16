@@ -545,6 +545,14 @@ grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 </details>
 
 <details>
+<summary><b>Pi</b></summary>
+
+```shell
+pi install git:github.com/GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
 <summary><b>OpenAI Codex</b></summary>
 
 ```shell
