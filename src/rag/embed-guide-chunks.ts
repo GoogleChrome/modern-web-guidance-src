@@ -9,8 +9,9 @@
  *   node src/rag/embed-guide-chunks.ts [--check] [--force] [--prune]
  */
 
+import fs from "node:fs";
 import path from "node:path";
-import { parseArgs } from "node:util";
+import { parseArgs, parseEnv } from "node:util";
 import { fileURLToPath } from "node:url";
 import { rootDir } from "../core/paths.ts";
 import {
@@ -48,14 +49,21 @@ function resolveGeminiApiKey(options: EmbedChunksOptions): string | undefined {
   if (options.apiKey !== undefined) {
     return options.apiKey.trim();
   }
+  if (process.env.GEMINI_API_KEY !== undefined) {
+    return process.env.GEMINI_API_KEY.trim();
+  }
   if (options.envPath !== null) {
+    const envFile = options.envPath ?? path.join(rootDir, ".env");
     try {
-      process.loadEnvFile(options.envPath ?? path.join(rootDir, ".env"));
-    } catch {
-      // .env is optional if key is already in process.env
+      const raw = fs.readFileSync(envFile, "utf8");
+      return parseEnv(raw).GEMINI_API_KEY?.trim();
+    } catch (err) {
+      if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
+        throw err;
+      }
     }
   }
-  return process.env.GEMINI_API_KEY?.trim();
+  return undefined;
 }
 
 export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promise<{

@@ -294,4 +294,42 @@ describe("guide-chunk-cache", () => {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
   });
+
+  it("embedGuideChunks reads GEMINI_API_KEY from envPath without mutating process.env", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-env-"));
+    const prevGeminiKey = process.env.GEMINI_API_KEY;
+    const prevOtherKey = process.env.OTHER_UNRELATED_SECRET;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.OTHER_UNRELATED_SECRET;
+      const envFile = path.join(tmpRoot, ".env");
+      fs.writeFileSync(envFile, "GEMINI_API_KEY=from-dotenv\nOTHER_UNRELATED_SECRET=do-not-leak\n");
+
+      let seenUrl = "";
+      const res = await embedGuideChunks({
+        cacheDir: path.join(tmpRoot, "cache"),
+        envPath: envFile,
+        scanChunks: () => [
+          { guideId: "js", category: "js", embeddedText: "chunk", hash: "hash-env" },
+        ],
+        postBatch: async (url) => {
+          seenUrl = url;
+          return {
+            embeddings: [{ values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 0 ? 1 : 0)) }],
+          };
+        },
+      });
+
+      assert.strictEqual(res.newEmbeds, 1);
+      assert.match(seenUrl, /key=from-dotenv$/);
+      assert.strictEqual(process.env.GEMINI_API_KEY, undefined);
+      assert.strictEqual(process.env.OTHER_UNRELATED_SECRET, undefined);
+    } finally {
+      if (prevGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = prevGeminiKey;
+      if (prevOtherKey === undefined) delete process.env.OTHER_UNRELATED_SECRET;
+      else process.env.OTHER_UNRELATED_SECRET = prevOtherKey;
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
 });

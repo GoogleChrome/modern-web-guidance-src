@@ -369,8 +369,6 @@ async function main() {
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
       if (values['ui']) {
-        const buildCode = await runNpm(['run', 'build-dist']);
-        if (buildCode !== 0) process.exit(buildCode);
         process.env.LAUNCH_UI = 'true';
         const { runAllManifests } = await import('../src/dashboard/generate-manifests.js');
         await runAllManifests();
