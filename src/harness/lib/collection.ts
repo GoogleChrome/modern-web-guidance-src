@@ -586,13 +586,9 @@ function prepareGradersForRuns(
 
 async function collectTaskRunEntry(
   dir: string,
-  runPath: string,
-  runNumber: number,
-  taskMap: Map<string, any>
-): Promise<{ testName: string; payload: any } | null> {
-  const ctx = getTaskRunContext(dir, runPath, taskMap, true);
-  if (!ctx) return null;
-
+  ctx: TaskRunContext,
+  runNumber: number
+): Promise<{ testName: string; payload: any }> {
   const usage = await collectGuideUsage(dir, ctx.runType, ctx.guide);
 
   const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
@@ -651,6 +647,11 @@ async function collectAllResults(
   let hasAnySummary = false;
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    // Skip never-run dirs before touching their trajectory summaries or suite-level metadata.
+    const ctx = getTaskRunContext(dir, runPath, taskMap, true);
+    if (!ctx) continue;
+
+    // Runs first: it may regenerate a stale trajectory_summary.json that collectTaskRunEntry reads.
     const extractedEffort = extractReasoningEffortFromResults(dir);
     if (extractedEffort) {
       bestEffort = pickHigherPrecedenceEffort(bestEffort, extractedEffort);
@@ -666,8 +667,7 @@ async function collectAllResults(
       }
     }
 
-    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap);
-    if (!entry) continue;
+    const entry = await collectTaskRunEntry(dir, ctx, parseInt(runDir));
 
     if (!allResults[entry.testName]) {
       allResults[entry.testName] = [];
