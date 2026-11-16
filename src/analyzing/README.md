@@ -64,7 +64,7 @@ Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
   - src/static/js/admin/settings.js:30
     $('.settings').autosize();
 
-Retrieve a guide: npx modern-web-guidance retrieve <guide-id>
+Retrieve guidance: npx modern-web-guidance retrieve form-fields-automatically-fit-contents
 ```
 
 ### Structured JSON Output (`--json`, abridged)

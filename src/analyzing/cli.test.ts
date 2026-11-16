@@ -228,7 +228,7 @@ describe('runAnalyzeCli', () => {
 
       assert.match(
         res.output,
-        /Retrieve a guide: npx modern-web-guidance retrieve <guide-id>/,
+        /Retrieve guidance:\n  npx modern-web-guidance retrieve animate-to-intrinsic-sizes\n  npx modern-web-guidance retrieve autofill-sign-in-form/,
       );
     });
   });
@@ -737,6 +737,161 @@ describe('runAnalyzeCli', () => {
       const parsedClean = JSON.parse(resClean.output) as AnalyzeJsonOutput;
       assert.equal(parsedClean.totalFindings, 0);
       assert.deepEqual(parsedClean.guides, []);
+    });
+  });
+
+  describe('section-scoped retrieve commands', () => {
+    const URL_SEARCH_PARAMS_FIXTURE = [
+      `function getParam(name) {`,
+      `  for (const part of location.search.slice(1).split('&')) {`,
+      `    const [k, v] = part.split('=');`,
+      `    if (decodeURIComponent(k) === name) return decodeURIComponent(v || '');`,
+      `  }`,
+      `  return null;`,
+      `}`,
+    ].join('\n');
+
+    it('emits section-scoped retrieve command when a single sectioned rule fires', async () => {
+      await withTempDir(async (testDir) => {
+        await writeFile(join(testDir, 'query.js'), URL_SEARCH_PARAMS_FIXTURE, 'utf8');
+
+        const humanRes = await runAnalyzeCli([testDir]);
+        assert.equal(humanRes.exitCode, 0);
+        assert.match(
+          humanRes.output,
+          /Retrieve guidance: npx modern-web-guidance retrieve js#url-search-params/,
+        );
+        assert.doesNotMatch(humanRes.output, /retrieve js(?:\s|$)/);
+
+        const jsonRes = await runAnalyzeCli([testDir, '--json']);
+        assert.equal(jsonRes.exitCode, 0);
+        const parsed = JSON.parse(jsonRes.output) as AnalyzeJsonOutput;
+        assert.equal(parsed.guides.length, 1);
+        const guide = parsed.guides[0]!;
+        assert.equal(guide.guideId, 'js');
+        assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve js#url-search-params');
+        assert.equal(guide.retrieveCommands, undefined);
+        assert.equal(guide.rules[0]!.section, 'url-search-params');
+        assert.equal(
+          guide.rules[0]!.retrieveCommand,
+          'npx modern-web-guidance retrieve js#url-search-params',
+        );
+      });
+    });
+
+    it('deduplicates multiple rules sharing one section to a single section-scoped retrieve command', async () => {
+      await withTempDir(async (testDir) => {
+        await writeFile(
+          join(testDir, 'dom.js'),
+          [
+            `while (list.firstChild) { list.removeChild(list.firstChild); }`,
+            `function clearBox(box) { box.innerHTML = ''; }`,
+          ].join('\n'),
+          'utf8',
+        );
+
+        const humanRes = await runAnalyzeCli([testDir]);
+        assert.equal(humanRes.exitCode, 0);
+        assert.match(
+          humanRes.output,
+          /Retrieve guidance: npx modern-web-guidance retrieve js#replace-children/,
+        );
+        assert.equal(humanRes.output.match(/retrieve js#replace-children/g)?.length, 1);
+
+        const jsonRes = await runAnalyzeCli([testDir, '--json']);
+        assert.equal(jsonRes.exitCode, 0);
+        const parsed = JSON.parse(jsonRes.output) as AnalyzeJsonOutput;
+        const guide = parsed.guides[0]!;
+        assert.equal(guide.rules.length, 2);
+        assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve js#replace-children');
+        assert.equal(guide.retrieveCommands, undefined);
+      });
+    });
+
+    it('lists each distinct section without a guide-level command when multiple rules in one guide fire', async () => {
+      await withTempDir(async (testDir) => {
+        await writeFile(
+          join(testDir, 'legacy.js'),
+          [
+            `while (list.firstChild) { list.removeChild(list.firstChild); }`,
+            `function clearBox(box) { box.innerHTML = ''; }`,
+            URL_SEARCH_PARAMS_FIXTURE,
+          ].join('\n'),
+          'utf8',
+        );
+
+        const humanRes = await runAnalyzeCli([testDir]);
+        assert.equal(humanRes.exitCode, 0);
+        assert.match(
+          humanRes.output,
+          /Retrieve guidance:\n  npx modern-web-guidance retrieve js#replace-children\n  npx modern-web-guidance retrieve js#url-search-params/,
+        );
+        assert.equal(
+          humanRes.output.match(/retrieve js#replace-children/g)?.length,
+          1,
+          'Should deduplicate shared replace-children section across rules',
+        );
+        assert.doesNotMatch(humanRes.output, /retrieve js(?:\s|$)/);
+
+        const jsonRes = await runAnalyzeCli([testDir, '--json']);
+        assert.equal(jsonRes.exitCode, 0);
+        const parsed = JSON.parse(jsonRes.output) as AnalyzeJsonOutput;
+        assert.equal(parsed.guides.length, 1);
+        const guide = parsed.guides[0]!;
+        assert.equal(guide.guideId, 'js');
+        assert.equal(guide.retrieveCommand, undefined);
+        assert.deepEqual(guide.retrieveCommands, [
+          'npx modern-web-guidance retrieve js#replace-children',
+          'npx modern-web-guidance retrieve js#url-search-params',
+        ]);
+        assert.deepEqual(
+          guide.rules.map((r) => ({
+            ruleId: r.ruleId,
+            section: r.section,
+            retrieveCommand: r.retrieveCommand,
+          })),
+          [
+            {
+              ruleId: 'js/replace-children',
+              section: 'replace-children',
+              retrieveCommand: 'npx modern-web-guidance retrieve js#replace-children',
+            },
+            {
+              ruleId: 'js/replace-children-innerhtml',
+              section: 'replace-children',
+              retrieveCommand: 'npx modern-web-guidance retrieve js#replace-children',
+            },
+            {
+              ruleId: 'js/url-search-params',
+              section: 'url-search-params',
+              retrieveCommand: 'npx modern-web-guidance retrieve js#url-search-params',
+            },
+          ],
+        );
+      });
+    });
+
+    it('preserves guide-level retrieveCommand for rules without a section even when mixed with sectioned guides', async () => {
+      await withTempDir(async (testDir) => {
+        await writeFile(
+          join(testDir, 'mixed.html'),
+          `<form action="/login"><input type="password" name="password"></form>`,
+          'utf8',
+        );
+        await writeFile(join(testDir, 'mixed.js'), URL_SEARCH_PARAMS_FIXTURE, 'utf8');
+
+        const jsonRes = await runAnalyzeCli([testDir, '--json']);
+        assert.equal(jsonRes.exitCode, 0);
+        const parsed = JSON.parse(jsonRes.output) as AnalyzeJsonOutput;
+        const autofill = parsed.guides.find((g) => g.guideId === 'autofill-sign-in-form');
+        const js = parsed.guides.find((g) => g.guideId === 'js');
+        assert.ok(autofill);
+        assert.equal(autofill.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
+        assert.equal(autofill.rules[0]!.section, undefined);
+        assert.equal(autofill.rules[0]!.retrieveCommand, undefined);
+        assert.ok(js);
+        assert.equal(js.retrieveCommand, 'npx modern-web-guidance retrieve js#url-search-params');
+      });
     });
   });
 });

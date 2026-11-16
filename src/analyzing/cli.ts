@@ -19,6 +19,8 @@ export interface AnalyzeCliFinding {
 
 export interface AnalyzeCliRuleGroup {
   readonly ruleId: string;
+  readonly section?: string;
+  readonly retrieveCommand?: string;
   readonly summary: string;
   readonly verifierRubric?: VerifierRubric;
   readonly count: number;
@@ -27,7 +29,8 @@ export interface AnalyzeCliRuleGroup {
 
 export interface AnalyzeCliGuideGroup {
   readonly guideId: string;
-  readonly retrieveCommand: string;
+  readonly retrieveCommand?: string;
+  readonly retrieveCommands?: readonly string[];
   readonly count: number;
   readonly rules: readonly AnalyzeCliRuleGroup[];
 }
@@ -224,11 +227,43 @@ export function formatHumanReadable(
     lines.push('');
   }
 
-  lines.push(
-    `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')}`,
-  );
+  const retrieveCommands = [...new Set(guides.flatMap(resolveGuideRetrieveCommands))];
+  if (retrieveCommands.length === 1) {
+    lines.push(`Retrieve guidance: ${fmt('cyan', retrieveCommands[0])}`);
+  } else if (retrieveCommands.length > 1) {
+    lines.push('Retrieve guidance:');
+    for (const cmd of retrieveCommands) {
+      lines.push(`  ${fmt('cyan', cmd)}`);
+    }
+  }
 
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function getRuleRetrieveCommand(guideId: string, section?: string): string {
+  const target = section ? `${guideId}#${section}` : guideId;
+  return `npx modern-web-guidance retrieve ${target}`;
+}
+
+function buildDistinctRetrieveCommands(
+  guideId: string,
+  rules: readonly AnalyzeCliRuleGroup[],
+): string[] {
+  return [
+    ...new Set(
+      rules.map((r) => r.retrieveCommand ?? getRuleRetrieveCommand(guideId, r.section)),
+    ),
+  ];
+}
+
+function resolveGuideRetrieveCommands(group: AnalyzeCliGuideGroup): readonly string[] {
+  if (group.retrieveCommands && group.retrieveCommands.length > 0) {
+    return group.retrieveCommands;
+  }
+  if (group.retrieveCommand) {
+    return [group.retrieveCommand];
+  }
+  return buildDistinctRetrieveCommands(group.guideId, group.rules);
 }
 
 function errorCliResult(error: string, isJson: boolean, targetDir = '.'): AnalyzeCliResult {
@@ -271,6 +306,12 @@ function groupFindingsByGuide(
           }));
           return {
             ruleId: rid,
+            ...(rule.section
+              ? {
+                  section: rule.section,
+                  retrieveCommand: getRuleRetrieveCommand(gid, rule.section),
+                }
+              : {}),
             summary: rule.summary,
             ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
             count: cliFindings.length,
@@ -278,9 +319,12 @@ function groupFindingsByGuide(
           };
         });
 
+      const distinctCommands = buildDistinctRetrieveCommands(gid, rules);
       return {
         guideId: gid,
-        retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
+        ...(distinctCommands.length === 1
+          ? { retrieveCommand: distinctCommands[0] }
+          : { retrieveCommands: distinctCommands }),
         count: guideFindings.length,
         rules,
       };
