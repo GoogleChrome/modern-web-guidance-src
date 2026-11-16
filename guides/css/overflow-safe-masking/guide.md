@@ -9,7 +9,7 @@ web-feature-ids:
 
 ## Overview
 
-Use this whenever the masked element can receive focus (links, buttons, scroll containers, anything with `tabindex`) or paints outside its border box (`outline`, `box-shadow`).
+Use this whenever the masked element can receive focus (links, buttons, scroll containers, anything with `tabindex`), paints outside its border box (`outline`, `box-shadow`), or when its exact identity and styling is unknown (e.g. in a utility class that can be applied to a variety of elements).
 A regular mask hides all of that, so keyboard users lose the focus ring.
 The fix is in the mask itself: no wrapper elements and no replacement focus styles.
 
