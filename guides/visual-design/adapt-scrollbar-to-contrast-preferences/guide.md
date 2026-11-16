@@ -25,8 +25,6 @@ Use an `@media (prefers-contrast: more)` block to define dark, distinct colors f
   --scrollbar-track: #f1f1f1;
 
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-  scrollbar-width: thin;
-  scrollbar-gutter: stable;
 }
 
 /* Provide clear, high-contrast overrides */
