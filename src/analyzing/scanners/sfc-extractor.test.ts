@@ -2,11 +2,102 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   blankOutsideRange,
+  blankPreprocessorLineComments,
   blankRanges,
   extractScriptBlocks,
   extractStyleBlocks,
   prepareHtmlForDomScan,
 } from './sfc-extractor.ts';
+
+void test('sfc-extractor: Lit CSS tag whitespace preserves source offsets', async (t) => {
+  for (const separator of ['', ' ', '\t', '\n', '\r\n']) {
+    await t.test(`separator ${JSON.stringify(separator)}`, () => {
+      const css = '.card { color: red; }';
+      const source = `const styles = css${separator}\`\n${css}\n\`;`;
+      const blocks = extractStyleBlocks('src/card.ts', source);
+      assert.equal(blocks.length, 1);
+      assert.equal(blocks[0]?.trim(), css);
+      assert.equal(blocks[0]?.length, source.length);
+      assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+    });
+  }
+});
+
+void test('sfc-extractor: Lit CSS preserves offsets and CRLF throughout the source', () => {
+  const css = '.card { color: red; }';
+  const source = [
+    'import { css } from "lit";',
+    'const styles = css',
+    '`',
+    css,
+    '`;',
+    '',
+  ].join('\r\n');
+  const blocks = extractStyleBlocks('src/card.ts', source);
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0]?.trim(), css);
+  assert.equal(blocks[0]?.length, source.length);
+  assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+  assert.deepEqual(blocks[0]?.match(/\r\n/g), source.match(/\r\n/g));
+});
+
+void test('sfc-extractor: ignores Lit CSS text inside comments', () => {
+  const source = [
+    '// css `.card { color: red; }`;',
+    '/* css `.card { color: blue; }`; */',
+  ].join('\n');
+  assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
+void test('sfc-extractor: ignores Lit CSS text inside strings, templates, regexes, and member accesses', () => {
+  const source = [
+    'const text = "css `.card { color: red; }`";',
+    'const tmpl = `example: css \\`.card { color: red; }\\``;',
+    'const pattern = /css`.card`/g;',
+    'const member = obj.css`.card { color: red; }`;',
+  ].join('\n');
+  assert.deepEqual(extractStyleBlocks('src/card.ts', source), []);
+});
+
+void test('sfc-extractor: Lit CSS AST handles comments before backtick, JSX, and nested interpolation braces', async (t) => {
+  await t.test('extracts css /* comment */ `...` with exact offsets', () => {
+    const css = '.card { color: red; }';
+    const source = `const styles = css /* lit */ \`\n${css}\n\`;`;
+    const blocks = extractStyleBlocks('src/card.ts', source);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0]?.trim(), css);
+    assert.equal(blocks[0]?.length, source.length);
+    assert.equal(blocks[0]?.indexOf(css), source.indexOf(css));
+  });
+
+  await t.test('masks ${...} interpolations containing closing braces in strings or nested templates', () => {
+    const source = [
+      'const styles = css`',
+      '  .a { color: ${fn("}")}; }',
+      '  .b { background: ${isDark ? `black` : `white`}; }',
+      '  .c { border-color: ${ok ? `}` : "red"}; }',
+      '`;',
+    ].join('\r\n');
+    const blocks = extractStyleBlocks('src/card.tsx', source);
+    assert.equal(blocks.length, 1);
+    const block = blocks[0] ?? '';
+    assert.equal(block.length, source.length);
+    assert.deepEqual(block.match(/\r\n/g), source.match(/\r\n/g));
+    assert.equal(block.includes('fn("}")'), false);
+    assert.equal(block.includes('`black`'), false);
+    assert.equal(block.includes('.c { border-color:'), true);
+  });
+
+  await t.test('extracts Lit CSS inside TSX JSX expressions while skipping unclosed literals', () => {
+    const jsxSource = 'export const View = () => <div>{css`.pill { color: red; }`}</div>;';
+    const blocks = extractStyleBlocks('src/view.tsx', jsxSource);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0]?.trim(), '.pill { color: red; }');
+
+    const unclosed = 'const broken = css`.pill { color: red; }';
+    assert.deepEqual(extractStyleBlocks('src/broken.ts', unclosed), []);
+  });
+});
 
 void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
   await t.test('extracts frontmatter containing internal --- comments without premature termination', () => {
@@ -109,5 +200,111 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(litBlocks.length, 1);
     assert.equal(litBlocks[0]?.includes('.card { color:'), true);
     assert.equal(litBlocks[0]?.includes('${"red"}'), false);
+  });
+});
+
+void test('sfc-extractor: custom elements whose names start with script- or style-', async (t) => {
+  const vue = [
+    '<template>',
+    '  <style-provider theme="dark">',
+    '    <script-editor v-model="code"></script-editor>',
+    '    <button>Save</button>',
+    '  </style-provider>',
+    '</template>',
+    '<script setup>',
+    'const code = "";',
+    '</script>',
+    '<style>',
+    'button { color: red; }',
+    '</style>',
+  ].join('\n');
+
+  await t.test('extracts only the real <script> body', () => {
+    const blocks = extractScriptBlocks('App.vue', vue);
+    assert.equal(blocks.length, 1);
+    const content = blocks[0]?.blankedContent ?? '';
+    assert.equal(content.includes('const code = "";'), true);
+    assert.equal(content.includes('v-model'), false);
+    assert.equal(content.includes('<button>'), false);
+  });
+
+  await t.test('extracts only the real <style> body', () => {
+    const blocks = extractStyleBlocks('App.vue', vue);
+    assert.equal(blocks.length, 1);
+    const content = blocks[0] ?? '';
+    assert.equal(content.includes('button { color: red; }'), true);
+    assert.equal(content.includes('theme="dark"'), false);
+    assert.equal(content.includes('<button>'), false);
+  });
+
+  await t.test('keeps the template markup for DOM scanning', () => {
+    const prepared = prepareHtmlForDomScan('App.vue', vue);
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.includes('<style-provider theme="dark">'), true);
+    assert.equal(prepared.includes('<script-editor v-model="code"></script-editor>'), true);
+    assert.equal(prepared.includes('<button>Save</button>'), true);
+    assert.equal(prepared.includes('const code'), false);
+    assert.equal(prepared.includes('button { color: red; }'), false);
+  });
+});
+
+void test('sfc-extractor: blankPreprocessorLineComments and preprocessor <style> blocks', async (t) => {
+  await t.test('blanks // line comments while preserving offsets and CRLF newlines', () => {
+    const scss = ['// header', '.box { color: red; } // inline', '// footer'].join('\r\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.deepEqual(blanked.match(/\r\n/g), scss.match(/\r\n/g));
+    assert.equal(blanked.includes('//'), false);
+    assert.equal(blanked.includes('.box { color: red; }'), true);
+  });
+
+  await t.test('preserves // inside block comments, strings, and URLs', () => {
+    const scss = [
+      '.a { background: url(https://example.com/a.png); }',
+      '.b { background: url(//cdn.example.com/b.png); }',
+      '.c { background: url( //cdn.example.com/b.png ); }',
+      '.d { background: url(/images//logo.png); }',
+      '.e { content: "// literal"; }',
+      '/* // block comment */',
+      '$endpoint: https://api.example.com/v1;',
+      '.f { color: blue; }',
+    ].join('\n');
+    assert.equal(blankPreprocessorLineComments(scss), scss);
+  });
+
+  await t.test('blanks // comments after (, whitespace-separated ://, and trailing after url()', () => {
+    const scss = [
+      '.a { color: rgb(// red',
+      '  255, 0, 0); }',
+      '$m: (// note',
+      '  a: 1);',
+      '.b:// comment',
+      '.c { background: url( //cdn.example.com/b.png ); } // trailing',
+    ].join('\n');
+    const blanked = blankPreprocessorLineComments(scss);
+    assert.equal(blanked.length, scss.length);
+    assert.equal(blanked.includes('// red'), false);
+    assert.equal(blanked.includes('// note'), false);
+    assert.equal(blanked.includes('// comment'), false);
+    assert.equal(blanked.includes('// trailing'), false);
+    assert.equal(blanked.includes('url( //cdn.example.com/b.png )'), true);
+    assert.equal(blanked.includes('255, 0, 0); }'), true);
+  });
+
+  await t.test('blanks // comments inside <style lang="scss|less"> only', () => {
+    for (const lang of ['scss', 'less']) {
+      const vue = `<template><div/></template>\n<style lang="${lang}" scoped>\n// note\n.box { color: red; }\n</style>`;
+      const blocks = extractStyleBlocks('App.vue', vue);
+      assert.equal(blocks.length, 1);
+      assert.equal(blocks[0]?.length, vue.length);
+      assert.equal(blocks[0]?.includes('// note'), false);
+      assert.equal(blocks[0]?.includes('.box { color: red; }'), true);
+    }
+
+    for (const langAttr of ['', ' lang="sass"']) {
+      const vue = `<template><div/></template>\n<style${langAttr}>\n// preserved\n.box { content: "// ok"; }\n</style>`;
+      const blocks = extractStyleBlocks('App.vue', vue);
+      assert.equal(blocks[0]?.includes('// preserved'), true);
+    }
   });
 });

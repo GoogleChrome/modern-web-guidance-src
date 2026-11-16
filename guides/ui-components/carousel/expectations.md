@@ -2,10 +2,12 @@
 
 - The carousel track has `overflow-x: auto` or `overflow-y: auto` (or `overflow: auto`) and uses mandatory scroll snapping (`scroll-snap-type: x mandatory`, `inline mandatory`, `y mandatory`, or `block mandatory`) on its scrolling axis.
 - Every carousel slide has `scroll-snap-align: center` (or start) applied so it acts as a snap target.
+- The carousel track has a computed `overscroll-behavior` of `contain` on its scrolling axis.
 - The carousel container is exposed as a labeled region with `aria-roledescription="carousel"` and an accessible name.
 - Each slide is exposed as a group with `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (such as "2 of 4").
 - Previous and next controls stay enabled at the first and last slides, because the carousel loops.
 - Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
+- When `sibling-count()` is unsupported, the carousel still loops: activating Next while the last slide is current brings the first slide into view.
 - Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
 - While the first slide is current, the last slide has a computed `order` of -1.
 - While the last slide is current, the first slide has a computed `order` of 1.
@@ -22,6 +24,8 @@
 - The carousel uses HTML Previous and Next `<button>` elements, each with an accessible name, that precede the track in DOM order, and does not use native `::scroll-button()` or `::scroll-marker`.
 - Activating the Previous or Next button moves the carousel to the adjacent slide in visual order.
 - The carousel has one HTML marker `<button>` per slide, and activating a marker button navigates to its corresponding slide.
+- Activating a marker button scrolls the track in the direction of the target slide's position in the slide sequence, passing the slides in between, including when the target is a parked end slide (for example, from the first slide, the last slide's marker scrolls forward).
+- Activating Next while a marker scroll to the last slide is still in progress ends on the first slide, and the activation is not lost.
 - Every marker button has an accessible name identifying its destination slide.
 - The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.

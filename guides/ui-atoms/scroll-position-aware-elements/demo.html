@@ -104,12 +104,12 @@
 </head>
 
 <body>
-  <div class="scroller">
+  <div class="scroller" role="region" aria-label="Example scrollable content" tabindex="0">
     <!-- Sentinel at the top of the scroller -->
     <div class="scroll-sentinel"></div>
 
     <div class="content">
-      <h2 id="title">Scroll down 👇</h2>
+      <h2 id="title" tabindex="-1">Scroll down 👇</h2>
       <p>
         This demo uses <code>scroll-state(scrollable: top)</code> to reveal a
         floating action button only when you are no longer at the very top of
@@ -124,10 +124,23 @@
   </div>
 
   <script>
+    const scroller = document.querySelector('.scroller');
+    const backToTop = document.querySelector('.back-to-top');
+
+    function isBackToTopVisible() {
+      const styles = getComputedStyle(backToTop);
+      return styles.visibility !== 'hidden' && Number.parseFloat(styles.opacity) > 0;
+    }
+
+    backToTop.addEventListener('focusout', (event) => {
+      if (!isBackToTopVisible() && !event.relatedTarget) {
+        scroller.focus();
+      }
+    });
+
     // Fallback using IntersectionObserver
     if (!CSS.supports('container-type', 'scroll-state')) {
       const sentinel = document.querySelector('.scroll-sentinel');
-      const scroller = document.querySelector('.scroller');
 
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
