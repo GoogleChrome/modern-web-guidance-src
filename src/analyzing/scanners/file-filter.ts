@@ -134,6 +134,7 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
 
 import {
   CSS_RULE_EXTENSIONS,
+  DEPENDENCY_RULE_FILENAMES,
   DOM_RULE_EXTENSIONS,
   JS_RULE_EXTENSIONS,
   SUPPORTED_SOURCE_EXTENSIONS,
@@ -141,12 +142,11 @@ import {
 
 export {
   CSS_RULE_EXTENSIONS,
+  DEPENDENCY_RULE_FILENAMES,
   DOM_RULE_EXTENSIONS,
   JS_RULE_EXTENSIONS,
   SUPPORTED_SOURCE_EXTENSIONS,
 };
-
-export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
   '.js',
@@ -386,14 +386,14 @@ export function hasVendoredLicenseHeader(
 
 export const MAX_SOURCE_FILE_BYTES = 1_000_000;
 
-const GERBER_HEADER_REGEX = /^\s*%(?:FS|MO)/m;
+const GERBER_HEADER_REGEX = /%(?:FS[LT][AI][^%\r\n]*\*%|MO(?:MM|IN)\*%)/;
 
 /**
  * Cheap content check for Gerber PCB files that collide with Ember's `.gts` extension.
- * RS-274X Gerber files declare their coordinate format (`%FS`) and units (`%MO`) in the header.
+ * RS-274X Gerber files declare their coordinate format (`%FS...*%`) and units (`%MOMM*%` / `%MOIN*%`) in the header.
  */
 export function isGerberContent(content: string): boolean {
-  return GERBER_HEADER_REGEX.test(content.slice(0, 1024));
+  return GERBER_HEADER_REGEX.test(content.slice(0, 4096));
 }
 
 /**

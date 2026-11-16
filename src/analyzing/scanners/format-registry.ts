@@ -251,16 +251,28 @@ export const MARKUP_EXTENSIONS: ReadonlySet<string> = new Set(
 const NON_PHP_SUPPORTED = SUPPORTED_ENTRIES.filter((f) => f.id !== 'php');
 
 /** File extensions where the JS AST scanner runs (contents kept stable for downstream corpus sampling). */
-export const JS_RULE_EXTENSIONS: readonly string[] = NON_PHP_SUPPORTED
-  .filter((f) => f.engines.includes('js'))
-  .flatMap((f) => f.extensions);
+export const JS_RULE_EXTENSIONS: readonly string[] = [
+  ...new Set(
+    NON_PHP_SUPPORTED.filter((f) => f.engines.includes('js')).flatMap((f) => f.extensions),
+  ),
+];
 
 /** File extensions where whole stylesheets or <style> blocks are scanned for CSS rules. */
-export const CSS_RULE_EXTENSIONS: readonly string[] = NON_PHP_SUPPORTED
-  .filter((f) => f.engines.includes('css') && !SCRIPT_FORMAT_IDS.has(f.id))
-  .flatMap((f) => f.extensions);
+export const CSS_RULE_EXTENSIONS: readonly string[] = [
+  ...new Set(
+    NON_PHP_SUPPORTED.filter(
+      (f) =>
+        f.engines.includes('css') &&
+        (STYLESHEET_FORMAT_IDS.has(f.id) || MARKUP_FORMAT_IDS.has(f.id)),
+    ).flatMap((f) => f.extensions),
+  ),
+];
 
 /** File extensions where DOM rules run (contents kept stable for downstream corpus sampling). */
-export const DOM_RULE_EXTENSIONS: readonly string[] = NON_PHP_SUPPORTED
-  .filter((f) => f.engines.includes('dom'))
-  .flatMap((f) => f.extensions);
+export const DOM_RULE_EXTENSIONS: readonly string[] = [
+  ...new Set(
+    NON_PHP_SUPPORTED.filter((f) => f.engines.includes('dom')).flatMap((f) => f.extensions),
+  ),
+];
+
+export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;

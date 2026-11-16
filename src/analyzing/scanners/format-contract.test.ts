@@ -390,87 +390,54 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
   const expectedSkipEntries = FORMAT_REGISTRY.filter((f) => f.status === 'expected-skip');
 
   for (const entry of supportedEntries) {
-    for (const engine of entry.engines) {
-      test(`supported format "${entry.id}" produces finding for engine "${engine}"`, () => {
-        const shell = SHELLS[entry.id];
-        assert.ok(shell, `Missing shell builder for ${entry.id}`);
+    for (const ext of entry.extensions) {
+      for (const engine of entry.engines) {
+        test(`supported format "${entry.id}" (${ext}) produces finding for engine "${engine}"`, () => {
+          const shell = SHELLS[entry.id];
+          assert.ok(shell, `Missing shell builder for ${entry.id}`);
 
-        const snippet = SNIPPET_BY_ENGINE[engine];
-        const content = shell.build({ [engine]: snippet });
-        const filePath = entry.id === 'package.json' ? 'package.json' : `src/app/item.${shell.extension}`;
-        const expectedLine = findExpectedLine(content, snippet);
-        const rule = RULE_BY_ENGINE[engine];
-        const findings = scanFiles(new Map([[filePath, content]]), [rule]);
+          const snippet = SNIPPET_BY_ENGINE[engine];
+          const content = shell.build({ [engine]: snippet });
+          const filePath = ext.startsWith('.') ? `src/app/item${ext}` : ext;
+          const expectedLine = findExpectedLine(content, snippet);
+          const rule = RULE_BY_ENGINE[engine];
+          const findings = scanFiles(new Map([[filePath, content]]), [rule]);
 
-        assert.equal(
-          findings.length,
-          1,
-          `Expected exactly 1 finding for "${entry.id}" x "${engine}", found ${findings.length}`,
-        );
-        const finding = findings[0]!;
-        assert.equal(finding.file, filePath);
-        assert.equal(finding.line, expectedLine);
-      });
+          assert.equal(
+            findings.length,
+            1,
+            `Expected exactly 1 finding for "${entry.id}" (${ext}) x "${engine}", found ${findings.length}`,
+          );
+          const finding = findings[0]!;
+          assert.equal(finding.file, filePath);
+          assert.equal(finding.line, expectedLine);
+        });
+      }
     }
   }
 
-  describe('secondary extension routing', () => {
-    test('.htm routes to DOM engine', () => {
-      const htm = `<!DOCTYPE html>\n<html><body>\n${CONTRACT_DOM_SNIPPET}\n</body></html>`;
-      const findings = scanFiles(new Map([['src/app/page.htm', htm]]), [testDomRule]);
-      assert.equal(findings.length, 1);
-    });
-
-    test('.gjs routes to DOM engine', () => {
-      const gjs = `<template>\n  ${CONTRACT_DOM_SNIPPET}\n</template>`;
-      const findings = scanFiles(new Map([['src/app/Component.gjs', gjs]]), [testDomRule]);
-      assert.equal(findings.length, 1);
-    });
-
-    test('.mjs routes to JS engine', () => {
-      const mjs = `// mjs\n${CONTRACT_JS_SNIPPET}`;
-      const findings = scanFiles(new Map([['src/app/index.mjs', mjs]]), [testJsRule]);
-      assert.equal(findings.length, 1);
-    });
-
-    test('.cjs routes to JS engine', () => {
-      const cjs = `// cjs\n${CONTRACT_JS_SNIPPET}`;
-      const findings = scanFiles(new Map([['src/app/index.cjs', cjs]]), [testJsRule]);
-      assert.equal(findings.length, 1);
-    });
-
-    test('.mts routes to JS engine', () => {
-      const mts = `// mts\n${CONTRACT_JS_SNIPPET}`;
-      const findings = scanFiles(new Map([['src/app/index.mts', mts]]), [testJsRule]);
-      assert.equal(findings.length, 1);
-    });
-
-    test('.cts routes to JS engine', () => {
-      const cts = `// cts\n${CONTRACT_JS_SNIPPET}`;
-      const findings = scanFiles(new Map([['src/app/index.cts', cts]]), [testJsRule]);
-      assert.equal(findings.length, 1);
-    });
-  });
-
   describe('expected-skip formats produce 0 findings', () => {
     for (const entry of expectedSkipEntries) {
-      test(`expected-skip format "${entry.id}" produces 0 findings`, () => {
-        const engine = entry.engines[0]!;
-        const shell = SHELLS[entry.id];
-        assert.ok(shell, `Missing shell builder for expected-skip ${entry.id}`);
+      for (const ext of entry.extensions) {
+        for (const engine of entry.engines) {
+          test(`expected-skip format "${entry.id}" (${ext}) produces 0 findings for engine "${engine}"`, () => {
+            const shell = SHELLS[entry.id];
+            assert.ok(shell, `Missing shell builder for expected-skip ${entry.id}`);
 
-        const snippet = SNIPPET_BY_ENGINE[engine];
-        const content = shell.build({ [engine]: snippet });
-        const filePath = `src/app/skip.${shell.extension}`;
-        const rule = RULE_BY_ENGINE[engine];
-        const findings = scanFiles(new Map([[filePath, content]]), [rule]);
+            const snippet = SNIPPET_BY_ENGINE[engine];
+            const content = shell.build({ [engine]: snippet });
+            const filePath = ext.startsWith('.') ? `src/app/skip${ext}` : ext;
+            const rule = RULE_BY_ENGINE[engine];
+            const findings = scanFiles(new Map([[filePath, content]]), [rule]);
 
-        assert.equal(
-          findings.length,
-          0,
-          `Expected 0 findings for expected-skip format "${entry.id}", found: ${JSON.stringify(findings)}`,
-        );
-      });
+            assert.equal(
+              findings.length,
+              0,
+              `Expected 0 findings for expected-skip format "${entry.id}" (${ext}) x "${engine}", found: ${JSON.stringify(findings)}`,
+            );
+          });
+        }
+      }
     }
   });
 
