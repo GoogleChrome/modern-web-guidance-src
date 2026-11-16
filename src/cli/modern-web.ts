@@ -242,14 +242,15 @@ async function main() {
     const repoSource = distTag === "next"
       ? "https://github.com/GoogleChrome/modern-web-guidance/tree/next"
       : "GoogleChrome/modern-web-guidance";
-    const installArgs = `-y skills add ${repoSource} ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `skills add ${repoSource} ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
       .concat(extraArgs);
 
     const detectedAgent = determineAgent().agent?.name;
     const env = detectedAgent ? { ...process.env, AI_AGENT: detectedAgent } : process.env;
-    const result = spawnSync("npx", installArgs, {
+    const skillsExec = getSkillsExecCommand();
+    const result = spawnSync(skillsExec.command, [...skillsExec.argsPrefix, ...installArgs], {
       stdio: "inherit",
       shell: process.platform === "win32",
       env,
@@ -267,7 +268,8 @@ async function main() {
   } else if (command === "update") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["-y", "skills", "update", ...skills], {
+    const skillsExec = getSkillsExecCommand();
+    const result = spawnSync(skillsExec.command, [...skillsExec.argsPrefix, "skills", "update", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });
@@ -296,7 +298,8 @@ async function main() {
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["-y", "skills", "remove", ...skills], {
+    const skillsExec = getSkillsExecCommand();
+    const result = spawnSync(skillsExec.command, [...skillsExec.argsPrefix, "skills", "remove", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });
@@ -321,6 +324,54 @@ function getCLISkillVersion(): string | null {
     return version.trim();
   } catch (e) {
     return null;
+  }
+}
+
+
+type PackageManager = "npm" | "pnpm" | "yarn";
+
+// The package manager declared by the repo in the current directory via
+// `devEngines.packageManager` — the field npm 12+ enforces even for `npx`
+// (EBADDEVENGINES). Returns null when nothing is declared.
+function readDeclaredPackageManager(): PackageManager | null {
+  try {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as {
+      devEngines?: { packageManager?: { name?: unknown } };
+    };
+    const devEnginesName = pkg.devEngines?.packageManager?.name;
+    if (devEnginesName === "pnpm" || devEnginesName === "yarn") return devEnginesName;
+  } catch {
+    // No readable package.json in the current directory — fall through.
+  }
+  return null;
+}
+
+// Which package manager should run the `skills` CLI. The `update`/`install`/
+// `uninstall` commands used to shell out to `npx` unconditionally, which fails
+// with EBADDEVENGINES in repos whose package.json declares a pnpm/yarn
+// devEngines packageManager, even when the user invoked this CLI via
+// `pnpx`/`pnpm dlx`. Prefer the runner that invoked us, then the repo's
+// declared manager; fall back to npm.
+function detectPackageManager(): PackageManager {
+  const userAgent = process.env.npm_config_user_agent ?? "";
+  const invoked = userAgent.split(" ")[0]?.split("/")[0];
+  if (invoked === "pnpm" || invoked === "yarn") return invoked;
+  const declared = readDeclaredPackageManager();
+  if (declared) return declared;
+  return "npm";
+}
+
+// Command + leading args for running the `skills` CLI under the detected
+// package manager. `pnpx` is pnpm's npx equivalent and takes no -y flag;
+// `yarn dlx` is yarn's equivalent.
+function getSkillsExecCommand(): { command: string; argsPrefix: string[] } {
+  switch (detectPackageManager()) {
+    case "pnpm":
+      return { command: "pnpx", argsPrefix: [] };
+    case "yarn":
+      return { command: "yarn", argsPrefix: ["dlx"] };
+    default:
+      return { command: "npx", argsPrefix: ["-y"] };
   }
 }
 

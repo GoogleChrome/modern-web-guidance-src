@@ -309,4 +309,217 @@ describe('modern-web CLI', () => {
       fs.rmSync(tempBinDir, { recursive: true, force: true });
     }
   });
+  it('uses pnpx for update when invoked under pnpm', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-pnpm-test-'));
+    const pnpxLogFile = path.join(tempBinDir, 'pnpx-args.json');
+    const npxLogFile = path.join(tempBinDir, 'npx-args.json');
+    for (const [bin, log] of [['pnpx', pnpxLogFile], ['npx', npxLogFile]] as const) {
+      fs.writeFileSync(
+        path.join(tempBinDir, bin),
+        `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${log}" "$@"\n`,
+        { mode: 0o755 }
+      );
+    }
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'update'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: 'pnpm/11.25.0 npm/? node/v24.21.0 linux x64',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(pnpxLogFile), 'pnpx should have been invoked under pnpm');
+      assert.strictEqual(fs.existsSync(npxLogFile), false, 'npx must not be invoked under pnpm');
+      const args = JSON.parse(fs.readFileSync(pnpxLogFile, 'utf8'));
+      assert.deepStrictEqual(args.slice(0, 2), ['skills', 'update']);
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
+  });
+
+  it('uses pnpx for update in a pnpm devEngines repo even when invoked via npx', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-pnpm-test-'));
+    const tempCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-pnpm-cwd-'));
+    const pnpxLogFile = path.join(tempBinDir, 'pnpx-args.json');
+    const npxLogFile = path.join(tempBinDir, 'npx-args.json');
+    for (const [bin, log] of [['pnpx', pnpxLogFile], ['npx', npxLogFile]] as const) {
+      fs.writeFileSync(
+        path.join(tempBinDir, bin),
+        `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${log}" "$@"\n`,
+        { mode: 0o755 }
+      );
+    }
+    fs.writeFileSync(
+      path.join(tempCwd, 'package.json'),
+      JSON.stringify({ devEngines: { packageManager: { name: 'pnpm', version: '^11.17.0', onFail: 'download' } } })
+    );
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'update'], {
+        encoding: 'utf8',
+        cwd: tempCwd,
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: 'npm/12.0.2 node/v24.21.0 linux x64',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(pnpxLogFile), 'pnpx should have been invoked in a pnpm devEngines repo');
+      assert.strictEqual(fs.existsSync(npxLogFile), false, 'npx must not be invoked in a pnpm devEngines repo');
+      const args = JSON.parse(fs.readFileSync(pnpxLogFile, 'utf8'));
+      assert.deepStrictEqual(args.slice(0, 2), ['skills', 'update']);
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+      fs.rmSync(tempCwd, { recursive: true, force: true });
+    }
+  });
+
+  it('uses yarn dlx for update when invoked under yarn', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-yarn-test-'));
+    const yarnLogFile = path.join(tempBinDir, 'yarn-args.json');
+    const npxLogFile = path.join(tempBinDir, 'npx-args.json');
+    for (const [bin, log] of [['yarn', yarnLogFile], ['npx', npxLogFile]] as const) {
+      fs.writeFileSync(
+        path.join(tempBinDir, bin),
+        `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${log}" "$@"\n`,
+        { mode: 0o755 }
+      );
+    }
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'update'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: 'yarn/1.22.22 npm/? node/v24.21.0 linux x64',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(yarnLogFile), 'yarn should have been invoked under yarn');
+      assert.strictEqual(fs.existsSync(npxLogFile), false, 'npx must not be invoked under yarn');
+      const args = JSON.parse(fs.readFileSync(yarnLogFile, 'utf8'));
+      assert.deepStrictEqual(args.slice(0, 3), ['dlx', 'skills', 'update']);
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps using npx -y for update under npm with no devEngines repo', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-npm-test-'));
+    const tempCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-npm-cwd-'));
+    const npxLogFile = path.join(tempBinDir, 'npx-args.json');
+    fs.writeFileSync(
+      path.join(tempBinDir, 'npx'),
+      `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${npxLogFile}" "$@"\n`,
+      { mode: 0o755 }
+    );
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'update'], {
+        encoding: 'utf8',
+        cwd: tempCwd,
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: 'npm/12.0.2 node/v24.21.0 linux x64',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(npxLogFile), 'npx should still be invoked under npm');
+      const args = JSON.parse(fs.readFileSync(npxLogFile, 'utf8'));
+      assert.deepStrictEqual(args.slice(0, 3), ['-y', 'skills', 'update']);
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+      fs.rmSync(tempCwd, { recursive: true, force: true });
+    }
+  });
+
+  it('uses pnpx for uninstall when invoked under pnpm', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-pnpm-test-'));
+    const pnpxLogFile = path.join(tempBinDir, 'pnpx-args.json');
+    const npxLogFile = path.join(tempBinDir, 'npx-args.json');
+    for (const [bin, log] of [['pnpx', pnpxLogFile], ['npx', npxLogFile]] as const) {
+      fs.writeFileSync(
+        path.join(tempBinDir, bin),
+        `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${log}" "$@"\n`,
+        { mode: 0o755 }
+      );
+    }
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'uninstall'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: 'pnpm/11.25.0 npm/? node/v24.21.0 linux x64',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(pnpxLogFile), 'pnpx should have been invoked under pnpm');
+      assert.strictEqual(fs.existsSync(npxLogFile), false, 'npx must not be invoked under pnpm');
+      const args = JSON.parse(fs.readFileSync(pnpxLogFile, 'utf8'));
+      assert.deepStrictEqual(args.slice(0, 2), ['skills', 'remove']);
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
+  });
+
+  it('uses pnpx for install when invoked under pnpm', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-pnpm-test-'));
+    const pnpxLogFile = path.join(tempBinDir, 'pnpx-args.json');
+    const npxLogFile = path.join(tempBinDir, 'npx-args.json');
+    for (const [bin, log] of [['pnpx', pnpxLogFile], ['npx', npxLogFile]] as const) {
+      fs.writeFileSync(
+        path.join(tempBinDir, bin),
+        `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${log}" "$@"\n`,
+        { mode: 0o755 }
+      );
+    }
+
+    try {
+      const result = spawnSync('node', [scriptPath, 'install'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${tempBinDir}:${process.env.PATH}`,
+          NO_COLOR: '1',
+          DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: 'pnpm/11.25.0 npm/? node/v24.21.0 linux x64',
+        },
+      });
+
+      assert.strictEqual(result.status, 0);
+      assert.ok(fs.existsSync(pnpxLogFile), 'pnpx should have been invoked under pnpm');
+      assert.strictEqual(fs.existsSync(npxLogFile), false, 'npx must not be invoked under pnpm');
+      const args = JSON.parse(fs.readFileSync(pnpxLogFile, 'utf8'));
+      assert.deepStrictEqual(
+        args.slice(0, 5),
+        ['skills', 'add', 'GoogleChrome/modern-web-guidance', '--skill', 'modern-web-guidance']
+      );
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
+  });
+
 });
