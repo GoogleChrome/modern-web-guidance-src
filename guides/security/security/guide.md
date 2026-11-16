@@ -298,14 +298,17 @@ Set CORP explicitly on each response based on whether it should be embeddable in
 
 Highest deployment breakage risk. You only need to deploy this infrastructure if the application requires features relying on `SharedArrayBuffer` (e.g., WebAssembly multi-threading or shared memory architectures). If not required, skip this policy group.
 
-- **Preferred path (Chromium environments)**: Enable `Document-Isolation-Policy: isolate-and-credentialless`. This provides client-side isolation comparable to COEP while instructing the browser to strip cookies and authentication credentials from non-CORS cross-origin resource fetches rather than blocking them outright. Note that this is supported primarily in Chrome (142+) and other vendors have not yet shown interest, so evaluate carefully based on your target audience. Apps that need to *block* cross-origin resources lacking explicit CORP opt-in (rather than load them with credentials stripped) can adopt `isolate-and-require-corp` instead. This is stricter and harder to deploy — it requires the same subresource audit as the cross-browser path below.
-- **Cross-browser path (Complex enforcement)**: Require `Cross-Origin-Opener-Policy: same-origin` coupled with `Cross-Origin-Embedder-Policy: require-corp`. Every embedded subresource (images, styles, external media) MUST serve an explicit `Cross-Origin-Resource-Policy` header or the browser will prevent it from loading.
+- **DO (Cross-browser default — COOP + COEP)**: Serve the document with `Cross-Origin-Opener-Policy: same-origin` coupled with `Cross-Origin-Embedder-Policy: require-corp` (or `Cross-Origin-Embedder-Policy: credentialless` where supported). Under `require-corp`, every cross-origin subresource (images, scripts, styles, media) MUST explicitly opt in via either a `Cross-Origin-Resource-Policy` header (`cross-origin` or `same-site`) or CORS (`crossorigin` attribute paired with `Access-Control-Allow-Origin`), and any embedded cross-origin `<iframe>` must also enforce COEP, or the browser will block it.
 
 ```http
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Resource-Policy: same-origin
 ```
+
+{{ BASELINE_STATUS("document-isolation-policy") }}
+
+- **DO (Alternative where supported — Document-Isolation-Policy)**: Where supported, you can serve `Document-Isolation-Policy: isolate-and-credentialless` on the document requiring `SharedArrayBuffer` to isolate at the document level without severing cross-origin `window.opener` popup references or requiring embedded third-party iframes to deploy COEP, while stripping cookies and credentials from non-CORS cross-origin subresource requests. Use `Document-Isolation-Policy: isolate-and-require-corp` instead if you need to block cross-origin subresources lacking explicit CORP or CORS opt-in.
 
 #### 3.7 Fetch Metadata (Resource Isolation)
 Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspicious cross-site requests. Requires the cross-site integration mapping from §2.1 before enforcing.
