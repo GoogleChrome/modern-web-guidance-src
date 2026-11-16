@@ -1,6 +1,6 @@
 ---
 name: security
-description: Preventative security guidelines for web developers (XSS, CSP, Cookies, Cross-Origin Isolation). Use this skill to guide the process of auditing, testing, and deploying security policies safely.
+description: Preventative security guidelines for web developers (XSS, CSP, Cookies, Cross-Origin Isolation, WebSockets). Use this skill to guide the process of auditing, testing, and deploying security policies safely.
 ---
 
 # Web Security
@@ -18,6 +18,7 @@ Guidelines for implementing preventative security measures on the web safely and
   - 1.3 Secure Cookies
   - 1.4 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
   - 1.5 Secure Window Messaging (postMessage)
+  - 1.6 Secure WebSocket Connections
 - Phase 2: Discovery & Data Collection (Prerequisites)
   - 2.1 Inspect the Application
   - 2.2 Deploy Report-Only Policies
@@ -130,6 +131,39 @@ window.addEventListener('message', (event) => {
 
 // Sender (Safe)
 targetWindow.postMessage({ action: 'update' }, 'https://trusted-origin.com');
+```
+
+### 1.6 Secure WebSocket Connections
+Browsers do **not** enforce CORS on WebSocket handshakes and automatically attach ambient cookies to upgrade requests, so WebSocket endpoints require explicit server-side origin validation to prevent Cross-Site WebSocket Hijacking (CSWSH).
+- **DO**: Use `wss://` (TLS) for production WebSocket connections. Reserve unencrypted `ws://` for local or loopback development (or explicit Local Network Access exemptions; see {{ GUIDE_REF("local-network-access") }}).
+- **DO**: Strictly validate the `Origin` header against an explicit allowlist of trusted origins inside the server's HTTP `upgrade` handler, rejecting missing or unexpected origins with HTTP `403` before completing the handshake. Standard HTTP middleware (such as Express `app.use()`) does **not** run on raw Node `http.Server` `upgrade` events, so this check must run in the `upgrade` listener itself.
+- **DO**: When `Sec-Fetch-Site` is present on the upgrade request, reject `cross-site` values for first-party WebSocket endpoints alongside exact `Origin` matching (so untrusted subdomains under your eTLD+1 remain blocked; see §3.7).
+- **DO NOT**: Pass authentication tokens or secrets in WebSocket URL query parameters (`wss://example.com/ws?token=...`) — query strings leak credentials into server access logs, proxies, and telemetry (see §2.3).
+- **DO**: Authenticate WebSocket sessions by pairing strict server-side `Origin` validation on the `upgrade` handler with hardened session cookies (`__Host-`, `HttpOnly`, `Secure`, `SameSite=Lax`; see §1.3), or by requiring authentication in the first WebSocket message over `wss://` (closing the socket after a short timeout if unauthenticated).
+- **DO**: Validate incoming message payloads and enforce message size limits before processing data or writing values to DOM sinks (see §1.2).
+
+```javascript
+// Replace with your application's trusted origin(s)
+const ALLOWED_ORIGINS = new Set(['https://app.example.com']);
+
+// Validate Origin and Sec-Fetch-Site on the HTTP upgrade event itself;
+// standard Express/HTTP middleware does not run on raw `upgrade` requests.
+server.on('upgrade', (req, socket, head) => {
+  const origin = req.headers.origin;
+  const fetchSite = req.headers['sec-fetch-site'];
+
+  // Omit the fetchSite check only if cross-site partner origins are intentionally allowlisted
+  if (!origin || !ALLOWED_ORIGINS.has(origin) || fetchSite === 'cross-site') {
+    socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n', () => socket.destroy());
+    return;
+  }
+
+  // Complete the handshake after verifying the hardened session cookie (§1.3)
+  // or enforce first-message authentication with a short timeout on the connection.
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit('connection', ws, req);
+  });
+});
 ```
 
 ## Phase 2: Discovery & Data Collection (Prerequisites)
@@ -315,6 +349,7 @@ Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspic
 - **DO**: Include `Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site` to prevent intermediate caches (CDNs) from serving cached responses to attackers.
 - **CAUTION**: `same-site` trusts every subdomain under your eTLD+1. If any subdomain hosts user-generated content, a legacy app, or otherwise untrusted code, drop `same-site` from the allowlist and accept only `same-origin` and `none`.
 - **CAUTION**: Misconfiguring these checks will block legitimate API requests coming from cross-site integrations, SSO handlers, or Webhooks. Ensure you log and test your `Sec-Fetch-*` constraints beforehand.
+- **CAUTION**: Standard HTTP request middleware (such as `app.use()`) does not run on raw WebSocket `upgrade` events; validate `Origin` and `Sec-Fetch-Site` directly in your HTTP `upgrade` handler (see §1.6).
 
 ```javascript
 app.use((req, res, next) => {

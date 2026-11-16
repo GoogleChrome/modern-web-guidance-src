@@ -18,3 +18,6 @@
 - The implementation MUST include Subresource Integrity (`integrity="sha256-..."` or `sha384-` / `sha512-`) paired with `crossorigin="anonymous"` on external versioned `<script>` and stylesheet tags.
 - The implementation MUST validate the request `Origin` header on CORS endpoints and return an explicit trusted origin in `Access-Control-Allow-Origin` rather than wildcard `'*'` whenever `Access-Control-Allow-Credentials: true` is used.
 - The implementation MUST send the `Clear-Site-Data: "cookies", "storage", "cache"` header on logout responses to completely terminate client state.
+- Production WebSocket connections use the `wss://` scheme rather than unencrypted `ws://` (except for local or loopback endpoints).
+- Server-side WebSocket `upgrade` handlers validate the `Origin` header against an explicit allowlist of trusted origins (and reject `Sec-Fetch-Site: cross-site` upgrades for first-party endpoints) with HTTP `403` before completing the handshake.
+- WebSocket client URLs do not pass authentication tokens or secrets in query parameters, relying instead on hardened cookies paired with server-side `Origin` validation or first-message authentication over `wss://`.
