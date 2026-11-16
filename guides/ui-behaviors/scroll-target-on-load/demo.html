@@ -248,8 +248,15 @@
   <script>
     // Fallback strategy for browsers that don't support scroll-initial-target
     document.addEventListener("DOMContentLoaded", () => {
-      if (!CSS.supports('scroll-initial-target', 'nearest')) {
-        const feedTarget = document.querySelector('.feed-container .item#target-item');
+      const feedTarget = document.querySelector('.feed-container .item.target');
+      const skipLink = document.querySelector('.skip-link');
+      if (feedTarget?.id && skipLink) {
+        skipLink.href = `#${feedTarget.id}`;
+      } else {
+        // If there isn't a skip link target, the link will be redundant, so we should remove it
+        skipLink.remove();
+      }
+      if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
         if (feedTarget) {
           feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
         }
