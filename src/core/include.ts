@@ -3,6 +3,10 @@ import path from "path";
 import matter from "@11ty/gray-matter";
 import { marked, type Token, type Tokens } from "marked";
 import { rootDir } from "./paths.ts";
+import {
+  EXPLICIT_HEADING_ID_PATTERN,
+  extractSectionFromTokens,
+} from "./headings.ts";
 
 /**
  * Result of resolving an INCLUDE argument. Mirrors the result-object
@@ -111,14 +115,10 @@ function textContent(tokens: Token[] | undefined): string {
   }).join("") ?? "";
 }
 
-// `{#id}` heading-suffix syntax. Not standard CommonMark, and no installed
-// marked plugin handles it, so we match it on the heading text ourselves.
-const HEADING_ID = /\s*\{\s*#([\w-]+)\s*\}\s*$/;
-
 function matchesHeading(heading: Tokens.Heading, sectionId: string): boolean {
   if (heading.depth < 2) return false; // H1s are document titles, not section anchors.
   let text = textContent(heading.tokens);
-  const explicit = HEADING_ID.exec(text);
+  const explicit = EXPLICIT_HEADING_ID_PATTERN.exec(text);
   if (explicit) {
     if (explicit[1] === sectionId) return true;
     text = text.slice(0, explicit.index);
@@ -126,24 +126,18 @@ function matchesHeading(heading: Tokens.Heading, sectionId: string): boolean {
   return slugify(text) === sectionId;
 }
 
-/**
- * Extract a section by id, dropping the heading itself. A heading matches
- * when its `{#id}` suffix equals `sectionId` or its text slugifies to it.
- * Section ends at the next heading of equal or shallower depth.
- */
 function extractSection(file: ParsedFile, sectionId: string): string | undefined {
   let result = file.sections.get(sectionId);
   if (result !== undefined) return result;
 
-  const { tokens } = file;
-  const heading = tokens.find((t): t is Tokens.Heading => isHeading(t) && matchesHeading(t, sectionId));
+  const heading = file.tokens.find((t): t is Tokens.Heading => isHeading(t) && matchesHeading(t, sectionId));
   if (!heading) {
     return undefined;
   }
-  const start = tokens.indexOf(heading);
-  const end = tokens.findIndex((t, i) => i > start && isHeading(t) && t.depth <= heading.depth);
-  const stop = end === -1 ? tokens.length : end;
-  result = tokens.slice(start + 1, stop).map(t => t.raw).join("").trim();
+  result = extractSectionFromTokens(file.tokens, heading);
+  if (result === undefined) {
+    return undefined;
+  }
   file.sections.set(sectionId, result);
   return result;
 }

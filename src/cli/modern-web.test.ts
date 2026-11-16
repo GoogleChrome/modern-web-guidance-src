@@ -309,4 +309,18 @@ describe('modern-web CLI', () => {
       fs.rmSync(tempBinDir, { recursive: true, force: true });
     }
   });
+
+  it('retrieves a section via <guide>#<id> inline without leaking {#id} suffixes and fails on unknown section', () => {
+    const okRes = runCLI(['retrieve', 'js#url-search-params']);
+    assert.strictEqual(okRes.status, 0);
+    assert.ok(okRes.stdout.includes('--- Guide for js#url-search-params ---'));
+    assert.ok(okRes.stdout.includes('### Parsing and Constructing Query Strings (`URLSearchParams`)'));
+    assert.ok(!okRes.stdout.includes('{#url-search-params}'));
+    assert.ok(!okRes.stdout.includes('### Binary UTF-8 Text Decoding'));
+
+    const errRes = runCLI(['retrieve', 'js#nonexistent-section-xyz']);
+    assert.strictEqual(errRes.status, 1);
+    assert.match(errRes.stderr, /Section "nonexistent-section-xyz" not found in guide "js"/);
+    assert.strictEqual(errRes.stdout.includes('### Deep Cloning'), false);
+  });
 });

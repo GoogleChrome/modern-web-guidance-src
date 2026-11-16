@@ -1,7 +1,14 @@
+import { marked, type Tokens } from "marked";
 import { getGuide, getUseCase } from "./guides.ts";
 import { logToolResult } from "./logger.ts";
 import { readMwgrc, normalizeBaselineTarget } from "../core/mwgrc.ts";
 import { FEATURE_GATES } from "../core/feature-gates.ts";
+import {
+  extractSectionFromTokens,
+  indexHeadingsFromTokens,
+  stripExplicitHeadingId,
+  stripHeadingIdsFromMarkdown,
+} from "../core/headings.ts";
 
 export class FeatureGateError extends Error {
   readonly gateKey: "allowOriginTrials" | "allowVolatileFeatures";
@@ -85,10 +92,51 @@ function formatGateMessage({
 > If you still write ${featureIds} code without this guide (whether from model memory or external documentation), you MUST still add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section including the exact unlock command \`${fullCommand}\` and noting that unverified ${featureIds} code risks being outdated or incomplete.`;
 }
 
+function parseRetrieveTarget(target: string): { guideId: string; sectionId?: string } {
+  const hashIndex = target.indexOf("#");
+  if (hashIndex === -1) {
+    return { guideId: target };
+  }
+  const guideId = target.slice(0, hashIndex);
+  const sectionId = target.slice(hashIndex + 1);
+  if (!guideId || !sectionId || sectionId.includes("#")) {
+    throw new Error(
+      `Invalid retrieve target "${target}". Expected <guide-id> or <guide-id>#<section-id>.`,
+    );
+  }
+  return { guideId, sectionId };
+}
+
+function extractGuideSection(guide: string, guideId: string, sectionId: string): string {
+  const tokens = marked.lexer(guide);
+  const { headingMap, headingTokens } = indexHeadingsFromTokens(tokens);
+  const canonicalId = headingMap.get(sectionId);
+  const heading = canonicalId ? headingTokens.get(canonicalId) : undefined;
+  const sectionBody = heading
+    ? extractSectionFromTokens(tokens, heading, {
+        includeHeading: true,
+        stripHeadingIds: true,
+      })
+    : undefined;
+
+  if (sectionBody === undefined) {
+    throw new Error(
+      `Section "${sectionId}" not found in guide "${guideId}". Run \`npx modern-web-guidance retrieve ${guideId}\` for the full guide.`,
+    );
+  }
+
+  const h1 = tokens.find((t): t is Tokens.Heading => t.type === "heading" && t.depth === 1);
+  const title = h1 ? stripExplicitHeadingId(h1.text).trim() : guideId;
+  const pointer = `Full guide: \`npx modern-web-guidance retrieve ${guideId}\``;
+  return `# ${title}\n\n${pointer}\n\n${sectionBody}\n`;
+}
+
 export async function retrieveUseCase(useCaseId: string, options?: { cwd?: string }): Promise<string> {
-  const useCase = getUseCase(useCaseId);
+  const { guideId, sectionId } = parseRetrieveTarget(useCaseId);
+
+  const useCase = getUseCase(guideId);
   if (!useCase) {
-    throw new Error(`No guide found for use case: ${useCaseId}`);
+    throw new Error(`No guide found for use case: ${guideId}`);
   }
 
   const originTrials = useCase.originTrials ?? [];
@@ -114,7 +162,7 @@ export async function retrieveUseCase(useCaseId: string, options?: { cwd?: strin
         const featureIds = items.map((f) => f.id).join(", ");
         throw new ErrorClass(
           formatGateMessage({
-            guideId: useCaseId,
+            guideId,
             featureIds,
             optInKey: spec.optInKey,
             cliCommand: spec.cliCommand,
@@ -129,15 +177,18 @@ export async function retrieveUseCase(useCaseId: string, options?: { cwd?: strin
     }
   }
 
-  const guide = await getGuide(useCaseId);
+  const guide = await getGuide(guideId);
   if (!guide) {
-    throw new Error(`No guide found for use case: ${useCaseId}`);
+    throw new Error(`No guide found for use case: ${guideId}`);
   }
-
-  logToolResult("get_best_practices", [{ id: useCaseId }]);
 
   const banner = formatBaselineTargetBanner(
     typeof config.baseline === "string" ? config.baseline : undefined
   );
-  return banner + guide;
+  const content = sectionId
+    ? extractGuideSection(guide, guideId, sectionId)
+    : stripHeadingIdsFromMarkdown(guide);
+
+  logToolResult("get_best_practices", [{ id: useCaseId }]);
+  return banner + content;
 }
