@@ -21,23 +21,23 @@ None of the following are ever seen by real-world coding agents:
 
 | File | Role in eval pipeline |
 |---|---|
-| `expectations.md` | Natural-language spec of assertions that must hold when `guide.md` is followed |
+| `expectations.md` | Natural-language spec of checks that must hold when `guide.md` is followed |
 | `demo.html` | Standalone reference implementation authored by the SME |
 | `targets/<base_app>/task.md` | A concrete, single-bullet user prompt tailored to `<base_app>`, formatted as a single `- ` line with no YAML frontmatter |
 | `targets/<base_app>/patches/*-solution.patch` | Multi-agent golden solution diffs (`antigravity`/`jetski`, `claude`, `codex`) that must score **100%** on `grader.ts` |
 | `targets/<base_app>/patches/zero-passrate.patch` | Baseline diff (empty on almost every guide, i.e., the untouched starting app) that must score **0%** on non-exempt checks in `grader.ts` |
-| `targets/<base_app>/grader.ts` | Playwright + static AST test suite run against the eval agent's output |
+| `targets/<base_app>/grader.ts` | Playwright + static AST grader run against the eval agent's output |
 
 ## Eval Review Bar: The 8 Red Lines
 
 When authoring or reviewing an eval, hold it to these 8 red lines. An eval is wrong if any of the following is true:
 
-1. **A check gives the wrong verdict.** It fails a solution that follows the guide, or passes a broken or missing one. Common causes: vacuous or tautological assertions; checks that only find elements via classes or IDs the task never establishes or that only the golden solutions use; reading a single file when a solution can span several; using source regex or AST for behavior the browser should check; fixed `waitForTimeout` waits instead of polling; mocked browser APIs that don't match the real API (a credential mock without `toJSON()` breaks correct code); or a required expectation with no test.
+1. **A check gives the wrong verdict.** It fails a solution that follows the guide, or passes a broken or missing one. Common causes: vacuous or tautological checks; checks that only find elements via classes or IDs the task never establishes or that only the golden solutions use; reading a single file when a solution can span several; using source regex or AST for behavior the browser should check; fixed `waitForTimeout` waits instead of polling; mocked browser APIs that don't match the real API (a credential mock without `toJSON()` breaks correct code); or a required expectation with no test.
    * *Guard:* Only treat an over-strict check as wrong when the rejected pattern is one the guide allows, or when a failure is reproduced on a real run or valid solution. Never loosen a check speculatively for hypothetical code no agent would write.
-2. **The task hands the unguided run the answer.** It names the target API, CSS property, HTML attribute, fallback mechanism, or expectation checklist, names the guide, or copies `guide.md`'s frontmatter `description` verbatim.
+2. **The task hands the unguided trial the answer.** It names the target API, CSS property, HTML attribute, fallback mechanism, or expectation checklist, names the guide, or copies `guide.md`'s frontmatter `description` verbatim.
    * *Guard:* Naming the user-visible component being built ("a modal dialog", "custom elements") and neutral `id`/`data-*` hooks is fine.
 3. **An expectation grades something the guide doesn't require, or contradicts it.** It invents an untaught rule, turns an "(Optional)" or one-of-several pattern into a mandatory requirement, hardcodes snippet identifiers or magic numbers, requires a fallback for a Baseline Widely Available feature the guide says needs none, or contradicts the guide's own code or prose.
-4. **An expectation can't be tested objectively on the target app.** It requires subjective judgment, grades the guide, the browser, or code comments instead of the app, or assumes something the starting app and task never include (such as live HTTP response headers on a static client-only app, or media/iframes/forms that aren't there).
+4. **An expectation can't be tested objectively on the base app.** It requires subjective judgment, grades the guide, the browser, or code comments instead of the app, or assumes something the starting app and task never include (such as live HTTP response headers on a static client-only app, or media/iframes/forms that aren't there).
 5. **The guide teaches broken code or wrong spec/browser behavior.** A code snippet throws or fails in a real browser (including code in the fallback section), or the prose misstates web specs or browser support.
 6. **The task and grader disagree on what to build.** The task contradicts an expectation, or the grader checks a feature, selector, or endpoint that the task never asks for *and* the guide doesn't require. This often happens after `task.md` is edited to remove a leak while `grader.ts` keeps the old check: whenever you edit a task, re-check the grader.
 7. **Two guides an agent retrieves together contradict each other on the task**, so following one causes the other's grader to fail.
@@ -53,7 +53,7 @@ When authoring or reviewing an eval, hold it to these 8 red lines. An eval is wr
 
 All `expectations.md` authoring rules live in [project-guides](../project-guides/SKILL.md#writing-expectationsmd) (cover every required outcome with no bullet cap, omit optional/"prefer" items, never drop hard-to-test requirements, preserve SME wording, and scope discipline bullets to the element/feature they govern). For Stage 3 (`grader.ts` authoring and review):
 
-* **1:1 with grader tests** — Each bullet becomes one `test()` block in `grader.ts` (for use-case guides). Write one bullet per assertion; do not combine multiple checks into a single bullet. `src/core/grader-coverage.ts` verifies semantic coverage on non-discipline guides, and test titles do not have to match expectation bullets verbatim.
+* **1:1 with grader tests** — Each bullet becomes one `test()` block in `grader.ts` (for use-case guides). Write one bullet per check; do not combine multiple checks into a single bullet. `src/core/grader-coverage.ts` verifies semantic coverage on non-discipline guides, and test titles do not have to match expectation bullets verbatim.
 * **Separate native and fallback expectations** — Write core expectations assuming all features in `guide.md` are natively supported. When `guide.md` includes `## Fallback strategies`, write each fallback requirement as a separate plain-English bullet that names the unsupported feature (e.g., *"When `<feature>` is unsupported, ..."*) rather than combining native and fallback checks in the same bullet, so `gd dev` can scope fallback tests with `skipUnless({ unsupported: '<feature>' })` automatically.
 
 ---
@@ -106,10 +106,10 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`/`antigravity`) are ge
 - **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getRules` / `getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
 
 ### 3. No Vacuous Checks or Swallowed Errors
-- **One expectation per `test()` block**: Each `test('...', ...)` block checks a single expectation for clear failure diagnostics, with a precondition assertion (e.g., asserting the list isn't empty) allowed before the main assertion.
+- **One expectation per `test()` block**: Each `test('...', ...)` block checks a single expectation for clear failure diagnostics, with a precondition check (e.g., asserting the list isn't empty) allowed before the main check.
 - **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
 - **Pair `MUST NOT` checks with a positive presence check**: An untouched starting app trivially satisfies "does not use X" if the feature isn't built yet. Pair every negative check with a positive check that the target component or feature exists, so an unimplemented app fails the test.
-- **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
+- **Never use `test.skip()`** or wrap checks in `try/catch` blocks that swallow errors.
 - **Fallback-scoped tests (`skipUnless`)**: For expectations that only apply when a feature is unsupported (corresponding to `## Fallback strategies` in `guide.md`), call `skipUnless({ unsupported: '<feature>' })` (imported from `test-fixture.ts`) as the first line of the test body, where `<feature>` is a `web-features` ID from `guide.md` frontmatter or a BCD key. The harness automatically detects `skipUnless({ unsupported: '<feature>' })` calls in `grader.ts` and runs additional evaluation variants (`newly`, `limited`) for any Newly or Limited availability features. Do not call `skipUnless` for universal expectations.
 - **Discipline guides & inapplicable expectations**: Discipline guides (`DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`) only test the expectations that apply to the target app. If an expectation's precondition is absent from both the starting app and `task.md` (e.g., server response headers on a static client-only app), omit/skip it for that target with a stated reason in the grader header rather than writing a vacuous pass. Runtime states a grader can simulate in Playwright (viewport sizes, permission states, network errors) are not missing preconditions and must be tested.
 

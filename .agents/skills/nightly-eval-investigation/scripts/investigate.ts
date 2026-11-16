@@ -437,7 +437,7 @@ async function main() {
   // 1. Build Markdown Report
   let md = `# Nightly Evaluation Investigation Report\n\n`;
   md += `**Generated:** ${new Date().toISOString().split('T')[0]}\n`;
-  md += `**Suites Investigated:**\n`;
+  md += `**Jobs Investigated:**\n`;
   for (const agent of activeAgents) {
     md += `- **${agent}**: \`${latestByAgent[agent]}\`\n`;
   }
@@ -482,7 +482,7 @@ async function main() {
       md += `- **Diagnostic Details**:\n`;
       
       if (commonGuided.length > 0) {
-        md += `  - *Failed Assertions*:\n`;
+        md += `  - *Failed Checks*:\n`;
         for (const f of commonGuided) {
           md += `    - "${f.message}" (Test ID: \`${f.testId}\`)\n`;
         }
