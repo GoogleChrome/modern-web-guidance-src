@@ -494,7 +494,7 @@ test.describe('Public view', () => {
     await page.goto('/?source=public');
     await expect(page.locator('.suites-empty-row')).toBeVisible();
     await expect(page.locator('.suite-table-row')).toHaveCount(0);
-    await expect(page.locator('#hero-status-text')).toHaveText('No published results yet. Googlers can sign in to see internal runs.');
+    await expect(page.locator('#hero-status-text')).toHaveText('No published results yet. Googlers can sign in to see internal jobs.');
     await expect(page.locator('#hero-auth-btn')).toBeHidden();
 
     await page.goto('/?source=public&show_login=true');
@@ -674,7 +674,7 @@ test.describe('Signed-in view', () => {
     const origin = await serveAsGitHubPages(page);
 
     await page.goto(`${origin}/`);
-    await expect(page.locator('#hero-status-text')).toHaveText('No published results yet. Googlers can sign in to see internal runs.');
+    await expect(page.locator('#hero-status-text')).toHaveText('No published results yet. Googlers can sign in to see internal jobs.');
     await expect(page.locator('#hero-auth-btn')).toBeHidden();
     await expect(page.locator('#auth-btn')).toHaveText('Sign out');
   });

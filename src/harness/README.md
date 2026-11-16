@@ -5,7 +5,7 @@ This directory contains the prompt benchmarking harness, base applications, agen
 
 ## Overview
 
-The evaluation harness measures how effectively AI coding agents adopt modern web platform guidance. It executes real-world coding benchmarks across supported agent runners and verifies output against Playwright test assertions (`grader.ts`).
+The evaluation harness measures how effectively AI coding agents adopt modern web platform guidance. It executes real-world coding benchmarks across supported agent runners and verifies output against Playwright test checks (`grader.ts`).
 
 Supported agents and canonical configurations are defined in [`src/harness/config.ts`](./config.ts). For agent installation, authentication, and `.env` configuration (Antigravity CLI, Jetski CLI, Claude Code, Codex CLI), see **[`docs/EVALS.md`](../../docs/EVALS.md)**.
 
@@ -29,11 +29,11 @@ gd dev guides/<category>/<use-case-slug> --targets daily-grind
 ```
 
 ### The 5-Step `gd dev` Pipeline:
-1. **Solutions Generation**: Generates golden solution patches and zero-passrate baseline patches across target base applications (`daily-grind`, `devtools-times`).
-2. **Grader Generation**: Generates Playwright test assertions in `grader.ts` based on `expectations.md`.
+1. **Solutions Generation**: Generates golden solution patches and zero-passrate baseline patches across base applications (`daily-grind`, `devtools-times`).
+2. **Grader Generation**: Generates Playwright checks in `grader.ts` based on `expectations.md`.
 3. **Grader Calibration**: Calibrates the grader (ensures golden patches pass 100% and zero-passrate baseline fails 100%).
-4. **Agent Evaluations**: Executes guided and unguided agent runs against target apps to measure pass rates and guidance tool usage.
-5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions and output recommendations into `results/guides/<category>/<slug>/report.md`.
+4. **Agent Evaluations**: Executes guided and unguided agent trials against base apps to measure pass rates and guidance tool usage.
+5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed checks and output recommendations into `results/guides/<category>/<slug>/report.md`.
 
 When run from `main`, `gd dev` first switches to a new `gd-dev/<guide-name>` branch and commits the generated artifacts and any post-report fixes as separate commits.
 
@@ -100,7 +100,7 @@ gd eval --config config.ts
 
 ## Evaluation Results Dashboard
 
-Inspect benchmark results, pass rate deltas, tool retrieval transcripts, and failed test assertions via the local dashboard:
+Inspect benchmark results, pass rate deltas, tool retrieval transcripts, and failed checks via the local dashboard:
 
 ```bash
 gd dashboard
@@ -332,8 +332,8 @@ if (exitCode !== 0) {
 ```
 
 The grader reads this to distinguish:
-- **Early failures**: Agent crashed, no output generated
-- **Grader failures**: Agent generated code, but tests failed
+- **Infra errors** (Generation errors): Agent crashed, timed out, or no output generated before grading
+- **Grader failures**: Agent generated code, but checks failed
 
 ### 7. Filesystem Sandbox
 
@@ -611,7 +611,7 @@ cat results/suites/<suite>/<run>/<task>/guided/*.jsonl | head -100
 
 ## Diagnosing Performance Variance with `gd compare`
 
-The `gd compare` command compares two evaluation run directories to diagnose behavioral differences and performance variance between agent runs:
+The `gd compare` command compares two evaluation trial directories to diagnose behavioral differences and performance variance between agent trials:
 
 ```bash
 # Compare two local run directories

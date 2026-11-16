@@ -40,6 +40,7 @@ import {
   matchesFastTokens,
 } from './js-scanner.ts';
 import {
+  blankPreprocessorLineComments,
   extractScriptBlocks,
   extractStyleBlocks,
   isMarkupPath,
@@ -184,13 +185,30 @@ function memoizeSourceFileQueries(sourceFile: SourceFile): void {
   }) as SourceFile['getText'];
 }
 
+interface JsProjectPool {
+  project: Project;
+  readonly isExternalProject: boolean;
+  parsedCount: number;
+}
+
+const EPHEMERAL_PROJECT_ROTATION_INTERVAL = 25;
+
+function acquireProjectForFile(pool: JsProjectPool): Project {
+  if (!pool.isExternalProject && pool.parsedCount >= EPHEMERAL_PROJECT_ROTATION_INTERVAL) {
+    pool.project = createInMemoryProject();
+    pool.parsedCount = 0;
+  }
+  pool.parsedCount++;
+  return pool.project;
+}
+
 function scanJsAst(
   ctx: FileContext,
   parsePath: string,
   parseContent: string,
   jsRules: readonly RuleWith<JsRuleMatcher>[],
   domRules: readonly RuleWith<DomRuleMatcher>[],
-  project: Project,
+  pool: JsProjectPool,
 ): AnalyzerFinding[] {
   const activeDomRules = domRules.filter((rule) =>
     matchesFastTokens(parseContent, rule.matcher.fastTokens),
@@ -202,10 +220,32 @@ function scanJsAst(
     return [];
   }
 
-  const sourceFile = project.createSourceFile(parsePath, parseContent, {
-    overwrite: true,
+  let realSourceFile: SourceFile | undefined;
+  let activeProject: Project | undefined;
+  const getSourceFile = (): SourceFile => {
+    if (!realSourceFile) {
+      activeProject = acquireProjectForFile(pool);
+      realSourceFile = activeProject.createSourceFile(parsePath, parseContent, {
+        overwrite: true,
+      });
+      memoizeSourceFileQueries(realSourceFile);
+    }
+    return realSourceFile;
+  };
+
+  const lazySourceFile = new Proxy({} as SourceFile, {
+    get(_target, prop) {
+      const sf = getSourceFile();
+      const val = Reflect.get(sf, prop, sf);
+      return typeof val === 'function' ? val.bind(sf) : val;
+    },
+    has(_target, prop) {
+      return Reflect.has(getSourceFile(), prop);
+    },
+    getPrototypeOf() {
+      return Reflect.getPrototypeOf(getSourceFile());
+    },
   });
-  memoizeSourceFileQueries(sourceFile);
 
   const matcherCtx: JsMatcherContext = {
     filePath: parsePath,
@@ -215,21 +255,24 @@ function scanJsAst(
   const findings: AnalyzerFinding[] = [];
   try {
     if (activeDomRules.length > 0) {
+      const sf = getSourceFile();
       findings.push(
         ...materializeRuleMatches(
           ctx,
-          scanJsxRules(ctx.relPath, sourceFile, activeDomRules),
-          sourceFile,
+          scanJsxRules(ctx.relPath, sf, activeDomRules),
+          sf,
         ),
       );
     }
     for (const rule of activeJsRules) {
-      for (const match of rule.matcher.matchFile(sourceFile, matcherCtx)) {
-        findings.push(materializeFinding(ctx, rule, match, sourceFile));
+      for (const match of rule.matcher.matchFile(lazySourceFile, matcherCtx)) {
+        findings.push(materializeFinding(ctx, rule, match, getSourceFile()));
       }
     }
   } finally {
-    project.removeSourceFile(sourceFile);
+    if (pool.isExternalProject && realSourceFile && activeProject) {
+      activeProject.removeSourceFile(realSourceFile);
+    }
   }
   return findings;
 }
@@ -255,7 +298,7 @@ function scanExtractedStyles(
 function processMultiBlockFile(
   ctx: FileContext,
   rules: FileRuleBundle,
-  project: Project,
+  pool: JsProjectPool,
 ): AnalyzerFinding[] {
   const findings: AnalyzerFinding[] = [];
 
@@ -273,7 +316,7 @@ function processMultiBlockFile(
     for (const block of extractScriptBlocks(ctx.relPath, ctx.content)) {
       if (!isMinifiedContent(block.blankedContent)) {
         findings.push(
-          ...scanJsAst(ctx, block.virtualPath, block.blankedContent, rules.js, [], project),
+          ...scanJsAst(ctx, block.virtualPath, block.blankedContent, rules.js, [], pool),
         );
       }
     }
@@ -329,7 +372,11 @@ export function scanFiles(
 
   const ruleBundle: FileRuleBundle = { dom: domRules, js: jsRules, css: cssRules };
   const findings: AnalyzerFinding[] = [];
-  const project = options?.project ?? createInMemoryProject();
+  const pool: JsProjectPool = {
+    project: options?.project ?? createInMemoryProject(),
+    isExternalProject: Boolean(options?.project),
+    parsedCount: 0,
+  };
   const filterOpts = resolveFileFilterOptions(options);
 
   for (const [relPath, content] of files) {
@@ -366,23 +413,31 @@ export function scanFiles(
 
       const ext = extname(lowerPath);
 
-      if (ext === '.css') {
+      if (ext === '.css' || ext === '.scss' || ext === '.less') {
         if (cssRules.length > 0) {
+          // Blank SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
+          const cssContent =
+            ext === '.scss' || ext === '.less'
+              ? blankPreprocessorLineComments(content)
+              : content;
           findings.push(
-            ...materializeRuleMatches(ctx, scanCssRules(relPath, content, cssRules)),
+            ...materializeRuleMatches(
+              ctx,
+              scanCssRules(relPath, cssContent, cssRules, content),
+            ),
           );
         }
         continue;
       }
 
       if (isMarkupPath(lowerPath)) {
-        findings.push(...processMultiBlockFile(ctx, ruleBundle, project));
+        findings.push(...processMultiBlockFile(ctx, ruleBundle, pool));
         continue;
       }
 
       if (JS_EXTENSIONS.has(ext)) {
         const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
-        findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, project));
+        findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, pool));
         findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
       }
     } catch {
@@ -399,6 +454,7 @@ interface ScanRepoState {
   readonly fileMap: Map<string, string>;
   readonly maxFiles: number;
   readonly fileFilterOptions?: FileFilterOptions;
+  readonly hasDependencyRules: boolean;
   skippedDocsAndTestsCount: number;
 }
 
@@ -427,7 +483,7 @@ function classifyCandidatePath(
 
   if (
     shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
-    isCandidateVendoredFile(relPath)
+    (state.hasDependencyRules && isCandidateVendoredFile(relPath))
   ) {
     return 'candidate';
   }
@@ -441,7 +497,7 @@ function classifyCandidatePath(
 async function tryReadFileContent(
   fullPath: string,
   relPath: string,
-  filterOptions?: FileFilterOptions,
+  state: ScanRepoState,
 ): Promise<string | undefined> {
   try {
     const handle = await open(fullPath, 'r');
@@ -452,8 +508,8 @@ async function tryReadFileContent(
       }
       const content = await handle.readFile('utf8');
       if (
-        shouldScanFile(relPath, content, filterOptions) ||
-        isCandidateVendoredFile(relPath, content)
+        shouldScanFile(relPath, content, state.fileFilterOptions) ||
+        (state.hasDependencyRules && isCandidateVendoredFile(relPath, content))
       ) {
         return content;
       }
@@ -467,11 +523,53 @@ async function tryReadFileContent(
   }
 }
 
-async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<void> {
-  if (state.fileMap.size >= state.maxFiles) {
-    return;
-  }
+const FILE_READ_CONCURRENCY = 64;
 
+/**
+ * Classifies and reads candidate paths in bounded concurrent batches while preserving
+ * exact deterministic fileMap insertion order and skippedDocsAndTestsCount.
+ */
+async function readCandidatePathsIntoState(
+  repoRoot: string,
+  rawPaths: readonly string[],
+  state: ScanRepoState,
+): Promise<void> {
+  let idx = 0;
+  while (idx < rawPaths.length && state.fileMap.size < state.maxFiles) {
+    const batchLimit = Math.min(FILE_READ_CONCURRENCY, state.maxFiles - state.fileMap.size);
+    const batch: string[] = [];
+    while (idx < rawPaths.length && batch.length < batchLimit) {
+      const rawPath = rawPaths[idx++];
+      if (!rawPath) continue;
+      const relPath = rawPath.replace(/\\/g, '/');
+      if (classifyCandidatePath(relPath, state) === 'candidate') {
+        batch.push(relPath);
+      }
+    }
+    if (batch.length === 0) {
+      break;
+    }
+
+    const contents = await Promise.all(
+      batch.map((relPath) =>
+        tryReadFileContent(join(repoRoot, relPath), relPath, state),
+      ),
+    );
+    for (let i = 0; i < batch.length; i++) {
+      const relPath = batch[i];
+      const content = contents[i];
+      if (relPath !== undefined && content !== undefined) {
+        state.fileMap.set(relPath, content);
+      }
+    }
+  }
+}
+
+async function collectDirectoryPaths(
+  currentDir: string,
+  state: ScanRepoState,
+  outPaths: string[],
+): Promise<void> {
   let entries: Dirent[];
   try {
     entries = await readdir(currentDir, { withFileTypes: true });
@@ -482,10 +580,6 @@ async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<
   entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
 
   for (const entry of entries) {
-    if (state.fileMap.size >= state.maxFiles) {
-      return;
-    }
-
     const fullPath = join(currentDir, entry.name);
     const relPath = relative(state.repoDirPath, fullPath).replace(/\\/g, '/');
 
@@ -500,17 +594,20 @@ async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<
       ) {
         continue;
       }
-      await walkDirectory(fullPath, state);
+      await collectDirectoryPaths(fullPath, state, outPaths);
       continue;
     }
 
-    if (entry.isFile() && classifyCandidatePath(relPath, state) === 'candidate') {
-      const content = await tryReadFileContent(fullPath, relPath, state.fileFilterOptions);
-      if (content !== undefined) {
-        state.fileMap.set(relPath, content);
-      }
+    if (entry.isFile()) {
+      outPaths.push(relPath);
     }
   }
+}
+
+async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<void> {
+  const relPaths: string[] = [];
+  await collectDirectoryPaths(currentDir, state, relPaths);
+  await readCandidatePathsIntoState(state.repoDirPath, relPaths, state);
 }
 
 async function tryEnumerateGitFiles(
@@ -539,23 +636,7 @@ async function tryEnumerateGitFiles(
     return false;
   }
 
-  for (const rawPath of rawPaths) {
-    if (state.fileMap.size >= state.maxFiles) {
-      break;
-    }
-    const relPath = rawPath.replace(/\\/g, '/');
-    if (classifyCandidatePath(relPath, state) === 'candidate') {
-      const content = await tryReadFileContent(
-        join(resolvedRepoDir, relPath),
-        relPath,
-        state.fileFilterOptions,
-      );
-      if (content !== undefined) {
-        state.fileMap.set(relPath, content);
-      }
-    }
-  }
-
+  await readCandidatePathsIntoState(resolvedRepoDir, rawPaths, state);
   return true;
 }
 
@@ -574,6 +655,7 @@ export async function scanRepoFiles(
     fileMap,
     maxFiles: options?.maxFiles ?? 5000,
     fileFilterOptions,
+    hasDependencyRules: rules.some((r) => r.matcher.kind === 'dependency'),
     skippedDocsAndTestsCount: 0,
   };
 
