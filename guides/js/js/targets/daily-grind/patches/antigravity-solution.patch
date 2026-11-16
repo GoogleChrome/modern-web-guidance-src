@@ -1,0 +1,505 @@
+diff --git a/index.html b/index.html
+index 66c9173..c45c498 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,150 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .controls-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px 18px;
++      align-items: center;
++      justify-content: center;
++      margin-top: 20px;
++      padding: 16px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .controls-bar label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .controls-bar select,
++    .controls-bar button {
++      font: inherit;
++      padding: 6px 12px;
++      border-radius: 4px;
++      border: 1px solid #bcaaa4;
++      background: white;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .controls-bar button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .summary-strip {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 14px;
++      font-size: 0.85rem;
++    }
++
++    .badge-chip {
++      background: #efebe9;
++      padding: 4px 10px;
++      border-radius: 999px;
++    }
++
++    .card-details {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin: 10px 0 6px;
++      font-size: 0.85rem;
++      color: #5d4037;
++      font-weight: 600;
++    }
++
++    .card button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .grouped-grid {
++      display: block;
++    }
++
++    .group-block {
++      margin-top: 24px;
++    }
++
++    .group-block > h3 {
++      margin-bottom: 12px;
++      color: var(--primary);
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 4px;
++    }
++
++    .order-card {
++      margin-top: 40px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      margin: 14px 0;
++    }
++
++    .order-actions select,
++    .order-actions input,
++    .order-actions button {
++      font: inherit;
++      padding: 8px 12px;
++      border-radius: 4px;
++      border: 1px solid #bcaaa4;
++    }
++
++    .order-actions button {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .order-actions button.btn-outline {
++      background: white;
++      color: var(--primary);
++    }
++
++    .order-lines {
++      list-style: none;
++      margin-top: 12px;
++      display: grid;
++      gap: 8px;
++    }
++
++    .order-lines li {
++      padding: 10px 12px;
++      background: #f7f4f2;
++      border-radius: 6px;
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++      font-size: 0.9rem;
++    }
++
++    .status-note {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
+   </style>
+ </head>
+ 
+@@ -175,9 +319,30 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++    <section aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div id="menu-controls" class="controls-bar">
++        <label for="category-filter">Category
++          <select id="category-filter">
++            <option value="all">All Categories</option>
++            <option value="seasonal">Seasonal</option>
++            <option value="espresso">Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <label for="sort-order">Sort
++          <select id="sort-order">
++            <option value="featured">Featured</option>
++            <option value="price-asc">Price: Low to High</option>
++            <option value="price-desc">Price: High to Low</option>
++            <option value="name">Name (A-Z)</option>
++          </select>
++        </label>
++        <button type="button" id="reverse-order" aria-pressed="false">Reverse Order</button>
++        <button type="button" id="group-by-category" aria-pressed="false">Group by Category</button>
++      </div>
++      <div id="category-summary" class="summary-strip" aria-live="polite"></div>
++      <div id="menu-grid" class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -195,8 +360,315 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="draft-order" class="order-card" aria-labelledby="draft-order-heading">
++      <h2 id="draft-order-heading">Draft Order</h2>
++      <div class="order-actions">
++        <label for="draft-milk">Milk
++          <select id="draft-milk">
++            <option value="Oat">Oat Milk</option>
++            <option value="Whole">Whole Milk</option>
++            <option value="Almond">Almond Milk</option>
++          </select>
++        </label>
++        <label for="draft-note">Custom Note
++          <input type="text" id="draft-note" placeholder="Extra hot, light ice...">
++        </label>
++        <button type="button" id="save-snapshot">Save Snapshot</button>
++        <button type="button" id="restore-snapshot" class="btn-outline">Restore Snapshot</button>
++        <button type="button" id="clear-order" class="btn-outline">Clear Order</button>
++      </div>
++      <ul id="draft-order-list" class="order-lines"></ul>
++      <p id="draft-empty-msg">Your draft order is empty.</p>
++      <p id="snapshot-status" class="status-note">No snapshot saved yet.</p>
++    </section>
+   </main>
+ 
++  <script type="module">
++    const CATALOG = Object.freeze([
++      {
++        id: 'maple-oat-latte',
++        name: 'Maple Oat Latte',
++        category: 'seasonal',
++        categoryLabel: 'Seasonal',
++        price: 5.75,
++        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++      },
++      {
++        id: 'dark-roast-espresso',
++        name: 'Dark Roast Espresso',
++        category: 'espresso',
++        categoryLabel: 'Espresso',
++        price: 3.50,
++        description: 'Bold, smokey, and perfect for a morning boost.',
++      },
++      {
++        id: 'cold-brew',
++        name: 'Cold Brew',
++        category: 'cold-brew',
++        categoryLabel: 'Cold Brew',
++        price: 4.50,
++        description: 'Steeped for 18 hours for maximum smoothness.',
++      },
++      {
++        id: 'spiced-cardamom-cortado',
++        name: 'Spiced Cardamom Cortado',
++        category: 'espresso',
++        categoryLabel: 'Espresso',
++        price: 4.75,
++        description: 'Double espresso balanced with steamed milk and cardamom.',
++      },
++      {
++        id: 'cinnamon-brown-sugar-latte',
++        name: 'Cinnamon Brown Sugar Latte',
++        category: 'seasonal',
++        categoryLabel: 'Seasonal',
++        price: 5.95,
++        description: 'Velvety espresso layered with house-made brown sugar syrup.',
++      },
++      {
++        id: 'vanilla-cream-cold-brew',
++        name: 'Vanilla Cream Cold Brew',
++        category: 'cold-brew',
++        categoryLabel: 'Cold Brew',
++        price: 5.25,
++        description: 'Slow-steeped cold brew topped with sweet vanilla cold foam.',
++      },
++    ]);
++
++    const CATEGORIES = [
++      { id: 'seasonal', label: 'Seasonal' },
++      { id: 'espresso', label: 'Espresso' },
++      { id: 'cold-brew', label: 'Cold Brew' },
++    ];
++
++    const initialParams = new URLSearchParams(window.location.search);
++    const uiState = {
++      category: initialParams.get('category') || 'all',
++      sort: initialParams.get('sort') || 'featured',
++      reverse: initialParams.get('reverse') === '1',
++      grouped: initialParams.get('grouped') === '1',
++    };
++
++    let activeDraft = {
++      items: [],
++      tags: new Set(['in-store']),
++      updatedAt: null,
++    };
++    let savedSnapshot = null;
++
++    const controlsEl = document.getElementById('menu-controls');
++    const categorySelect = document.getElementById('category-filter');
++    const sortSelect = document.getElementById('sort-order');
++    const reverseButton = document.getElementById('reverse-order');
++    const groupButton = document.getElementById('group-by-category');
++    const summaryEl = document.getElementById('category-summary');
++    const gridEl = document.getElementById('menu-grid');
++
++    const milkSelect = document.getElementById('draft-milk');
++    const noteInput = document.getElementById('draft-note');
++    const saveSnapshotBtn = document.getElementById('save-snapshot');
++    const restoreSnapshotBtn = document.getElementById('restore-snapshot');
++    const clearOrderBtn = document.getElementById('clear-order');
++    const orderListEl = document.getElementById('draft-order-list');
++    const orderEmptyEl = document.getElementById('draft-empty-msg');
++    const snapshotStatusEl = document.getElementById('snapshot-status');
++
++    function buildCard(drink) {
++      const card = document.createElement('div');
++      card.className = 'card';
++      card.dataset.category = drink.category;
++
++      const title = document.createElement('h3');
++      title.textContent = drink.name;
++
++      const meta = document.createElement('div');
++      meta.className = 'card-details';
++      const catBadge = document.createElement('span');
++      catBadge.textContent = drink.categoryLabel;
++      const priceEl = document.createElement('span');
++      priceEl.textContent = '$' + drink.price.toFixed(2);
++      meta.replaceChildren(catBadge, priceEl);
++
++      const desc = document.createElement('p');
++      desc.textContent = drink.description;
++
++      const addBtn = document.createElement('button');
++      addBtn.type = 'button';
++      addBtn.className = 'btn';
++      addBtn.textContent = 'Add to Order';
++      addBtn.addEventListener('click', () => {
++        activeDraft.items.push({
++          id: drink.id,
++          name: drink.name,
++          price: drink.price,
++          customization: {
++            milk: milkSelect.value,
++            note: noteInput.value.trim() || 'Standard prep',
++            addOns: new Set([milkSelect.value]),
++          },
++          createdAt: new Date(),
++        });
++        activeDraft.updatedAt = new Date();
++        renderDraftOrder();
++      });
++
++      card.replaceChildren(title, meta, desc, addBtn);
++      return card;
++    }
++
++    function getVisibleDrinks() {
++      const filtered = CATALOG.filter(
++        (drink) => uiState.category === 'all' || drink.category === uiState.category,
++      );
++
++      let sorted = filtered;
++      if (uiState.sort === 'price-asc') {
++        sorted = filtered.toSorted((a, b) => a.price - b.price);
++      } else if (uiState.sort === 'price-desc') {
++        sorted = filtered.toSorted((a, b) => b.price - a.price);
++      } else if (uiState.sort === 'name') {
++        sorted = filtered.toSorted((a, b) => a.name.localeCompare(b.name));
++      }
++
++      return uiState.reverse ? sorted.toReversed() : sorted;
++    }
++
++    function renderCatalog() {
++      const visible = getVisibleDrinks();
++      const grouped = Object.groupBy(visible, (drink) => drink.category);
++
++      const summaryPills = CATEGORIES.map((cat) => {
++        const count = Object.hasOwn(grouped, cat.id) ? grouped[cat.id].length : 0;
++        const pill = document.createElement('span');
++        pill.className = 'badge-chip';
++        pill.textContent = `${cat.label}: ${count}`;
++        return pill;
++      });
++      summaryEl.replaceChildren(...summaryPills);
++
++      if (uiState.grouped) {
++        gridEl.className = 'grouped-grid';
++        const groupNodes = [];
++        for (const cat of CATEGORIES) {
++          const items = grouped[cat.id] ?? [];
++          if (items.length === 0) continue;
++          const section = document.createElement('section');
++          section.className = 'group-block';
++          const heading = document.createElement('h3');
++          heading.textContent = `${cat.label} (${items.length})`;
++          const innerGrid = document.createElement('div');
++          innerGrid.className = 'grid';
++          innerGrid.replaceChildren(...items.map(buildCard));
++          section.replaceChildren(heading, innerGrid);
++          groupNodes.push(section);
++        }
++        gridEl.replaceChildren(...groupNodes);
++      } else {
++        gridEl.className = 'grid';
++        gridEl.replaceChildren(...visible.map(buildCard));
++      }
++    }
++
++    function renderDraftOrder() {
++      if (activeDraft.items.length === 0) {
++        orderListEl.replaceChildren();
++        orderEmptyEl.hidden = false;
++        return;
++      }
++
++      orderEmptyEl.hidden = true;
++      const rows = activeDraft.items.map((item) => {
++        const li = document.createElement('li');
++        const label = document.createElement('span');
++        label.textContent = `${item.name} (${item.customization.milk} — ${item.customization.note})`;
++        const details = document.createElement('span');
++        const ts = item.createdAt instanceof Date ? item.createdAt.toLocaleTimeString() : String(item.createdAt);
++        details.textContent = '$' + item.price.toFixed(2) + ' • ' + ts;
++        li.replaceChildren(label, details);
++        return li;
++      });
++      orderListEl.replaceChildren(...rows);
++    }
++
++    function syncQueryString() {
++      const params = new URLSearchParams();
++      if (uiState.category !== 'all') params.set('category', uiState.category);
++      if (uiState.sort !== 'featured') params.set('sort', uiState.sort);
++      if (uiState.reverse) params.set('reverse', '1');
++      if (uiState.grouped) params.set('grouped', '1');
++      const qs = params.toString();
++      const target = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
++      window.history.replaceState(null, '', target);
++    }
++
++    function dispatchFilterChange() {
++      const event = new CustomEvent('daily-grind:filter-change', {
++        detail: structuredClone(uiState),
++        bubbles: true,
++      });
++      controlsEl.dispatchEvent(event);
++    }
++
++    function applyFilterControls() {
++      categorySelect.value = uiState.category;
++      sortSelect.value = uiState.sort;
++      reverseButton.setAttribute('aria-pressed', String(uiState.reverse));
++      groupButton.setAttribute('aria-pressed', String(uiState.grouped));
++    }
++
++    function handleFilterUpdate() {
++      syncQueryString();
++      renderCatalog();
++      dispatchFilterChange();
++    }
++
++    categorySelect.addEventListener('change', () => {
++      uiState.category = categorySelect.value;
++      handleFilterUpdate();
++    });
++
++    sortSelect.addEventListener('change', () => {
++      uiState.sort = sortSelect.value;
++      handleFilterUpdate();
++    });
++
++    reverseButton.addEventListener('click', () => {
++      uiState.reverse = !uiState.reverse;
++      applyFilterControls();
++      handleFilterUpdate();
++    });
++
++    groupButton.addEventListener('click', () => {
++      uiState.grouped = !uiState.grouped;
++      applyFilterControls();
++      handleFilterUpdate();
++    });
++
++    saveSnapshotBtn.addEventListener('click', () => {
++      savedSnapshot = structuredClone(activeDraft);
++      snapshotStatusEl.textContent = `Snapshot saved (${savedSnapshot.items.length} item(s)).`;
++    });
++
++    restoreSnapshotBtn.addEventListener('click', () => {
++      if (!savedSnapshot) return;
++      activeDraft = structuredClone(savedSnapshot);
++      renderDraftOrder();
++      snapshotStatusEl.textContent = `Restored snapshot (${activeDraft.items.length} item(s)).`;
++    });
++
++    clearOrderBtn.addEventListener('click', () => {
++      activeDraft.items = [];
++      activeDraft.updatedAt = null;
++      orderListEl.replaceChildren();
++      orderEmptyEl.hidden = false;
++    });
++
++    applyFilterControls();
++    renderCatalog();
++    renderDraftOrder();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

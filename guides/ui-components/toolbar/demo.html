@@ -164,7 +164,7 @@
         }
 
         @media (hover: hover) {
-          &:hover { --btn-bg: color-mix(in oklch, var(--ink) 8%, transparent); }
+          &:hover { --btn-bg: color-mix(in oklab, var(--ink) 8%, transparent); }
         }
 
         &:focus-visible {
@@ -173,12 +173,12 @@
         }
 
         &:active {
-          --btn-bg: color-mix(in oklch, var(--ink) 16%, transparent);
+          --btn-bg: color-mix(in oklab, var(--ink) 16%, transparent);
           scale: 0.94;
         }
 
         &[aria-pressed="true"] {
-          --btn-bg: color-mix(in oklch, var(--accent) 20%, transparent);
+          --btn-bg: color-mix(in oklab, var(--accent) 20%, transparent);
           --icon-color: var(--accent);
           border: 1px solid var(--accent);
         }
@@ -254,7 +254,7 @@
         }
 
         & [aria-checked="true"] {
-          --btn-bg: color-mix(in oklch, var(--accent) 20%, transparent);
+          --btn-bg: color-mix(in oklab, var(--accent) 20%, transparent);
           --icon-color: var(--accent);
           font-weight: 600;
         }

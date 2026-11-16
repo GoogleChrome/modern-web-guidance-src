@@ -59,9 +59,13 @@ export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'specs',
   'fixtures',
   '__fixtures__',
+  'testing',
+  'e2e',
 ]);
 
-const TEST_OR_SPEC_FILE_RE = /(?:^|\.)(?:test|spec)\./i;
+const TEST_OR_SPEC_FILE_RE =
+  /(?:(?:^|\.)(?:test|spec)\.|_test_runner\.(?:js|ts|html)$|(?:^|[._-])(?:testrunner|tests)\.(?:js|ts)$)/i;
+const CAMEL_TEST_FILE_RE = /[A-Za-z0-9](?:TestRunner|Tests)\.(?:js|ts)$/;
 
 function normalizePath(relPath: string): string {
   return relPath.replace(/\\/g, '/').toLowerCase();
@@ -93,24 +97,34 @@ function hasDotDirSegment(relPath: string): boolean {
 
 /**
  * Returns `true` if `relPath` (relative to the target directory) represents a documentation,
- * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file.
+ * example, demo, test, spec, testing, e2e, or fixtures path or is a test/spec/test-runner file.
  */
 export function isDocsOrTestsPath(relPath: string): boolean {
-  const segments = splitPathSegments(relPath);
-  if (segments.length === 0) {
+  const rawSegments = relPath
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
+  if (rawSegments.length === 0) {
     return false;
   }
+  const lowerDirs = rawSegments.slice(0, -1).map((s) => s.toLowerCase());
+  const rawBaseName = rawSegments.at(-1) ?? '';
   return (
-    segments.slice(0, -1).some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg)) ||
-    TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? '')
+    lowerDirs.some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg) || seg.endsWith('_test_runner')) ||
+    TEST_OR_SPEC_FILE_RE.test(rawBaseName) ||
+    CAMEL_TEST_FILE_RE.test(rawBaseName)
   );
 }
 
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.min.js',
   '.min.css',
+  '.min.scss',
+  '.min.less',
   '.bundle.js',
   '.bundle.css',
+  '.bundle.scss',
+  '.bundle.less',
   '.pack.js',
   '-opt.js',
   '.opt.js',
@@ -129,6 +143,8 @@ export const JS_RULE_EXTENSIONS = [
   '.tsx',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.html',
   '.htm',
@@ -136,8 +152,12 @@ export const JS_RULE_EXTENSIONS = [
 
 export const CSS_RULE_EXTENSIONS = [
   '.css',
+  '.scss',
+  '.less',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.html',
   '.htm',
@@ -148,6 +168,8 @@ export const DOM_RULE_EXTENSIONS = [
   '.htm',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.jsx',
   '.tsx',
@@ -169,8 +191,12 @@ const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.php',
   '.vue',
   '.svelte',
+  '.gts',
+  '.gjs',
   '.astro',
   '.css',
+  '.scss',
+  '.less',
 ]);
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
