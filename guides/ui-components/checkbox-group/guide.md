@@ -4,7 +4,6 @@ description: Build a checkbox group for non-mutually exclusive multiple-choice s
 web-feature-ids:
   - indeterminate
   - accent-color
-  # - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
   - scrollability-affordance-hints
