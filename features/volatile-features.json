@@ -1,4 +1,7 @@
 {
+  "canvas-html": {
+    "reason": "recent-single-engine"
+  },
   "connection-allowlists": {
     "reason": "recent-single-engine"
   },
