@@ -123,13 +123,13 @@ export class OverrideError extends Error {
   }
 }
 
-/** Results keyed by `"<baseApp> - <guide> - <guided|unguided>"`, as in `evals.json#results`. */
+/** Results keyed by `"<task> - <guide> - <guided|unguided>"`, as in `evals.json#results`. */
 export type ResultsByKey = Record<string, TrialResult[]>;
 
 /**
  * The guide a result key belongs to. Prefers the structured `guideName` the
  * harness records on each trial; falls back to the key, which the harness writes
- * as `${baseApp} - ${guide} - ${condition}` (see `collection.ts`), so the guide is
+ * as `${taskName} - ${guide} - ${condition}` (see `collection.ts`), so the guide is
  * the middle part. Throws on any other shape rather than guessing, so a
  * malformed entry cannot slip past an exclusion.
  */

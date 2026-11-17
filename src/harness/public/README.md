@@ -13,12 +13,12 @@ Everything lives under one directory on the same origin as the dashboard
 public-evals/
   suites.gen.json                                  index of every published job
   build-state.json                                 builder bookkeeping; front-ends ignore it
-  <suiteId>/
+  <jobId>/
     evals.json                                     one job's results
     artifacts.json                                 every trial's agent.patch and modern-web.log
 ```
 
-- `<suiteId>` is the raw job's folder name, e.g. `nightly-2026-10-20_20-43-48-codex_cli`.
+- `<jobId>` is the raw job's folder name, e.g. `nightly-2026-10-20_20-43-48-codex_cli`.
 - `artifacts.json` is one JSON object per job mapping
   `<trial>/<guide>/<task>/<guided|unguided>/<file>` to that file's text. `<trial>` is
   the 1-based trial number; `<guide>`, `<task>`, and the condition come from the result
@@ -45,7 +45,7 @@ public-evals/
 ## `suites.gen.json`
 
 An array, sorted by `testId`, one entry per published job. Produced by
-`src/dashboard/summary-extractor.js#extractSuiteSummary`, so it is the same
+`src/dashboard/summary-extractor.js#extractJobSummary`, so it is the same
 shape the private bucket's manifest has. Fields the landing page uses:
 
 | field | type | notes |
@@ -62,7 +62,7 @@ shape the private bucket's manifest has. Fields the landing page uses:
 | `guides` | `Record<guide, GuideSummary>` | per-guide pass counts, rates, uplift; `tasks` sub-map when a guide has several |
 | `chartData` | object | precomputed series for the landing charts |
 
-## `<suiteId>/evals.json`
+## `<jobId>/evals.json`
 
 Built fresh from an allowlist of fields; anything not listed below is never
 present. Types match `src/harness/lib/metrics.ts`.
@@ -156,7 +156,7 @@ So nothing needs UI for it:
   model only builds the jobs that were waiting on it. Changes to summary
   extraction or accessibility classification (`summary-extractor.js`,
   `a11y-classifier.js`, `showcase-config.js`, `utils.js`) re-extract
-  `suites.gen.json` directly from the local `public-evals/<suiteId>/evals.json`
+  `suites.gen.json` directly from the local `public-evals/<jobId>/evals.json`
   copies without re-downloading raw jobs. `--force` rebuilds
   everything. A job whose build hit a transient error keeps its previously
   published copy and is retried next run.

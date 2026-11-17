@@ -183,7 +183,7 @@ function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): Rea
 }
 
 /**
- * Resolves a run or suite's `ReasoningEffort` using strict precedence:
+ * Resolves a trial or job's `ReasoningEffort` using strict precedence:
  * `observed > configured > model-id > agent-default`.
  *
  * When both `observed` and `configured` exist and disagree, `observed` wins silently.

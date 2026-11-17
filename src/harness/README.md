@@ -292,7 +292,7 @@ exportPiTrajectories(workDir, targetDir);
 await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
 ```
 
-`src/harness/lib/collection.ts` and `src/harness/lib/guide-usage.ts` read `trajectory_summary.json` via `ensureFreshTrajectorySummarySync(runDir)` to extract the model identifier, token usage (`total` and `cached`), tool calls, and retrieved/read guides uniformly across all agents.
+`src/harness/lib/collection.ts` and `src/harness/lib/guide-usage.ts` read `trajectory_summary.json` via `ensureFreshTrajectorySummarySync(trialDir)` to extract the model identifier, token usage (`total` and `cached`), tool calls, and retrieved/read guides uniformly across all agents.
 
 ### 5. Guide Usage Tracking
 

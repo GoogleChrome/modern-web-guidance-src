@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
-import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
-import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
+import { extractJobSummary } from '../../dashboard/summary-extractor.js';
+import type { JobSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, TrialResult } from '../lib/metrics.ts';
 import { isCuratedJob, jobCreatedAt, newestFirst, overrideFor, selectJobs, withinJobCaps, withinMaxAge } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
@@ -84,7 +84,7 @@ const BUILDER_VERSION = crypto
   .slice(0, 12);
 
 /**
- * Modules that shape `suites.gen.json` via `extractSuiteSummary`. Hashed by
+ * Modules that shape `suites.gen.json` via `extractJobSummary`. Hashed by
  * full file contents into `MANIFEST_VERSION` so classifier or summary changes
  * re-extract `suites.gen.json` from local `public-evals/<jobId>/evals.json`
  * without re-downloading raw jobs from GCS.
@@ -148,7 +148,7 @@ export interface JobBuildResult {
   bytes: number;
   truncatedPatches: number;
   /** Manifest entry, for built jobs. */
-  summary?: SuiteSummary;
+  summary?: JobSummary;
 }
 
 /** @deprecated Use JobBuildResult */
@@ -400,7 +400,7 @@ export async function buildJob(jobId: string, options: BuildOptions, preloaded?:
     fs.rmSync(jobDir, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(jobDir), { recursive: true });
     fs.renameSync(stagingDir, jobDir);
-    const summary = extractSuiteSummary(jobId, evals) ?? undefined;
+    const summary = extractJobSummary(jobId, evals) ?? undefined;
     return { jobId, status: 'built', ...writer.totals(), summary };
   } catch (err) {
     if (err instanceof NotPublishableError || err instanceof LeakError || err instanceof OverrideError) {
@@ -442,12 +442,12 @@ export function writeManifest(
   fs.mkdirSync(root, { recursive: true });
 
   const fresh = new Map(results.filter(r => r.summary).map(r => [r.jobId, r.summary!]));
-  const previous = manifestOptions?.refreshSummaries ? new Map<string, SuiteSummary>() : readManifest(outDir);
+  const previous = manifestOptions?.refreshSummaries ? new Map<string, JobSummary>() : readManifest(outDir);
 
   const entries = presentJobDirs(outDir)
     .filter(id => hasEvals(outDir, id))
     .map(id => fresh.get(id) ?? previous.get(id) ?? summarizeFromDisk(root, id))
-    .filter((summary): summary is SuiteSummary => summary !== null)
+    .filter((summary): summary is JobSummary => summary !== null)
     .sort((a, b) => a.testId.localeCompare(b.testId));
   assertClean(entries, MANIFEST_FILE, { forbiddenTokens });
 
@@ -618,18 +618,18 @@ function hasEvals(outDir: string, jobId: string): boolean {
   return fs.existsSync(path.join(outDir, PUBLIC_EVALS_DIR, jobId, 'evals.json'));
 }
 
-function readManifest(outDir: string): Map<string, SuiteSummary> {
+function readManifest(outDir: string): Map<string, JobSummary> {
   const file = path.join(outDir, PUBLIC_EVALS_DIR, MANIFEST_FILE);
   if (!fs.existsSync(file)) {
     return new Map();
   }
-  const entries = JSON.parse(fs.readFileSync(file, 'utf8')) as SuiteSummary[];
+  const entries = JSON.parse(fs.readFileSync(file, 'utf8')) as JobSummary[];
   return new Map(entries.map(entry => [entry.testId, entry]));
 }
 
-function summarizeFromDisk(root: string, jobId: string): SuiteSummary | null {
+function summarizeFromDisk(root: string, jobId: string): JobSummary | null {
   const evals = JSON.parse(fs.readFileSync(path.join(root, jobId, 'evals.json'), 'utf8')) as PublicEvals;
-  return extractSuiteSummary(jobId, evals);
+  return extractJobSummary(jobId, evals);
 }
 
 // --- Per-trial artifacts ---

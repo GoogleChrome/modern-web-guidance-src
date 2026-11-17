@@ -5,7 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { cRed, cGreen, cCyan, cBold } from '../core/colors.ts';
 import { suitesDir as baseResultsDir } from '../core/paths.ts';
-import { extractSuiteSummary } from '../dashboard/summary-extractor.js';
+import { extractJobSummary } from '../dashboard/summary-extractor.js';
 import {
   BASE64_TRAJECTORY_SCRIPT_RE,
   extractBase64TrajectoryPayloads,
@@ -193,7 +193,7 @@ export async function reconcileAndUploadManifest(
 
   // Update the uploaded job's summary
   if (uploadedJobId && evalsData) {
-    const uploadedSummary = extractSuiteSummary(uploadedJobId, evalsData);
+    const uploadedSummary = extractJobSummary(uploadedJobId, evalsData);
     if (uploadedSummary) {
       manifestMap.set(uploadedJobId, uploadedSummary);
     }
@@ -216,7 +216,7 @@ export async function reconcileAndUploadManifest(
           const evalsFile = bucket.file(`${jobId}/evals.json`);
           const [fileContent] = await evalsFile.download();
           const parsed = JSON.parse(fileContent.toString('utf8'));
-          const summary = extractSuiteSummary(jobId, parsed);
+          const summary = extractJobSummary(jobId, parsed);
           if (summary) {
             manifestMap.set(jobId, summary);
           }

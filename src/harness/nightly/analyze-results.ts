@@ -148,7 +148,7 @@ function main(): void {
           const maxVisible = 10;
           const visibleList = errList.slice(0, maxVisible);
           visibleList.forEach((err, idx) => {
-            text += `    ${idx + 1}. Run ${err.runNumber} - ${err.testName}\n`;
+            text += `    ${idx + 1}. Trial ${err.runNumber} - ${err.testName}\n`;
           });
 
           if (errList.length > maxVisible) {

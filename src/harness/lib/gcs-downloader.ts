@@ -199,6 +199,12 @@ export function resolveTrialPath(trialDir: string): { absoluteTrialDir: string; 
   return { absoluteTrialDir, relativeTrialPath };
 }
 
+/** @deprecated Use `resolveTrialPath`. */
+export function resolveRunPath(runDir: string): { absoluteRunDir: string; relativeRunPath: string } | null {
+  const resolved = resolveTrialPath(runDir);
+  return resolved && { absoluteRunDir: resolved.absoluteTrialDir, relativeRunPath: resolved.relativeTrialPath };
+}
+
 async function downloadSingleDirFromGcs(trialDir: string, token: string | undefined): Promise<boolean> {
   const resolved = resolveTrialPath(trialDir);
   if (!resolved) return false;

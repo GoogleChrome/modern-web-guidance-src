@@ -42,7 +42,7 @@ One batch execution of the **Eval Harness** across a configured selection of **T
 
 A single execution of an **Agent Harness** on one **Task** under one **Condition** (**Guided** or **Unguided**), producing one **Trajectory** and one set of grader **Check** results. When a **Job** repeats tasks (`×N/task`), `N` specifies **trials per condition** (one guided trial and one unguided trial per repetition). Distinct from a Chrome `Origin Trial`.
 
-* _Reference_: `src/harness/lib/metrics.ts#TrialResult`, `results/suites/<suiteId>/<n>/<guide>/<task>/<guided|unguided>/`
+* _Reference_: `src/harness/lib/metrics.ts#TrialResult`, `results/suites/<jobId>/<n>/<guide>/<task>/<guided|unguided>/`
 * _AKA_: Trial — Harbor Framework and `Agentic Benchmarks + Evals`; Attempt — Harbor Framework (`n_attempts`)
 * _Avoid_: Run / Task Run (for a leaf execution), Pass (for repetition count), Trial Pair
 

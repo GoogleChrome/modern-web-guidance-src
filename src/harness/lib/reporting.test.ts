@@ -86,7 +86,7 @@ test('generateMarkdownReport renders combined unguided and guided columns for pa
   assert.ok(md.includes('## DAILY-GRIND - SIZE-AWARE-STYLING'));
   assert.ok(!md.includes('## DAILY-GRIND - SIZE-AWARE-STYLING - UNGUIDED'));
   assert.ok(!md.includes('## DAILY-GRIND - SIZE-AWARE-STYLING - GUIDED'));
-  assert.ok(!md.includes('**Pass rates across runs:**'));
+  assert.ok(!md.includes('**Pass rates across trials:**'));
   assert.ok(md.includes('| Unguided (1/2) | Guided (2/2) | Expectation |'));
   assert.ok(md.includes('| ✅ | ✅ | Check 1 |'));
   assert.ok(md.includes('| ❌ | ✅ | Check 2 &lt;with angle brackets&gt; |'));
@@ -139,7 +139,7 @@ test('generateMarkdownReport renders pass rates across trials when runsPerTest >
   };
 
   const md = generateMarkdownReport(multiTrialMetrics, allResults);
-  assert.ok(md.includes('**Pass rates across runs:** Unguided: 0%, 50%, 100% (Median: 50%) | Guided: 50%, 100%, 100% (Median: 100%)'));
+  assert.ok(md.includes('**Pass rates across trials:** Unguided: 0%, 50%, 100% (Median: 50%) | Guided: 50%, 100%, 100% (Median: 100%)'));
   assert.ok(md.includes('| Unguided (1/2) | Guided (2/2) | Expectation |'));
   assert.ok(md.includes('| ✅ | ✅ | Check 1 |'));
   assert.ok(md.includes('| ❌ | ✅ | Check 2 |'));
@@ -161,7 +161,7 @@ test('generateMarkdownReport renders summary table, tools used, guides consumed,
   };
 
   const md = generateMarkdownReport(dummyMetrics, allResults);
-  assert.ok(md.includes('| Group | Pass Rate | Test Runs |'));
+  assert.ok(md.includes('| Group | Pass Rate | Trials |'));
   assert.ok(md.includes('**Guides Consumed:** size-aware-styling'));
   assert.ok(md.includes('**Tools Used:** modern-web-guidance'));
   assert.ok(md.includes('| Guided (1/2) | Expectation |'));
@@ -205,8 +205,8 @@ test('generateMarkdownReport renders N/A when runPassRates is empty due to infra
   };
 
   const md = generateMarkdownReport(metricsWithEmptyRuns, allResults);
-  assert.ok(md.includes('**Pass rates across runs:** N/A'));
-  assert.ok(!md.includes('**Pass rates across runs:** %'));
+  assert.ok(md.includes('**Pass rates across trials:** N/A'));
+  assert.ok(!md.includes('**Pass rates across trials:** %'));
 });
 
 test('generateJsonReport includes skillVersion and cliVersion when provided', () => {

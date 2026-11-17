@@ -31,7 +31,7 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 | Release a model | Add it to `releasedModels` |
 | Publish a job the patterns do not cover | Add its exact id to `include` |
 | Hide a whole job | Add its id to `exclude` |
-| Hide one guide inside a job | Add `{ "id": "<suite-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per job; list several guides in it) |
+| Hide one guide inside a job | Add `{ "id": "<job-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per job; list several guides in it) |
 | Restore a hidden job or guide | Remove the `exclude` entry or the override |
 | Keep the site small | Set `retention.maxSuitesPerAgent` / `retention.maxSuites` / `retention.maxAgeDays` |
 

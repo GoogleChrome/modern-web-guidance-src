@@ -30,7 +30,7 @@ function formatPassRates(trialPassRates: number[] | undefined): string {
 
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, TrialResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;
-  let md = `| Group | Pass Rate | Test Runs |
+  let md = `| Group | Pass Rate | Trials |
 |---|---|---|
 | **Unguided** | ${summary.unguidedPassRate}% (${summary.unguidedPassed}/${summary.unguidedTotal}) | ${summary.runsPerTest} |
 | **Guided** | ${summary.guidedPassRate}% (${summary.guidedPassed}/${summary.guidedTotal}) | ${summary.runsPerTest} |
@@ -65,12 +65,12 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
     const hasEmptyPassRates = activeStats.some(s => s.stats.runPassRates.length === 0);
     if (summary.runsPerTest > 1 || hasEmptyPassRates) {
       if (activeStats.length === 1) {
-        md += `**Pass rates across runs:** ${formatPassRates(activeStats[0].stats.runPassRates)}\n\n`;
+        md += `**Pass rates across trials:** ${formatPassRates(activeStats[0].stats.runPassRates)}\n\n`;
       } else if (activeStats.length > 1) {
         const parts = activeStats.map(
           s => `${s.label}: ${formatPassRates(s.stats.runPassRates)} (Median: ${s.stats.medianPassRate}%)`
         );
-        md += `**Pass rates across runs:** ${parts.join(' | ')}\n\n`;
+        md += `**Pass rates across trials:** ${parts.join(' | ')}\n\n`;
       }
     }
 
