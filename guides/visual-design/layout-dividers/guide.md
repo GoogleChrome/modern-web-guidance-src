@@ -4,9 +4,6 @@ description: Draw visual dividers and separator lines between rows and columns i
 web-feature-ids:
   - gap-decorations
   - light-dark
-  - has
-  - nesting
-  - prefers-reduced-motion
 ---
 
 # Layout dividers
@@ -17,44 +14,17 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 1.  **Ensure a non-zero gap.** A rule paints inside the gap. Flex and grid default to `0`, so set `gap`. Multicol's default `column-gap` is already non-zero.
 2.  **Declare rules on the container** with `column-rule` (inline-axis gaps), `row-rule` (block-axis gaps), or `rule` (both). Each value is `<width> <style> <color>`. Include the style: it defaults to `none`, so `1px red` paints nothing. Use `currentColor` or `light-dark()` for color.
-3. If the first/last gaps or alternating gaps should differ, vary rules per gap with comma lists and `repeat()`
+3. If the first/last gaps or alternating gaps should differ, vary rules per gap with comma lists and `repeat()`. Comma lists assign per gap in order and cycle when shorter than the gap count; `repeat(auto, ...)` (at most one per list) fills uncovered gaps and stops cycling when the track count is unknown, and `repeat(N, ...)` requires an integer `N >= 1` or the declaration is invalid.
 4.  When rules in a grid should not form a visible lattice, control intersections and segment length with `rule-break`, `rule-inset`, and `rule-overlap`. 
 5.  To control whether rules are painted next to empty cells use `rule-visibility-items`.
 6.  **Optional: Animate** `rule-color`, `rule-width`, or `rule-inset` (animatable; `rule-style` and `rule-break` change discretely) for hover affordances.
 
 `column-rule` is always the inline-axis gap and `row-rule` the block-axis gap, so both flip with `writing-mode`. In a flex row, `column-rule` sits between siblings and `row-rule` between wrapped lines; in a flex column they swap.
 
-## Example: Grid with per-gap rules, intersections, and hover
-
-```css
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem; /* the rule needs a gap to live in; 1rem is an example value */
-
-  /* Comma lists assign per gap in order and cycle if shorter than the gap count.
-     repeat(auto, ...) (at most one per list) fills the gaps the fixed values don't cover and stops
-     cycling: use it when the track count is unknown, fixed values only for first/last gaps.
-     repeat(N, ...) needs an integer N >= 1 or the whole declaration is invalid. */
-  column-rule: 3px solid gray, repeat(auto, 1px dashed gray), 3px solid gray;
-  row-rule: 1px solid currentColor;
-
-  /* Break rules at every T and cross so they don't form a lattice. */
-  rule-break: intersection;
-  /* Pulls segment ends back from container edges and broken intersections (negative extends into
-     padding or junctions). 0.5rem is an example value. */
-  rule-inset: 0.5rem;
-
-  transition: rule-color 0.2s; /* 0.2s is an example value */
-  &:has(a:hover) { rule-color: var(--accent); }
-  @media (prefers-reduced-motion: reduce) { transition: none; }
-}
-```
-
 ## Choosing between options
 
 - **`rule-break`:** `normal` (default) breaks at T-junctions and stays continuous through grid crosses; keep it for table-like grids. Use `intersection` for separated, tick-like segments. Use `none` for one unbroken line across items that span tracks.
-- **`rule-inset`:** insets both free ends like container edges (`rule-inset-cap`) and broken intersections where rules meet (`rule-inset-junction`), or sets them separately with `<cap> / <junction>`. Cap insets always apply; junction insets only take effect where rules stop or break (`intersection`, or `normal` at T-junctions and sparse corners). `overlap-join` (flush `0` at caps) makes segments meet neatly at corners and T-junctions; at full crosses it looks the same as `rule-break: normal`.
+- **`rule-inset`:** pulls segment ends back from free ends like container edges (`rule-inset-cap`) and broken intersections where rules meet (`rule-inset-junction`) with positive values, extends into padding or junctions with negative values, or sets them separately with `<cap> / <junction>`. Cap insets always apply; junction insets only take effect where rules stop or break (`intersection`, or `normal` at T-junctions and sparse corners). `overlap-join` (flush `0` at caps) makes segments meet neatly at corners and T-junctions; at full crosses it looks the same as `rule-break: normal`.
 - **`rule-overlap`:** `row-over-column` (default) or `column-over-row` decides which axis paints on top at crossings; only matters when the two rules differ.
 - **`rule-visibility-items`** (grid and multicol): `normal` (default), `all` (rules next to empty cells too), `around` (when either side has an item), `between` (only when both sides have items). Use `between` for sparse grids. An empty cell is one with no item placed in it: a `visibility: hidden`, `opacity: 0`, or empty placeholder element still counts as an item, so leave the cell unoccupied with `grid-template-areas` or explicit `grid-area` placement.
 
