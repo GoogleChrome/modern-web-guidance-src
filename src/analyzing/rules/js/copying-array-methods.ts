@@ -30,8 +30,9 @@ const NON_ARRAY_TYPE = new RegExp(
 );
 const ELEMENT_DOM_PROPERTY = new RegExp(
   '^(?:child(?:ren|Nodes)|classList|attributes|files|tBodies|rows|cells|options|' +
-    'styleSheets|selectedOptions)$',
+    'styleSheets|selectedOptions|textContent|innerText|(?:inner|outer)HTML)$',
 );
+const STRING_RESULT_METHOD = /^(?:to(?:String|Fixed|Precision)|join)$/;
 const DOCUMENT_COLLECTION_PROPERTY = new RegExp(
   '^(?:scripts|forms|images|links|embeds|applets|anchors)$',
 );
@@ -168,6 +169,9 @@ function classifyCallReturnType(call: CallExpression, method: UnwrappedMethodCal
   const callee = unwrapExpression(call.getExpression());
   if (Node.isIdentifier(callee)) {
     const resolved = resolveCallableNode(callee, 2);
+    if ((Node.isFunctionDeclaration(resolved) || Node.isFunctionExpression(resolved)) && resolved.isGenerator()) {
+      return 'non-array';
+    }
     if (isCallableNode(resolved)) {
       return classifyTypeText(resolved.getReturnTypeNode()?.getText(), resolved.getSourceFile());
     }
@@ -342,7 +346,9 @@ function classifyReceiverNode(node: Node | undefined, depth = 0): ReceiverKind {
 
   const method = unwrapStrictMethod(unwrapped);
   if (method) {
-    if (DOM_OR_STRING_METHOD.test(method.methodName)) return 'non-array';
+    if (DOM_OR_STRING_METHOD.test(method.methodName) || STRING_RESULT_METHOD.test(method.methodName)) {
+      return 'non-array';
+    }
     if (method.methodName === 'keys' || method.methodName === 'values' || method.methodName === 'entries') {
       return isGlobalReference(method.receiver, 'Object') ? 'array' : 'non-array';
     }
@@ -353,6 +359,7 @@ function classifyReceiverNode(node: Node | undefined, depth = 0): ReceiverKind {
   }
 
   if (Node.isCallExpression(unwrapped)) {
+    if (isGlobalReference(unwrapped.getExpression(), 'String')) return 'non-array';
     return classifyCallReturnType(unwrapped, null);
   }
 

@@ -423,4 +423,20 @@ void test('js/copying-array-methods matcher', async (t) => {
       [2],
     );
   });
+
+  await t.test('exempts string and generator receivers (#3636) but keeps split() results and arrays', () => {
+    const code = `
+      const reverseDigits = (n) => [...String(n)].reverse().join('');
+      const reverseNum = (n) => [...n.toString()].reverse().join('');
+      const reverseText = (el) => [...el.textContent].reverse().join('');
+      function* range(n) { for (let i = 0; i < n; i++) yield i; }
+      const countdown = () => [...range(5)].reverse();
+      const words = (s) => [...s.split(' ')].reverse();
+      const copy = (arr) => [...arr].reverse();
+    `;
+    assert.deepEqual(
+      matchJsRule(copyingArrayMethodsMatcher, 'strings.js', code).map((m) => m.line),
+      [7, 8],
+    );
+  });
 });
