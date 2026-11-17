@@ -376,7 +376,7 @@ it as the first thing in the listener, with nothing awaited before it — see
 Prefer `chrome.tabs.captureVisibleTab()` with `"activeTab"` when visible-viewport capture suffices,
 as `"debugger"` warns of all-sites access and shows a debugging infobar. Never call
 `Page.captureScreenshot({ captureBeyondViewport: true })` unclipped or without a timeout and
-`finally` detach; see `references/extensions/screenshot-capture.md`.
+`finally` detach; see `references/extensions/debugger.md`.
 
 #### 22. Dynamic `import()` and post-install `importScripts()` of new scripts throw in service workers
 
@@ -398,10 +398,8 @@ Never generate Manifest V2 code.
 
 - Branded Google Chrome ignores `--load-extension`. Use **Chrome for Testing** / **Chromium**, or
   load via CDP `Extensions.loadUnpacked` or BiDi `webExtension.install` (ChromeDriver: add
-  `--enable-unsafe-extension-debugging` to Chrome args).
-- `"Another debugger is already attached to the tab with id: N."` means **this extension** still
-  holds a `chrome.debugger` session on that tab (a missed `detach`). The harness can stay attached.
-  See `references/extensions/automated-testing.md`.
+  `--enable-unsafe-extension-debugging` to Chrome args). See
+  `references/extensions/automated-testing.md`.
 
 ---
 
@@ -515,7 +513,7 @@ For detailed API patterns and publishing guidance, read the relevant file BEFORE
 | Storage | `references/extensions/storage.md` |
 | Tab & window management | `references/extensions/tab-management.md` |
 | Tab/desktop capture | `references/extensions/media-capture.md` |
-| Screenshot capture (`chrome.debugger`) | `references/extensions/screenshot-capture.md` |
+| Debugger & screenshot capture (`chrome.debugger`) | `references/extensions/debugger.md` |
 | Automated testing / CDP | `references/extensions/automated-testing.md` |
 | User scripts | `references/extensions/user-scripts.md` |
 | Message passing | `references/extensions/message-passing.md` |
