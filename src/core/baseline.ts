@@ -539,13 +539,26 @@ export function getBaselineTargetsForGrader(graderPath: string): BaselineTarget[
 }
 
 /**
- * Subtracts a specified number of months from a date string.
+ * Subtracts a specified number of months from a `YYYY-MM-DD` date string.
+ *
+ * All Baseline dates are calendar dates, so this is pure date arithmetic: it runs in UTC (a local
+ * `Date` would shift by the host timezone offset and can land on the previous day) and clamps to
+ * the last day of the target month (`2024-05-31` minus 30 months is `2021-11-30`, not `2021-12-01`).
+ *
  * @param dateStr - The date string in the format "YYYY-MM-DD"
  * @param months - The number of months to subtract
  * @returns The date string after subtracting the specified number of months
  */
 function subtractMonths(dateStr: string, months: number): string {
-  const date = new Date(dateStr);
-  date.setMonth(date.getMonth() - months);
-  return date.toISOString().split('T')[0];
+  const [year, month, day] = dateStr.split('-').map((part) => parseInt(part, 10));
+  if (!year || !month || !day) return dateStr;
+
+  const totalMonths = year * 12 + (month - 1) - months;
+  const targetYear = Math.floor(totalMonths / 12);
+  const targetMonth = totalMonths - targetYear * 12; // 0-based
+  const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const targetDay = Math.min(day, lastDayOfTargetMonth);
+
+  const pad = (value: number, width = 2) => String(value).padStart(width, '0');
+  return `${pad(targetYear, 4)}-${pad(targetMonth + 1)}-${pad(targetDay)}`;
 }
