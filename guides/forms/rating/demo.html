@@ -198,7 +198,9 @@
 
     @media (forced-colors: active) {
       .rating {
-        --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--_offset) + var(--control-value) * var(--star-size)), GrayText 0);
+        --color-star-filled: Highlight;
+        --color-star-average: Highlight;
+        --color-star-empty: GrayText;
         forced-color-adjust: none;
       }
     }

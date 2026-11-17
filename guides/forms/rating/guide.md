@@ -20,7 +20,7 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `Highlight` and `GrayText` and opt out of color adjustment.
 
 ```css
 :root {
@@ -38,12 +38,19 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
       var(--color-star-filled) calc(var(--_offset) + var(--control-value) * var(--star-size)),
       var(--color-star-empty) 0);
   --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+
+  @media (forced-colors: active) {
+    --color-star-filled: Highlight;
+    --color-star-average: Highlight;
+    --color-star-empty: GrayText;
+    forced-color-adjust: none;
+  }
 }
 ```
 
 **Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--control-value) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
 
-To transition or animate the fill, mirror `--control-value` into a component-specific `@property` (`syntax: "<number>"`) rather than registering `--control-value` directly.
+To transition or animate the fill, mirror `--control-value` into a component-specific `@property` (`syntax: "<number>"`) rather than registering `--control-value` directly, and disable any transition or press animation under `prefers-reduced-motion: reduce`.
 
 ## Read-only rating: a meter
 
@@ -139,19 +146,6 @@ input[type="range"].rating {
 On `input` (and on initial load), mirror `range.min`, `range.max`, `range.step`, and `range.value` into `--min`, `--max`, `--step`, and `--control-value` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
 Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
-
-## Forced colors and motion
-
-In forced-colors mode, background colors are overridden, so redraw the stars with system colors while opting out of color adjustment. Under `prefers-reduced-motion: reduce`, disable any press animation on `.rating`.
-
-```css
-@media (forced-colors: active) {
-  .rating {
-    --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--_offset) + var(--control-value) * var(--star-size)), GrayText 0);
-    forced-color-adjust: none;
-  }
-}
-```
 
 ## Fallbacks
 
