@@ -167,7 +167,7 @@ In forced-colors mode, background colors are overridden, so clear the drop-shado
 
 ## Fallbacks
 
-### attr() (read-only only)
+### attr()
 
 {{ BASELINE_STATUS("attr") }}
 
