@@ -57,7 +57,7 @@ If your use case requires visible dividers, a fallback is only robust for the si
 }
 ```
 
-Wrapping grids have no clean fallback; accept plain gaps there. A polyfill is in development, but do not recommend one.
+For fixed-track grids with known or equal track sizes, a container `background` gradient can draw lines without affecting layout. Wrapping flex layouts and `auto-fill`/`auto-fit` grids have no clean CSS fallback; accept plain gaps there (do not recommend a polyfill).
 
 ### light-dark()
 
