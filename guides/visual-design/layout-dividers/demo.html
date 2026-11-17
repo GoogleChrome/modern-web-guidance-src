@@ -170,7 +170,7 @@
       @media (prefers-reduced-motion: no-preference) {
         transition: rule-color 0.2s, rule-width 0.2s;
       }
-      &:has(:hover, :focus-visible) {
+      &:has(> a:is(:hover, :focus-visible)) {
         rule-color: var(--accent);
         rule-width: 3px;
       }
