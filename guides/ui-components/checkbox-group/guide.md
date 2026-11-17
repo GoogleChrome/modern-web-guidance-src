@@ -88,7 +88,7 @@ Style the checkboxes (including the master) with `accent-color` for brand-consis
 .checkbox {
   font-size: 1rem; /* Keeps the em-based sizes below predictable */
   accent-color: #1a73e8;
-  inline-size: 1.25em;
+  inline-size: var(--checkbox-size, 1.25rem);
   aspect-ratio: 1;
   margin: 0;
   cursor: pointer;
@@ -104,10 +104,15 @@ DO NOT remove focus indicators from the checkboxes.
 Style `.master` with a 44px minimum hit target and a visual separator:
 
 ```css
+fieldset {
+  --checkbox-size: 1.25rem;
+  --checkbox-group-gap: 0.75rem;
+}
+
 .master {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--checkbox-group-gap);
   min-block-size: 44px;
   margin-block-end: 0.5rem;
   padding-block-end: 0.5rem;
@@ -126,7 +131,7 @@ MANDATORY: The checkbox must stay at the inline-start of all label text, includi
   position: relative;
   display: block;
   padding-block: 10px; /* 24px line + 20px = 44px hit target */
-  padding-inline-start: 2rem; /* checkbox width + gap */
+  padding-inline-start: calc(var(--checkbox-size) + var(--checkbox-group-gap));
   line-height: 1.5rem;
   cursor: pointer;
 }
@@ -135,7 +140,7 @@ MANDATORY: The checkbox must stay at the inline-start of all label text, includi
 .checkbox-group > label > .checkbox {
   position: absolute;
   inset-inline-start: 0;
-  inset-block-start: calc(10px + (1.5rem - 1.25em) / 2);
+  inset-block-start: calc(10px + (1.5rem - var(--checkbox-size)) / 2);
   margin: 0;
 }
 ```
@@ -153,7 +158,7 @@ For a de-emphasized hint under the main label, place it outside `<label>` as a `
 <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 ```
 
-Align the hint with the label text, not the checkbox: use `display: block` and `margin-inline-start: 2rem` (checkbox width plus gap). Style it smaller and muted with at least 4.5:1 contrast.
+Align the hint with the label text, not the checkbox: use `display: block` and `margin-inline-start: calc(var(--checkbox-size) + var(--checkbox-group-gap))`. Style it smaller and muted with at least 4.5:1 contrast.
 
 ### Radio groups
 

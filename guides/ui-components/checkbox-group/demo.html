@@ -37,6 +37,8 @@
     }
 
     fieldset {
+      --checkbox-size: 1.25rem;
+      --checkbox-group-gap: 0.75rem;
       margin: 1.5rem 0 0;
       padding: 1rem 1.5rem 1.5rem;
       background-color: var(--surface);
@@ -54,7 +56,7 @@
       position: relative;
       display: block;
       padding-block: 10px;
-      padding-inline-start: 2rem; /* checkbox width + gap */
+      padding-inline-start: calc(var(--checkbox-size) + var(--checkbox-group-gap));
       line-height: 1.5rem;
       cursor: pointer;
       user-select: none;
@@ -63,7 +65,7 @@
     .checkbox-group > label > .checkbox {
       position: absolute;
       inset-inline-start: 0;
-      inset-block-start: calc(10px + (1.5rem - 1.25em) / 2);
+      inset-block-start: calc(10px + (1.5rem - var(--checkbox-size)) / 2);
       margin: 0;
     }
 
@@ -80,13 +82,13 @@
 
     .checkbox-group .hint {
       display: block;
-      margin-inline-start: 2rem; /* checkbox width + gap */
+      margin-inline-start: calc(var(--checkbox-size) + var(--checkbox-group-gap));
     }
 
     .master {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: var(--checkbox-group-gap);
       min-block-size: 44px;
       margin-block-end: 0.5rem;
       font-weight: 600;
@@ -96,7 +98,7 @@
     /* Default: native rendering, branded with accent-color. */
     .checkbox {
       font-size: 1rem;
-      inline-size: 1.25em;
+      inline-size: var(--checkbox-size);
       aspect-ratio: 1;
       margin: 0;
       accent-color: var(--brand-primary);
