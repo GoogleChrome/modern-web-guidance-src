@@ -111,7 +111,7 @@ Use `<input type="range" class="rating" min="0" max="5" step="0.5">` (adjust `ma
 <output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
 ```
 
-Style `input[type="range"].rating` with `appearance: none; box-sizing: content-box; margin: 0; border: 0; background: transparent;` and horizontal `padding-inline` gutters (e.g. `--rating-gutter: 0.75rem`) for easy min and max clicks. Paint `--_stars-bg` and `--_stars-mask` on the native track pseudo-elements (`::-webkit-slider-runnable-track` and `::-moz-range-track`) rather than on the input itself, so `:focus-visible` `outline` and `outline-offset` on the input are never clipped by the mask, and collapse the thumb to zero width so pointer coordinates map 1:1 to values:
+Reset the range input's native styling and add horizontal padding gutters for easy min and max clicks. Paint the stars on the track pseudo-elements so the focus ring is never clipped by the mask, and collapse the thumb to zero width so pointer coordinates map 1:1 to values:
 
 ```css
 input[type="range"].rating {
