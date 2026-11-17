@@ -7,7 +7,21 @@ web-feature-ids:
 
 # Layout dividers
 
-Draw dividers between items of a flex, grid, or multicol container with CSS gap decorations (`column-rule`, `row-rule`, `rule`) set on the container. Rules paint centered in the gap, behind items, never change gap or container size, and stop at the container's content-box edges by default. **DO NOT** fake dividers with item `border` (changes box size, needs `:last-child` resets, breaks on wrap; use only inside an `@supports not (...)` fallback) or inject `<hr>`, `<li aria-hidden>`, `<div class="divider">`, or pseudo-elements purely as visual lines. Use `<hr>` only for semantic thematic breaks (section or topic shifts), and use `<table>` rather than grid plus rules for tabular data.
+Choose a divider technique by what the line means and how the layout behaves, not by which feature is newest.
+
+## Which divider technique to use?
+
+Walk top to bottom and stop at the first match.
+
+1. **The line marks a thematic or topic break in content** (a section or subject shift): use `<hr>`. It exposes `role="separator"` to assistive technology. CSS rules are not in the accessibility tree, so never replace a semantic break with them.
+2. **The content is tabular data:** use `<table>` with cell or row borders. Do not fake a table with grid plus rules.
+3. **Items sit flush with no gap (`gap: 0`):** in a simple non-wrapping stack, use an adjacent-sibling border (`> * + * { border-block-start: 1px solid currentColor; }`). In a grid of opaque cells, `gap: 1px` over a contrasting container background draws the lines without touching the items.
+4. **The content flows in columns (multicol):** use `column-rule` on the multicol container.
+5. **Items are spaced, responsive, or wrapping in flex or grid:** use CSS gap decorations (`column-rule`, `row-rule`, `rule`) on the container. Rules paint centered in the gap, behind items, never change gap or container size, and stop at the container's content-box edges by default. They survive wrapping and reflow without `:last-child` or `:nth-child` resets.
+
+**DO NOT** inject `<li aria-hidden>`, `<div class="divider">`, or pseudo-elements purely as visual lines, and **DO NOT** put borders on items of a spaced or wrapping flex or grid layout (changes box size, needs `:last-child` resets, breaks on wrap) outside an `@supports not (...)` fallback.
+
+The rest of this guide covers options 4 and 5.
 
 ## Implementation steps
 
@@ -31,9 +45,9 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 {{ BASELINE_STATUS("gap-decorations") }}
 
-In cases where dividers are purely decorative, one possibility is to not use a fallback at all: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
+Fallbacks reuse the techniques from the decision tree above. In cases where dividers are purely decorative, one possibility is to not use a fallback at all: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
 
-If your use case requires visible dividers, a fallback is only robust for the simplest case, a single-column stack. Keep the gap non-zero and split it around the border so the spacing matches the rule, instead of adding padding or margin on top of the gap:
+If your use case requires visible dividers, a fallback is only robust for the simplest case, a single-column stack, where the adjacent-sibling border from option 3 applies. Keep the gap non-zero and split it around the border so the spacing matches the rule, instead of adding padding or margin on top of the gap:
 
 ```css
 .stack { display: flex; flex-direction: column; gap: 1rem; row-rule: 1px solid currentColor; }
