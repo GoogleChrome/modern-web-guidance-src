@@ -2,8 +2,10 @@
 - The container's computed `column-rule-style` or `row-rule-style` is not `none`.
 - The container's computed `column-rule-width` or `row-rule-width` is non-zero for the axis whose rule style is not `none`.
 - The rules are declared with `column-rule`, `row-rule`, or `rule` (or their longhands) in the stylesheet on the container, not on its items.
-- No element inside the container exists only as a visual divider (decorative `<hr>`, an empty element, an `aria-hidden` spacer, or a class name containing "divider" or "separator").
+- No `<hr>`, empty element, or `aria-hidden` spacer is a direct child of the divider container, and no item of the container has a class name containing "divider" or "separator".
 - No `::before` or `::after` pseudo-element on the container's items draws a line (`content: ""` with `position: absolute` and a few-pixel `inline-size` or `block-size`).
-- The container's items do not use single-sided borders (such as `border-inline-end`, `border-block-start`, `border-right`, or `border-bottom` on adjacent siblings) to fake dividers outside of an `@supports not (...)` fallback.
+- The items of the divider container do not use single-sided borders (such as `border-inline-end`, `border-block-start`, `border-right`, or `border-bottom` on adjacent siblings) to fake dividers outside of an `@supports not (...)` fallback.
 - The stylesheet does not contain `-rule-outset`, `gap-rule-paint-order`, or `spanning-item`.
+- No `rule-inset`, `column-rule-inset`, `row-rule-inset`, or `rule-inset-cap` declaration uses a positive length as its cap (first) value.
+- No `:hover`, `:focus`, `:focus-visible`, or `:focus-within` rule changes `rule-width`, `column-rule-width`, or `row-rule-width` on the divider container.
 - When `gap-decorations` is unsupported, the container retains a non-zero computed gap and all content remains readable without overlapping or clipping.

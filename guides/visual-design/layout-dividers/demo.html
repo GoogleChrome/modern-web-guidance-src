@@ -61,6 +61,7 @@
     }
 
     /* Semantic break: <hr> is content, not decoration */
+    .article { gap: 0; }
     .article hr { margin-block: 1rem; border: 0; border-block-start: 1px solid var(--rule); }
 
     /* Tabular data: <table> with row borders */
@@ -72,6 +73,7 @@
     }
 
     /* Flush items: sibling border in a stack, 1px gap over a container background in a grid */
+    .flush-stack { gap: 0; }
     .flush-stack > * { padding-block: 0.75rem; }
     .flush-stack > * + * { border-block-start: 1px solid var(--rule); }
     .flush-grid {
