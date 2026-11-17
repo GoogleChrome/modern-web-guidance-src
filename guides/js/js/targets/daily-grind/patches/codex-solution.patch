@@ -1,0 +1,271 @@
+diff --git a/index.html b/index.html
+index 66c9173..9ca1133 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,25 @@
+       background: #3e2723;
+     }
+ 
++    button, select, input { font: inherit; }
++    button { cursor: pointer; border: 0; }
++    button:disabled { opacity: 0.55; cursor: default; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    #menu-controls, .order-controls, .order-actions {
++      display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 20px 0;
++    }
++    select, input[type="text"] { padding: 8px; max-width: 100%; }
++    .menu-category, #draft-order { margin-top: 32px; }
++    .price { font-weight: bold; margin-top: 12px; }
++    #order-items { padding-left: 24px; }
++    #order-items li { margin: 16px 0; }
++    #order-status { min-height: 1.6em; }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +194,49 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading">Daily Grind Coffee Menu</h2>
++      <div id="menu-controls">
++        <label for="category">Category
++          <select id="category">
++            <option value="all">All</option>
++            <option value="seasonal">Seasonal</option>
++            <option value="espresso">Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <label for="sort">Sort
++          <select id="sort">
++            <option value="featured">Featured (default)</option>
++            <option value="price-asc">Price: low to high</option>
++            <option value="price-desc">Price: high to low</option>
++          </select>
++        </label>
++        <label><input id="reverse" type="checkbox"> Reverse Order</label>
++        <label><input id="group" type="checkbox"> Group by Category</label>
++      </div>
++      <p id="menu-count" role="status"></p>
++      <div id="menu-items"></div>
++    </section>
++    <section id="draft-order" aria-labelledby="order-heading">
++      <h2 id="order-heading">Draft Order</h2>
++      <p>Choose your customization and note before adding a drink. Snapshots last for this page visit.</p>
++      <div class="order-controls">
++        <label for="milk">Milk
++          <select id="milk"><option value="Whole">Whole</option><option value="Oat">Oat</option></select>
++        </label>
++        <label for="customer-note">Customer note
++          <input id="customer-note" type="text" maxlength="500" placeholder="For your next drink">
++        </label>
++      </div>
++      <ol id="order-items"></ol>
++      <p id="order-total"></p>
++      <div class="order-actions">
++        <button id="save-snapshot" class="btn" type="button">Save Snapshot</button>
++        <button id="restore-snapshot" class="btn" type="button" disabled>Restore Snapshot</button>
++        <button id="clear-order" class="btn" type="button">Clear Order</button>
+       </div>
++      <p id="order-status" role="status"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +250,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="menu.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/menu.js b/menu.js
+new file mode 100644
+index 0000000..ebd117e
+--- /dev/null
++++ b/menu.js
+@@ -0,0 +1,147 @@
++(() => {
++  'use strict';
++
++  const categories = new Map([
++    ['seasonal', 'Seasonal'], ['espresso', 'Espresso'], ['cold-brew', 'Cold Brew'],
++  ]);
++  const menu = Object.freeze([
++    { id: 'maple-oat-latte', name: 'Maple Oat Latte', category: 'seasonal', price: 575, description: 'Creamy oat milk with a hint of Vermont maple syrup.' },
++    { id: 'dark-roast-espresso', name: 'Dark Roast Espresso', category: 'espresso', price: 300, description: 'Bold, smokey, and perfect for a morning boost.' },
++    { id: 'cold-brew', name: 'Cold Brew', category: 'cold-brew', price: 450, description: 'Steeped for 18 hours for maximum smoothness.' },
++    { id: 'cinnamon-latte', name: 'Cinnamon Latte', category: 'seasonal', price: 550, description: 'Warming cinnamon with silky steamed milk.' },
++    { id: 'cappuccino', name: 'Cappuccino', category: 'espresso', price: 425, description: 'Rich espresso with a cloud of milk foam.' },
++    { id: 'vanilla-cold-brew', name: 'Vanilla Cold Brew', category: 'cold-brew', price: 500, description: 'Our smooth cold brew with fragrant vanilla.' },
++  ].map((item) => Object.freeze(item)));
++  const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++  const price = (cents) => money.format(cents / 100);
++
++  // Validate required elements once so later DOM access has a known element type.
++  function element(id, type = HTMLElement) {
++    const found = document.getElementById(id);
++    if (!(found instanceof type)) throw new Error(`Missing or invalid element: ${id}`);
++    return found;
++  }
++  const controls = element('menu-controls');
++  const category = element('category', HTMLSelectElement);
++  const sort = element('sort', HTMLSelectElement);
++  const reverse = element('reverse', HTMLInputElement);
++  const group = element('group', HTMLInputElement);
++  const milk = element('milk', HTMLSelectElement);
++  const note = element('customer-note', HTMLInputElement);
++  const restore = element('restore-snapshot', HTMLButtonElement);
++  let order = [];
++  let snapshot = null;
++
++  function node(tag, text, className) {
++    const result = document.createElement(tag);
++    if (text !== undefined) result.textContent = text;
++    if (className) result.className = className;
++    return result;
++  }
++
++  function state() {
++    return { category: category.value, sort: sort.value, reverse: reverse.checked, group: group.checked };
++  }
++
++  function readURL() {
++    const params = new URLSearchParams(window.location.search);
++    const requestedCategory = params.get('category');
++    category.value = categories.has(requestedCategory) ? requestedCategory : 'all';
++    const requestedSort = params.get('sort');
++    sort.value = ['featured', 'price-asc', 'price-desc'].includes(requestedSort) ? requestedSort : 'featured';
++    reverse.checked = params.get('reverse') === 'true';
++    group.checked = params.get('group') === 'true';
++  }
++
++  function card(item) {
++    const result = node('article', undefined, 'card');
++    result.dataset.itemId = item.id;
++    const add = node('button', 'Add to Order', 'btn');
++    add.type = 'button';
++    add.setAttribute('aria-label', `Add ${item.name} to Order`);
++    add.addEventListener('click', () => {
++      order = [...order, {
++        menuId: item.id, name: item.name, price: item.price,
++        options: { milk: milk.value, customer: { note: note.value } },
++        addedAt: new Date(),
++      }];
++      renderOrder();
++      element('order-status').textContent = `${item.name} added to your order.`;
++    });
++    result.append(node('h3', item.name), node('p', item.description), node('p', price(item.price), 'price'), add);
++    return result;
++  }
++
++  function renderMenu() {
++    const current = state();
++    let items = menu.filter((item) => current.category === 'all' || item.category === current.category);
++    if (current.sort !== 'featured') {
++      items = items.toSorted((a, b) => current.sort === 'price-asc' ? a.price - b.price : b.price - a.price);
++    }
++    if (current.reverse) items = items.toReversed();
++    const content = document.createDocumentFragment();
++    if (current.group) {
++      const groups = Object.groupBy(items, (item) => item.category);
++      for (const [key, label] of categories) {
++        const bucket = groups[key] ?? [];
++        const section = node('section', undefined, 'menu-category');
++        section.append(node('h3', `${label} (${bucket.length})`));
++        if (bucket.length) {
++          const grid = node('div', undefined, 'grid');
++          grid.replaceChildren(...bucket.map(card));
++          section.append(grid);
++        } else {
++          section.append(node('p', 'No drinks match the current filter.'));
++        }
++        content.append(section);
++      }
++    } else {
++      const grid = node('div', undefined, 'grid');
++      grid.replaceChildren(...items.map(card));
++      content.append(grid);
++    }
++    element('menu-items').replaceChildren(content);
++    element('menu-count').textContent = `${items.length} drinks shown`;
++    const url = new URL(window.location.href);
++    for (const [key, value] of Object.entries(current)) url.searchParams.set(key, String(value));
++    window.history.replaceState(window.history.state, '', url);
++    controls.dispatchEvent(new CustomEvent('daily-grind:filter-change', { bubbles: true, detail: current }));
++  }
++
++  function renderOrder() {
++    const rows = order.map((item) => {
++      const row = node('li');
++      const timestamp = node('time', item.addedAt.toLocaleString());
++      timestamp.dateTime = item.addedAt.toISOString();
++      row.append(node('strong', `${item.name} — ${price(item.price)}`),
++        node('p', `Milk: ${item.options.milk}. Note: ${item.options.customer.note || 'None'}`), timestamp);
++      return row;
++    });
++    element('order-items').replaceChildren(...rows);
++    element('order-total').textContent = order.length
++      ? `${order.length} drink${order.length === 1 ? '' : 's'} · Total: ${price(order.reduce((sum, item) => sum + item.price, 0))}`
++      : 'Your draft order is empty.';
++  }
++
++  controls.addEventListener('change', renderMenu);
++  window.addEventListener('popstate', () => { readURL(); renderMenu(); });
++  element('save-snapshot').addEventListener('click', () => {
++    snapshot = structuredClone(order);
++    restore.disabled = false;
++    element('order-status').textContent = 'Snapshot saved.';
++  });
++  restore.addEventListener('click', () => {
++    if (snapshot === null) return;
++    order = structuredClone(snapshot);
++    renderOrder();
++    element('order-status').textContent = 'Snapshot restored.';
++  });
++  element('clear-order').addEventListener('click', () => {
++    order = [];
++    renderOrder();
++    element('order-status').textContent = 'Draft order cleared.';
++  });
++  readURL();
++  renderMenu();
++  renderOrder();
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..8e1659f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check menu.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

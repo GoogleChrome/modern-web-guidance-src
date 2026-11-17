@@ -93,7 +93,7 @@ describe('publishPublicEvals + checkoutPublished', () => {
     assert.equal(execFileSync('git', ['-C', inspect, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim(), '1');
   });
 
-  test('publishes modern-web.log even though the deployed dashboard .gitignore excludes *.log', async () => {
+  test('publishes a file that a stale .gitignore on the branch would exclude', async () => {
     const bare = makeBareRemote();
     seedBranchFile(bare, '.gitignore', '*.log\n');
     const head = remoteHead(bare);

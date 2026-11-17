@@ -602,7 +602,7 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
     if (apps.length > 0) {
       const results = await Promise.all(
         apps.map((app) => {
-          console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
+          console.log(cCyan(`\n--- Calibrating base app: ${app} ---`));
           return testTargetGrader(targetDirAbs, app);
         })
       );
@@ -610,7 +610,7 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
     }
   }
 
-  throw new Error(`No target base apps found in ${targetsDir}. Calibration requires target base apps in targets/.`);
+  throw new Error(`No base apps found in ${targetsDir}. Calibration requires base apps in targets/.`);
 }
 
 async function run(): Promise<void> {

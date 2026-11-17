@@ -4,6 +4,7 @@ import type {
   DomMatcherContext,
   DomRuleMatcher,
 } from '../schema.ts';
+import { DOM_RULE_EXTENSIONS } from '../scanners/file-filter.ts';
 
 export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = 'b673d8824bbc';
 
@@ -13,11 +14,11 @@ const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
  * Checks whether an element line position is enclosed within an open `<form>` or `<Form>` tag.
  */
 function isEnclosedInForm(documentText: string, targetLine: number): boolean {
-  // Preserve line numbers when masking comments and script blocks
-  const maskedText = documentText
+  // Preserve line numbers when stripping comments and script blocks
+  const strippedText = documentText
     .replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\n]/g, ' '))
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => match.replace(/[^\n]/g, ' '));
-  const lines = maskedText.split('\n');
+  const lines = strippedText.split('\n');
   const textBefore = lines.slice(0, targetLine).join('\n');
 
   let depth = 0;
@@ -79,17 +80,7 @@ const CARD_CSC_REGEX =
 const CARDHOLDER_NAME_REGEX =
   /(?:cc[-_]?name|cardholder[-_]?name|name[-_]?on[-_]?card|\bcardholder\b)/i;
 
-const SUPPORTED_EXTENSIONS = [
-  '.html',
-  '.htm',
-  '.jsx',
-  '.tsx',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.php',
-];
-
+const SUPPORTED_EXTENSIONS: readonly string[] = [...DOM_RULE_EXTENSIONS, '.php'];
 const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
 
 const NON_PAYMENT_INPUT_TYPES = new Set([
@@ -109,7 +100,36 @@ const NON_PAYMENT_INPUT_TYPES = new Set([
 export const autofillPaymentFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input',
-  fastTokens: ['card', 'cvv', 'cvc', 'csc', 'exp', 'credit', 'cc-'],
+  fastTokens: [
+    'card',
+    'Card',
+    'CARD',
+    'cvv',
+    'CVV',
+    'cvc',
+    'CVC',
+    'csc',
+    'CSC',
+    'exp',
+    'Exp',
+    'EXP',
+    'credit',
+    'Credit',
+    'CREDIT',
+    'cc-',
+    'cc_',
+    'ccNum',
+    'ccExp',
+    'ccCsc',
+    'ccCvv',
+    'ccCvc',
+    'ccName',
+    'CC-',
+    'CC_',
+    'security_code',
+    'security-code',
+    'securityCode',
+  ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

@@ -202,8 +202,7 @@ export const durationJsMatcher: JsRuleMatcher = {
     '3600',
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const fullText = sourceFile.getFullText();
-    if (isTestBenchOrCliFile(ctx, fullText)) {
+    if (isTestBenchOrCliFile(ctx, ctx.fileContent)) {
       return [];
     }
 

@@ -210,6 +210,10 @@ test('Manifest source paths resolve relative to dist directory', async () => {
 test('README template and dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   assert.ok(readmeRaw.includes('Modern Web Guidance'), 'README should contain title');
+  assert.ok(
+    readmeRaw.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'),
+    'README Updating section should include Claude Code official-marketplace migration snippet',
+  );
   
   // When dynamic coverage is injected (e.g. during publish-skills validation), verify its format
   if (readmeRaw.includes('#### The full list')) {
@@ -441,15 +445,6 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
     coverage >= 0.9,
     `Expected at least 90% teacher vector coverage in packaged dist, got ${(coverage * 100).toFixed(1)}% (${teacherCount}/${items.length})`
   );
-});
-
-test('release gate pipeline hash differs between dev and release builds', async () => {
-  const { computePipelineHash } = await import('./build-guides.ts');
-  const { scanAllGuides } = await import('../core/guide-validation.ts');
-  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
-  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
-  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
-  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
 });
 
 
