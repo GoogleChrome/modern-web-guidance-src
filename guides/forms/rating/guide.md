@@ -58,6 +58,8 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 
 The outline, not the fill, is the star's boundary, so it must have at least 3:1 contrast against the background in light and dark schemes. This is what lets the fill be a bright yellow.
 
+**Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--rating) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
+
 ## Read-only rating: a meter
 
 For an average or non-editable score, use `<meter class="stars" min="0" max="5" value="3.5">` inside `<span class="star-frame">` (with `display: inline-block` for the outline), an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--max` and `--rating` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
