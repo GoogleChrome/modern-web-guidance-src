@@ -14,12 +14,6 @@
       --accent: #0a5;
     }
 
-    @layer reset {
-      * {
-        box-sizing: border-box;
-      }
-    }
-
     body {
       margin: 0;
       min-block-size: 100vh;
@@ -51,6 +45,7 @@
     }
 
     .carousel-track > * {
+      box-sizing: border-box;
       flex: 0 0 100%;
       scroll-snap-align: center;
       display: grid;
