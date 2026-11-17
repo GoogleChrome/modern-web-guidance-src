@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width">
-  <title>Layout Dividers with Gap Decorations</title>
+  <title>Layout Dividers</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -13,6 +13,7 @@
       --page: light-dark(#fafaf9, #1c1917);
       --panel: light-dark(#ffffff, #292524);
       --rule: light-dark(#78716c, #a8a29e);
+      --rule-subtle: light-dark(#d6d3d1, #44403c);
       --accent: light-dark(#b91c1c, #f87171);
       --accent-2: light-dark(#1d4ed8, #60a5fa);
     }
@@ -59,22 +60,45 @@
       q { font-style: italic; }
     }
 
-    /* 1. Multi-column */
+    /* Semantic break: <hr> is content, not decoration */
+    .article hr { margin-block: 1rem; border: 0; border-block-start: 1px solid var(--rule); }
+
+    /* Tabular data: <table> with row borders */
+    .data {
+      inline-size: 100%;
+      border-collapse: collapse;
+      th, td { padding: 0.5rem; text-align: start; border-block-end: 1px solid var(--rule-subtle); }
+      thead th { border-block-end-color: var(--rule); }
+    }
+
+    /* Flush items: sibling border in a stack, 1px gap over a container background in a grid */
+    .flush-stack > * { padding-block: 0.75rem; }
+    .flush-stack > * + * { border-block-start: 1px solid var(--rule); }
+    .flush-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      padding: 1px;
+      background: var(--rule-subtle);
+      overflow: hidden;
+      > * { padding: 0.75rem; background: var(--panel); }
+    }
+
+    /* Multi-column */
     .multicol {
       columns: 3 12rem;
       column-rule: 1px solid var(--rule);
-      column-rule-inset: 0.5rem;
       p { margin-block-end: 0.75rem; }
     }
 
-    /* 2. Flex row */
+    /* Flex row */
     .flex-row {
       display: flex;
       column-rule: 2px solid var(--rule);
       > * { flex: 1; }
     }
 
-    /* 3. Flex wrap, rules in both axes */
+    /* Flex wrap, rules in both axes */
     .flex-wrap {
       display: flex;
       flex-wrap: wrap;
@@ -82,42 +106,36 @@
       > * { flex: 1 1 8rem; }
     }
 
-    /* 4. Flex column */
+    /* Flex column in a padded card: a negative inset equal to the padding runs rules edge to edge */
     .flex-col {
       display: flex;
       flex-direction: column;
-      row-rule: 1px solid var(--rule);
-      row-rule-inset: 1rem;
+      row-rule: 1px solid var(--rule-subtle);
+      row-rule-inset: -1rem;
     }
 
-    /* 5. Grid, default breaking */
+    /* Grid ledger: thin, low-contrast rules continuous through crossings */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-      rule: 1px solid var(--rule);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      rule: 1px solid var(--rule-subtle);
     }
 
-    /* 6. Grid, break at intersections with inset / overlap-join */
-    .grid-break {
-      rule: 2px solid var(--rule);
+    /* Grid tiles: rules stop at crossings, pulled back from them by a junction inset only */
+    .tiles {
+      gap: 2rem;
       rule-break: intersection;
-      rule-inset: 0.5rem;
+      rule-inset-junction: 0.75rem;
     }
-    .grid-inset-split {
-      rule: 2px solid var(--rule);
-      rule-break: intersection;
-      /* Negative cap inset extends outer ends into .demo's 1rem padding;
-         positive junction inset pulls broken intersections back. */
-      rule-inset: -1rem / 0.5rem;
-    }
-    .grid-join {
-      rule: 2px solid var(--rule);
+
+    /* Sparse grid: no rules toward the empty cell, segments meet at the corners that leaves */
+    .sparse {
       rule-break: intersection;
       rule-visibility-items: between;
       rule-inset: overlap-join;
     }
 
-    /* 7. Spanning item: compare rule-break values */
+    /* Spanning item: compare rule-break values */
     .spans {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -128,7 +146,7 @@
     .spans.intersection { rule-break: intersection; }
     .spans.none { rule-break: none; }
 
-    /* 8. Value lists and repeat() */
+    /* Visual hierarchy: value lists and repeat() */
     .lists {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -142,7 +160,7 @@
       row-rule: 1px solid var(--rule);
     }
 
-    /* 9. Overlap */
+    /* Overlap */
     .overlap {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -153,7 +171,7 @@
       &.row-over { rule-overlap: row-over-column; }
     }
 
-    /* 10. Empty cells and visibility */
+    /* Empty cells and visibility */
     .empty {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -174,23 +192,21 @@
     .empty.around { rule-visibility-items: around; }
     .empty.between { rule-visibility-items: between; }
 
-    /* 11. Hover transitions */
-    .hover {
+    /* Reveal on interaction: rules are invisible at rest and only fade in faintly, so the
+       hovered or focused link stays dominant. Rule width never changes. */
+    .reveal {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      rule: 1px solid var(--rule);
-      rule-break: intersection;
+      rule: 1px solid transparent;
       @media (prefers-reduced-motion: no-preference) {
-        transition: rule-color 0.2s, rule-width 0.2s;
+        transition: rule-color 0.3s;
       }
-      &:has(> a:is(:hover, :focus-visible)) {
-        rule-color: var(--accent);
-        rule-width: 3px;
-      }
+      &:is(:hover, :focus-within) { rule-color: var(--rule-subtle); }
       a { color: inherit; }
+      a:is(:hover, :focus-visible) { color: var(--accent); }
     }
 
-    /* 12. Writing modes */
+    /* Writing modes */
     .rtl {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -207,7 +223,7 @@
       block-size: 14rem;
     }
 
-    /* 13. Fallback patterns */
+    /* Fallback patterns */
     .fallback {
       display: flex;
       flex-direction: column;
@@ -241,22 +257,57 @@
 
 <body>
   <main>
-    <h1>Layout dividers with gap decorations</h1>
+    <h1>Layout dividers</h1>
     <p class="note">
-      Dividers drawn by the container with <code>column-rule</code> / <code>row-rule</code>: no borders, pseudo-elements or spacer
-      elements. All text is from the 1818 first edition of Mary Shelley's <em>Frankenstein</em>.
+      Each divider is chosen by what the line means and how the layout behaves: <code>&lt;hr&gt;</code> and <code>&lt;table&gt;</code> for
+      semantics, borders or a <code>1px</code> gap for flush items, and gap decorations (<code>column-rule</code> / <code>row-rule</code>)
+      on spaced layouts. All text is from the 1818 first edition of Mary Shelley's <em>Frankenstein</em>.
     </p>
     <p class="support-note">Your browser doesn't support <code>row-rule</code> on flex and grid yet, so you'll see plain gaps. Content works without them.</p>
 
-    <h2>1. Multi-column: <code>column-rule</code> + <code>column-rule-inset</code></h2>
-    <p class="note">The long-standing multicol rule, now with inset so lines stop short of the column edges.</p>
+    <h2>1. Semantic break: <code>&lt;hr&gt;</code></h2>
+    <p class="note">A thematic break between topics is content, not decoration. <code>&lt;hr&gt;</code> exposes a separator to assistive technology; CSS rules do not, so they never replace it. Every other divider below is purely visual.</p>
+    <div class="demo article">
+      <section><b>Letter IV</b><p>So strange an accident has happened to us, that I cannot forbear recording it.</p></section>
+      <hr>
+      <section><b>Chapter I</b><p>I am by birth a Genevese, and my family is one of the most distinguished of that republic.</p></section>
+    </div>
+
+    <h2>2. Tabular data: <code>&lt;table&gt;</code> borders</h2>
+    <p class="note">Rows and columns that carry data belong in a table with cell borders, not a grid with rules.</p>
+    <div class="demo">
+      <table class="data">
+        <thead><tr><th scope="col">Letter</th><th scope="col">Place</th><th scope="col">Date</th></tr></thead>
+        <tbody>
+          <tr><td>I</td><td>St. Petersburgh</td><td>Dec. 11th</td></tr>
+          <tr><td>II</td><td>Archangel</td><td>28th March</td></tr>
+          <tr><td>III</td><td>At sea</td><td>July 7th</td></tr>
+          <tr><td>IV</td><td>The ice</td><td>August 5th</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>3. Flush items: sibling border or <code>gap: 1px</code></h2>
+    <p class="note">With no gap between items, a border on adjacent siblings is enough for a simple non-wrapping stack. In a grid of opaque cells, a <code>1px</code> gap over a contrasting container background draws the lines without touching the items.</p>
+    <ul class="demo flush-stack">
+      <li>Nothing is so painful to the human mind as a great and sudden change.</li>
+      <li>The sun might shine, or the clouds might lour; but nothing could appear to me as it had done the day before.</li>
+      <li>A fiend had snatched from me every hope of future happiness.</li>
+    </ul>
+    <ul class="demo flush-grid" style="margin-block-start: 1rem">
+      <li>Geneva</li><li>Ingolstadt</li><li>Archangel</li>
+      <li>Chamounix</li><li>The Orkneys</li><li>The ice</li>
+    </ul>
+
+    <h2>4. Multi-column: <code>column-rule</code></h2>
+    <p class="note">The rule sits in the existing column gap, flush with the column edges.</p>
     <div class="demo multicol">
       <p>It was on a dreary night of November, that I beheld the accomplishment of my toils. With an anxiety that almost amounted to agony, I collected the instruments of life around me, that I might infuse a spark of being into the lifeless thing that lay at my feet.</p>
       <p>It was already one in the morning; the rain pattered dismally against the panes, and my candle was nearly burnt out, when, by the glimmer of the half-extinguished light, I saw the dull yellow eye of the creature open; it breathed hard, and a convulsive motion agitated its limbs.</p>
       <p>How can I describe my emotions at this catastrophe, or how delineate the wretch whom with such infinite pains and care I had endeavoured to form? His limbs were in proportion, and I had selected his features as beautiful. Beautiful!—Great God!</p>
     </div>
 
-    <h2>2. Flex row: <code>column-rule</code></h2>
+    <h2>5. Flex row: <code>column-rule</code></h2>
     <p class="note">One declaration on the container. No <code>:last-child</code> reset.</p>
     <ul class="demo flex-row">
       <li><b>Letter I</b>St. Petersburgh, Dec. 11th</li>
@@ -265,14 +316,15 @@
       <li><b>Letter IV</b>August 5th</li>
     </ul>
 
-    <h2>3. Flex wrap: <code>rule</code> in both axes</h2>
+    <h2>6. Flex wrap: <code>rule</code> in both axes</h2>
     <p class="note">Resize the window: rules follow the wrapping with no <code>:nth-child</code> math.</p>
     <ul class="demo flex-wrap">
       <li>Chapter I</li><li>Chapter II</li><li>Chapter III</li><li>Chapter IV</li><li>Chapter V</li>
       <li>Chapter VI</li><li>Chapter VII</li><li>Chapter VIII</li><li>Chapter IX</li>
     </ul>
 
-    <h2>4. Flex column: <code>row-rule</code> + <code>row-rule-inset</code></h2>
+    <h2>7. Full-bleed dividers in a padded card: negative <code>row-rule-inset</code></h2>
+    <p class="note"><code>row-rule-inset: -1rem</code> matches the card's <code>1rem</code> padding, so the rules run edge to edge without wrapper elements.</p>
     <ul class="demo flex-col">
       <li><b>Letter I</b>You will rejoice to hear that no disaster has accompanied the commencement of an enterprise which you have regarded with such evil forebodings.</li>
       <li><b>Letter II</b>How slowly the time passes here, encompassed as I am by frost and snow.</li>
@@ -280,20 +332,20 @@
       <li><b>Letter IV</b>So strange an accident has happened to us, that I cannot forbear recording it.</li>
     </ul>
 
-    <h2>5. Grid: <code>rule</code> with default <code>rule-break: normal</code></h2>
-    <p class="note">Rules are continuous through crossings, matching a classic table-like lattice.</p>
+    <h2>8. Grid ledger: <code>rule</code> with default <code>rule-break: normal</code></h2>
+    <p class="note">Related cells read as one structure: thin, low-contrast rules run continuous through the crossings.</p>
     <ul class="demo grid">
-      <li><b>Victor</b><q>I was the slave, not the master of an impulse, which I detested, yet could not disobey.</q></li>
+      <li><b>Victor</b><q>I was the slave, not the master of an impulse.</q></li>
       <li><b>The Creature</b><q>I am malicious because I am miserable.</q></li>
       <li><b>Walton</b><q>What may not be expected in a country of eternal light?</q></li>
-      <li><b>Clerval</b><q>My dear Victor, what, for God’s sake, is the matter?</q></li>
+      <li><b>Clerval</b><q>My dear Victor, what is the matter?</q></li>
       <li><b>Justine</b><q>I did confess; but I confessed a lie.</q></li>
-      <li><b>Elizabeth</b><q>I cannot describe to you the uneasiness we have all felt concerning your health.</q></li>
+      <li><b>Elizabeth</b><q>I cannot describe to you the uneasiness we have all felt.</q></li>
     </ul>
 
-    <h2>6. Grid: <code>rule-break: intersection</code> with <code>rule-inset</code></h2>
-    <p class="note">First: <code>0.5rem</code> inset gives separate tick-like segments. Second: <code>-1rem / 0.5rem</code> extends outer caps into the container padding while insetting interior junctions. Third: <code>rule-visibility-items: between</code> hides the rules next to the empty cells, and <code>overlap-join</code> makes the segments meet neatly at the corners this leaves.</p>
-    <ul class="demo grid grid-break">
+    <h2>9. Grid tiles: <code>rule-break: intersection</code> + <code>rule-inset-junction</code></h2>
+    <p class="note">Separate tiles: rules stop at the crossings and are pulled back from them, while the outer ends stay flush with the container edges.</p>
+    <ul class="demo grid tiles">
       <li><b>Victor</b><q>Learn from me, if not by my precepts, at least by my example.</q></li>
       <li><b>The Creature</b><q>I ought to be thy Adam; but I am rather the fallen angel.</q></li>
       <li><b>Walton</b><q>Its productions and features may be without example.</q></li>
@@ -301,15 +353,10 @@
       <li><b>Justine</b><q>God knows, how entirely I am innocent.</q></li>
       <li><b>Elizabeth</b><q>My dear cousin.</q></li>
     </ul>
-    <ul class="demo grid grid-inset-split" style="margin-block-start: 1rem">
-      <li><b>Victor</b><q>A new species would bless me as its creator and source.</q></li>
-      <li><b>The Creature</b><q>Why did I not die?</q></li>
-      <li><b>Walton</b><q>One man’s life or death were but a small price to pay.</q></li>
-      <li><b>Clerval</b><q>How could you suppose that my first thought would not fly towards you?</q></li>
-      <li><b>Justine</b><q>I have no friend, Margaret.</q></li>
-      <li><b>Elizabeth</b><q>Be happy, my dear Victor.</q></li>
-    </ul>
-    <ul class="demo grid grid-join" style="margin-block-start: 1rem">
+
+    <h2>10. Sparse grid: <code>rule-visibility-items: between</code> + <code>overlap-join</code></h2>
+    <p class="note">No rules point toward the empty last cell, and <code>overlap-join</code> makes the segments meet neatly at the corners this leaves.</p>
+    <ul class="demo grid sparse">
       <li><b>Victor</b><q>Nothing is so painful to the human mind as a great and sudden change.</q></li>
       <li><b>The Creature</b><q>Every where I see bliss, from which I alone am irrevocably excluded.</q></li>
       <li><b>Walton</b><q>I am, however, in good spirits.</q></li>
@@ -317,7 +364,7 @@
       <li><b>Justine</b><q>The God of heaven forgive me!</q></li>
     </ul>
 
-    <h2>7. Spanning items: <code>normal</code> vs <code>intersection</code> vs <code>none</code></h2>
+    <h2>11. Spanning items: <code>normal</code> vs <code>intersection</code> vs <code>none</code></h2>
     <p class="note">The Creature's speech spans two columns. Watch where the rules start and stop.</p>
     <div class="demo spans normal">
       <p class="wide"><b>normal</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
@@ -332,7 +379,7 @@
       <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
     </div>
 
-    <h2>8. Value lists and <code>repeat()</code></h2>
+    <h2>12. Visual hierarchy: value lists and <code>repeat()</code></h2>
     <p class="note">First: <code>repeat(auto, …)</code> fills gaps between fixed first and last column rules; row gaps use a double rule first, then solid. Second: <code>repeat(2, …)</code> repeats a rule for the first two column gaps before falling back to a dashed third.</p>
     <div class="demo lists">
       <p><b>Letter I</b>St. Petersburgh</p><p><b>Letter II</b>Archangel</p><p><b>Letter III</b>At sea</p><p><b>Letter IV</b>The ice</p>
@@ -343,8 +390,8 @@
       <p><b>Vol. I</b>Geneva</p><p><b>Vol. I</b>Ingolstadt</p><p><b>Vol. II</b>Chamounix</p><p><b>Vol. III</b>The Orkneys</p>
     </div>
 
-    <h2>9. <code>rule-overlap</code></h2>
-    <p class="note">Wide, contrasting rules show which axis paints on top at the crossings.</p>
+    <h2>13. <code>rule-overlap</code></h2>
+    <p class="note">Wide, contrasting rules (exaggerated for illustration) show which axis paints on top at the crossings.</p>
     <div class="demo overlap col-over">
       <p><b>column-over-row</b>Geneva</p><p>Ingolstadt</p><p>The Orkneys</p><p>Archangel</p><p>The ice</p><p>Chamounix</p>
     </div>
@@ -352,20 +399,20 @@
       <p><b>row-over-column</b>Geneva</p><p>Ingolstadt</p><p>The Orkneys</p><p>Archangel</p><p>The ice</p><p>Chamounix</p>
     </div>
 
-    <h2>10. Empty cells: <code>rule-visibility-items</code></h2>
+    <h2>14. Empty cells: <code>rule-visibility-items</code></h2>
     <p class="note"><code>all</code> paints rules next to empty cells, <code>around</code> if either side has an item, <code>between</code> only when both do.</p>
     <div class="demo empty all"><p class="victor"><b>all</b>Victor</p><p class="elizabeth">Elizabeth</p><p class="clerval">Clerval</p><p class="justine">Justine</p><p class="walton">Walton</p></div>
     <div class="demo empty around" style="margin-block-start: 1rem"><p class="victor"><b>around</b>Victor</p><p class="elizabeth">Elizabeth</p><p class="clerval">Clerval</p><p class="justine">Justine</p><p class="walton">Walton</p></div>
     <div class="demo empty between" style="margin-block-start: 1rem"><p class="victor"><b>between</b>Victor</p><p class="elizabeth">Elizabeth</p><p class="clerval">Clerval</p><p class="justine">Justine</p><p class="walton">Walton</p></div>
 
-    <h2>11. Transitions on hover and focus</h2>
-    <p class="note">Hover or tab to a link: <code>rule-color</code> and <code>rule-width</code> animate, unless the user prefers reduced motion.</p>
-    <nav class="demo hover" aria-label="Chapters">
+    <h2>15. Reveal on interaction</h2>
+    <p class="note">The rules are invisible at rest and fade in faintly while the container is hovered or has focus inside it. The links keep their own hover and focus styles, so the active item stays dominant, and the fade is skipped when the user prefers reduced motion.</p>
+    <nav class="demo reveal" aria-label="Chapters">
       <a href="#c1">Chapter I</a><a href="#c2">Chapter II</a><a href="#c3">Chapter III</a>
       <a href="#c4">Chapter IV</a><a href="#c5">Chapter V</a><a href="#c6">Chapter VI</a>
     </nav>
 
-    <h2>12. Writing modes: columns are the inline axis</h2>
+    <h2>16. Writing modes: columns are the inline axis</h2>
     <p class="note"><code>column-rule</code> (blue) always follows the inline axis; <code>row-rule</code> (red) the block axis.</p>
     <div class="demo rtl" lang="en">
       <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
@@ -374,7 +421,7 @@
       <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
     </div>
 
-    <h2>13. Fallback patterns</h2>
+    <h2>17. Fallback patterns</h2>
     <p class="note">First: single-column stack using a border on adjacent siblings when unsupported, with the gap halved so spacing matches. Second: fixed-track grid drawing lines with container <code>background</code> gradients when unsupported, without affecting layout.</p>
     <div class="demo fallback">
       <p>Nothing is so painful to the human mind as a great and sudden change.</p>
