@@ -7,7 +7,8 @@
 - Model weights are not downloaded until the user triggers the inference feature.
 - Model weights are stored with the Cache API and read from the cache when they are requested again.
 - A `device.lost` handler switches inference to the CPU fallback.
-- When GPU device creation, pipeline creation, or a GPU inference call throws, inference still returns a result from the CPU fallback.
+- When `adapter.requestDevice()` rejects, inference returns a result from the CPU fallback.
+- When an error scope or the `uncapturederror` event reports a GPU validation error, inference returns a result from the CPU fallback.
 - When `webgpu` is unsupported, inference returns a result from the CPU fallback.
 - When `navigator.gpu.requestAdapter()` resolves to `null`, inference returns a result from the CPU fallback.
 - When `float16array` is unsupported, 16-bit data is uploaded as a `Uint16Array`.

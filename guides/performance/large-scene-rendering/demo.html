@@ -179,6 +179,8 @@
       try {
         const adapter = await navigator.gpu.requestAdapter();
         if (!adapter) return null;
+        // Only request what's needed: no optional features, and the default limits, because
+        // the scene's buffers are a few hundred KB at most.
         device = await adapter.requestDevice();
       } catch {
         return null;
@@ -515,10 +517,13 @@
     }
 
     if (gpu) {
-      gpu.device.lost.then((info) => {
-        if (info.reason !== 'destroyed') useFallback('the GPU device was lost');
+      const { device } = gpu;
+      device.lost.then((info) => {
+        if (info.reason !== 'destroyed' && gpu?.device === device) useFallback('the GPU device was lost');
       });
-      gpu.device.addEventListener('uncapturederror', () => useFallback('a GPU error occurred'));
+      device.addEventListener('uncapturederror', () => {
+        if (gpu?.device === device) useFallback('a GPU error occurred');
+      });
       gpuStatus('');
     } else {
       watchWebGLContext();
@@ -544,12 +549,13 @@
       if (gpu) {
         try {
           const { bundle, ms } = await gpu.recordBundle();
+          if (!gpu) return; // The device failed while recording, and the fallback is already active
           gpu.bundle = bundle;
           gpu.lastRecordMs = ms;
           recordCount++;
           gpuStatus('The draw calls changed, so the bundle was recorded again.');
         } catch {
-          useFallback('re-recording the bundle failed');
+          if (gpu) useFallback('re-recording the bundle failed'); // Unless a fallback is already active
           return;
         }
       } else if (webgl) {

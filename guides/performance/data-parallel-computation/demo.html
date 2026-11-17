@@ -79,11 +79,12 @@
     <p>
       How it works: each month is one draw. To pick a random winner among all players, the GPU generates
       a 64-bit random number per month, and you win when it falls in your share of the range
-      (1 in <i>players</i>). A Web Worker runs batches of up to 268 million months per GPU submission:
-      about 1 million GPU invocations each check 256 consecutive months, and an atomic operation records
+      (1 in <i>players</i>). A Web Worker sends the draws to the GPU in batches of up to 268 million
+      months, where each GPU invocation checks 256 consecutive months, and an atomic operation records
       the earliest winning month in each quarter of the batch. Only those 4 numbers are read back. The
-      last batch is usually shorter: the shader skips months past the batch's month count, and the
-      dispatch covers it with a partial last workgroup. Without WebGPU, the worker runs
+      batch size adapts to the measured GPU time, so that each submission takes about 100 ms on fast
+      and slow GPUs alike. The shader skips months past the batch's month count, so a shorter batch is
+      covered by a partial last workgroup. Without WebGPU, the worker runs
       the same draws on the CPU, which is much slower, so try a smaller number of players.
     </p>
 
@@ -105,7 +106,14 @@
       const DRAWS_PER_INVOCATION = 256;          // Consecutive months checked by one invocation
       const WORKGROUPS_X = 4096;                 // 4096 * 64 invocations * 256 months = 2^26 months
       const WINDOW = WORKGROUPS_X * WORKGROUP_SIZE * DRAWS_PER_INVOCATION;
-      const WINDOWS_PER_SUBMIT = 4;              // 2^28 months (~268 million) per GPU submission
+      const WINDOWS_PER_SUBMIT = 4;              // Up to 2^28 months (~268 million) per GPU submission
+      // Adaptive batch size: a single long submission can exceed the operating system's GPU
+      // watchdog (about 2 seconds on Windows, called TDR), which resets the GPU and loses the
+      // device. Start with a small batch, and scale it toward about 100 ms of GPU time per
+      // submission, based on how long the previous batch took.
+      const MIN_BATCH = 1 << 20;
+      const MAX_BATCH = WINDOW * WINDOWS_PER_SUBMIT;
+      const TARGET_BATCH_MS = 100;
       const NO_WIN = 0xffffffff;
 
       // PCG hash: the same integer math in WGSL and JavaScript, so both paths draw the same numbers.
@@ -148,6 +156,8 @@
         try {
           const adapter = await navigator.gpu.requestAdapter();
           if (!adapter) return null;
+          // Only request what's needed: no optional features, and the default limits, because
+          // the demo's buffers hold less than 100 bytes of parameters and results.
           return await adapter.requestDevice();
         } catch {
           return null;
@@ -237,13 +247,15 @@
         const { device, pipeline, paramsBuffer, resultBuffer, stagingBuffer, bindGroup } = gpu;
         const reset = new Uint32Array(WINDOWS_PER_SUBMIT).fill(NO_WIN);
         const start = performance.now();
-        for (let base = 0; base < maxMonths; base += WINDOW * WINDOWS_PER_SUBMIT) {
+        let batch = MIN_BATCH * 4;
+        let count = 0;
+        for (let base = 0; base < maxMonths; base += count) {
           progress.month = base; // Months before base are already checked
           if (gpuFailure) return { failedAt: base };
           if (cancelled) return { cancelled: true, months: base };
-          // The last batch is usually shorter. Cover its months with whole workgroups; the shader
-          // skips the months past count in the partial last workgroup.
-          const count = Math.min(WINDOW * WINDOWS_PER_SUBMIT, maxMonths - base);
+          // Cover the batch's months with whole workgroups; the shader skips the months past
+          // count in the partial last workgroup.
+          count = Math.min(batch, maxMonths - base);
           const windows = Math.ceil(count / WINDOW);
           const invocations = Math.ceil(Math.min(count, WINDOW) / DRAWS_PER_INVOCATION);
           const workgroupsX = Math.ceil(invocations / WORKGROUP_SIZE);
@@ -252,6 +264,7 @@
           ]));
           device.queue.writeBuffer(resultBuffer, 0, reset);
 
+          const batchStart = performance.now();
           device.pushErrorScope('validation');
           const encoder = device.createCommandEncoder();
           const pass = encoder.beginComputePass();
@@ -268,6 +281,11 @@
           stagingBuffer.unmap();
           if (gpuFailure) return { failedAt: base }; // Don't trust a batch that ended with an error
 
+          // Scale the next batch toward the target time, by at most 4x per step.
+          const batchMs = Math.max(performance.now() - batchStart, 1);
+          const scale = Math.min(4, Math.max(0.25, TARGET_BATCH_MS / batchMs));
+          batch = Math.min(MAX_BATCH, Math.max(MIN_BATCH, Math.round(batch * scale)));
+
           const slot = firstWin.findIndex((offset) => offset !== NO_WIN);
           if (slot !== -1) {
             return {
@@ -281,19 +299,27 @@
         return { winMonth: null, months: maxMonths, ms: performance.now() - start };
       }
 
-      // Measures CPU speed on the same draws for about one second, for comparison.
-      function sampleCpuSpeed(job) {
-        const start = performance.now();
+      let gameNumber = 0; // Increases with every game, so an old measurement can stop
+
+      // Measures CPU speed on the same draws, for comparison, after the result is shown.
+      // Works in short chunks so the worker still receives new messages, and stops when a new
+      // game starts. Returns null if it stopped early.
+      async function sampleCpuSpeed(job, game) {
         let month = 0;
+        let busyMs = 0;
         let sink = 0; // Uses every result, so the JavaScript engine can't skip the work
-        while (performance.now() - start < 1000) {
-          for (let i = 0; i < 1 << 20; i++, month++) {
+        while (busyMs < 500) {
+          if (game !== gameNumber) return null;
+          const chunkStart = performance.now();
+          for (let i = 0; i < 1 << 18; i++, month++) {
             const [h1, h2] = draw(month >>> 0, Math.floor(month / 2 ** 32), job.seed);
             if (h1 < job.thresholdHi || (h1 === job.thresholdHi && h2 < job.thresholdLo)) sink++;
           }
+          busyMs += performance.now() - chunkStart;
+          await new Promise((resolve) => setTimeout(resolve)); // Let other messages arrive
         }
         self.sink = sink;
-        return month / ((performance.now() - start) / 1000);
+        return month / (busyMs / 1000);
       }
 
       let setupPromise = null;
@@ -302,6 +328,7 @@
         if (data.type === 'stop') { cancelled = true; return; }
         if (data.type !== 'play') return;
         cancelled = false;
+        const game = ++gameNumber;
         if (!data.forceCpu) {
           setupPromise ??= setUpGpu().then((setup) => { gpu = setup; });
           await setupPromise;
@@ -333,8 +360,12 @@
           }
         }
         outcome ??= await playOnCpu(data.job, maxMonths, cpuStart);
-        const cpuDrawsPerSecond = backend === 'WebGPU' && !outcome.cancelled ? sampleCpuSpeed(data.job) : null;
-        self.postMessage({ type: 'done', outcome, backend, cpuDrawsPerSecond, seed: data.job.seed });
+        const measureCpu = backend === 'WebGPU' && !outcome.cancelled && outcome.winMonth !== null;
+        self.postMessage({ type: 'done', outcome, backend, measuringCpu: measureCpu, seed: data.job.seed });
+        if (measureCpu) {
+          const cpuDrawsPerSecond = await sampleCpuSpeed(data.job, game);
+          if (cpuDrawsPerSecond) self.postMessage({ type: 'cpuSpeed', cpuDrawsPerSecond, game, seed: data.job.seed });
+        }
       });
 
       self.postMessage({ type: 'ready' });
@@ -367,6 +398,8 @@
       resultEl.textContent = 'The simulation worker failed to start.';
     });
 
+    let lastResult = null; // The last result's lines, updated when the CPU speed arrives
+
     worker.addEventListener('message', ({ data }) => {
       if (data.type === 'ready') {
         URL.revokeObjectURL(workerUrl);
@@ -377,7 +410,7 @@
       } else if (data.type === 'done') {
         setBusy(false);
         const players = Number(playersInput.value);
-        const { outcome, backend, cpuDrawsPerSecond } = data;
+        const { outcome, backend, measuringCpu } = data;
         if (outcome.cancelled) {
           resultEl.textContent = `Stopped after ${fmt(outcome.months)} months without a win.`;
           return;
@@ -401,12 +434,14 @@
           `Backend: ${backend}. Seed: ${data.seed}. Checked ${fmt(outcome.monthsChecked)} draws in ${duration(outcome.ms / 1000)} ` +
             `(${(drawsPerSecond / 1e6).toFixed(0)} million draws per second).`,
         ];
-        if (cpuDrawsPerSecond) {
-          lines.push(
-            `The CPU in this worker manages about ${(cpuDrawsPerSecond / 1e6).toFixed(0)} million draws per second, ` +
-            `so it would need about ${duration(outcome.winMonth / cpuDrawsPerSecond)} to play the ${fmt(outcome.winMonth)} games until your win.`,
-          );
-        }
+        if (measuringCpu) lines.push('Measuring the CPU speed in this worker for comparison...');
+        lastResult = { lines, seed: data.seed, winMonth: outcome.winMonth };
+        resultEl.textContent = lines.join('\n');
+      } else if (data.type === 'cpuSpeed' && !busy && lastResult?.seed === data.seed) {
+        const { lines, winMonth } = lastResult;
+        lines[lines.length - 1] =
+          `The CPU in this worker manages about ${(data.cpuDrawsPerSecond / 1e6).toFixed(0)} million draws per second, ` +
+          `so it would need about ${duration(winMonth / data.cpuDrawsPerSecond)} to play the ${fmt(winMonth)} games until your win.`;
         resultEl.textContent = lines.join('\n');
       }
     });

@@ -40,10 +40,10 @@ Draw calls that change every frame, such as a selection highlight, can be record
 
 {{ FEATURE("webgpu", "device-creation") }}
 
-This guide doesn't need `supportsF16` or the larger storage buffer limits. Use only the device:
+The default limits are enough for this guide, and it doesn't use `f16`, so don't request either:
 
 ```js
-const gpu = await createGpuDevice();
+const gpu = await createGpuDevice({ f16: false, largeBuffers: false });
 if (!gpu) return useFallbackRenderer();
 const { device } = gpu;
 const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -179,7 +179,13 @@ fn cull(@builtin(global_invocation_id) id: vec3u) {
 }
 ```
 
-The vertex shader reads the object's index from the visible list with `visible[instanceIndex]`, where `instanceIndex` is `@builtin(instance_index)`. Each frame, JavaScript writes the new frustum planes, runs the compute pass, and replays the bundle that contains `drawIndexedIndirect(argsBuffer, 0)`:
+The vertex shader reads the object's index from the visible list with `visible[instanceIndex]`, where `instanceIndex` is `@builtin(instance_index)`. Declare the list there as read-only, because vertex shaders can't use writable storage buffers. Don't copy the compute shader's `read_write` declaration:
+
+```wgsl
+@group(0) @binding(0) var<storage, read> visible: array<u32>; // In the vertex shader
+```
+
+The bundle records `setIndexBuffer()` for the mesh before `drawIndexedIndirect()`. Each frame, JavaScript writes the new frustum planes, runs the compute pass, and replays the bundle that contains `drawIndexedIndirect(argsBuffer, 0)`:
 
 ```js
 device.queue.writeBuffer(planesBuffer, 0, frustumPlanes);

@@ -26,7 +26,12 @@ To decide, measure both paths with realistic data sizes. Keep data on the GPU ac
 
 {{ FEATURE("webgpu", "device-creation") }}
 
-This guide uses `f32` data, so it doesn't need `supportsF16`.
+This guide uses `f32` data, so it doesn't request `f16`. Request larger buffer limits only when the data doesn't fit in the default 128 MiB storage buffer binding:
+
+```js
+const DEFAULT_MAX_BINDING_BYTES = 128 * 1024 * 1024;
+const gpu = await createGpuDevice({ largeBuffers: dataByteLength > DEFAULT_MAX_BINDING_BYTES });
+```
 
 ## Write the compute shader
 
@@ -44,8 +49,8 @@ const module = device.createShaderModule({
     @group(0) @binding(2) var<storage, read_write> outputData: array<f32>;
 
     @compute @workgroup_size(${WORKGROUP_SIZE})
-    fn main(@builtin(global_invocation_id) id: vec3u) {
-      let i = id.x;
+    fn main(@builtin(global_invocation_id) id: vec3u, @builtin(num_workgroups) groups: vec3u) {
+      let i = id.x + id.y * groups.x * ${WORKGROUP_SIZE}u; // 2D dispatch, see below
       if (i >= params.count) { return; } // Skip the partial last workgroup
       var x = inputData[i]; // Example: initial spring displacement
       var v = 0.0;
@@ -72,15 +77,15 @@ Choose the workgroup size:
 
 Workgroup sizes up to 256 invocations in total (and up to 64 in the z dimension) work on every device without checks, because they're within the default limits. Larger sizes require requesting higher `maxComputeInvocationsPerWorkgroup` and `maxComputeWorkgroupSize*` limits, which not every adapter supports.
 
-A single dispatch dimension allows at most 65,535 workgroups, which covers about 4.19 million elements at a workgroup size of 64. For more elements, dispatch in two dimensions, and compute the index from both:
+A single dispatch dimension allows at most 65,535 workgroups (`maxComputeWorkgroupsPerDimension`), which covers about 4.19 million elements at a workgroup size of 64. A larger 1D dispatch is a validation error. To support any element count, always dispatch in two dimensions, and compute the index from both, as the shader above does:
 
 ```js
-const groups = Math.ceil(count / WORKGROUP_SIZE);
-const groupsX = Math.min(groups, device.limits.maxComputeWorkgroupsPerDimension);
-const groupsY = Math.ceil(groups / groupsX);
-// pass.dispatchWorkgroups(groupsX, groupsY);
-// In WGSL, add @builtin(num_workgroups) nwg: vec3u, and use:
-// let i = id.x + id.y * nwg.x * WORKGROUP_SIZE;
+// Workgroup counts for a 2D dispatch that covers `count` elements.
+function workgroupCounts(count) {
+  const groups = Math.ceil(count / WORKGROUP_SIZE);
+  const groupsX = Math.min(groups, device.limits.maxComputeWorkgroupsPerDimension);
+  return [groupsX, Math.ceil(groups / groupsX)];
+}
 ```
 
 ## Create buffers once
@@ -120,7 +125,7 @@ async function runOnGpu(input) {
   const pass = encoder.beginComputePass();
   pass.setPipeline(pipeline);
   pass.setBindGroup(0, bindGroup);
-  pass.dispatchWorkgroups(Math.ceil(input.length / WORKGROUP_SIZE));
+  pass.dispatchWorkgroups(...workgroupCounts(input.length)); // groupsX, groupsY
   pass.end();
   encoder.copyBufferToBuffer(outputBuffer, 0, stagingBuffer, 0, input.byteLength);
   device.queue.submit([encoder.finish()]);
@@ -144,7 +149,7 @@ Run device creation, uploads, and readback in a dedicated module Worker, so inpu
 ```js
 // main.js
 const worker = new Worker(new URL('./compute-worker.js', import.meta.url), { type: 'module' });
-worker.addEventListener('message', ({ data }) => showResult(data.result));
+worker.addEventListener('message', ({ data }) => (data.error ? showError(data.error) : showResult(data.result)));
 runButton.addEventListener('click', () => {
   const input = readInputValues(); // A new Float32Array for every run
   worker.postMessage({ input }, [input.buffer]); // Transfer instead of copying
@@ -158,7 +163,10 @@ let queue = Promise.resolve();
 
 self.addEventListener('message', ({ data }) => {
   // Run one computation at a time: the staging buffer can't be mapped twice at once.
-  queue = queue.then(() => compute(data.input));
+  // The catch keeps the queue running after a failed run.
+  queue = queue.then(() => compute(data.input)).catch((error) => {
+    self.postMessage({ error: error.message });
+  });
 });
 
 async function compute(input) {

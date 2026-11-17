@@ -6,6 +6,7 @@ web-feature-ids:
   - wasm
   - wasm-simd
   - float16array
+  - js-modules-workers
 ---
 
 # Running custom machine learning models in the browser
@@ -30,6 +31,14 @@ Create the device only when the user asks for the feature.
 
 {{ FEATURE("webgpu", "device-creation") }}
 
+This guide stores weights as `f16` when the GPU supports it, so it requests `f16`. Small models fit in the default buffer limits; pass `largeBuffers: true` only when the largest weight buffer is bigger than 128 MiB:
+
+```js
+const gpu = await createGpuDevice({ f16: true, largeBuffers: false });
+if (!gpu) return useCpuFallback();
+const { device, supportsF16 } = gpu;
+```
+
 ## Choose `f16` or `f32` precision
 
 - **`f16` (half precision):** half the memory and memory bandwidth of `f32`, and faster arithmetic on GPUs with native `f16` support. Its range is about ±65,504 with roughly 3 decimal digits of precision.
@@ -40,7 +49,7 @@ Create the device only when the user asks for the feature.
 **Recommendation:**
 
 - Use `f16` to store weights and inputs, which is enough for most inference.
-- Use `f32` when the GPU doesn't support `shader-f16`, for values outside the `f16` range or that need more precision, and for accumulating long sums. Summing hundreds of products in `f16` loses accuracy, which is why the kernel below accumulates in `f32`.
+- Use `f32` when the GPU doesn't support `shader-f16`, for values outside the `f16` range or that need more precision, and for accumulating long sums.
 
 If you publish weight files in both precisions, download the `f16` file only when `supportsF16` is true, which halves the download.
 
@@ -97,7 +106,7 @@ function createStorageBuffer(device, data) {
 
 ## Run the inference kernel
 
-This dense layer computes `output = ReLU(W · x + b)`. It reads `f16` or `f32` values through a type alias, and accumulates in `f32`, because summing hundreds of `f16` products loses precision. The uniform struct is padded to 16 bytes to match the 16-byte uniform buffer:
+This dense layer computes `output = ReLU(W · x + b)`. It reads `f16` or `f32` values through a type alias, and accumulates in `f32`, as recommended above. The uniform struct is padded to 16 bytes to match the 16-byte uniform buffer:
 
 ```js
 function createDenseLayerModule(device, supportsF16) {
@@ -133,7 +142,9 @@ const dimsBuffer = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM
 device.queue.writeBuffer(dimsBuffer, 0, new Uint32Array([inputSize, outputSize, 0, 0]));
 ```
 
-Dispatch `Math.ceil(outputSize / 64)` workgroups, copy `outputVec` to a `MAP_READ` staging buffer, and read it with `await stagingBuffer.mapAsync(GPUMapMode.READ)`.
+This kernel is written for the first layer of a network. For later layers, read `inputVec` as `f32`, because each layer writes `f32` output. Skip ReLU on the output layer, for example with a `relu` flag in `Dims` and `select(sum, max(0.0, sum), dims.relu == 1u)`.
+
+Dispatch `Math.ceil(outputSize / 64)` workgroups and copy `outputVec` to a `MAP_READ` staging buffer. Wrap `encoder.finish()` and `submit()` in a `'validation'` error scope, as shown in [Handle GPU errors and device loss](#handle-gpu-errors-and-device-loss), and throw if `popErrorScope()` reports an error. Otherwise `mapAsync()` resolves with zeroed or stale data, and the caller never switches to the CPU fallback. Then read the result with `await stagingBuffer.mapAsync(GPUMapMode.READ)`.
 
 This kernel computes one output row per thread. For large matrix multiplications, tile the inputs into `var<workgroup>` shared memory so that each workgroup reuses loaded values.
 
@@ -256,3 +267,9 @@ function toHalfBits(float32Values, length = float32Values.length + (float32Value
   return bits;
 }
 ```
+
+### Module workers
+
+{{ BASELINE_STATUS("js-modules-workers") }}
+
+If your Baseline target doesn't include module workers, build the worker as a classic script, for example with your bundler's worker output format, and create it without `{ type: 'module' }`. Inside a classic worker, load dependencies with `importScripts()` instead of `import`.

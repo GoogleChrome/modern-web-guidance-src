@@ -148,12 +148,10 @@
           const adapter = await navigator.gpu.requestAdapter(); // New adapter per device
           if (!adapter) return null;
           const supportsF16 = adapter.features.has('shader-f16');
+          // Only request what's needed: shader-f16 when the adapter has it, and the default
+          // limits, because the 7.5 KB model is far below the 128 MiB storage binding limit.
           const device = await adapter.requestDevice({
             requiredFeatures: supportsF16 ? ['shader-f16'] : [],
-            requiredLimits: {
-              maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
-              maxBufferSize: adapter.limits.maxBufferSize,
-            },
           });
           return { device, supportsF16 };
         } catch {
@@ -190,7 +188,8 @@
       let gpu = null; // GPU resources; null means "use the CPU fallback"
 
       function useCpuFallback(reason) {
-        gpu?.device.destroy();
+        if (!gpu) return; // Keep the first reason when several failures arrive
+        gpu.device.destroy();
         gpu = null;
         self.postMessage({ type: 'backend', label: 'CPU (' + reason + ')' });
       }
@@ -203,6 +202,7 @@
           const storage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
           const maxBytes = Math.min(device.limits.maxBufferSize, device.limits.maxStorageBufferBindingSize);
           device.pushErrorScope('out-of-memory');
+          device.pushErrorScope('validation');
 
           const inputBuffer = device.createBuffer({
             size: toGpuArray(new Float32Array(IN), supportsF16).byteLength,
@@ -244,8 +244,13 @@
             layerInput = outputBuffer; // The next layer reads this layer's f32 output
           }
           const stagingBuffer = device.createBuffer({ size: OUT * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
-          if (await device.popErrorScope()) throw new Error('out of GPU memory');
+          const validationError = await device.popErrorScope(); // Scopes pop in reverse order
+          const oomError = await device.popErrorScope();
+          if (validationError || oomError) throw new Error('GPU setup failed');
 
+          device.addEventListener('uncapturederror', () => {
+            if (gpu?.device === device) useCpuFallback('GPU error');
+          });
           device.lost.then((info) => {
             if (info.reason !== 'destroyed' && gpu?.device === device) useCpuFallback('GPU device lost');
           });
@@ -259,6 +264,7 @@
 
       async function runOnGpu(input) {
         const { device, supportsF16, inputBuffer, passes, stagingBuffer } = gpu;
+        device.pushErrorScope('validation');
         device.queue.writeBuffer(inputBuffer, 0, toGpuArray(input, supportsF16));
         const encoder = device.createCommandEncoder();
         const pass = encoder.beginComputePass();
@@ -270,6 +276,7 @@
         pass.end();
         encoder.copyBufferToBuffer(passes.at(-1).outputBuffer, 0, stagingBuffer, 0, OUT * 4);
         device.queue.submit([encoder.finish()]);
+        if (await device.popErrorScope()) throw new Error('GPU inference failed validation');
         await stagingBuffer.mapAsync(GPUMapMode.READ);
         const scores = new Float32Array(stagingBuffer.getMappedRange().slice(0));
         stagingBuffer.unmap();
@@ -363,7 +370,11 @@
       strokeTo(event);
     });
     pad.addEventListener('pointermove', (event) => drawing && strokeTo(event));
-    pad.addEventListener('pointerup', () => { drawing = false; });
+    // pointercancel fires instead of pointerup when the browser takes over the pointer,
+    // for example for a touch gesture.
+    for (const type of ['pointerup', 'pointercancel']) {
+      pad.addEventListener(type, () => { drawing = false; });
+    }
 
     // Samples are drawn as 8x8 gray blocks, so they go through the same input path.
     SAMPLES.forEach((sample, digit) => {
