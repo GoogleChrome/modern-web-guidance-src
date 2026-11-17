@@ -324,7 +324,7 @@
     });
     update();
 
-    // Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
+    // Pointer clicks fill the step under the pointer; clicking the last filled step unfills it
     let valueBefore = NaN;
     range.addEventListener('pointerdown', () => {
       valueBefore = 'edited' in range.dataset ? Number(range.value) : NaN;
@@ -336,11 +336,14 @@
       const padLeft = parseFloat(cs.paddingLeft);
       const left = rect.left + padLeft;
       const width = rect.width - padLeft - parseFloat(cs.paddingRight);
-      // Snap up to the half under the pointer; the gutters beside the stars clamp to min and max
-      const steps = (Number(range.max) || 5) * 2;
-      const half = Math.min(steps, Math.max(0, Math.ceil(((event.clientX - left) / width) * steps))) / 2;
+      // Snap up to the step under the pointer; the gutters beside the stars clamp to min and max
+      const min = Number(range.min) || 0;
+      const max = Number(range.max) || 5;
+      const step = Number(range.step) || 1;
+      const steps = Math.round((max - min) / step);
+      const next = Math.min(max, Math.max(min, min + Math.ceil(((event.clientX - left) / width) * steps) * step));
       range.dataset.edited = '';
-      range.value = half === valueBefore ? half - 0.5 : half;
+      range.value = next === valueBefore ? Math.max(min, next - step) : next;
       update();
     });
   </script>

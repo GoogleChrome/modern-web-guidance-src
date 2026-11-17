@@ -103,7 +103,7 @@ Trigger the animation by adding `.animate` in the markup on load, once via `Inte
 
 ## Interactive rating: a styled range input
 
-MANDATORY: use `<input type="range" class="rating" min="0" max="5" step="0.5">` with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` at `0`). Use `step="1"` for whole stars only. If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
+Use `<input type="range" class="rating" min="0" max="5" step="0.5">` (adjust `max` and `step` for other scales or whole-star increments) with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` at `0`). If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
 
 ```html
 <label for="rate">Rate this product</label>
@@ -156,11 +156,11 @@ input[type="range"].rating {
 }
 ```
 
-MANDATORY: on `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--rating` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
+On `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--rating` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
 Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--rating` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
 
-Optional: a native range snaps clicks to the nearest step, so clicking the right side of a star can pick the left half. On pointer clicks (`event.detail !== 0`, keeping keyboard behavior native), you can snap up to the clicked half and unfill by `0.5` if the user clicks the current value again:
+Optional: a native range snaps clicks to the nearest step, so clicking the right side of a star can pick the left half. On pointer clicks (`event.detail !== 0`, keeping keyboard behavior native), you can snap up to the clicked step and unfill by one `step` if the user clicks the current value again:
 
 ```js
 let valueBefore = 0;
@@ -172,9 +172,12 @@ range.addEventListener('click', (event) => {
   const padLeft = parseFloat(cs.paddingLeft);
   const left = rect.left + padLeft;
   const width = rect.width - padLeft - parseFloat(cs.paddingRight);
-  const steps = (Number(range.max) || 5) * 2;
-  const half = Math.min(steps, Math.max(0, Math.ceil(((event.clientX - left) / width) * steps))) / 2;
-  range.value = half === valueBefore ? half - 0.5 : half;
+  const min = Number(range.min) || 0;
+  const max = Number(range.max) || 5;
+  const step = Number(range.step) || 1;
+  const steps = Math.round((max - min) / step);
+  const next = Math.min(max, Math.max(min, min + Math.ceil(((event.clientX - left) / width) * steps) * step));
+  range.value = next === valueBefore ? Math.max(min, next - step) : next;
   update();
 });
 ```
