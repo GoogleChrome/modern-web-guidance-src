@@ -55,16 +55,17 @@ Hiding a popover, using a button inside the popover itself, will result in a los
 ## Implementing Declarative Modal Dialogs
 
 Unlike popovers, modal dialogs typically use separate buttons for opening and closing. Use the `show-modal` command specifically when you need to open a dialog as a modal.
+Give the dialog an accessible name via its visible heading. See {{ GUIDE_REF("dialog") }} for focus and closing behavior, and {{ GUIDE_REF("light-dismiss-a-dialog") }} if it should also close on backdrop clicks.
 
 ```html
 <!-- MANDATORY: Use command="show-modal" to trigger the dialog as a modal, trapping focus and preventing interaction with the rest of the page. -->
 <!-- MANDATORY: The commandfor attribute connects this button to the dialog ID. -->
-<button commandfor="confirm-dialog" command="show-modal">
+<button type="button" commandfor="confirm-dialog" command="show-modal">
   Open Confirmation
 </button>
 
-<dialog id="confirm-dialog">
-  <p>Are you sure you want to proceed?</p>
+<dialog id="confirm-dialog" aria-labelledby="confirm-dialog-title">
+  <h2 id="confirm-dialog-title">Are you sure you want to proceed?</h2>
 
   <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
   <!-- type="button" keeps this working if the dialog content is later wrapped in a <form>. -->
