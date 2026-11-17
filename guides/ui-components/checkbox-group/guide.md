@@ -50,6 +50,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 </fieldset>
 ```
 
+* Nest each `<input>` directly inside its `<label>` and omit redundant `for` (and `id`, unless needed for `aria-controls`) attributes.
 * Keep the master's label stable ("Select all ..."). Do not list checked or unchecked items in it.
 * Optionally add `aria-controls` on the master listing the option IDs (which requires `id` attributes on the checkboxes); screen reader support is limited, so never rely on it.
 * Optionally include an `<output>` with a short summary such as "2 of 4 available units active".
@@ -121,8 +122,8 @@ fieldset {
 For a de-emphasized hint under the main label, place it outside `<label>` as a `<small>` with an `id`, and reference it from `<input>` with `aria-describedby` (putting a hint inside `<label>` includes it in the input's accessible name, causing `aria-describedby` to announce it twice). Keep the hint's contrast at 4.5:1 or better.
 
 ```html
-<label for="robot-1">
-  <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork"
+<label>
+  <input type="checkbox" class="checkbox" name="robot" value="clockwork"
          aria-describedby="robot-1-hint" />
   Clockwork Courier
 </label>

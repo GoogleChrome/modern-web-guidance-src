@@ -1,5 +1,5 @@
 - The options and the master checkbox are grouped inside a `<fieldset>` that has a `<legend>` child.
-- Every checkbox, including the master checkbox, is a native `<input type="checkbox">` associated with a `<label>` (nested or via matching `for` and `id`).
+- Every checkbox, including the master checkbox, is a native `<input type="checkbox">` nested inside its `<label>` without a redundant `for` attribute.
 - The master checkbox has no `name` attribute, so it is not submitted with the form.
 - The master checkbox is checked and not indeterminate when enabled option checkboxes exist and all of them are checked.
 - The master checkbox has its `indeterminate` property set to true when some, but not all, enabled option checkboxes are checked.
