@@ -36,10 +36,24 @@ The rest of this guide covers options 4 and 5.
 
 ## Choosing between options
 
-- **`rule-break`:** `normal` (default) breaks at T-junctions and stays continuous through grid crosses; keep it for table-like grids. Use `intersection` for separated, tick-like segments. Use `none` for one unbroken line across items that span tracks (never emit `rule-break: spanning-item`).
-- **`rule-inset`:** pulls segment ends back from free ends like container edges (`rule-inset-cap`) and broken intersections where rules meet (`rule-inset-junction`) with positive values, extends into padding or junctions with negative values, or sets cap then junction separately with a slash (`<length-percentage> / <length-percentage>`, or `overlap-join`); never emit `*-rule-outset`. Cap insets always apply; junction insets only take effect where rules stop or break (`intersection`, or `normal` at T-junctions and sparse corners). `overlap-join` (flush `0` at caps) makes segments meet neatly at corners and T-junctions; at full crosses it looks the same as `rule-break: normal`.
-- **`rule-overlap`:** `row-over-column` (default) or `column-over-row` decides which axis paints on top at crossings; only matters when the two rules differ (never emit `gap-rule-paint-order`).
-- **`rule-visibility-items`** (grid and multicol): `normal` (default), `all` (rules next to empty cells too), `around` (when either side has an item), `between` (only when both sides have items). Use `between` for sparse grids. An empty cell is one with no item placed in it: a `visibility: hidden`, `opacity: 0`, or empty placeholder element still counts as an item, so leave the cell unoccupied with `grid-template-areas` or explicit `grid-area` placement.
+Pick each property for the design goal it serves; leave it at its default when none applies.
+
+- **Related cells that read as one structure (ledgers, bento grids, table-like layouts):** keep `rule-break: normal` so lines run continuous through crossings.
+- **Separate tiles or cards that read as independent units:** use `rule-break: intersection` so rules stop at crossings instead of forming a lattice. Pair it with a junction inset (`rule-inset-junction`) when the segments should not touch.
+- **A featured item spanning several tracks:** use `rule-break: none` when the rule should run unbroken behind spanning items.
+- **Edge alignment (the default):** keep insets at `0` so rules start and end flush with the content edges.
+- **Full-bleed dividers inside a padded container:** use a negative cap inset equal to the padding (e.g., `row-rule-inset: -1rem` for `padding: 1rem`) so rules reach the container edge without extra wrapper elements. Do not clip the container's overflow.
+- **Neat corners where segments meet:** use `rule-inset: overlap-join` (flush `0` at free ends, extends into junctions). It only differs from `normal` at T-junctions and corners, such as those `rule-visibility-items: between` leaves in sparse grids.
+- **Cap versus junction insets:** `rule-inset-cap` affects free ends such as container edges and always applies. `rule-inset-junction` only takes effect where rules stop or break (`intersection`, or `normal` at T-junctions and sparse corners). `rule-inset: <cap> / <junction>` sets both; use `rule-inset-junction` alone to leave outer ends flush. Never emit `*-rule-outset` or `rule-break: spanning-item`.
+- **Visual hierarchy (heavier outer or header rules, subtle interior rules):** vary rules per gap with comma lists (step 3). When the two axes differ, `rule-overlap` decides which paints on top at crossings: `row-over-column` (default) or `column-over-row`. Never emit `gap-rule-paint-order`.
+- **Sparse grids or a partially filled last row:** use `rule-visibility-items: between` (grid and multicol) so no rules dangle toward empty cells. `all` paints rules next to empty cells too, `around` when either side has an item, `normal` is the default. An empty cell is one with no item placed in it: a `visibility: hidden`, `opacity: 0`, or empty placeholder element still counts as an item, so leave the cell unoccupied with `grid-template-areas` or explicit `grid-area` placement.
+- **Animation:** `rule-inset` can animate rules drawing in or out; `rule-color` and `rule-width` can animate emphasis. Gate transitions behind `@media (prefers-reduced-motion: no-preference)` and read the antipatterns below first.
+
+## Visual and UX antipatterns
+
+- **DO NOT** use small arbitrary insets (e.g., `0.5rem`) on edge rules. Rules that fall slightly short of the content edges break alignment without reading as a deliberate centered divider. Use `0`, a negative inset for full-bleed, or `overlap-join`.
+- **DO NOT** build dense grids from thick, high-contrast rules with narrow gaps. Four-way crossings can trigger the Hermann grid illusion (ghost gray spots at intersections), and broken intersections with small junction insets leave distracting white gaps. Prefer thin, low-contrast rules, wider gaps, or rules in one axis only.
+- **DO NOT** change `rule-color` or `rule-width` for the whole container when a child is hovered or focused. Item hover and focus styling already shows interaction state; restyling every rule pulls attention away from the active item and forces the user to re-scan the structure to find it. The exception is a grid whose rules are hidden or barely visible at rest, where revealing them on interaction does not compete with the active item. Scope any such transition to `@media (prefers-reduced-motion: no-preference)`.
 
 ## Fallback strategies
 
