@@ -91,12 +91,13 @@
     /* Stars are a row of star-shaped masks over a hard-stop gradient driven by --control-value and --max */
     .rating {
       --max: 5;
+      --_offset: 0px;
       inline-size: calc(var(--star-size) * var(--max));
       block-size: var(--star-size);
       --_stars-bg: linear-gradient(to right in oklch,
-          var(--color-star-filled) calc(var(--control-value) / var(--max) * 100%),
+          var(--color-star-filled) calc(var(--_offset) + var(--control-value) * var(--star-size)),
           var(--color-star-empty) 0);
-      --_stars-mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
+      --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
     }
 
     /* Opt-in count-up: the keyframe has no `to`, so it animates to the meter's own value */
@@ -138,10 +139,11 @@
 
     /* Native range (step 0.5) styled directly via its track pseudo-elements */
     input[type="range"].rating {
-      --rating-gutter: 0.75rem;
+      --min: 0;
+      --step: 0.5;
+      --_offset: calc((var(--step) - var(--min)) * var(--star-size));
+      inline-size: calc((var(--max) - var(--min) + var(--step)) * var(--star-size));
       appearance: none;
-      box-sizing: content-box;
-      padding-inline: var(--rating-gutter);
       margin: 0;
       border: 0;
       border-radius: 0.375rem;
@@ -168,24 +170,29 @@
         block-size: 100%;
         background: var(--_stars-bg);
         mask: var(--_stars-mask);
+        clip-path: inset(0 0 0 var(--_offset));
       }
 
       &::-moz-range-track {
         block-size: 100%;
         background: var(--_stars-bg);
         mask: var(--_stars-mask);
+        clip-path: inset(0 0 0 var(--_offset));
       }
 
+      /* Step-wide thumb aligns native step snapping with star halves without JS */
       &::-webkit-slider-thumb {
         appearance: none;
-        inline-size: 0;
-        block-size: 0;
+        inline-size: calc(var(--step) * var(--star-size));
+        block-size: 100%;
+        background: transparent;
       }
 
       &::-moz-range-thumb {
-        inline-size: 0;
-        block-size: 0;
+        inline-size: calc(var(--step) * var(--star-size));
+        block-size: 100%;
         border: 0;
+        background: transparent;
       }
     }
 
@@ -232,7 +239,7 @@
 
     @media (forced-colors: active) {
       .rating {
-        --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--control-value) / var(--max) * 100%), GrayText 0);
+        --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--_offset) + var(--control-value) * var(--star-size)), GrayText 0);
         forced-color-adjust: none;
       }
     }
@@ -302,8 +309,12 @@
     const out = document.getElementById('rate-out');
 
     function update() {
+      const min = Number(range.min) || 0;
       const max = Number(range.max) || 5;
+      const step = Number(range.step) || 1;
+      range.style.setProperty('--min', min);
       range.style.setProperty('--max', max);
+      range.style.setProperty('--step', step);
       const edited = 'edited' in range.dataset;
       const average = range.dataset.average;
       if (!edited && average !== undefined) {
@@ -323,29 +334,6 @@
       update();
     });
     update();
-
-    // Pointer clicks fill the step under the pointer; clicking the last filled step unfills it
-    let valueBefore = NaN;
-    range.addEventListener('pointerdown', () => {
-      valueBefore = 'edited' in range.dataset ? Number(range.value) : NaN;
-    });
-    range.addEventListener('click', (event) => {
-      if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
-      const rect = range.getBoundingClientRect();
-      const cs = getComputedStyle(range);
-      const padLeft = parseFloat(cs.paddingLeft);
-      const left = rect.left + padLeft;
-      const width = rect.width - padLeft - parseFloat(cs.paddingRight);
-      // Snap up to the step under the pointer; the gutters beside the stars clamp to min and max
-      const min = Number(range.min) || 0;
-      const max = Number(range.max) || 5;
-      const step = Number(range.step) || 1;
-      const steps = Math.round((max - min) / step);
-      const next = Math.min(max, Math.max(min, min + Math.ceil(((event.clientX - left) / width) * steps) * step));
-      range.dataset.edited = '';
-      range.value = next === valueBefore ? Math.max(min, next - step) : next;
-      update();
-    });
   </script>
 </body>
 

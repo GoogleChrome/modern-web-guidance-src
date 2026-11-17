@@ -38,13 +38,14 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 
 .rating {
   --max: 5;
+  --_offset: 0px;
   inline-size: calc(var(--star-size) * var(--max));
   block-size: var(--star-size);
-  /* Hard stop at control-value/max of the width fills partial and half stars */
+  /* Hard stop at offset + control-value fills partial and half stars */
   --_stars-bg: linear-gradient(to right in oklch,
-      var(--color-star-filled) calc(var(--control-value) / var(--max) * 100%),
+      var(--color-star-filled) calc(var(--_offset) + var(--control-value) * var(--star-size)),
       var(--color-star-empty) 0);
-  --_stars-mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
+  --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
 }
 ```
 
@@ -111,14 +112,15 @@ Use `<input type="range" class="rating" min="0" max="5" step="0.5">` (adjust `ma
 <output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
 ```
 
-Reset the range input's native styling and add horizontal padding gutters for easy min and max clicks. Paint the stars on the track pseudo-elements so the focus ring is never clipped by the mask, and collapse the thumb to zero width so pointer coordinates map 1:1 to values:
+Reset the range input's native styling and size its track to `(max - min + step) * star-size` with a `step`-wide invisible thumb. That places the `0` zone to the left of the first star and centers every step on its visual star or half-star so native clicks select the right star without JS. Paint the stars on the track pseudo-elements—clipped past the leading `0` offset—so the focus ring on the input is never clipped:
 
 ```css
 input[type="range"].rating {
-  --rating-gutter: 0.75rem;
+  --min: 0;
+  --step: 0.5;
+  --_offset: calc((var(--step) - var(--min)) * var(--star-size));
+  inline-size: calc((var(--max) - var(--min) + var(--step)) * var(--star-size));
   appearance: none;
-  box-sizing: content-box;
-  padding-inline: var(--rating-gutter);
   margin: 0;
   border: 0;
   background: transparent;
@@ -133,54 +135,36 @@ input[type="range"].rating {
     block-size: 100%;
     background: var(--_stars-bg);
     mask: var(--_stars-mask);
+    clip-path: inset(0 0 0 var(--_offset));
   }
 
   &::-moz-range-track {
     block-size: 100%;
     background: var(--_stars-bg);
     mask: var(--_stars-mask);
+    clip-path: inset(0 0 0 var(--_offset));
   }
 
-  /* Zero-width thumb keeps value-to-position mapping exact */
+  /* Step-wide thumb aligns native step snapping with star halves without JS */
   &::-webkit-slider-thumb {
     appearance: none;
-    inline-size: 0;
-    block-size: 0;
+    inline-size: calc(var(--step) * var(--star-size));
+    block-size: 100%;
+    background: transparent;
   }
 
   &::-moz-range-thumb {
-    inline-size: 0;
-    block-size: 0;
+    inline-size: calc(var(--step) * var(--star-size));
+    block-size: 100%;
     border: 0;
+    background: transparent;
   }
 }
 ```
 
-On `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--control-value` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
+On `input` (and on initial load), mirror `range.min`, `range.max`, `range.step`, and `range.value` into `--min`, `--max`, `--step`, and `--control-value` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
 Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
-
-Optional: a native range snaps clicks to the nearest step, so clicking the right side of a star can pick the left half. On pointer clicks (`event.detail !== 0`, keeping keyboard behavior native), you can snap up to the clicked step and unfill by one `step` if the user clicks the current value again:
-
-```js
-let valueBefore = 0;
-range.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
-range.addEventListener('click', (event) => {
-  if (event.detail === 0) return;
-  const rect = range.getBoundingClientRect();
-  const cs = getComputedStyle(range);
-  const padLeft = parseFloat(cs.paddingLeft);
-  const left = rect.left + padLeft;
-  const width = rect.width - padLeft - parseFloat(cs.paddingRight);
-  const min = Number(range.min) || 0;
-  const max = Number(range.max) || 5;
-  const step = Number(range.step) || 1;
-  const steps = Math.round((max - min) / step);
-  const next = Math.min(max, Math.max(min, min + Math.ceil(((event.clientX - left) / width) * steps) * step));
-  range.value = next === valueBefore ? Math.max(min, next - step) : next;
-  update();
-});
-```
 
 ## Forced colors and motion
 
@@ -189,7 +173,7 @@ In forced-colors mode, background colors are overridden, so redraw the stars wit
 ```css
 @media (forced-colors: active) {
   .rating {
-    --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--control-value) / var(--max) * 100%), GrayText 0);
+    --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--_offset) + var(--control-value) * var(--star-size)), GrayText 0);
     forced-color-adjust: none;
   }
 }
