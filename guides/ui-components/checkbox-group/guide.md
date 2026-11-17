@@ -29,20 +29,19 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 <fieldset>
   <legend>Active automatons</legend>
 
-  <label class="master" for="select-all">
-    <input type="checkbox" class="checkbox" id="select-all"
-           aria-controls="robot-1" />
+  <label class="master">
+    <input type="checkbox" class="checkbox" />
     Select all automatons
   </label>
 
   <div class="checkbox-group">
-    <label for="robot-1">
-      <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
+    <label>
+      <input type="checkbox" class="checkbox" name="robot" value="clockwork" />
       Clockwork Courier
     </label>
     <!-- A disabled option is excluded from select-all -->
-    <label for="robot-2">
-      <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="rustbucket" disabled />
+    <label>
+      <input type="checkbox" class="checkbox" name="robot" value="rustbucket" disabled />
       Rust Bucket (offline)
     </label>
   </div>
@@ -52,7 +51,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 ```
 
 * Keep the master's label stable ("Select all ..."). Do not list checked or unchecked items in it.
-* Optionally add `aria-controls` on the master listing the option IDs; screen reader support is limited, so never rely on it.
+* Optionally add `aria-controls` on the master listing the option IDs (which requires `id` attributes on the checkboxes); screen reader support is limited, so never rely on it.
 * Optionally include an `<output>` with a short summary such as "2 of 4 available units active".
 
 ## 2. Master checkbox behavior
