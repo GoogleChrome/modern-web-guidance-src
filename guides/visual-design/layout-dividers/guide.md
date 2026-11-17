@@ -76,7 +76,7 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 Gap decorations are decorative, so the modern approach needs no fallback by default: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
 
-If your Baseline target requires visible dividers, a fallback is only robust for the simplest case, a single-column stack. Keep the gap non-zero and split it around the border so the spacing matches the rule, instead of adding padding or margin on top of the gap:
+If your use case requires visible dividers, a fallback is only robust for the simplest case, a single-column stack. Keep the gap non-zero and split it around the border so the spacing matches the rule, instead of adding padding or margin on top of the gap:
 
 ```css
 .stack { display: flex; flex-direction: column; gap: 1rem; row-rule: 1px solid currentColor; }
