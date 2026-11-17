@@ -117,7 +117,7 @@ Style `.master` with a 44px minimum hit target and a visual separator:
 }
 ```
 
-### Label-only rows (the common case)
+### Label-only rows
 
 MANDATORY: The checkbox must stay at the inline-start of all label text, including wrapped lines and hints. Do not use a flex label: the text becomes flex items beside the checkbox, so a long label can wrap underneath it. Instead position the label (`position: relative`), reserve space with `padding-inline-start` (checkbox width plus gap), and pin the checkbox into that space with `position: absolute` and `inset-inline-start: 0`. Checkbox dimensions are uniform, so no wrapper `<span>` is needed, and logical properties keep it correct in RTL:
 
