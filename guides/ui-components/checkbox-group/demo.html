@@ -50,7 +50,7 @@
     }
 
     /* Label-only rows: the checkbox is pinned to the inline-start edge, so wrapped text stays beside it. */
-    .options label {
+    .checkbox-group > label {
       position: relative;
       display: block;
       padding-block: 10px;
@@ -60,14 +60,14 @@
       user-select: none;
     }
 
-    .options label > .checkbox {
+    .checkbox-group > label > .checkbox {
       position: absolute;
       inset-inline-start: 0;
       inset-block-start: calc(10px + (1.5rem - 1.25em) / 2);
       margin: 0;
     }
 
-    .options label:not(:first-of-type) {
+    .checkbox-group > label:not(:first-of-type) {
       border-block-start: 1px solid #ececee;
     }
 
@@ -78,7 +78,7 @@
       font-size: 0.875em;
     }
 
-    .options .hint {
+    .checkbox-group .hint {
       display: block;
       margin-inline-start: 2rem; /* checkbox width + gap */
     }
@@ -189,7 +189,7 @@
           Select all notifications
         </label>
 
-        <div class="options">
+        <div class="checkbox-group">
           <label for="notify-1">
             <input type="checkbox" class="checkbox" id="notify-1" name="notify" value="repairs" aria-describedby="notify-1-hint" checked />
             Tell me when a repair is finished, including <strong>routine servicing</strong> and any emergency work
@@ -223,7 +223,7 @@
           Select all crew
         </label>
 
-        <div class="options scroll-list" id="crew" role="group" aria-labelledby="crew-legend">
+        <div class="checkbox-group scroll-list" id="crew" role="group" aria-labelledby="crew-legend">
           <label for="crew-ada">
             <input type="checkbox" class="checkbox" id="crew-ada" name="crew" value="ada" checked />
             Ada Navigator
@@ -288,7 +288,7 @@
     function setupGroup({ group, noun }) {
       const master = group.querySelector('.master input');
       const summary = group.querySelector('output');
-      const options = [...group.querySelectorAll('.options input[type="checkbox"]')];
+      const options = [...group.querySelectorAll('.checkbox-group input[type="checkbox"]')];
 
       function sync() {
         const enabled = options.filter((item) => !item.disabled);

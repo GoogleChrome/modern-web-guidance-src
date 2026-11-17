@@ -36,7 +36,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
     Select all automatons
   </label>
 
-  <div class="options">
+  <div class="checkbox-group">
     <label for="robot-1">
       <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
       Clockwork Courier
@@ -122,7 +122,7 @@ Style `.master` with a 44px minimum hit target and a visual separator:
 MANDATORY: The checkbox must stay at the inline-start of all label text, including wrapped lines and hints. Do not use a flex label: the text becomes flex items beside the checkbox, so a long label can wrap underneath it. Instead position the label (`position: relative`), reserve space with `padding-inline-start` (checkbox width plus gap), and pin the checkbox into that space with `position: absolute` and `inset-inline-start: 0`. Checkbox dimensions are uniform, so no wrapper `<span>` is needed, and logical properties keep it correct in RTL:
 
 ```css
-.options label {
+.checkbox-group > label {
   position: relative;
   display: block;
   padding-block: 10px; /* 24px line + 20px = 44px hit target */
@@ -132,7 +132,7 @@ MANDATORY: The checkbox must stay at the inline-start of all label text, includi
 }
 
 /* Center the checkbox on the first line of text */
-.options label > .checkbox {
+.checkbox-group > label > .checkbox {
   position: absolute;
   inset-inline-start: 0;
   inset-block-start: calc(10px + (1.5rem - 1.25em) / 2);
