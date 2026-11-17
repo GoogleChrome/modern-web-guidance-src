@@ -3,6 +3,8 @@ name: layout-dividers
 description: Draw visual dividers and separator lines between rows and columns in multi-column, flex, or grid layouts without adding extra border elements or outer container borders.
 web-feature-ids:
   - gap-decorations
+  - nesting
+  - prefers-reduced-motion
 ---
 
 # Layout dividers
@@ -30,7 +32,7 @@ The rest of this guide covers options 4 and 5.
 3. If the first/last gaps or alternating gaps should differ, vary rules per gap with comma lists and `repeat()`. Comma lists assign per gap in order and cycle when shorter than the gap count; `repeat(auto, ...)` (at most one per list) fills uncovered gaps and stops cycling when the track count is unknown, and `repeat(N, ...)` requires an integer `N >= 1` or the declaration is invalid.
 4.  When rules in a grid should not form a visible lattice, control intersections and segment length with `rule-break`, `rule-inset`, and `rule-overlap`. 
 5.  To control whether rules are painted next to empty cells use `rule-visibility-items`.
-6.  **Optional: Animate** `rule-color`, `rule-width`, or `rule-inset` (animatable; `rule-style` and `rule-break` change discretely) for hover affordances.
+6.  **Optional: Animate** `rule-color`, `rule-width`, or `rule-inset` (animatable; `rule-style` and `rule-break` change discretely) when it serves a purpose, such as drawing rules in or revealing faint ones. Avoid hover or focus emphasis of the whole container (see the antipatterns below).
 
 `column-rule` is always the inline-axis gap and `row-rule` the block-axis gap, so both flip with `writing-mode`. In a flex row, `column-rule` sits between siblings and `row-rule` between wrapped lines; in a flex column they swap.
 
@@ -64,11 +66,17 @@ Fallbacks reuse the techniques from the decision tree above. In cases where divi
 If your use case requires visible dividers, a fallback is only robust for the simplest case, a single-column stack, where the adjacent-sibling border from option 3 applies. Keep the gap non-zero and split it around the border so the spacing matches the rule, instead of adding padding or margin on top of the gap:
 
 ```css
-.stack { display: flex; flex-direction: column; gap: 1rem; row-rule: 1px solid currentColor; }
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* example value */
+  row-rule: 1px solid currentColor;
 
-@supports not (row-rule: 1px solid currentColor) {
-  .stack { gap: 0.5rem; }
-  .stack > * + * { border-block-start: 1px solid currentColor; padding-block-start: 0.5rem; }
+  @supports not (row-rule: 1px solid currentColor) {
+    /* Half the gap on each side of the border; 0.5rem is an example value */
+    gap: 0.5rem;
+    > * + * { border-block-start: 1px solid currentColor; padding-block-start: 0.5rem; }
+  }
 }
 ```
 

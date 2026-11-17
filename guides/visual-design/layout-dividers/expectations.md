@@ -6,6 +6,5 @@
 - No `::before` or `::after` pseudo-element on the container's items draws a line (`content: ""` with `position: absolute` and a few-pixel `inline-size` or `block-size`).
 - The items of the divider container do not use single-sided borders (such as `border-inline-end`, `border-block-start`, `border-right`, or `border-bottom` on adjacent siblings) to fake dividers outside of an `@supports not (...)` fallback.
 - The stylesheet does not contain `-rule-outset`, `gap-rule-paint-order`, or `spanning-item`.
-- No `rule-inset`, `column-rule-inset`, `row-rule-inset`, or `rule-inset-cap` declaration uses a positive length as its cap (first) value.
 - No `:hover`, `:focus`, `:focus-visible`, or `:focus-within` rule changes `rule-width`, `column-rule-width`, or `row-rule-width` on the divider container.
-- When `gap-decorations` is unsupported, the container retains a non-zero computed gap and all content remains readable without overlapping or clipping.
+- When `gap-decorations` is unsupported, the container retains a non-zero computed gap.

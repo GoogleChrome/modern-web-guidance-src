@@ -51,6 +51,7 @@
       border-radius: 0.5rem;
       font-size: 0.9rem;
       gap: 1.5rem;
+      --demo-columns: repeat(3, minmax(0, 1fr));
       /* Let items shrink and words break so the page reflows at 320px without sideways scroll. */
       overflow-wrap: anywhere;
 
@@ -61,8 +62,10 @@
     }
 
     /* Semantic break: <hr> is content, not decoration */
-    .article { gap: 0; }
-    .article hr { margin-block: 1rem; border: 0; border-block-start: 1px solid var(--rule); }
+    .article {
+      gap: 0;
+      hr { margin-block: 1rem; border: 0; border-block-start: 1px solid var(--rule); }
+    }
 
     /* Tabular data: <table> with row borders */
     .data {
@@ -73,12 +76,14 @@
     }
 
     /* Flush items: sibling border in a stack, 1px gap over a container background in a grid */
-    .flush-stack { gap: 0; }
-    .flush-stack > * { padding-block: 0.75rem; }
-    .flush-stack > * + * { border-block-start: 1px solid var(--rule); }
+    .flush-stack {
+      gap: 0;
+      > * { padding-block: 0.75rem; }
+      > * + * { border-block-start: 1px solid var(--rule); }
+    }
     .flush-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       gap: 1px;
       padding: 1px;
       background: var(--rule-subtle);
@@ -119,7 +124,7 @@
     /* Grid ledger: thin, low-contrast rules continuous through crossings */
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       rule: 1px solid var(--rule-subtle);
     }
 
@@ -140,13 +145,13 @@
     /* Spanning item: compare rule-break values */
     .spans {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       rule: 2px solid var(--rule);
       > .wide { grid-column: span 2; }
+      &.normal { rule-break: normal; }
+      &.intersection { rule-break: intersection; }
+      &.none { rule-break: none; }
     }
-    .spans.normal { rule-break: normal; }
-    .spans.intersection { rule-break: intersection; }
-    .spans.none { rule-break: none; }
 
     /* Visual hierarchy: value lists and repeat() */
     .lists {
@@ -165,7 +170,7 @@
     /* Overlap */
     .overlap {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       column-rule: 8px solid var(--accent-2);
       row-rule: 8px solid var(--accent);
       gap: 2rem;
@@ -176,7 +181,7 @@
     /* Empty cells and visibility */
     .empty {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       /* Real empty cells: place items explicitly and leave the rest unoccupied.
          A hidden or empty placeholder element still counts as an item. */
       grid-template-areas:
@@ -189,16 +194,16 @@
       > .clerval { grid-area: clerval; }
       > .justine { grid-area: justine; }
       > .walton { grid-area: walton; }
+      &.all { rule-visibility-items: all; }
+      &.around { rule-visibility-items: around; }
+      &.between { rule-visibility-items: between; }
     }
-    .empty.all { rule-visibility-items: all; }
-    .empty.around { rule-visibility-items: around; }
-    .empty.between { rule-visibility-items: between; }
 
     /* Reveal on interaction: rules are invisible at rest and only fade in faintly, so the
        hovered or focused link stays dominant. Rule width never changes. */
     .reveal {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       rule: 1px solid transparent;
       @media (prefers-reduced-motion: no-preference) {
         transition: rule-color 0.3s;
@@ -211,14 +216,14 @@
     /* Writing modes */
     .rtl {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       direction: rtl;
       column-rule: 3px solid var(--accent-2);
       row-rule: 1px solid var(--accent);
     }
     .vertical {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       writing-mode: vertical-rl;
       column-rule: 3px solid var(--accent-2);
       row-rule: 1px solid var(--accent);
@@ -238,16 +243,18 @@
       }
     }
     .fallback-grid {
+      --fallback-grid-rule: var(--rule);
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: var(--demo-columns);
       gap: 1.5rem;
       column-rule: 1px solid var(--rule);
+      @media (forced-colors: active) { --fallback-grid-rule: CanvasText; }
       @supports not (column-rule: 1px solid currentColor) {
         background-origin: content-box;
         background-repeat: no-repeat;
         background-image:
-          linear-gradient(var(--rule), var(--rule)),
-          linear-gradient(var(--rule), var(--rule));
+          linear-gradient(var(--fallback-grid-rule), var(--fallback-grid-rule)),
+          linear-gradient(var(--fallback-grid-rule), var(--fallback-grid-rule));
         background-size: 1px 100%;
         background-position:
           calc(100% / 3 - 0.25rem) 0,
