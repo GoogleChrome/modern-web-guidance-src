@@ -89,14 +89,14 @@
     }
 
     /* Stars are a row of star-shaped masks over a hard-stop gradient driven by --rating and --max */
-    .stars,
-    .rating::before {
+    .rating {
+      --max: 5;
       inline-size: calc(var(--star-size) * var(--max));
       block-size: var(--star-size);
-      background: linear-gradient(to right in oklch,
+      --_stars-bg: linear-gradient(to right in oklch,
           var(--color-star-filled) calc(var(--rating) / var(--max) * 100%),
           var(--color-star-empty) 0);
-      mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
+      --_stars-mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
     }
 
     /* Opt-in count-up: the keyframe has no `to`, so it animates to the meter's own value */
@@ -107,13 +107,15 @@
     }
 
     /* Read-only: <meter> painted as stars */
-    meter.stars {
+    meter.rating {
       appearance: none;
       display: block;
       padding: 0;
       border: 0;
       --max: attr(max type(<number>), 5);
       --rating: attr(value type(<number>), 0);
+      background: var(--_stars-bg);
+      mask: var(--_stars-mask);
 
       &::-webkit-meter-bar,
       &::-webkit-meter-optimum-value,
@@ -134,14 +136,17 @@
       }
     }
 
-    /* A transparent native range (step 0.5) overlays the stars and provides all the behavior */
-    .rating {
-      position: relative;
-      --max: 5;
+    /* Native range (step 0.5) styled directly via its track pseudo-elements */
+    input[type="range"].rating {
       --rating-gutter: 0.75rem;
-      display: inline-block;
+      appearance: none;
+      box-sizing: content-box;
       padding-inline: var(--rating-gutter);
+      margin: 0;
+      border: 0;
       border-radius: 0.375rem;
+      background: transparent;
+      cursor: pointer;
       /* Registered --rating is animatable, so the fill eases to the new value */
       transition: --rating 0.25s ease-out, scale 0.15s ease;
 
@@ -153,42 +158,34 @@
         scale: 1.02;
       }
 
-      /* Painted on a pseudo-element so the focus ring is not clipped by the mask */
-      &::before {
-        content: "";
-        display: block;
-        pointer-events: none;
-      }
-
-      &:has(:focus-visible) {
+      &:focus-visible {
         outline: 3px solid var(--accent);
         outline-offset: 6px;
       }
 
-      & input[type="range"] {
-        position: absolute;
-        inset-block: 0;
-        inset-inline-start: var(--rating-gutter);
-        inline-size: calc(var(--star-size) * var(--max));
+      /* Painted on the track pseudo-elements so the focus ring is not clipped by the mask */
+      &::-webkit-slider-runnable-track {
         block-size: 100%;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        opacity: 0;
-        cursor: pointer;
+        background: var(--_stars-bg);
+        mask: var(--_stars-mask);
+      }
+
+      &::-moz-range-track {
+        block-size: 100%;
+        background: var(--_stars-bg);
+        mask: var(--_stars-mask);
+      }
+
+      &::-webkit-slider-thumb {
         appearance: none;
+        inline-size: 0;
+        block-size: 0;
+      }
 
-        &::-webkit-slider-thumb {
-          appearance: none;
-          inline-size: 0;
-          block-size: 0;
-        }
-
-        &::-moz-range-thumb {
-          inline-size: 0;
-          block-size: 0;
-          border: 0;
-        }
+      &::-moz-range-thumb {
+        inline-size: 0;
+        block-size: 0;
+        border: 0;
       }
     }
 
@@ -234,9 +231,8 @@
     }
 
     @media (forced-colors: active) {
-      .rating::before,
-      .stars {
-        background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);
+      .rating {
+        --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);
         forced-color-adjust: none;
       }
     }
@@ -246,7 +242,7 @@
         transition: none;
       }
 
-      meter.stars.animate {
+      meter.rating.animate {
         animation: none;
       }
     }
@@ -260,7 +256,7 @@
 
     <section class="card">
       <h2 id="avg-label">Average rating: 3.5 out of 5 (128 reviews)</h2>
-      <meter class="stars" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label">3.5 out of 5</meter>
+      <meter class="rating" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label">3.5 out of 5</meter>
       <button type="button" id="replay">Replay animation</button>
       <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>. Animates when scrolled into view.</p>
     </section>
@@ -268,9 +264,7 @@
     <section class="card">
       <h2><label for="rate">Rate this product</label></h2>
       <div class="row">
-        <span class="rating" id="rating-wrap" data-average="3.5">
-          <input type="range" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated, average 3.5 out of 5 stars" />
-        </span>
+        <input type="range" class="rating" id="rate" data-average="3.5" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated, average 3.5 out of 5 stars" />
         <output for="rate" id="rate-out" aria-hidden="true">Average: 3.5 out of 5</output>
       </div>
       <p class="hint">Shows the 3.5 average until edited. Click, drag, or use the arrow keys; half stars are supported.</p>
@@ -298,51 +292,54 @@
 
     // Mirror the meter's max and value into --max and --rating where typed attr() is unsupported
     if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
-      for (const el of document.querySelectorAll('meter.stars')) {
+      for (const el of document.querySelectorAll('meter.rating')) {
         el.style.setProperty('--max', el.getAttribute('max') ?? 5);
         el.style.setProperty('--rating', el.getAttribute('value'));
       }
     }
 
     const range = document.getElementById('rate');
-    const wrap = document.getElementById('rating-wrap');
     const out = document.getElementById('rate-out');
 
     function update() {
       const max = Number(range.max) || 5;
-      wrap.style.setProperty('--max', max);
-      const edited = 'edited' in wrap.dataset;
-      const average = wrap.dataset.average;
+      range.style.setProperty('--max', max);
+      const edited = 'edited' in range.dataset;
+      const average = range.dataset.average;
       if (!edited && average !== undefined) {
-        wrap.style.setProperty('--rating', average);
+        range.style.setProperty('--rating', average);
         range.setAttribute('aria-valuetext', `Not rated, average ${average} out of ${max} stars`);
         out.textContent = `Average: ${average} out of ${max}`;
         return;
       }
       const value = Number(range.value);
       const text = value === 0 ? 'Not rated' : `${value} out of ${max} stars`;
-      wrap.style.setProperty('--rating', value);
+      range.style.setProperty('--rating', value);
       range.setAttribute('aria-valuetext', text);
       out.textContent = text;
     }
     range.addEventListener('input', () => {
-      wrap.dataset.edited = '';
+      range.dataset.edited = '';
       update();
     });
     update();
 
     // Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
     let valueBefore = NaN;
-    wrap.addEventListener('pointerdown', () => {
-      valueBefore = 'edited' in wrap.dataset ? Number(range.value) : NaN;
+    range.addEventListener('pointerdown', () => {
+      valueBefore = 'edited' in range.dataset ? Number(range.value) : NaN;
     });
-    wrap.addEventListener('click', (event) => {
+    range.addEventListener('click', (event) => {
       if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
-      const { left, width } = range.getBoundingClientRect();
+      const rect = range.getBoundingClientRect();
+      const cs = getComputedStyle(range);
+      const padLeft = parseFloat(cs.paddingLeft);
+      const left = rect.left + padLeft;
+      const width = rect.width - padLeft - parseFloat(cs.paddingRight);
       // Snap up to the half under the pointer; the gutters beside the stars clamp to min and max
       const steps = (Number(range.max) || 5) * 2;
       const half = Math.min(steps, Math.max(0, Math.ceil(((event.clientX - left) / width) * steps))) / 2;
-      wrap.dataset.edited = '';
+      range.dataset.edited = '';
       range.value = half === valueBefore ? half - 0.5 : half;
       update();
     });

@@ -36,15 +36,15 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
   --color-star-empty: light-dark(#c9c9d4, #4a4a58);
 }
 
-.stars {
+.rating {
   --max: 5;
   inline-size: calc(var(--star-size) * var(--max));
   block-size: var(--star-size);
   /* Hard stop at rating/max of the width fills partial and half stars */
-  background: linear-gradient(to right in oklch,
+  --_stars-bg: linear-gradient(to right in oklch,
       var(--color-star-filled) calc(var(--rating) / var(--max) * 100%),
       var(--color-star-empty) 0);
-  mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
+  --_stars-mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
 }
 ```
 
@@ -52,12 +52,18 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 
 ## Read-only rating: a meter
 
-For an average or non-editable score, use `<meter class="stars" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--max` and `--rating` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
+For an average or non-editable score, use `<meter class="rating" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.rating`, apply `--_stars-bg` and `--_stars-mask`, read `--max` and `--rating` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
 
 ```css
-meter.stars {
+meter.rating {
+  appearance: none;
+  display: block;
+  padding: 0;
+  border: 0;
   --max: attr(max type(<number>), 5);
   --rating: attr(value type(<number>), 0);
+  background: var(--_stars-bg);
+  mask: var(--_stars-mask);
 
   &::-webkit-meter-bar,
   &::-webkit-meter-optimum-value,
@@ -84,36 +90,56 @@ Worth adding when the score is a highlight (such as a product header or review s
   from { --rating: 0; }
 }
 
-meter.stars.animate {
+meter.rating.animate {
   animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both; /* example timing */
 }
 
 @media (prefers-reduced-motion: reduce) {
-  meter.stars.animate { animation: none; }
+  meter.rating.animate { animation: none; }
 }
 ```
 
 Trigger the animation by adding `.animate` in the markup on load, once via `IntersectionObserver` when scrolled into view, or by removing and re-adding `.animate` (with a forced reflow) to replay. Do not re-animate from zero when the meter's value updates later.
 
-## Interactive rating: a transparent range input over the stars
+## Interactive rating: a styled range input
 
-MANDATORY: use `<input type="range" min="0" max="5" step="0.5">` with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` at `0`). Use `step="1"` for whole stars only. If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
+MANDATORY: use `<input type="range" class="rating" min="0" max="5" step="0.5">` with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` at `0`). Use `step="1"` for whole stars only. If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
 
 ```html
 <label for="rate">Rate this product</label>
-<span class="rating" id="rating-wrap">
-  <input type="range" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated" />
-</span>
+<input type="range" class="rating" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated" />
 <output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
 ```
 
-Style `.rating` with `position: relative; display: inline-block; --max: 5;` and horizontal `padding-inline` gutters (e.g. `--rating-gutter: 0.75rem`) for easy min and max clicks. Paint the `.stars` mask and gradient on `.rating::before` (`content: ""; display: block; pointer-events: none;`) rather than on the input or wrapper, so the mask never clips the wrapper's focus ring, and style `.rating:has(:focus-visible)` with a visible `outline` and `outline-offset`. Position the range input over it (`position: absolute; inset-block: 0; margin: 0; padding: 0; border: 0; opacity: 0; appearance: none;`), excluding the gutters and collapsing the thumb to zero width so pointer coordinates map 1:1 to values:
+Style `input[type="range"].rating` with `appearance: none; box-sizing: content-box; margin: 0; border: 0; background: transparent;` and horizontal `padding-inline` gutters (e.g. `--rating-gutter: 0.75rem`) for easy min and max clicks. Paint `--_stars-bg` and `--_stars-mask` on the native track pseudo-elements (`::-webkit-slider-runnable-track` and `::-moz-range-track`) rather than on the input itself, so `:focus-visible` `outline` and `outline-offset` on the input are never clipped by the mask, and collapse the thumb to zero width so pointer coordinates map 1:1 to values:
 
 ```css
-.rating input[type="range"] {
-  inset-inline-start: var(--rating-gutter);
-  inline-size: calc(var(--star-size) * var(--max));
-  block-size: 100%;
+input[type="range"].rating {
+  --rating-gutter: 0.75rem;
+  appearance: none;
+  box-sizing: content-box;
+  padding-inline: var(--rating-gutter);
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 6px;
+  }
+
+  &::-webkit-slider-runnable-track {
+    block-size: 100%;
+    background: var(--_stars-bg);
+    mask: var(--_stars-mask);
+  }
+
+  &::-moz-range-track {
+    block-size: 100%;
+    background: var(--_stars-bg);
+    mask: var(--_stars-mask);
+  }
 
   /* Zero-width thumb keeps value-to-position mapping exact */
   &::-webkit-slider-thumb {
@@ -130,18 +156,22 @@ Style `.rating` with `position: relative; display: inline-block; --max: 5;` and 
 }
 ```
 
-MANDATORY: on `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--rating` on `wrap` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
+MANDATORY: on `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--rating` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Optional: to show an existing average until the user rates, set `data-average="3.5"` on `.rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--rating` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `wrap.dataset.edited = ''`.
+Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--rating` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
 
 Optional: a native range snaps clicks to the nearest step, so clicking the right side of a star can pick the left half. On pointer clicks (`event.detail !== 0`, keeping keyboard behavior native), you can snap up to the clicked half and unfill by `0.5` if the user clicks the current value again:
 
 ```js
 let valueBefore = 0;
-wrap.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
-wrap.addEventListener('click', (event) => {
+range.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
+range.addEventListener('click', (event) => {
   if (event.detail === 0) return;
-  const { left, width } = range.getBoundingClientRect();
+  const rect = range.getBoundingClientRect();
+  const cs = getComputedStyle(range);
+  const padLeft = parseFloat(cs.paddingLeft);
+  const left = rect.left + padLeft;
+  const width = rect.width - padLeft - parseFloat(cs.paddingRight);
   const steps = (Number(range.max) || 5) * 2;
   const half = Math.min(steps, Math.max(0, Math.ceil(((event.clientX - left) / width) * steps))) / 2;
   range.value = half === valueBefore ? half - 0.5 : half;
@@ -151,13 +181,12 @@ wrap.addEventListener('click', (event) => {
 
 ## Forced colors and motion
 
-In forced-colors mode, background colors are overridden, so redraw the stars with system colors while opting out of color adjustment (keep only the selectors for the variant you built). Under `prefers-reduced-motion: reduce`, also disable any `--rating` transition or press animation on `.rating`.
+In forced-colors mode, background colors are overridden, so redraw the stars with system colors while opting out of color adjustment. Under `prefers-reduced-motion: reduce`, also disable any `--rating` transition or press animation on `.rating`.
 
 ```css
 @media (forced-colors: active) {
-  .rating::before,
-  .stars {
-    background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);
+  .rating {
+    --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);
     forced-color-adjust: none;
   }
 }
@@ -173,7 +202,7 @@ In forced-colors mode, background colors are overridden, so redraw the stars wit
 
 ```js
 if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
-  for (const el of document.querySelectorAll('meter.stars')) {
+  for (const el of document.querySelectorAll('meter.rating')) {
     el.style.setProperty('--max', el.getAttribute('max') ?? 5);
     el.style.setProperty('--rating', el.getAttribute('value'));
   }
