@@ -106,6 +106,76 @@ void test('dialog: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /closedby="any"/);
   });
+
+  await t.test('flags backdrop click listeners that close a dialog via helper methods or functions', () => {
+    const code = `
+      class ModalController {
+        setup() {
+          const editDialog = this.querySelector<HTMLDialogElement>('#edit-dialog');
+          editDialog?.addEventListener('click', (e) => {
+            if (e.target === editDialog) {
+              this.closeEditModal();
+            }
+          });
+
+          const confirmDialog = this.querySelector<HTMLDialogElement>('#confirm-dialog');
+          confirmDialog?.addEventListener('click', (e) => {
+            if (e.target === confirmDialog) {
+              confirmDialog.close();
+            }
+          });
+
+          const settingsDialog = this.querySelector<HTMLDialogElement>('#settings-dialog');
+          settingsDialog?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+              this.handleDismiss();
+            }
+          });
+        }
+        closeEditModal() {}
+        handleDismiss() {}
+      }
+    `;
+    const matches = matchJsRule(dialogJsMatcher, 'helper-backdrop.ts', code);
+    assert.deepEqual(
+      matches.map((m) => m.line),
+      [5, 12, 19],
+    );
+  });
+
+  await t.test('flags backdrop click listener calling a standalone dismiss/close helper with no literal .close() in file', () => {
+    const code = `
+      confirmDialog.addEventListener('click', (e) => {
+        if (e.target === confirmDialog) {
+          dismissConfirmDialog();
+        }
+      });
+    `;
+    const matches = matchJsRule(dialogJsMatcher, 'dismiss-only.js', code);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
+
+  await t.test('flags backdrop click listener delegating to a same-file helper that calls .close()', () => {
+    const code = `
+      class Editor {
+        setup() {
+          const panel = this.querySelector('#editor');
+          panel?.addEventListener('click', (e) => {
+            if (e.target === panel) {
+              this.resetAndHide();
+            }
+          });
+        }
+        resetAndHide() {
+          this.dialog.close();
+        }
+      }
+    `;
+    const matches = matchJsRule(dialogJsMatcher, 'same-file-helper.ts', code);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 5);
+  });
 });
 
 void test('dialog: negative / exempt cases', async (t) => {
@@ -163,6 +233,33 @@ void test('dialog: negative / exempt cases', async (t) => {
       });
     `;
     const matches = matchJsRule(dialogJsMatcher, 'inside-click.js', code);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-dialog menu/popover backdrop listeners calling non-dialog close helpers', () => {
+    const code = `
+      menu.addEventListener('click', (e) => {
+        if (e.target === menu) {
+          closeMenu();
+        }
+      });
+      dropdown.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+          dismissDropdown();
+        }
+      });
+    `;
+    const matches = matchJsRule(dialogJsMatcher, 'menu-backdrop.js', code);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts close button listener calling a close helper', () => {
+    const code = `
+      cancelBtn.addEventListener('click', () => {
+        this.closeEditModal();
+      });
+    `;
+    const matches = matchJsRule(dialogJsMatcher, 'cancel-btn.js', code);
     assert.equal(matches.length, 0);
   });
 });

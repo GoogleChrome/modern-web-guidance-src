@@ -20,31 +20,97 @@ import type {
 export const DIALOG_GUIDE_HASH = '288ac95fa652';
 
 const CLOSEDBY_FEATURE_TOKENS = ['closedBy', 'closedby'] as const;
+const DIALOG_NAME_RE = /(?:^|[^a-zA-Z])(?:dialog|dlg|modal)(?:[^a-zA-Z]|$)|(?:Dialog|Dlg|Modal)/;
+const CLOSE_HELPER_NAME_RE =
+  /^(?:(?:handle|on|do)?[Cc]lose(?:$|[A-Z_0-9])|.*[a-z0-9_]Close(?:$|[A-Z_0-9])|(?:handle|on|do)?[Dd]ismiss(?:$|[A-Z_0-9])|.*[a-z0-9_]Dismiss(?:$|[A-Z_0-9]))/;
+
+function hasDialogIdentifier(text: string): boolean {
+  return DIALOG_NAME_RE.test(text);
+}
 
 function isDialogTargetText(text: string, targetNode?: Node): boolean {
   return (
     text === 'this' ||
-    /\b(?:dialog|dlg|modal)\b/i.test(text) ||
+    hasDialogIdentifier(text) ||
     (targetNode !== undefined && text === targetNode.getText().trim())
   );
 }
 
+function isDirectCloseCall(expr: Node, targetNode?: Node): boolean {
+  if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'close') {
+    const receiverText = unwrapExpression(expr.getExpression()).getText().trim();
+    return (
+      isDialogTargetText(receiverText, targetNode) ||
+      receiverText.endsWith('.target') ||
+      receiverText.endsWith('.current')
+    );
+  }
+  return Node.isIdentifier(expr) && expr.getText() === 'close';
+}
+
+function resolveSameFileHelperBody(expr: Node): Node | null {
+  if (Node.isIdentifier(expr)) {
+    const resolved = resolveCallableNode(expr, 2);
+    return resolved !== expr ? resolved : null;
+  }
+  if (Node.isPropertyAccessExpression(expr) && Node.isThisExpression(unwrapExpression(expr.getExpression()))) {
+    const cls = expr.getFirstAncestor(
+      (ancestor) => Node.isClassDeclaration(ancestor) || Node.isClassExpression(ancestor),
+    );
+    if (!cls) return null;
+    const methodName = expr.getName();
+    return cls.getMethod(methodName) ?? cls.getProperty(methodName)?.getInitializer() ?? null;
+  }
+  return null;
+}
+
+function isDialogBackdropContext(handlerNode: Node, targetNode?: Node): boolean {
+  if (targetNode && hasDialogIdentifier(targetNode.getText().trim())) {
+    return true;
+  }
+  let hasExplicitDialogCheck = false;
+  handlerNode.forEachDescendant((child) => {
+    if (hasExplicitDialogCheck) return;
+    if (Node.isStringLiteral(child) && child.getLiteralText().toLowerCase() === 'dialog') {
+      hasExplicitDialogCheck = true;
+    } else if (Node.isIdentifier(child) && hasDialogIdentifier(child.getText())) {
+      hasExplicitDialogCheck = true;
+    }
+  });
+  return hasExplicitDialogCheck;
+}
+
 function handlerCallsCloseOnDialog(handlerNode: Node, targetNode?: Node): boolean {
   let callsClose = false;
+  const dialogContext = isDialogBackdropContext(handlerNode, targetNode);
+
   handlerNode.forEachDescendant((child) => {
     if (callsClose || !Node.isCallExpression(child)) return;
     const expr = unwrapExpression(child.getExpression());
-    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'close') {
-      const receiverText = unwrapExpression(expr.getExpression()).getText().trim();
-      if (
-        isDialogTargetText(receiverText, targetNode) ||
-        receiverText.endsWith('.target') ||
-        receiverText.endsWith('.current')
-      ) {
-        callsClose = true;
-      }
-    } else if (Node.isIdentifier(expr) && expr.getText() === 'close') {
+    if (isDirectCloseCall(expr, targetNode)) {
       callsClose = true;
+      return;
+    }
+
+    const calleeName = Node.isPropertyAccessExpression(expr)
+      ? expr.getName()
+      : Node.isIdentifier(expr)
+        ? expr.getText()
+        : null;
+
+    if (calleeName && CLOSE_HELPER_NAME_RE.test(calleeName) && (dialogContext || hasDialogIdentifier(calleeName))) {
+      callsClose = true;
+      return;
+    }
+
+    const helperBody = resolveSameFileHelperBody(expr);
+    if (helperBody) {
+      helperBody.forEachDescendant((helperChild) => {
+        if (callsClose || !Node.isCallExpression(helperChild)) return;
+        if (isDirectCloseCall(unwrapExpression(helperChild.getExpression()), targetNode)) {
+          callsClose = true;
+        }
+      });
     }
   });
   return callsClose;
@@ -221,11 +287,11 @@ export const dialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     ['click', 'onclick'],
-    ['close'],
+    ['close', 'Close', 'dismiss', 'Dismiss'],
     ['target', 'dialog', 'Dialog', 'DIALOG', 'getBoundingClientRect'],
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    if (!/\bclose\b/.test(ctx.fileContent)) {
+    if (!/(?:close|dismiss)/i.test(ctx.fileContent)) {
       return [];
     }
 
