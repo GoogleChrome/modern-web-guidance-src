@@ -19,7 +19,7 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 2.  **MANDATORY: Declare rules on the container** with `column-rule` (inline-axis gaps), `row-rule` (block-axis gaps), or `rule` (both). Each value is `<width> <style> <color>`. Include the style: it defaults to `none`, so `1px red` paints nothing. Use `currentColor` or `light-dark()` for color.
 3. If the first/last gaps or alternating gaps should differ, vary rules per gap with comma lists and `repeat()`
 4.  When rules in a grid should not form a visible lattice, control intersections and segment length with `rule-break`, `rule-inset`, and `rule-overlap`. 
-5.  **Optional: Control rules next to empty cells** with `rule-visibility-items`. Worth adding for sparse grids.
+5.  To control whether rules are painted next to empty cells use `rule-visibility-items`.
 6.  **Optional: Animate** `rule-color`, `rule-width`, or `rule-inset` (animatable; `rule-style` and `rule-break` change discretely) for hover affordances.
 
 `column-rule` is always the inline-axis gap and `row-rule` the block-axis gap, so both flip with `writing-mode`. In a flex row, `column-rule` sits between siblings and `row-rule` between wrapped lines; in a flex column they swap.
