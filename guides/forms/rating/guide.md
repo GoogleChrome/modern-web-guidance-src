@@ -183,7 +183,7 @@ if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
 
 The experience is identical; only the mechanism differs. The interactive range input does not depend on `attr()` because its script already sets `--rating`.
 
-### Registered custom properties (shared)
+### Registered custom properties
 
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
