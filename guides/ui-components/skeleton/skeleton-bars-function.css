@@ -16,20 +16,30 @@
     close;
 }
 
-/* Each element lists its own bars (index, end position), because shape()
-   cannot repeat a path from a count. */
+/* Bars are memoized once, named by index and end position, so each element
+   only lists them. They resolve against each element's own --bar-* values.
+   shape() cannot repeat a path from a count, so each element still lists its bars. */
+.skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+  --skeleton-bar-0-100p: --skeleton-bar(0, 100%);
+  --skeleton-bar-0-88p: --skeleton-bar(0, 88%);
+  --skeleton-bar-0-48p: --skeleton-bar(0, 48%);
+  --skeleton-bar-0-42p: --skeleton-bar(0, 42%);
+  --skeleton-bar-1-92p: --skeleton-bar(1, 92%);
+  --skeleton-bar-2-68p: --skeleton-bar(2, 68%);
+}
+
 .skeleton[aria-busy="true"] h2 {
-  --bars: shape(from 0 0, --skeleton-bar(0, 88%));
+  --bars: shape(from 0 0, var(--skeleton-bar-0-88p));
 }
 
 .skeleton[aria-busy="true"] p {
-  --bars: shape(from 0 0, --skeleton-bar(0, 100%), --skeleton-bar(1, 92%), --skeleton-bar(2, 68%));
+  --bars: shape(from 0 0, var(--skeleton-bar-0-100p), var(--skeleton-bar-1-92p), var(--skeleton-bar-2-68p));
 }
 
 .skeleton[aria-busy="true"] p:has(> time) {
-  --bars: shape(from 0 0, --skeleton-bar(0, 48%));
+  --bars: shape(from 0 0, var(--skeleton-bar-0-48p));
 }
 
 .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
-  --bars: shape(from 0 0, --skeleton-bar(0, 42%));
+  --bars: shape(from 0 0, var(--skeleton-bar-0-42p));
 }
