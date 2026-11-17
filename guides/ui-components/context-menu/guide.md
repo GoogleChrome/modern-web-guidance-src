@@ -1,6 +1,6 @@
 ---
 name: context-menu
-description: Build a context menu component that displays a list of options or actions when users right-click on an element.
+description: Build a context menu component that displays a list of options or actions for interacting with an element or specific context (e.g. by right clicking).
 web-feature-ids:
   - popover
   - anchor-positioning
