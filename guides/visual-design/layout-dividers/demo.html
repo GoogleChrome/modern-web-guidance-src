@@ -103,6 +103,13 @@
       rule-break: intersection;
       rule-inset: 0.5rem;
     }
+    .grid-inset-split {
+      rule: 2px solid var(--rule);
+      rule-break: intersection;
+      /* Negative cap inset extends outer ends into .demo's 1rem padding;
+         positive junction inset pulls broken intersections back. */
+      rule-inset: -1rem / 0.5rem;
+    }
     .grid-join {
       rule: 2px solid var(--rule);
       rule-break: intersection;
@@ -127,6 +134,12 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       column-rule: 3px solid var(--accent), repeat(auto, 1px dashed var(--rule)), 3px solid var(--accent-2);
       row-rule: 3px double var(--rule), repeat(auto, 1px solid var(--rule));
+    }
+    .lists-repeat {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      column-rule: repeat(2, 3px solid var(--accent)), 1px dashed var(--rule);
+      row-rule: 1px solid var(--rule);
     }
 
     /* 9. Overlap */
@@ -194,16 +207,33 @@
       block-size: 14rem;
     }
 
-    /* 13. Fallback pattern */
+    /* 13. Fallback patterns */
     .fallback {
       display: flex;
       flex-direction: column;
       gap: 1rem;
       row-rule: 1px solid var(--rule);
       /* Split the gap around the border so spacing matches the rule. */
-      @supports not (row-rule: 1px solid var(--rule)) {
+      @supports not (row-rule: 1px solid currentColor) {
         gap: 0.5rem;
         > * + * { border-block-start: 1px solid var(--rule); padding-block-start: 0.5rem; }
+      }
+    }
+    .fallback-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+      column-rule: 1px solid var(--rule);
+      @supports not (column-rule: 1px solid currentColor) {
+        background-origin: content-box;
+        background-repeat: no-repeat;
+        background-image:
+          linear-gradient(var(--rule), var(--rule)),
+          linear-gradient(var(--rule), var(--rule));
+        background-size: 1px 100%;
+        background-position:
+          calc(100% / 3 - 0.25rem) 0,
+          calc(200% / 3 + 0.25rem) 0;
       }
     }
   </style>
@@ -262,7 +292,7 @@
     </ul>
 
     <h2>6. Grid: <code>rule-break: intersection</code> with <code>rule-inset</code></h2>
-    <p class="note">First: 0.5rem inset gives separate tick-like segments. Second: <code>rule-visibility-items: between</code> hides the rules next to the empty cells, and <code>overlap-join</code> makes the segments meet neatly at the corners this leaves.</p>
+    <p class="note">First: <code>0.5rem</code> inset gives separate tick-like segments. Second: <code>-1rem / 0.5rem</code> extends outer caps into the container padding while insetting interior junctions. Third: <code>rule-visibility-items: between</code> hides the rules next to the empty cells, and <code>overlap-join</code> makes the segments meet neatly at the corners this leaves.</p>
     <ul class="demo grid grid-break">
       <li><b>Victor</b><q>Learn from me, if not by my precepts, at least by my example.</q></li>
       <li><b>The Creature</b><q>I ought to be thy Adam; but I am rather the fallen angel.</q></li>
@@ -270,6 +300,14 @@
       <li><b>Clerval</b><q>Do not laugh in that manner. How ill you are!</q></li>
       <li><b>Justine</b><q>God knows, how entirely I am innocent.</q></li>
       <li><b>Elizabeth</b><q>My dear cousin.</q></li>
+    </ul>
+    <ul class="demo grid grid-inset-split" style="margin-block-start: 1rem">
+      <li><b>Victor</b><q>A new species would bless me as its creator and source.</q></li>
+      <li><b>The Creature</b><q>Why did I not die?</q></li>
+      <li><b>Walton</b><q>One man’s life or death were but a small price to pay.</q></li>
+      <li><b>Clerval</b><q>How could you suppose that my first thought would not fly towards you?</q></li>
+      <li><b>Justine</b><q>I have no friend, Margaret.</q></li>
+      <li><b>Elizabeth</b><q>Be happy, my dear Victor.</q></li>
     </ul>
     <ul class="demo grid grid-join" style="margin-block-start: 1rem">
       <li><b>Victor</b><q>Nothing is so painful to the human mind as a great and sudden change.</q></li>
@@ -294,12 +332,15 @@
       <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
     </div>
 
-    <h2>8. Value lists and <code>repeat(auto, …)</code></h2>
-    <p class="note">First and last column gaps are solid and colored; every gap in between repeats a dashed rule. Row gaps: a double rule first, then solid.</p>
+    <h2>8. Value lists and <code>repeat()</code></h2>
+    <p class="note">First: <code>repeat(auto, …)</code> fills gaps between fixed first and last column rules; row gaps use a double rule first, then solid. Second: <code>repeat(2, …)</code> repeats a rule for the first two column gaps before falling back to a dashed third.</p>
     <div class="demo lists">
       <p><b>Letter I</b>St. Petersburgh</p><p><b>Letter II</b>Archangel</p><p><b>Letter III</b>At sea</p><p><b>Letter IV</b>The ice</p>
       <p><b>Ch. I</b>Geneva</p><p><b>Ch. II</b>Childhood</p><p><b>Ch. III</b>Departure</p><p><b>Ch. IV</b>Ingolstadt</p>
       <p><b>Ch. V</b>The night of November</p><p><b>Ch. VI</b>Letters</p><p><b>Ch. VII</b>William</p><p><b>Vol. II</b>Justine</p>
+    </div>
+    <div class="demo lists-repeat" style="margin-block-start: 1rem">
+      <p><b>Vol. I</b>Geneva</p><p><b>Vol. I</b>Ingolstadt</p><p><b>Vol. II</b>Chamounix</p><p><b>Vol. III</b>The Orkneys</p>
     </div>
 
     <h2>9. <code>rule-overlap</code></h2>
@@ -333,12 +374,16 @@
       <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
     </div>
 
-    <h2>13. Fallback pattern</h2>
-    <p class="note">Gap decorations when supported; a border on adjacent siblings otherwise, with the gap halved so the spacing matches (only reliable for a simple single-column stack).</p>
+    <h2>13. Fallback patterns</h2>
+    <p class="note">First: single-column stack using a border on adjacent siblings when unsupported, with the gap halved so spacing matches. Second: fixed-track grid drawing lines with container <code>background</code> gradients when unsupported, without affecting layout.</p>
     <div class="demo fallback">
       <p>Nothing is so painful to the human mind as a great and sudden change.</p>
       <p>The sun might shine, or the clouds might lour; but nothing could appear to me as it had done the day before.</p>
       <p>A fiend had snatched from me every hope of future happiness.</p>
+    </div>
+    <div class="demo fallback-grid" style="margin-block-start: 1rem">
+      <p>Geneva</p><p>Ingolstadt</p><p>Archangel</p>
+      <p>Chamounix</p><p>The Orkneys</p><p>The ice</p>
     </div>
 
     <details style="margin-block-start: 3rem">
