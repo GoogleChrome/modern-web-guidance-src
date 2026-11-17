@@ -101,7 +101,13 @@ DO NOT remove focus indicators from the checkboxes.
 
 ## 4. Layout
 
-Style `.master` with a 44px minimum hit target and a visual separator:
+* Give every checkbox `<label>` (including `.master`) a hit target of at least 44px.
+* Align `.master` with the option checkboxes along the block axis so all checkboxes share the same inline-start edge.
+* Visually separate `.master` so it is clearly different from the other checkboxes (for example with dividers, backgrounds, shadows, or typography).
+
+### Label-only rows
+
+MANDATORY: The checkbox must stay at the inline-start of all label text, including wrapped lines and hints. Do not use a flex or grid label: inline text runs and elements (such as `<strong>`) become separate flex or grid items and can wrap underneath the checkbox. Instead position the label (`position: relative`), reserve space with `padding-inline-start` (checkbox width plus gap), and pin the checkbox into that space with `position: absolute` and `inset-inline-start: 0`. Checkbox dimensions are uniform, so no wrapper `<span>` is needed, and logical properties keep it correct in RTL:
 
 ```css
 fieldset {
@@ -109,24 +115,7 @@ fieldset {
   --checkbox-group-gap: 0.75rem;
 }
 
-.master {
-  display: flex;
-  align-items: center;
-  gap: var(--checkbox-group-gap);
-  min-block-size: 44px;
-  margin-block-end: 0.5rem;
-  padding-block-end: 0.5rem;
-  border-block-end: 1px solid #e1e2e4; /* Example divider */
-  font-weight: 600;
-  cursor: pointer;
-}
-```
-
-### Label-only rows
-
-MANDATORY: The checkbox must stay at the inline-start of all label text, including wrapped lines and hints. Do not use a flex or grid label: inline text runs and elements (such as `<strong>`) become separate flex or grid items and can wrap underneath the checkbox. Instead position the label (`position: relative`), reserve space with `padding-inline-start` (checkbox width plus gap), and pin the checkbox into that space with `position: absolute` and `inset-inline-start: 0`. Checkbox dimensions are uniform, so no wrapper `<span>` is needed, and logical properties keep it correct in RTL:
-
-```css
+.master,
 .checkbox-group > label {
   position: relative;
   display: block;
@@ -137,6 +126,7 @@ MANDATORY: The checkbox must stay at the inline-start of all label text, includi
 }
 
 /* Center the checkbox on the first line of text */
+.master > .checkbox,
 .checkbox-group > label > .checkbox {
   position: absolute;
   inset-inline-start: 0;

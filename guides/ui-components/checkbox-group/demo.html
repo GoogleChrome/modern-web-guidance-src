@@ -52,6 +52,7 @@
     }
 
     /* Label-only rows: the checkbox is pinned to the inline-start edge, so wrapped text stays beside it. */
+    .master,
     .checkbox-group > label {
       position: relative;
       display: block;
@@ -62,6 +63,7 @@
       user-select: none;
     }
 
+    .master > .checkbox,
     .checkbox-group > label > .checkbox {
       position: absolute;
       inset-inline-start: 0;
@@ -86,13 +88,9 @@
     }
 
     .master {
-      display: flex;
-      align-items: center;
-      gap: var(--checkbox-group-gap);
-      min-block-size: 44px;
       margin-block-end: 0.5rem;
+      border-block-end: 1px solid #e1e2e4;
       font-weight: 600;
-      cursor: pointer;
     }
 
     /* Default: native rendering, branded with accent-color. */
@@ -135,11 +133,6 @@
     h2 + p {
       margin-block: 0 0.5rem;
       color: var(--text-muted);
-    }
-
-    .master {
-      padding-block-end: 0.5rem;
-      border-block-end: 1px solid #e1e2e4;
     }
 
     /* Many options: the same checkbox list, height-bounded and scrollable. */
