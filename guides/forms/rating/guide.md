@@ -31,11 +31,12 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 .rating {
   --max: 5;
   --_offset: 0px;
+  --_display-value: var(--control-value);
   inline-size: calc(var(--star-size) * var(--max));
   block-size: var(--star-size);
-  /* Hard stop at offset + control-value fills partial and half stars */
+  /* Hard stop at offset + display-value fills partial and half stars */
   --_stars-bg: linear-gradient(to right in oklch,
-      var(--color-star-filled) calc(var(--_offset) + var(--control-value) * var(--star-size)),
+      var(--color-star-filled) calc(var(--_offset) + var(--_display-value) * var(--star-size)),
       var(--color-star-empty) 0);
   --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
 
@@ -48,7 +49,7 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 }
 ```
 
-**Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--control-value) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
+**Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, either combine comma-separated `mask` layers on the same element (clipping the filled icon mask to `--control-value` and compositing with the empty icon), or position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--control-value) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
 
 To transition or animate the fill, mirror `--control-value` into a component-specific `@property` (`syntax: "<number>"`) rather than registering `--control-value` directly, and disable any transition or press animation under `prefers-reduced-motion: reduce`.
 
@@ -100,6 +101,9 @@ input[type="range"].rating {
   --min: 0;
   --step: 0.5;
   --_offset: calc((var(--step) - var(--min)) * var(--star-size));
+  --_raw-preview: calc(var(--min) - var(--step) / 2 + var(--pointer-x) * (var(--max) - var(--min) + var(--step)));
+  --_preview-value: clamp(var(--min), round(nearest, var(--_raw-preview), var(--step)), var(--max));
+  --_display-value: var(--_preview-value, var(--control-value));
   inline-size: calc((var(--max) - var(--min) + var(--step)) * var(--star-size));
   appearance: none;
   margin: 0;
@@ -145,7 +149,21 @@ input[type="range"].rating {
 
 On `input` (and on initial load), mirror `range.min`, `range.max`, `range.step`, and `range.value` into `--min`, `--max`, `--step`, and `--control-value` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
+Preview the rating on pointer hover by writing a generic normalized `--pointer-x` (`0` to `1`) on `pointermove` (skipping `touch` and disabled inputs) and clearing it on `pointerleave` and `pointercancel`. Because CSS computes `--_preview-value` solely from `--pointer-x`, the script can be replaced directly with CSS `pointer-animations-1` (`animation-timeline: pointer(...)`) once supported:
+
+```js
+range.addEventListener('pointermove', (event) => {
+  if (event.pointerType === 'touch' || range.disabled) return;
+  const { left, width } = range.getBoundingClientRect();
+  const pointerX = Math.min(1, Math.max(0, (event.clientX - left) / width));
+  range.style.setProperty('--pointer-x', pointerX);
+});
+for (const type of ['pointerleave', 'pointercancel']) {
+  range.addEventListener(type, () => range.style.removeProperty('--pointer-x'));
+}
+```
+
+Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited]):not(:hover)` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
 
 ## Fallbacks
 
