@@ -82,25 +82,7 @@ meter.rating {
 }
 ```
 
-## Optional: animate the meter from zero
-
-Worth adding when the score is a highlight (such as a product header or review summary) rather than repeated in a list. Because `--control-value` is a registered `<number>`, animate it from `0` using a keyframe with no `to` stop so it settles at the meter's own `--control-value` value, gated behind an `.animate` class and disabled under `prefers-reduced-motion: reduce`:
-
-```css
-@keyframes fill-stars {
-  from { --control-value: 0; }
-}
-
-meter.rating.animate {
-  animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both; /* example timing */
-}
-
-@media (prefers-reduced-motion: reduce) {
-  meter.rating.animate { animation: none; }
-}
-```
-
-Trigger the animation by adding `.animate` in the markup on load, once via `IntersectionObserver` when scrolled into view, or by removing and re-adding `.animate` (with a forced reflow) to replay. Do not re-animate from zero when the meter's value updates later.
+* **Optional animation:** because `--control-value` is a registered `<number>`, you can animate it from `0` on load or when scrolled into view with `animation-timeline: view()` (disabled under `prefers-reduced-motion: reduce`).
 
 ## Interactive rating: a styled range input
 

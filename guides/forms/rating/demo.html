@@ -100,7 +100,7 @@
       --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
     }
 
-    /* Opt-in count-up: the keyframe has no `to`, so it animates to the meter's own value */
+    /* Count-up on scroll via view(): no `to` stop, so it settles at the meter's own value */
     @keyframes fill-stars {
       from {
         --control-value: 0;
@@ -117,6 +117,9 @@
       --control-value: attr(value type(<number>), 0);
       background: var(--_stars-bg);
       mask: var(--_stars-mask);
+      animation: fill-stars linear both;
+      animation-timeline: view();
+      animation-range: entry 0% contain 25%;
 
       &::-webkit-meter-bar,
       &::-webkit-meter-optimum-value,
@@ -130,10 +133,6 @@
       &::-webkit-meter-bar {
         block-size: 100%;
         inline-size: 100%;
-      }
-
-      &.animate {
-        animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
       }
     }
 
@@ -214,29 +213,6 @@
       font-variant-numeric: tabular-nums;
     }
 
-    button {
-      min-block-size: 24px;
-      min-inline-size: 24px;
-      justify-self: start;
-      padding-block: 0.5rem;
-      padding-inline: 1rem;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-
-      &:hover {
-        border-color: var(--accent);
-      }
-
-      &:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 2px;
-      }
-    }
-
     @media (forced-colors: active) {
       .rating {
         --_stars-bg: linear-gradient(to right in oklch, Highlight calc(var(--_offset) + var(--control-value) * var(--star-size)), GrayText 0);
@@ -249,7 +225,7 @@
         transition: none;
       }
 
-      meter.rating.animate {
+      meter.rating {
         animation: none;
       }
     }
@@ -264,8 +240,7 @@
     <section class="card">
       <h2 id="avg-label">Average rating: 3.5 out of 5 (128 reviews)</h2>
       <meter class="rating" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label">3.5 out of 5</meter>
-      <button type="button" id="replay">Replay animation</button>
-      <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>. Animates when scrolled into view.</p>
+      <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>. Animates on scroll via <code>animation-timeline: view()</code>.</p>
     </section>
 
     <section class="card">
@@ -279,24 +254,6 @@
   </main>
 
   <script>
-    // Restart the count-up: removing and re-adding the class restarts the CSS animation
-    function replay(el) {
-      el.classList.remove('animate');
-      void el.offsetWidth;
-      el.classList.add('animate');
-    }
-
-    // Trigger: scroll into view. For page load, add class="animate" in the markup instead.
-    const meter = document.getElementById('avg');
-    new IntersectionObserver((entries, observer) => {
-      if (entries.some((entry) => entry.isIntersecting)) {
-        replay(meter);
-        observer.disconnect();
-      }
-    }, { threshold: 0.6 }).observe(meter);
-
-    document.getElementById('replay').addEventListener('click', () => replay(meter));
-
     // Mirror the meter's max and value into --max and --control-value where typed attr() is unsupported
     if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
       for (const el of document.querySelectorAll('meter.rating')) {
