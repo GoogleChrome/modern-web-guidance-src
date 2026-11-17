@@ -1,12 +1,11 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { rootDir } from '../core/paths.ts';
 
 const ALLOWED_AGENTS = new Set(['claude_code', 'codex_cli', 'antigravity_cli']);
 const OUTPUT_PATH = path.join(rootDir, 'src/build/eval-results-summary.json');
-const PUBLIC_EVALS_REF = 'refs/remotes/origin/gh-pages';
 
 export interface EvalsSummary {
   testId: string;
@@ -70,22 +69,39 @@ export function collectSummariesFromPublicEvals(
   return summaries.slice(0, limit);
 }
 
-function fetchPublicEvalsManifest(): PublicSuiteManifestEntry[] {
-  execFileSync(
-    'git',
-    ['fetch', '--quiet', '--no-tags', 'origin', `+refs/heads/gh-pages:${PUBLIC_EVALS_REF}`],
-    { cwd: rootDir, stdio: ['pipe', 'pipe', 'pipe'] },
-  );
-  const rawManifest = execFileSync(
-    'git',
-    ['show', `${PUBLIC_EVALS_REF}:public-evals/suites.gen.json`],
-    { cwd: rootDir, encoding: 'utf8', maxBuffer: 50 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] },
-  );
-  const parsed = JSON.parse(rawManifest);
-  if (!Array.isArray(parsed)) {
-    throw new Error('public-evals/suites.gen.json is not a JSON array');
+export function fetchPublicEvalsManifest(remoteUrl?: string): PublicSuiteManifestEntry[] {
+  const url =
+    remoteUrl ??
+    execFileSync('git', ['remote', 'get-url', 'origin'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+
+  // Fetch into an isolated temp repo so --depth=1 and --filter=blob:none do not
+  // mark the main checkout shallow or persist partialclonefilter on origin.
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-public-evals-'));
+  try {
+    execFileSync('git', ['init', '--quiet'], { cwd: tempDir, stdio: ['pipe', 'pipe', 'pipe'] });
+    execFileSync('git', ['remote', 'add', 'origin', url], { cwd: tempDir, stdio: ['pipe', 'pipe', 'pipe'] });
+    execFileSync(
+      'git',
+      ['fetch', '--quiet', '--no-tags', '--depth=1', '--filter=blob:none', 'origin', 'refs/heads/gh-pages'],
+      { cwd: tempDir, stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+    const rawManifest = execFileSync(
+      'git',
+      ['show', 'FETCH_HEAD:public-evals/suites.gen.json'],
+      { cwd: tempDir, encoding: 'utf8', maxBuffer: 50 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+    const parsed = JSON.parse(rawManifest);
+    if (!Array.isArray(parsed)) {
+      throw new Error('public-evals/suites.gen.json is not a JSON array');
+    }
+    return parsed as PublicSuiteManifestEntry[];
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
-  return parsed as PublicSuiteManifestEntry[];
 }
 
 export function collectResults() {
@@ -121,6 +137,6 @@ export function collectResults() {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   collectResults();
 }

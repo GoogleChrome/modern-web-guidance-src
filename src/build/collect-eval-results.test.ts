@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import {
   collectSummariesFromPublicEvals,
+  fetchPublicEvalsManifest,
   type PublicSuiteManifestEntry,
 } from './collect-eval-results.ts';
 
@@ -97,4 +102,30 @@ test('collectSummariesFromPublicEvals filters invalid/non-nightly entries and re
       guidedPassRate: 87,
     },
   ]);
+});
+
+test('fetchPublicEvalsManifest reads public-evals/suites.gen.json from gh-pages in an isolated temp repo', () => {
+  const remoteDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-pages-remote-'));
+  try {
+    execFileSync('git', ['init', '--quiet', '-b', 'gh-pages'], { cwd: remoteDir });
+    execFileSync('git', ['config', 'uploadpack.allowFilter', 'true'], { cwd: remoteDir });
+    fs.mkdirSync(path.join(remoteDir, 'public-evals'), { recursive: true });
+    const expected: PublicSuiteManifestEntry[] = [
+      { testId: 'nightly-2026-11-15_04-22-06-codex_cli', agent: 'codex_cli', taskCount: 229 },
+    ];
+    fs.writeFileSync(
+      path.join(remoteDir, 'public-evals', 'suites.gen.json'),
+      JSON.stringify(expected),
+    );
+    execFileSync('git', ['add', '.'], { cwd: remoteDir });
+    execFileSync(
+      'git',
+      ['-c', 'user.name=test', '-c', 'user.email=test@example.com', 'commit', '--quiet', '-m', 'seed'],
+      { cwd: remoteDir },
+    );
+
+    assert.deepStrictEqual(fetchPublicEvalsManifest(remoteDir), expected);
+  } finally {
+    fs.rmSync(remoteDir, { recursive: true, force: true });
+  }
 });
