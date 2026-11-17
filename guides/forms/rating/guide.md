@@ -31,14 +31,20 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
   initial-value: 0;
 }
 
+:root {
+  --color-star-filled: #fbbf24;
+  --color-star-empty: light-dark(#c9c9d4, #4a4a58);
+  --color-star-outline: light-dark(#3a3a46, #c9c9d4);
+}
+
 .stars {
   --max: 5;
   inline-size: calc(var(--star-size) * var(--max));
   block-size: var(--star-size);
   /* Hard stop at rating/max of the width fills partial and half stars */
   background: linear-gradient(to right in oklch,
-      var(--star-filled) calc(var(--rating) / var(--max) * 100%),
-      var(--star-empty) 0);
+      var(--color-star-filled) calc(var(--rating) / var(--max) * 100%),
+      var(--color-star-empty) 0);
   mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
 }
 
@@ -46,7 +52,7 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
    List `.rating` only in the interactive variant and `.star-frame` only in the read-only variant. */
 .star-frame,
 .rating {
-  filter: drop-shadow(1px 0 0 var(--star-outline)) drop-shadow(-1px 0 0 var(--star-outline)) drop-shadow(0 1px 0 var(--star-outline)) drop-shadow(0 -1px 0 var(--star-outline));
+  filter: drop-shadow(1px 0 0 var(--color-star-outline)) drop-shadow(-1px 0 0 var(--color-star-outline)) drop-shadow(0 1px 0 var(--color-star-outline)) drop-shadow(0 -1px 0 var(--color-star-outline));
 }
 ```
 
@@ -134,7 +140,7 @@ Style `.rating` with `position: relative; display: inline-block; --max: 5;` and 
 
 MANDATORY: on `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--rating` on `wrap` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Optional: to show an existing average until the user rates, set `data-average="3.5"` on `.rating`, override `--star-filled: var(--star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--rating` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `wrap.dataset.edited = ''`.
+Optional: to show an existing average until the user rates, set `data-average="3.5"` on `.rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--rating` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `wrap.dataset.edited = ''`.
 
 Optional: a native range snaps clicks to the nearest step, so clicking the right side of a star can pick the left half. On pointer clicks (`event.detail !== 0`, keeping keyboard behavior native), you can snap up to the clicked half and unfill by `0.5` if the user clicks the current value again:
 
