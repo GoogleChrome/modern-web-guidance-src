@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
+import { scanFiles } from '../scanners/index.ts';
 import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { autofillAddressFormRule } from './autofill-address-form.ts';
@@ -65,6 +66,78 @@ void test('autofill-address-form: positive brownfield matches', async (t) => {
     const html = `<form action="/quick"><input type="text" name="address1"></form>`;
     const matches = scanHtml('quick.html', html, [matcher]);
     assert.equal(matches.length, 1);
+  });
+
+  await t.test('flags address input in .vue, .svelte, and .astro SFC files', () => {
+    const vue = `
+<template>
+  <form>
+    <input type="text" name="street-address" required />
+  </form>
+</template>
+    `;
+    const svelte = `
+<form>
+  <input type="text" name="postal_code" />
+</form>
+    `;
+    const astro = `
+---
+const title = "Checkout";
+---
+<form>
+  <input type="text" name="address_line_1" />
+</form>
+    `;
+
+    const vueFindings = scanFiles(new Map([['src/Address.vue', vue]]), [autofillAddressFormRule]);
+    assert.equal(vueFindings.length, 1);
+    assert.match(vueFindings[0]?.message ?? '', /street-address/);
+
+    const svelteFindings = scanFiles(new Map([['src/Address.svelte', svelte]]), [autofillAddressFormRule]);
+    assert.equal(svelteFindings.length, 1);
+    assert.match(svelteFindings[0]?.message ?? '', /postal-code/);
+
+    const astroFindings = scanFiles(new Map([['src/Address.astro', astro]]), [autofillAddressFormRule]);
+    assert.equal(astroFindings.length, 1);
+    assert.match(astroFindings[0]?.message ?? '', /street-address/);
+  });
+
+  await t.test('flags address input inside nested Vue template v-if and v-for tags within form', () => {
+    const vue = `
+<template>
+  <div class="checkout-page">
+    <form action="/order" method="post">
+      <template v-if="needsShipping">
+        <div class="field">
+          <input type="text" name="street_address" id="shipping_street" required>
+        </div>
+      </template>
+    </form>
+  </div>
+</template>
+    `;
+    const findings = scanFiles(new Map([['src/NestedAddress.vue', vue]]), [autofillAddressFormRule]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 7);
+    assert.match(findings[0]?.message ?? '', /street-address/);
+  });
+
+  await t.test('flags address inputs in .gts templates, except ones that spread ...attributes', () => {
+    const gts = [
+      'export default class Address extends Component {',
+      '  <template>',
+      '    <form>',
+      '      <input type="text" name="postal_code" />',
+      '      <input type="text" name="street_address" ...attributes />',
+      '    </form>',
+      '  </template>',
+      '}',
+    ].join('\n');
+    const findings = scanFiles(new Map([['app/components/address.gts', gts]]), [autofillAddressFormRule]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 4);
+    assert.match(findings[0]?.message ?? '', /postal-code/);
   });
 });
 

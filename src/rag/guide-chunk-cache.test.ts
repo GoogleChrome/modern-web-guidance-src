@@ -1,0 +1,359 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import {
+  computeChunkHash,
+  truncateAndNormalize256,
+  quantizeVectors,
+  dequantizeVectorRow,
+  loadChunkCache,
+  saveChunkCache,
+  TEACHER_MODEL,
+  TASK_TYPE,
+  TEACHER_DIM,
+  STATIC_DIMS,
+} from "./guide-chunk-cache.ts";
+import { scanCorpusChunks } from "../core/guide-chunks.ts";
+import { embedGuideChunks } from "./embed-guide-chunks.ts";
+
+describe("guide-chunk-cache", () => {
+  it("computeChunkHash produces deterministic hashes sensitive to text and metadata", () => {
+    const textA = "guide-a: description\n\nchunk content";
+    const textB = "guide-a: description\n\nchunk content modified";
+
+    const hashA1 = computeChunkHash(textA);
+    const hashA2 = computeChunkHash(textA);
+    const hashB = computeChunkHash(textB);
+
+    assert.strictEqual(hashA1, hashA2, "Identical inputs must yield identical hash");
+    assert.notStrictEqual(hashA1, hashB, "Different text must yield different hash");
+
+    const hashDifferentModel = computeChunkHash(textA, "other-model", TASK_TYPE, STATIC_DIMS);
+    assert.notStrictEqual(hashA1, hashDifferentModel, "Different model must yield different hash");
+
+    const hashDifferentTask = computeChunkHash(textA, TEACHER_MODEL, "RETRIEVAL_QUERY", STATIC_DIMS);
+    assert.notStrictEqual(hashA1, hashDifferentTask, "Different task type must yield different hash");
+
+    const hashDifferentDims = computeChunkHash(textA, TEACHER_MODEL, TASK_TYPE, 128);
+    assert.notStrictEqual(hashA1, hashDifferentDims, "Different dims must yield different hash");
+  });
+
+  it("truncateAndNormalize256 truncates 768-d to 256-d unit vector", () => {
+    const v768 = new Float32Array(768);
+    for (let i = 0; i < 768; i++) v768[i] = Math.sin(i + 1);
+
+    const v256 = truncateAndNormalize256(v768);
+    assert.strictEqual(v256.length, 256);
+
+    let sumSq = 0;
+    for (let i = 0; i < 256; i++) sumSq += v256[i] * v256[i];
+    const norm = Math.sqrt(sumSq);
+    assert.ok(Math.abs(norm - 1.0) < 1e-6, `Expected unit norm, got ${norm}`);
+  });
+
+  it("saveChunkCache and loadChunkCache roundtrips with >0.999 cosine similarity", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-test-"));
+    try {
+      const origMap = new Map<string, Float32Array>();
+      const N = 10;
+      for (let i = 0; i < N; i++) {
+        const hash = computeChunkHash(`test-chunk-${i}`);
+        const vec = new Float32Array(STATIC_DIMS);
+        for (let k = 0; k < STATIC_DIMS; k++) {
+          vec[k] = Math.cos((i + 1) * (k + 1));
+        }
+        let sumSq = 0;
+        for (let k = 0; k < STATIC_DIMS; k++) sumSq += vec[k] * vec[k];
+        const norm = Math.sqrt(sumSq) || 1;
+        for (let k = 0; k < STATIC_DIMS; k++) vec[k] /= norm;
+        origMap.set(hash, vec);
+      }
+
+      const saveStats = saveChunkCache(origMap, tmpDir);
+      assert.strictEqual(saveStats.count, N);
+
+      const loadedMap = loadChunkCache(tmpDir);
+      assert.strictEqual(loadedMap.size, N);
+
+      for (const [hash, origVec] of origMap) {
+        const loadedVec = loadedMap.get(hash);
+        assert.ok(loadedVec, `Loaded cache must contain hash ${hash}`);
+
+        let dot = 0;
+        for (let k = 0; k < STATIC_DIMS; k++) {
+          dot += origVec[k] * loadedVec[k];
+        }
+        assert.ok(
+          dot > 0.999,
+          `Expected cosine similarity > 0.999, got ${dot} for hash ${hash}`
+        );
+      }
+
+      // Test pruning: save only first 3 entries
+      const subsetMap = new Map<string, Float32Array>([...origMap.entries()].slice(0, 3));
+      saveChunkCache(subsetMap, tmpDir);
+
+      const prunedMap = loadChunkCache(tmpDir);
+      assert.strictEqual(prunedMap.size, 3, "Pruned cache should only contain 3 entries");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("loadChunkCache handles empty or missing directories cleanly", () => {
+    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "empty-cache-test-"));
+    try {
+      const result = loadChunkCache(emptyDir);
+      assert.strictEqual(result.size, 0);
+    } finally {
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("quantizeVectors and dequantizeVectorRow handle uncached empty vectors (scale 0) alongside dense vectors", () => {
+    const v0 = new Float32Array(STATIC_DIMS);
+    v0[0] = 0.6;
+    v0[1] = -0.8;
+    const { qTable, scales } = quantizeVectors([v0, []], STATIC_DIMS);
+    assert.strictEqual(scales.length, 2);
+    assert.ok(scales[0] > 0, "Non-empty vector must have positive scale");
+    assert.strictEqual(scales[1], 0, "Empty vector must have zero scale");
+
+    const deq0 = dequantizeVectorRow(qTable, scales, 0, STATIC_DIMS);
+    assert.strictEqual(deq0.length, STATIC_DIMS);
+    assert.ok(Math.abs(deq0[0] - 0.6) < 0.01);
+    assert.ok(Math.abs(deq0[1] - -0.8) < 0.01);
+
+    const deq1 = dequantizeVectorRow(qTable, scales, 1, STATIC_DIMS);
+    assert.strictEqual(deq1.length, 0, "Zero-scale row must dequantize to empty Float32Array(0)");
+  });
+
+  it("loadChunkCache detects corrupted binary files", () => {
+    const corruptDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-cache-test-"));
+    try {
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.json"), JSON.stringify(["hash1", "hash2"]));
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.i8"), Buffer.alloc(100)); // wrong length
+      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.scale.f32"), Buffer.alloc(8));
+
+      assert.throws(() => loadChunkCache(corruptDir), /Chunk cache corrupted/);
+    } finally {
+      fs.rmSync(corruptDir, { recursive: true, force: true });
+    }
+  });
+
+  it("release check flags missing chunks when cache is empty", async () => {
+    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "empty-cache-check-"));
+    try {
+      const checkResult = await embedGuideChunks({ check: true, cacheDir: emptyDir });
+      assert.ok(checkResult.missing.length > 0, "Release check must flag missing chunks on empty cache");
+      assert.strictEqual(checkResult.cachedCount, 0);
+    } finally {
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks is append-only by default and only prunes when prune: true", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-prune-test-"));
+    try {
+      const allChunks = scanCorpusChunks("skills-cli");
+      const testCache = new Map<string, Float32Array>();
+      const dummyVec = new Float32Array(STATIC_DIMS);
+      dummyVec[0] = 1.0;
+
+      // Populate testCache with all current corpus chunks plus a stale chunk
+      for (const chunk of allChunks) {
+        testCache.set(chunk.hash, dummyVec);
+      }
+      testCache.set("stale-chunk-hash-123", dummyVec);
+      saveChunkCache(testCache, tmpDir);
+
+      // Default run (prune: false) should NOT prune stale entry
+      const resDefault = await embedGuideChunks({ cacheDir: tmpDir });
+      assert.strictEqual(resDefault.prunedCount, 0, "Default embedGuideChunks must not prune");
+      const loadedAfterDefault = loadChunkCache(tmpDir);
+      assert.ok(
+        loadedAfterDefault.has("stale-chunk-hash-123"),
+        "Stale entry must be preserved in append-only mode"
+      );
+
+      // Explicit prune: true should prune the stale entry
+      const resPruned = await embedGuideChunks({ cacheDir: tmpDir, prune: true });
+      assert.strictEqual(resPruned.prunedCount, 1, "embedGuideChunks with prune: true must prune 1 entry");
+      const loadedAfterPrune = loadChunkCache(tmpDir);
+      assert.ok(
+        !loadedAfterPrune.has("stale-chunk-hash-123"),
+        "Stale entry must be removed when prune: true"
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks fails loudly with missing guide IDs and fix when GEMINI_API_KEY is absent", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-nokey-"));
+    try {
+      let postCalls = 0;
+      await assert.rejects(
+        () =>
+          embedGuideChunks({
+            cacheDir: tmpDir,
+            apiKey: "",
+            envPath: null,
+            scanChunks: () => [
+              { guideId: "alpha-guide", category: "js", embeddedText: "alpha text", hash: "hash-a" },
+              { guideId: "beta-guide", category: "css", embeddedText: "beta text", hash: "hash-b" },
+            ],
+            postBatch: async () => {
+              postCalls++;
+              return { embeddings: [] };
+            },
+          }),
+        (err: Error) => {
+          assert.match(err.message, /GEMINI_API_KEY is required/);
+          assert.match(err.message, /alpha-guide/);
+          assert.match(err.message, /beta-guide/);
+          assert.match(err.message, /embed-guide-chunks\.ts/);
+          return true;
+        }
+      );
+      assert.strictEqual(postCalls, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks seeds from seedCacheDir, embeds only missing chunks into cacheDir, and skips API when complete", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-seed-"));
+    const seedDir = path.join(tmpRoot, "seed");
+    const evalDir = path.join(tmpRoot, "eval");
+    try {
+      const seedVec = new Float32Array(STATIC_DIMS);
+      seedVec[0] = 1.0;
+      saveChunkCache(new Map([["hash-seeded", seedVec]]), seedDir);
+
+      const chunks = [
+        { guideId: "seeded-guide", category: "css", embeddedText: "already cached", hash: "hash-seeded" },
+        { guideId: "uncached-guide", category: "js", embeddedText: "needs embedding", hash: "hash-uncached" },
+      ];
+
+      const batchedTexts: string[] = [];
+      const res1 = await embedGuideChunks({
+        cacheDir: evalDir,
+        seedCacheDir: seedDir,
+        prune: true,
+        apiKey: "test-api-key",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async (_url, body) => {
+          const reqs = (body as { requests: Array<{ content: { parts: Array<{ text: string }> } }> }).requests;
+          for (const r of reqs) batchedTexts.push(r.content.parts[0].text);
+          return {
+            embeddings: reqs.map(() => ({
+              values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 1 ? 1 : 0)),
+            })),
+          };
+        },
+      });
+
+      assert.strictEqual(res1.newEmbeds, 1);
+      assert.strictEqual(res1.cachedCount, 2);
+      assert.deepStrictEqual(batchedTexts, ["needs embedding"]);
+
+      // Seed dir must remain unmodified (still only has hash-seeded).
+      const seedAfter = loadChunkCache(seedDir);
+      assert.strictEqual(seedAfter.size, 1);
+      assert.ok(!seedAfter.has("hash-uncached"));
+
+      // Eval dir must hold both vectors, with non-zero 256-d vector for newly embedded chunk.
+      const evalAfter = loadChunkCache(evalDir);
+      assert.strictEqual(evalAfter.size, 2);
+      const uncachedVec = evalAfter.get("hash-uncached");
+      assert.ok(uncachedVec && uncachedVec.length === STATIC_DIMS);
+      assert.ok(Math.abs(uncachedVec[1] - 1) < 0.01);
+
+      // Re-running when nothing is missing must make zero API calls even without a key.
+      let secondRunCalls = 0;
+      const res2 = await embedGuideChunks({
+        cacheDir: evalDir,
+        seedCacheDir: seedDir,
+        prune: true,
+        apiKey: "",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async () => {
+          secondRunCalls++;
+          return { embeddings: [] };
+        },
+      });
+      assert.strictEqual(secondRunCalls, 0);
+      assert.strictEqual(res2.newEmbeds, 0);
+      assert.strictEqual(res2.cachedCount, 2);
+
+      // Starting from an empty evalDir when seedDir already holds all active chunks still persists evalDir with 0 API calls.
+      const freshEvalDir = path.join(tmpRoot, "eval-seeded-only");
+      const fullSeedDir = path.join(tmpRoot, "seed-complete");
+      saveChunkCache(evalAfter, fullSeedDir);
+      let seededOnlyCalls = 0;
+      const res3 = await embedGuideChunks({
+        cacheDir: freshEvalDir,
+        seedCacheDir: fullSeedDir,
+        prune: true,
+        apiKey: "",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async () => {
+          seededOnlyCalls++;
+          return { embeddings: [] };
+        },
+      });
+      assert.strictEqual(seededOnlyCalls, 0);
+      assert.strictEqual(res3.newEmbeds, 0);
+      assert.strictEqual(res3.cachedCount, 2);
+      const freshLoaded = loadChunkCache(freshEvalDir);
+      assert.strictEqual(freshLoaded.size, 2);
+      assert.ok(freshLoaded.has("hash-seeded") && freshLoaded.has("hash-uncached"));
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks reads GEMINI_API_KEY from envPath without mutating process.env", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-env-"));
+    const prevGeminiKey = process.env.GEMINI_API_KEY;
+    const prevOtherKey = process.env.OTHER_UNRELATED_SECRET;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.OTHER_UNRELATED_SECRET;
+      const envFile = path.join(tmpRoot, ".env");
+      fs.writeFileSync(envFile, "GEMINI_API_KEY=from-dotenv\nOTHER_UNRELATED_SECRET=do-not-leak\n");
+
+      let seenUrl = "";
+      const res = await embedGuideChunks({
+        cacheDir: path.join(tmpRoot, "cache"),
+        envPath: envFile,
+        scanChunks: () => [
+          { guideId: "js", category: "js", embeddedText: "chunk", hash: "hash-env" },
+        ],
+        postBatch: async (url) => {
+          seenUrl = url;
+          return {
+            embeddings: [{ values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 0 ? 1 : 0)) }],
+          };
+        },
+      });
+
+      assert.strictEqual(res.newEmbeds, 1);
+      assert.match(seenUrl, /key=from-dotenv$/);
+      assert.strictEqual(process.env.GEMINI_API_KEY, undefined);
+      assert.strictEqual(process.env.OTHER_UNRELATED_SECRET, undefined);
+    } finally {
+      if (prevGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = prevGeminiKey;
+      if (prevOtherKey === undefined) delete process.env.OTHER_UNRELATED_SECRET;
+      else process.env.OTHER_UNRELATED_SECRET = prevOtherKey;
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+});

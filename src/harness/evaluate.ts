@@ -8,7 +8,7 @@ import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { suitesDir } from '../core/paths.ts';
 
-import { type SuiteConfig } from './config.ts';
+import { defaultSuiteConfig, type SuiteConfig } from './config.ts';
 
 function getCliVersion(): string | undefined {
   try {
@@ -34,7 +34,7 @@ function getSkillVersion(): string | undefined {
 }
 
 function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
-  let agent = 'gemini-cli';
+  let agent = defaultSuiteConfig.agent;
 
   const evalsPath = path.join(suiteResultsDir, 'evals.json');
   if (fs.existsSync(evalsPath)) {
@@ -80,7 +80,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
   }
 
   try {
-    const { allResults, numRuns, model, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
+    const { allResults, numRuns, model, reasoningEffort, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
@@ -101,7 +101,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
     const cliVersion = getCliVersion();
 
     const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : fallbackRuntime;
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, model, totalRuntime, skillVersion, cliVersion);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, model, totalRuntime, skillVersion, cliVersion, reasoningEffort);
 
     if (totalRuntime) {
       console.log(`Total runtime: ${totalRuntime}ms`);

@@ -1,0 +1,758 @@
+{
+  "summary": {
+    "unguidedMedian": 30,
+    "guidedMedian": 65,
+    "unguidedPassRate": 28,
+    "guidedPassRate": 66,
+    "unguidedPassed": 8,
+    "unguidedTotal": 29,
+    "guidedPassed": 19,
+    "guidedTotal": 29,
+    "runsPerTest": 1,
+    "expectedTotalRuns": 3,
+    "taskCount": 3,
+    "runCountPerTask": 1,
+    "guideUsageRate": 100,
+    "guideUsageCount": 3,
+    "totalGuidedRuns": 3,
+    "toolActivationRate": 100,
+    "toolActivationCount": 3,
+    "unguidedEarlyFailures": 0,
+    "unguidedEarlyFailureRate": 0,
+    "guidedEarlyFailures": 0,
+    "guidedEarlyFailureRate": 0,
+    "totalTokens": {
+      "total": 1159565,
+      "cached": 992128
+    },
+    "unguidedTotalTokens": {
+      "total": 404238,
+      "cached": 352640
+    },
+    "guidedTotalTokens": {
+      "total": 755327,
+      "cached": 639488
+    }
+  },
+  "results": {
+    "daily-grind - security - guided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "id": "1e05ed297e74915d9948-783100e6e0b6fc7ae2a3",
+            "passed": false,
+            "message": "Exp 1: Document response serves Strict-Transport-Security header enforcing HTTPS",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /max-age=\\d+.*includeSubDomains|includeSubDomains.*max-age=\\d+/i\nReceived string:  \"\"\n\n  47 |       const response = await page.goto(TARGET_URL);\n  48 |       const hsts = response?.headers()['strict-transport-security'] || '';\n> 49 |       expect(hsts).toMatch(/max-age=\\d+.*includeSubDomains|includeSubDomains.*max-age=\\d+/i);\n     |                    ^\n  50 |     });\n  51 |\n  52 |     test('Exp 5: Document response sets X-Frame-Options to SAMEORIGIN or DENY', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:49:20",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:49",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - button \"Logout\"\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n  - heading \"Maple Oat\n...",
+            "browserErrors": "[console.warning] Error with Permissions-Policy header: Unrecognized feature: 'focus-without-user-activation'."
+          },
+          {
+            "id": "1e05ed297e74915d9948-757c8f49e3399fc2fadf",
+            "passed": true,
+            "message": "Exp 5: Document response sets X-Frame-Options to SAMEORIGIN or DENY"
+          },
+          {
+            "id": "1e05ed297e74915d9948-37ecf752c92f7853353f",
+            "passed": true,
+            "message": "Exp 5: Document response sets Content-Security-Policy frame-ancestors directive"
+          },
+          {
+            "id": "1e05ed297e74915d9948-013e4d027fdaa8ebe6df",
+            "passed": false,
+            "message": "Exp 8: Document response configures a Reporting-Endpoints header",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /[\\w-]+\\s*=\\s*[\"'][^\"']+[\"']/\nReceived string:  \"\"\n\n  65 |       const response = await page.goto(TARGET_URL);\n  66 |       const reportingEndpoints = response?.headers()['reporting-endpoints'] || '';\n> 67 |       expect(reportingEndpoints).toMatch(/[\\w-]+\\s*=\\s*[\"'][^\"']+[\"']/);\n     |                                  ^\n  68 |     });\n  69 |\n  70 |     test('Exp 8: Content-Security-Policy references the reporting endpoint via report-to', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:67:34",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:67",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - button \"Logout\"\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n  - heading \"Maple Oat\n...",
+            "browserErrors": "[console.warning] Error with Permissions-Policy header: Unrecognized feature: 'focus-without-user-activation'."
+          },
+          {
+            "id": "1e05ed297e74915d9948-3cf70f53cd0416c0996d",
+            "passed": false,
+            "message": "Exp 8: Content-Security-Policy references the reporting endpoint via report-to",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /report-to\\s+[\\w-]+/i\nReceived string:  \"default-src 'none'; script-src 'none' 'report-sample'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src https://images.unsplash.com; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'self'; require-trusted-types-for 'script'; trusted-types 'none'; report-uri /security-reports\"\n\n  71 |       const response = await page.goto(TARGET_URL);\n  72 |       const csp = response?.headers()['content-security-policy'] || '';\n> 73 |       expect(csp).toMatch(/report-to\\s+[\\w-]+/i);\n     |                   ^\n  74 |     });\n  75 |\n  76 |     test(\"Exp 9: Content-Security-Policy script-src includes 'strict-dynamic'\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:73:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:73",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - button \"Logout\"\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n  - heading \"Maple Oat\n...",
+            "browserErrors": "[console.warning] Error with Permissions-Policy header: Unrecognized feature: 'focus-without-user-activation'."
+          },
+          {
+            "id": "1e05ed297e74915d9948-e028f73b2b1c7929308f",
+            "passed": false,
+            "message": "Exp 9: Content-Security-Policy script-src includes 'strict-dynamic'",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /script-src\\s+[^;]*'strict-dynamic'/i\nReceived string:  \"default-src 'none'; script-src 'none' 'report-sample'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src https://images.unsplash.com; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'self'; require-trusted-types-for 'script'; trusted-types 'none'; report-uri /security-reports\"\n\n  77 |       const response = await page.goto(TARGET_URL);\n  78 |       const csp = response?.headers()['content-security-policy'] || '';\n> 79 |       expect(csp).toMatch(/script-src\\s+[^;]*'strict-dynamic'/i);\n     |                   ^\n  80 |     });\n  81 |\n  82 |     test(\"Exp 9: Content-Security-Policy script-src includes 'report-sample'\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:79:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:79",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - button \"Logout\"\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n  - heading \"Maple Oat\n...",
+            "browserErrors": "[console.warning] Error with Permissions-Policy header: Unrecognized feature: 'focus-without-user-activation'."
+          },
+          {
+            "id": "1e05ed297e74915d9948-71ce29904fa8eab061e5",
+            "passed": true,
+            "message": "Exp 9: Content-Security-Policy script-src includes 'report-sample'"
+          },
+          {
+            "id": "1e05ed297e74915d9948-d5710fbcc7fa1e6f17b2",
+            "passed": false,
+            "message": "Exp 9: Content-Security-Policy script-src includes a nonce or hash",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /script-src\\s+[^;]*'(?:nonce-[A-Za-z0-9+/=]+|sha(?:256|384|512)-[A-Za-z0-9+/=]+)'/i\nReceived string:  \"default-src 'none'; script-src 'none' 'report-sample'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src https://images.unsplash.com; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'self'; require-trusted-types-for 'script'; trusted-types 'none'; report-uri /security-reports\"\n\n  89 |       const response = await page.goto(TARGET_URL);\n  90 |       const csp = response?.headers()['content-security-policy'] || '';\n> 91 |       expect(csp).toMatch(/script-src\\s+[^;]*'(?:nonce-[A-Za-z0-9+/=]+|sha(?:256|384|512)-[A-Za-z0-9+/=]+)'/i);\n     |                   ^\n  92 |     });\n  93 |\n  94 |     test(\"Exp 9: Content-Security-Policy enforces object-src 'none'\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:91:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:91",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - button \"Logout\"\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n  - heading \"Maple Oat\n...",
+            "browserErrors": "[console.warning] Error with Permissions-Policy header: Unrecognized feature: 'focus-without-user-activation'."
+          },
+          {
+            "id": "1e05ed297e74915d9948-499471492057a5b67dbd",
+            "passed": true,
+            "message": "Exp 9: Content-Security-Policy enforces object-src 'none'"
+          },
+          {
+            "id": "1e05ed297e74915d9948-f855e5e74f4c71f101c5",
+            "passed": true,
+            "message": "Exp 9: Content-Security-Policy enforces base-uri 'none'"
+          },
+          {
+            "id": "1e05ed297e74915d9948-0e081bbac8155fefbe7e",
+            "passed": false,
+            "message": "Exp 10: Content-Security-Policy does not use broad allowlists without strict-dynamic",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  110 |       const scriptSrc = scriptSrcMatch ? scriptSrcMatch[1] : '';\n  111 |       const usesStrictDynamic = scriptSrc.includes(\"'strict-dynamic'\");\n> 112 |       expect(usesStrictDynamic && scriptSrc.length > 0).toBe(true);\n      |                                                         ^\n  113 |     });\n  114 |\n  115 |     test(\"Exp 11: Content-Security-Policy enforces Trusted Types for scripts\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:112:57",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:112",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - button \"Logout\"\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n  - heading \"Maple Oat\n...",
+            "browserErrors": "[console.warning] Error with Permissions-Policy header: Unrecognized feature: 'focus-without-user-activation'."
+          },
+          {
+            "id": "1e05ed297e74915d9948-efc095be369bf6fa2bc4",
+            "passed": true,
+            "message": "Exp 11: Content-Security-Policy enforces Trusted Types for scripts"
+          },
+          {
+            "id": "1e05ed297e74915d9948-159ac189624f89ed33a3",
+            "passed": true,
+            "message": "Exp 12: Document response sets Cross-Origin-Opener-Policy"
+          },
+          {
+            "id": "1e05ed297e74915d9948-ff2fa5c30a88015cd9e9",
+            "passed": true,
+            "message": "Exp 13: Response sets Cross-Origin-Resource-Policy"
+          },
+          {
+            "id": "1e05ed297e74915d9948-4966d462f96e7f6fdd4f",
+            "passed": true,
+            "message": "Exp 14: Response includes Vary header with Sec-Fetch metadata keys"
+          },
+          {
+            "id": "1e05ed297e74915d9948-5a1022cb3cea5c4febac",
+            "passed": true,
+            "message": "Exp 14: Server rejects unauthorized cross-site requests with HTTP 403"
+          },
+          {
+            "id": "1e05ed297e74915d9948-6a5b80e77f8836046751",
+            "passed": true,
+            "message": "Exp 15: Document response sets X-Content-Type-Options to nosniff"
+          },
+          {
+            "id": "1e05ed297e74915d9948-faf93c2a47419c3ba056",
+            "passed": true,
+            "message": "Exp 16: Document response sets Referrer-Policy to strict-origin-when-cross-origin"
+          },
+          {
+            "id": "1e05ed297e74915d9948-58e2d21c2baaf25405ab",
+            "passed": true,
+            "message": "Exp 17: Document response sets a restrictive Permissions-Policy disabling unused features"
+          },
+          {
+            "id": "1e05ed297e74915d9948-35e745540e61360130e8",
+            "passed": false,
+            "message": "Exp 20: Logout response sends Clear-Site-Data header to clear client state",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  182 |         csd.includes('\"storage\"') &&\n  183 |         csd.includes('\"cache\"');\n> 184 |       expect(clearsState).toBe(true);\n      |                           ^\n  185 |     });\n  186 |\n  187 |   });\n    at guides/security/security/targets/daily-grind/grader.ts:184:27",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:184"
+          }
+        ],
+        "guidesUsed": [
+          "security"
+        ],
+        "retrievedGuides": [
+          "security"
+        ],
+        "fileReadGuides": [],
+        "guidanceToolsUsed": [
+          "modern-web-guidance"
+        ],
+        "discipline": "security",
+        "expectedToolPrefixes": [
+          "modern-web"
+        ],
+        "guideName": "security",
+        "baseApp": "daily-grind",
+        "taskName": "daily-grind",
+        "prompt": "Audit the Daily Grind web app and implement preventative security measures to safely deploy security policies.",
+        "targetFile": "agent.patch",
+        "files": [
+          "agent.patch",
+          "modern-web.log",
+          "session-example.jsonl"
+        ],
+        "runtime": {
+          "agentRuntime": 221513,
+          "graderRuntime": 33337,
+          "agentStatus": 0,
+          "graderStatus": 0
+        },
+        "tokenUsage": {
+          "total": 300211,
+          "cached": 247808
+        }
+      }
+    ],
+    "task - passkey-authentication - guided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "id": "1b8e2f86a02d022ce7dc-0c1a3ab55224ea627bdb",
+            "passed": false,
+            "message": "The HTML form annotates the username input element with autocomplete=\"username webauthn\" and autofocus",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  118 |       });\n  119 |     });\n> 120 |     expect(hasCorrectInput).toBe(true);\n      |                             ^\n  121 |   });\n  122 |\n  123 |   test('The client feature detects capabilities using PublicKeyCredential.getClientCapabilities before initializing Conditional UI', async ({ page, TARGET_URL }) => {\n    at guides/security/passkey-authentication/grader.ts:120:29",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:120",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-64ff2cded7f6ab75a2ed",
+            "passed": true,
+            "message": "The client feature detects capabilities using PublicKeyCredential.getClientCapabilities before initializing Conditional UI"
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-a4a38bfbae47b4fa0c99",
+            "passed": true,
+            "message": "The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\""
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-3f7620c40aef78f5de06",
+            "passed": false,
+            "message": "The explicit biometrics button click aborts pending Conditional UI autofill suggestions prior to prompting users",
+            "error": "Test timeout of 5000ms exceeded.\n\nError: locator.click: Test timeout of 5000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"auth-button\"]')\n    - locator resolved to <button disabled class=\"btn\" type=\"submit\" data-testid=\"auth-button\">Sign in with passkey</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    9 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 500ms\n\n\n  139 |     await page.waitForTimeout(100);\n  140 |     const button = page.locator('[data-testid=\"auth-button\"]');\n> 141 |     await button.click();\n      |                  ^\n  142 |     await page.waitForTimeout(100);\n  143 |     const abortCalled = await page.evaluate(() => (window as any).__mockAbortControllerCalled);\n  144 |     expect(abortCalled).toBe(true);\n    at guides/security/passkey-authentication/grader.ts:141:18",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:141",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-c4fe2a08f5b138678118",
+            "passed": true,
+            "message": "If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID"
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-9b63aa30f5a6b6154fa2",
+            "passed": false,
+            "message": "A successful credential verification updates the UI status to indicate successful authentication and session establishment",
+            "error": "Test timeout of 5000ms exceeded.\n\nError: locator.click: Test timeout of 5000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"auth-button\"]')\n    - locator resolved to <button disabled class=\"btn\" type=\"submit\" data-testid=\"auth-button\">Sign in with passkey</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    9 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 500ms\n\n\n  178 |     await page.goto(TARGET_URL);\n  179 |     const button = page.locator('[data-testid=\"auth-button\"]');\n> 180 |     await button.click();\n      |                  ^\n  181 |     await page.waitForTimeout(100);\n  182 |\n  183 |     const status = page.locator('[data-testid=\"auth-status\"]');\n    at guides/security/passkey-authentication/grader.ts:180:18",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:180",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          }
+        ],
+        "guidesUsed": [
+          "passkey-authentication",
+          "passkeys"
+        ],
+        "retrievedGuides": [
+          "passkey-authentication",
+          "passkeys"
+        ],
+        "fileReadGuides": [],
+        "guidanceToolsUsed": [
+          "modern-web-guidance"
+        ],
+        "discipline": "security",
+        "expectedToolPrefixes": [
+          "modern-web"
+        ],
+        "guideName": "passkey-authentication",
+        "baseApp": "daily-grind",
+        "taskName": "task",
+        "prompt": "implement passkey authentication in `index.html`. ensure the sign-in username input field is annotated with `data-testid=\"username-field\"`. when a user focuses on this field, the browser should seamlessly offer their registered passkeys as autofill suggestions. if they click the explicit \"sign in with passkey\" button annotated with `data-testid=\"auth-button\"`, prompt them for biometrics directly instead. send the authenticated credential to `/api/login/verify` and update the status element annotated with `data-testid=\"auth-status\"` upon success.",
+        "targetFile": "index.html",
+        "files": [
+          "agent.patch",
+          "modern-web.log",
+          "session-example.jsonl"
+        ],
+        "runtime": {
+          "agentRuntime": 99670,
+          "graderRuntime": 24406,
+          "agentStatus": 0,
+          "graderStatus": 0
+        },
+        "tokenUsage": {
+          "total": 332363,
+          "cached": 301184
+        }
+      }
+    ],
+    "daily-grind - accessible-generated-content - guided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "id": "e3fef537a9467714d3ca-ebae037df2453f1ef0f9",
+            "passed": true,
+            "message": "Stylesheets define ::before or ::after pseudo-element rules using content alternative text syntax to silence decorative text"
+          },
+          {
+            "id": "e3fef537a9467714d3ca-53be7bcfb2c8bf7d8181",
+            "passed": true,
+            "message": "Elements styled with pseudo-elements using alternative text convey meaningful label or state through DOM text or ARIA attributes"
+          },
+          {
+            "id": "e3fef537a9467714d3ca-e92ccb46d840c0d97bec",
+            "passed": true,
+            "message": "Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text"
+          }
+        ],
+        "guidesUsed": [
+          "accessible-generated-content",
+          "accessibility",
+          "css"
+        ],
+        "retrievedGuides": [
+          "accessible-generated-content",
+          "accessibility",
+          "css"
+        ],
+        "fileReadGuides": [],
+        "guidanceToolsUsed": [
+          "modern-web-guidance"
+        ],
+        "discipline": "accessibility",
+        "expectedToolPrefixes": [
+          "modern-web"
+        ],
+        "guideName": "accessible-generated-content",
+        "baseApp": "daily-grind",
+        "taskName": "daily-grind",
+        "prompt": "Update the site to use CSS generated content in ways that stay accessible, including alternative text for decorative content.",
+        "targetFile": "agent.patch",
+        "files": [
+          "agent.patch",
+          "modern-web.log",
+          "session-example.jsonl"
+        ],
+        "runtime": {
+          "agentRuntime": 32462,
+          "graderRuntime": 4286,
+          "agentStatus": 0,
+          "graderStatus": 0
+        },
+        "tokenUsage": {
+          "total": 122753,
+          "cached": 90496
+        }
+      }
+    ],
+    "daily-grind - security - unguided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "id": "1e05ed297e74915d9948-783100e6e0b6fc7ae2a3",
+            "passed": false,
+            "message": "Exp 1: Document response serves Strict-Transport-Security header enforcing HTTPS",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /max-age=\\d+.*includeSubDomains|includeSubDomains.*max-age=\\d+/i\nReceived string:  \"\"\n\n  47 |       const response = await page.goto(TARGET_URL);\n  48 |       const hsts = response?.headers()['strict-transport-security'] || '';\n> 49 |       expect(hsts).toMatch(/max-age=\\d+.*includeSubDomains|includeSubDomains.*max-age=\\d+/i);\n     |                    ^\n  50 |     });\n  51 |\n  52 |     test('Exp 5: Document response sets X-Frame-Options to SAMEORIGIN or DENY', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:49:20",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:49",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-757c8f49e3399fc2fadf",
+            "passed": true,
+            "message": "Exp 5: Document response sets X-Frame-Options to SAMEORIGIN or DENY"
+          },
+          {
+            "id": "1e05ed297e74915d9948-37ecf752c92f7853353f",
+            "passed": false,
+            "message": "Exp 5: Document response sets Content-Security-Policy frame-ancestors directive",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /frame-ancestors\\s+[^;]*'self'/i\nReceived string:  \"object-src 'none'; base-uri 'none'; frame-ancestors 'none'\"\n\n  59 |       const response = await page.goto(TARGET_URL);\n  60 |       const csp = response?.headers()['content-security-policy'] || '';\n> 61 |       expect(csp).toMatch(/frame-ancestors\\s+[^;]*'self'/i);\n     |                   ^\n  62 |     });\n  63 |\n  64 |     test('Exp 8: Document response configures a Reporting-Endpoints header', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:61:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:61",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-013e4d027fdaa8ebe6df",
+            "passed": false,
+            "message": "Exp 8: Document response configures a Reporting-Endpoints header",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /[\\w-]+\\s*=\\s*[\"'][^\"']+[\"']/\nReceived string:  \"\"\n\n  65 |       const response = await page.goto(TARGET_URL);\n  66 |       const reportingEndpoints = response?.headers()['reporting-endpoints'] || '';\n> 67 |       expect(reportingEndpoints).toMatch(/[\\w-]+\\s*=\\s*[\"'][^\"']+[\"']/);\n     |                                  ^\n  68 |     });\n  69 |\n  70 |     test('Exp 8: Content-Security-Policy references the reporting endpoint via report-to', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:67:34",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:67",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-3cf70f53cd0416c0996d",
+            "passed": false,
+            "message": "Exp 8: Content-Security-Policy references the reporting endpoint via report-to",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /report-to\\s+[\\w-]+/i\nReceived string:  \"object-src 'none'; base-uri 'none'; frame-ancestors 'none'\"\n\n  71 |       const response = await page.goto(TARGET_URL);\n  72 |       const csp = response?.headers()['content-security-policy'] || '';\n> 73 |       expect(csp).toMatch(/report-to\\s+[\\w-]+/i);\n     |                   ^\n  74 |     });\n  75 |\n  76 |     test(\"Exp 9: Content-Security-Policy script-src includes 'strict-dynamic'\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:73:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:73",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-e028f73b2b1c7929308f",
+            "passed": false,
+            "message": "Exp 9: Content-Security-Policy script-src includes 'strict-dynamic'",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /script-src\\s+[^;]*'strict-dynamic'/i\nReceived string:  \"object-src 'none'; base-uri 'none'; frame-ancestors 'none'\"\n\n  77 |       const response = await page.goto(TARGET_URL);\n  78 |       const csp = response?.headers()['content-security-policy'] || '';\n> 79 |       expect(csp).toMatch(/script-src\\s+[^;]*'strict-dynamic'/i);\n     |                   ^\n  80 |     });\n  81 |\n  82 |     test(\"Exp 9: Content-Security-Policy script-src includes 'report-sample'\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:79:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:79",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-71ce29904fa8eab061e5",
+            "passed": false,
+            "message": "Exp 9: Content-Security-Policy script-src includes 'report-sample'",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /script-src\\s+[^;]*'report-sample'/i\nReceived string:  \"object-src 'none'; base-uri 'none'; frame-ancestors 'none'\"\n\n  83 |       const response = await page.goto(TARGET_URL);\n  84 |       const csp = response?.headers()['content-security-policy'] || '';\n> 85 |       expect(csp).toMatch(/script-src\\s+[^;]*'report-sample'/i);\n     |                   ^\n  86 |     });\n  87 |\n  88 |     test(\"Exp 9: Content-Security-Policy script-src includes a nonce or hash\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:85:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:85",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-d5710fbcc7fa1e6f17b2",
+            "passed": false,
+            "message": "Exp 9: Content-Security-Policy script-src includes a nonce or hash",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /script-src\\s+[^;]*'(?:nonce-[A-Za-z0-9+/=]+|sha(?:256|384|512)-[A-Za-z0-9+/=]+)'/i\nReceived string:  \"object-src 'none'; base-uri 'none'; frame-ancestors 'none'\"\n\n  89 |       const response = await page.goto(TARGET_URL);\n  90 |       const csp = response?.headers()['content-security-policy'] || '';\n> 91 |       expect(csp).toMatch(/script-src\\s+[^;]*'(?:nonce-[A-Za-z0-9+/=]+|sha(?:256|384|512)-[A-Za-z0-9+/=]+)'/i);\n     |                   ^\n  92 |     });\n  93 |\n  94 |     test(\"Exp 9: Content-Security-Policy enforces object-src 'none'\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:91:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:91",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-499471492057a5b67dbd",
+            "passed": true,
+            "message": "Exp 9: Content-Security-Policy enforces object-src 'none'"
+          },
+          {
+            "id": "1e05ed297e74915d9948-f855e5e74f4c71f101c5",
+            "passed": true,
+            "message": "Exp 9: Content-Security-Policy enforces base-uri 'none'"
+          },
+          {
+            "id": "1e05ed297e74915d9948-0e081bbac8155fefbe7e",
+            "passed": false,
+            "message": "Exp 10: Content-Security-Policy does not use broad allowlists without strict-dynamic",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  110 |       const scriptSrc = scriptSrcMatch ? scriptSrcMatch[1] : '';\n  111 |       const usesStrictDynamic = scriptSrc.includes(\"'strict-dynamic'\");\n> 112 |       expect(usesStrictDynamic && scriptSrc.length > 0).toBe(true);\n      |                                                         ^\n  113 |     });\n  114 |\n  115 |     test(\"Exp 11: Content-Security-Policy enforces Trusted Types for scripts\", async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:112:57",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:112",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-efc095be369bf6fa2bc4",
+            "passed": false,
+            "message": "Exp 11: Content-Security-Policy enforces Trusted Types for scripts",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /require-trusted-types-for\\s+'script'/i\nReceived string:  \"object-src 'none'; base-uri 'none'; frame-ancestors 'none'\"\n\n  116 |       const response = await page.goto(TARGET_URL);\n  117 |       const csp = response?.headers()['content-security-policy'] || '';\n> 118 |       expect(csp).toMatch(/require-trusted-types-for\\s+'script'/i);\n      |                   ^\n  119 |     });\n  120 |\n  121 |     test('Exp 12: Document response sets Cross-Origin-Opener-Policy', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:118:19",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:118",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-159ac189624f89ed33a3",
+            "passed": false,
+            "message": "Exp 12: Document response sets Cross-Origin-Opener-Policy",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /^(same-origin-allow-popups|same-origin)$/i\nReceived string:  \"\"\n\n  122 |       const response = await page.goto(TARGET_URL);\n  123 |       const coop = response?.headers()['cross-origin-opener-policy'] || '';\n> 124 |       expect(coop).toMatch(/^(same-origin-allow-popups|same-origin)$/i);\n      |                    ^\n  125 |     });\n  126 |\n  127 |     test('Exp 13: Response sets Cross-Origin-Resource-Policy', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:124:20",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:124",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-ff2fa5c30a88015cd9e9",
+            "passed": false,
+            "message": "Exp 13: Response sets Cross-Origin-Resource-Policy",
+            "error": "Error: expect(received).toMatch(expected)\n\nExpected pattern: /^(same-origin|same-site)$/i\nReceived string:  \"\"\n\n  128 |       const response = await page.goto(TARGET_URL);\n  129 |       const corp = response?.headers()['cross-origin-resource-policy'] || '';\n> 130 |       expect(corp).toMatch(/^(same-origin|same-site)$/i);\n      |                    ^\n  131 |     });\n  132 |\n  133 |     test('Exp 14: Response includes Vary header with Sec-Fetch metadata keys', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:130:20",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:130",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-4966d462f96e7f6fdd4f",
+            "passed": false,
+            "message": "Exp 14: Response includes Vary header with Sec-Fetch metadata keys",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  138 |         vary.includes('Sec-Fetch-Mode') &&\n  139 |         vary.includes('Sec-Fetch-Site');\n> 140 |       expect(hasFetchKeys).toBe(true);\n      |                            ^\n  141 |     });\n  142 |\n  143 |     test('Exp 14: Server rejects unauthorized cross-site requests with HTTP 403', async ({ request, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:140:28",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:140",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
+          },
+          {
+            "id": "1e05ed297e74915d9948-5a1022cb3cea5c4febac",
+            "passed": false,
+            "message": "Exp 14: Server rejects unauthorized cross-site requests with HTTP 403",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: 403\nReceived: 200\n\n  149 |         },\n  150 |       });\n> 151 |       expect(res.status()).toBe(403);\n      |                            ^\n  152 |     });\n  153 |\n  154 |     test('Exp 15: Document response sets X-Content-Type-Options to nosniff', async ({ page, TARGET_URL }) => {\n    at guides/security/security/targets/daily-grind/grader.ts:151:28",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:151"
+          },
+          {
+            "id": "1e05ed297e74915d9948-6a5b80e77f8836046751",
+            "passed": true,
+            "message": "Exp 15: Document response sets X-Content-Type-Options to nosniff"
+          },
+          {
+            "id": "1e05ed297e74915d9948-faf93c2a47419c3ba056",
+            "passed": true,
+            "message": "Exp 16: Document response sets Referrer-Policy to strict-origin-when-cross-origin"
+          },
+          {
+            "id": "1e05ed297e74915d9948-58e2d21c2baaf25405ab",
+            "passed": true,
+            "message": "Exp 17: Document response sets a restrictive Permissions-Policy disabling unused features"
+          },
+          {
+            "id": "1e05ed297e74915d9948-35e745540e61360130e8",
+            "passed": false,
+            "message": "Exp 20: Logout response sends Clear-Site-Data header to clear client state",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  182 |         csd.includes('\"storage\"') &&\n  183 |         csd.includes('\"cache\"');\n> 184 |       expect(clearsState).toBe(true);\n      |                           ^\n  185 |     });\n  186 |\n  187 |   });\n    at guides/security/security/targets/daily-grind/grader.ts:184:27",
+            "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:184"
+          }
+        ],
+        "guidesUsed": [],
+        "retrievedGuides": [],
+        "fileReadGuides": [],
+        "guidanceToolsUsed": [],
+        "discipline": "security",
+        "expectedToolPrefixes": [
+          "modern-web"
+        ],
+        "guideName": "security",
+        "baseApp": "daily-grind",
+        "taskName": "daily-grind",
+        "prompt": "Audit the Daily Grind web app and implement preventative security measures to safely deploy security policies.",
+        "targetFile": "agent.patch",
+        "files": [
+          "agent.patch",
+          "modern-web.log",
+          "session-example.jsonl"
+        ],
+        "runtime": {
+          "agentRuntime": 112134,
+          "graderRuntime": 53484,
+          "agentStatus": 0,
+          "graderStatus": 0
+        },
+        "tokenUsage": {
+          "total": 161727,
+          "cached": 140672
+        }
+      }
+    ],
+    "task - passkey-authentication - unguided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "id": "1b8e2f86a02d022ce7dc-0c1a3ab55224ea627bdb",
+            "passed": false,
+            "message": "The HTML form annotates the username input element with autocomplete=\"username webauthn\" and autofocus",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  118 |       });\n  119 |     });\n> 120 |     expect(hasCorrectInput).toBe(true);\n      |                             ^\n  121 |   });\n  122 |\n  123 |   test('The client feature detects capabilities using PublicKeyCredential.getClientCapabilities before initializing Conditional UI', async ({ page, TARGET_URL }) => {\n    at guides/security/passkey-authentication/grader.ts:120:29",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:120",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - region \"Sign in to your account\":\n    \n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-64ff2cded7f6ab75a2ed",
+            "passed": false,
+            "message": "The client feature detects capabilities using PublicKeyCredential.getClientCapabilities before initializing Conditional UI",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  125 |     await page.waitForTimeout(100);\n  126 |     const parseCalled = await page.evaluate(() => (window as any).__parseCalled);\n> 127 |     expect(parseCalled).toBe(true);\n      |                         ^\n  128 |   });\n  129 |\n  130 |   test('The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\"', async ({ page, TARGET_URL }) => {\n    at guides/security/passkey-authentication/grader.ts:127:25",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:127",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - region \"Sign in to your account\":\n    \n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-a4a38bfbae47b4fa0c99",
+            "passed": false,
+            "message": "The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\"",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"conditional\"\nReceived: undefined\n\n  132 |     await page.waitForTimeout(100);\n  133 |     const getOptions = await page.evaluate(() => (window as any).__getOptions);\n> 134 |     expect(getOptions?.mediation).toBe('conditional');\n      |                                   ^\n  135 |   });\n  136 |\n  137 |   test('The explicit biometrics button click aborts pending Conditional UI autofill suggestions prior to prompting users', async ({ page, TARGET_URL }) => {\n    at guides/security/passkey-authentication/grader.ts:134:35",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:134",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - region \"Sign in to your account\":\n    \n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-3f7620c40aef78f5de06",
+            "passed": false,
+            "message": "The explicit biometrics button click aborts pending Conditional UI autofill suggestions prior to prompting users",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  142 |     await page.waitForTimeout(100);\n  143 |     const abortCalled = await page.evaluate(() => (window as any).__mockAbortControllerCalled);\n> 144 |     expect(abortCalled).toBe(true);\n      |                         ^\n  145 |     const getOptions = await page.evaluate(() => (window as any).__getOptions);\n  146 |     expect(getOptions?.mediation === 'optional' || getOptions?.mediation === undefined).toBe(true);\n  147 |   });\n    at guides/security/passkey-authentication/grader.ts:144:25",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:144",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - region \"Sign in to your account\":\n    \n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-c4fe2a08f5b138678118",
+            "passed": false,
+            "message": "If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  170 |\n  171 |     const signalCalled = await page.evaluate(() => (window as any).__signalCalled);\n> 172 |     expect(signalCalled).toBe(true);\n      |                          ^\n  173 |     const signalOptions = await page.evaluate(() => (window as any).__signalOptions);\n  174 |     expect(signalOptions?.credentialId).toBe('fake-auth-id');\n  175 |   });\n    at guides/security/passkey-authentication/grader.ts:172:26",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:172",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - region \"Sign in to your account\":\n    \n..."
+          },
+          {
+            "id": "1b8e2f86a02d022ce7dc-9b63aa30f5a6b6154fa2",
+            "passed": false,
+            "message": "A successful credential verification updates the UI status to indicate successful authentication and session establishment",
+            "error": "Error: expect(locator).toContainText(expected) failed\n\nLocator: locator('[data-testid=\"auth-status\"]')\nExpected pattern: /Success|authenticated/i\nReceived string:  \"Passkey autofill is unavailable. Use the sign-in button to try again.\"\nTimeout: 2000ms\n\nCall log:\n  - Expect \"toContainText\" with timeout 2000ms\n  - waiting for locator('[data-testid=\"auth-status\"]')\n    6 × locator resolved to <p role=\"status\" aria-live=\"polite\" data-testid=\"auth-status\">Passkey autofill is unavailable. Use the sign-in …</p>\n      - unexpected value \"Passkey autofill is unavailable. Use the sign-in button to try again.\"\n\n\n  182 |\n  183 |     const status = page.locator('[data-testid=\"auth-status\"]');\n> 184 |     await expect(status).toContainText(/Success|authenticated/i);\n      |                          ^\n  185 |   });\n  186 | });\n  187 |\n    at guides/security/passkey-authentication/grader.ts:184:26",
+            "errorLocation": "guides/security/passkey-authentication/grader.ts:184",
+            "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - region \"Sign in to your account\":\n    \n..."
+          }
+        ],
+        "guidesUsed": [],
+        "retrievedGuides": [],
+        "fileReadGuides": [],
+        "guidanceToolsUsed": [],
+        "discipline": "security",
+        "expectedToolPrefixes": [
+          "modern-web"
+        ],
+        "guideName": "passkey-authentication",
+        "baseApp": "daily-grind",
+        "taskName": "task",
+        "prompt": "implement passkey authentication in `index.html`. ensure the sign-in username input field is annotated with `data-testid=\"username-field\"`. when a user focuses on this field, the browser should seamlessly offer their registered passkeys as autofill suggestions. if they click the explicit \"sign in with passkey\" button annotated with `data-testid=\"auth-button\"`, prompt them for biometrics directly instead. send the authenticated credential to `/api/login/verify` and update the status element annotated with `data-testid=\"auth-status\"` upon success.",
+        "targetFile": "index.html",
+        "files": [
+          "agent.patch",
+          "modern-web.log",
+          "session-example.jsonl"
+        ],
+        "runtime": {
+          "agentRuntime": 72740,
+          "graderRuntime": 26101,
+          "agentStatus": 0,
+          "graderStatus": 0
+        },
+        "tokenUsage": {
+          "total": 125133,
+          "cached": 107904
+        }
+      }
+    ],
+    "daily-grind - accessible-generated-content - unguided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "id": "e3fef537a9467714d3ca-ebae037df2453f1ef0f9",
+            "passed": true,
+            "message": "Stylesheets define ::before or ::after pseudo-element rules using content alternative text syntax to silence decorative text"
+          },
+          {
+            "id": "e3fef537a9467714d3ca-53be7bcfb2c8bf7d8181",
+            "passed": false,
+            "message": "Elements styled with pseudo-elements using alternative text convey meaningful label or state through DOM text or ARIA attributes",
+            "error": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: true\nReceived: false\n\n  219 |     const allHaveAccessibleContent =\n  220 |       hostElements.length > 0 && hostElements.every((el) => hasAccessibleLabel(el));\n> 221 |     expect(allHaveAccessibleContent).toBe(true);\n      |                                      ^\n  222 |   });\n  223 |\n  224 |   test('Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text', () => {\n    at guides/accessibility/accessible-generated-content/targets/daily-grind/grader.ts:221:38",
+            "errorLocation": "guides/accessibility/accessible-generated-content/targets/daily-grind/grader.ts:221"
+          },
+          {
+            "id": "e3fef537a9467714d3ca-e92ccb46d840c0d97bec",
+            "passed": true,
+            "message": "Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text"
+          }
+        ],
+        "guidesUsed": [],
+        "retrievedGuides": [],
+        "fileReadGuides": [],
+        "guidanceToolsUsed": [],
+        "discipline": "accessibility",
+        "expectedToolPrefixes": [
+          "modern-web"
+        ],
+        "guideName": "accessible-generated-content",
+        "baseApp": "daily-grind",
+        "taskName": "daily-grind",
+        "prompt": "Update the site to use CSS generated content in ways that stay accessible, including alternative text for decorative content.",
+        "targetFile": "agent.patch",
+        "files": [
+          "agent.patch",
+          "modern-web.log",
+          "session-example.jsonl"
+        ],
+        "runtime": {
+          "agentRuntime": 115451,
+          "graderRuntime": 6690,
+          "agentStatus": 0,
+          "graderStatus": 0
+        },
+        "tokenUsage": {
+          "total": 117378,
+          "cached": 104064
+        }
+      }
+    ]
+  },
+  "stats": {
+    "daily-grind - accessible-generated-content - unguided": {
+      "medianPassRate": 67,
+      "runPassRates": [
+        67
+      ],
+      "runCount": 1,
+      "passedChecks": 2,
+      "totalChecks": 3,
+      "earlyFailures": 0,
+      "avgTokens": {
+        "total": 117378,
+        "cached": 104064
+      }
+    },
+    "daily-grind - accessible-generated-content - guided": {
+      "medianPassRate": 100,
+      "runPassRates": [
+        100
+      ],
+      "runsUsingGuide": 1,
+      "runsWithToolActivation": 1,
+      "runCount": 1,
+      "passedChecks": 3,
+      "totalChecks": 3,
+      "earlyFailures": 0,
+      "avgTokens": {
+        "total": 122753,
+        "cached": 90496
+      }
+    },
+    "daily-grind - security - unguided": {
+      "medianPassRate": 30,
+      "runPassRates": [
+        30
+      ],
+      "runCount": 1,
+      "passedChecks": 6,
+      "totalChecks": 20,
+      "earlyFailures": 0,
+      "avgTokens": {
+        "total": 161727,
+        "cached": 140672
+      }
+    },
+    "daily-grind - security - guided": {
+      "medianPassRate": 65,
+      "runPassRates": [
+        65
+      ],
+      "runsUsingGuide": 1,
+      "runsWithToolActivation": 1,
+      "runCount": 1,
+      "passedChecks": 13,
+      "totalChecks": 20,
+      "earlyFailures": 0,
+      "avgTokens": {
+        "total": 300211,
+        "cached": 247808
+      }
+    },
+    "task - passkey-authentication - unguided": {
+      "medianPassRate": 0,
+      "runPassRates": [
+        0
+      ],
+      "runCount": 1,
+      "passedChecks": 0,
+      "totalChecks": 6,
+      "earlyFailures": 0,
+      "avgTokens": {
+        "total": 125133,
+        "cached": 107904
+      }
+    },
+    "task - passkey-authentication - guided": {
+      "medianPassRate": 50,
+      "runPassRates": [
+        50
+      ],
+      "runsUsingGuide": 1,
+      "runsWithToolActivation": 1,
+      "runCount": 1,
+      "passedChecks": 3,
+      "totalChecks": 6,
+      "earlyFailures": 0,
+      "avgTokens": {
+        "total": 332363,
+        "cached": 301184
+      }
+    }
+  },
+  "timestamp": "2026-10-20T21:24:24.495Z",
+  "runCount": 1,
+  "agent": "codex_cli",
+  "serving": "skills_cli",
+  "model": "example-model",
+  "totalRuntime": 2426558,
+  "skillVersion": "0.0.0-fixture",
+  "cliVersion": "0.0.0-fixture"
+}

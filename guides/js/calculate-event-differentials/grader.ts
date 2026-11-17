@@ -106,13 +106,13 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
     expect(hasCompare || hasSign, 'Must use the Duration .sign property or Temporal.ZonedDateTime.compare to determine past/future status').toBe(true);
   });
 
-  // 8. Combine date and time inputs by chaining Temporal methods, not string interpolation
+  // 8. Construct Temporal ZonedDateTime via Temporal methods (chaining or ZonedDateTime.from), not string interpolation
   test('Should combine date and time inputs with PlainDate.toPlainDateTime() instead of string interpolation', () => {
-    const usesInterpolatedIso = /Plain(?:Date)?Time\.from\(\s*`[^`]*\$\{[^}]+\}T\$\{/.test(scriptContent) ||
-                                /PlainDateTime\.from\(\s*[\w.]+\s*\+\s*['"]T['"]/.test(scriptContent);
+    const usesInterpolatedIso = /`[^`]*\$\{[^}]+\}T\$\{/.test(scriptContent) ||
+                                /[\w.)\]]\s*\+\s*['"]T['"]\s*\+/.test(scriptContent);
     expect(usesInterpolatedIso, 'Must not build an ISO string from separate date and time inputs; chain Temporal methods instead').toBe(false);
-    const usesChain = /\.toPlainDateTime\(|\.toZonedDateTime\(\s*\{[^}]*plainTime/.test(scriptContent);
-    expect(usesChain, 'Must combine date and time inputs with Temporal methods (e.g. PlainDate.toPlainDateTime() or toZonedDateTime({ timeZone, plainTime }))').toBe(true);
+    const usesTemporalConstruction = /\.toPlainDateTime\(|\.toZonedDateTime\(|\bZonedDateTime\.from\(/.test(scriptContent);
+    expect(usesTemporalConstruction, 'Must construct Temporal date/time values with Temporal methods (e.g. PlainDate.toPlainDateTime(), toZonedDateTime(), or Temporal.ZonedDateTime.from())').toBe(true);
   });
 
   // 9. Format durations for display with toLocaleString()

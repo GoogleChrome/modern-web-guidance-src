@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { createTwoFilesPatch } from 'diff';
 import { gitExec } from './git-utils.ts';
 
@@ -52,6 +52,19 @@ export interface PatchResult {
   error?: string;
 }
 
+function extractExecErrorMessage(err: unknown): string {
+  if (typeof err === 'object' && err !== null) {
+    const stderr = 'stderr' in err && err.stderr != null ? String(err.stderr).trim() : '';
+    if (stderr) return stderr;
+    const stdout = 'stdout' in err && err.stdout != null ? String(err.stdout).trim() : '';
+    if (stdout) return stdout;
+    if ('message' in err && typeof err.message === 'string' && err.message.trim()) {
+      return err.message.trim();
+    }
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * Synchronously applies a unified diff patch file to a target directory.
  * Tries git apply first, falling back to standard patch -p1.
@@ -67,19 +80,36 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
   }
 
   try {
-    execSync(`patch -p1 --no-backup-if-mismatch -i "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe', maxBuffer: MAX_BUFFER });
+    gitExec(['apply', '--whitespace=nowarn', '--unsafe-paths', absPatchPath], {
+      cwd: absTargetDir,
+      isolated: true,
+      stdio: 'pipe',
+      maxBuffer: MAX_BUFFER,
+      // Don't let git discover an enclosing repo (e.g. results/ inside the checkout). There, it reads
+      // `diff --git` paths as relative to that repo's root, skips them all, and still exits 0.
+      env: { GIT_CEILING_DIRECTORIES: path.dirname(fs.realpathSync(absTargetDir)) },
+    });
     return { success: true };
-  } catch (patchErr: any) {
+  } catch (gitErr: unknown) {
+    const gitMsg = extractExecErrorMessage(gitErr);
+    // patch(1) cannot apply GIT binary diffs and leaves partial text hunks behind on failure.
+    if (/^GIT binary patch$/m.test(fs.readFileSync(absPatchPath, 'utf8'))) {
+      return { success: false, error: gitMsg ? `git apply: ${gitMsg}` : 'Unknown error applying patch' };
+    }
     try {
-      gitExec(['apply', '--whitespace=nowarn', '--unsafe-paths', absPatchPath], {
+      execFileSync('patch', ['-p1', '--no-backup-if-mismatch', '-i', absPatchPath], {
         cwd: absTargetDir,
+        encoding: 'utf8',
         stdio: 'pipe',
         maxBuffer: MAX_BUFFER,
       });
       return { success: true };
-    } catch (gitErr: any) {
-      const errorMsg = patchErr?.stderr?.toString() || gitErr?.stderr?.toString() || patchErr?.message || gitErr?.message || 'Unknown error applying patch';
-      return { success: false, error: errorMsg.trim() };
+    } catch (patchErr: unknown) {
+      const patchMsg = extractExecErrorMessage(patchErr);
+      const errorMsg = [gitMsg ? `git apply: ${gitMsg}` : '', patchMsg ? `patch: ${patchMsg}` : '']
+        .filter(Boolean)
+        .join('\n');
+      return { success: false, error: errorMsg || 'Unknown error applying patch' };
     }
   }
 }

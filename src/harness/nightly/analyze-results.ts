@@ -1,19 +1,7 @@
 import fs from 'fs';
-
-interface ScenarioCheck {
-  passed: boolean;
-  message?: string;
-  isEarlyFailure?: boolean;
-}
-
-interface Run {
-  runNumber: number;
-  results?: ScenarioCheck[];
-}
-
-interface EvalsReport {
-  results?: Record<string, Run[]>;
-}
+import { extractJobSummary } from '../../dashboard/summary-extractor.js';
+import { formatRatePct } from '../../dashboard/utils.js';
+import type { EvalsReport } from '../lib/metrics.ts';
 
 interface GenerationError {
   testName: string;
@@ -21,14 +9,48 @@ interface GenerationError {
   message: string;
 }
 
+export function formatSuiteSummary(data: Partial<EvalsReport>): string {
+  const summary = extractJobSummary('suite', data);
+  const totalTrials = summary?.totalTrials ?? 0;
+  const infraErrors = summary?.earlyFailureCount ?? 0;
+  if (!summary || totalTrials === 0 || infraErrors === totalTrials) return '';
+
+  const { unguidedStats, guidedStats } = summary;
+  const unguidedRate = unguidedStats.total > 0
+    ? `${Math.round((unguidedStats.passed / unguidedStats.total) * 100)}% (${unguidedStats.passed}/${unguidedStats.total})`
+    : 'N/A';
+  const guidedRate = guidedStats.total > 0
+    ? `${Math.round((guidedStats.passed / guidedStats.total) * 100)}% (${guidedStats.passed}/${guidedStats.total})`
+    : 'N/A';
+  const leakRate = formatRatePct(summary.unguidedLeakCount ?? 0, summary.unguidedTrialCount ?? 0);
+  const errorRate = formatRatePct(infraErrors, totalTrials);
+
+  return [
+    `Unguided pass rate: ${unguidedRate}`,
+    `Guided pass rate: ${guidedRate}`,
+    `Leak rate: ${leakRate}%`,
+    `Error rate: ${errorRate}%`,
+  ].join('\n');
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const evalsJsonPath = args[0];
-  const outputFormat = args[1] || 'json'; // 'json', 'text', 'has-data', 'errors-count', 'is-catastrophic-failure'
+  const outputFormat = args[1] || 'json'; // 'json', 'text', 'summary', 'has-data', 'errors-count', 'is-catastrophic-failure'
 
   if (!evalsJsonPath) {
     console.error('Usage: node analyze-results.ts <path-to-evals.json> [format]');
     process.exit(1);
+  }
+
+  if (outputFormat === 'summary') {
+    try {
+      const summary = formatSuiteSummary(JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8')) as Partial<EvalsReport>);
+      if (summary) console.log(summary);
+    } catch {
+      // No output when missing or unreadable.
+    }
+    return;
   }
 
   if (!fs.existsSync(evalsJsonPath)) {
@@ -48,7 +70,7 @@ function main(): void {
 
   try {
     const content = fs.readFileSync(evalsJsonPath, 'utf8');
-    const data = JSON.parse(content) as EvalsReport;
+    const data = JSON.parse(content) as Partial<EvalsReport>;
 
     const results = data.results || {};
     const testNames = Object.keys(results);
@@ -155,4 +177,6 @@ function main(): void {
   }
 }
 
-main();
+if (import.meta.main) {
+  main();
+}

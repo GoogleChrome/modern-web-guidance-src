@@ -1158,3 +1158,14 @@ code {
     padding: 4px 0 36px;
   }
 }
+
+@media (max-width: 560px) {
+  .methodology dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .methodology dd + dt {
+    margin-top: 6px;
+  }
+}
+

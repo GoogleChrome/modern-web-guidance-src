@@ -1,126 +1,315 @@
 diff --git a/index.html b/index.html
-index 66c9173..7e9eb8a 100644
+index 66c9173..fd7b835 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,43 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -107,7 +107,9 @@
+       margin-top: 20px;
      }
-+
-+    cup-counter:not(:defined) {
+ 
+-    .card {
++    /* Coffee cards: base box styles apply both before and after upgrade. */
++    coffee-card {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -115,11 +117,23 @@
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    coffee-card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Hide not-yet-upgraded cards, but fail open after 2s if the script never runs. */
++    coffee-card:not(:defined) {
 +      opacity: 0;
-+      animation: defined-fallback 0.2s 2s forwards;
++      animation: coffee-card-defined-fallback 0.2s 2s forwards;
 +    }
 +
-+    @keyframes defined-fallback {
-+      to { opacity: 1; }
++    @keyframes coffee-card-defined-fallback {
++      to {
++        opacity: 1;
++      }
 +    }
 +
-+    cup-counter {
-+      display: inline-flex;
-+      align-items: center;
-+      gap: 10px;
-+      margin-top: 15px;
-+    }
-+
-+    cup-counter button {
-+      width: 32px;
-+      height: 32px;
-+      border: 1px solid var(--primary);
-+      background: white;
-+      color: var(--primary);
-+      border-radius: 50%;
-+      font-size: 1rem;
-+      cursor: pointer;
-+    }
-+
-+    cup-counter button:disabled {
-+      opacity: 0.4;
-+      cursor: not-allowed;
-+    }
-+
-+    cup-counter:state(maxed) .value {
-+      color: var(--accent);
-+      font-weight: bold;
-+    }
-   </style>
- </head>
- 
-@@ -171,6 +208,7 @@
-   <header class="hero">
-     <h1>Wake Up Your Senses</h1>
-     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
-+    <cup-counter label="Cups:" count="1"></cup-counter>
-     <a href="/order-online" class="btn">Order Now</a>
-   </header>
- 
-@@ -207,6 +245,69 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +192,25 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <!--
++          Light-DOM <h3>/<a> are fallback content shown only if the element is never
++          upgraded; once defined, the shadow root renders from attributes instead.
++        -->
++        <coffee-card name="Maple Oat Latte" href="/menu/seasonal" price="5.75" featured>
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </coffee-card>
++        <coffee-card name="Dark Roast Espresso" href="/menu/espresso" price="3.25">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </coffee-card>
++        <coffee-card name="Cold Brew" href="/menu/cold-brew" price="4.5">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +225,239 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    class CupCounter extends HTMLElement {
-+      static observedAttributes = ['label', 'count', 'disabled'];
-+      #internals;
-+      #ready = false;
-+      #valueEl;
-+      #labelEl;
-+      #dec;
-+      #inc;
++    (() => {
++      'use strict';
 +
-+      constructor() {
-+        super();
-+        this.#internals = this.attachInternals();
-+      }
++      const priceFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 +
-+      get label() { return this.getAttribute('label') ?? ''; }
-+      set label(v) { v ? this.setAttribute('label', v) : this.removeAttribute('label'); }
++      const template = document.createElement('template');
++      template.innerHTML = `
++        <style>
++          :host {
++            display: block;
++            position: relative;
++            background: white;
++            padding: 20px;
++            border-radius: 8px;
++            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++            text-align: center;
++          }
++          :host([hidden]) { display: none; }
++          :host([featured]) { box-shadow: 0 0 0 2px var(--accent, #ffab40), 0 2px 5px rgba(0, 0, 0, 0.1); }
++          :host([sold-out]) { opacity: 0.7; }
 +
-+      get count() { return Number(this.getAttribute('count')) || 0; }
-+      set count(v) { this.setAttribute('count', String(v)); }
++          .badge {
++            position: absolute;
++            top: 10px;
++            right: 10px;
++            background: var(--accent, #ffab40);
++            color: var(--text, #3e2723);
++            font-size: 0.7rem;
++            font-weight: bold;
++            text-transform: uppercase;
++            letter-spacing: 0.5px;
++            padding: 2px 8px;
++            border-radius: 999px;
++          }
++          .badge[hidden], .price[hidden] { display: none; }
 +
-+      get disabled() { return this.hasAttribute('disabled'); }
-+      set disabled(on) { this.toggleAttribute('disabled', !!on); }
++          h3 { margin: 0 0 10px; color: var(--primary, #4e342e); }
++          .price { margin: 0 0 10px; font-weight: bold; color: var(--text, #3e2723); }
++          .description { display: block; }
++          :host(:not(:state(has-description))) .description { display: none; }
++          ::slotted(p) { margin: 0; }
 +
-+      connectedCallback() {
-+        if (!this.#ready) {
-+          this.#labelEl = document.createElement('span');
-+          this.#labelEl.className = 'label';
-+          this.#dec = document.createElement('button');
-+          this.#dec.type = 'button';
-+          this.#dec.textContent = '\u2212';
-+          this.#dec.setAttribute('aria-label', 'Decrease');
-+          this.#valueEl = document.createElement('span');
-+          this.#valueEl.className = 'value';
-+          this.#valueEl.setAttribute('aria-live', 'polite');
-+          this.#inc = document.createElement('button');
-+          this.#inc.type = 'button';
-+          this.#inc.textContent = '+';
-+          this.#inc.setAttribute('aria-label', 'Increase');
-+          this.#dec.addEventListener('click', () => { this.count = Math.max(0, this.count - 1); });
-+          this.#inc.addEventListener('click', () => { this.count = Math.min(10, this.count + 1); });
-+          this.replaceChildren(this.#labelEl, this.#dec, this.#valueEl, this.#inc);
-+          this.#ready = true;
++          .btn {
++            display: inline-block;
++            background: var(--primary, #4e342e);
++            color: white;
++            padding: 10px 20px;
++            text-decoration: none;
++            border-radius: 5px;
++            margin-top: 15px;
++            transition: background 0.3s;
++          }
++          .btn:hover { background: #3e2723; }
++          .btn[aria-disabled="true"] {
++            background: #9e9e9e;
++            cursor: not-allowed;
++            pointer-events: none;
++          }
++        </style>
++        <span class="badge" part="badge" hidden>Featured</span>
++        <h3 part="name"></h3>
++        <p class="price" part="price" hidden></p>
++        <div class="description" part="description"><slot name="description"></slot></div>
++        <a class="btn" part="button">View Details</a>
++      `;
++
++      /**
++       * <coffee-card> — a menu item card.
++       *
++       * Attributes (reflected to properties):
++       *   name      (string)  → .name
++       *   href      (string)  → .href
++       *   price     (number)  → .price      (absent / invalid → NaN, price hidden)
++       *   featured  (boolean) → .featured
++       *   sold-out  (boolean) → .soldOut
++       *
++       * Slots:
++       *   description — the card's descriptive text.
++       *
++       * Custom states:
++       *   :state(has-description) — the description slot has assigned content.
++       */
++      class CoffeeCard extends HTMLElement {
++        static observedAttributes = ['name', 'href', 'price', 'featured', 'sold-out'];
++
++        #internals;
++        #els = null;
++        #abort = null;
++
++        constructor() {
++          super();
++          // Only build internal structure here; never read attributes/children in the constructor.
++          this.#internals = this.attachInternals();
++          const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
++          root.replaceChildren(template.content.cloneNode(true));
++          this.#els = {
++            badge: root.querySelector('.badge'),
++            name: root.querySelector('h3'),
++            price: root.querySelector('.price'),
++            slot: root.querySelector('slot[name="description"]'),
++            button: root.querySelector('.btn'),
++          };
 +        }
-+        this.render();
++
++        // --- String attributes -------------------------------------------------
++        get name() { return this.getAttribute('name') ?? ''; }
++        set name(v) {
++          v ? this.setAttribute('name', String(v)) : this.removeAttribute('name');
++        }
++
++        get href() { return this.getAttribute('href') ?? ''; }
++        set href(v) {
++          v ? this.setAttribute('href', String(v)) : this.removeAttribute('href');
++        }
++
++        // --- Numeric attribute -------------------------------------------------
++        get price() {
++          const raw = this.getAttribute('price');
++          if (raw === null || raw.trim() === '') return NaN;
++          const n = Number(raw);
++          return Number.isFinite(n) && n >= 0 ? n : NaN;
++        }
++        set price(v) {
++          const n = Number(v);
++          if (v === null || v === undefined || v === '' || !Number.isFinite(n)) {
++            this.removeAttribute('price');
++          } else {
++            this.setAttribute('price', String(n));
++          }
++        }
++
++        // --- Boolean attributes (present = true; never set to "false") --------
++        get featured() { return this.hasAttribute('featured'); }
++        set featured(on) { this.toggleAttribute('featured', !!on); }
++
++        get soldOut() { return this.hasAttribute('sold-out'); }
++        set soldOut(on) { this.toggleAttribute('sold-out', !!on); }
++
++        // --- Lifecycle ---------------------------------------------------------
++        connectedCallback() {
++          // Properties may have been set on the instance before upgrade; re-route
++          // them through the class setters so they reflect to attributes.
++          for (const prop of ['name', 'href', 'price', 'featured', 'soldOut']) {
++            this.#upgradeProperty(prop);
++          }
++
++          // Idempotent: connectedCallback runs on every insertion.
++          if (!this.#abort) {
++            this.#abort = new AbortController();
++            this.#els.slot.addEventListener('slotchange', () => this.#syncDescription(), {
++              signal: this.#abort.signal,
++            });
++          }
++
++          // Attributes/children may already exist (upgrade), so sync from them now.
++          this.#render();
++          this.#syncDescription();
++        }
++
++        // Moving via Node.moveBefore(): keep listeners and state as-is.
++        connectedMoveCallback() {}
++
++        disconnectedCallback() {
++          // Element may be re-inserted later; connectedCallback will set this up again.
++          this.#abort?.abort();
++          this.#abort = null;
++        }
++
++        attributeChangedCallback(name, oldVal, newVal) {
++          if (oldVal === newVal || !this.isConnected) return;
++          this.#render();
++        }
++
++        // --- Internals ---------------------------------------------------------
++        #upgradeProperty(prop) {
++          if (Object.prototype.hasOwnProperty.call(this, prop)) {
++            const value = this[prop];
++            delete this[prop];
++            this[prop] = value;
++          }
++        }
++
++        #setState(state, on) {
++          const states = this.#internals.states;
++          if (!states) return; // CustomStateSet unsupported
++          try {
++            on ? states.add(state) : states.delete(state);
++          } catch {
++            // Older implementations only accepted the legacy "--state" syntax.
++          }
++        }
++
++        #syncDescription() {
++          const hasContent = this.#els.slot
++            .assignedNodes({ flatten: true })
++            .some((n) => n.nodeType === Node.ELEMENT_NODE || n.textContent.trim() !== '');
++          this.#setState('has-description', hasContent);
++        }
++
++        #render() {
++          const { badge, name, price, button } = this.#els;
++          const soldOut = this.soldOut;
++
++          name.textContent = this.name;
++
++          const p = this.price;
++          price.hidden = Number.isNaN(p);
++          price.textContent = Number.isNaN(p) ? '' : priceFormatter.format(p);
++
++          badge.hidden = !this.featured;
++
++          const label = this.name ? `${this.name} details` : 'Item details';
++          if (soldOut || !this.href) {
++            button.removeAttribute('href');
++            button.setAttribute('aria-disabled', 'true');
++            button.textContent = soldOut ? 'Sold Out' : 'View Details';
++            button.setAttribute('aria-label', soldOut ? `${this.name || 'Item'} is sold out` : label);
++          } else {
++            button.setAttribute('href', this.href);
++            button.removeAttribute('aria-disabled');
++            button.textContent = 'View Details';
++            button.setAttribute('aria-label', label);
++          }
++        }
 +      }
 +
-+      attributeChangedCallback(name, oldVal, newVal) {
-+        if (oldVal !== newVal) this.render();
++      if (!customElements.get('coffee-card')) {
++        customElements.define('coffee-card', CoffeeCard);
 +      }
-+
-+      render() {
-+        if (!this.#ready) return;
-+        this.#labelEl.textContent = this.label;
-+        this.#valueEl.textContent = String(this.count);
-+        this.#dec.disabled = this.disabled || this.count <= 0;
-+        this.#inc.disabled = this.disabled || this.count >= 10;
-+        if (this.count >= 10) this.#internals.states.add('maxed');
-+        else this.#internals.states.delete('maxed');
-+      }
-+    }
-+    customElements.define('cup-counter', CupCounter);
++    })();
 +  </script>
++
  </body>
  
  </html>

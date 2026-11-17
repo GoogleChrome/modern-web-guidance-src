@@ -123,6 +123,11 @@ describe('ClearcutLogger', () => {
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 50); // 45 bucketized to 50
       assert.strictEqual(payload.skill_version, '2026_06_04-list');
+
+      await logger.logToolCommand(180, true, CommandType.LEGACY_SCAN);
+      const scanPayload = sentMessages[sentMessages.length - 1].payload;
+      assert.deepStrictEqual(scanPayload.tool_command, { command_type: CommandType.LEGACY_SCAN });
+      assert.strictEqual(scanPayload.tool_command.command_type, 6);
     } finally {
       sendMock.mock.restore();
     }

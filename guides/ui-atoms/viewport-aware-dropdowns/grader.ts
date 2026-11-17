@@ -141,7 +141,12 @@ test.describe('Resilient Context Menus and Nested Dropdowns Grader', () => {
     );
     const allScripts = [...inlineScripts, ...getExternalScriptTexts()];
     const hasPopoverPolyfill = allScripts.some(code => {
-      const checksPopover = code.includes('popover') && (code.includes('hasOwnProperty') || code.includes('in HTMLElement') || code.includes('in document'));
+      const checksPopover =
+        code.includes('popover') &&
+        (code.includes('hasOwnProperty') ||
+          /Object\.hasOwn\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\s*\)/.test(code) ||
+          code.includes('in HTMLElement') ||
+          code.includes('in document'));
       const loadsPolyfill = code.includes('popover-polyfill');
       return checksPopover && loadsPolyfill;
     });

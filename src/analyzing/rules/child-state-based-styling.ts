@@ -296,7 +296,8 @@ function isNativeParentClassListToggle(node: CallExpression): boolean {
 export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     ['classList', 'addClass', 'removeClass', 'toggleClass'],
-    ['parentElement', 'parentNode', 'closest', 'parent', 'parents'],
+    ['add', 'remove', 'toggle', 'addClass', 'removeClass', 'toggleClass'],
+    ['parentElement', 'parentNode', 'closest', 'addClass', 'removeClass', 'toggleClass'],
     [
       'focus',
       'Focus',
@@ -308,6 +309,29 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatche
       'Change',
       'input',
       'Input',
+    ],
+    [
+      'focus',
+      'Focus',
+      'FOCUS',
+      'active',
+      'Active',
+      'ACTIVE',
+      'checked',
+      'Checked',
+      'CHECKED',
+      'valid',
+      'Valid',
+      'VALID',
+      'empty',
+      'Empty',
+      'EMPTY',
+      'filled',
+      'Filled',
+      'FILLED',
+      'value',
+      'Value',
+      'VALUE',
     ],
   ],
   featureGuardTokens: [':has', 'has('],
@@ -321,7 +345,7 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatche
 export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   id: 'child-state-based-styling/js-parent-class',
   guideId: 'child-state-based-styling',
-  guideHash: '70dc57b74e35',
+  guideHash: '938e4db9a7d7',
   summary:
     'JavaScript form control event listeners toggle classes on parent/closest containers to simulate container state styling; replace with CSS container :has() selectors.',
   matcher: childStateBasedStylingJsMatcher,

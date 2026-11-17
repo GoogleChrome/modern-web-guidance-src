@@ -97,6 +97,8 @@ By assigning both parts the same background color, they visually merge into a si
 .unified-card {
   display: flex;
   width: 400px;
+  /* Shadow on the parent silhouettes the combined card + masked accent shape */
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
 }
 
 .card-body {
@@ -115,8 +117,8 @@ By assigning both parts the same background color, they visually merge into a si
   border-bottom-right-radius: 16px;
 
   /* Reference the SVG mask */
-  -webkit-mask-image: url(#card-accent-mask);
-  mask-image: url(#card-accent-mask);
+  -webkit-mask-image: url(#accent-stencil);
+  mask-image: url(#accent-stencil);
 }
 </style>
 ```

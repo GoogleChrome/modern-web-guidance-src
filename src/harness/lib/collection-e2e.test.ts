@@ -183,10 +183,11 @@ base_app: test-app
             steps: []
         }));
 
-        const { allResults, numRuns, model } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
+        const { allResults, numRuns, model, reasoningEffort } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
 
         assert.strictEqual(numRuns, 1);
         assert.strictEqual(model, 'claude-3-7-sonnet-20250219');
+        assert.deepStrictEqual(reasoningEffort, { source: 'agent-default' });
         assert.ok(allResults[`task - ${guideName} - guided`]);
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
@@ -405,3 +406,46 @@ test('collectResults preserves pageLoad diagnostics on RunResult without changin
 });
 
 
+
+test('collectResults skips task dirs where the agent never ran (stopped or partial suite)', async (_t) => {
+    const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-unrun');
+    const guideName = '_e2e_test_guide_unrun';
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+
+    try {
+        fs.mkdirSync(tasksDir, { recursive: true });
+        fs.writeFileSync(path.join(performanceGuideDir, 'grader.ts'), '// mock grader file for Playwright');
+        fs.writeFileSync(path.join(tasksDir, 'task.md'), `---
+base_app: test-app
+---
+- E2E Mock Prompt`);
+
+        const runNumberDir = path.join(resultsBase, '1');
+        const guidedDir = path.join(runNumberDir, guideName, 'task', 'guided');
+        const unguidedDir = path.join(runNumberDir, guideName, 'task', 'unguided');
+        fs.mkdirSync(guidedDir, { recursive: true });
+        fs.mkdirSync(unguidedDir, { recursive: true });
+
+        // Guided: agent ran and was graded.
+        fs.writeFileSync(path.join(guidedDir, 'runtime.json'), JSON.stringify({ agentStatus: 0, graderStatus: 0 }));
+        fs.writeFileSync(path.join(guidedDir, `${guideName}_results.json`), JSON.stringify({
+            suites: [{ specs: [{ title: 'passes', tests: [{ results: [{ status: 'passed' }] }] }] }],
+        }));
+
+        // Unguided: only what run-suite writes before the agent starts.
+        fs.writeFileSync(path.join(unguidedDir, 'run.mjs'), '');
+        fs.writeFileSync(path.join(unguidedDir, 'grade.mjs'), '// pre-created before agent starts');
+        fs.writeFileSync(path.join(unguidedDir, 'package.json'), JSON.stringify({ scripts: { 'run-agent': 'node run.mjs' } }));
+
+        const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
+
+        assert.ok(allResults[`task - ${guideName} - guided`]);
+        assert.strictEqual(allResults[`task - ${guideName} - unguided`], undefined);
+        const unguidedPkg = JSON.parse(fs.readFileSync(path.join(unguidedDir, 'package.json'), 'utf8'));
+        assert.strictEqual(unguidedPkg.scripts?.['run-grader'], undefined, 'unrun dir must not be wired for grading');
+    } finally {
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
+        if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
+    }
+});

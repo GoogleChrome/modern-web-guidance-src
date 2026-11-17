@@ -47,7 +47,7 @@ describe('processSkills', () => {
     
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/analyze.mjs')), 'analyze.mjs should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/legacy-scan.mjs')), 'legacy-scan.mjs should exist');
 
     // Verify standalone skills and their references exist
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');
@@ -78,5 +78,16 @@ describe('processSkills', () => {
     
     assert.strictEqual(firstLine, '#!/usr/bin/env node', 'Shebang should be #!/usr/bin/env node');
     assert.ok(!firstLine.includes('--experimental-strip-types'), 'Shebang should not contain --experimental-strip-types');
+  });
+
+  it('verifies modern-web.mjs includes runtime node version guard banner', () => {
+    const publishRoot = path.join(rootDir, 'dist/skills-cli');
+    const modernWebMjsPath = path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs');
+
+    assert.ok(fs.existsSync(modernWebMjsPath), 'modern-web.mjs should exist');
+
+    const content = fs.readFileSync(modernWebMjsPath, 'utf8');
+    assert.ok(content.includes('process.versions.node.split'), 'Should check process.versions.node');
+    assert.ok(content.includes('modern-web-guidance requires Node.js >= 22'), 'Should contain error message');
   });
 });

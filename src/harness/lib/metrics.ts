@@ -1,3 +1,5 @@
+import type { ReasoningEffort } from './reasoning-effort.ts';
+
 export interface PageLoadResult {
   ok: boolean;
   errors: string[];
@@ -22,13 +24,18 @@ export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
   guidesUsed?: string[];
+  retrievedGuides?: string[];
+  fileReadGuides?: string[];
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
   taskName?: string;
+  /** Guide category (e.g. `security`); per-guide views group charts by it. */
+  discipline?: string;
   baseApp?: string;
   prompt?: string;
   targetFile?: string;
+  runtime?: { agentRuntime?: number; graderRuntime?: number } | null;
   tokenUsage?: { total: number; cached: number };
   pageLoad?: PageLoadResult;
 }
@@ -85,6 +92,7 @@ export interface EvalsReport {
   agent: string;
   serving: string;
   model: string;
+  reasoningEffort?: ReasoningEffort;
   totalRuntime?: number;
   skillVersion?: string;
   cliVersion?: string;

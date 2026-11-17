@@ -1,6 +1,5 @@
 ---
 name: accordion
-draft: wip
 description: "Build an accordion component with animation, optional exclusive (one-open-at-a-time) behavior, and brand-consistent styling."
 web-feature-ids:
   - hidden-until-found

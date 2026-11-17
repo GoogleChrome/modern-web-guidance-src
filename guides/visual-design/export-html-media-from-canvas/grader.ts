@@ -251,18 +251,19 @@ test.beforeEach(async ({ page }) => {
   // Navigate to target file
   page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
   await page.goto(targetUrl);
-  // Give time for initial load and observation to register
-  await page.waitForTimeout(500);
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
   const exportBtn = page.locator('#download_card, #download-card, #download-btn, #export-card-btn, #export-btn, button:has-text("Download"), button:has-text("Export"), button:has-text("Save")').first();
-  if (await exportBtn.isVisible()) {
+  if (await exportBtn.count() > 0 && await exportBtn.isVisible()) {
     await exportBtn.click();
-    await page.waitForTimeout(500);
+    await expect.poll(async () => {
+      return page.evaluate(() => (window as any).__renderCalls?.length > 0 || (window as any).__onpaintCalled);
+    }).toBe(true);
   }
 });
 
 // Test 1: Feature detection is conducted
-test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) => {
+test('Feature detection for HTML-in-Canvas is conducted', async ({ page }) => {
   // Pages detect the latest API surface with 'content' in HTMLCanvasElement.prototype.
   // Members such as requestPaint also exist in earlier builds that lack the content attribute.
   const allCode = getAllScriptContent();
@@ -277,7 +278,7 @@ test('Feature detection for HTML-in-Canvas MUST be conducted', async ({ page }) 
 });
 
 // Test 2: Canvas element includes content="drawable" attribute
-test('The canvas element MUST include the content="drawable" attribute', async ({ page }) => {
+test('The canvas element includes the content="drawable" attribute', async ({ page }) => {
   const hasDrawableContent = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     return canvas ? canvas.getAttribute('content') === 'drawable' : false;
@@ -286,7 +287,7 @@ test('The canvas element MUST include the content="drawable" attribute', async (
 });
 
 // Test 3: Drawn elements and direct children of the canvas include the drawable attribute
-test('Every drawn HTML element and every direct child of the canvas element MUST include the drawable attribute', async ({ page }) => {
+test('Every drawn HTML element and every direct child of the canvas element includes the drawable attribute', async ({ page }) => {
   const hasDrawableElements = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     if (!canvas || canvas.children.length === 0) return false;
@@ -298,7 +299,7 @@ test('Every drawn HTML element and every direct child of the canvas element MUST
 });
 
 // Test 4: Canvas rendering executed inside onpaint event handler
-test('Canvas rendering MUST be executed inside an onpaint event handler', async ({ page }) => {
+test('Canvas rendering is executed inside an onpaint event handler', async ({ page }) => {
   const hasOnpaintHandler = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     return window.__onpaintCalled || (canvas ? typeof canvas.onpaint === 'function' : false);
@@ -307,7 +308,7 @@ test('Canvas rendering MUST be executed inside an onpaint event handler', async 
 });
 
 // Test 5: Rendering logic uses the correct API methods
-test('The rendering logic MUST use drawElementImage, texElementSubImage2D, or drawElementImageToTexture', async ({ page }) => {
+test('The rendering logic uses drawElementImage, texElementSubImage2D, or drawElementImageToTexture', async ({ page }) => {
   const usedCorrectMethod = await page.evaluate(() => {
     const validMethods = ['drawElementImage', 'texElementSubImage2D', 'drawElementImageToTexture'];
     return window.__renderCalls.some(call => validMethods.includes(call.method));
@@ -316,7 +317,7 @@ test('The rendering logic MUST use drawElementImage, texElementSubImage2D, or dr
 });
 
 // Test 6: DOM position of each drawn element matches where it is drawn
-test('The DOM position of each drawn HTML element MUST match where it is drawn', async ({ page }) => {
+test('The DOM position of each drawn HTML element matches where it is drawn', async ({ page }) => {
   const isPositionSynced = await page.evaluate(() => {
     // In 2D, drawElementImage() syncs the DOM position, so its return value isn't applied to style.transform
     if (window.__drawnElements.length > 0) {
@@ -330,7 +331,7 @@ test('The DOM position of each drawn HTML element MUST match where it is drawn',
 });
 
 // Test 7: Screen size changes are observed to update canvas size
-test('Screen size changes MUST be observed via ResizeObserver on the canvas', async ({ page }) => {
+test('Screen size changes are observed via ResizeObserver on the canvas', async ({ page }) => {
   const isCanvasObserved = await page.evaluate(() => {
     return window.__resizeObserverObserved.some(obs => obs.targetTagName === 'canvas' || obs.targetId === 'export_element' || obs.targetTagName === 'article' || obs.containsCanvas);
   });

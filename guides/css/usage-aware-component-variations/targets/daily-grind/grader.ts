@@ -4,44 +4,17 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
   CSSStyleRule,
   CSSContainerRule,
-  CSSGroupingRule,
-  type CSSRule,
   type CSSStyleSheet,
 } from 'cssomnom';
 import type { Document } from 'linkedom';
 
 // @ts-ignore - package.json omits "type": "module" locally, though Playwright runs ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...getAllStyleRules(rule.cssRules));
-    }
-  }
-  return result;
-}
-
-function getAllContainerRules(rules: Iterable<CSSRule>): CSSContainerRule[] {
-  const result: CSSContainerRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSContainerRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...getAllContainerRules(rule.cssRules));
-    }
-  }
-  return result;
-}
 
 function hasCustomProperty(rule: CSSStyleRule): boolean {
   for (let i = 0; i < rule.style.length; i++) {
@@ -69,12 +42,11 @@ test.describe('usage-aware-component-variations Target Grader', () => {
   });
 
   test('Component uses @container style() queries to adapt its internal visual logic based on inherited properties', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const containerRules = getAllContainerRules(stylesheet.cssRules);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
 
     const styleQueryRules = containerRules.filter((r) => {
       const query = r.conditionText || r.containerQuery || '';
-      const nestedStyles = getAllStyleRules(r.cssRules);
+      const nestedStyles = getRules(r, CSSStyleRule);
       return /\bstyle\s*\(\s*--/.test(query) && nestedStyles.length > 0;
     });
 
@@ -82,14 +54,13 @@ test.describe('usage-aware-component-variations Target Grader', () => {
   });
 
   test('When the context is active (e.g., featured/seasonal), the component reveals promotional elements and applies prominent styling', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const containerRules = getAllContainerRules(stylesheet.cssRules);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
 
     const revealsPromotionalInStyleQuery = containerRules.some((r) => {
       const query = r.conditionText || r.containerQuery || '';
       if (!/\bstyle\s*\(\s*--/.test(query)) return false;
 
-      const nestedStyles = getAllStyleRules(r.cssRules);
+      const nestedStyles = getRules(r, CSSStyleRule);
       const revealsElement = nestedStyles.some((sr) => {
         const display = sr.style.getPropertyValue('display').trim();
         return Boolean(display && display !== 'none');
@@ -137,9 +108,8 @@ test.describe('usage-aware-component-variations Target Grader', () => {
   });
 
   test('The component does NOT rely on size queries (min-width or max-width) for this semantic variation', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const containerRules = getAllContainerRules(stylesheet.cssRules);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasStyleContainerRules = containerRules.some((r) =>
       /\bstyle\s*\(\s*--/.test(r.conditionText || r.containerQuery || '')
@@ -166,7 +136,7 @@ test.describe('usage-aware-component-variations Target Grader', () => {
     const topLevelStyleRules = Array.from(stylesheet.cssRules).filter(
       (r): r is CSSStyleRule => r instanceof CSSStyleRule
     );
-    const containerRules = getAllContainerRules(stylesheet.cssRules);
+    const containerRules = getRules(stylesheet, CSSContainerRule);
 
     const hasStyleContainerRules = containerRules.some((r) =>
       /\bstyle\s*\(\s*--/.test(r.conditionText || r.containerQuery || '')

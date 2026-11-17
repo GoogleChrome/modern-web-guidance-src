@@ -172,8 +172,8 @@ export function processSkills(publishRoot: string, distTag: DistTag = 'latest') 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, failOnMissingVectors, distTag = 'latest' } = opts;
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag, chunkCacheDir?: string }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, failOnMissingVectors, distTag = 'latest', chunkCacheDir } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -197,6 +197,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       outputDir: DIST_DIR,
       target: 'skills-cli',
       failOnMissingVectors,
+      chunkCacheDir,
     });
 
     // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
@@ -224,12 +225,12 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       updateVersionsInDir(publishRoot, version);
     }
 
-    const staticModelDir = path.join(rootDir, "src/rag/static-model");
-    const destStaticModelDir = path.join(DIST_DIR, "static-model");
-    if (fs.existsSync(staticModelDir)) {
-      fs.mkdirSync(destStaticModelDir, { recursive: true });
-      for (const file of ["words.json", "words.i8", "words.scale.f32"]) {
-        fs.copyFileSync(path.join(staticModelDir, file), path.join(destStaticModelDir, file));
+    const ragGenDir = path.join(rootDir, "src/rag/gen");
+    const destGenDir = path.join(DIST_DIR, "gen");
+    if (fs.existsSync(ragGenDir)) {
+      fs.mkdirSync(destGenDir, { recursive: true });
+      for (const file of ["query-words.json", "query-words.i8", "query-words.scale.f32"]) {
+        fs.copyFileSync(path.join(ragGenDir, file), path.join(destGenDir, file));
       }
     }
 
@@ -254,13 +255,13 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         JSON.stringify(resultSearch.metafile)
       );
 
-      console.log("Bundling analyze.mjs...");
+      console.log("Bundling legacy-scan.mjs...");
       const resultAnalyze = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/analyze.mjs"),
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/legacy-scan.mjs"),
         banner: {
           js: `// @ts-nocheck
 import { createRequire } from 'module';
@@ -280,7 +281,7 @@ const __dirname = __dirnameFunction(__filename);
       });
 
       fs.writeFileSync(
-        path.join(ROOT_DIST_DIR, "analyze.meta.json"),
+        path.join(ROOT_DIST_DIR, "legacy-scan.meta.json"),
         JSON.stringify(resultAnalyze.metafile)
       );
 
@@ -294,6 +295,14 @@ const __dirname = __dirnameFunction(__filename);
         define: {
           "__MWG_DIST_TAG__": JSON.stringify(distTag),
         },
+        banner: {
+          js: `const [__mwg_major] = process.versions.node.split('.').map(Number);
+if (__mwg_major < 22) {
+  console.error(\`modern-web-guidance requires Node.js >= 22 (current: \${process.version}). Please upgrade: https://nodejs.org/\`);
+  process.exit(1);
+}
+`,
+        },
         plugins: [{
           name: 'external-cli-modules',
           setup(build) {
@@ -301,7 +310,7 @@ const __dirname = __dirnameFunction(__filename);
               return { path: './search.mjs', external: true }
             });
             build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
-              return { path: './analyze.mjs', external: true }
+              return { path: './legacy-scan.mjs', external: true }
             });
           },
         }],
@@ -402,7 +411,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
 }
 
-function getLatestVersion() {
+export function getLatestVersion() {
   const output = gitExec(['tag', '-l', 'v*.*.*', '--merged', 'HEAD', '--sort=-v:refname'], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });

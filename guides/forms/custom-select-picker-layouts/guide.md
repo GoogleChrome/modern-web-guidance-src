@@ -71,7 +71,7 @@ To style the selected *option*, use `option:checked`. For example:
 }
 ```
 
-As with any UI control, do not communicate state with color alone, and use multiple visual indicators (e.g. colors, border thickness, checkmark) to communicate which option is selected.
+As with any UI control, do not communicate state with color alone, and use multiple visual indicators (e.g. colors, border thickness, checkmark) to communicate which option is selected. Ensure that at least one of the visual indicators to indicate the selected state has a contrast of at least 3:1 with the background color.
 
 ### 5. (Optional) Style the selected option checkmark
 
@@ -125,7 +125,7 @@ Do NOT use `padding-inline-start` or `padding-block-end` for this, as they will 
 By default, the `<select>` will show a text-only version of the selected option.
 To display rich content for the selected value, use `<selectedcontent>` inside a `<button>` and/or to display the selected option differently (e.g. hide certain details).
 
-Not **NOT** use `<selectedcontent>` without the `<button>` around it, as the `<selectedcontent>` will just become part of the picker, like any other content element.
+**DO NOT** use `<selectedcontent>` without the `<button>` around it, as the `<selectedcontent>` will just become part of the picker, like any other content element.
 
 ### Best practices
 
@@ -133,19 +133,18 @@ Not **NOT** use `<selectedcontent>` without the `<button>` around it, as the `<s
 
 ## Accessibility
 
-<!-- See https://github.com/GoogleChrome/modern-web-guidance-src/pull/960#pullrequestreview-4880620093 -->
-
 A native `<select>` only handles linear Up/Down arrow navigation, so Left/Right do nothing in the open picker and Up/Down still navigate items sequentially, regardless of rows and columns.
 
-To implement spatial navigation that follows the grid, you can intercept `keydown` and route focus to the nearest option in the pressed direction (e.g. using `getBoundingClientRect()`) when arrow keys are used.
+To add horizontal navigation that follows the grid, you can intercept `keydown` for the `Left` and `Right` arrow keys and route focus to the nearest option in the pressed direction (e.g. using `getBoundingClientRect()`).
 To determine the appropriate next/previous item, use DOM methods that operate on actual geometry (e.g. `getBoundingClientRect()`) rather than parsing CSS strings like `grid-template-columns` or `grid-column`, which can be brittle and error-prone for complex grids, subgrid, RTL, and other layout scenarios.
 That said, do not unnecessarily overengineer; use what invariants you know are true about the layout to simplify this logic.
 
 **Note:** This _only_ addresses keyboard navigation. The `<select>` and its `::picker()` still have their default roles (`menu` or `listbox`), and these cannot be overridden, nor are they allowed to contain an element with `role="grid"`.
-Nesting a wrapper with `role="grid"` inside the picker works in practice, but is not valid, and may surprise AT users.
-In some cases, using `<optgroup>` to group options may produce a good screen reader UX without `role="grid"`.
+It is not valid to apply grid semantics in a `::picker()` pseudo-element as it's against its content model.
+Because grid roles will not be conveyed to screen reader users, ensure that the `Down` and `Up` arrow keys still move focus sequentially to the next and previous item respectively (for example, by flowing the grid in columns or grouping columns with `<optgroup>`), even when `Left` and `Right` have been scripted, so screen reader users visit all options in the list.
 Otherwise, it may be ultimately necessary to switch to a custom solution using the popover API, anchor positioning, and `role="grid"` to achieve the desired UX for screen reader users.
 
+Ensure that the focus indicator when moving through the options has a contrast of at least 3:1 with the background color or adjacent color.
 
 ## Fallback Strategy
 

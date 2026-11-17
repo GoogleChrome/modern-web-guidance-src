@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import matter from '@11ty/gray-matter';
-import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
+import { guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { gitExec } from '../core/git-utils.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
-import { spawnAsync } from '../harness/lib/agent-shared.ts';
+import { ensureGuidedEvalDist } from '../harness/lib/eval-dist.ts';
 import { Agents, type SuiteConfig } from '../harness/config.ts';
 import { ensureFreshHostCodexAuth } from '../harness/agents/codex-cli-agent.ts';
 import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
@@ -18,6 +18,7 @@ import {
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
 import { findGraderFiles } from '../core/grader-lint.ts';
+import { replaceMacros } from '../core/macros.ts';
 import {
   type GuideInventory,
   GUIDE_FILE,
@@ -394,6 +395,11 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
+  // Ensure teacher vectors exist and rebuild skills-cli dist upfront when running tests
+  if (options.test !== false) {
+    await ensureGuidedEvalDist();
+  }
+
   // Step 2: Parallel target generation and calibration across targets
   const calibrationFailures = new Map<string, string>();
   const calibrationResults = await Promise.all(
@@ -448,9 +454,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         }
 
         if (res.sharedFailingTests && res.sharedFailingTests.length > 0) {
-          console.error(cRed(`❌ All golden solutions failed the same assertion(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
+          console.error(cRed(`❌ All golden solutions failed the same check(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
           console.error(cYellow(`Aborting calibration immediately (0 retries). Presuming guide.md / expectations.md misalignment or broken test.`));
-          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared test assertions.');
+          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared grader checks.');
           return false;
         }
 
@@ -491,6 +497,13 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   return overallSuccess;
 }
 
+export function prepareTargetGuide(guideDirAbs: string, workDir: string): void {
+  const guidePath = path.join(guideDirAbs, GUIDE_FILE);
+  const rawGuide = fs.readFileSync(guidePath, 'utf-8');
+  const expandedGuide = replaceMacros(rawGuide, guidePath, { target: 'skills-cli' });
+  fs.writeFileSync(path.join(workDir, GUIDE_FILE), expandedGuide);
+}
+
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
   if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -498,7 +511,7 @@ async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchTy
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    prepareTargetGuide(guideDirAbs, workDir);
 
     let prompt: string;
     if (patchType === 'zero-passrate') {
@@ -605,15 +618,6 @@ async function runAgentTest(
     return;
   }
 
-  // Build workspace dependencies
-  console.log(`\nBuilding skills-cli dist...`);
-  const buildCode = await spawnAsync('pnpm', ['run', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
-
-  if (buildCode !== 0) {
-    console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));
-    return;
-  }
-
   resetGuidesMap();
   const taskMap = getTaskMap();
 
@@ -669,6 +673,7 @@ async function runAgentTest(
         tasks: tasksToRun.map(v => v.taskKey),
         numRuns: 1,
         guidedOnly,
+        skipSkillBuild: true,
         suiteConfig: {
           ...suiteConfig,
           agent,
@@ -788,7 +793,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   console.log(`   ${GUIDE_FILE.padEnd(28)} \u2705 exists`);
   
   if (!inv.hasExpectations || inv.expectationsEmpty) {
-    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding checks)`);
   } else {
     console.log(`   ${EXPECTATIONS_FILE.padEnd(28)} \u2705 exists`);
   }

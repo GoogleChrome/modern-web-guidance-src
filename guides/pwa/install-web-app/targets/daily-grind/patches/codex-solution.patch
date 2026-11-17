@@ -1,0 +1,157 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..e5bd8b5
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,12 @@
++import { cp, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++
++for (const asset of ['index.html', 'manifest.webmanifest', 'icons']) {
++  await cp(new URL(asset, import.meta.url), new URL(asset, output), {
++    recursive: true,
++  });
++}
++
++console.log('Built The Daily Grind static site in dist/');
+diff --git a/icons/app.svg b/icons/app.svg
+new file mode 100644
+index 0000000..f0465e2
+--- /dev/null
++++ b/icons/app.svg
+@@ -0,0 +1,7 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M340 204h24a52 52 0 0 1 0 104h-28" fill="none" stroke="#ffab40" stroke-width="24"/>
++  <path d="M132 192h208v108a72 72 0 0 1-72 72h-64a72 72 0 0 1-72-72Z" fill="#fafafa"/>
++  <path d="M120 400h240" stroke="#d7ccc8" stroke-width="20" stroke-linecap="round"/>
++  <path d="M208 148c-24-24 24-32 0-56m64 56c-24-24 24-32 0-56" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..2b356e7 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.webmanifest">
++  <meta name="theme-color" content="#4e342e">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -93,6 +95,27 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 15px;
++    }
++
++    .hero-actions .btn {
++      margin-top: 0;
++    }
++
++    #install-status:empty {
++      display: none;
++    }
++
++    #install-status {
++      margin-top: 12px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -171,7 +194,11 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <install id="install-app"></install>
++    </div>
++    <p id="install-status" role="status"></p>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +234,27 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const installControl = document.getElementById('install-app');
++    const installStatus = document.getElementById('install-status');
++
++    installControl?.addEventListener('installresult', (event) => {
++      if (!installStatus || !('result' in event)) return;
++
++      switch (event.result) {
++        case 'success':
++          installStatus.textContent = 'The Daily Grind was installed or opened.';
++          break;
++        case 'aborted':
++          installStatus.textContent = 'Installation was canceled or could not complete.';
++          break;
++        case 'invalid-data':
++          installStatus.textContent = 'Installation could not start because the app data is invalid.';
++          break;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..3b0dcb9
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,19 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted coffee from The Daily Grind.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icons/app.svg",
++      "sizes": "any",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    }
++  ]
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

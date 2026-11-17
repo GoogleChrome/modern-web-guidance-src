@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+index 66c9173..a726d32 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,97 @@
+       background: #3e2723;
+     }
+ 
++    /* FAQ Accordion */
++    .accordion {
++      margin-top: 60px;
++    }
++
++    .accordion h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .accordion details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 10px;
++      border-inline-start: 4px solid transparent;
++    }
++
++    .accordion details[open] {
++      border-inline-start-color: var(--accent);
++    }
++
++    .accordion summary {
++      list-style: none;
++      display: flex;
++      align-items: center;
++      gap: 0.5ch;
++      padding: 15px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      border-radius: 8px;
++    }
++
++    .accordion summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .accordion summary:hover {
++      background: var(--secondary);
++    }
++
++    .accordion summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .accordion summary::before {
++      content: "";
++      inline-size: 1em;
++      block-size: 1em;
++      flex-shrink: 0;
++      background-color: currentColor;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
++      rotate: -90deg;
++    }
++
++    .accordion summary:dir(rtl)::before {
++      rotate: 90deg;
++    }
++
++    .accordion details[open] > summary::before {
++      rotate: 0deg;
++    }
++
++    .accordion .answer {
++      padding: 0 20px 15px calc(20px + 1em + 0.5ch);
++    }
++
++    .accordion details::details-content {
++      interpolate-size: allow-keywords;
++      overflow: clip;
++      contain: layout;
++    }
++
++    .accordion details:not([open])::details-content {
++      block-size: 0;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .accordion summary::before {
++        transition: rotate 0.2s;
++      }
++
++      .accordion details::details-content {
++        transition: block-size, content-visibility, display;
++        transition-duration: 0.3s;
++        transition-timing-function: ease-in-out;
++        transition-behavior: allow-discrete;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,8 +286,50 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="accordion" id="coffee-faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Coffee FAQ</h2>
++      <details name="coffee-faq-question">
++        <summary>Where does your coffee come from?</summary>
++        <div class="answer">
++          <p>We buy directly from small family farms in Colombia, Ethiopia, and Guatemala, paying above fair-trade prices so growers can invest in their land and communities.</p>
++        </div>
++      </details>
++      <details name="coffee-faq-question">
++        <summary>How and when do you roast your beans?</summary>
++        <div class="answer">
++          <p>We roast in small batches at our local roastery several times a week, so your beans arrive fresh, usually within days of roasting.</p>
++        </div>
++      </details>
++      <details name="coffee-faq-question">
++        <summary>How do I earn rewards?</summary>
++        <div class="answer">
++          <p>Join our rewards program and earn one point for every dollar spent. Redeem 100 points for a free drink of your choice.</p>
++        </div>
++      </details>
++      <details name="coffee-faq-question">
++        <summary>Do rewards points expire?</summary>
++        <div class="answer">
++          <p>Points stay active for 12 months after your last purchase, so keep sipping and they never go away.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
++  <script>
++    // Fallback for browsers without support for the details name attribute
++    if (!Object.hasOwn(HTMLDetailsElement.prototype, "name")) {
++      document.addEventListener("toggle", event => {
++        const details = event.target;
++        if (!(details instanceof HTMLDetailsElement) || !details.open || !details.hasAttribute("name")) return;
++        const name = CSS.escape(details.getAttribute("name"));
++        for (const other of document.querySelectorAll(`details[name="${name}"]`)) {
++          if (other !== details) other.open = false;
++        }
++      }, { capture: true });
++    }
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

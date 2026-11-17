@@ -1,7 +1,8 @@
 // Expectations Analysis:
-// Expectation 1: TESTED - Validates that :user-invalid and :user-valid are used rather than :invalid and :valid for form validation styling.
-// Expectation 2: TESTED - Validates that field-sizing: content is applied to auto-growing text inputs or <textarea> elements.
-// Expectation 3: TESTED - Validates that user-select: none is not applied to <p> elements or their ancestors while browser-generated UI theming is configured.
+// Expectation 1: TESTED - Validates that :user-invalid and :user-valid are used rather than :invalid and :valid for form validation styling (excluding input[type="range"]).
+// Expectation 2: TESTED - Validates that field-sizing: content is applied to multi-line <textarea> elements or auto-growing text inputs.
+// Expectation 3: TESTED - Validates that page-level browser UI theming configures accent-color and ::selection without applying user-select: none to content text elements or their ancestors.
+// Expectation 4: TESTED - Validates that custom-styled choice controls use native <select> with appearance: base-select and ::picker(select) or label:has(:checked), and submit actions use <button> rather than <input type="submit">.
 
 import {
   test,
@@ -36,7 +37,7 @@ function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
 }
 
 test.describe('browser-ui-theming Target Grader', () => {
-  test('Expectation 1: Uses :user-invalid and :user-valid rather than :invalid and :valid for form validation styling', () => {
+  test('Form validation styling uses :user-invalid and :user-valid rather than :invalid and :valid (and does not apply field validity styling to input[type="range"] sliders) so error states appear only after user interaction', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styleRules = collectStyleRules(stylesheet.cssRules);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
@@ -75,15 +76,29 @@ test.describe('browser-ui-theming Target Grader', () => {
       )
     );
 
+    // Ensure broad input:user-valid / input:user-invalid selectors exclude range sliders
+    const appliesValidityToRangeSlider = styleRules.some((r) => {
+      if (!r.selectorText.includes(':user-valid') && !r.selectorText.includes(':user-invalid')) {
+        return false;
+      }
+      return r.selectorText.split(',').some((part) => {
+        const s = part.trim();
+        const targetsBroadInput = /\binput\s*:user-(valid|invalid)\b/i.test(s) && !/input\[type=/i.test(s);
+        const excludesRange = /:not\([^)]*range[^)]*\)/i.test(s);
+        return targetsBroadInput && !excludesRange;
+      });
+    });
+
     const satisfiesExpectation1 =
       ((hasUserInvalidCss && hasUserValidCss) || hasUserPseudosUtility) &&
       !usesRawInvalidOrValidCss &&
-      !usesRawInvalidOrValidUtility;
+      !usesRawInvalidOrValidUtility &&
+      !appliesValidityToRangeSlider;
 
     expect(satisfiesExpectation1).toBe(true);
   });
 
-  test('Expectation 2: Uses field-sizing: content on auto-growing text inputs or <textarea> elements', () => {
+  test('Multi-line <textarea> elements (or auto-growing text inputs) use field-sizing: content to size to their content', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styleRules = collectStyleRules(stylesheet.cssRules);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
@@ -104,29 +119,26 @@ test.describe('browser-ui-theming Target Grader', () => {
     expect(hasFieldSizingInCss || hasFieldSizingUtility).toBe(true);
   });
 
-  test('Expectation 3: Configures browser UI theming without applying user-select: none to <p> elements or their ancestors', () => {
+  test('Page-level browser UI theming configures accent-color and ::selection without applying user-select: none to content text elements (such as paragraphs or headings) or their ancestors', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = Array.from(stylesheet.cssRules);
     const styleRules = collectStyleRules(allRules);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const hasBrowserUiTheming =
-      styleRules.some((r) =>
-        /\b(light|dark)\b/i.test(r.style.getPropertyValue('color-scheme'))
-      ) &&
       styleRules.some(
         (r) => r.style.getPropertyValue('accent-color').trim().length > 0
       ) &&
       styleRules.some((r) => r.selectorText.includes('::selection'));
 
-    const paragraphs = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('p'))
+    const contentTextElements = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, article'))
     );
 
-    const anyParagraphOrAncestorUnselectable =
-      paragraphs.length === 0 ||
-      paragraphs.some((p) => {
-        let current: any = p;
+    const anyContentOrAncestorUnselectable =
+      contentTextElements.length === 0 ||
+      contentTextElements.some((el) => {
+        let current: any = el;
         while (current && current.nodeType === 1) {
           const cascaded = getCascadedStyle(current, allRules);
           const userSelect =
@@ -139,8 +151,36 @@ test.describe('browser-ui-theming Target Grader', () => {
         return false;
       });
 
-    expect(hasBrowserUiTheming && !anyParagraphOrAncestorUnselectable).toBe(
+    expect(hasBrowserUiTheming && !anyContentOrAncestorUnselectable).toBe(
       true
     );
+  });
+
+  test('Custom-styled choice controls keep native form elements by styling <select> with appearance: base-select and ::picker(select) or inline radio and checkbox options with label:has(:checked), and submit actions use <button> rather than <input type="submit">', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+
+    const hasBaseSelectAndPicker =
+      styleRules.some(
+        (r) =>
+          /\bselect\b/i.test(r.selectorText) &&
+          r.style.getPropertyValue('appearance').trim() === 'base-select'
+      ) &&
+      styleRules.some((r) => r.selectorText.includes('::picker(select)'));
+
+    const hasCheckedLabelStyling = styleRules.some((r) =>
+      /:has\([^)]*:checked/i.test(r.selectorText)
+    );
+
+    const hasNativeSubmitButton = docs.some((d) => {
+      const buttons = Array.from(d.document.querySelectorAll('button'));
+      const legacyInputButtons = Array.from(
+        d.document.querySelectorAll('input[type="submit"], input[type="button"], input[type="reset"]')
+      );
+      return buttons.length > 0 && legacyInputButtons.length === 0;
+    });
+
+    expect((hasBaseSelectAndPicker || hasCheckedLabelStyling) && hasNativeSubmitButton).toBe(true);
   });
 });

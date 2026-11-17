@@ -113,7 +113,18 @@ test.describe(`Visually Texture Content Expectations: ${demoName}`, () => {
           const maskImg = style.maskImage || style.getPropertyValue('mask-image') || '';
           const maskSize = style.maskSize || style.getPropertyValue('mask-size') || '';
           const maskRepeat = style.maskRepeat || style.getPropertyValue('mask-repeat') || '';
-          const hasValidImage = Boolean(maskImg && maskImg !== 'none' && (maskImg.includes('.svg') || maskImg.includes('gradient') || maskImg.includes('data:image/svg')));
+          const hasValidImage = Boolean(
+            maskImg &&
+            maskImg !== 'none' &&
+            (maskImg.includes('.svg') ||
+              maskImg.includes('.png') ||
+              maskImg.includes('.jpg') ||
+              maskImg.includes('.jpeg') ||
+              maskImg.includes('.webp') ||
+              maskImg.includes('.avif') ||
+              maskImg.includes('gradient') ||
+              maskImg.includes('data:image/svg'))
+          );
           const hasValidSize = Boolean(maskSize && maskSize !== 'auto' && maskSize !== '');
           const hasValidRepeat = Boolean(maskRepeat && maskRepeat !== 'no-repeat' && maskRepeat !== '');
           return hasValidImage && (hasValidSize || hasValidRepeat);

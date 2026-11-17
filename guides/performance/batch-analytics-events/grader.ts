@@ -150,16 +150,16 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
-    // Click multiple times to trigger multiple metric dispatches (INP)
+    // Click multiple times to trigger multiple metric dispatches (event timing)
     await page.click('body');
-    await page.waitForTimeout(50);
     await page.click('body');
-    await page.waitForTimeout(50);
     await page.click('body');
 
-    const abortCount = await page.evaluate(() => window.abortCallCount);
     const content = getSearchContent();
     const hasScopedAbortBatching = /\.abort\s*\(\s*\)[\s\S]{0,250}?new\s+AbortController\s*\(\s*\)[\s\S]{0,800}?\bfetchLater\s*\(/.test(content);
-    expect(abortCount > 0 || hasScopedAbortBatching).toBe(true);
+    await expect.poll(async () => {
+      const abortCount = await page.evaluate(() => window.abortCallCount);
+      return abortCount > 0 || hasScopedAbortBatching;
+    }).toBe(true);
   });
 });

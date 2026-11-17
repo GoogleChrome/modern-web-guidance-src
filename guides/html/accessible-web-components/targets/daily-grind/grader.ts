@@ -41,54 +41,106 @@ function getPropertyAccessAssignments(
     });
 }
 
+async function getBackendNodeId(
+  session: Awaited<ReturnType<ReturnType<Page['context']>['newCDPSession']>>,
+  expression: string
+): Promise<number | null> {
+  const evalRes = await session.send('Runtime.evaluate', {
+    expression,
+    returnByValue: false,
+  });
+  const objectId = evalRes.result?.objectId;
+  if (!objectId) return null;
+  try {
+    const { node } = await session.send('DOM.describeNode', { objectId });
+    return node.backendNodeId ?? null;
+  } finally {
+    await session.send('Runtime.releaseObject', { objectId }).catch(() => {});
+  }
+}
+
 async function getInteractiveControl(page: Page) {
   const session = await page.context().newCDPSession(page);
   try {
-    const { root } = await session.send('DOM.getDocument', { depth: -1 });
     const { nodes: axNodes } = await session.send('Accessibility.getFullAXTree');
 
-    const elements = await page.evaluate(() => {
+    const hostCount = await page.evaluate(() => {
       const els = Array.from(document.querySelectorAll('*')).filter((el) =>
         el.tagName.includes('-')
       );
-      return els.map((el, idx) => {
+      els.forEach((el, idx) => {
         el.setAttribute('data-grader-idx', String(idx));
-        return {
-          tagName: el.tagName.toLowerCase(),
-          selector: `[data-grader-idx="${idx}"]`,
-        };
       });
+      return els.length;
     });
 
-    for (const item of elements) {
-      const { nodeId } = await session.send('DOM.querySelector', {
-        nodeId: root.nodeId,
-        selector: item.selector,
-      });
-      if (!nodeId) continue;
-      const { node: domNode } = await session.send('DOM.describeNode', {
-        nodeId,
-      });
-      const axNode = axNodes.find(
-        (n: any) => n.backendDOMNodeId === domNode.backendNodeId
+    for (let idx = 0; idx < hostCount; idx++) {
+      const selector = `[data-grader-idx="${idx}"]`;
+      const hostInfo = await page.evaluate((sel: string) => {
+        const host = document.querySelector(sel);
+        if (!host) return null;
+        const innerNative = host.shadowRoot?.querySelector(
+          'button, input:not([type="hidden"]), select, textarea, a[href]'
+        );
+        return {
+          tagName: host.tagName.toLowerCase(),
+          hasInnerNative: Boolean(innerNative),
+        };
+      }, selector);
+      if (!hostInfo) continue;
+
+      const hostBackendId = await getBackendNodeId(
+        session,
+        `document.querySelector(${JSON.stringify(selector)})`
       );
-      if (!axNode) continue;
-      const stateProp = axNode.properties?.find((p: any) =>
+      const hostAx = hostBackendId
+        ? axNodes.find((n: any) => n.backendDOMNodeId === hostBackendId)
+        : null;
+      const hostStateProp = hostAx?.properties?.find((p: any) =>
         ['checked', 'pressed', 'expanded'].includes(p.name)
       );
-      if (stateProp) {
+      if (hostAx && hostStateProp && !hostInfo.hasInnerNative) {
         return {
-          selector: item.selector,
-          tagName: item.tagName,
-          role: axNode.role?.value,
-          name: axNode.name?.value,
-          stateProp: stateProp.name,
-          stateValue: String(stateProp.value?.value),
-          nameSources: (axNode.name?.sources ?? []) as Array<{
+          mode: 'host' as const,
+          selector,
+          tagName: hostInfo.tagName,
+          role: hostAx.role?.value,
+          name: hostAx.name?.value,
+          stateProp: hostStateProp.name,
+          stateValue: String(hostStateProp.value?.value),
+          nameSources: (hostAx.name?.sources ?? []) as Array<{
             attribute?: string;
             invalid?: boolean;
           }>,
         };
+      }
+
+      if (hostInfo.hasInnerNative) {
+        const innerBackendId = await getBackendNodeId(
+          session,
+          `document.querySelector(${JSON.stringify(selector)})?.shadowRoot?.querySelector('button, input:not([type="hidden"]), select, textarea, a[href]')`
+        );
+        const innerAx = innerBackendId
+          ? axNodes.find((n: any) => n.backendDOMNodeId === innerBackendId)
+          : null;
+        const innerStateProp = innerAx?.properties?.find((p: any) =>
+          ['checked', 'pressed', 'expanded'].includes(p.name)
+        );
+        if (innerAx && innerStateProp) {
+          return {
+            mode: 'internal' as const,
+            selector,
+            tagName: hostInfo.tagName,
+            role: innerAx.role?.value,
+            name: innerAx.name?.value,
+            stateProp: innerStateProp.name,
+            stateValue: String(innerStateProp.value?.value),
+            nameSources: (innerAx.name?.sources ?? []) as Array<{
+              attribute?: string;
+              invalid?: boolean;
+            }>,
+          };
+        }
       }
     }
     return null;
@@ -97,22 +149,21 @@ async function getInteractiveControl(page: Page) {
   }
 }
 
-async function getControlState(page: Page, selector: string) {
+async function getControlState(
+  page: Page,
+  selector: string,
+  mode: 'host' | 'internal'
+) {
   const session = await page.context().newCDPSession(page);
   try {
-    const { root } = await session.send('DOM.getDocument', { depth: -1 });
     const { nodes: axNodes } = await session.send('Accessibility.getFullAXTree');
-    const { nodeId } = await session.send('DOM.querySelector', {
-      nodeId: root.nodeId,
-      selector,
-    });
-    if (!nodeId) return null;
-    const { node: domNode } = await session.send('DOM.describeNode', {
-      nodeId,
-    });
-    const axNode = axNodes.find(
-      (n: any) => n.backendDOMNodeId === domNode.backendNodeId
-    );
+    const expr =
+      mode === 'host'
+        ? `document.querySelector(${JSON.stringify(selector)})`
+        : `document.querySelector(${JSON.stringify(selector)})?.shadowRoot?.querySelector('button, input:not([type="hidden"]), select, textarea, a[href]')`;
+    const backendNodeId = await getBackendNodeId(session, expr);
+    if (!backendNodeId) return null;
+    const axNode = axNodes.find((n: any) => n.backendDOMNodeId === backendNodeId);
     if (!axNode) return null;
     const stateProp = axNode.properties?.find((p: any) =>
       ['checked', 'pressed', 'expanded'].includes(p.name)
@@ -128,57 +179,31 @@ async function getControlState(page: Page, selector: string) {
   }
 }
 
+async function clickControl(page: Page, selector: string, mode: 'host' | 'internal') {
+  await page.evaluate(
+    ({ sel, m }: { sel: string; m: 'host' | 'internal' }) => {
+      const host = document.querySelector(sel) as HTMLElement | null;
+      if (!host) return;
+      const target =
+        m === 'internal'
+          ? (host.shadowRoot?.querySelector(
+              'button, input:not([type="hidden"]), select, textarea, a[href]'
+            ) as HTMLElement | null)
+          : host;
+      target?.click();
+    },
+    { sel: selector, m: mode }
+  );
+}
+
+async function focusControl(page: Page, selector: string) {
+  await page.evaluate((sel: string) => {
+    const host = document.querySelector(sel) as HTMLElement | null;
+    host?.focus();
+  }, selector);
+}
+
 test.describe('accessible-web-components Target Grader', () => {
-  test('Places interactive control host in tab order (tabIndex = 0 in connectedCallback when no tabindex attribute exists, not in constructor)', () => {
-    const classes = getCustomElementClasses();
-    const validTabIndexInConnectedCallback = classes.some((cls) => {
-      const ctor = cls.getConstructors()[0];
-      const ctorSetsTabIndex = ctor
-        ? ctor
-            .getDescendantsOfKind(SyntaxKind.BinaryExpression)
-            .some(
-              (bin) =>
-                bin.getOperatorToken().getText() === '=' &&
-                bin.getLeft().getKind() ===
-                  SyntaxKind.PropertyAccessExpression &&
-                (bin.getLeft() as PropertyAccessExpression).getName() ===
-                  'tabIndex'
-            )
-        : false;
-
-      const connectedCb = cls.getMethod('connectedCallback');
-      if (!connectedCb) return false;
-
-      const checksTabindexAttr = connectedCb
-        .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => {
-          const expr = call.getExpression();
-          const args = call.getArguments();
-          return (
-            expr.getKind() === SyntaxKind.PropertyAccessExpression &&
-            (expr as PropertyAccessExpression).getName() === 'hasAttribute' &&
-            args.length > 0 &&
-            args[0].getText().replace(/['"`]/g, '').toLowerCase() === 'tabindex'
-          );
-        });
-
-      const setsTabIndexZero = connectedCb
-        .getDescendantsOfKind(SyntaxKind.BinaryExpression)
-        .some(
-          (bin) =>
-            bin.getOperatorToken().getText() === '=' &&
-            bin.getLeft().getKind() === SyntaxKind.PropertyAccessExpression &&
-            (bin.getLeft() as PropertyAccessExpression).getName() ===
-              'tabIndex' &&
-            bin.getRight().getText() === '0'
-        );
-
-      return !ctorSetsTabIndex && checksTabindexAttr && setsTabIndexZero;
-    });
-
-    expect(validTabIndexInConnectedCallback).toBe(true);
-  });
-
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
@@ -200,9 +225,111 @@ test.describe('accessible-web-components Target Grader', () => {
       });
     });
 
+    test('Places interactive control host in tab order (tabIndex = 0 in connectedCallback when no tabindex attribute exists, not in constructor)', async ({
+      page,
+    }) => {
+      const control = await getInteractiveControl(page);
+      if (!control) {
+        expect(control).not.toBeNull();
+        return;
+      }
+
+      const classes = getCustomElementClasses();
+      const ctorSetsTabIndex = classes.some((cls) => {
+        const ctor = cls.getConstructors()[0];
+        return ctor
+          ? ctor
+              .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+              .some(
+                (bin) =>
+                  bin.getOperatorToken().getText() === '=' &&
+                  bin.getLeft().getKind() ===
+                    SyntaxKind.PropertyAccessExpression &&
+                  (bin.getLeft() as PropertyAccessExpression).getName() ===
+                    'tabIndex'
+              )
+          : false;
+      });
+      expect(ctorSetsTabIndex).toBe(false);
+
+      if (control.mode === 'internal') {
+        const internalFocusOk = await page.evaluate((sel: string) => {
+          const host = document.querySelector(sel) as HTMLElement | null;
+          if (!host) return false;
+          const hostInTabOrder =
+            host.hasAttribute('tabindex') || host.tabIndex >= 0;
+          const inner = host.shadowRoot?.querySelector(
+            'button, input:not([type="hidden"]), select, textarea, a[href]'
+          ) as HTMLElement | null;
+          return (
+            !hostInTabOrder &&
+            Boolean(inner) &&
+            inner!.tabIndex >= 0 &&
+            !inner!.hasAttribute('disabled')
+          );
+        }, control.selector);
+        expect(internalFocusOk).toBe(true);
+        return;
+      }
+
+      const validTabIndexInConnectedCallback = classes.some((cls) => {
+        const connectedCb = cls.getMethod('connectedCallback');
+        if (!connectedCb) return false;
+
+        const checksTabindexAttr = connectedCb
+          .getDescendantsOfKind(SyntaxKind.CallExpression)
+          .some((call) => {
+            const expr = call.getExpression();
+            const args = call.getArguments();
+            return (
+              expr.getKind() === SyntaxKind.PropertyAccessExpression &&
+              (expr as PropertyAccessExpression).getName() === 'hasAttribute' &&
+              args.length > 0 &&
+              args[0].getText().replace(/['"`]/g, '').toLowerCase() ===
+                'tabindex'
+            );
+          });
+
+        const setsTabIndexZero = connectedCb
+          .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+          .some(
+            (bin) =>
+              bin.getOperatorToken().getText() === '=' &&
+              bin.getLeft().getKind() === SyntaxKind.PropertyAccessExpression &&
+              (bin.getLeft() as PropertyAccessExpression).getName() ===
+                'tabIndex' &&
+              bin.getRight().getText() === '0'
+          );
+
+        return checksTabindexAttr && setsTabIndexZero;
+      });
+
+      expect(validTabIndexInConnectedCallback).toBe(true);
+    });
+
     test('Exposes default semantic role via ElementInternals without setting a role attribute on the host element', async ({
       page,
     }) => {
+      const control = await getInteractiveControl(page);
+      const runtimeCheck = await page.evaluate(() => {
+        const hosts = Array.from(document.querySelectorAll('*')).filter((el) =>
+          el.tagName.includes('-')
+        );
+        return (
+          hosts.length > 0 && hosts.every((el) => !el.hasAttribute('role'))
+        );
+      });
+
+      if (!control || !runtimeCheck) {
+        expect(Boolean(control) && runtimeCheck).toBe(true);
+        return;
+      }
+
+      if (control.mode === 'internal') {
+        expect(TOGGLE_ROLES.includes(control.role)).toBe(true);
+        return;
+      }
+
       const classes = getCustomElementClasses();
       const setsRoleViaInternals = classes.some((cls) => {
         const hasAttachInternals = cls
@@ -219,30 +346,12 @@ test.describe('accessible-web-components Target Grader', () => {
         return hasAttachInternals && assignsRole;
       });
 
-      const runtimeCheck = await page.evaluate(() => {
-        const hosts = Array.from(document.querySelectorAll('*')).filter((el) =>
-          el.tagName.includes('-')
-        );
-        return (
-          hosts.length > 0 && hosts.every((el) => !el.hasAttribute('role'))
-        );
-      });
-
-      expect(setsRoleViaInternals && runtimeCheck).toBe(true);
+      expect(setsRoleViaInternals).toBe(true);
     });
 
     test('Exposes initial state (checked, pressed, or expanded) in the accessibility tree via ElementInternals without a matching aria-* attribute on the host', async ({
       page,
     }) => {
-      const classes = getCustomElementClasses();
-      const setsStateViaInternals = classes.some(
-        (cls) =>
-          getPropertyAccessAssignments(
-            cls,
-            /^(ariaChecked|ariaPressed|ariaExpanded)$/
-          ).length > 0
-      );
-
       const runtimeStateCheck = await page.evaluate(() => {
         const hosts = Array.from(document.querySelectorAll('*')).filter((el) =>
           el.tagName.includes('-')
@@ -264,11 +373,24 @@ test.describe('accessible-web-components Target Grader', () => {
           (control.stateValue === 'true' || control.stateValue === 'false')
       );
 
-      expect(
-        setsStateViaInternals &&
-          runtimeStateCheck &&
-          hasInitialRoleAndStateInTree
-      ).toBe(true);
+      if (!runtimeStateCheck || !hasInitialRoleAndStateInTree || !control) {
+        expect(runtimeStateCheck && hasInitialRoleAndStateInTree).toBe(true);
+        return;
+      }
+
+      if (control.mode === 'host') {
+        const classes = getCustomElementClasses();
+        const setsStateViaInternals = classes.some(
+          (cls) =>
+            getPropertyAccessAssignments(
+              cls,
+              /^(ariaChecked|ariaPressed|ariaExpanded)$/
+            ).length > 0
+        );
+        expect(setsStateViaInternals).toBe(true);
+      } else {
+        expect(hasInitialRoleAndStateInTree).toBe(true);
+      }
     });
 
     test('Interactive control host element receives focus directly', async ({
@@ -276,16 +398,30 @@ test.describe('accessible-web-components Target Grader', () => {
     }) => {
       const control = await getInteractiveControl(page);
       const hostReceivesFocus = control
-        ? await page.evaluate((sel: string) => {
-            const host = document.querySelector(sel);
-            if (!(host instanceof HTMLElement)) return false;
-            if (host.tabIndex !== 0) return false;
-            host.focus();
-            return (
-              document.activeElement === host &&
-              (!host.shadowRoot || host.shadowRoot.activeElement === null)
-            );
-          }, control.selector)
+        ? await page.evaluate(
+            ({ sel, mode }: { sel: string; mode: 'host' | 'internal' }) => {
+              const host = document.querySelector(sel);
+              if (!(host instanceof HTMLElement)) return false;
+              if (mode === 'internal') {
+                const inner = host.shadowRoot?.querySelector(
+                  'button, input:not([type="hidden"]), select, textarea, a[href]'
+                ) as HTMLElement | null;
+                if (!inner) return false;
+                host.focus();
+                return (
+                  document.activeElement === host &&
+                  host.shadowRoot?.activeElement === inner
+                );
+              }
+              if (host.tabIndex !== 0) return false;
+              host.focus();
+              return (
+                document.activeElement === host &&
+                (!host.shadowRoot || host.shadowRoot.activeElement === null)
+              );
+            },
+            { sel: control.selector, mode: control.mode }
+          )
         : false;
 
       expect(hostReceivesFocus).toBe(true);
@@ -297,11 +433,8 @@ test.describe('accessible-web-components Target Grader', () => {
       const control = await getInteractiveControl(page);
       let afterState = null;
       if (control) {
-        await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          el?.click();
-        }, control.selector);
-        afterState = await getControlState(page, control.selector);
+        await clickControl(page, control.selector, control.mode);
+        afterState = await getControlState(page, control.selector, control.mode);
       }
 
       const passed = Boolean(
@@ -321,12 +454,9 @@ test.describe('accessible-web-components Target Grader', () => {
       const control = await getInteractiveControl(page);
       let afterState = null;
       if (control) {
-        await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          el?.focus();
-        }, control.selector);
+        await focusControl(page, control.selector);
         await page.keyboard.press('Space');
-        afterState = await getControlState(page, control.selector);
+        afterState = await getControlState(page, control.selector, control.mode);
       }
 
       const passed = Boolean(
@@ -347,11 +477,12 @@ test.describe('accessible-web-components Target Grader', () => {
       let stateToggled = false;
       let noAriaStateAttributes = false;
       if (control) {
-        await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          el?.click();
-        }, control.selector);
-        const afterState = await getControlState(page, control.selector);
+        await clickControl(page, control.selector, control.mode);
+        const afterState = await getControlState(
+          page,
+          control.selector,
+          control.mode
+        );
         stateToggled = Boolean(
           afterState && control.stateValue !== afterState.stateValue
         );

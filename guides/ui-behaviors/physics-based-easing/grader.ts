@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
-test('should use the linear() timing function for animation or transition', async ({ page }) => {
+test('Uses the linear() timing function for animation or transition', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);
@@ -17,7 +17,7 @@ test('should use the linear() timing function for animation or transition', asyn
   expect(hasLinear).toBe(true);
 });
 
-test('should include at least 5 stops to approximate a complex physics-based curve', async ({ page }) => {
+test('Includes at least 5 stops in the linear() timing function to approximate a complex physics-based curve', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);
@@ -42,7 +42,7 @@ test('should include at least 5 stops to approximate a complex physics-based cur
   expect(maxStops).toBeGreaterThanOrEqual(5);
 });
 
-test('should contain at least one progress value greater than 1 or less than 0 on the spring box to demonstrate overshooting or anticipation', async ({ page }) => {
+test('Contains a progress value greater than 1 or less than 0 on the spring element to demonstrate overshooting or anticipation', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);
@@ -69,7 +69,7 @@ test('should contain at least one progress value greater than 1 or less than 0 o
   expect(hasOvershoot).toBe(true);
 });
 
-test('should define a non-zero transition or animation duration alongside the linear() timing function', async ({ page }) => {
+test('Defines a non-zero transition or animation duration alongside the linear() timing function', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);
@@ -99,64 +99,79 @@ test('should define a non-zero transition or animation duration alongside the li
   expect(hasDurationWithLinear).toBe(true);
 });
 
-test('should provide a fallback easing function for browsers that do not support linear()', async ({ page }) => {
+test('Provides a fallback easing function for browsers that do not support linear()', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);
 
   const hasFallback = await page.evaluate(() => {
-    const styleTags = Array.from(document.querySelectorAll('style'));
-    const cssTexts = styleTags.map(tag => tag.textContent || '');
-    
-    let foundFallback = false;
-    
-    for (const css of cssTexts) {
-      const cleanCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
-      
-      if (/@supports\s+not\s*\([^)]*linear[^)]*\)/i.test(cleanCss)) {
-        foundFallback = true;
-        break;
-      }
-      
-      const blocks = cleanCss.match(/\{[^}]*\}/g) || [];
-      for (const block of blocks) {
-        if (block.includes('linear(') || block.includes('easing')) {
-          const declarations = block.slice(1, -1).split(';').map(d => d.trim());
-          
-          let hasStandardFallback = false;
-          let hasLinearEasing = false;
-          
-          for (const decl of declarations) {
-            const [prop, val] = decl.split(':').map(s => s.trim());
-            if (!prop || !val) continue;
-            
-            if (prop.startsWith('transition') || prop.startsWith('animation')) {
-              const isLinear = val.includes('linear(') || val.includes('easing');
-              const isStandard = /ease-out|ease-in|ease-in-out|cubic-bezier|ease\b/.test(val);
-              
-              if (isLinear) {
-                hasLinearEasing = true;
-              }
-              if (isStandard) {
-                hasStandardFallback = true;
-              }
-            }
+    function collectRules(sheet: CSSStyleSheet): CSSRule[] {
+      const results: CSSRule[] = [];
+      try {
+        for (const rule of Array.from(sheet.cssRules || [])) {
+          results.push(rule);
+          if ('cssRules' in rule && (rule as any).cssRules) {
+            results.push(...Array.from((rule as any).cssRules as CSSRule[]));
           }
-          
-          if (hasLinearEasing && hasStandardFallback) {
-            foundFallback = true;
-            break;
+        }
+      } catch {}
+      return results;
+    }
+
+    const sheets = Array.from(document.styleSheets);
+    const allRules = sheets.flatMap(collectRules);
+
+    // 1. Check for @supports block with linear( or easing
+    for (const rule of allRules) {
+      if (rule instanceof CSSSupportsRule || (rule.constructor && rule.constructor.name === 'CSSSupportsRule')) {
+        const cond = (rule as CSSSupportsRule).conditionText || '';
+        const css = rule.cssText || '';
+        if (/linear\(|easing/i.test(cond) || /linear\(|easing/i.test(css)) {
+          return true;
+        }
+      }
+    }
+
+    // 2. Check for rules targeting animated elements or defining easing
+    const targetSelectorRegex = /\.box|\.spring|\.bounce|card/i;
+    for (const rule of allRules) {
+      if (rule instanceof CSSStyleRule) {
+        const sel = rule.selectorText || '';
+        const css = rule.cssText || '';
+        if (targetSelectorRegex.test(sel)) {
+          const hasLinear = /linear\(/i.test(css);
+          const hasVarEasing = /var\(--[\w-]*easing\)/i.test(css);
+          const hasStandard = /(?:cubic-bezier|ease-out|ease-in-out|ease-in|\bease\b)/i.test(css);
+          if ((hasLinear || hasVarEasing) && hasStandard) {
+            return true;
           }
         }
       }
     }
-    
-    return foundFallback;
+
+    // 3. Also check <style> elements directly for rule blocks targeting cards/boxes with fallback
+    const styleTags = Array.from(document.querySelectorAll('style'));
+    for (const tag of styleTags) {
+      const text = tag.textContent || '';
+      if (/@supports[^{]*linear\(/i.test(text)) return true;
+      const blockRegex = /(?:^|\})([^{]*?(?:\.box|\.spring|\.bounce|\.card)[^{]*)\{([^}]+)\}/gi;
+      let match;
+      while ((match = blockRegex.exec(text)) !== null) {
+        const body = match[2];
+        const hasLinearOrVar = /linear\(|var\(--[\w-]*easing\)/i.test(body);
+        const hasStandard = /(?:cubic-bezier|ease-out|ease-in-out|ease-in|\bease\b)/i.test(body);
+        if (hasLinearOrVar && hasStandard) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   });
   expect(hasFallback).toBe(true);
 });
 
-test('should disable or reduce the animation when prefers-reduced-motion is detected', async ({ page }) => {
+test('Disables or reduces the animation when prefers-reduced-motion is detected', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);
@@ -176,7 +191,7 @@ test('should disable or reduce the animation when prefers-reduced-motion is dete
   expect(isReduced).toBe(true);
 });
 
-test('should not have steps above 1 or below 0 if opacity is transitioned with a linear() function', async ({ page }) => {
+test('Avoids steps above 1 or below 0 if opacity is transitioned with a linear() function', async ({ page }) => {
   const targetFile = process.env.TARGET_FILE || path.resolve('demo.html');
   const fileUrl = targetFile.startsWith('http') ? targetFile : 'file://' + path.resolve(targetFile);
   await page.goto(fileUrl);

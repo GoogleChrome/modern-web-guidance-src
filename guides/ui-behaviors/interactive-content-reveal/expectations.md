@@ -7,7 +7,7 @@
 - The revealed content has a `mask-image` property, which is a radial gradient from black to transparent.
 - The position of the radial gradient is determined by the `--mouse-x` and `--mouse-y` custom properties from the mouse position.
 - The gradient stops are set by the `--inner-size` and `--outer-size` custom properties.
-- For users who prefer reduced motion, the `--inner-size` and `--outer-size` transition must happen immediately, by setting `transition-duration: 0`.
+- For users who prefer reduced motion, the `--inner-size` and `--outer-size` transition must happen immediately, by setting `transition-duration: 0s` or `transition: none`.
 - The `--inner-size` and `--outer-size` custom properties must have a non-zero transition duration on the revealed content element.
 - The `--mouse-x` and `--mouse-y` must not have a transition on the revealed content element.
 - The implementation MUST guarantee that underlying content remains fully persistent and independently keyboard-reachable by default, using the spotlight purely as an enhancement.

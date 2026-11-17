@@ -1,6 +1,23 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { chunkMarkdown, formatChunkHeader, generateGuidesIndex, generateGuidesTocYaml, type DevsiteGuideMetadata } from './build-guides.ts';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  computePipelineHash,
+  generateGuidesIndex,
+  generateGuidesTocYaml,
+  processGuides,
+  processSkillsCliGuide,
+  processDevsiteGuide,
+  type DevsiteGuideMetadata,
+  type StoreUseCase,
+} from './build-guides.ts';
+import { chunkMarkdown, formatChunkHeader } from '../core/guide-chunks.ts';
+import {
+  getOriginTrialsRegistry,
+  getVolatileFeaturesRegistry,
+} from '../core/feature-gates.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {
@@ -167,5 +184,248 @@ describe('formatChunkHeader', () => {
       header,
       'Email verification\nemail-verification (forms)\nFeatures: email-verification (email verification)'
     );
+  });
+});
+
+describe('processSkillsCliGuide cache miss regression', () => {
+  it('assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-cache-miss-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`
+      );
+      const storeUseCases: StoreUseCase[] = [];
+      const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
+      const emptyCache = new Map<string, Float32Array>();
+
+      await processSkillsCliGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        useCases: [],
+        storeUseCases,
+        chunkCache: emptyCache,
+        missingChunks,
+      });
+
+      assert.ok(missingChunks.length > 0, 'Should record cache miss');
+      assert.ok(storeUseCases.length > 0, 'Should have generated store use cases');
+      for (const item of storeUseCases) {
+        assert.deepStrictEqual(item.vector, [], 'Uncached chunk vector must be empty array, not StaticEmbedder vector');
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('processDevsiteGuide', () => {
+  it('extracts metadata and omits caution notices for standard guides', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-guide-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'test-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: DevSite Test Guide\ndescription: Guide for devsite\nweb-feature-ids:\n  - subgrid\n---\n# DevSite Test Guide\nSome markdown content.`
+      );
+      const devsiteGuides: DevsiteGuideMetadata[] = [];
+      const outGuidesDir = path.join(tmpDir, 'built');
+
+      await processDevsiteGuide({
+        filePath: guideFile,
+        category: 'css',
+        id: 'test-guide',
+        buildGuidesDir: outGuidesDir,
+        devsiteGuides,
+      });
+
+      assert.strictEqual(devsiteGuides.length, 1);
+      assert.strictEqual(devsiteGuides[0].id, 'test-guide');
+      assert.strictEqual(devsiteGuides[0].title, 'DevSite Test Guide');
+      assert.deepStrictEqual(devsiteGuides[0].webFeatureIds, ['subgrid']);
+      const output = fs.readFileSync(path.join(outGuidesDir, 'css/test-guide.md'), 'utf-8');
+      assert.ok(!output.includes('<aside class="caution">'));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('wires unfiltered rawFeatureIds into DevSite gate caution notices', async () => {
+    const otKeys = Object.keys(getOriginTrialsRegistry());
+    const volatileKeys = Object.keys(getVolatileFeaturesRegistry());
+    const tmpOtId = otKeys.find((k) => k.startsWith('tmp-')) ?? otKeys[0];
+    const volatileId = volatileKeys.find((k) => k.startsWith('tmp-')) ?? volatileKeys[0];
+    if (!tmpOtId || !volatileId) return;
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-gates-test-'));
+    try {
+      const guideFile = path.join(tmpDir, 'gated-guide.md');
+      fs.writeFileSync(
+        guideFile,
+        `---\ntitle: Gated Guide\ndescription: Both gates\nweb-feature-ids:\n  - ${tmpOtId}\n  - ${volatileId}\n---\n# Gated Guide\nBody content.`
+      );
+      const devsiteGuides: DevsiteGuideMetadata[] = [];
+      const outGuidesDir = path.join(tmpDir, 'built');
+
+      await processDevsiteGuide({
+        filePath: guideFile,
+        category: 'security',
+        id: 'gated-guide',
+        buildGuidesDir: outGuidesDir,
+        devsiteGuides,
+      });
+
+      const output = fs.readFileSync(path.join(outGuidesDir, 'security/gated-guide.md'), 'utf-8');
+      const promoIdx = output.indexOf('{% include "/docs/modern-web-guidance/_guide-promo.html" %}');
+      const otIdx = output.indexOf('set-allow-origin-trials');
+      const volatileIdx = output.indexOf('set-allow-volatile-features');
+      const bodyIdx = output.indexOf('Body content.');
+      assert.ok(promoIdx !== -1 && otIdx > promoIdx && volatileIdx > otIdx && volatileIdx < bodyIdx);
+      assert.strictEqual(output.match(/<aside class="caution">/g)?.length, 2);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('computePipelineHash', () => {
+  it('incorporates custom chunkCacheDir contents', async () => {
+    const { saveChunkCache, STATIC_DIMS } = await import('../rag/guide-chunk-cache.ts');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-hash-cache-'));
+    try {
+      const cacheA = path.join(tmpDir, 'cache-a');
+      const cacheB = path.join(tmpDir, 'cache-b');
+      const vecA = new Float32Array(STATIC_DIMS);
+      vecA[0] = 1;
+      const vecB = new Float32Array(STATIC_DIMS);
+      vecB[1] = 1;
+      saveChunkCache(new Map([['hash-1', vecA]]), cacheA);
+      saveChunkCache(new Map([['hash-1', vecB]]), cacheB);
+
+      const hashA = await computePipelineHash([], 'skills-cli', false, undefined, cacheA);
+      const hashB = await computePipelineHash([], 'skills-cli', false, undefined, cacheB);
+      assert.notStrictEqual(hashA, hashB);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('processGuides', () => {
+  it('forwards chunkCacheDir, rejects incomplete caches under failOnMissingVectors, and shares complete caches across flags', async () => {
+    const { extractGuideChunks } = await import('../core/guide-chunks.ts');
+    const { saveChunkCache, STATIC_DIMS } = await import('../rag/guide-chunk-cache.ts');
+    const { loadVectors } = await import('../rag/search.ts');
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'process-guides-cache-'));
+    try {
+      const guideDir = path.join(tmpDir, 'guides', 'js', 'sample-guide');
+      fs.mkdirSync(guideDir, { recursive: true });
+      const guideFile = path.join(guideDir, 'guide.md');
+      fs.writeFileSync(
+        guideFile,
+        '---\ntitle: Sample JS Guide\ndescription: Custom chunk cache test\n---\n# Sample JS Guide\n\n## Section\nBody content.\n'
+      );
+
+      const inv = {
+        dir: guideDir,
+        name: 'sample-guide',
+        category: 'js',
+        hasGuide: true,
+        isStub: false,
+        hasDemo: false,
+        hasExpectations: false,
+        expectationsEmpty: false,
+        hasNegativeDemo: false,
+        hasGrader: false,
+        hasTask: false,
+        featureIds: [],
+        isDisciplineGuide: false,
+        isPublished: true,
+      };
+
+      const emptyChunkCache = path.join(tmpDir, 'empty-chunks');
+      const populatedChunkCache = path.join(tmpDir, 'populated-chunks');
+      const extracted = extractGuideChunks({ filePath: guideFile, category: 'js', id: 'sample-guide' });
+      assert.ok(extracted && extracted.embeddedChunks.length > 0);
+
+      const vec = new Float32Array(STATIC_DIMS);
+      vec[0] = 1;
+      saveChunkCache(
+        new Map(extracted.embeddedChunks.map((c) => [c.hash, vec])),
+        populatedChunkCache
+      );
+
+      // Dev build with uncached chunks records missingCount > 0; subsequent release check rejects the cache hit and throws
+      const uncachedOut = path.join(tmpDir, 'out-uncached');
+      const uncachedPipeline = path.join(tmpDir, 'pipeline-uncached');
+      const devSkipped = await processGuides({
+        outputDir: uncachedOut,
+        pipelineCacheDir: uncachedPipeline,
+        chunkCacheDir: emptyChunkCache,
+        guides: [inv],
+        failOnMissingVectors: false,
+      });
+      assert.strictEqual(devSkipped, false);
+      const incompleteManifest = JSON.parse(
+        fs.readFileSync(path.join(uncachedPipeline, 'pipeline.manifest.json'), 'utf8')
+      );
+      assert.strictEqual(incompleteManifest.missingCount, extracted.embeddedChunks.length);
+
+      await assert.rejects(
+        () =>
+          processGuides({
+            outputDir: uncachedOut,
+            pipelineCacheDir: uncachedPipeline,
+            chunkCacheDir: emptyChunkCache,
+            guides: [inv],
+            failOnMissingVectors: true,
+          }),
+        /lack cached teacher vectors/
+      );
+
+      // Complete chunk cache produces missingCount: 0 and shares the pipeline cache across failOnMissingVectors flags
+      const cachedOut = path.join(tmpDir, 'out-cached');
+      const cachedPipeline = path.join(tmpDir, 'pipeline-cached');
+      const firstBuilt = await processGuides({
+        outputDir: cachedOut,
+        pipelineCacheDir: cachedPipeline,
+        chunkCacheDir: populatedChunkCache,
+        guides: [inv],
+        failOnMissingVectors: false,
+      });
+      assert.strictEqual(firstBuilt, false);
+      const completeManifest = JSON.parse(
+        fs.readFileSync(path.join(cachedPipeline, 'pipeline.manifest.json'), 'utf8')
+      );
+      assert.strictEqual(completeManifest.missingCount, 0);
+
+      const reusedByRelease = await processGuides({
+        outputDir: cachedOut,
+        pipelineCacheDir: cachedPipeline,
+        chunkCacheDir: populatedChunkCache,
+        guides: [inv],
+        failOnMissingVectors: true,
+      });
+      assert.strictEqual(reusedByRelease, true);
+
+      const reusedByDev = await processGuides({
+        outputDir: cachedOut,
+        pipelineCacheDir: cachedPipeline,
+        chunkCacheDir: populatedChunkCache,
+        guides: [inv],
+      });
+      assert.strictEqual(reusedByDev, true);
+
+      const loaded = loadVectors(cachedOut);
+      assert.strictEqual(loaded.length, extracted.embeddedChunks.length);
+      for (const item of loaded) {
+        assert.strictEqual(item.vector.length, STATIC_DIMS);
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

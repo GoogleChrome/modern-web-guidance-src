@@ -4,245 +4,493 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getJsProject,
+  getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import {
-  SyntaxKind,
-  type Project,
-  type PropertyAccessExpression,
-} from 'ts-morph';
+import { SyntaxKind, type Project } from 'ts-morph';
 import {
   CSSStyleRule,
   CSSMediaRule,
-  CSSRule,
+  CSSGroupingRule,
+  getCascadedStyle,
+  type CSSRule,
   type CSSStyleSheet,
 } from 'cssomnom';
 
-// @ts-ignore
+// @ts-ignore - package.json lacks "type": "module" in daily-grind, causing tsc module nodenext to flag import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllStyleRules(sheet: CSSStyleSheet): CSSStyleRule[] {
+function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
   const result: CSSStyleRule[] = [];
-  function collect(rules: Iterable<CSSRule>) {
-    for (const rule of rules) {
-      if (rule instanceof CSSStyleRule) {
-        result.push(rule);
-      }
-      if ('cssRules' in rule && (rule as { cssRules?: Iterable<CSSRule> }).cssRules) {
-        collect(Array.from((rule as { cssRules: Iterable<CSSRule> }).cssRules));
-      }
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      result.push(rule);
+    }
+    if (rule instanceof CSSGroupingRule) {
+      result.push(...collectStyleRules(rule.cssRules));
     }
   }
-  collect(Array.from(sheet.cssRules));
   return result;
 }
 
-function getAllMediaRules(sheet: CSSStyleSheet): CSSMediaRule[] {
+function collectMediaRules(rules: Iterable<CSSRule>): CSSMediaRule[] {
   const result: CSSMediaRule[] = [];
-  function collect(rules: Iterable<CSSRule>) {
-    for (const rule of rules) {
-      if (rule instanceof CSSMediaRule) {
-        result.push(rule);
-      }
-      if ('cssRules' in rule && (rule as { cssRules?: Iterable<CSSRule> }).cssRules) {
-        collect(Array.from((rule as { cssRules: Iterable<CSSRule> }).cssRules));
-      }
+  for (const rule of rules) {
+    if (rule instanceof CSSMediaRule) {
+      result.push(rule);
+    }
+    if (rule instanceof CSSGroupingRule) {
+      result.push(...collectMediaRules(rule.cssRules));
     }
   }
-  collect(Array.from(sheet.cssRules));
   return result;
 }
 
 test.describe('scoped-component-transitions Target Grader', () => {
-
-  test('Component state updates call startViewTransition on an element rather than document', () => {
+  test('Component state updates are wrapped in an element-scoped view transition by calling startViewTransition() on a specific element rather than document.startViewTransition()', () => {
     const project: Project = getJsProject(targetFiles);
-    const callExpressions = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
+    const callExprs = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
 
-    const svtCalls = callExpressions.filter(call => {
+    const startVtCalls = callExprs.filter((call) => {
       const expr = call.getExpression();
-      return expr.getKind() === SyntaxKind.PropertyAccessExpression &&
-        (expr as PropertyAccessExpression).getName() === 'startViewTransition';
+      if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+        return expr.getName() === 'startViewTransition';
+      }
+      if (expr.isKind(SyntaxKind.ElementAccessExpression)) {
+        const arg = expr.getArgumentExpression();
+        return arg?.getText().replace(/['"`]/g, '') === 'startViewTransition';
+      }
+      return false;
     });
 
-    const hasElementScopedCall = svtCalls.length > 0 && svtCalls.every(call => {
-      const caller = (call.getExpression() as PropertyAccessExpression).getExpression();
-      const callerText = caller.getText().trim();
-      return callerText !== 'document';
+    expect(startVtCalls.length).toBeGreaterThan(0);
+
+    const hasElementScopedCall = startVtCalls.some((call) => {
+      const expr = call.getExpression();
+      if (
+        expr.isKind(SyntaxKind.PropertyAccessExpression) ||
+        expr.isKind(SyntaxKind.ElementAccessExpression)
+      ) {
+        const receiver = expr.getExpression().getText().trim();
+        return !/^(window\.)?document$/.test(receiver) && call.getArguments().length >= 1;
+      }
+      return false;
+    });
+
+    const hasDocumentScopedCall = startVtCalls.some((call) => {
+      const expr = call.getExpression();
+      if (
+        expr.isKind(SyntaxKind.PropertyAccessExpression) ||
+        expr.isKind(SyntaxKind.ElementAccessExpression)
+      ) {
+        const receiver = expr.getExpression().getText().trim();
+        return /^(window\.)?document$/.test(receiver);
+      }
+      return false;
     });
 
     expect(hasElementScopedCall).toBe(true);
+    expect(hasDocumentScopedCall).toBe(false);
   });
 
-  test('Feature detection checks for startViewTransition on Element.prototype or Element instance', () => {
+  test('Feature detection checks for startViewTransition support on Element.prototype or the target Element instance rather than only checking document.startViewTransition', () => {
     const project: Project = getJsProject(targetFiles);
-    const binaryExpressions = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
+    const sourceFiles = project.getSourceFiles();
+
+    const binaryExprs = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression),
+    );
+    const propAccesses = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression),
+    );
+    const callExprs = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression),
     );
 
-    let hasElementOrInstanceCheck = false;
-    let hasDocumentOnlyCheck = false;
+    const hasInCheck = binaryExprs.some((expr) => {
+      if (expr.getOperatorToken().getText() !== 'in') return false;
+      const left = expr.getLeft().getText().replace(/['"`]/g, '');
+      const right = expr.getRight().getText().trim();
+      return (
+        left === 'startViewTransition' &&
+        !/^(window\.)?document$/.test(right)
+      );
+    });
 
-    for (const expr of binaryExpressions) {
-      const op = expr.getOperatorToken().getKind();
-      const leftText = expr.getLeft().getText();
-      const rightText = expr.getRight().getText();
+    const hasTypeofOrTruthinessCheck = propAccesses.some((prop) => {
+      if (prop.getName() !== 'startViewTransition') return false;
+      const receiver = prop.getExpression().getText().trim();
+      if (/^(window\.)?document$/.test(receiver)) return false;
 
-      if (op === SyntaxKind.InKeyword) {
-        if (/['"`]startViewTransition['"`]/.test(leftText)) {
-          if (/Element/.test(rightText)) {
-            hasElementOrInstanceCheck = true;
-          } else if (rightText.trim() === 'document') {
-            hasDocumentOnlyCheck = true;
-          }
-        }
-      }
-
+      const parent = prop.getParent();
+      if (!parent) return false;
+      // Exclude direct invocation `scopeEl.startViewTransition(...)` unless optional chaining `scopeEl.startViewTransition?.(...)`
       if (
-        op === SyntaxKind.EqualsEqualsEqualsToken ||
-        op === SyntaxKind.ExclamationEqualsEqualsToken ||
-        op === SyntaxKind.EqualsEqualsToken ||
-        op === SyntaxKind.ExclamationEqualsToken
+        parent.isKind(SyntaxKind.CallExpression) &&
+        parent.getExpression() === prop &&
+        !prop.hasQuestionDotToken()
       ) {
-        const isLeftTypeof = leftText.startsWith('typeof ') && leftText.includes('startViewTransition');
-        const isRightTypeof = rightText.startsWith('typeof ') && rightText.includes('startViewTransition');
-        if ((isLeftTypeof && /['"`]function['"`]/.test(rightText)) || (isRightTypeof && /['"`]function['"`]/.test(leftText))) {
-          if (!leftText.includes('document.') && !rightText.includes('document.')) {
-            hasElementOrInstanceCheck = true;
-          } else {
-            hasDocumentOnlyCheck = true;
-          }
-        }
+        return false;
       }
+      return true;
+    });
+
+    const hasReflectOrHasOwnCheck = callExprs.some((call) => {
+      const callee = call.getExpression().getText();
+      if (
+        callee === 'Object.hasOwn' ||
+        callee === 'Reflect.has' ||
+        callee.endsWith('.hasOwnProperty')
+      ) {
+        return call
+          .getArguments()
+          .some((arg) => arg.getText().replace(/['"`]/g, '') === 'startViewTransition');
+      }
+      return false;
+    });
+
+    expect(hasInCheck || hasTypeofOrTruthinessCheck || hasReflectOrHasOwnCheck).toBe(true);
+  });
+
+  test('Child elements that animate within the scoped container are assigned a view-transition-name (such as match-element or a scope-unique identifier)', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+
+    const vtNameRules = styleRules.filter((rule) => {
+      const val = rule.style.getPropertyValue('view-transition-name').trim();
+      return val !== '' && val !== 'none';
+    });
+
+    const docs = getHtmlDocuments(targetFiles);
+    const hasInlineVtName = docs.some(({ document }) =>
+      Array.from(document.querySelectorAll('[style]')).some((el: any) => {
+        const styleAttr = el.getAttribute('style') || '';
+        return /view-transition-name\s*:\s*(?!none\b)[a-zA-Z0-9_-]+/.test(styleAttr);
+      }),
+    );
+
+    const project: Project = getJsProject(targetFiles);
+    const hasJsVtName = project.getSourceFiles().some((sf) =>
+      sf
+        .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+        .some((p) => p.getName() === 'viewTransitionName') ||
+      sf
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .some(
+          (c) =>
+            c.getExpression().getText().endsWith('.setProperty') &&
+            c.getArguments()[0]?.getText().replace(/['"`]/g, '') === 'view-transition-name',
+        ),
+    );
+
+    expect(vtNameRules.length > 0 || hasInlineVtName || hasJsVtName).toBe(true);
+  });
+
+  test('When the scoped container element clips its overflow (overflow: clip, hidden, or scroll) or changes geometry during a transition, it does not set view-transition-name: none so that it remains self-participating and clips its transitioning children', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const docs = getHtmlDocuments(targetFiles);
+
+    // Precondition: at least one rule, inline style, or JS statement configures view transitions for scoped transitions
+    const hasViewTransitionCss = styleRules.some(
+      (r) =>
+        Boolean(r.style.getPropertyValue('view-transition-name').trim()) ||
+        Boolean(r.style.getPropertyValue('view-transition-scope').trim()) ||
+        Boolean(r.style.getPropertyValue('view-transition-group').trim()),
+    );
+    const hasInlineVtName = docs.some(({ document }) =>
+      Array.from(document.querySelectorAll('[style]')).some((el: any) => {
+        const styleAttr = el.getAttribute('style') || '';
+        return /view-transition-name\s*:\s*(?!none\b)[a-zA-Z0-9_-]+/.test(styleAttr);
+      }),
+    );
+    const project: Project = getJsProject(targetFiles);
+    const hasJsVtName = project.getSourceFiles().some((sf) =>
+      sf
+        .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+        .some((p) => p.getName() === 'viewTransitionName') ||
+      sf
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .some(
+          (c) =>
+            c.getExpression().getText().endsWith('.setProperty') &&
+            c.getArguments()[0]?.getText().replace(/['"`]/g, '') === 'view-transition-name',
+        ),
+    );
+    expect(hasViewTransitionCss || hasInlineVtName || hasJsVtName).toBe(true);
+
+    // Check CSS rules that clip overflow
+    const clippingRules = styleRules.filter((rule) => {
+      const overflow = rule.style.getPropertyValue('overflow').trim();
+      const overflowX = rule.style.getPropertyValue('overflow-x').trim();
+      const overflowY = rule.style.getPropertyValue('overflow-y').trim();
+      return [overflow, overflowX, overflowY].some((val) =>
+        /\b(clip|hidden|scroll|auto)\b/.test(val),
+      );
+    });
+
+    for (const rule of clippingRules) {
+      const vtName = rule.style
+        .getPropertyValue('view-transition-name')
+        .replace(/!important/g, '')
+        .trim();
+      expect(vtName).not.toBe('none');
     }
 
-    expect(hasElementOrInstanceCheck && !hasDocumentOnlyCheck).toBe(true);
+    // Also check cascaded styles on DOM elements in the Seasonal Favorites section
+    const topRules = Array.from(stylesheet.cssRules);
+    for (const { document } of docs) {
+      const mainElements = Array.from(document.querySelectorAll('main *')) as any[];
+      for (const el of mainElements) {
+        const cascaded = getCascadedStyle(el, topRules);
+        const vtName = cascaded
+          .getPropertyValue('view-transition-name')
+          .replace(/!important/g, '')
+          .trim();
+        expect(vtName).not.toBe('none');
+      }
+    }
   });
 
-  test('Executes DOM update callback immediately as fallback when scoped transitions are unsupported', () => {
-    const project: Project = getJsProject(targetFiles);
-    const ifStatements = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.IfStatement)
+  test('A @media (prefers-reduced-motion: reduce) rule disables view transition animations (setting animation: none) on ::view-transition-group(*), ::view-transition-old(*), and ::view-transition-new(*)', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const mediaRules = collectMediaRules(stylesheet.cssRules);
+
+    const reducedMotionRules = mediaRules.filter(
+      (rule) =>
+        rule.conditionText.includes('prefers-reduced-motion') &&
+        rule.conditionText.includes('reduce'),
+    );
+    expect(reducedMotionRules.length).toBeGreaterThan(0);
+
+    const nestedStyleRules = reducedMotionRules.flatMap((mr) =>
+      collectStyleRules(mr.cssRules),
     );
 
-    const hasFallbackExecution = ifStatements.some(ifStmt => {
-      const condText = ifStmt.getExpression().getText();
-      const isSupportCheck = /(!\s*(supports|isSupported)|startViewTransition)/i.test(condText);
-      if (!isSupportCheck) return false;
+    const disablesAnimation = (rule: CSSStyleRule): boolean => {
+      const anim = rule.style.getPropertyValue('animation').trim();
+      const animName = rule.style.getPropertyValue('animation-name').trim();
+      const animDuration = rule.style.getPropertyValue('animation-duration').trim();
+      return (
+        /\bnone\b/.test(anim) ||
+        /\bnone\b/.test(animName) ||
+        /^0(s|ms)$/.test(animDuration)
+      );
+    };
 
-      const thenBranch = ifStmt.getThenStatement();
-      const throwStatements = thenBranch.getDescendantsOfKind(SyntaxKind.ThrowStatement);
-      if (throwStatements.length > 0) return false;
+    const hasGroupRule = nestedStyleRules.some(
+      (r) =>
+        r.selectorText.includes('::view-transition-group(*)') &&
+        disablesAnimation(r),
+    );
+    const hasOldRule = nestedStyleRules.some(
+      (r) =>
+        r.selectorText.includes('::view-transition-old(*)') &&
+        disablesAnimation(r),
+    );
+    const hasNewRule = nestedStyleRules.some(
+      (r) =>
+        r.selectorText.includes('::view-transition-new(*)') &&
+        disablesAnimation(r),
+    );
 
-      const callExpressions = thenBranch.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return callExpressions.some(call => {
-        const callee = call.getExpression().getText();
-        return /update|dom|callback|cb|fn/i.test(callee);
+    expect(hasGroupRule).toBe(true);
+    expect(hasOldRule).toBe(true);
+    expect(hasNewRule).toBe(true);
+  });
+
+  test.describe('Browser tests', () => {
+    test('When reordering or updating existing child elements inside the scoped container, the DOM update preserves and moves existing element nodes rather than recreating them from scratch', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.goto(TARGET_URL);
+
+      const result = await page.evaluate(async () => {
+        const heading = Array.from(document.querySelectorAll('h2')).find((h) =>
+          /Seasonal Favorites/i.test(h.textContent || ''),
+        );
+        const section =
+          heading?.closest('section') ||
+          document.querySelector('main section') ||
+          document.body;
+
+        const grid =
+          section.querySelector('.grid') || section.querySelector('ul, ol') || section;
+        const initialCards = Array.from(grid.children) as HTMLElement[];
+        if (initialCards.length < 2) {
+          return { hasControls: false, nodePreserved: false, stateChanged: false };
+        }
+
+        const initialDescendants = Array.from(
+          section.querySelectorAll('*'),
+        ) as HTMLElement[];
+        const nodeSet = new Set<Element>(initialDescendants);
+
+        // Find an enabled button inside the section that triggers a reorder or item move
+        const buttons = Array.from(
+          section.querySelectorAll('button:not(:disabled)'),
+        ) as HTMLButtonElement[];
+        if (buttons.length === 0) {
+          return { hasControls: false, nodePreserved: false, stateChanged: false };
+        }
+
+        // Prefer a reorder / move button over a remove button so all nodes remain in the DOM
+        const moveBtn =
+          buttons.find((b) => {
+            const label = (
+              (b.textContent || '') +
+              ' ' +
+              (b.getAttribute('aria-label') || '') +
+              ' ' +
+              (b.dataset.action || '') +
+              ' ' +
+              b.className +
+              ' ' +
+              b.id
+            ).toLowerCase();
+            return (
+              /move|sort|reverse|up|down|left|right|earlier|later|prev|next/.test(
+                label,
+              ) && !/remove|delete/.test(label)
+            );
+          }) || buttons[0];
+
+        const beforeOrder = Array.from(grid.children).map((el) =>
+          (el.textContent || '').trim(),
+        );
+        const beforeItemOrder = Array.from(section.querySelectorAll('li')).map(
+          (el) => (el.textContent || '').trim(),
+        );
+
+        let lastTransitionFinished: Promise<unknown> | null = null;
+        const origStartVT = (Element.prototype as any).startViewTransition;
+        if (typeof origStartVT === 'function') {
+          (Element.prototype as any).startViewTransition = function (...args: any[]) {
+            const vt = origStartVT.apply(this, args);
+            if (vt && vt.updateCallbackDone) {
+              lastTransitionFinished = vt.updateCallbackDone;
+            }
+            return vt;
+          };
+        }
+
+        try {
+          moveBtn.click();
+          if (lastTransitionFinished) {
+            await (lastTransitionFinished as Promise<unknown>).catch(() => {});
+          }
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        } finally {
+          if (typeof origStartVT === 'function') {
+            (Element.prototype as any).startViewTransition = origStartVT;
+          }
+        }
+
+        const afterOrder = Array.from(grid.children).map((el) =>
+          (el.textContent || '').trim(),
+        );
+        const afterItemOrder = Array.from(section.querySelectorAll('li')).map(
+          (el) => (el.textContent || '').trim(),
+        );
+
+        const stateChanged =
+          JSON.stringify(beforeOrder) !== JSON.stringify(afterOrder) ||
+          JSON.stringify(beforeItemOrder) !== JSON.stringify(afterItemOrder);
+
+        // Verify that the cards and list items currently in the DOM are the exact same object references
+        const currentCards = Array.from(grid.children);
+        const cardsPreserved =
+          currentCards.length > 0 &&
+          currentCards.every((card) => nodeSet.has(card));
+
+        const currentItems = Array.from(section.querySelectorAll('li'));
+        const itemsPreserved = currentItems.every((item) => nodeSet.has(item));
+
+        return {
+          hasControls: true,
+          stateChanged,
+          nodePreserved: cardsPreserved && itemsPreserved,
+        };
       });
+
+      expect(result.hasControls).toBe(true);
+      expect(result.stateChanged).toBe(true);
+      expect(result.nodePreserved).toBe(true);
     });
 
-    expect(hasFallbackExecution).toBe(true);
-  });
+    test('When element-scoped view transitions are not supported, the DOM update callback executes immediately as a fallback without throwing an error', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      const pageErrors: string[] = [];
+      page.on('pageerror', (err) => {
+        pageErrors.push(err.message || String(err));
+      });
 
-  test('Child elements animating within the scoped container are assigned a view-transition-name', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(stylesheet);
+      await page.addInitScript(() => {
+        delete (Element.prototype as any).startViewTransition;
+        delete (HTMLElement.prototype as any).startViewTransition;
+      });
 
-    const hasChildTransitionName = rules.some(rule => {
-      const isChildSelector = /\b(card|item)\b/.test(rule.selectorText);
-      const vtName = rule.style.getPropertyValue('view-transition-name').trim();
-      return isChildSelector && vtName.length > 0 && vtName !== 'none';
+      await page.goto(TARGET_URL);
+
+      const result = await page.evaluate(() => {
+        const supportsOnElement = 'startViewTransition' in Element.prototype;
+        const heading = Array.from(document.querySelectorAll('h2')).find((h) =>
+          /Seasonal Favorites/i.test(h.textContent || ''),
+        );
+        const section =
+          heading?.closest('section') ||
+          document.querySelector('main section') ||
+          document.body;
+
+        const buttons = Array.from(
+          section.querySelectorAll('button:not(:disabled)'),
+        ) as HTMLButtonElement[];
+        if (buttons.length === 0) {
+          return {
+            supportsOnElement,
+            hasControls: false,
+            updatedImmediately: false,
+          };
+        }
+
+        // Pick an enabled action button
+        const actionBtn =
+          buttons.find((b) => {
+            const label = (
+              (b.textContent || '') +
+              ' ' +
+              (b.getAttribute('aria-label') || '') +
+              ' ' +
+              (b.dataset.action || '') +
+              ' ' +
+              b.className +
+              ' ' +
+              b.id
+            ).toLowerCase();
+            return /move|sort|reverse|up|down|left|right|earlier|later|prev|next|remove|temperature|serve/.test(
+              label,
+            );
+          }) || buttons[0];
+
+        const snapshotBefore = section.innerHTML;
+        actionBtn.click();
+        const snapshotAfter = section.innerHTML;
+
+        return {
+          supportsOnElement,
+          hasControls: true,
+          updatedImmediately: snapshotBefore !== snapshotAfter,
+        };
+      });
+
+      expect(result.supportsOnElement).toBe(false);
+      expect(result.hasControls).toBe(true);
+      expect(result.updatedImmediately).toBe(true);
+      expect(pageErrors).toEqual([]);
     });
-
-    expect(hasChildTransitionName).toBe(true);
-  });
-
-  test('Reordering or updating existing child elements preserves and moves existing DOM nodes', () => {
-    const project: Project = getJsProject(targetFiles);
-    const callExpressions = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-
-    const hasNodeMovementCall = callExpressions.some(call => {
-      const expr = call.getExpression();
-      if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-        const name = (expr as PropertyAccessExpression).getName();
-        return name === 'appendChild' || name === 'insertBefore' || name === 'append';
-      }
-      return false;
-    });
-
-    const binaryExpressions = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
-    );
-    const hasInnerHTMLRecreation = binaryExpressions.some(expr => {
-      if (expr.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
-        const leftText = expr.getLeft().getText();
-        return /(?:grid|list|container|favorites)\.(innerHTML|outerHTML)$/i.test(leftText);
-      }
-      return false;
-    });
-
-    expect(hasNodeMovementCall && !hasInnerHTMLRecreation).toBe(true);
-  });
-
-  test('Scoped container element participates in transition without setting view-transition-name: none', () => {
-    const project: Project = getJsProject(targetFiles);
-    const callExpressions = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-
-    const hasScopedElementTransition = callExpressions.some(call => {
-      const expr = call.getExpression();
-      if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-        const propAccess = expr as PropertyAccessExpression;
-        return propAccess.getName() === 'startViewTransition' && propAccess.getExpression().getText().trim() !== 'document';
-      }
-      return false;
-    });
-
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const rules = getAllStyleRules(stylesheet);
-
-    const containerRules = rules.filter(rule =>
-      /(#favorites|-grid|\.grid\b)/.test(rule.selectorText)
-    );
-
-    const containerDisablesTransition = containerRules.some(rule =>
-      rule.style.getPropertyValue('view-transition-name').trim() === 'none'
-    );
-
-    expect(hasScopedElementTransition && !containerDisablesTransition).toBe(true);
-  });
-
-  test('Disables view transition animations under prefers-reduced-motion: reduce media query', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const mediaRules = getAllMediaRules(stylesheet).filter(
-      r => r.conditionText.includes('prefers-reduced-motion') && r.conditionText.includes('reduce')
-    );
-
-    const hasReducedMotionRule = mediaRules.some(mediaRule => {
-      const nestedStyleRules = Array.from(mediaRule.cssRules).filter(
-        (r): r is CSSStyleRule => r instanceof CSSStyleRule
-      );
-
-      const hasGroup = nestedStyleRules.some(r =>
-        r.selectorText.includes('::view-transition-group') &&
-        /\bnone\b/.test(r.style.getPropertyValue('animation'))
-      );
-      const hasOld = nestedStyleRules.some(r =>
-        r.selectorText.includes('::view-transition-old') &&
-        /\bnone\b/.test(r.style.getPropertyValue('animation'))
-      );
-      const hasNew = nestedStyleRules.some(r =>
-        r.selectorText.includes('::view-transition-new') &&
-        /\bnone\b/.test(r.style.getPropertyValue('animation'))
-      );
-
-      return hasGroup && hasOld && hasNew;
-    });
-
-    expect(hasReducedMotionRule).toBe(true);
   });
 });
