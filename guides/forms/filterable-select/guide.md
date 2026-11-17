@@ -17,10 +17,12 @@ A filterable select lets the user type to narrow a list of predefined options an
 
 There are two search patterns for a constrained set of options:
 
-- **Search in the dropdown (this guide):** the trigger stays a button and the filter input lives inside the popup. Choose it for small to medium lists that users mostly browse, where picking from a visible list is the main interaction.
-- **Search in the trigger (combobox):** the trigger itself is a text input. Choose it for large or unfamiliar lists where users type first, or when options load asynchronously.
+- **Search in the dropdown (this guide):** the trigger stays a button and the filter input lives inside the popup. Choose it for short to medium lists (roughly under 50 options) that users mostly browse, where they recognise the option when they see it and picking from a visible list is the main interaction.
+- **Search in the trigger (combobox):** the trigger itself is a text input. Choose it for long lists (roughly 50 or more), when users already know the name and want to type it straight away, or when options load asynchronously.
 
-A customizable `<select>` cannot put a text input in its trigger, so the combobox pattern isn't possible with it and isn't covered here.
+If you're unsure, start with search in the dropdown: the native `<select>` fallback keeps it working everywhere.
+
+A customizable `<select>` cannot put a text input in its trigger, so the combobox pattern isn't possible with it and isn't covered here. It needs an input paired with a popover instead.
 
 ## How to implement
 
