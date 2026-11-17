@@ -80,13 +80,13 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card:has(a.card-link) {
-  position: relative;
+	position: relative;
 }
 
 .card a.card-link::after {
-  content: "";
-  position: absolute;
-  inset: 0;
+	content: "";
+	position: absolute;
+	inset: 0;
 }
 ```
 
@@ -95,11 +95,11 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card:has(a.card-link) {
-  /* Keep other interactive elements above the overlay */
-  a:not(.card-link), button, input, x-button {
-    position: relative;
-    z-index: 1;
-  }
+	/* Keep other interactive elements above the overlay */
+	a:not(.card-link), button, input, x-button {
+	  position: relative;
+	  z-index: 1;
+	}
 }
 ```
 
