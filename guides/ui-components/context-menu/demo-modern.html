@@ -350,17 +350,16 @@
           anchor.style.left = `${x}px`;
           anchor.style.top = `${y}px`;
 
-          enterOnOpen.add(popover);
           popover.showPopover({ source: anchor });
         };
 
         card.addEventListener('contextmenu', (e) => {
           // Prevent the browser's default context menu
           e.preventDefault();
-          // Context Menu will be opened in `mouseup` event listener.
+          // Context Menu will be opened in `pointerup` event listener.
         });
 
-        card.addEventListener('mouseup', (e) => {
+        card.addEventListener('pointerup', (e) => {
           // button 2 = right mouse click
           if (!(e.button === 2 || e.ctrlKey)) return;
           openContextMenu(e);

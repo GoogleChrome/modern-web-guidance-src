@@ -396,18 +396,11 @@
 
     const menuFor = trigger => document.getElementById(trigger.getAttribute('popovertarget'));
     const triggerFor = menu => triggers.find(trigger => menuFor(trigger) === menu);
-    // Check for matches when one match may throw
-    const checkMatches = (element, matches) => {
-      for(const match in matches){
-        try {
-          if(element.matches(matches[match])) return true
-        } catch (error) { /* Ignore */ }
-      }
-      return false;
-    }
-    const isOpen = menu => checkMatches(menu, [':popover-open', '.\:popover-open']);
+
+    // Polyfill patches `:popover-open` to not throw
+    const isOpen = menu => menu.matches(':popover-open, .\:popover-open');
     // A previewed submenu is open with focus still on its trigger; no item inside it is focused.
-    const isPreviewed = menu => checkMatches(menu, [':popover-open:not(:focus-within)', '.\:popover-open:not(:focus-within)']);
+    const isPreviewed = menu => menu.matches(':popover-open:not(:focus-within), .\:popover-open:not(:focus-within)');
     const rootMenuOf = menu => {
       let root = menu;
       while (root.parentElement.closest('[popover]')) root = root.parentElement.closest('[popover]');

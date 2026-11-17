@@ -361,21 +361,6 @@ The Popover polyfill can not fully emulate the top layer behavior. Avoid making 
 }
 ```
 
-Use a `checkMatches` utility to use `element.matches()` without throwing on unsupported selectors.
-
-```javascript
-const checkMatches = (element, matches) => {
-  for(const match in matches){
-    try {
-      if(element.matches(matches[match])) return true
-    } catch (error) { /* Ignore */ }
-  }
-  return false;
-}
-
- const isOpen = menu => checkMatches(menu, [':popover-open', '.\:popover-open']);
-```
-
 ### Fallbacks & browser support for Anchor positioning
 
 {{ BASELINE_STATUS("anchor-positioning") }}

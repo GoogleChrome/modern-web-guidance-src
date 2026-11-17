@@ -69,7 +69,7 @@ To position the menu exactly at the cursor, use an invisible anchor element plac
 }
 ```
 
-Listen for the `contextmenu` event to prevent the browser's default menu, and use `mouseup` to capture the coordinates and open the popover. Move the focus to the first enabled button.
+Listen for the `contextmenu` event to prevent the browser's default menu, and use `pointerup` to capture the coordinates and open the popover. Move the focus to the first enabled button.
 
 {# Maintainers note: popovers can not be shown from within a `contextmenu` event, except in Chrome > 153. See https://github.com/whatwg/html/issues/10905 This is not yet tracked in BCD. https://github.com/mdn/browser-compat-data/issues/30848#issuecomment-6776634631. #}
 
@@ -99,7 +99,7 @@ card.addEventListener('contextmenu', (e) => {
   e.preventDefault();
 });
 
-card.addEventListener('mouseup', (e) => {
+card.addEventListener('pointerup', (e) => {
   // button 2 = right mouse click
   if (!(e.button === 2 || e.ctrlKey)) return;
   openContextMenu(e);

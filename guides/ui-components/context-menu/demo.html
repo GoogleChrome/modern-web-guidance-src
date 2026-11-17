@@ -87,6 +87,12 @@
         max-inline-size: calc(100% - 1rem);
       }
 
+      @supports not selector(:popover-open) {
+        [popover]:not(.\:popover-open) {
+          display: none;
+        }
+      }
+
       /* Animation */
       @media (prefers-reduced-motion: no-preference) {
         [popover] {
@@ -139,8 +145,8 @@
 
       /* Keyboard-only ring, separate from the active style. */
       :focus-visible {
-        outline: .2rem solid #f90;
-        outline-offset: -.2rem;
+        outline: 0.2rem solid #f90;
+        outline-offset: -0.2rem;
       }
 
       .trigger:active {
@@ -248,10 +254,12 @@
         return id ? document.getElementById(id) : null;
       };
 
-      const popovers = [...document.querySelectorAll('[popover]')];
+      const popovers = [...document.querySelectorAll("[popover]")];
 
       function closeAllMenus() {
-        popovers.filter(menu=>menu.matches(':popover-open')).forEach(menu => menu.hidePopover());
+        popovers
+          .filter((menu) => menu.matches(":popover-open"))
+          .forEach((menu) => menu.hidePopover());
       }
 
       // Toggle Handler (Focus & ARIA)
@@ -305,14 +313,21 @@
         buttonTrigger.addEventListener("click", (event) => {
           const menu = menuFor(buttonTrigger);
           if (!menu) return;
-          if(!'source' in ToggleEvent.prototype){
-            menu.style.setAttribute('position-area', 'block-end span-inline-start;')
+          if ((!"source") in ToggleEvent.prototype) {
+            menu.style.setAttribute(
+              "position-area",
+              "block-end span-inline-start;",
+            );
           }
           // Position the dropdown when anchor positioning is not supported.
-          if(!CSS.supports("anchor-name: --a")){
-            const {right, width, bottom: y} = event.target.getBoundingClientRect();
+          if (!CSS.supports("anchor-name: --a")) {
+            const {
+              right,
+              width,
+              bottom: y,
+            } = event.target.getBoundingClientRect();
             const x = document.body.clientWidth - right;
-            menu.style.removeProperty('left');
+            menu.style.removeProperty("left");
             menu.style.right = `${x}px`;
             menu.style.top = `${y}px`;
           }
@@ -336,7 +351,7 @@
             if (!menu.matches(":popover-open")) {
               // If popover is closed, open and focus the first
               enterOnOpen.add(menu);
-              menu.showPopover({ source: trigger });
+              trigger.click();
             } else {
               // If popover is open, focus the first item
               const firstItem = menu.querySelector("button:not([disabled])");
@@ -344,8 +359,8 @@
             }
           }
         }
-        if (event.key === 'Tab'){
-          closeAllMenus()
+        if (event.key === "Tab") {
+          closeAllMenus();
         }
       });
 
@@ -359,16 +374,15 @@
         const openContextMenu = (event) => {
           const x = event.clientX;
           const y = event.clientY;
-          if(CSS.supports("anchor-name: --a")){
+          if (CSS.supports("anchor-name: --a")) {
             anchor.style.left = `${x}px`;
             anchor.style.top = `${y}px`;
           } else {
-            popover.style.removeProperty('right');
+            popover.style.removeProperty("right");
             popover.style.left = `${x}px`;
             popover.style.top = `${y}px`;
           }
 
-          enterOnOpen.add(popover);
           popover.showPopover({ source: anchor });
         };
 
@@ -410,7 +424,6 @@
       // Native focusgroup supplies menu navigation and inferred roles where supported.
       // Only install the local navigation and semantic fallback when it is unavailable.
       if (!("focusGroup" in HTMLElement.prototype)) {
-
         document.querySelectorAll('[focusgroup~="menu"]').forEach((group) => {
           group.setAttribute("role", "menu");
           group.querySelectorAll("button:not([role])").forEach((item) => {
