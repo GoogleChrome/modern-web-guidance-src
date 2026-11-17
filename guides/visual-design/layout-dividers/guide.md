@@ -3,7 +3,6 @@ name: layout-dividers
 description: Draw visual dividers and separator lines between rows and columns in multi-column, flex, or grid layouts without adding extra border elements or outer container borders.
 web-feature-ids:
   - gap-decorations
-  - light-dark
 ---
 
 # Layout dividers
@@ -13,7 +12,7 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 ## Implementation steps
 
 1.  **Ensure a non-zero gap.** A rule paints inside the gap. Flex and grid default to `0`, so set `gap`. Multicol's default `column-gap` is already non-zero.
-2.  **Declare rules on the container** with `column-rule` (inline-axis gaps), `row-rule` (block-axis gaps), or `rule` (both). Each value is `<width> <style> <color>`. Include the style: it defaults to `none`, so `1px red` paints nothing. Use `currentColor` or `light-dark()` for color.
+2.  **Declare rules on the container** with `column-rule` (inline-axis gaps), `row-rule` (block-axis gaps), or `rule` (both). Each value is `<width> <style> <color>`. Include the style: it defaults to `none`, so `1px red` paints nothing. Use `currentColor` for color.
 3. If the first/last gaps or alternating gaps should differ, vary rules per gap with comma lists and `repeat()`. Comma lists assign per gap in order and cycle when shorter than the gap count; `repeat(auto, ...)` (at most one per list) fills uncovered gaps and stops cycling when the track count is unknown, and `repeat(N, ...)` requires an integer `N >= 1` or the declaration is invalid.
 4.  When rules in a grid should not form a visible lattice, control intersections and segment length with `rule-break`, `rule-inset`, and `rule-overlap`. 
 5.  To control whether rules are painted next to empty cells use `rule-visibility-items`.
@@ -40,8 +39,6 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 ## Fallback strategies
 
-### Gap decorations
-
 {{ BASELINE_STATUS("gap-decorations") }}
 
 In cases where dividers are purely decorative, one possibility is to not use a fallback at all: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
@@ -58,9 +55,3 @@ If your use case requires visible dividers, a fallback is only robust for the si
 ```
 
 For fixed-track grids with known or equal track sizes, a container `background` gradient can draw lines without affecting layout. Wrapping flex layouts and `auto-fill`/`auto-fit` grids have no clean CSS fallback; accept plain gaps there (do not recommend a polyfill).
-
-### light-dark()
-
-{{ BASELINE_STATUS("light-dark") }}
-
-If your Baseline target does not support `light-dark()`, use `currentColor` for the rule color, or a custom property that a `prefers-color-scheme` media query overrides.
