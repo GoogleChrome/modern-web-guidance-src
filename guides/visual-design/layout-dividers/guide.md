@@ -11,7 +11,7 @@ web-feature-ids:
 
 # Layout dividers
 
-Draw dividers between items of a flex, grid, or multicol container with CSS gap decorations (`column-rule`, `row-rule`, `rule`) set on the container. Rules paint centered in the gap, behind items, never change gap or container size, and stop at the container's content-box edges by default. This is preferred over item borders, `:last-child` resets, `<hr>`, or divider elements, which break when items wrap or reflow and add markup whose only job is to be a line.
+Draw dividers between items of a flex, grid, or multicol container with CSS gap decorations (`column-rule`, `row-rule`, `rule`) set on the container. Rules paint centered in the gap, behind items, never change gap or container size, and stop at the container's content-box edges by default. This is preferred over item borders, `:last-child` resets, decorative `<hr>`, or divider elements, which break when items wrap or reflow and add markup whose only job is to be a line.
 
 ## Implementation steps
 
@@ -62,7 +62,7 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 - **DO** use `column-rule` / `row-rule` / `rule` on the container for flex, grid, or multicol dividers.
 - **DO NOT** fake dividers with item `border` (changes box size, needs `:last-child` resets, breaks on wrap). The only exception is inside an `@supports not (...)` block, as in the fallback below.
-- **DO NOT** inject `<hr>`, `<li aria-hidden>`, or `<div class="divider">` elements or pseudo-elements.
+- **DO** use `<hr>` for semantic thematic breaks (section or topic shifts); **DO NOT** inject `<hr>`, `<li aria-hidden>`, `<div class="divider">`, or pseudo-elements purely as visual layout dividers.
 - **DO NOT** set `gap: 0` and expect a rule to show.
 - **DO NOT** use grid plus rules to present tabular data; use `<table>`.
 - **DO NOT** convey meaning through rule color (e.g., red means error); rules are not in the accessibility tree.
