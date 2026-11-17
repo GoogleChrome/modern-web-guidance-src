@@ -8,6 +8,5 @@
 - A disabled option checkbox keeps its checked state when the master checkbox is clicked and is not counted when deriving the master's state.
 - The master checkbox state reflects the initially checked options on page load.
 - The master checkbox is `disabled` when there are no enabled option checkboxes, and its checked and indeterminate state mirrors the disabled options (unchecked for an empty list).
-- Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
 - Label text and any hints are aligned to the right (or left, in RTL) of the checkbox, with at least `3px` spacing from it, and their text does not wrap below the checkbox.
 - When an option has hint text, the hint is outside the option's `<label>` with an `id` that the input references via `aria-describedby`, aligned with the label text (to the right of the checkbox) in smaller, de-emphasized text.

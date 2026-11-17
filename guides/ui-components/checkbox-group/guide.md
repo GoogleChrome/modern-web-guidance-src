@@ -1,9 +1,8 @@
 ---
 name: checkbox-group
-description: Build a checkbox group for non-mutually exclusive multiple-choice selections with a master checkbox to (un)select all and brand-consistent styling.
+description: Build a checkbox group for non-mutually exclusive multiple-choice selections with a master checkbox to (un)select all.
 web-feature-ids:
   - indeterminate
-  - accent-color
 guides:
   - checkbox
   - scrollability-affordance-hints
@@ -18,7 +17,7 @@ A checkbox group lets users pick any number of options, and a master checkbox se
 MANDATORY: Default to a `<fieldset>` of `<label>`s with nested `<input type="checkbox">`, as described below. It has the best assistive technology support, needs no ARIA, works without JavaScript, and is the only pattern with native indeterminate support for a master checkbox. Use it when:
 
 * The group has a master checkbox.
-* The list is long. Keep the checkboxes and bound the list's height in a scroll container (see section 4) instead of switching patterns.
+* The list is long. Keep the checkboxes and bound the list's height in a scroll container (see section 3) instead of switching patterns.
 
 DO NOT replace a checkbox group with `<select multiple>`: native listboxes have no indeterminate master control, rely on platform-dependent multi-select interactions (such as holding a modifier key on desktop), and can't give an option separate hint text, because all of an option's content becomes its accessible name. Use labeled checkboxes unless the use case explicitly requires a listbox.
 
@@ -80,26 +79,7 @@ The master is a convenience control. The options remain the source of truth, and
 * If there are no enabled options (including an empty list), set `disabled` on the master and give it the checked or mixed state the disabled options would produce (unchecked for an empty list).
 * For filtered or paginated lists, filter `options` to the visible, enabled items only, name that scope in the label (for example "Select all 12 shown"), and re-derive the master state whenever the visible or enabled set changes.
 
-## 3. Styling
-
-Style the checkboxes (including the master) with `accent-color` for brand-consistent native rendering, or see {{ GUIDE_REF("checkbox") }} for custom `appearance: none` styling.
-
-```css
-.checkbox {
-  font-size: 1rem; /* Keeps the em-based sizes below predictable */
-  accent-color: #1a73e8;
-  inline-size: var(--checkbox-size, 1.25rem);
-  aspect-ratio: 1;
-  margin: 0;
-  cursor: pointer;
-}
-```
-
-DO NOT remove focus indicators from the checkboxes.
-
-{{ FEATURE_ISSUES("accent-color") }}
-
-## 4. Layout
+## 3. Layout
 
 * Give every checkbox `<label>` (including `.master`) a hit target of at least 44px.
 * Align `.master` with the option checkboxes along the block axis so all checkboxes share the same inline-start edge.
@@ -131,6 +111,8 @@ fieldset {
   position: absolute;
   inset-inline-start: 0;
   inset-block-start: calc(10px + (1.5rem - var(--checkbox-size)) / 2);
+  inline-size: var(--checkbox-size);
+  aspect-ratio: 1;
   margin: 0;
 }
 ```
@@ -152,7 +134,7 @@ Align the hint with the label text, not the checkbox: use `display: block` and `
 
 ### Radio groups
 
-A radio group (mutually exclusive choice) uses the same structure: a `<fieldset>` with a `<legend>`, labeled native `<input type="radio">` elements sharing one `name`, the same layout, hint text, and `accent-color` styling. Omit the master checkbox and preselect a default option when one makes sense.
+A radio group (mutually exclusive choice) uses the same structure: a `<fieldset>` with a `<legend>`, labeled native `<input type="radio">` elements sharing one `name`, and the same layout and hint text. Omit the master checkbox and preselect a default option when one makes sense.
 
 ### Long lists
 
@@ -171,7 +153,3 @@ Without a visible cue, a list cut exactly between rows looks complete and overla
 Pad the scroll container's inline-start edge by at least the focus ring's outline width plus offset, because `overflow` clips the ring where the checkboxes touch the edge.
 
 Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. Depending on the browser, the scroll container itself can also be in the tab order, so give it `role="group"` and an accessible name, for example with `aria-labelledby` pointing to the `<legend>`. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it in browsers that don't add the container to the tab order automatically.
-
-## Fallback strategies
-
-{{ FEATURE_FALLBACKS("accent-color") }}
