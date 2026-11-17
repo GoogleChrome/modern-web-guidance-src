@@ -21,7 +21,7 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled, empty, and outline colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by a registered `--rating` `<number>`. Because a `mask` clips anything outside the star silhouette, draw the outline with chained `drop-shadow()` filters on a wrapper element rather than on the masked element itself.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by a registered `--rating` `<number>`.
 
 ```css
 /* Registered so the value is a typed number that calc() can use */
@@ -34,7 +34,6 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 :root {
   --color-star-filled: #fbbf24;
   --color-star-empty: light-dark(#c9c9d4, #4a4a58);
-  --color-star-outline: light-dark(#3a3a46, #c9c9d4);
 }
 
 .stars {
@@ -47,22 +46,13 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
       var(--color-star-empty) 0);
   mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
 }
-
-/* Outline via wrapper drop-shadows so the mask does not clip it.
-   List `.rating` only in the interactive variant and `.star-frame` only in the read-only variant. */
-.star-frame,
-.rating {
-  filter: drop-shadow(1px 0 0 var(--color-star-outline)) drop-shadow(-1px 0 0 var(--color-star-outline)) drop-shadow(0 1px 0 var(--color-star-outline)) drop-shadow(0 -1px 0 var(--color-star-outline));
-}
 ```
-
-The outline, not the fill, is the star's boundary, so it must have at least 3:1 contrast against the background in light and dark schemes. This is what lets the fill be a bright yellow.
 
 **Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--rating) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
 
 ## Read-only rating: a meter
 
-For an average or non-editable score, use `<meter class="stars" min="0" max="5" value="3.5">` inside `<span class="star-frame">` (with `display: inline-block` for the outline), an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--max` and `--rating` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
+For an average or non-editable score, use `<meter class="stars" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--max` and `--rating` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
 
 ```css
 meter.stars {
@@ -161,15 +151,10 @@ wrap.addEventListener('click', (event) => {
 
 ## Forced colors and motion
 
-In forced-colors mode, background colors are overridden, so clear the drop-shadow filter and redraw the stars with system colors while opting out of color adjustment (keep only the selectors for the variant you built). Under `prefers-reduced-motion: reduce`, also disable any `--rating` transition or press animation on `.rating`.
+In forced-colors mode, background colors are overridden, so redraw the stars with system colors while opting out of color adjustment (keep only the selectors for the variant you built). Under `prefers-reduced-motion: reduce`, also disable any `--rating` transition or press animation on `.rating`.
 
 ```css
 @media (forced-colors: active) {
-  .star-frame,
-  .rating {
-    filter: none;
-  }
-
   .rating::before,
   .stars {
     background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);

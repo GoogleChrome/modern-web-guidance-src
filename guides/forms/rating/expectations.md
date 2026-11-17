@@ -1,6 +1,5 @@
 - `--rating` is registered with `@property` using the `<number>` syntax.
 - The stars are drawn with a CSS `mask` that repeats an icon URL stored in a custom property, over a `linear-gradient` background whose filled portion is calculated from `--rating` and `--max`.
-- The star outline color has at least 3:1 contrast against the background in light and dark color schemes.
 - When a read-only rating is needed, it is a `<meter>` with `min="0"`, a `max` (such as `5`), and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
 - When a read-only rating is needed, the `<meter>` has its native appearance removed and renders the same mask-and-gradient stars, with its filled portion matching its `value`.
 - When a read-only rating is needed, the `<meter>` contains text fallback content stating its value.
