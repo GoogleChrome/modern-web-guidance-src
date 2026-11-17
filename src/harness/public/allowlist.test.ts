@@ -187,8 +187,14 @@ describe('retention helpers', () => {
     assert.deepEqual(withinMaxAge(allowlist, suites, now).map(s => s.id), ['c', 'a', 'b']);
   });
 
-  test('withinMaxAge drops suites older than maxAgeDays', () => {
+  test('withinMaxAge drops suites older than maxAgeDays except curated baselines', () => {
+    const curatedAllowlist: PublicAllowlist = {
+      ...allowlist,
+      include: [...allowlist.include, 'b'],
+      retention: { maxAgeDays: 30 },
+    };
     assert.deepEqual(withinMaxAge({ ...allowlist, retention: { maxAgeDays: 30 } }, suites, now).map(s => s.id), ['c', 'a']);
+    assert.deepEqual(withinMaxAge(curatedAllowlist, suites, now).map(s => s.id), ['c', 'a', 'b']);
   });
 
   test('newestFirst sorts by createdAt descending without mutating', () => {
@@ -219,16 +225,19 @@ describe('retention helpers', () => {
   test('withinSuiteCaps preserves curated baseline suites regardless of rolling nightly caps', () => {
     const curatedAllowlist: PublicAllowlist = {
       ...allowlist,
-      include: [...allowlist.include, 'curated-baseline-run'],
+      include: [...allowlist.include, 'curated-newer-run', 'curated-older-run'],
       retention: { maxSuitesPerAgent: 1, maxSuites: 2 },
     };
     const ranked = [
+      { id: 'curated-newer-run', agent: 'pi' },
       { id: 'nightly-recent-1', agent: 'codex_cli' },
       { id: 'nightly-recent-2', agent: 'codex_cli' },
-      { id: 'curated-baseline-run', agent: 'codex_cli' },
+      { id: 'nightly-recent-3', agent: 'claude_code' },
+      { id: 'nightly-recent-4', agent: 'antigravity_cli' },
+      { id: 'curated-older-run', agent: 'codex_cli' },
     ];
     const kept = withinSuiteCaps(curatedAllowlist, ranked).map(s => s.id);
-    assert.deepEqual(kept, ['nightly-recent-1', 'curated-baseline-run']);
+    assert.deepEqual(kept, ['curated-newer-run', 'nightly-recent-1', 'nightly-recent-3', 'curated-older-run']);
   });
 });
 
