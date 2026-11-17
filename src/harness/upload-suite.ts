@@ -288,8 +288,8 @@ async function main() {
     evalsData = JSON.parse(evalsContent);
     const results = evalsData.results || {};
     if (Object.keys(results).length === 0) {
-      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`));
-      process.exit(0);
+      console.error(cRed(`❌ Error: No evaluation data found in evals.json (0 tasks were run). Upload blocked.`));
+      process.exit(1);
     }
 
     // Guard: Prevent uploading runs with 100% early generation failures (catastrophic crash)

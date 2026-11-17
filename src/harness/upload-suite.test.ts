@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { reconcileAndUploadManifest, uploadDirectory } from './upload-suite.ts';
 import { generateExportHtml } from './lib/trajectory-export.ts';
@@ -221,5 +222,25 @@ describe('reconcileAndUploadManifest', () => {
     assert.deepEqual(store.downloadedSuites, ['nightly-2026-10-20_07-00-00-codex_cli']);
     assert.equal(store.getSavedManifest()?.[0].a11yStats.guidedPassed, 1);
     assert.equal(store.getSavedManifest()?.[1].a11yStats.guidedPassed, 0);
+  });
+});
+
+describe('upload-suite CLI validation guards', () => {
+  const uploadSuiteScript = fileURLToPath(new URL('./upload-suite.ts', import.meta.url));
+
+  test('exits non-zero when evals.json contains 0 evaluated tasks', () => {
+    return withTempDir((dir) => {
+      const suiteName = 'empty-suite';
+      const suiteDir = path.join(dir, suiteName);
+      fs.mkdirSync(suiteDir, { recursive: true });
+      fs.writeFileSync(path.join(suiteDir, 'evals.json'), JSON.stringify({ results: {} }), 'utf8');
+
+      const res = spawnSync(process.execPath, [uploadSuiteScript, suiteName, dir], {
+        encoding: 'utf8',
+      });
+
+      assert.strictEqual(res.status, 1);
+      assert.match(res.stderr, /0 tasks were run/);
+    });
   });
 });
