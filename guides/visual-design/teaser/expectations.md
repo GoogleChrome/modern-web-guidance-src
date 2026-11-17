@@ -1,0 +1,5 @@
+- The element with class `.paywall-container` (or its content element) has the `mask-image` property applied with a `linear-gradient`.
+- The gradient transitions from opaque (e.g., black) to transparent to create a fade effect.
+- If a faded blur is applied, it is done on a pseudo-element over the end of the teaser, not on the teaser itself
+- If a faded blur is applied, the fade starts before the blur begins
+- The call to action that follows the preview is not inside the masked element.

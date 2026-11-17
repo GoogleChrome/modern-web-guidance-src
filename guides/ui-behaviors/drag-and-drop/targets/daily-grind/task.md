@@ -1,0 +1,1 @@
+- Let users rearrange the Seasonal Favorites cards by dragging them left or right within their row.

@@ -169,8 +169,8 @@ export function processSkills(publishRoot: string) {
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, failOnMissingVectors } = opts;
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, chunkCacheDir?: string }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, failOnMissingVectors, chunkCacheDir } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -194,6 +194,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       outputDir: DIST_DIR,
       target: 'skills-cli',
       failOnMissingVectors,
+      chunkCacheDir,
     });
 
     // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
@@ -404,7 +405,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
 }
 
-function getLatestVersion() {
+export function getLatestVersion() {
   const output = gitExec(['tag', '-l', 'v*.*.*', '--merged', 'HEAD', '--sort=-v:refname'], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });

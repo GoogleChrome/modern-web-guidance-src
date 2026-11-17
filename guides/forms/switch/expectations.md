@@ -5,3 +5,4 @@
 - Toggling the switch updates its `checked` state and visually updates the control's track styling between its unchecked and checked states.
 - The switch input sets a custom `accent-color` that applies to both native switch rendering and the polyfilled switch's active state.
 - Focusing the switch input via keyboard navigation (`:focus-visible`) displays a visible focus outline on the input itself.
+- The switch's focus outline has a contrast ratio of at least 3:1 against the background next to it.

@@ -59,9 +59,13 @@ export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'specs',
   'fixtures',
   '__fixtures__',
+  'testing',
+  'e2e',
 ]);
 
-const TEST_OR_SPEC_FILE_RE = /(?:^|\.)(?:test|spec)\./i;
+const TEST_OR_SPEC_FILE_RE =
+  /(?:(?:^|\.)(?:test|spec)\.|_test_runner\.(?:js|ts|html)$|(?:^|[._-])(?:testrunner|tests)\.(?:js|ts)$)/i;
+const CAMEL_TEST_FILE_RE = /[A-Za-z0-9](?:TestRunner|Tests)\.(?:js|ts)$/;
 
 function normalizePath(relPath: string): string {
   return relPath.replace(/\\/g, '/').toLowerCase();
@@ -93,24 +97,34 @@ function hasDotDirSegment(relPath: string): boolean {
 
 /**
  * Returns `true` if `relPath` (relative to the target directory) represents a documentation,
- * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file.
+ * example, demo, test, spec, testing, e2e, or fixtures path or is a test/spec/test-runner file.
  */
 export function isDocsOrTestsPath(relPath: string): boolean {
-  const segments = splitPathSegments(relPath);
-  if (segments.length === 0) {
+  const rawSegments = relPath
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
+  if (rawSegments.length === 0) {
     return false;
   }
+  const lowerDirs = rawSegments.slice(0, -1).map((s) => s.toLowerCase());
+  const rawBaseName = rawSegments.at(-1) ?? '';
   return (
-    segments.slice(0, -1).some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg)) ||
-    TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? '')
+    lowerDirs.some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg) || seg.endsWith('_test_runner')) ||
+    TEST_OR_SPEC_FILE_RE.test(rawBaseName) ||
+    CAMEL_TEST_FILE_RE.test(rawBaseName)
   );
 }
 
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.min.js',
   '.min.css',
+  '.min.scss',
+  '.min.less',
   '.bundle.js',
   '.bundle.css',
+  '.bundle.scss',
+  '.bundle.less',
   '.pack.js',
   '-opt.js',
   '.opt.js',
@@ -118,60 +132,21 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.d.ts',
 ];
 
-export const JS_RULE_EXTENSIONS = [
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.mts',
-  '.cts',
-  '.jsx',
-  '.tsx',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.html',
-  '.htm',
-] as const;
+import {
+  CSS_RULE_EXTENSIONS,
+  DEPENDENCY_RULE_FILENAMES,
+  DOM_RULE_EXTENSIONS,
+  JS_RULE_EXTENSIONS,
+  SUPPORTED_SOURCE_EXTENSIONS,
+} from './format-registry.ts';
 
-export const CSS_RULE_EXTENSIONS = [
-  '.css',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.html',
-  '.htm',
-] as const;
-
-export const DOM_RULE_EXTENSIONS = [
-  '.html',
-  '.htm',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.jsx',
-  '.tsx',
-] as const;
-
-export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
-
-const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.mts',
-  '.cts',
-  '.jsx',
-  '.tsx',
-  '.html',
-  '.htm',
-  '.php',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.css',
-]);
+export {
+  CSS_RULE_EXTENSIONS,
+  DEPENDENCY_RULE_FILENAMES,
+  DOM_RULE_EXTENSIONS,
+  JS_RULE_EXTENSIONS,
+  SUPPORTED_SOURCE_EXTENSIONS,
+};
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
   '.js',
@@ -411,6 +386,16 @@ export function hasVendoredLicenseHeader(
 
 export const MAX_SOURCE_FILE_BYTES = 1_000_000;
 
+const GERBER_HEADER_REGEX = /%(?:FS[LT][AI][^%\r\n]*\*%|MO(?:MM|IN)\*%)/;
+
+/**
+ * Cheap content check for Gerber PCB files that collide with Ember's `.gts` extension.
+ * RS-274X Gerber files declare their coordinate format (`%FS...*%`) and units (`%MOMM*%` / `%MOIN*%`) in the header.
+ */
+export function isGerberContent(content: string): boolean {
+  return GERBER_HEADER_REGEX.test(content.slice(0, 4096));
+}
+
 /**
  * Master predicate determining whether a file should be scanned by analyzer rules.
  */
@@ -438,7 +423,8 @@ export function shouldScanFile(
     if (
       Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES ||
       isMinifiedContent(content, options?.maxLineLength) ||
-      hasVendoredLicenseHeader(content, options)
+      hasVendoredLicenseHeader(content, options) ||
+      (normalized.endsWith('.gts') && isGerberContent(content))
     ) {
       return false;
     }

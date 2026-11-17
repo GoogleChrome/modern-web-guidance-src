@@ -14,6 +14,12 @@
  *   PI_MODEL / PROMPT_MODEL - Model identifier passed to `pi --model` (supports optional `:<thinking>` suffix)
  *   PI_SUITE_NAME           - Custom suite directory name under results/suites/
  *   PI_WORKERS              - Concurrent worker count (defaults to 10)
+ *
+ * Thinking levels: OpenRouter models expose different effort tiers (e.g. GLM-5.3 has low/high/max,
+ * Mistral Large 4 only high/none). Pi clamps an unsupported level, so `:medium` can quietly run as
+ * high; check `thinkingLevel` in the session log. Pi runs with `--offline` against the copied
+ * `~/.pi/agent/models-store.json`, so run `pi update --models` first. A model missing from that
+ * catalog runs as a custom model id with no clamping.
  */
 
 import { mergeSuiteConfig, Agents } from './config.ts';

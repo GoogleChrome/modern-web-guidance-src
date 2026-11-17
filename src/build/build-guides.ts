@@ -26,7 +26,7 @@ import {
 } from "./devsite-markdown.ts";
 import type { UseCase } from "../rag/guides.ts";
 import type { EmbedderLike } from "../rag/search.ts";
-import { loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
+import { DEFAULT_CACHE_DIR, loadChunkCache, quantizeVectors, STATIC_DIMS } from "../rag/guide-chunk-cache.ts";
 import {
   parseGuideFile,
   extractGuideChunks,
@@ -62,6 +62,9 @@ export interface BuildOptions {
   modelName?: string;
   noChunking?: boolean;
   failOnMissingVectors?: boolean;
+  chunkCacheDir?: string;
+  pipelineCacheDir?: string;
+  guides?: GuideInventory[];
 }
 
 interface CachePaths {
@@ -75,8 +78,8 @@ interface CachePaths {
   cachedGuides: string;
 }
 
-function resolveCachePaths(target: BuildTarget): CachePaths {
-  const cacheDir = path.join(outDir, 'build', target);
+function resolveCachePaths(target: BuildTarget, customCacheDir?: string): CachePaths {
+  const cacheDir = customCacheDir ?? path.join(outDir, 'build', target);
   const cachedGenDir = path.join(cacheDir, 'gen');
   return {
     cacheDir,
@@ -95,10 +98,11 @@ export async function computePipelineHash(
   target: string,
   noChunking: boolean,
   modelName?: string,
-  failOnMissingVectors?: boolean
+  chunkCacheDir?: string
 ): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
+  const resolvedCacheDir = chunkCacheDir ?? DEFAULT_CACHE_DIR;
 
   const deps = [
     import.meta.filename,
@@ -106,9 +110,9 @@ export async function computePipelineHash(
     path.join(rootDir, "src/rag/guide-chunk-cache.ts"),
     path.join(rootDir, "src/rag/quantize.ts"),
     path.join(rootDir, "src/core/guide-chunks.ts"),
-    path.join(rootDir, "src/rag/gen/guide-chunk-cache.json"),
-    path.join(rootDir, "src/rag/gen/guide-chunk-cache.i8"),
-    path.join(rootDir, "src/rag/gen/guide-chunk-cache.scale.f32"),
+    path.join(resolvedCacheDir, "guide-chunk-cache.json"),
+    path.join(resolvedCacheDir, "guide-chunk-cache.i8"),
+    path.join(resolvedCacheDir, "guide-chunk-cache.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
@@ -127,7 +131,6 @@ export async function computePipelineHash(
   hash.update(target);
   if (target === 'devsite') hash.update(loadGitFileDates().sourceCommit);
   hash.update(noChunking.toString());
-  hash.update(Boolean(failOnMissingVectors).toString());
 
   if (target !== 'devsite') {
     const rawModel = modelName || "static-tokenlearn-256d";
@@ -144,7 +147,13 @@ export async function computePipelineHash(
   return hash.digest("hex");
 }
 
-function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides: GuideInventory[], target: BuildTarget): boolean {
+function evaluateCacheHit(
+  paths: CachePaths,
+  currentHash: string,
+  expectedGuides: GuideInventory[],
+  target: BuildTarget,
+  failOnMissingVectors?: boolean
+): boolean {
   if (target === 'devsite') {
     const devsiteFiles = [
       paths.cachedManifest,
@@ -179,7 +188,14 @@ function evaluateCacheHit(paths: CachePaths, currentHash: string, expectedGuides
     const pipelineManifest = path.join(paths.cacheDir, "pipeline.manifest.json");
     if (!fs.existsSync(pipelineManifest)) return false;
     const manifest = JSON.parse(fs.readFileSync(pipelineManifest, "utf-8"));
-    return manifest.hash === currentHash;
+    if (manifest.hash !== currentHash) return false;
+    if (
+      failOnMissingVectors &&
+      (typeof manifest.missingCount !== "number" || manifest.missingCount > 0)
+    ) {
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -346,17 +362,28 @@ export function generateGuidesTocYaml(guides: DevsiteGuideMetadata[]): string {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target: targetOpt, force, targetGuidePath, modelName, noChunking, failOnMissingVectors } = opts;
+  const {
+    outputDir,
+    target: targetOpt,
+    force,
+    targetGuidePath,
+    modelName,
+    noChunking,
+    failOnMissingVectors,
+    chunkCacheDir,
+    pipelineCacheDir,
+    guides: guidesOpt,
+  } = opts;
 
   const target = targetOpt || 'skills-cli';
   const isNoChunking = !!noChunking;
 
   // 1. Configuration & Paths
-  const cachePaths = resolveCachePaths(target);
+  const cachePaths = resolveCachePaths(target, pipelineCacheDir);
   const buildGuidesDir = cachePaths.cachedGuides;
 
   // 2. Scan & Hash
-  let readyGuides = scanAllGuides().filter(inv => {
+  let readyGuides = guidesOpt ?? scanAllGuides().filter(inv => {
     const excluded = config.monoskill.excludeFromBundling || [];
     return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
@@ -365,11 +392,14 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     target,
     isNoChunking,
     modelName,
-    failOnMissingVectors
+    chunkCacheDir
   );
 
   // 3. Cache Evaluation
-  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides, target);
+  const isHit =
+    !force &&
+    !targetGuidePath &&
+    evaluateCacheHit(cachePaths, currentHash, readyGuides, target, failOnMissingVectors);
   if (isHit) {
     restoreFromCache(cachePaths, outputDir, target);
     console.log("👌");
@@ -408,7 +438,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
-  const chunkCache = target !== 'devsite' && !modelName ? loadChunkCache() : null;
+  const chunkCache = target !== 'devsite' && !modelName ? loadChunkCache(chunkCacheDir) : null;
   const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
 
   console.log(target === 'devsite' ? "Exporting DevSite guides…" : "Generating embeddings…");
@@ -506,7 +536,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
 
   fs.writeFileSync(
     path.join(cachePaths.cacheDir, "pipeline.manifest.json"),
-    JSON.stringify({ hash: currentHash }, null, 2) + '\n'
+    JSON.stringify({ hash: currentHash, missingCount: missingChunks.length }, null, 2) + '\n'
   );
 
   restoreFromCache(cachePaths, outputDir, target);

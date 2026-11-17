@@ -291,7 +291,9 @@ function querySelectorAllIncludingTemplates(
         child.tagName?.toLowerCase() === 'template' &&
         isLinkedomQueryableNode(child.content)
       ) {
-        results.push(...querySelectorAllIncludingTemplates(child.content, selector));
+        for (const nested of querySelectorAllIncludingTemplates(child.content, selector)) {
+          results.push(nested);
+        }
       } else {
         walk(child);
       }
@@ -302,6 +304,18 @@ function querySelectorAllIncludingTemplates(
   return results;
 }
 
+function hasMarkupSpreadAttribute(attributes: Readonly<Record<string, string>>): boolean {
+  if (Object.hasOwn(attributes, '...attributes') || Object.hasOwn(attributes, 'v-bind')) {
+    return true;
+  }
+  const keys = Object.keys(attributes);
+  // Svelte `{...props}` arrives as one key; `{ ...props }` is split on whitespace into `{` and `...props`.
+  return (
+    keys.some((key) => key.startsWith('{...')) ||
+    (Object.hasOwn(attributes, '{') && keys.some((key) => key.startsWith('...')))
+  );
+}
+
 function createDomElementView(
   tagName: string,
   attributes: Readonly<Record<string, string>>,
@@ -309,13 +323,14 @@ function createDomElementView(
   column: number,
   jsx?: { readonly hasSpread: boolean; readonly dynamicAttrs: ReadonlySet<string> },
 ): DomElementView {
+  const hasSpread = jsx ? jsx.hasSpread : hasMarkupSpreadAttribute(attributes);
   return {
     tagName,
     attributes,
     line,
     column,
     isJsx: Boolean(jsx),
-    hasSpreadAttribute: jsx?.hasSpread ?? false,
+    hasSpreadAttribute: hasSpread,
     hasAttribute: (name: string) => Object.hasOwn(attributes, name.toLowerCase()),
     getAttribute: (name: string) => {
       const lower = name.toLowerCase();
@@ -381,6 +396,13 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
 
       const { line, column } = matchRes.token;
       const view = createDomElementView(tagLower, elAttrs, line, column);
+
+      // Markup spread attributes (Glimmer ...attributes, Svelte {...props}, Vue v-bind="...")
+      // behave the same as JSX {...props} when skipIfHasSpread is set.
+      if (matcher.skipIfHasSpread && view.hasSpreadAttribute) {
+        continue;
+      }
+
       const result = matcher.matchElement(view, ctx);
       if (result) {
         results.push({
