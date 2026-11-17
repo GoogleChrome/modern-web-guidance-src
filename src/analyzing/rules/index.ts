@@ -34,7 +34,7 @@ import scrollspy from './scrollspy.ts';
 import secureExternalSubresources from './secure-external-subresources.ts';
 import selectMenuInteraction from './select-menu-interaction.ts';
 import slider from './slider.ts';
-import softEdgeContentFade from './soft-edge-content-fade.ts';
+import teaser from './teaser.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import switchRules from './switch.ts';
 import validateInputAfterInteraction from './validate-input-after-interaction.ts';
@@ -74,7 +74,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   secureExternalSubresources,
   selectMenuInteraction,
   slider,
-  softEdgeContentFade,
+  teaser,
   stylingWebComponents,
   switchRules,
   validateInputAfterInteraction,
