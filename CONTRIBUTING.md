@@ -28,7 +28,7 @@ Generating a patch is cheap; validating that a change is spec-compliant, empiric
 * **Scope & concurrency limits for external Contributors:**
   * **1 open PR at a time:** Unless you are an onboarded [Peer, Content ATL, or Owner](./GOVERNANCE.md), you may have at most **one** open pull request at a time. Wait for your open PR to be merged or closed before opening another.
   * **1 guide per PR:** External content PRs must be scoped to a single guide directory (`guides/<category>/<slug>/`), unless a multi-guide change is approved on the linked issue (e.g., extracting shared content into `features/`). Unsolicited multi-guide or cross-category sweeps will be closed.
-* **AI-assisted contributions:** You are responsible for verifying the technical and web-spec accuracy of every AI-assisted issue, PR, or comment you submit, and following the etiquette in [`AGENTS.md`](./AGENTS.md#github--pr-etiquette) (`🤖` / `✨` / `🧠` provenance prefixes and concise PR descriptions).
+* **AI-assisted contributions:** You are responsible for understanding and verifying the technical and web-spec accuracy of every AI-assisted issue, PR, or comment you submit, and following the etiquette in [`AGENTS.md`](./AGENTS.md#github--pr-etiquette) (`🤖` / `✨` / `🧠` provenance prefixes and concise PR descriptions).
 
 
 ## Choose Your Contribution Track
