@@ -5,7 +5,6 @@ web-feature-ids:
   - meter
   - input-range
   - attr
-  - registered-custom-properties
 guides:
   - icons
 ---
@@ -21,16 +20,9 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by a registered `--control-value` `<number>`.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`.
 
 ```css
-/* Registered so the value is a typed number that calc() can use */
-@property --control-value {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
-}
-
 :root {
   --color-star-filled: #fbbf24;
   --color-star-empty: light-dark(#c9c9d4, #4a4a58);
@@ -50,6 +42,8 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 ```
 
 **Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--control-value) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
+
+To transition or animate the fill, mirror `--control-value` into a component-specific `@property` (`syntax: "<number>"`) rather than registering `--control-value` directly.
 
 ## Read-only rating: a meter
 
@@ -81,8 +75,6 @@ meter.rating {
   }
 }
 ```
-
-* **Optional animation:** because `--control-value` is a registered `<number>`, you can animate it from `0` on load or when scrolled into view with `animation-timeline: view()` (disabled under `prefers-reduced-motion: reduce`).
 
 ## Interactive rating: a styled range input
 
@@ -150,7 +142,7 @@ Optional: to show an existing average until the user rates, set `data-average="3
 
 ## Forced colors and motion
 
-In forced-colors mode, background colors are overridden, so redraw the stars with system colors while opting out of color adjustment. Under `prefers-reduced-motion: reduce`, also disable any `--control-value` transition or press animation on `.rating`.
+In forced-colors mode, background colors are overridden, so redraw the stars with system colors while opting out of color adjustment. Under `prefers-reduced-motion: reduce`, disable any press animation on `.rating`.
 
 ```css
 @media (forced-colors: active) {
@@ -179,9 +171,3 @@ if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
 ```
 
 The experience is identical; only the mechanism differs. The interactive range input does not depend on `attr()` because its script already sets `--control-value`.
-
-### Registered custom properties
-
-{{ BASELINE_STATUS("registered-custom-properties") }}
-
-Without `@property`, `--control-value` is an untyped value. The interactive stars and the meter still fill correctly because the gradient only reads the number, but the fill jumps instead of easing and the optional meter count-up does not run. This is graceful degradation: no extra code is needed.

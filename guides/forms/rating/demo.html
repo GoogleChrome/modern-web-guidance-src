@@ -7,12 +7,6 @@
   <meta name="color-scheme" content="light dark" />
   <title>Star rating (meter and range)</title>
   <style>
-    @property --control-value {
-      syntax: "<number>";
-      inherits: true;
-      initial-value: 0;
-    }
-
     :root {
       color-scheme: light dark;
       --surface: light-dark(#f4f4f8, #121216);
@@ -100,13 +94,6 @@
       --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
     }
 
-    /* Count-up on scroll via view(): no `to` stop, so it settles at the meter's own value */
-    @keyframes fill-stars {
-      from {
-        --control-value: 0;
-      }
-    }
-
     /* Read-only: <meter> painted as stars */
     meter.rating {
       appearance: none;
@@ -117,9 +104,6 @@
       --control-value: attr(value type(<number>), 0);
       background: var(--_stars-bg);
       mask: var(--_stars-mask);
-      animation: fill-stars linear both;
-      animation-timeline: view();
-      animation-range: entry 0% contain 25%;
 
       &::-webkit-meter-bar,
       &::-webkit-meter-optimum-value,
@@ -148,8 +132,7 @@
       border-radius: 0.375rem;
       background: transparent;
       cursor: pointer;
-      /* Registered --control-value is animatable, so the fill eases to the new value */
-      transition: --control-value 0.25s ease-out, scale 0.15s ease;
+      transition: scale 0.15s ease;
 
       &[data-average]:not([data-edited]) {
         --color-star-filled: var(--color-star-average);
@@ -224,10 +207,6 @@
       .rating {
         transition: none;
       }
-
-      meter.rating {
-        animation: none;
-      }
     }
   </style>
 </head>
@@ -240,7 +219,7 @@
     <section class="card">
       <h2 id="avg-label">Average rating: 3.5 out of 5 (128 reviews)</h2>
       <meter class="rating" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label">3.5 out of 5</meter>
-      <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>. Animates on scroll via <code>animation-timeline: view()</code>.</p>
+      <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>.</p>
     </section>
 
     <section class="card">
