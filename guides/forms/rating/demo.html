@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
-  <title>Star rating (range and meter)</title>
+  <title>Star rating (meter and range)</title>
   <style>
     @property --rating {
       syntax: "<number>";
@@ -21,6 +21,7 @@
       --muted: light-dark(#5b5b69, #a4a4b3);
       --accent: light-dark(#4f46e5, #a5b4fc);
       --star-filled: #fbbf24;
+      --star-average: var(--accent);
       --star-empty: light-dark(#c9c9d4, #4a4a58);
       --star-outline: light-dark(#3a3a46, #c9c9d4);
       --star-size: clamp(2.5rem, 14vw, 3rem); /* 3rem: each half star is 1.5rem (24px), the minimum touch target; shrinks only on very narrow screens */
@@ -108,6 +109,40 @@
       display: inline-block;
     }
 
+    /* Opt-in count-up: the keyframe has no `to`, so it animates to the meter's own value */
+    @keyframes fill-stars {
+      from {
+        --rating: 0;
+      }
+    }
+
+    /* Read-only: <meter> painted as stars */
+    meter.stars {
+      appearance: none;
+      display: block;
+      padding: 0;
+      border: 0;
+      --rating: attr(value type(<number>), 0);
+
+      &::-webkit-meter-bar,
+      &::-webkit-meter-optimum-value,
+      &::-webkit-meter-suboptimum-value,
+      &::-webkit-meter-even-less-good-value {
+        appearance: none;
+        border: 0;
+        background: none;
+      }
+
+      &::-webkit-meter-bar {
+        block-size: 100%;
+        inline-size: 100%;
+      }
+
+      &.animate {
+        animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+    }
+
     /* A transparent native range (step 0.5) overlays the stars and provides all the behavior */
     .rating {
       position: relative;
@@ -117,6 +152,10 @@
       border-radius: 0.375rem;
       /* Registered --rating is animatable, so the fill eases to the new value */
       transition: --rating 0.25s ease-out, scale 0.15s ease;
+
+      &[data-average]:not([data-edited]) {
+        --star-filled: var(--star-average);
+      }
 
       &:active {
         scale: 1.02;
@@ -179,40 +218,6 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* Opt-in count-up: the keyframe has no `to`, so it animates to the meter's own value */
-    @keyframes fill-stars {
-      from {
-        --rating: 0;
-      }
-    }
-
-    /* Read-only: <meter> painted as stars */
-    meter.stars {
-      appearance: none;
-      display: block;
-      padding: 0;
-      border: 0;
-      --rating: attr(value type(<number>), 0);
-
-      &::-webkit-meter-bar,
-      &::-webkit-meter-optimum-value,
-      &::-webkit-meter-suboptimum-value,
-      &::-webkit-meter-even-less-good-value {
-        appearance: none;
-        border: 0;
-        background: none;
-      }
-
-      &::-webkit-meter-bar {
-        block-size: 100%;
-        inline-size: 100%;
-      }
-
-      &.animate {
-        animation: fill-stars 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-      }
-    }
-
     button {
       min-block-size: 24px;
       min-inline-size: 24px;
@@ -264,18 +269,7 @@
 <body>
   <main>
     <h1>Star rating</h1>
-    <p class="lede">Native range and meter elements, drawn as stars with CSS masks.</p>
-
-    <section class="card">
-      <h2><label for="rate">Rate this product</label></h2>
-      <div class="row">
-        <span class="rating" id="rating-wrap">
-          <input type="range" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated" />
-        </span>
-        <output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
-      </div>
-      <p class="hint">Click, drag, or use the arrow keys. Half stars are supported.</p>
-    </section>
+    <p class="lede">Native meter and range elements, drawn as stars with CSS masks.</p>
 
     <section class="card">
       <h2 id="avg-label">Average rating: 3.5 out of 5 (128 reviews)</h2>
@@ -283,35 +277,20 @@
       <button type="button" id="replay">Replay animation</button>
       <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>. Animates when scrolled into view.</p>
     </section>
+
+    <section class="card">
+      <h2><label for="rate">Rate this product</label></h2>
+      <div class="row">
+        <span class="rating" id="rating-wrap" data-average="3.5">
+          <input type="range" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated, average 3.5 out of 5 stars" />
+        </span>
+        <output for="rate" id="rate-out" aria-hidden="true">Average: 3.5 out of 5</output>
+      </div>
+      <p class="hint">Shows the 3.5 average until edited. Click, drag, or use the arrow keys; half stars are supported.</p>
+    </section>
   </main>
 
   <script>
-    const range = document.getElementById('rate');
-    const wrap = document.getElementById('rating-wrap');
-    const out = document.getElementById('rate-out');
-
-    function update() {
-      const value = Number(range.value);
-      const text = value === 0 ? 'Not rated' : `${value} out of 5 stars`;
-      wrap.style.setProperty('--rating', value);
-      range.setAttribute('aria-valuetext', text);
-      out.textContent = text;
-    }
-    range.addEventListener('input', update);
-    update();
-
-    // Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
-    let valueBefore = 0;
-    wrap.addEventListener('pointerdown', () => { valueBefore = Number(range.value); });
-    wrap.addEventListener('click', (event) => {
-      if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
-      const { left, width } = range.getBoundingClientRect();
-      // Snap up to the half under the pointer; the gutters beside the stars clamp to 0 and 5
-      const half = Math.min(10, Math.max(0, Math.ceil(((event.clientX - left) / width) * 10))) / 2;
-      range.value = half === valueBefore ? half - 0.5 : half;
-      update();
-    });
-
     // Restart the count-up: removing and re-adding the class restarts the CSS animation
     function replay(el) {
       el.classList.remove('animate');
@@ -336,6 +315,46 @@
         el.style.setProperty('--rating', el.getAttribute('value'));
       }
     }
+
+    const range = document.getElementById('rate');
+    const wrap = document.getElementById('rating-wrap');
+    const out = document.getElementById('rate-out');
+
+    function update() {
+      const edited = 'edited' in wrap.dataset;
+      const average = wrap.dataset.average;
+      if (!edited && average !== undefined) {
+        wrap.style.setProperty('--rating', average);
+        range.setAttribute('aria-valuetext', `Not rated, average ${average} out of 5 stars`);
+        out.textContent = `Average: ${average} out of 5`;
+        return;
+      }
+      const value = Number(range.value);
+      const text = value === 0 ? 'Not rated' : `${value} out of 5 stars`;
+      wrap.style.setProperty('--rating', value);
+      range.setAttribute('aria-valuetext', text);
+      out.textContent = text;
+    }
+    range.addEventListener('input', () => {
+      wrap.dataset.edited = '';
+      update();
+    });
+    update();
+
+    // Pointer clicks fill the half under the pointer; clicking the last filled half unfills it
+    let valueBefore = NaN;
+    wrap.addEventListener('pointerdown', () => {
+      valueBefore = 'edited' in wrap.dataset ? Number(range.value) : NaN;
+    });
+    wrap.addEventListener('click', (event) => {
+      if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
+      const { left, width } = range.getBoundingClientRect();
+      // Snap up to the half under the pointer; the gutters beside the stars clamp to 0 and 5
+      const half = Math.min(10, Math.max(0, Math.ceil(((event.clientX - left) / width) * 10))) / 2;
+      wrap.dataset.edited = '';
+      range.value = half === valueBefore ? half - 0.5 : half;
+      update();
+    });
   </script>
 </body>
 
