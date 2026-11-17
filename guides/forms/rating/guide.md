@@ -12,7 +12,7 @@ guides:
 
 # Star rating
 
-Build a 5-star rating that supports half stars. Pick exactly one variant from the task before writing any markup or CSS:
+Build a star rating that supports half stars. Pick exactly one variant from the task before writing any markup or CSS:
 
 * **Read-only** (`<meter>`): displays an existing score.
 * **Interactive** (`<input type="range">`): collects a user rating, optionally displaying an average score in a distinct fill until edited. This is the default when the task is ambiguous.
@@ -21,7 +21,7 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled, empty, and outline colors for light and dark schemes, and `--icon-star` holding a star SVG data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` five times as a `mask` over a hard-stop `linear-gradient` driven by a registered `--rating` `<number>`. Because a `mask` clips anything outside the star silhouette, draw the outline with chained `drop-shadow()` filters on a wrapper element rather than on the masked element itself.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled, empty, and outline colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by a registered `--rating` `<number>`. Because a `mask` clips anything outside the star silhouette, draw the outline with chained `drop-shadow()` filters on a wrapper element rather than on the masked element itself.
 
 ```css
 /* Registered so the value is a typed number that calc() can use */
@@ -32,11 +32,12 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 }
 
 .stars {
-  inline-size: calc(var(--star-size) * 5);
+  --max: 5;
+  inline-size: calc(var(--star-size) * var(--max));
   block-size: var(--star-size);
-  /* Hard stop at rating/5 of the width fills partial and half stars */
+  /* Hard stop at rating/max of the width fills partial and half stars */
   background: linear-gradient(to right in oklch,
-      var(--star-filled) calc(var(--rating) / 5 * 100%),
+      var(--star-filled) calc(var(--rating) / var(--max) * 100%),
       var(--star-empty) 0);
   mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
 }
@@ -53,10 +54,11 @@ The outline, not the fill, is the star's boundary, so it must have at least 3:1 
 
 ## Read-only rating: a meter
 
-For an average or non-editable score, use `<meter class="stars" min="0" max="5" value="3.5">` inside `<span class="star-frame">` (with `display: inline-block` for the outline), an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--rating` from `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
+For an average or non-editable score, use `<meter class="stars" min="0" max="5" value="3.5">` inside `<span class="star-frame">` (with `display: inline-block` for the outline), an accessible name via `aria-labelledby` or a `<label>`, and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.stars`, read `--max` and `--rating` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
 
 ```css
 meter.stars {
+  --max: attr(max type(<number>), 5);
   --rating: attr(value type(<number>), 0);
 
   &::-webkit-meter-bar,
@@ -107,12 +109,12 @@ MANDATORY: use `<input type="range" min="0" max="5" step="0.5">` with a visible 
 <output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
 ```
 
-Style `.rating` with `position: relative; display: inline-block;` and horizontal `padding-inline` gutters (e.g. `--rating-gutter: 0.75rem`) for easy `0` and `5` clicks. Paint the `.stars` mask and gradient on `.rating::before` (`content: ""; display: block; pointer-events: none;`) rather than on the input or wrapper, so the mask never clips the wrapper's focus ring, and style `.rating:has(:focus-visible)` with a visible `outline` and `outline-offset`. Position the range input over it (`position: absolute; inset-block: 0; margin: 0; padding: 0; border: 0; opacity: 0; appearance: none;`), excluding the gutters and collapsing the thumb to zero width so pointer coordinates map 1:1 to values:
+Style `.rating` with `position: relative; display: inline-block; --max: 5;` and horizontal `padding-inline` gutters (e.g. `--rating-gutter: 0.75rem`) for easy min and max clicks. Paint the `.stars` mask and gradient on `.rating::before` (`content: ""; display: block; pointer-events: none;`) rather than on the input or wrapper, so the mask never clips the wrapper's focus ring, and style `.rating:has(:focus-visible)` with a visible `outline` and `outline-offset`. Position the range input over it (`position: absolute; inset-block: 0; margin: 0; padding: 0; border: 0; opacity: 0; appearance: none;`), excluding the gutters and collapsing the thumb to zero width so pointer coordinates map 1:1 to values:
 
 ```css
 .rating input[type="range"] {
   inset-inline-start: var(--rating-gutter);
-  inline-size: calc(var(--star-size) * 5);
+  inline-size: calc(var(--star-size) * var(--max));
   block-size: 100%;
 
   /* Zero-width thumb keeps value-to-position mapping exact */
@@ -130,7 +132,7 @@ Style `.rating` with `position: relative; display: inline-block;` and horizontal
 }
 ```
 
-MANDATORY: on `input` (and on initial load), mirror `range.value` into `--rating` via `wrap.style.setProperty('--rating', value)` and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
+MANDATORY: on `input` (and on initial load), mirror `range.max` into `--max` and `range.value` into `--rating` on `wrap` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
 Optional: to show an existing average until the user rates, set `data-average="3.5"` on `.rating`, override `--star-filled: var(--star-average)` on `.rating[data-average]:not([data-edited])` with a distinct color, and initialize `--rating` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `wrap.dataset.edited = ''`.
 
@@ -142,7 +144,8 @@ wrap.addEventListener('pointerdown', () => { valueBefore = Number(range.value); 
 wrap.addEventListener('click', (event) => {
   if (event.detail === 0) return;
   const { left, width } = range.getBoundingClientRect();
-  const half = Math.min(10, Math.max(0, Math.ceil(((event.clientX - left) / width) * 10))) / 2;
+  const steps = (Number(range.max) || 5) * 2;
+  const half = Math.min(steps, Math.max(0, Math.ceil(((event.clientX - left) / width) * steps))) / 2;
   range.value = half === valueBefore ? half - 0.5 : half;
   update();
 });
@@ -161,7 +164,7 @@ In forced-colors mode, background colors are overridden, so clear the drop-shado
 
   .rating::before,
   .stars {
-    background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / 5 * 100%), GrayText 0);
+    background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);
     forced-color-adjust: none;
   }
 }
@@ -173,11 +176,12 @@ In forced-colors mode, background colors are overridden, so clear the drop-shado
 
 {{ BASELINE_STATUS("attr") }}
 
-`attr()` with a type is not available everywhere, so the `--rating` assignment on `<meter>` needs a script fallback. Detect it and copy the attribute into the property:
+`attr()` with a type is not available everywhere, so the `--max` and `--rating` assignments on `<meter>` need a script fallback. Detect it and copy the attributes into the properties:
 
 ```js
 if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
   for (const el of document.querySelectorAll('meter.stars')) {
+    el.style.setProperty('--max', el.getAttribute('max') ?? 5);
     el.style.setProperty('--rating', el.getAttribute('value'));
   }
 }

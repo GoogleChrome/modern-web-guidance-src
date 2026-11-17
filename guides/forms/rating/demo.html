@@ -25,6 +25,7 @@
       --star-empty: light-dark(#c9c9d4, #4a4a58);
       --star-outline: light-dark(#3a3a46, #c9c9d4);
       --star-size: clamp(2.5rem, 14vw, 3rem); /* 3rem: each half star is 1.5rem (24px), the minimum touch target; shrinks only on very narrow screens */
+      /* Any SVG url() works (external file or data URI) */
       --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
     }
 
@@ -88,13 +89,13 @@
       text-wrap: pretty;
     }
 
-    /* Stars are a row of star-shaped masks over a hard-stop gradient driven by --rating */
+    /* Stars are a row of star-shaped masks over a hard-stop gradient driven by --rating and --max */
     .stars,
     .rating::before {
-      inline-size: calc(var(--star-size) * 5);
+      inline-size: calc(var(--star-size) * var(--max));
       block-size: var(--star-size);
       background: linear-gradient(to right in oklch,
-          var(--star-filled) calc(var(--rating) / 5 * 100%),
+          var(--star-filled) calc(var(--rating) / var(--max) * 100%),
           var(--star-empty) 0);
       mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
     }
@@ -122,6 +123,7 @@
       display: block;
       padding: 0;
       border: 0;
+      --max: attr(max type(<number>), 5);
       --rating: attr(value type(<number>), 0);
 
       &::-webkit-meter-bar,
@@ -146,6 +148,7 @@
     /* A transparent native range (step 0.5) overlays the stars and provides all the behavior */
     .rating {
       position: relative;
+      --max: 5;
       --rating-gutter: 0.75rem;
       display: inline-block;
       padding-inline: var(--rating-gutter);
@@ -177,7 +180,7 @@
         position: absolute;
         inset-block: 0;
         inset-inline-start: var(--rating-gutter);
-        inline-size: calc(var(--star-size) * 5);
+        inline-size: calc(var(--star-size) * var(--max));
         block-size: 100%;
         margin: 0;
         padding: 0;
@@ -249,7 +252,7 @@
 
       .rating::before,
       .stars {
-        background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / 5 * 100%), GrayText 0);
+        background: linear-gradient(to right in oklch, Highlight calc(var(--rating) / var(--max) * 100%), GrayText 0);
         forced-color-adjust: none;
       }
     }
@@ -309,9 +312,10 @@
 
     document.getElementById('replay').addEventListener('click', () => replay(meter));
 
-    // Mirror the meter's value into --rating where typed attr() is unsupported
+    // Mirror the meter's max and value into --max and --rating where typed attr() is unsupported
     if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
       for (const el of document.querySelectorAll('meter.stars')) {
+        el.style.setProperty('--max', el.getAttribute('max') ?? 5);
         el.style.setProperty('--rating', el.getAttribute('value'));
       }
     }
@@ -321,16 +325,18 @@
     const out = document.getElementById('rate-out');
 
     function update() {
+      const max = Number(range.max) || 5;
+      wrap.style.setProperty('--max', max);
       const edited = 'edited' in wrap.dataset;
       const average = wrap.dataset.average;
       if (!edited && average !== undefined) {
         wrap.style.setProperty('--rating', average);
-        range.setAttribute('aria-valuetext', `Not rated, average ${average} out of 5 stars`);
-        out.textContent = `Average: ${average} out of 5`;
+        range.setAttribute('aria-valuetext', `Not rated, average ${average} out of ${max} stars`);
+        out.textContent = `Average: ${average} out of ${max}`;
         return;
       }
       const value = Number(range.value);
-      const text = value === 0 ? 'Not rated' : `${value} out of 5 stars`;
+      const text = value === 0 ? 'Not rated' : `${value} out of ${max} stars`;
       wrap.style.setProperty('--rating', value);
       range.setAttribute('aria-valuetext', text);
       out.textContent = text;
@@ -349,8 +355,9 @@
     wrap.addEventListener('click', (event) => {
       if (event.detail === 0) return; // keyboard-initiated clicks keep native behavior
       const { left, width } = range.getBoundingClientRect();
-      // Snap up to the half under the pointer; the gutters beside the stars clamp to 0 and 5
-      const half = Math.min(10, Math.max(0, Math.ceil(((event.clientX - left) / width) * 10))) / 2;
+      // Snap up to the half under the pointer; the gutters beside the stars clamp to min and max
+      const steps = (Number(range.max) || 5) * 2;
+      const half = Math.min(steps, Math.max(0, Math.ceil(((event.clientX - left) / width) * steps))) / 2;
       wrap.dataset.edited = '';
       range.value = half === valueBefore ? half - 0.5 : half;
       update();

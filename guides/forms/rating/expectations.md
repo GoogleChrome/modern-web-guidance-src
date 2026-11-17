@@ -1,11 +1,11 @@
 - `--rating` is registered with `@property` using the `<number>` syntax.
-- The stars are drawn with a CSS `mask` that repeats an SVG data URI icon stored in a custom property, over a `linear-gradient` background whose filled portion is calculated from `--rating`.
+- The stars are drawn with a CSS `mask` that repeats an icon URL stored in a custom property, over a `linear-gradient` background whose filled portion is calculated from `--rating` and `--max`.
 - The star outline color has at least 3:1 contrast against the background in light and dark color schemes.
-- When a read-only rating is needed, it is a `<meter>` with `min="0"`, `max="5"`, and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
+- When a read-only rating is needed, it is a `<meter>` with `min="0"`, a `max` (such as `5`), and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
 - When a read-only rating is needed, the `<meter>` has its native appearance removed and renders the same mask-and-gradient stars, with its filled portion matching its `value`.
 - When a read-only rating is needed, the `<meter>` contains text fallback content stating its value.
-- When a read-only rating is needed, the `<meter>`'s `--rating` is derived from its `value` attribute, either with `attr(value type(<number>), 0)` or by copying the attribute with script.
-- When an interactive rating is needed, it is an `<input type="range">` with `min="0"`, `max="5"`, and `step="0.5"`.
+- When a read-only rating is needed, the `<meter>`'s `--max` and `--rating` are derived from its `max` and `value` attributes, either with typed `attr()` or by copying the attributes with script.
+- When an interactive rating is needed, it is an `<input type="range">` with `min="0"`, a `max` (such as `5`), and `step="0.5"`.
 - When an interactive rating is needed, the range input has an associated `<label>` that gives it an accessible name.
 - When an interactive rating is needed, setting the range input to a half-step value such as 2.5 is accepted without being rounded to a whole number.
 - When an interactive rating is needed, the range input's `aria-valuetext` is a human-readable string that states the scale (such as "2.5 out of 5 stars") and updates when the value changes.
@@ -14,4 +14,4 @@
 - When an interactive rating is needed, the stars are painted on a pseudo-element of the range input's wrapper rather than on the input itself, so the focus indicator is not clipped by the mask.
 - When an interactive rating is needed, the filled portion of the stars follows the range input's value, including half stars, by updating `--rating` when the input changes.
 - Under `forced-colors: active`, the stars are redrawn with the system colors `Highlight` and `GrayText` and set `forced-color-adjust: none`.
-- When a read-only rating is needed and typed `attr()` is unsupported, the `<meter>`'s `--rating` is set from its `value` attribute by script.
+- When a read-only rating is needed and typed `attr()` is unsupported, the `<meter>`'s `--max` and `--rating` are set from its `max` and `value` attributes by script.
