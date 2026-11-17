@@ -16,6 +16,7 @@ web-feature-ids:
   - object-position
   - has
   - where
+  - shape-function
 ---
 
 # Skeleton loading pattern
