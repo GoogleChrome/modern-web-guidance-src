@@ -147,11 +147,11 @@ export async function uploadDirectory(
 
 export async function reconcileAndUploadManifest(
   bucket: any,
-  uploadedSuiteName: string | null,
+  uploadedJobId: string | null,
   evalsData: any,
   options: { reextractAll?: boolean } = {},
 ) {
-  console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
+  console.log(cCyan('🔄 Reconciling GCS jobs manifest...'));
   
   let remoteManifest: any[] = [];
   const manifestFile = bucket.file('suites.gen.json');
@@ -165,7 +165,7 @@ export async function reconcileAndUploadManifest(
     console.warn(`Could not fetch existing suites.gen.json from GCS: ${e.message}`);
   }
 
-  // Fast prefix listing with pagination to detect all suites in GCS
+  // Fast prefix listing with pagination to detect all jobs in GCS
   const gcsPrefixes: string[] = [];
   let pageToken: string | undefined = undefined;
   do {
@@ -178,50 +178,50 @@ export async function reconcileAndUploadManifest(
     pageToken = nextQuery?.pageToken;
   } while (pageToken);
 
-  const activeSuiteIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
-  if (uploadedSuiteName) {
-    activeSuiteIds.add(uploadedSuiteName);
+  const activeJobIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
+  if (uploadedJobId) {
+    activeJobIds.add(uploadedJobId);
   }
 
   const manifestMap = new Map<string, any>();
   for (const entry of remoteManifest) {
     const id = typeof entry === 'string' ? entry : entry.testId;
-    if (id && activeSuiteIds.has(id)) {
+    if (id && activeJobIds.has(id)) {
       manifestMap.set(id, typeof entry === 'string' ? { testId: id } : entry);
     }
   }
 
-  // Update the uploaded suite's summary
-  if (uploadedSuiteName && evalsData) {
-    const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
+  // Update the uploaded job's summary
+  if (uploadedJobId && evalsData) {
+    const uploadedSummary = extractSuiteSummary(uploadedJobId, evalsData);
     if (uploadedSummary) {
-      manifestMap.set(uploadedSuiteName, uploadedSummary);
+      manifestMap.set(uploadedJobId, uploadedSummary);
     }
   }
 
   // Backfill missing summaries (or re-extract all when --reextract-manifest is passed)
-  const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
-    if (options.reextractAll && id !== uploadedSuiteName) return true;
+  const missingJobIds = Array.from(activeJobIds).filter(id => {
+    if (options.reextractAll && id !== uploadedJobId) return true;
     const existing = manifestMap.get(id);
     return !existing || !existing.guidedStats || !existing.a11yStats || !existing.showcase;
   });
 
-  if (missingSuiteIds.length > 0) {
+  if (missingJobIds.length > 0) {
     const concurrency = 10;
-    for (let i = 0; i < missingSuiteIds.length; i += concurrency) {
-      const chunk = missingSuiteIds.slice(i, i + concurrency);
-      await Promise.all(chunk.map(async (suiteId) => {
+    for (let i = 0; i < missingJobIds.length; i += concurrency) {
+      const chunk = missingJobIds.slice(i, i + concurrency);
+      await Promise.all(chunk.map(async (jobId) => {
         try {
-          console.log(`${options.reextractAll ? 'Re-extracting' : 'Extracting'} summary for GCS suite: ${suiteId}...`);
-          const evalsFile = bucket.file(`${suiteId}/evals.json`);
+          console.log(`${options.reextractAll ? 'Re-extracting' : 'Extracting'} summary for GCS job: ${jobId}...`);
+          const evalsFile = bucket.file(`${jobId}/evals.json`);
           const [fileContent] = await evalsFile.download();
           const parsed = JSON.parse(fileContent.toString('utf8'));
-          const summary = extractSuiteSummary(suiteId, parsed);
+          const summary = extractSuiteSummary(jobId, parsed);
           if (summary) {
-            manifestMap.set(suiteId, summary);
+            manifestMap.set(jobId, summary);
           }
         } catch (e: any) {
-          console.warn(`Could not fetch evals.json for ${suiteId}: ${e.message}`);
+          console.warn(`Could not fetch evals.json for ${jobId}: ${e.message}`);
         }
       }));
     }
@@ -234,7 +234,7 @@ export async function reconcileAndUploadManifest(
     resumable: false,
   });
 
-  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} suites)`)));
+  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} jobs)`)));
 }
 
 async function main() {
@@ -252,22 +252,22 @@ async function main() {
     return;
   }
 
-  let suiteName = positionalArgs[0];
+  let jobId = positionalArgs[0];
   const customResultsDir = positionalArgs[1];
 
-  if (!suiteName) {
-    console.error('❌ Please provide a suite name (e.g. pnpm upload <suite-name>) or --reextract-manifest.');
+  if (!jobId) {
+    console.error('❌ Please provide a job ID (e.g. pnpm upload <job-id>) or --reextract-manifest.');
     process.exit(1);
   }
 
-  // Strip trailing slashes and normalize to just the suite ID
-  suiteName = path.basename(suiteName);
+  // Strip trailing slashes and normalize to just the job ID
+  jobId = path.basename(jobId);
 
-  let resultsDir = path.join(baseResultsDir, suiteName);
+  let resultsDir = path.join(baseResultsDir, jobId);
   
   // Support custom results directory!
   if (customResultsDir) {
-    resultsDir = path.join(path.resolve(customResultsDir), suiteName);
+    resultsDir = path.join(path.resolve(customResultsDir), jobId);
   }
   
   const evalsJsonPath = path.join(resultsDir, 'evals.json');
@@ -278,7 +278,7 @@ async function main() {
   }
 
   if (!fs.existsSync(evalsJsonPath)) {
-    console.error(cRed(`❌ evals.json not found in ${resultsDir}. Cannot upload incomplete or un-evaluated suite.`));
+    console.error(cRed(`❌ evals.json not found in ${resultsDir}. Cannot upload incomplete or un-evaluated job.`));
     process.exit(1);
   }
 
@@ -288,26 +288,26 @@ async function main() {
     evalsData = JSON.parse(evalsContent);
     const results = evalsData.results || {};
     if (Object.keys(results).length === 0) {
-      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`));
+      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 trials were recorded). Sync skipped.`));
       process.exit(0);
     }
 
-    // Guard: Prevent uploading runs with 100% early generation failures (catastrophic crash)
-    const testNames = Object.keys(results);
-    let totalRunsCount = 0;
-    let earlyFailuresCount = 0;
-    for (const testName of testNames) {
-      const runs = results[testName] || [];
-      for (const run of runs) {
-        totalRunsCount++;
-        const scenarioChecks = run.results || [];
-        if (scenarioChecks.some((check: any) => check.isEarlyFailure)) {
-          earlyFailuresCount++;
+    // Guard: Prevent uploading jobs with 100% infra errors (catastrophic crash)
+    const resultKeys = Object.keys(results);
+    let totalTrialsCount = 0;
+    let infraErrorsCount = 0;
+    for (const resultKey of resultKeys) {
+      const trials = results[resultKey] || [];
+      for (const trial of trials) {
+        totalTrialsCount++;
+        const checks = trial.results || [];
+        if (checks.some((check: any) => check.isEarlyFailure)) {
+          infraErrorsCount++;
         }
       }
     }
-    if (totalRunsCount > 0 && earlyFailuresCount === totalRunsCount) {
-      console.error(cRed(`❌ Error: Catastrophic generation failures (100% early failure rate). Upload blocked to prevent trend contamination.`));
+    if (totalTrialsCount > 0 && infraErrorsCount === totalTrialsCount) {
+      console.error(cRed(`❌ Error: Catastrophic generation failures (100% infra error rate). Upload blocked to prevent trend contamination.`));
       process.exit(1);
     }
   } catch (e: any) {
@@ -315,15 +315,15 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}${summaryOnly ? ' (Summary Only)' : ''}`)));
+  console.log(cBold(cCyan(`Starting upload for job: ${jobId}${summaryOnly ? ' (Summary Only)' : ''}`)));
 
   const storage = new Storage({ projectId: PROJECT_ID });
   const bucket = storage.bucket(BUCKET_NAME);
 
   try {
-    await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
-    console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
-    await reconcileAndUploadManifest(bucket, suiteName, evalsData, { reextractAll: reextractManifest });
+    await uploadDirectory(bucket, resultsDir, jobId, summaryOnly);
+    console.log(cBold(cGreen(`\n✅ Successfully uploaded job '${jobId}' to gs://${BUCKET_NAME}/${jobId}`)));
+    await reconcileAndUploadManifest(bucket, jobId, evalsData, { reextractAll: reextractManifest });
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);

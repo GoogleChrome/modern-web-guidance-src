@@ -1,7 +1,7 @@
 /**
  * Pi Agent Configuration
  *
- * Usage (full suite):
+ * Usage (full job):
  *   PI_MODEL="openrouter/deepseek/deepseek-v4.1-flash:low" gd eval --config src/harness/config-pi.ts
  *   PI_WORKERS=3 PI_MODEL="openrouter/qwen/qwen3.8-flash:off" gd eval --config src/harness/config-pi.ts
  *   PI_MODEL="openrouter/z-ai/glm-5.3:low" gd eval --config src/harness/config-pi.ts
@@ -12,7 +12,7 @@
  *
  * Environment overrides:
  *   PI_MODEL / PROMPT_MODEL - Model identifier passed to `pi --model` (supports optional `:<thinking>` suffix)
- *   PI_SUITE_NAME           - Custom suite directory name under results/suites/
+ *   PI_SUITE_NAME           - Custom job directory name under results/suites/
  *   PI_WORKERS              - Concurrent worker count (defaults to 10)
  *
  * Thinking levels: OpenRouter models expose different effort tiers (e.g. GLM-5.3 has low/high/max,
@@ -22,9 +22,9 @@
  * catalog runs as a custom model id with no clamping.
  */
 
-import { mergeSuiteConfig, Agents } from './config.ts';
+import { mergeJobConfig, Agents } from './config.ts';
 
-function buildPiSuiteName(): string {
+function buildPiJobName(): string {
   if (process.env.PI_SUITE_NAME) {
     return process.env.PI_SUITE_NAME;
   }
@@ -46,8 +46,8 @@ function buildPiSuiteName(): string {
 
 const parsedWorkers = process.env.PI_WORKERS ? Number.parseInt(process.env.PI_WORKERS, 10) : NaN;
 
-export default mergeSuiteConfig({
-  name: buildPiSuiteName(),
+export default mergeJobConfig({
+  name: buildPiJobName(),
   agent: Agents.PI,
   numRuns: 1,
   tasks: [], // Empty = run all tasks, or pass task arguments to `gd eval`

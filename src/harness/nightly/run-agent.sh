@@ -267,8 +267,8 @@ if [ -f "$RESULTS_JSON" ]; then
 
   IS_CATASTROPHIC_FAILURE=$(node "$SCRIPT_DIR/analyze-results.ts" "$RESULTS_JSON" is-catastrophic-failure)
   if [ "$IS_CATASTROPHIC_FAILURE" = "true" ]; then
-    echo "❌ Error: Catastrophic generation failures (100% early failure rate). Skipping upload."
-    FAIL_REASON="Catastrophic generation failures (100% early failure rate). Upload skipped."
+    echo "❌ Error: Catastrophic generation failures (100% infra error rate). Skipping upload."
+    FAIL_REASON="Catastrophic generation failures (100% infra error rate). Upload skipped."
     exit 3
   fi
 else

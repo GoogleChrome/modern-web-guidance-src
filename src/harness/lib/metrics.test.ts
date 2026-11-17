@@ -1,11 +1,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateMetrics } from './metrics.ts';
-import type { RunResult } from './metrics.ts';
+import type { TrialResult } from './metrics.ts';
 
 describe('calculateMetrics', () => {
   test('should calculate correct metrics for a simple result set', () => {
-    const allResults: Record<string, RunResult[]> = {
+    const allResults: Record<string, TrialResult[]> = {
       'greenfield - specific - guided': [
         {
           runNumber: 1,
@@ -69,8 +69,8 @@ describe('calculateMetrics', () => {
     assert.deepStrictEqual(metrics.sortedKeys, []);
   });
 
-  test('should not exceed 100% guideUsageRate or toolActivationRate when an early-failure run invoked the guide before failing', () => {
-    const allResults: Record<string, RunResult[]> = {
+  test('should not exceed 100% guideUsageRate or toolActivationRate when an infra-error trial invoked the guide before failing', () => {
+    const allResults: Record<string, TrialResult[]> = {
       'greenfield - task1 - guided': [
         {
           runNumber: 1,
@@ -117,8 +117,8 @@ describe('calculateMetrics', () => {
       { id: 'c5', passed: false, message: 'check 5' },
     ];
 
-    const allResults: Record<string, RunResult[]> = {
-      // taskA: Run 1 valid (3/5), Run 2 infra error (excluded -> 0/0). Both sides have >=1 valid run -> included!
+    const allResults: Record<string, TrialResult[]> = {
+      // taskA: Trial 1 valid (3/5), Trial 2 infra error (excluded -> 0/0). Both sides have >=1 valid trial -> included!
       'taskA - guideA - guided': [
         {
           runNumber: 1,
@@ -141,7 +141,7 @@ describe('calculateMetrics', () => {
         { runNumber: 1, results: unguidedChecks1Of5 },
         { runNumber: 2, results: unguidedChecks1Of5 }
       ],
-      // taskB: Guided has ONLY infra errors (0 valid runs), while Unguided has valid runs.
+      // taskB: Guided has ONLY infra errors (0 valid trials), while Unguided has valid trials.
       // Paired task validity must exclude taskB from both guided and unguided pass-rate rollups!
       'taskB - guideA - guided': [
         { runNumber: 1, results: infraErrorCheck }
@@ -153,18 +153,18 @@ describe('calculateMetrics', () => {
 
     const metrics = calculateMetrics(allResults, 2);
 
-    // taskA guided has 1 valid run (3/5 = 60%); taskB is excluded from rollup because guided had 0 valid runs
+    // taskA guided has 1 valid trial (3/5 = 60%); taskB is excluded from rollup because guided had 0 valid trials
     assert.strictEqual(metrics.summary.guidedPassed, 3);
     assert.strictEqual(metrics.summary.guidedTotal, 5);
     assert.strictEqual(metrics.summary.guidedPassRate, 60);
     assert.strictEqual(metrics.summary.guidedMedian, 60);
 
-    // taskA unguided has 2 valid runs (1/5 + 1/5 = 2/10 = 20%); taskB unguided is excluded from paired rollup!
+    // taskA unguided has 2 valid trials (1/5 + 1/5 = 2/10 = 20%); taskB unguided is excluded from paired rollup!
     assert.strictEqual(metrics.summary.unguidedPassed, 2);
     assert.strictEqual(metrics.summary.unguidedTotal, 10);
     assert.strictEqual(metrics.summary.unguidedPassRate, 20);
 
-    // Infra error counts: 2 guided runs failed early (1 in taskA, 1 in taskB)
+    // Infra error counts: 2 guided trials hit infra errors (1 in taskA, 1 in taskB)
     assert.strictEqual(metrics.summary.guidedEarlyFailures, 2);
     assert.strictEqual(metrics.summary.unguidedEarlyFailures, 0);
     assert.strictEqual(metrics.summary.totalGuidedRuns, 3);

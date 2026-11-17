@@ -55,7 +55,7 @@ published treats every job as changed and rebuilds all of them with its own rule
 
 Usernames are scrubbed from two sources: the names the builder harvests from
 each job's own paths, plus your OS user. To add more (other operators whose
-runs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
+jobs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
 where the OS user is just `runner`, that variable is required.
 
 It checks out the published `public-evals/` from `gh-pages`, rebuilds it from

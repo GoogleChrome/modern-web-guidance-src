@@ -447,9 +447,9 @@ function normalizeAgentName(rawAgent: string | undefined): string | undefined {
   return match || normalized;
 }
 
-export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySummary | null): string | undefined {
-  // 1. Check suite evals.json in parent directories
-  let curr = path.resolve(runDir);
+export function detectAgentForTrial(trialDir: string, existingSummary?: TrajectorySummary | null): string | undefined {
+  // 1. Check job evals.json in parent directories
+  let curr = path.resolve(trialDir);
   while (curr && curr !== path.dirname(curr)) {
     const evalsPath = path.join(curr, 'evals.json');
     if (fs.existsSync(evalsPath)) {
@@ -471,7 +471,7 @@ export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySu
   }
 
   // 3. Check directory path tokens (e.g. -claude_code, -codex_cli, -jetski_cli, -antigravity_cli)
-  const dirLower = runDir.toLowerCase().replace(/-/g, '_');
+  const dirLower = trialDir.toLowerCase().replace(/-/g, '_');
   if (dirLower.includes('claude_code')) return Agents.CLAUDE_CODE;
   if (dirLower.includes('codex_cli')) return Agents.CODEX_CLI;
   if (dirLower.includes('jetski_cli') || dirLower.includes('jetski')) return Agents.JETSKI_CLI;
@@ -480,7 +480,7 @@ export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySu
 
   // 4. Inspect raw files as final fallback
   try {
-    const files = fs.readdirSync(runDir);
+    const files = fs.readdirSync(trialDir);
     if (files.some((f) => f.endsWith('.db') && !f.endsWith('-shm') && !f.endsWith('-wal'))) {
       return Agents.JETSKI_CLI;
     }
@@ -490,6 +490,9 @@ export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySu
 
   return undefined;
 }
+
+/** @deprecated Use `detectAgentForTrial`. */
+export const detectAgentForRun = detectAgentForTrial;
 
 export function generateNormalizedTrajectorySync(
   targetDir: string,
@@ -548,8 +551,8 @@ export async function generateNormalizedTrajectory(targetDir: string, agentName:
   generateNormalizedTrajectorySync(targetDir, agentName, initialPrompt);
 }
 
-export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySummary | null {
-  const existing = readTrajectorySummary(runDir);
+export function ensureFreshTrajectorySummarySync(trialDir: string): TrajectorySummary | null {
+  const existing = readTrajectorySummary(trialDir);
   const isFresh =
     existing !== null &&
     Array.isArray(existing.steps) &&
@@ -560,29 +563,29 @@ export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySumm
     return existing;
   }
 
-  if (hasRawSessionLogs(runDir)) {
-    const detectedAgent = detectAgentForRun(runDir, existing);
+  if (hasRawSessionLogs(trialDir)) {
+    const detectedAgent = detectAgentForTrial(trialDir, existing);
     if (detectedAgent) {
-      console.log(`[Trajectory] Regenerating trajectory_summary.json (v${existing?.normalizerVersion ?? 'none'} → v${NORMALIZER_VERSION}) in ${runDir}`);
-      const regenerated = generateNormalizedTrajectorySync(runDir, detectedAgent, existing?.initialPrompt, { env: {} });
+      console.log(`[Trajectory] Regenerating trajectory_summary.json (v${existing?.normalizerVersion ?? 'none'} → v${NORMALIZER_VERSION}) in ${trialDir}`);
+      const regenerated = generateNormalizedTrajectorySync(trialDir, detectedAgent, existing?.initialPrompt, { env: {} });
       if (regenerated) {
         return regenerated;
       }
-      console.warn(`[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? 'unknown'})`);
+      console.warn(`[Trajectory] Failed to regenerate summary for ${trialDir} (agent=${detectedAgent ?? 'unknown'})`);
     } else {
-      console.warn(`[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? 'unknown'})`);
+      console.warn(`[Trajectory] Failed to regenerate summary for ${trialDir} (agent=${detectedAgent ?? 'unknown'})`);
     }
   } else if (!existing) {
-    console.warn(`[Trajectory] No trajectory_summary.json or raw logs in ${runDir}; trajectory unavailable`);
+    console.warn(`[Trajectory] No trajectory_summary.json or raw logs in ${trialDir}; trajectory unavailable`);
   } else if (existing.normalizerVersion === NORMALIZER_VERSION) {
-    console.warn(`[Trajectory] Summary in ${runDir} has 0 steps and no raw logs to regenerate`);
+    console.warn(`[Trajectory] Summary in ${trialDir} has 0 steps and no raw logs to regenerate`);
   } else {
-    console.warn(`[Trajectory] Using stale summary (v${existing.normalizerVersion ?? 'none'}) in ${runDir}; no raw logs to regenerate`);
+    console.warn(`[Trajectory] Using stale summary (v${existing.normalizerVersion ?? 'none'}) in ${trialDir}; no raw logs to regenerate`);
   }
 
   return existing;
 }
 
-export async function ensureFreshTrajectorySummary(runDir: string): Promise<TrajectorySummary | null> {
-  return ensureFreshTrajectorySummarySync(runDir);
+export async function ensureFreshTrajectorySummary(trialDir: string): Promise<TrajectorySummary | null> {
+  return ensureFreshTrajectorySummarySync(trialDir);
 }

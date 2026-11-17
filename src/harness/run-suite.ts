@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { spawn, spawnSync } from 'child_process';
-import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
-import { evaluateSuite } from './evaluate.ts';
+import { Agents, defaultJobConfig, mergeJobConfig, type JobConfig } from './config.ts';
+import { evaluateJob } from './evaluate.ts';
 import { baseAppsDir, rootDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
@@ -20,7 +20,7 @@ import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
 import { determineAgent } from '../cli/telemetry/detect-agent.ts';
 
-const RUN_TYPES = ['guided', 'unguided'];
+const CONDITIONS = ['guided', 'unguided'];
 
 // Global log file stream
 let logStream: fs.WriteStream | null = null;
@@ -28,20 +28,20 @@ let logStream: fs.WriteStream | null = null;
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, do NOT ask clarifying questions (make reasonable assumptions and proceed non-interactively), and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
-  const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
-  const agent = suiteConfig.agent;
-  let templateDir = templateDirRaw;
-  if (!path.isAbsolute(templateDir)) {
-    templateDir = path.resolve(process.cwd(), templateDir);
+export async function runSingleTask(baseAppDirRaw: string, promptContentRaw: string, providedJobConfig?: JobConfig) {
+  const jobConfig = providedJobConfig || defaultJobConfig;
+  const agent = jobConfig.agent;
+  let baseAppDir = baseAppDirRaw;
+  if (!path.isAbsolute(baseAppDir)) {
+    baseAppDir = path.resolve(process.cwd(), baseAppDir);
   }
-  const cleanTemplateDir = templateDir.replace(/\/$/, '');
-  const targetDir = path.join(path.dirname(cleanTemplateDir), path.basename(cleanTemplateDir) + '-results');
+  const cleanBaseAppDir = baseAppDir.replace(/\/$/, '');
+  const targetDir = path.join(path.dirname(cleanBaseAppDir), path.basename(cleanBaseAppDir) + '-results');
   const taskNameLabel = "Agent Test";
   const promptContent = promptContentRaw + COMMON_APPEND_PROMPT;
 
-  if (!fs.existsSync(templateDir)) {
-    console.error(`❌ Base app directory not found: ${templateDir}`);
+  if (!fs.existsSync(baseAppDir)) {
+    console.error(`❌ Base app directory not found: ${baseAppDir}`);
     return;
   }
 
@@ -49,7 +49,7 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
 
   console.log(`\n=== Running ${taskNameLabel} ===`);
   console.log(`Agent: ${agent}`);
-  console.log(`Base app: ${templateDir}`);
+  console.log(`Base app: ${baseAppDir}`);
   console.log(`Target: ${targetDir}\n`);
 
   if (!fs.existsSync(targetDir)) {
@@ -57,26 +57,26 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   }
 
   // Save a snapshot of the current global configuration (which may have been merged with overrides)
-  fs.writeFileSync(path.join(targetDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
+  fs.writeFileSync(path.join(targetDir, 'suite_config.json'), JSON.stringify(jobConfig, null, 2));
 
   try {
     const agentScript = getAgentScript(agent);
 
-    const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
+    const jobConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
       agentScript,
       JSON.stringify(promptContent),
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
-      templateDir
-    ], { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true' });
+      baseAppDir
+    ], { GD_SUITE_CONFIG: jobConfigPath, ENABLE_FILE_LOGGING: 'true' });
     console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
   } catch (error) {
     console.error(`❌ ${taskNameLabel} failed:`, error);
   }
 }
 
-export interface RunSuiteOptions {
+export interface RunJobOptions {
   name?: string;
   outputDir?: string;
   tasks?: string[];
@@ -84,12 +84,18 @@ export interface RunSuiteOptions {
   skipEval?: boolean;
   skipSkillBuild?: boolean;
   guidedOnly?: boolean;
-  suiteConfig?: Partial<SuiteConfig>;
+  jobConfig?: Partial<JobConfig>;
+  /** @deprecated Use `jobConfig`. */
+  suiteConfig?: Partial<JobConfig>;
 }
 
-export async function runSuite(options: RunSuiteOptions = {}) {
+/** @deprecated Use `RunJobOptions`. */
+export type RunSuiteOptions = RunJobOptions;
+
+export async function runJob(options: RunJobOptions = {}) {
   loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
-  const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
+  const overrides = options.jobConfig ?? options.suiteConfig;
+  const jobConfig = overrides ? mergeJobConfig(overrides) : defaultJobConfig;
 
   if (!options.skipSkillBuild) {
     await ensureGuidedEvalDist();
@@ -100,45 +106,45 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     fs.mkdirSync(suitesDir, { recursive: true });
   }
 
-  const agent = suiteConfig.agent;
+  const agent = jobConfig.agent;
 
-  // Generate a unique testID with timestamp or use custom name
+  // Generate a unique jobId with timestamp or use custom name
   const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-');
-  const testID = options.name || suiteConfig.name || `test-${timestamp}`;
-  const testDir = options.outputDir || path.join(suitesDir, testID);
+  const jobId = options.name || jobConfig.name || `test-${timestamp}`;
+  const jobDir = options.outputDir || path.join(suitesDir, jobId);
 
-  if (!fs.existsSync(testDir)) {
-    fs.mkdirSync(testDir, { recursive: true });
+  if (!fs.existsSync(jobDir)) {
+    fs.mkdirSync(jobDir, { recursive: true });
   }
 
   // Save a snapshot of the merged configuration
-  fs.writeFileSync(path.join(testDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
+  fs.writeFileSync(path.join(jobDir, 'suite_config.json'), JSON.stringify(jobConfig, null, 2));
 
   // Setup logging to file
-  const logFilePath = path.join(testDir, 'test_suite.log');
+  const logFilePath = path.join(jobDir, 'test_suite.log');
   const originalConsoleMethods = setupLogging(logFilePath);
-  const suiteStart = Date.now();
+  const jobStart = Date.now();
 
-  console.log(`\n=== Evaluation Job Starting with ID: ${testID} ===`);
-  console.log(`Results will be saved to: ${testDir}\n`);
+  console.log(`\n=== Evaluation Job Starting with ID: ${jobId} ===`);
+  console.log(`Results will be saved to: ${jobDir}\n`);
   console.log(`Log file: ${logFilePath}\n`);
 
   try {
     let hasErrors = false;
-    const numRuns = options.numRuns ?? suiteConfig.numRuns;
-    const endRun = 1 + numRuns;
+    const trialsPerCondition = options.numRuns ?? jobConfig.numRuns;
+    const endTrialIndex = 1 + trialsPerCondition;
 
-    console.log(`\nStarting execution for ${numRuns} ${numRuns === 1 ? 'trial per condition' : 'trials per condition'}`);
+    console.log(`\nStarting execution for ${trialsPerCondition} ${trialsPerCondition === 1 ? 'trial per condition' : 'trials per condition'}`);
 
-    for (let runNumber = 1; runNumber < endRun; runNumber++) {
+    for (let trialIndex = 1; trialIndex < endTrialIndex; trialIndex++) {
       if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
       console.log(`\n${'='.repeat(60)}`);
-      console.log(`>>> STARTING RUN ${runNumber} <<<`);
+      console.log(`>>> STARTING TRIAL ${trialIndex} <<<`);
       console.log(`${'='.repeat(60)}\n`);
 
-      const runDir = path.join(testDir, String(runNumber));
-      if (!fs.existsSync(runDir)) {
-        fs.mkdirSync(runDir, { recursive: true });
+      const trialDir = path.join(jobDir, String(trialIndex));
+      if (!fs.existsSync(trialDir)) {
+        fs.mkdirSync(trialDir, { recursive: true });
       }
 
       const pnpmWorkspacePackages: string[] = [];
@@ -148,8 +154,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       // Use configured tasks, or discover all `task.md` from the guide folders.
       const tasksToRun = options.tasks && options.tasks.length > 0
         ? options.tasks
-        : (suiteConfig.tasks.length > 0
-          ? suiteConfig.tasks
+        : (jobConfig.tasks.length > 0
+          ? jobConfig.tasks
           : Array.from(taskMap.keys()));
 
       const resolvedTasks = tasksToRun.map(resolveTaskName);
@@ -170,7 +176,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         }
 
         const [guideName, taskName] = resolvedTask.split('/');
-        const workspaceBaseAppDir = await setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
+        const workspaceBaseAppDir = await setupWorkspaceBaseApp(taskInfo, trialDir, guideName, taskName);
         if (!workspaceBaseAppDir) {
           continue;
         }
@@ -178,8 +184,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const promptContent = taskInfo.prompt + COMMON_APPEND_PROMPT;
         const agentScript = getAgentScript(agent);
 
-        const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
-        const guideFolder = path.join(runDir, guideName);
+        const conditionsToRun = options.guidedOnly ? ['guided'] : CONDITIONS;
+        const guideFolder = path.join(trialDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
         const graderPath = resolveTaskGraderPath(taskInfo, taskName);
         const baseTaskKey = `${guideName}/${taskInfo.baseApp}`;
@@ -188,9 +194,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           taskName !== taskInfo.baseApp &&
           resolvedTaskSet.has(baseTaskKey);
 
-        for (const runType of runTypesToRun) {
-          const targetDir = path.join(taskFolder, runType);
-          if (runType === 'unguided' && canReuseBaseUnguided) {
+        for (const condition of conditionsToRun) {
+          const targetDir = path.join(taskFolder, condition);
+          if (condition === 'unguided' && canReuseBaseUnguided) {
             variantUnguidedReuses.push({
               baseUnguidedDir: path.join(guideFolder, taskInfo.baseApp, 'unguided'),
               variantUnguidedDir: targetDir,
@@ -200,17 +206,17 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             });
             continue;
           }
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp, taskInfo.baselineTarget);
-          pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
+          generateTransientPackage(targetDir, agentScript, promptContent, condition, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp, taskInfo.baselineTarget);
+          pnpmWorkspacePackages.push(`${guideName}/${taskName}/${condition}`);
         }
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
-        // Drop a transient pnpm-workspace.yaml at the root of the run directory.
-        // We explicitly list the packages to avoid running leftover tasks from previous runs
+        console.log(`\n>>> Running all trials for Trial ${trialIndex} with pnpm -r run-agent ...`);
+        // Drop a transient pnpm-workspace.yaml at the root of the trial repetition directory.
+        // We explicitly list the packages to avoid executing leftover tasks from prior jobs
         // (e.g. when switching from unguided to --guided).
-        const pnpmWorkspacePath = path.join(runDir, 'pnpm-workspace.yaml');
+        const pnpmWorkspacePath = path.join(trialDir, 'pnpm-workspace.yaml');
         const yamlContent = [
           'packages:',
           ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
@@ -223,15 +229,15 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           if (isAgentOrNonInteractive) {
             pnpmArgs.push('--reporter=append-only');
           }
-          if (suiteConfig.workerCount) {
-            pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
+          if (jobConfig.workerCount) {
+            pnpmArgs.push('--workspace-concurrency', jobConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
-          const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
-          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true' }, runDir);
-          console.log(`✅ Completed Run ${runNumber} test executions`);
+          const jobConfigPath = path.resolve(jobDir, 'suite_config.json');
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: jobConfigPath, ENABLE_FILE_LOGGING: 'true' }, trialDir);
+          console.log(`✅ Completed Trial ${trialIndex} executions`);
         } catch (error) {
-          console.error(`❌ Failed during Run ${runNumber} test execution`, error);
+          console.error(`❌ Failed during Trial ${trialIndex} execution`, error);
           hasErrors = true;
         } finally {
           if (fs.existsSync(pnpmWorkspacePath)) {
@@ -239,16 +245,16 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           }
           for (const reuse of variantUnguidedReuses) {
             try {
-              reuseUnguidedRunForBaselineVariant(reuse);
+              reuseUnguidedTrialForBaselineVariant(reuse);
             } catch (reuseErr) {
-              console.warn(`Failed to reuse unguided run for ${reuse.variantUnguidedDir}: ${reuseErr}`);
+              console.warn(`Failed to reuse unguided trial for ${reuse.variantUnguidedDir}: ${reuseErr}`);
             }
           }
-          // Clean up task workspace base_apps after all workers in run finish
+          // Clean up task workspace base_apps after all workers in the trial index finish
           for (const task of tasksToRun) {
             const resolvedTask = resolveTaskName(task);
             const [guideName, taskName] = resolvedTask.split('/');
-            const taskBaseAppDir = path.join(runDir, guideName, taskName, 'base_app');
+            const taskBaseAppDir = path.join(trialDir, guideName, taskName, 'base_app');
             if (fs.existsSync(taskBaseAppDir)) {
               try {
                 fs.rmSync(taskBaseAppDir, { recursive: true, force: true });
@@ -262,15 +268,15 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Evaluation job completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
+      console.log(`\n❌ Evaluation job completed with errors! Results saved to: ${jobDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
-      console.log(`\n✅ Evaluation job complete! Results saved to: ${testDir}`);
+      console.log(`\n✅ Evaluation job complete! Results saved to: ${jobDir}`);
     }
 
     if (!options.skipEval) {
-      await evaluateSuite(testDir, testID, suiteStart);
+      await evaluateJob(jobDir, jobId, jobStart);
     } else {
-      const totalRuntime = Date.now() - suiteStart;
+      const totalRuntime = Date.now() - jobStart;
       console.log(`Total runtime: ${totalRuntime}ms`);
     }
 
@@ -387,8 +393,8 @@ function resolveTaskName(task: string): string {
   return task;
 }
 
-export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
-  const guideFolder = path.join(runDir, guideName);
+export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, trialDir: string, guideName: string, taskName: string): Promise<string | null> {
+  const guideFolder = path.join(trialDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
   const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
   if (!fs.existsSync(workspaceBaseAppDir)) {
@@ -405,7 +411,7 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
     if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
-      throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
+      throw new Error(`Invariant failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
     }
   }
 
@@ -436,7 +442,7 @@ export function generateTransientPackage(
   targetDir: string,
   agentScript: string,
   promptContent: string,
-  runType: string,
+  condition: string,
   workspaceBaseAppDir: string,
   taskName: string,
   guideName: string,
@@ -453,8 +459,8 @@ export function generateTransientPackage(
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script
-  // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
-  // we trick pnpm into thinking each test run is a package in a pnpm workspace.
+  // HACK: To get nice aggregated, prefix-multiplexed output for parallel execution,
+  // we trick pnpm into thinking each trial is a package in a pnpm workspace.
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
   const secretGuardModuleUrl = pathToFileURL(path.join(rootDir, 'src/harness/lib/secret-guard.ts')).href;
@@ -473,7 +479,7 @@ const args = [
 ...${JSON.stringify([
   agentScript,
   promptContent,
-  runType,
+  condition,
   targetDir,
   workspaceBaseAppDir
 ])}
@@ -575,13 +581,13 @@ process.exit(graderStatus !== null ? graderStatus : (result.status ?? 1));
   // This tells pnpm that this directory is a "package" that can be run
   // via `pnpm run-agent`.
   fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
-    name: `${taskName.substring(0, 30)}-${runType}`,
+    name: `${taskName.substring(0, 30)}-${condition}`,
     type: "module",
     scripts: { "run-agent": "node run.mjs" }
   }, null, 2));
 }
 
-function reuseUnguidedRunForBaselineVariant(opts: {
+function reuseUnguidedTrialForBaselineVariant(opts: {
   baseUnguidedDir: string;
   variantUnguidedDir: string;
   graderPath: string;
@@ -650,18 +656,21 @@ function getAgentScript(agent: string): string {
   return path.join(import.meta.dirname, 'agents', script);
 }
 
+/** @deprecated Use `runJob`. */
+export const runSuite = runJob;
+
 // If invoked directly, retain legacy fallback logic if strictly required (optional).
 // But for native gd.ts import, the exports are used.
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   if (positionalArgs.length >= 1) {
-    runSuite({ tasks: positionalArgs }).catch((err) => {
+    runJob({ tasks: positionalArgs }).catch((err) => {
       console.error(err);
       process.exit(1);
     });
   } else {
-    runSuite().catch((err) => {
+    runJob().catch((err) => {
       console.error(err);
       process.exit(1);
     });

@@ -114,8 +114,8 @@ function exportJetskiTrajectories(workDir: string, targetDir: string): void {
 }
 
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType);
+  const { userPrompt, condition, targetDir, baseAppDir } = parseAgentArgs('jetski-cli-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, baseAppDir, condition);
 
   if (!workDir) {
     throw new Error('Failed to initialize working directory');
@@ -135,7 +135,7 @@ async function run() {
         workDir,
         targetDir,
         'Jetski CLI',
-        runType
+        condition
       );
     } finally {
       exportJetskiTrajectories(workDir, targetDir);

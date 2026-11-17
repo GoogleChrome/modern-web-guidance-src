@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { cGreen, cRed, cCyan, cBold } from '../../core/colors.ts';
-import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
+import { downloadTrialFromGcsIfMissing } from './gcs-downloader.ts';
 import { baseAppsDir, guidesDir, resultsDir, suitesDir } from '../../core/paths.ts';
 import { getComparisonPrompts } from './compare-prompts.ts';
 import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../core/patch-utils.ts';
@@ -120,22 +120,28 @@ export interface GuideContext {
   baseAppContent: string;
 }
 
-export interface PlaywrightAssertion {
+export interface PlaywrightCheck {
   message: string;
   passed: boolean;
   errors?: string[];
   location?: { file?: string; line?: number; column?: number };
 }
 
-export interface RunContext {
+/** @deprecated Use PlaywrightCheck */
+export type PlaywrightAssertion = PlaywrightCheck;
+
+export interface TrialContext {
   dir: string;
   score: number;
-  resultsJson: PlaywrightAssertion[];
+  resultsJson: PlaywrightCheck[];
   codeOutput: string;
   patchContent?: string;
   preprocessed: PreprocessedTrajectory;
   initialPrompt: string;
 }
+
+/** @deprecated Use TrialContext */
+export type RunContext = TrialContext;
 
 /**
  * Finds guide.md, expectations.md, task.md, grader.ts, and base app content for a given guide/task name.
@@ -249,12 +255,12 @@ function stripAnsi(text: string): string {
 }
 
 /**
- * Recursively parses Playwright's JSON report and extracts assertions with detailed error traces and locations.
+ * Recursively parses Playwright's JSON report and extracts checks with detailed error traces and locations.
  */
-function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
-  const assertions: PlaywrightAssertion[] = [];
+function parsePlaywrightResults(report: any): PlaywrightCheck[] {
+  const checks: PlaywrightCheck[] = [];
   if (!report || !Array.isArray(report.suites)) {
-    return assertions;
+    return checks;
   }
 
   function collectSpecs(suite: any) {
@@ -288,7 +294,7 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
           }
         }
 
-        assertions.push({
+        checks.push({
           message: spec.title,
           passed,
           errors: errors.length > 0 ? errors : undefined,
@@ -302,7 +308,7 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
   }
 
   report.suites.forEach(collectSpecs);
-  return assertions;
+  return checks;
 }
 
 /**
@@ -437,9 +443,9 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
   };
 }
 
-function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
-  let curr = runDir;
-  const parsed = parseResultPath(runDir);
+function extractTargetFileFromEvalsJson(trialDir: string): string | undefined {
+  let curr = trialDir;
+  const parsed = parseResultPath(trialDir);
   const guideName = parsed?.guide;
   const taskName = parsed?.taskName;
 
@@ -447,13 +453,13 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
     const data = tryReadJson(path.join(curr, 'evals.json'));
     if (data && data.results) {
       for (const testName in data.results) {
-        const runs = data.results[testName];
-        if (Array.isArray(runs)) {
-          for (const run of runs) {
-            const matchesGuide = !guideName || run.guideName === guideName || run.taskPath?.includes(guideName);
-            const matchesTask = !taskName || run.taskName === taskName;
-            if (matchesGuide && matchesTask && run.targetFile) {
-              return run.targetFile;
+        const trials = data.results[testName];
+        if (Array.isArray(trials)) {
+          for (const trial of trials) {
+            const matchesGuide = !guideName || trial.guideName === guideName || trial.taskPath?.includes(guideName);
+            const matchesTask = !taskName || trial.taskName === taskName;
+            if (matchesGuide && matchesTask && trial.targetFile) {
+              return trial.targetFile;
             }
           }
         }
@@ -465,16 +471,16 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
 }
 
 /**
- * Loads all relevant context for a single run including preprocessed trajectory.
+ * Loads all relevant context for a single trial including preprocessed trajectory.
  */
-export function loadRunContext(runDir: string): RunContext {
-  let absoluteDir = path.resolve(runDir);
+export function loadTrialContext(trialDir: string): TrialContext {
+  let absoluteDir = path.resolve(trialDir);
   if (!fs.existsSync(absoluteDir)) {
-    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
-    const suiteCandidate = path.resolve(suitesDir, stripped);
+    const stripped = trialDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
+    const jobCandidate = path.resolve(suitesDir, stripped);
     const resultsCandidate = path.resolve(resultsDir, stripped);
-    if (fs.existsSync(suiteCandidate)) {
-      absoluteDir = suiteCandidate;
+    if (fs.existsSync(jobCandidate)) {
+      absoluteDir = jobCandidate;
     } else if (fs.existsSync(resultsCandidate)) {
       absoluteDir = resultsCandidate;
     }
@@ -484,7 +490,7 @@ export function loadRunContext(runDir: string): RunContext {
     fs.statSync(absoluteDir);
   } catch (err: unknown) {
     if (isEnoent(err)) {
-      throw new Error(`Run directory not found: ${absoluteDir}`);
+      throw new Error(`Trial directory not found: ${absoluteDir}`);
     }
     throw err;
   }
@@ -492,7 +498,7 @@ export function loadRunContext(runDir: string): RunContext {
   const parsed = parseResultPath(absoluteDir);
   const guideName = parsed?.guide || '';
 
-  let resultsJson: PlaywrightAssertion[] = [];
+  let resultsJson: PlaywrightCheck[] = [];
   let score = 0;
 
   let rawReport = tryReadJson(path.join(absoluteDir, `${guideName}_results.json`));
@@ -531,29 +537,32 @@ export function loadRunContext(runDir: string): RunContext {
   };
 }
 
-function computeInterRunDiff(ctxA: RunContext, ctxB: RunContext): string {
+/** @deprecated Use loadTrialContext */
+export const loadRunContext = loadTrialContext;
+
+function computeInterTrialDiff(ctxA: TrialContext, ctxB: TrialContext): string {
   if (ctxA.patchContent && ctxB.patchContent) {
-    return generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch');
+    return generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Trial A Patch', 'Trial B Patch');
   }
   if (ctxA.patchContent || ctxB.patchContent) {
-    const patchRun = ctxA.patchContent ? 'Run A' : 'Run B';
-    const fileRun = ctxA.patchContent ? 'Run B' : 'Run A';
-    return `Direct diff unavailable: ${patchRun} is patch-based while ${fileRun} produced standalone file output.`;
+    const patchTrial = ctxA.patchContent ? 'Trial A' : 'Trial B';
+    const fileTrial = ctxA.patchContent ? 'Trial B' : 'Trial A';
+    return `Direct diff unavailable: ${patchTrial} is patch-based while ${fileTrial} produced standalone file output.`;
   }
-  return generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
+  return generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Trial A Output', 'Trial B Output');
 }
 
 function sanitizeLabelSegment(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'run';
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'trial';
 }
 
-function inferSuiteDir(runDir: string): string | null {
-  const resultsMatch = runDir.match(/(.*[/\\]results[/\\](?:suites[/\\])?(?!suites(?:[/\\]|$))[^/\\]+)/);
+function inferJobDir(trialDir: string): string | null {
+  const resultsMatch = trialDir.match(/(.*[/\\]results[/\\](?:suites[/\\])?(?!suites(?:[/\\]|$))[^/\\]+)/);
   if (resultsMatch) return resultsMatch[1];
 
-  const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
+  const normalized = trialDir.replace(/\\/g, '/').replace(/\/+$/, '');
   const segments = normalized.split('/').filter(Boolean);
-  // Standard eval structure: .../<suite>/<trialIndex>/<guide>/<task>/<runType>
+  // Standard eval structure: .../<job>/<trialIndex>/<guide>/<task>/<condition>
   if (segments.length >= 5 && /^\d+$/.test(segments[segments.length - 4])) {
     const prefix = normalized.startsWith('/') ? '/' : '';
     return prefix + segments.slice(0, -4).join('/');
@@ -561,21 +570,21 @@ function inferSuiteDir(runDir: string): string | null {
   return null;
 }
 
-function extractRunLabel(runDir: string, guideName: string, taskName: string, includeSuite: boolean): string {
-  const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
-  const suiteDir = inferSuiteDir(runDir);
+function extractTrialLabel(trialDir: string, guideName: string, taskName: string, includeJob: boolean): string {
+  const normalized = trialDir.replace(/\\/g, '/').replace(/\/+$/, '');
+  const jobDir = inferJobDir(trialDir);
 
-  if (suiteDir) {
-    const normalizedSuite = suiteDir.replace(/\\/g, '/').replace(/\/+$/, '');
-    const suiteName = path.basename(normalizedSuite);
-    const remainder = normalized.startsWith(normalizedSuite + '/')
-      ? normalized.slice(normalizedSuite.length + 1)
+  if (jobDir) {
+    const normalizedJob = jobDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    const jobName = path.basename(normalizedJob);
+    const remainder = normalized.startsWith(normalizedJob + '/')
+      ? normalized.slice(normalizedJob.length + 1)
       : '';
     const relSegments = remainder
       .split('/')
       .filter((seg) => Boolean(seg) && seg !== guideName && seg !== taskName);
     const baseLabel = relSegments.join('-') || path.basename(normalized);
-    return sanitizeLabelSegment(includeSuite ? `${suiteName}-${baseLabel}` : baseLabel);
+    return sanitizeLabelSegment(includeJob ? `${jobName}-${baseLabel}` : baseLabel);
   }
 
   const segments = normalized.split('/').filter(Boolean);
@@ -586,8 +595,8 @@ function extractRunLabel(runDir: string, guideName: string, taskName: string, in
 
 /**
  * Resolves a deterministic, symmetric output file path for a variance diagnosis report.
- * Always derives the output directory from Run A (falling back to Run B, then resultsDir)
- * regardless of which run scored higher, and disambiguates filenames using both run labels.
+ * Always derives the output directory from Trial A (falling back to Trial B, then resultsDir)
+ * regardless of which trial scored higher, and disambiguates filenames using both trial labels.
  */
 export function buildComparisonReportPath(
   dirA: string,
@@ -595,18 +604,18 @@ export function buildComparisonReportPath(
   guideName: string,
   taskName: string
 ): string {
-  const suiteDirA = inferSuiteDir(dirA);
-  const suiteDirB = inferSuiteDir(dirB);
+  const jobDirA = inferJobDir(dirA);
+  const jobDirB = inferJobDir(dirB);
 
-  const baseOutputDir = suiteDirA || suiteDirB || resultsDir;
+  const baseOutputDir = jobDirA || jobDirB || resultsDir;
   const diagnosesDir = path.join(baseOutputDir, 'variance_diagnoses');
 
-  const suiteNameA = suiteDirA ? path.basename(suiteDirA) : '';
-  const suiteNameB = suiteDirB ? path.basename(suiteDirB) : '';
-  const includeSuite = Boolean((suiteNameA || suiteNameB) && suiteNameA !== suiteNameB);
+  const jobNameA = jobDirA ? path.basename(jobDirA) : '';
+  const jobNameB = jobDirB ? path.basename(jobDirB) : '';
+  const includeJob = Boolean((jobNameA || jobNameB) && jobNameA !== jobNameB);
 
-  let labelA = extractRunLabel(dirA, guideName, taskName, includeSuite);
-  let labelB = extractRunLabel(dirB, guideName, taskName, includeSuite);
+  let labelA = extractTrialLabel(dirA, guideName, taskName, includeJob);
+  let labelB = extractTrialLabel(dirB, guideName, taskName, includeJob);
   if (labelA === labelB) {
     labelA = `${labelA}-A`;
     labelB = `${labelB}-B`;
@@ -623,8 +632,8 @@ export function buildComparisonReportPath(
 function writeComparisonWorkspaceFiles(
   workDir: string,
   guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
+  ctxA: TrialContext,
+  ctxB: TrialContext,
   diffBaseVsA: string,
   diffBaseVsB: string,
   diffAvsB: string
@@ -635,8 +644,8 @@ function writeComparisonWorkspaceFiles(
   fs.writeFileSync(path.join(workDir, 'diff_base_vs_a.patch'), diffBaseVsA, 'utf8');
   fs.writeFileSync(path.join(workDir, 'diff_base_vs_b.patch'), diffBaseVsB, 'utf8');
   fs.writeFileSync(path.join(workDir, 'diff_a_vs_b.patch'), diffAvsB, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'run_a_trajectory.json'), JSON.stringify(ctxA.preprocessed, null, 2), 'utf8');
-  fs.writeFileSync(path.join(workDir, 'run_b_trajectory.json'), JSON.stringify(ctxB.preprocessed, null, 2), 'utf8');
+  fs.writeFileSync(path.join(workDir, 'trial_a_trajectory.json'), JSON.stringify(ctxA.preprocessed, null, 2), 'utf8');
+  fs.writeFileSync(path.join(workDir, 'trial_b_trajectory.json'), JSON.stringify(ctxB.preprocessed, null, 2), 'utf8');
 
   const fullContextMd = `# Full Uncapped Comparison Context (${guideCtx.guideName} / ${guideCtx.taskName})
 
@@ -660,27 +669,27 @@ ${guideCtx.expectationsContent}
 ${guideCtx.graderContent}
 \`\`\`
 
-## Diff 1: Base App vs Run A Output
+## Diff 1: Base App vs Trial A Output
 \`\`\`diff
 ${diffBaseVsA}
 \`\`\`
 
-## Diff 2: Base App vs Run B Output
+## Diff 2: Base App vs Trial B Output
 \`\`\`diff
 ${diffBaseVsB}
 \`\`\`
 
-## Diff 3: Run A Output vs Run B Output
+## Diff 3: Trial A Output vs Trial B Output
 \`\`\`diff
 ${diffAvsB}
 \`\`\`
 
-## Run A Full Tagged Trajectory Steps (Score: ${ctxA.score}%)
+## Trial A Full Tagged Trajectory Steps (Score: ${ctxA.score}%)
 \`\`\`json
 ${JSON.stringify(ctxA.preprocessed.taggedSteps, null, 2)}
 \`\`\`
 
-## Run B Full Tagged Trajectory Steps (Score: ${ctxB.score}%)
+## Trial B Full Tagged Trajectory Steps (Score: ${ctxB.score}%)
 \`\`\`json
 ${JSON.stringify(ctxB.preprocessed.taggedSteps, null, 2)}
 \`\`\`
@@ -693,29 +702,29 @@ ${JSON.stringify(ctxB.preprocessed.taggedSteps, null, 2)}
  * Runs the diagnostic agent comparison in an isolated workspace using a single unified prompt.
  */
 export async function runComparison(
-  runDirA: string,
-  runDirB: string,
+  trialDirA: string,
+  trialDirB: string,
   agentCaller: AgentCaller = callAgentCli
 ): Promise<string> {
-  console.log(cCyan(`\n=== Starting Run Comparison (Unified Subagent-Orchestrated Pipeline) ===`));
-  console.log(`Run A: ${runDirA}`);
-  console.log(`Run B: ${runDirB}\n`);
+  console.log(cCyan(`\n=== Starting Trial Comparison (Unified Subagent-Orchestrated Pipeline) ===`));
+  console.log(`Trial A: ${trialDirA}`);
+  console.log(`Trial B: ${trialDirB}\n`);
 
   await Promise.all([
-    downloadRunFromGcsIfMissing(runDirA),
-    downloadRunFromGcsIfMissing(runDirB)
+    downloadTrialFromGcsIfMissing(trialDirA),
+    downloadTrialFromGcsIfMissing(trialDirB)
   ]);
 
-  const ctxA = loadRunContext(runDirA);
-  const ctxB = loadRunContext(runDirB);
+  const ctxA = loadTrialContext(trialDirA);
+  const ctxB = loadTrialContext(trialDirB);
 
-  console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
+  console.log(`Comparing Trial A (Score: ${ctxA.score}%) vs Trial B (Score: ${ctxB.score}%)...`);
 
   const parsedPath = parseResultPath(ctxA.dir) || parseResultPath(ctxB.dir);
   if (!parsedPath) {
     throw new Error(
-      `Invalid run directory structure: cannot parse guide, task, and runType from "${ctxA.dir}". ` +
-        `Expected path format ending in: <guide>/<task>/<runType>`
+      `Invalid trial directory structure: cannot parse guide, task, and condition from "${ctxA.dir}". ` +
+        `Expected path format ending in: <guide>/<task>/<condition>`
     );
   }
   const { guide: guideName, taskName } = parsedPath;
@@ -723,21 +732,21 @@ export async function runComparison(
   const guideCtx = findGuideContext(guideName, taskName);
   const diffBaseVsA = ctxA.patchContent
     ? ctxA.patchContent.trim()
-    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
+    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Trial A Output');
   const diffBaseVsB = ctxB.patchContent
     ? ctxB.patchContent.trim()
-    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
-  const diffAvsB = computeInterRunDiff(ctxA, ctxB);
+    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Trial B Output');
+  const diffAvsB = computeInterTrialDiff(ctxA, ctxB);
 
-  const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
-  const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
+  const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED TRIAL';
+  const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED TRIAL';
 
   const { workDir, tempHome } = setupGuideDevWorkDir('compare');
 
   try {
     console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
-    console.log(`  Run A: ${ctxA.preprocessed.taggedSteps.length} steps (${ctxA.preprocessed.noiseCount} noise, ${ctxA.preprocessed.errorLoopCount} retries)`);
-    console.log(`  Run B: ${ctxB.preprocessed.taggedSteps.length} steps (${ctxB.preprocessed.noiseCount} noise, ${ctxB.preprocessed.errorLoopCount} retries)`);
+    console.log(`  Trial A: ${ctxA.preprocessed.taggedSteps.length} steps (${ctxA.preprocessed.noiseCount} noise, ${ctxA.preprocessed.errorLoopCount} retries)`);
+    console.log(`  Trial B: ${ctxB.preprocessed.taggedSteps.length} steps (${ctxB.preprocessed.noiseCount} noise, ${ctxB.preprocessed.errorLoopCount} retries)`);
 
     writeComparisonWorkspaceFiles(workDir, guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB);
 

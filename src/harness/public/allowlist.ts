@@ -3,24 +3,24 @@ import path from 'node:path';
 
 /**
  * The public allowlist file (`src/harness/public/allowlist.json`). It is the
- * only input that decides which suites, models, and guides reach the public
+ * only input that decides which jobs, models, and guides reach the public
  * copy. Shape is enforced by `assertAllowlistShape` below and documented for
  * editors in `allowlist.schema.json`.
  */
 export interface PublicAllowlist {
-  /** Suite IDs or glob patterns (`*` and `?` only) that are eligible for publishing. */
+  /** Job IDs or glob patterns (`*` and `?` only) that are eligible for publishing. */
   include: string[];
-  /** Exact suite IDs that must not be published even if they match `include`. */
+  /** Exact job IDs that must not be published even if they match `include`. */
   exclude: string[];
-  /** Per-suite guide-level overrides. */
+  /** Per-job guide-level overrides. */
   overrides: Array<{ id: string; excludeGuides: string[] }>;
   /** Model identifiers that may appear publicly. Empty means nothing publishes. */
   releasedModels: string[];
   /**
    * Limits on how much history stays published. `maxAgeDays` is applied by
    * `withinMaxAge`; `maxSuitesPerAgent` and then `maxSuites` after the
-   * agent/model gate so unreleased runs do not consume slots. The per-agent
-   * cap keeps an agent whose recent runs are unreleased from being aged out
+   * agent/model gate so unreleased jobs do not consume slots. The per-agent
+   * cap keeps an agent whose recent jobs are unreleased from being aged out
    * entirely by the others.
    */
   retention?: { maxAgeDays?: number; maxSuites?: number; maxSuitesPerAgent?: number };
@@ -28,9 +28,9 @@ export interface PublicAllowlist {
 
 export const DEFAULT_ALLOWLIST_PATH = path.join(import.meta.dirname, 'allowlist.json');
 
-/** Suite ids and model names: anything without whitespace. */
+/** Job ids and model names: anything without whitespace. */
 const NON_BLANK_RE = /^\S+$/;
-/** Exact suite ids: no whitespace and no glob characters. */
+/** Exact job ids: no whitespace and no glob characters. */
 const EXACT_ID_RE = /^[^*?\s]+$/;
 /** Guide folder names; also keeps `--guide` values out of paths they should not reach. */
 const GUIDE_NAME_RE = /^[\w.-]+$/;
@@ -160,8 +160,8 @@ export function loadValidatedAllowlist(filePath = DEFAULT_ALLOWLIST_PATH): Publi
   return parseValidatedAllowlist(fs.readFileSync(filePath, 'utf8'), filePath);
 }
 
-/** Suite IDs from `candidates` that match an `include` pattern and are not excluded. Sorted. */
-export function selectSuites(allowlist: PublicAllowlist, candidates: readonly string[]): string[] {
+/** Job IDs from `candidates` that match an `include` pattern and are not excluded. Sorted. */
+export function selectJobs(allowlist: PublicAllowlist, candidates: readonly string[]): string[] {
   const includes = allowlist.include.map(globToRegExp);
   const excluded = new Set(allowlist.exclude);
   return candidates
@@ -169,74 +169,80 @@ export function selectSuites(allowlist: PublicAllowlist, candidates: readonly st
     .sort();
 }
 
+/** @deprecated Use selectJobs */
+export const selectSuites = selectJobs;
+
 /**
- * `retention.maxAgeDays` half of retention: suites no older than that (all of
+ * `retention.maxAgeDays` half of retention: jobs no older than that (all of
  * them when unset). `maxSuites` is applied after the agent/model gate so
- * "keep 30" means 30 publishable suites rather than 30 minus unreleased runs.
+ * "keep 30" means 30 publishable jobs rather than 30 minus unreleased jobs.
  */
-export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAllowlist, suites: readonly T[], now = new Date()): T[] {
+export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAllowlist, jobs: readonly T[], now = new Date()): T[] {
   const { maxAgeDays } = allowlist.retention ?? {};
   if (maxAgeDays === undefined) {
-    return [...suites];
+    return [...jobs];
   }
   const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
-  return suites.filter(suite => suite.createdAt.getTime() >= cutoff);
+  return jobs.filter(job => job.createdAt.getTime() >= cutoff);
 }
 
 /**
  * Applies `retention.maxSuitesPerAgent` and then `retention.maxSuites` to
- * publishable suites in newest-first order, returning the ones that keep a
+ * publishable jobs in newest-first order, returning the ones that keep a
  * slot. The per-agent cap runs first so a prolific agent cannot push another
- * agent's older suites out of the global budget.
+ * agent's older jobs out of the global budget.
  */
-export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent?: string }>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
+export function withinJobCaps<T extends { jobId?: string; suiteId?: string; id?: string; agent?: string }>(allowlist: PublicAllowlist, newestFirstJobs: readonly T[]): T[] {
   const { maxSuites, maxSuitesPerAgent } = allowlist.retention ?? {};
   const perAgent = new Map<string, number>();
   const kept: T[] = [];
-  const curatedIds = new Set(allowlist.include.filter(id => isCuratedSuite(id, allowlist)));
-  for (const suite of newestFirstSuites) {
-    const id = suite.suiteId ?? suite.id ?? '';
+  const curatedIds = new Set(allowlist.include.filter(id => isCuratedJob(id, allowlist)));
+  for (const job of newestFirstJobs) {
+    const id = job.jobId ?? job.suiteId ?? job.id ?? '';
     if (curatedIds.has(id)) {
-      kept.push(suite);
+      kept.push(job);
       continue;
     }
     if (maxSuites !== undefined && kept.length >= maxSuites) {
       break;
     }
-    const agent = suite.agent ?? '';
+    const agent = job.agent ?? '';
     const seen = perAgent.get(agent) ?? 0;
     if (maxSuitesPerAgent !== undefined && seen >= maxSuitesPerAgent) {
       continue;
     }
     perAgent.set(agent, seen + 1);
-    kept.push(suite);
+    kept.push(job);
   }
   return kept;
 }
 
+/** @deprecated Use withinJobCaps */
+export const withinSuiteCaps = withinJobCaps;
+
 /** Returns a copy sorted newest-first by `createdAt`. */
-export function newestFirst<T extends { createdAt: Date }>(suites: readonly T[]): T[] {
-  return [...suites].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+export function newestFirst<T extends { createdAt: Date }>(jobs: readonly T[]): T[] {
+  return [...jobs].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-/** The run time embedded in nightly ids, e.g. `nightly-2026-10-20_20-43-48-codex_cli`. */
-const SUITE_ID_TIME_RE = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
-const SUITE_ID_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
+/** The timestamp embedded in nightly ids, e.g. `nightly-2026-10-20_20-43-48-codex_cli`. */
+const JOB_ID_TIME_RE = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
+const JOB_ID_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
 
 /**
- * When a suite was run, for retention. Nightly ids embed the run time
+ * When a job was executed, for retention. Nightly ids embed the timestamp
  * (`nightly-2026-10-20_20-43-48-codex_cli`), which is stable; the bucket's
- * `timeCreated` resets if a suite is re-uploaded, so it is only a fallback.
+ * `timeCreated` resets if a job is re-uploaded, so it is only a fallback.
  * The id's time is read as UTC; the runner's zone may differ by hours, which
  * does not matter at day granularity.
  */
-export function suiteCreatedAt(suiteId: string, fallback: Date): Date {
-  const match = SUITE_ID_TIME_RE.exec(suiteId);
+export function jobCreatedAt(jobId: string, fallback: Date): Date {
+  const match = JOB_ID_TIME_RE.exec(jobId);
   if (match) {
     const [, y, mo, d, h, mi, s] = match;
     return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
   }
-  const dateMatch = SUITE_ID_DATE_RE.exec(suiteId);
+  const dateMatch = JOB_ID_DATE_RE.exec(jobId);
   if (dateMatch) {
     const [, y, mo, d] = dateMatch;
     return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
@@ -244,10 +250,13 @@ export function suiteCreatedAt(suiteId: string, fallback: Date): Date {
   return fallback;
 }
 
+/** @deprecated Use jobCreatedAt */
+export const suiteCreatedAt = jobCreatedAt;
+
 /**
  * The policy rules the schema cannot express. Wildcard `include` patterns
  * must start with `nightly-`, so only the automated nightlies can be admitted
- * in bulk (one-off suites need an exact ID); and each suite has at most one
+ * in bulk (one-off jobs need an exact ID); and each job has at most one
  * `overrides` entry, so there is one place to read its exclusions from.
  */
 export function validateAllowlistPolicy(allowlist: PublicAllowlist): string[] {
@@ -264,20 +273,23 @@ export function validateAllowlistPolicy(allowlist: PublicAllowlist): string[] {
   return problems;
 }
 
-/** The override entry for a suite, if any. */
-export function overrideFor(allowlist: PublicAllowlist, suiteId: string): { excludeGuides: string[] } | undefined {
-  return allowlist.overrides.find(entry => entry.id === suiteId);
+/** The override entry for a job, if any. */
+export function overrideFor(allowlist: PublicAllowlist, jobId: string): { excludeGuides: string[] } | undefined {
+  return allowlist.overrides.find(entry => entry.id === jobId);
 }
 
 /**
- * True when a suite is an explicit non-scheduled (baseline/curated) run admitted by the allowlist.
+ * True when a job is an explicit non-scheduled (baseline/curated) job admitted by the allowlist.
  */
-export function isCuratedSuite(suiteId: string, allowlist?: PublicAllowlist): boolean {
-  if (allowlist && !allowlist.include.includes(suiteId)) {
+export function isCuratedJob(jobId: string, allowlist?: PublicAllowlist): boolean {
+  if (allowlist && !allowlist.include.includes(jobId)) {
     return false;
   }
-  return !/^(nightly|weekly)-/i.test(suiteId);
+  return !/^(nightly|weekly)-/i.test(jobId);
 }
+
+/** @deprecated Use isCuratedJob */
+export const isCuratedSuite = isCuratedJob;
 
 /**
  * Converts a simple glob to an anchored regular expression. Only `*` (any run

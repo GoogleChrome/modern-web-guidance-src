@@ -6,17 +6,17 @@ import path from 'node:path';
 import {
   DEFAULT_ALLOWLIST_PATH,
   globToRegExp,
-  isCuratedSuite,
+  isCuratedJob,
+  jobCreatedAt,
   loadValidatedAllowlist,
   newestFirst,
   overrideFor,
   parseAllowlist,
   parseValidatedAllowlist,
-  selectSuites,
-  suiteCreatedAt,
+  selectJobs,
   validateAllowlistPolicy,
+  withinJobCaps,
   withinMaxAge,
-  withinSuiteCaps,
 } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 
@@ -40,9 +40,9 @@ describe('globToRegExp', () => {
   });
 });
 
-describe('selectSuites', () => {
-  test('keeps included suites, drops excluded and unmatched, and sorts', () => {
-    const selected = selectSuites(allowlist, [
+describe('selectJobs', () => {
+  test('keeps included jobs, drops excluded and unmatched, and sorts', () => {
+    const selected = selectJobs(allowlist, [
       'test-2026-07-30T13-02-05',
       'nightly-2026-10-14_10-21-40-codex_cli',
       'nightly-2026-10-09_11-27-57-codex_cli',
@@ -58,7 +58,7 @@ describe('selectSuites', () => {
   });
 
   test('selects nothing when include is empty', () => {
-    assert.deepEqual(selectSuites({ ...allowlist, include: [] }, ['nightly-x-codex_cli']), []);
+    assert.deepEqual(selectJobs({ ...allowlist, include: [] }, ['nightly-x-codex_cli']), []);
   });
 });
 
@@ -72,19 +72,19 @@ describe('overrideFor', () => {
   });
 });
 
-describe('isCuratedSuite', () => {
-  test('returns true for exact non-scheduled suites in the allowlist', () => {
-    assert.equal(isCuratedSuite('one-off-2026-05-13_19-17-28', allowlist), true);
-    assert.equal(isCuratedSuite('opus-medium-1.0-rc-2026-11-08'), true);
+describe('isCuratedJob', () => {
+  test('returns true for exact non-scheduled jobs in the allowlist', () => {
+    assert.equal(isCuratedJob('one-off-2026-05-13_19-17-28', allowlist), true);
+    assert.equal(isCuratedJob('opus-medium-1.0-rc-2026-11-08'), true);
   });
 
   test('returns false for scheduled nightlies and weeklies', () => {
-    assert.equal(isCuratedSuite('nightly-2026-10-20_20-43-48-codex_cli', allowlist), false);
-    assert.equal(isCuratedSuite('weekly-2026-10-20-codex_cli', allowlist), false);
+    assert.equal(isCuratedJob('nightly-2026-10-20_20-43-48-codex_cli', allowlist), false);
+    assert.equal(isCuratedJob('weekly-2026-10-20-codex_cli', allowlist), false);
   });
 
-  test('returns false when allowlist is passed and suite is not in include', () => {
-    assert.equal(isCuratedSuite('unknown-suite', allowlist), false);
+  test('returns false when allowlist is passed and job is not in include', () => {
+    assert.equal(isCuratedJob('unknown-suite', allowlist), false);
   });
 });
 
@@ -197,8 +197,8 @@ describe('retention helpers', () => {
     assert.deepEqual(input.map(s => s.id), ['a', 'b', 'c']);
   });
 
-  test('withinSuiteCaps applies the per-agent cap before the global cap', () => {
-    // Newest first: four codex runs, then two claude, then one with no agent.
+  test('withinJobCaps applies the per-agent cap before the global cap', () => {
+    // Newest first: four codex jobs, then two claude, then one with no agent.
     const ranked = [
       { id: 'x1', agent: 'codex_cli' },
       { id: 'x2', agent: 'codex_cli' },
@@ -208,7 +208,7 @@ describe('retention helpers', () => {
       { id: 'c2', agent: 'claude_code' },
       { id: 'n1' },
     ];
-    const ids = (retention: PublicAllowlist['retention']) => withinSuiteCaps({ ...allowlist, retention }, ranked).map(s => s.id);
+    const ids = (retention: PublicAllowlist['retention']) => withinJobCaps({ ...allowlist, retention }, ranked).map(s => s.id);
 
     assert.deepEqual(ids(undefined), ['x1', 'x2', 'x3', 'x4', 'c1', 'c2', 'n1'], 'no caps keeps everything');
     assert.deepEqual(ids({ maxSuites: 3 }), ['x1', 'x2', 'x3'], 'a global cap alone lets one agent take every slot');
@@ -216,7 +216,7 @@ describe('retention helpers', () => {
     assert.deepEqual(ids({ maxSuitesPerAgent: 2, maxSuites: 3 }), ['x1', 'x2', 'c1'], 'per-agent first, then the global cap');
   });
 
-  test('withinSuiteCaps preserves curated baseline suites regardless of rolling nightly caps', () => {
+  test('withinJobCaps preserves curated baseline jobs regardless of rolling nightly caps', () => {
     const curatedAllowlist: PublicAllowlist = {
       ...allowlist,
       include: [...allowlist.include, 'curated-baseline-run'],
@@ -227,23 +227,23 @@ describe('retention helpers', () => {
       { id: 'nightly-recent-2', agent: 'codex_cli' },
       { id: 'curated-baseline-run', agent: 'codex_cli' },
     ];
-    const kept = withinSuiteCaps(curatedAllowlist, ranked).map(s => s.id);
+    const kept = withinJobCaps(curatedAllowlist, ranked).map(s => s.id);
     assert.deepEqual(kept, ['nightly-recent-1', 'curated-baseline-run']);
   });
 });
 
-describe('suiteCreatedAt', () => {
+describe('jobCreatedAt', () => {
   const fallback = new Date('2000-01-01T00:00:00Z');
 
-  test('reads the run time out of a nightly id', () => {
-    assert.equal(suiteCreatedAt('nightly-2026-10-20_20-43-48-codex_cli', fallback).toISOString(), '2026-10-20T20:43:48.000Z');
+  test('reads the timestamp out of a nightly id', () => {
+    assert.equal(jobCreatedAt('nightly-2026-10-20_20-43-48-codex_cli', fallback).toISOString(), '2026-10-20T20:43:48.000Z');
   });
 
-  test('reads date out of a date-only suite id', () => {
-    assert.equal(suiteCreatedAt('opus-medium-1.0-rc-2026-11-08', fallback).toISOString(), '2026-11-08T00:00:00.000Z');
+  test('reads date out of a date-only job id', () => {
+    assert.equal(jobCreatedAt('opus-medium-1.0-rc-2026-11-08', fallback).toISOString(), '2026-11-08T00:00:00.000Z');
   });
 
   test('falls back for ids without a timestamp', () => {
-    assert.equal(suiteCreatedAt('one-off-exact-id', fallback), fallback);
+    assert.equal(jobCreatedAt('one-off-exact-id', fallback), fallback);
   });
 });

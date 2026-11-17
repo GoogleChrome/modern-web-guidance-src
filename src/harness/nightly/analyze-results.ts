@@ -9,8 +9,8 @@ interface GenerationError {
   message: string;
 }
 
-export function formatSuiteSummary(data: Partial<EvalsReport>): string {
-  const summary = extractJobSummary('suite', data);
+export function formatJobSummary(data: Partial<EvalsReport>): string {
+  const summary = extractJobSummary('job', data);
   const totalTrials = summary?.totalTrials ?? 0;
   const infraErrors = summary?.earlyFailureCount ?? 0;
   if (!summary || totalTrials === 0 || infraErrors === totalTrials) return '';
@@ -33,6 +33,9 @@ export function formatSuiteSummary(data: Partial<EvalsReport>): string {
   ].join('\n');
 }
 
+/** @deprecated Use formatJobSummary */
+export const formatSuiteSummary = formatJobSummary;
+
 function main(): void {
   const args = process.argv.slice(2);
   const evalsJsonPath = args[0];
@@ -45,7 +48,7 @@ function main(): void {
 
   if (outputFormat === 'summary') {
     try {
-      const summary = formatSuiteSummary(JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8')) as Partial<EvalsReport>);
+      const summary = formatJobSummary(JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8')) as Partial<EvalsReport>);
       if (summary) console.log(summary);
     } catch {
       // No output when missing or unreadable.
@@ -91,33 +94,33 @@ function main(): void {
     }
 
     const generationErrors: GenerationError[] = [];
-    let totalRunsCount = 0;
-    let earlyFailuresCount = 0;
+    let totalTrialsCount = 0;
+    let infraErrorsCount = 0;
 
     for (const testName of testNames) {
-      const runs = results[testName] || [];
-      for (const run of runs) {
-        totalRunsCount++;
-        const scenarioChecks = run.results || [];
-        let runHasEarlyFailure = false;
-        for (const check of scenarioChecks) {
+      const trials = results[testName] || [];
+      for (const trial of trials) {
+        totalTrialsCount++;
+        const trialChecks = trial.results || [];
+        let trialHasInfraError = false;
+        for (const check of trialChecks) {
           if (check.isEarlyFailure) {
-            runHasEarlyFailure = true;
+            trialHasInfraError = true;
             generationErrors.push({
               testName,
-              runNumber: run.runNumber,
+              runNumber: trial.runNumber,
               message: check.message || 'Unknown generation error'
             });
           }
         }
-        if (runHasEarlyFailure) {
-          earlyFailuresCount++;
+        if (trialHasInfraError) {
+          infraErrorsCount++;
         }
       }
     }
 
-    const hasData = totalRunsCount > 0;
-    const isCatastrophicFailure = totalRunsCount > 0 && earlyFailuresCount === totalRunsCount;
+    const hasData = totalTrialsCount > 0;
+    const isCatastrophicFailure = totalTrialsCount > 0 && infraErrorsCount === totalTrialsCount;
 
     if (outputFormat === 'has-data') {
       console.log(hasData ? 'true' : 'false');

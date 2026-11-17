@@ -88,7 +88,7 @@ gd eval task1 task2 task3
 ```
 
 ### Configuration Profiles:
-To override suite parameters without modifying `src/harness/config.ts` directly, copy the example template from the **repository root**:
+To override job parameters without modifying `src/harness/config.ts` directly, copy the example template from the **repository root**:
 ```bash
 # From the repository root:
 cp config.ts.example config.ts
@@ -132,7 +132,7 @@ src/harness/
     sandbox.ts               # Filesystem isolation sandbox
     trajectory-normalizer.ts # Unified trajectory_summary.json generation
   nightly/                   # Nightly cron automation scripts
-  config.ts                  # Suite configuration
+  config.ts                  # Job configuration
   run-suite.ts               # Orchestrator
   evaluate.ts                # Evaluation reporting
 ```
@@ -212,9 +212,9 @@ PI_MODEL=anthropic/claude-opus GD_SUITE_CONFIG='...' node src/harness/run-suite.
 
 ### 1. Isolated HOME Directory
 
-Each test run gets a fresh temporary directory as `HOME` to prevent:
+Each trial gets a fresh temporary directory as `HOME` to prevent:
 - Cross-test contamination
-- Auth credential leakage between runs
+- Auth credential leakage between trials
 - Config file race conditions
 - Shell profile interference
 
@@ -266,7 +266,7 @@ copyFileIfExists(
 
 ### 3. Skills Configuration
 
-Guided runs inject `modern-web-guidance` via the Skills CLI distribution:
+Guided trials inject `modern-web-guidance` via the Skills CLI distribution:
 
 ```typescript
 copySkills(tempHome, Agents.PI, skillsToEnable);
@@ -350,7 +350,7 @@ Only these paths are re-exposed:
 | `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
 | isolated `HOME` (`/tmp/ghh-*`) | writable | Agent workspace, `.gd-bin` npx/pnpx/pnpm shims, and `modern-web.log` |
 
-If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
+If no sandbox tool is available the trial fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
 
 ---
 
@@ -391,13 +391,13 @@ export function getMyAgentCommandAndArgs(prompt: string): { command: string; com
 }
 
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('my-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.MY_AGENT, templateDir, runType);
+  const { userPrompt, condition, targetDir, baseAppDir } = parseAgentArgs('my-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.MY_AGENT, baseAppDir, condition);
 
   try {
     const { command, commandArgs } = getMyAgentCommandAndArgs(userPrompt);
     try {
-      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
+      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', condition);
     } finally {
       exportMyAgentTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.MY_AGENT, userPrompt);
@@ -439,7 +439,7 @@ export interface EnvironmentConfig {
 ### Step 3: Wire Up Integrations
 
 1. **`src/harness/lib/agent-shared.ts`** - Register `setupMyAgentCredentials` in `setupAgentCredentials()` and `getMyAgentCommandAndArgs` in `getAgentCommandAndArgs()`.
-2. **`src/harness/lib/trajectory-normalizer.ts`** - Register `loadMyAgentLogs` and `parseMyAgentTrajectory` in `detectAgentForRun()` and `generateNormalizedTrajectorySync()`. (`lib/collection.ts` and `lib/guide-usage.ts` automatically read the resulting `trajectory_summary.json`).
+2. **`src/harness/lib/trajectory-normalizer.ts`** - Register `loadMyAgentLogs` and `parseMyAgentTrajectory` in `detectAgentForTrial()` and `generateNormalizedTrajectorySync()`. (`lib/collection.ts` and `lib/guide-usage.ts` automatically read the resulting `trajectory_summary.json`).
 3. **`src/harness/run-suite.ts`** - Map the agent enum to its script in `AGENT_SCRIPTS`:
    ```typescript
    const AGENT_SCRIPTS: Record<string, string> = {
@@ -526,7 +526,7 @@ node src/cli/modern-web.ts search "address form"
 
 ### Check Guide Validation
 ```bash
-# Verify guides are "eval-ready" before running suite
+# Verify guides are "eval-ready" before running a job
 node src/core/guide-validation.ts
 ```
 
@@ -564,7 +564,7 @@ export async function runMyAgentSmokeTest() {
   const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'my-agent-smoke-test-'));
   const prompt = "Please create a file named 'hello.txt' containing exactly 'hello world'.";
   
-  const suiteConfig = {
+  const jobConfig = {
     name: 'smoke-test',
     numRuns: 1,
     tasks: [],
@@ -580,7 +580,7 @@ export async function runMyAgentSmokeTest() {
     tempProjectDir
   ], {
     stdio: 'inherit',
-    env: { ...process.env, GD_SUITE_CONFIG: JSON.stringify(suiteConfig) }
+    env: { ...process.env, GD_SUITE_CONFIG: JSON.stringify(jobConfig) }
   });
 
   if (result.status !== 0) {
@@ -600,13 +600,13 @@ node --test src/harness/agents/pi-agent.test.ts
 
 #### Manual Trajectory Inspection
 ```bash
-# Run full eval suite with Pi (sessions enabled by default)
+# Run full eval job with Pi (sessions enabled by default)
 GD_SUITE_CONFIG='{"agent":"pi"}' \
   node src/harness/run-suite.ts <task>
 
 # Sessions are saved to the isolated HOME, then exported to results dir
 # Inspect the JSONL format
-cat results/suites/<suite>/<run>/<task>/guided/*.jsonl | head -100
+cat results/suites/<job>/<trial>/<task>/guided/*.jsonl | head -100
 ```
 
 ## Diagnosing Performance Variance with `gd compare`
@@ -614,28 +614,28 @@ cat results/suites/<suite>/<run>/<task>/guided/*.jsonl | head -100
 The `gd compare` command compares two evaluation trial directories to diagnose behavioral differences and performance variance between agent trials:
 
 ```bash
-# Compare two local run directories
-gd compare results/<suite-a>/<run-1>/<guide>/<task>/<run-type> results/<suite-b>/<run-2>/<guide>/<task>/<run-type>
+# Compare two local trial directories
+gd compare results/<job-a>/<trial-1>/<guide>/<task>/<condition> results/<job-b>/<trial-2>/<guide>/<task>/<condition>
 
-# Example: Compare guided vs unguided runs
+# Example: Compare guided vs unguided trials
 gd compare results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/unguided
 
-# Compare runs from remote GCS suites (automatically downloaded and cached locally)
+# Compare trials from remote GCS jobs (automatically downloaded and cached locally)
 gd compare nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided nightly-2026-08-11_17-00-02-jetski_cli/1/details-styling/task/guided
 ```
 
 ### Path Formats
-Run directory paths can be:
-- **Local repository paths**: Paths relative to repo root (e.g. `results/<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
-- **Results-relative or remote suite paths**: Paths relative to `results/` (e.g. `<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
-- **Remote GCS buckets**: If the specified run directory is not found locally, `gd compare` automatically downloads the run artifacts from Google Cloud Storage (`gs://guidance-evals/<suite-path>`) before launching analysis.
+Trial directory paths can be:
+- **Local repository paths**: Paths relative to repo root (e.g. `results/<job-name>/<trial-number>/<guide-name>/<task-name>/<condition>`).
+- **Results-relative or remote job paths**: Paths relative to `results/` (e.g. `<job-name>/<trial-number>/<guide-name>/<task-name>/<condition>`).
+- **Remote GCS buckets**: If the specified trial directory is not found locally, `gd compare` automatically downloads the trial artifacts from Google Cloud Storage (`gs://guidance-evals/<job-path>`) before launching analysis.
 
 ### Analysis Pipeline
 The comparison runs in four steps:
-1. **Loads both runs.** Missing runs are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
+1. **Loads both trials.** Missing trials are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
 2. **Pre-processes trajectories** into tagged milestone steps (skill search, guide retrieval, code mutation, noise) and counts error/retry loops.
 3. **Runs one diagnostic prompt** with the configured solution agent CLI in an isolated temp workspace. The full guide, grader, diffs and trajectories are staged there as files. The agent may split the guide-compliance and code/friction audits across its own subagents.
-4. **Writes a four-section markdown report** to `<Run A suite>/variance_diagnoses/<guide>-<task>-<runA>-vs-<runB>.md`. If Run A isn't in a recognizable suite folder, it falls back to Run B's suite, then to `results/variance_diagnoses/`.
+4. **Writes a four-section markdown report** to `<Trial A job>/variance_diagnoses/<guide>-<task>-<trialA>-vs-<trialB>.md`. If Trial A isn't in a recognizable job folder, it falls back to Trial B's job, then to `results/variance_diagnoses/`.
 
 ---
 

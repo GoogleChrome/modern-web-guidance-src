@@ -2,15 +2,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import type { EvalsReport, RunResult } from '../lib/metrics.ts';
-import { formatSuiteSummary } from './analyze-results.ts';
+import type { EvalsReport, TrialResult } from '../lib/metrics.ts';
+import { formatJobSummary } from './analyze-results.ts';
 
 const FIXTURE_PATH = path.join(import.meta.dirname, '..', 'public', 'fixtures', 'nightly-sample.evals.json');
 
-test('formatSuiteSummary formats pass, leak, and error rates', () => {
+test('formatJobSummary formats pass, leak, and error rates', () => {
   const data = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8')) as EvalsReport;
   assert.strictEqual(
-    formatSuiteSummary(data),
+    formatJobSummary(data),
     [
       'Unguided pass rate: 28% (8/29)',
       'Guided pass rate: 66% (19/29)',
@@ -20,10 +20,10 @@ test('formatSuiteSummary formats pass, leak, and error rates', () => {
   );
 });
 
-test('formatSuiteSummary handles sub-1% leak/error rates, paired exclusion, and empty/catastrophic suites', () => {
-  const ok = (passed: boolean): RunResult => ({ runNumber: 1, results: [{ passed, message: 'c' }] });
-  const err: RunResult = { runNumber: 1, results: [{ passed: false, message: 'err', isEarlyFailure: true }] };
-  const results: Record<string, RunResult[]> = {};
+test('formatJobSummary handles sub-1% leak/error rates, paired exclusion, and empty/catastrophic jobs', () => {
+  const ok = (passed: boolean): TrialResult => ({ runNumber: 1, results: [{ passed, message: 'c' }] });
+  const err: TrialResult = { runNumber: 1, results: [{ passed: false, message: 'err', isEarlyFailure: true }] };
+  const results: Record<string, TrialResult[]> = {};
   for (let i = 0; i < 198; i++) {
     results[`daily-grind - g${i} - unguided`] = [ok(false)];
     results[`daily-grind - g${i} - guided`] = [ok(true)];
@@ -34,7 +34,7 @@ test('formatSuiteSummary handles sub-1% leak/error rates, paired exclusion, and 
   results['daily-grind - broken - guided'] = [err];
 
   assert.strictEqual(
-    formatSuiteSummary({ results }),
+    formatJobSummary({ results }),
     [
       'Unguided pass rate: 1% (1/199)',
       'Guided pass rate: 100% (199/199)',
@@ -42,6 +42,6 @@ test('formatSuiteSummary handles sub-1% leak/error rates, paired exclusion, and 
       'Error rate: 0.3%',
     ].join('\n'),
   );
-  assert.strictEqual(formatSuiteSummary({ results: {} }), '');
-  assert.strictEqual(formatSuiteSummary({ results: { 'daily-grind - g0 - guided': [err] } }), '');
+  assert.strictEqual(formatJobSummary({ results: {} }), '');
+  assert.strictEqual(formatJobSummary({ results: { 'daily-grind - g0 - guided': [err] } }), '');
 });

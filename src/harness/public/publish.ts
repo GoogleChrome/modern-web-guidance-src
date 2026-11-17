@@ -12,7 +12,7 @@ import { PUBLIC_EVALS_DIR } from './builder.ts';
  * Plain `git` plus `fs`, not the `gh-pages` package: that library expands the
  * publish directory into one argument per file and hands all of them to a
  * single `git rm`, which exceeds the kernel's argument limit (`E2BIG`) at
- * about 35k files, a count a site with one file per run artifact can reach.
+ * about 35k files, a count a site with one file per trial artifact can reach.
  */
 
 const BRANCH = 'gh-pages';
@@ -46,7 +46,7 @@ export function cloneDir(repoUrl: string): string {
 
 /**
  * Copies the currently published `public-evals/` into `<outDir>/public-evals/`
- * so a single suite can be added or removed without rebuilding the rest.
+ * so a single job can be added or removed without rebuilding the rest.
  * Returns the remote branch head, or null (and an empty `outDir`) when the
  * branch does not exist yet. Any other failure to reach the remote throws:
  * treating it as "nothing published" would rebuild and replace the site.
@@ -171,7 +171,7 @@ function syncClone(repoUrl: string, head: string | null): string {
   }
   git(clone, ['fetch', '--quiet', '--depth', '1', REMOTE, BRANCH]);
   git(clone, ['checkout', '--quiet', '--force', `${REMOTE}/${BRANCH}`]);
-  // Leftovers from an interrupted publish would otherwise be copied out as suite directories.
+  // Leftovers from an interrupted publish would otherwise be copied out as job directories.
   git(clone, ['clean', '--quiet', '-fdx']);
   return clone;
 }

@@ -4,7 +4,7 @@ import { pathToFileURL } from 'url';
 import { rootDir } from '../core/paths.ts';
 import { loadAllowedEnvFile } from './lib/secret-guard.ts';
 
-// Disable telemetry for eval harness runs (`node --test` runs are covered
+// Disable telemetry for eval harness trials (`node --test` runs are covered
 // automatically via NODE_TEST_CONTEXT in ClearcutLogger).
 process.env.DISABLE_TELEMETRY = '1';
 
@@ -42,20 +42,26 @@ export const environmentConfig: EnvironmentConfig = {
   antigravityGcpProject: process.env.ANTIGRAVITY_GCP_PROJECT || undefined,
 };
 
-export const defaultSuiteConfig: SuiteConfig = {
+export const defaultJobConfig: JobConfig = {
   name: null,
   numRuns: 1,
-  tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
+  tasks: [], // Empty = discover all tasks. Set explicitly to run a subset.
   skillsToEnable: ['modern-web-guidance'],
   agent: Agents.ANTIGRAVITY_CLI,
   workerCount: undefined,
 };
 
-export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
-  return { ...defaultSuiteConfig, ...overrides };
+/** @deprecated Use `defaultJobConfig`. */
+export const defaultSuiteConfig: JobConfig = defaultJobConfig;
+
+export function mergeJobConfig(overrides: Partial<JobConfig>): JobConfig {
+  return { ...defaultJobConfig, ...overrides };
 }
 
-export async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
+/** @deprecated Use `mergeJobConfig`. */
+export const mergeSuiteConfig = mergeJobConfig;
+
+export async function resolveJobConfig(configPath?: string): Promise<JobConfig> {
   const resolvedConfigPath = configPath
     ? path.resolve(process.cwd(), configPath)
     : path.resolve(rootDir, 'config.ts');
@@ -76,8 +82,11 @@ export async function resolveSuiteConfig(configPath?: string): Promise<SuiteConf
     }
   }
 
-  return mergeSuiteConfig(overrides);
+  return mergeJobConfig(overrides);
 }
+
+/** @deprecated Use `resolveJobConfig`. */
+export const resolveSuiteConfig = resolveJobConfig;
 
 export interface EnvironmentConfig {
   jetskiCliBin: string;
@@ -89,7 +98,7 @@ export interface EnvironmentConfig {
   gcpCredentials: string;
 }
 
-export interface SuiteConfig {
+export interface JobConfig {
   name: string | null;
   numRuns: number;
   tasks: string[];
@@ -97,6 +106,9 @@ export interface SuiteConfig {
   agent: string;
   workerCount?: number;
 }
+
+/** @deprecated Use `JobConfig`. */
+export type SuiteConfig = JobConfig;
 
 export const config = {
   environment: environmentConfig,
