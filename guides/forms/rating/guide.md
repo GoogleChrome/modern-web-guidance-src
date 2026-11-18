@@ -20,7 +20,7 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `light-dark(CanvasText, Highlight)` for filled stars and a `color-mix()` of `CanvasText` and `Canvas` for empty stars (so contrast with `Canvas` holds in any scheme) and opt out of color adjustment.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled, average, and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Read `--max` and `--control-value` via typed `attr()` on `.rating`, and repeat `--icon-star` with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `light-dark(CanvasText, Highlight)` for filled stars and a `color-mix()` of `CanvasText` and `Canvas` for empty stars (so contrast with `Canvas` holds in any scheme) and opt out of color adjustment (see {{ GUIDE_REF("color") }}).
 
 ```css
 :root {
@@ -30,7 +30,8 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 }
 
 .rating {
-  --max: 5;
+  --max: attr(max type(<number>), 5);
+  --control-value: attr(value type(<number>), 0);
   --_offset: 0px;
   --_display-value: var(--control-value);
   inline-size: calc(var(--star-size) * var(--max));
@@ -83,7 +84,7 @@ To transition or animate the fill, mirror `--control-value` into a component-spe
 
 ## Read-only rating: a meter
 
-For an average or non-editable score, use `<meter class="rating" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` pointing at visible text that includes the score (e.g. `Average rating: 3.5 out of 5`; showing the number helps all users), an `aria-valuetext` repeating that score (e.g. `3.5 out of 5`) so screen readers do not announce a percentage such as "70 percent", and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Keep the visible text, `aria-valuetext` and `value` in sync when the score changes. Set `appearance: none; display: block; padding: 0; border: 0;` on `meter.rating`, apply `--_stars-bg` and `--_stars-mask`, read `--max` and `--control-value` from `max` and `value` via typed `attr()`, and clear the native WebKit meter pseudo-elements:
+For an average or non-editable score, use `<meter class="rating" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` pointing at visible text that includes the score (e.g. `Average rating: 3.5 out of 5`; showing the number helps all users), an `aria-valuetext` repeating that score (e.g. `3.5 out of 5`) so screen readers do not announce a percentage such as "70 percent", and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Keep the visible text, `aria-valuetext` and `value` in sync when the score changes. Reset native styling on `meter.rating`, apply `--_stars-bg` and `--_stars-mask`, and clear the native WebKit meter pseudo-elements:
 
 ```css
 meter.rating {
@@ -91,8 +92,6 @@ meter.rating {
   display: block;
   padding: 0;
   border: 0;
-  --max: attr(max type(<number>), 5);
-  --control-value: attr(value type(<number>), 0);
   background: var(--_stars-bg);
   mask: var(--_stars-mask);
 
@@ -114,22 +113,14 @@ meter.rating {
 
 ## Interactive rating: a styled range input
 
-Use `<input type="range" class="rating" min="0" max="5" step="0.5">` (adjust `max` and `step` for other scales or whole-star increments) with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` in the unedited initial state, reporting `"0 out of 5 stars"` after interaction unless `0` explicitly represents clearing the rating). If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
+Use `<input type="range" class="rating" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated">` (adjust `max` and `step` for other scales or whole-star increments) with an associated visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` in the unedited initial state, reporting `"0 out of 5 stars"` after interaction unless `0` explicitly represents clearing the rating). If you show a visible `<output for="...">`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
 
-```html
-<label for="rate">Rate this product</label>
-<input type="range" class="rating" id="rate" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated" />
-<output for="rate" id="rate-out" aria-hidden="true">Not rated</output>
-```
-
-Reset the range input's native styling and size its track to `(max - min + step) * star-size` with a `step`-wide invisible thumb. That places the `0` zone to the left of the first star and centers every step on its visual star or half-star so native clicks select the right star without JS. Paint the stars on the track pseudo-elements—clipped past the leading `0` offset—so the focus ring on the input is never clipped:
+Reset the range input's native styling, add a visible `:focus-visible` outline with at least 3:1 contrast (offset so it clears the stars), and size its track to `(max - min + step) * star-size` with a `step`-wide invisible thumb (see {{ GUIDE_REF("slider") }}). That places the `0` zone to the left of the first star and centers every step on its visual star or half-star so native clicks select the right star without JS. Paint the stars on the separate WebKit and Firefox track pseudo-elements—clipped past the leading `0` offset—so the focus ring on the input is never clipped:
 
 ```css
 input[type="range"].rating {
   --min: attr(min type(<number>), 0);
-  --max: attr(max type(<number>), 5);
   --step: attr(step type(<number>), 1);
-  --control-value: attr(value type(<number>), 0);
   --_offset: calc((var(--step) - var(--min)) * var(--star-size));
   --_raw-preview: calc(var(--min) - var(--step) / 2 + var(--pointer-x) * (var(--max) - var(--min) + var(--step)));
   --_preview-value: clamp(var(--min), round(nearest, var(--_raw-preview), var(--step)), var(--max));
@@ -140,11 +131,6 @@ input[type="range"].rating {
   border: 0;
   background: transparent;
   cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid var(--accent);
-    outline-offset: 6px;
-  }
 
   &::-webkit-slider-runnable-track {
     block-size: 100%;
@@ -179,21 +165,9 @@ input[type="range"].rating {
 
 On `input` (and on initial load), set `--control-value` on `range` to `range.value` via `style.setProperty()` (the `value` attribute only provides the initial default through `attr()`, and does not track the live value), and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Preview the rating on pointer hover by writing a generic normalized `--pointer-x` (`0` to `1`) on `pointermove` (skipping `touch` and disabled inputs) and clearing it on `pointerleave` and `pointercancel`:
+Preview the rating on pointer hover by setting a normalized `--pointer-x` (`0` to `1`, clamped from `(event.clientX - left) / width` via `range.getBoundingClientRect()`) on `pointermove`—skipping `event.pointerType === 'touch'` and `range.disabled`—and calling `range.style.removeProperty('--pointer-x')` on `pointerleave` and `pointercancel`.
 
 <!-- Maintainer note: because CSS computes --_preview-value solely from --pointer-x, this script can be replaced directly with CSS pointer-animations-1 (animation-timeline: pointer(...)) once supported. -->
-
-```js
-range.addEventListener('pointermove', (event) => {
-  if (event.pointerType === 'touch' || range.disabled) return;
-  const { left, width } = range.getBoundingClientRect();
-  const pointerX = Math.min(1, Math.max(0, (event.clientX - left) / width));
-  range.style.setProperty('--pointer-x', pointerX);
-});
-for (const type of ['pointerleave', 'pointercancel']) {
-  range.addEventListener(type, () => range.style.removeProperty('--pointer-x'));
-}
-```
 
 Optional: to show an existing average until the user rates, set `data-average="3.7"` on `input[type="range"].rating` (since `--control-value` is not constrained by `step`, the displayed average does not need to be quantized to it), override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited]):not(:hover)` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.7 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
 
