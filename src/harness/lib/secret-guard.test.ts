@@ -106,9 +106,9 @@ describe('loadAllowedEnvFile', () => {
       assert.strictEqual(targetEnv.VERTEX_EMBED_LOCATION, 'global');
       assert.deepStrictEqual(res.ignored, []);
 
-      const secrets = collectHostSecrets(targetEnv, dir, dir);
-      assert.ok(!secrets.some((s) => s.value === 'my-sixteen-char-project-id'));
-      assert.ok(!secrets.some((s) => s.value === 'my-backup-gcp-project'));
+      const secrets = collectHostSecrets({ rootDir: dir, homeDir: dir, env: targetEnv });
+      assert.ok(!secrets.includes('my-sixteen-char-project-id'));
+      assert.ok(!secrets.includes('my-backup-gcp-project'));
     });
   });
 });
