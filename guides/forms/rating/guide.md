@@ -20,7 +20,7 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `Highlight` and `GrayText` and opt out of color adjustment.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `Highlight` and `CanvasText` (both guaranteed to contrast with `Canvas`) and opt out of color adjustment.
 
 ```css
 :root {
@@ -43,7 +43,7 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
   @media (forced-colors: active) {
     --color-star-filled: Highlight;
     --color-star-average: Highlight;
-    --color-star-empty: GrayText;
+    --color-star-empty: CanvasText;
     forced-color-adjust: none;
   }
 }
