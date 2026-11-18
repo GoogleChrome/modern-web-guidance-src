@@ -57,7 +57,26 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 }
 ```
 
-**Limitation:** a single `mask` and `linear-gradient` shares one silhouette for both filled and empty stars, so it cannot render different icons (such as an outlined empty star and a solid filled star). When you need distinct icons, either combine comma-separated `mask` layers on the same element (clipping the filled icon mask to `--control-value` and compositing with the empty icon), or position `::before` (full width, masked with the empty icon) and `::after` (width `calc(var(--control-value) / var(--max) * 100%)`, masked with the filled icon) over a wrapper element such as the `<label>` itself.
+### Distinct filled and empty star icons
+
+When empty and filled stars use different icons (such as an outlined star and a solid star), define `--icon-star-empty` and `--icon-star-filled` with matching outer silhouettes (e.g., identical `viewBox` and `stroke-width` so half stars align cleanly) and composite three `mask` layers. Keep the `attr()`-derived `--_fill-stop` in its own `--_mask-clip` property rather than combining it into one custom property with the icon `url()`s (otherwise Chromium's `attr()` tainting strips the `url()` layers to `none`), and apply the composite `mask` directly on `meter.rating` and the range track pseudo-elements:
+
+```css
+.rating {
+  --_fill-stop: calc(var(--_offset) + var(--_display-value) * var(--star-size));
+  --_stars-bg: linear-gradient(to right in oklch,
+      var(--color-star-filled) var(--_fill-stop),
+      var(--color-star-empty) 0);
+  --_mask-empty: var(--icon-star-empty) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+  --_mask-filled: var(--icon-star-filled) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+  --_mask-clip: linear-gradient(to right, #000 var(--_fill-stop), transparent 0);
+}
+
+/* On meter.rating, &::-webkit-slider-runnable-track, and &::-moz-range-track */
+mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+```
+
+**Limitation:** because all stars share repeated `mask` layers on one element, enlarging only the star currently being hovered is awkward and would require an extra mask layer.
 
 To transition or animate the fill, mirror `--control-value` into a component-specific `@property` (`syntax: "<number>"`) rather than registering `--control-value` directly, and disable any transition or press animation under `prefers-reduced-motion: reduce`.
 

@@ -1,4 +1,4 @@
-- The stars are drawn with a CSS `mask` that repeats an icon URL stored in a custom property, over a `linear-gradient` background whose filled portion is calculated from `--control-value` and `--max`.
+- The stars are drawn with a CSS `mask` that repeats icon URL(s) stored in custom properties, over a `linear-gradient` background whose filled portion is calculated from `--control-value` and `--max`.
 - When a read-only rating is needed, it is a `<meter>` with `min="0"`, a `max` (such as `5`), and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
 - When a read-only rating is needed, the `<meter>` has its native appearance removed and renders the same mask-and-gradient stars, with its filled portion matching its `value`.
 - When a read-only rating is needed, the `<meter>` contains text fallback content stating its value.

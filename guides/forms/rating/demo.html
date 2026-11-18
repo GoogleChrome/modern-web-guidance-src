@@ -18,8 +18,9 @@
       --color-star-average: var(--color-star-filled);
       --color-star-empty: light-dark(#c9c9d4, #4a4a58);
       --star-size: clamp(2.5rem, 14vw, 3rem); /* 3rem: each half star is 1.5rem (24px), the minimum touch target; shrinks only on very narrow screens */
-      /* Any SVG url() works (external file or data URI) */
-      --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+      /* Any SVG url() works (external file or data URI); matching stroke keeps outer silhouettes aligned */
+      --icon-star-filled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' stroke='%23000' stroke-width='1.5' stroke-linejoin='round' d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+      --icon-star-empty: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='1.5' stroke-linejoin='round' d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
     }
 
     body {
@@ -87,12 +88,15 @@
       --max: 5;
       --_offset: 0px;
       --_display-value: var(--control-value);
+      --_fill-stop: calc(var(--_offset) + var(--_display-value) * var(--star-size));
       inline-size: calc(var(--star-size) * var(--max));
       block-size: var(--star-size);
       --_stars-bg: linear-gradient(to right in oklch,
-          var(--color-star-filled) calc(var(--_offset) + var(--_display-value) * var(--star-size)),
+          var(--color-star-filled) var(--_fill-stop),
           var(--color-star-empty) 0);
-      --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-empty: var(--icon-star-empty) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-filled: var(--icon-star-filled) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-clip: linear-gradient(to right, #000 var(--_fill-stop), transparent 0);
     }
 
     /* Read-only: <meter> painted as stars */
@@ -104,7 +108,7 @@
       --max: attr(max type(<number>), 5);
       --control-value: attr(value type(<number>), 0);
       background: var(--_stars-bg);
-      mask: var(--_stars-mask);
+      mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
 
       &::-webkit-meter-bar,
       &::-webkit-meter-optimum-value,
@@ -155,14 +159,14 @@
       &::-webkit-slider-runnable-track {
         block-size: 100%;
         background: var(--_stars-bg);
-        mask: var(--_stars-mask);
+        mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
         clip-path: inset(0 0 0 var(--_offset));
       }
 
       &::-moz-range-track {
         block-size: 100%;
         background: var(--_stars-bg);
-        mask: var(--_stars-mask);
+        mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
         clip-path: inset(0 0 0 var(--_offset));
       }
 
