@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, expectNever } from '../../test-fixture.ts';
 import { pathToFileURL } from 'url';
 
 const TARGET_URL = pathToFileURL(process.env.TARGET_FILE || '').href;
 
 test.describe('Interest-Triggered Action Previews Grader', () => {
 
-  test('invoker element has interestfor attribute pointing to target element ID', async ({ page }) => {
+  test('The invoker element has interestfor attribute pointing to target element ID', async ({ page }) => {
     await page.goto(TARGET_URL);
     const invoker = page.locator('[interestfor]').first();
     await expect(invoker).toBeAttached();
@@ -17,7 +17,7 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     await expect(target).toBeAttached();
   });
 
-  test('target element responds to interest event to show preview state', async ({ page }) => {
+  test('The target element responds to interest event to show preview state', async ({ page }) => {
     await page.goto(TARGET_URL);
     
     const invoker = page.locator('[interestfor]').first();
@@ -45,7 +45,7 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     expect(hasChanged).toBe(true);
   });
 
-  test('target element responds to loseinterest event to revert preview state', async ({ page }) => {
+  test('The target element responds to loseinterest event to revert preview state', async ({ page }) => {
     await page.goto(TARGET_URL);
     await page.addStyleTag({ content: '* { transition: none !important; animation: none !important; }' });
     
@@ -82,7 +82,7 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     expect(matchesInitial).toBe(true);
   });
 
-  test('the polyfill for interest invokers is conditionally installed', async ({ page, context }) => {
+  test('The polyfill for interest invokers is conditionally installed', async ({ page, context }) => {
     await page.addInitScript(() => {
       Object.defineProperty(HTMLButtonElement.prototype, 'interestForElement', {
         value: null,
@@ -99,7 +99,11 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     });
 
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500);
+    await expectNever(
+      page,
+      () => Array.from(document.querySelectorAll('script')).some(s => /polyfill|interestfor/i.test(s.src)),
+      { forMs: 300 }
+    );
 
     expect(polyfillRequested).toBe(false);
 
@@ -118,24 +122,21 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     });
 
     await unsupportedPage.goto(TARGET_URL);
-    await unsupportedPage.waitForTimeout(500);
+    await expect.poll(() => polyfillRequestedWhenUnsupported).toBe(true);
     await unsupportedPage.close();
 
     expect(polyfillRequestedWhenUnsupported).toBe(true);
   });
 
-  test('must not announce interest-driven preview state changes via a live region', async ({ page }) => {
+  test('The implementation does not announce interest-driven preview state changes via a live region', async ({ page }) => {
     await page.goto(TARGET_URL);
-    await expect(page.locator('[interestfor]').first()).toBeAttached();
+    const trigger = page.locator('[interestfor]').first();
+    await expect(trigger).toBeAttached();
 
     const liveRegions = await page.locator('[aria-live], [role="status"], [role="log"], [role="alert"], [role="marquee"], [role="timer"]').all();
-    
-    if (liveRegions.length === 0) {
-      return;
-    }
-
     const getLiveRegionTexts = async () => {
-      return Promise.all(liveRegions.map(el => el.textContent()));
+      const texts = await Promise.all(liveRegions.map(el => el.textContent()));
+      return texts.map(t => (t ?? '').trim());
     };
 
     const initialTexts = await getLiveRegionTexts();
@@ -144,23 +145,23 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     if (interactiveElements.length === 0) {
       interactiveElements = await page.locator('button').all();
     }
+    expect(interactiveElements.length).toBeGreaterThan(0);
 
-    for (const element of interactiveElements) {
+    const liveRegionSel = '[aria-live], [role="status"], [role="log"], [role="alert"], [role="marquee"], [role="timer"]';
+    const announced = ({ sel, initial }: { sel: string; initial: string[] }) =>
+      JSON.stringify(Array.from(document.querySelectorAll(sel)).map(el => (el.textContent ?? '').trim())) !== JSON.stringify(initial);
+
+    // `interest` fires after interest-delay-start (0.5s by default), so watch for longer than that.
+    for (const element of interactiveElements.slice(0, 2)) {
       await element.hover();
-      await page.waitForTimeout(100);
-      const hoverTexts = await getLiveRegionTexts();
-      expect(hoverTexts).toEqual(initialTexts);
+      await expectNever(page, announced, { forMs: 800, arg: { sel: liveRegionSel, initial: initialTexts } });
 
       await page.locator('h1').first().hover();
-      await page.waitForTimeout(100);
 
       await element.focus();
-      await page.waitForTimeout(100);
-      const focusTexts = await getLiveRegionTexts();
-      expect(focusTexts).toEqual(initialTexts);
+      await expectNever(page, announced, { forMs: 800, arg: { sel: liveRegionSel, initial: initialTexts } });
 
       await element.blur();
-      await page.waitForTimeout(100);
     }
   });
 

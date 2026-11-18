@@ -1,0 +1,1021 @@
+diff --git a/index.html b/index.html
+index 66c9173..abd2cc7 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,26 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --drop-marker-color: var(--accent);
++      --drop-line-size: 3px;
++      --drop-ring-size: 8px;
++      --drop-gap: 20px;
++      --lifted-opacity: 1;
++      --lifted-item-opacity: 1;
++      --lifted-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
++    }
++
++    @media (forced-colors: active) {
++      :root {
++        --drop-marker-color: Highlight;
++      }
++    }
++
++    html.is-dragging,
++    html.is-dragging *,
++    html.dragging,
++    html.dragging * {
++      cursor: grabbing !important;
+     }
+ 
+     * {
+@@ -107,6 +127,36 @@
+       margin-top: 20px;
+     }
+ 
++    .seasonal-favorites {
++      display: flex;
++      flex-direction: row;
++      overflow-x: auto;
++      overflow-y: hidden;
++      gap: 20px;
++      margin-top: 20px;
++      padding: 1rem;
++      position: relative;
++      reading-flow: flex-visual;
++      scroll-behavior: auto;
++      -webkit-overflow-scrolling: touch;
++    }
++
++    .seasonal-favorites > .card {
++      flex: 1 0 260px;
++      min-width: 250px;
++      max-width: 360px;
++      position: relative;
++      scroll-margin: 1rem;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      transition: box-shadow 0.2s, scale 0.2s;
++    }
++
++    .seasonal-favorites > .card:last-child {
++      margin-inline-end: 1rem;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -115,9 +165,149 @@
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .card-header {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      width: 100%;
+       margin-bottom: 10px;
++      gap: 8px;
++    }
++
++    .card-header h3 {
++      margin-bottom: 0;
++      color: var(--primary);
++      text-align: left;
++      flex: 1 1 auto;
++      min-width: 0;
++    }
++
++    .card p {
++      flex: 1 1 auto;
++      margin-bottom: 10px;
++      text-align: left;
++      width: 100%;
++    }
++
++    .drag-handle,
++    .handle {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++      opacity: 0.7;
++      transition: opacity 0.2s, background-color 0.2s;
++      background: transparent;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      padding: 6px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      color: var(--primary);
++      flex: 0 0 auto;
++    }
++
++    .drag-handle:is(:hover, :focus-visible),
++    .handle:is(:hover, :focus-visible) {
++      opacity: 1;
++      background-color: var(--secondary);
++      outline: none;
++    }
++
++    .drag-handle[aria-pressed="true"],
++    .handle[aria-pressed="true"] {
++      cursor: grabbing;
++      opacity: 1;
++      background-color: var(--accent);
++      color: var(--primary);
++    }
++
++    .card:has(.drag-handle:focus-visible),
++    .item:has(.handle:focus-visible),
++    .card:has(.handle:focus-visible) {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .card.is-grabbed,
++    .card.is-dragged,
++    .item.is-grabbed,
++    .item.is-dragged {
++      position: relative;
++      z-index: 10;
++      scale: 1.02;
++      box-shadow: var(--lifted-shadow);
++      opacity: var(--lifted-opacity);
++    }
++
++    .card.is-dragged,
++    .item.is-dragged {
++      pointer-events: none;
++    }
++
++    .reorder-hint {
++      display: none;
++      font-size: 0.75rem;
+       color: var(--primary);
++      margin-bottom: 10px;
++      padding: 3px 8px;
++      background: var(--secondary);
++      border-radius: 4px;
++      width: 100%;
++      text-align: center;
++    }
++
++    .card:has(.drag-handle:focus-visible) .reorder-hint,
++    .card:has(.handle:focus-visible) .reorder-hint,
++    .item:has(.handle:focus-visible) .reorder-hint,
++    .card.is-grabbed .reorder-hint,
++    .item.is-grabbed .reorder-hint {
++      display: block;
++    }
++
++    .seasonal-favorites:not([data-initialized]) .drag-handle,
++    .seasonal-favorites:not([data-initialized]) .reorder-hint {
++      display: none;
++    }
++
++    .seasonal-favorites[data-drop]::before,
++    .seasonal-favorites[data-drop]::after {
++      content: '';
++      position: fixed;
++      pointer-events: none;
++      z-index: 1000;
++    }
++
++    .seasonal-favorites[data-drop]::after {
++      left: calc(var(--drop-x, 0px) - var(--drop-line-size, 3px) / 2);
++      top: var(--drop-y, 0px);
++      width: var(--drop-line-size, 3px);
++      height: var(--drop-h, 0px);
++      background-color: var(--drop-marker-color);
++      border-radius: calc(var(--drop-line-size, 3px) / 2);
++    }
++
++    .seasonal-favorites[data-drop]::before {
++      left: calc(var(--drop-x, 0px) - var(--drop-ring-size, 8px) / 2);
++      top: calc(var(--drop-y, 0px) - var(--drop-ring-size, 8px) / 2);
++      width: var(--drop-ring-size, 8px);
++      height: var(--drop-ring-size, 8px);
++      border-radius: 50%;
++      background-color: var(--drop-marker-color);
++      box-shadow: 0 0 0 2px var(--light);
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
+     }
+ 
+     .btn {
+@@ -177,23 +367,63 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++      <div class="grid seasonal-favorites" id="seasonal-favorites" aria-label="Seasonal Favorites">
++        <div class="card item">
++          <div class="card-header">
++            <h3>Maple Oat Latte</h3>
++            <button type="button" class="drag-handle handle" aria-label="Reorder Maple Oat Latte" aria-pressed="false" title="Drag or press Space to reorder">
++              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
++                <circle cx="9" cy="6" r="2"/>
++                <circle cx="15" cy="6" r="2"/>
++                <circle cx="9" cy="12" r="2"/>
++                <circle cx="15" cy="12" r="2"/>
++                <circle cx="9" cy="18" r="2"/>
++                <circle cx="15" cy="18" r="2"/>
++              </svg>
++            </button>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="reorder-hint" aria-hidden="true">Space to reorder</div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card item">
++          <div class="card-header">
++            <h3>Dark Roast Espresso</h3>
++            <button type="button" class="drag-handle handle" aria-label="Reorder Dark Roast Espresso" aria-pressed="false" title="Drag or press Space to reorder">
++              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
++                <circle cx="9" cy="6" r="2"/>
++                <circle cx="15" cy="6" r="2"/>
++                <circle cx="9" cy="12" r="2"/>
++                <circle cx="15" cy="12" r="2"/>
++                <circle cx="9" cy="18" r="2"/>
++                <circle cx="15" cy="18" r="2"/>
++              </svg>
++            </button>
++          </div>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="reorder-hint" aria-hidden="true">Space to reorder</div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card item">
++          <div class="card-header">
++            <h3>Cold Brew</h3>
++            <button type="button" class="drag-handle handle" aria-label="Reorder Cold Brew" aria-pressed="false" title="Drag or press Space to reorder">
++              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
++                <circle cx="9" cy="6" r="2"/>
++                <circle cx="15" cy="6" r="2"/>
++                <circle cx="9" cy="12" r="2"/>
++                <circle cx="15" cy="12" r="2"/>
++                <circle cx="9" cy="18" r="2"/>
++                <circle cx="15" cy="18" r="2"/>
++              </svg>
++            </button>
++          </div>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="reorder-hint" aria-hidden="true">Space to reorder</div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div id="reorder-live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +437,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="reorder.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..df7f697 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check reorder.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/reorder.js b/reorder.js
+new file mode 100644
+index 0000000..332fff4
+--- /dev/null
++++ b/reorder.js
+@@ -0,0 +1,705 @@
++// Reorder Seasonal Favorites horizontal card row
++(function () {
++  'use strict';
++
++  const container = document.getElementById('seasonal-favorites');
++  const liveRegion = document.getElementById('reorder-live-region');
++  if (!container) return;
++
++  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++  // Announcement helper: debounced by ~500ms, clearing previous message first
++  let announceTimeout = null;
++  function announce(message) {
++    if (!liveRegion) return;
++    clearTimeout(announceTimeout);
++    liveRegion.textContent = '';
++    announceTimeout = setTimeout(() => {
++      liveRegion.textContent = message;
++    }, 500);
++  }
++
++  function getItemName(item) {
++    const heading = item.querySelector('h3, h2, [data-item-title]');
++    return heading ? heading.textContent.trim() : 'Item';
++  }
++
++  function getCards() {
++    return Array.from(container.children).filter((c) => c.classList.contains('card') || c.classList.contains('item'));
++  }
++
++  // Move node helper with feature detection and fallback
++  function moveNode(parent, node, refNode) {
++    if ('moveBefore' in Element.prototype) {
++      parent.moveBefore(node, refNode);
++    } else {
++      if (refNode) {
++        refNode.before(node);
++      } else {
++        parent.append(node);
++      }
++    }
++  }
++
++  // Operation ID tracker for quick re-grab
++  let dragOperationCount = 0;
++  const itemDragOperation = new WeakMap();
++
++  // Pointer drag state
++  let activePointerId = null;
++  let activeHandle = null;
++  let draggedItem = null;
++  let isDragging = false;
++  let startPointerX = 0;
++  let startPointerY = 0;
++  let dragStartScrollLeft = 0;
++  let dragStartScrollTop = 0;
++  let lastPointerClientX = 0;
++  let lastPointerClientY = 0;
++  let currentDropSpot = null;
++
++  // Auto-scroll state
++  let autoScrollRaf = null;
++  let lastFrameTime = 0;
++
++  function startAutoScroll() {
++    lastFrameTime = performance.now();
++    autoScrollRaf = requestAnimationFrame(autoScrollStep);
++  }
++
++  function stopAutoScroll() {
++    if (autoScrollRaf !== null) {
++      cancelAnimationFrame(autoScrollRaf);
++      autoScrollRaf = null;
++    }
++  }
++
++  function autoScrollStep(currentTime) {
++    if (!draggedItem || !isDragging) return;
++
++    const dt = Math.min((currentTime - lastFrameTime) / 1000, 0.1);
++    lastFrameTime = currentTime;
++
++    const containerRect = container.getBoundingClientRect();
++    const itemWidth = draggedItem.offsetWidth || 250;
++    const edgeZone = Math.min(itemWidth, container.clientWidth / 3);
++
++    const leftEdge = containerRect.left + container.clientLeft;
++    const rightEdge = leftEdge + container.clientWidth;
++
++    let scrollSpeed = 0;
++    const maxSpeed = 800;
++    const baseSpeed = 400;
++
++    if (lastPointerClientX < leftEdge + edgeZone) {
++      const distance = (leftEdge + edgeZone) - lastPointerClientX;
++      const ratio = Math.min(distance / edgeZone, 2.5);
++      scrollSpeed = -Math.min(maxSpeed, ratio * baseSpeed);
++    } else if (lastPointerClientX > rightEdge - edgeZone) {
++      const distance = lastPointerClientX - (rightEdge - edgeZone);
++      const ratio = Math.min(distance / edgeZone, 2.5);
++      scrollSpeed = Math.min(maxSpeed, ratio * baseSpeed);
++    }
++
++    if (scrollSpeed !== 0) {
++      const prevScroll = container.scrollLeft;
++      container.scrollLeft += scrollSpeed * dt;
++      const deltaScroll = container.scrollLeft - prevScroll;
++
++      if (deltaScroll !== 0) {
++        updateDraggedItemPosition(lastPointerClientX, lastPointerClientY);
++        updateDropSpot(lastPointerClientX);
++      }
++    }
++
++    autoScrollRaf = requestAnimationFrame(autoScrollStep);
++  }
++
++  function updateDraggedItemPosition(clientX, clientY) {
++    if (!draggedItem) return;
++    const scrollDeltaX = container.scrollLeft - dragStartScrollLeft;
++    const scrollDeltaY = container.scrollTop - dragStartScrollTop;
++    const totalTranslateX = (clientX - startPointerX) + scrollDeltaX;
++    const totalTranslateY = (clientY - startPointerY) + scrollDeltaY;
++    draggedItem.style.translate = `${totalTranslateX}px ${totalTranslateY}px`;
++  }
++
++  function findDropSpot(clientX) {
++    const isRtl = getComputedStyle(container).direction === 'rtl';
++    const containerRect = container.getBoundingClientRect();
++    const containerPaddingLeft = containerRect.left + container.clientLeft;
++    const clampedClientX = Math.max(
++      containerPaddingLeft,
++      Math.min(clientX, containerPaddingLeft + container.clientWidth)
++    );
++    const pointerX = (clampedClientX - containerPaddingLeft) + container.scrollLeft;
++
++    const siblings = getCards().filter((child) => child !== draggedItem);
++
++    if (isRtl) {
++      for (const sibling of siblings) {
++        const midpoint = sibling.offsetLeft + sibling.offsetWidth / 2;
++        if (pointerX >= midpoint) {
++          return sibling;
++        }
++      }
++      return null;
++    } else {
++      for (const sibling of siblings) {
++        const midpoint = sibling.offsetLeft + sibling.offsetWidth / 2;
++        if (pointerX < midpoint) {
++          return sibling;
++        }
++      }
++      return null;
++    }
++  }
++
++  function clearDropMarker() {
++    container.removeAttribute('data-drop');
++    container.style.removeProperty('--drop-x');
++    container.style.removeProperty('--drop-y');
++    container.style.removeProperty('--drop-w');
++    container.style.removeProperty('--drop-h');
++  }
++
++  function updateDropSpot(clientX) {
++    if (!draggedItem) return;
++
++    currentDropSpot = findDropSpot(clientX);
++
++    // Skip no-op drops: show no marker when drop spot is item's own slot
++    if (currentDropSpot === draggedItem.nextElementSibling) {
++      clearDropMarker();
++      return;
++    }
++
++    const siblings = getCards().filter((child) => child !== draggedItem);
++    let nextItem = null;
++    let prevItem = null;
++
++    if (currentDropSpot !== null) {
++      nextItem = currentDropSpot;
++      const idx = siblings.indexOf(nextItem);
++      prevItem = idx > 0 ? siblings[idx - 1] : null;
++    } else {
++      nextItem = null;
++      prevItem = siblings.length > 0 ? siblings[siblings.length - 1] : null;
++    }
++
++    const isRtl = getComputedStyle(container).direction === 'rtl';
++    const defaultGap = 20;
++    let dropX, dropY, dropH, dropW;
++
++    if (prevItem && nextItem) {
++      const prevRect = prevItem.getBoundingClientRect();
++      const nextRect = nextItem.getBoundingClientRect();
++      if (isRtl) {
++        dropW = Math.max(0, prevRect.left - nextRect.right);
++        dropX = nextRect.right + dropW / 2;
++      } else {
++        dropW = Math.max(0, nextRect.left - prevRect.right);
++        dropX = prevRect.right + dropW / 2;
++      }
++      dropY = Math.min(prevRect.top, nextRect.top);
++      dropH = Math.max(prevRect.bottom, nextRect.bottom) - dropY;
++    } else if (nextItem) {
++      const nextRect = nextItem.getBoundingClientRect();
++      dropW = defaultGap;
++      dropX = isRtl ? (nextRect.right + defaultGap / 2) : (nextRect.left - defaultGap / 2);
++      dropY = nextRect.top;
++      dropH = nextRect.height;
++    } else if (prevItem) {
++      const prevRect = prevItem.getBoundingClientRect();
++      dropW = defaultGap;
++      dropX = isRtl ? (prevRect.left - defaultGap / 2) : (prevRect.right + defaultGap / 2);
++      dropY = prevRect.top;
++      dropH = prevRect.height;
++    } else {
++      clearDropMarker();
++      return;
++    }
++
++    container.style.setProperty('--drop-x', `${dropX}px`);
++    container.style.setProperty('--drop-y', `${dropY}px`);
++    container.style.setProperty('--drop-w', `${dropW}px`);
++    container.style.setProperty('--drop-h', `${dropH}px`);
++    container.setAttribute('data-drop', '');
++  }
++
++  function cancelPointerDrag() {
++    if (!draggedItem) return;
++
++    stopAutoScroll();
++    clearDropMarker();
++    document.documentElement.classList.remove('is-dragging', 'dragging');
++
++    draggedItem.getAnimations().forEach((a) => a.finish());
++    const currentRect = draggedItem.getBoundingClientRect();
++    draggedItem.style.translate = '';
++
++    draggedItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++
++    const targetRect = draggedItem.getBoundingClientRect();
++    const deltaX = currentRect.left - targetRect.left;
++    const deltaY = currentRect.top - targetRect.top;
++
++    const itemToClean = draggedItem;
++    const currentDragId = ++dragOperationCount;
++    itemDragOperation.set(itemToClean, currentDragId);
++
++    if (!prefersReducedMotion && (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5)) {
++      const anim = itemToClean.animate([
++        { translate: `${deltaX}px ${deltaY}px` },
++        { translate: '0px 0px' }
++      ], {
++        duration: 250,
++        easing: 'cubic-bezier(0.2, 0, 0, 1)'
++      });
++      anim.onfinish = () => {
++        if (itemDragOperation.get(itemToClean) === currentDragId) {
++          itemToClean.classList.remove('is-dragged');
++        }
++      };
++    } else {
++      if (itemDragOperation.get(itemToClean) === currentDragId) {
++        itemToClean.classList.remove('is-dragged');
++      }
++    }
++
++    announce('Reorder cancelled.');
++
++    if (activeHandle && activePointerId !== null) {
++      try {
++        if (activeHandle.hasPointerCapture(activePointerId)) {
++          activeHandle.releasePointerCapture(activePointerId);
++        }
++      } catch (e) {}
++    }
++
++    draggedItem = null;
++    activeHandle = null;
++    activePointerId = null;
++    isDragging = false;
++    currentDropSpot = null;
++  }
++
++  // Pointer event handlers
++  function onPointerDown(event) {
++    if (event.button !== 0) return;
++    const handle = event.target.closest('.drag-handle, .handle');
++    if (!handle || !container.contains(handle)) return;
++
++    if (activePointerId !== null) return; // Follow one pointer
++
++    const card = handle.closest('.card, .item');
++    if (!card) return;
++
++    activePointerId = event.pointerId;
++    activeHandle = handle;
++    draggedItem = card;
++    isDragging = false;
++    startPointerX = event.clientX;
++    startPointerY = event.clientY;
++    dragStartScrollLeft = container.scrollLeft;
++    dragStartScrollTop = container.scrollTop;
++    lastPointerClientX = event.clientX;
++    lastPointerClientY = event.clientY;
++
++    try {
++      handle.setPointerCapture(event.pointerId);
++    } catch (e) {
++      // Ignore if setPointerCapture fails
++    }
++  }
++
++  function onPointerMove(event) {
++    if (event.pointerId !== activePointerId) return;
++
++    lastPointerClientX = event.clientX;
++    lastPointerClientY = event.clientY;
++
++    if (!isDragging) {
++      const dx = event.clientX - startPointerX;
++      const dy = event.clientY - startPointerY;
++      if (Math.hypot(dx, dy) >= 4) {
++        isDragging = true;
++        draggedItem.classList.add('is-dragged');
++        document.documentElement.classList.add('is-dragging', 'dragging');
++        startAutoScroll();
++      }
++    }
++
++    if (isDragging) {
++      updateDraggedItemPosition(event.clientX, event.clientY);
++      updateDropSpot(event.clientX);
++    }
++  }
++
++  function onPointerUp(event) {
++    if (event.pointerId !== activePointerId) return;
++
++    if (!isDragging) {
++      // Just a click/tap on handle without dragging
++      if (activeHandle) {
++        try {
++          if (activeHandle.hasPointerCapture(event.pointerId)) {
++            activeHandle.releasePointerCapture(event.pointerId);
++          }
++        } catch (e) {}
++      }
++      activePointerId = null;
++      activeHandle = null;
++      draggedItem = null;
++      isDragging = false;
++      return;
++    }
++
++    stopAutoScroll();
++    clearDropMarker();
++    document.documentElement.classList.remove('is-dragging', 'dragging');
++
++    const referenceNode = currentDropSpot;
++    const isNoOp = (referenceNode === draggedItem.nextElementSibling);
++
++    draggedItem.getAnimations().forEach((a) => a.finish());
++    const releaseRect = draggedItem.getBoundingClientRect();
++    draggedItem.style.translate = '';
++
++    if (!isNoOp) {
++      const siblingRects = new Map();
++      for (const child of container.children) {
++        if (child !== draggedItem && (child.classList.contains('card') || child.classList.contains('item'))) {
++          siblingRects.set(child, child.getBoundingClientRect());
++        }
++      }
++      const scrollBefore = { left: container.scrollLeft, top: container.scrollTop };
++
++      moveNode(container, draggedItem, referenceNode);
++
++      draggedItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++
++      const newIndex = getCards().indexOf(draggedItem);
++      const totalCount = getCards().length;
++      const itemName = getItemName(draggedItem);
++      announce(`${itemName} dropped at position ${newIndex + 1} of ${totalCount}.`);
++
++      if (!prefersReducedMotion) {
++        for (const [sibling, oldRect] of siblingRects.entries()) {
++          const newRect = sibling.getBoundingClientRect();
++          const dx = oldRect.left - newRect.left + (container.scrollLeft - scrollBefore.left);
++          const dy = oldRect.top - newRect.top + (container.scrollTop - scrollBefore.top);
++          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
++            sibling.animate([
++              { translate: `${dx}px ${dy}px` },
++              { translate: '0px 0px' }
++            ], {
++              duration: 250,
++              easing: 'cubic-bezier(0.2, 0, 0, 1)'
++            });
++          }
++        }
++      }
++    } else {
++      draggedItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++    }
++
++    const finalRect = draggedItem.getBoundingClientRect();
++    const deltaX = releaseRect.left - finalRect.left;
++    const deltaY = releaseRect.top - finalRect.top;
++
++    const itemToClean = draggedItem;
++    const currentDragId = ++dragOperationCount;
++    itemDragOperation.set(itemToClean, currentDragId);
++
++    if (!prefersReducedMotion && (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5)) {
++      const anim = itemToClean.animate([
++        { translate: `${deltaX}px ${deltaY}px` },
++        { translate: '0px 0px' }
++      ], {
++        duration: 250,
++        easing: 'cubic-bezier(0.2, 0, 0, 1)'
++      });
++      anim.onfinish = () => {
++        if (itemDragOperation.get(itemToClean) === currentDragId) {
++          itemToClean.classList.remove('is-dragged');
++        }
++      };
++    } else {
++      if (itemDragOperation.get(itemToClean) === currentDragId) {
++        itemToClean.classList.remove('is-dragged');
++      }
++    }
++
++    if (activeHandle) {
++      try {
++        if (activeHandle.hasPointerCapture(event.pointerId)) {
++          activeHandle.releasePointerCapture(event.pointerId);
++        }
++      } catch (e) {}
++    }
++
++    draggedItem = null;
++    activeHandle = null;
++    activePointerId = null;
++    isDragging = false;
++    currentDropSpot = null;
++  }
++
++  function onPointerCancel(event) {
++    if (event.pointerId !== activePointerId) return;
++    if (isDragging) {
++      cancelPointerDrag();
++    } else {
++      if (activeHandle) {
++        try {
++          if (activeHandle.hasPointerCapture(event.pointerId)) {
++            activeHandle.releasePointerCapture(event.pointerId);
++          }
++        } catch (e) {}
++      }
++      activePointerId = null;
++      activeHandle = null;
++      draggedItem = null;
++      isDragging = false;
++    }
++  }
++
++  function onLostPointerCapture(event) {
++    if (activeHandle && activePointerId !== null) {
++      try {
++        if (activeHandle.hasPointerCapture(activePointerId)) {
++          return;
++        }
++      } catch (e) {}
++    }
++    if (event.pointerId === activePointerId && isDragging) {
++      cancelPointerDrag();
++    }
++  }
++
++  // Keyboard reordering: Grab-move-drop mode
++  let grabbedKeyboardItem = null;
++  let originalNextSibling = null;
++  let originalIndex = -1;
++  let isMovingNode = false;
++
++  function commitKeyboardDrop() {
++    if (!grabbedKeyboardItem) return;
++    const item = grabbedKeyboardItem;
++    const handle = item.querySelector('.drag-handle, .handle');
++    const hint = item.querySelector('.reorder-hint');
++
++    if (handle) {
++      handle.setAttribute('aria-pressed', 'false');
++    }
++    item.classList.remove('is-grabbed');
++    if (hint) {
++      hint.textContent = 'Space to reorder';
++    }
++
++    const currentIndex = getCards().indexOf(item);
++    const totalCount = getCards().length;
++    const itemName = getItemName(item);
++    if (currentIndex !== originalIndex) {
++      announce(`${itemName} dropped at position ${currentIndex + 1} of ${totalCount}.`);
++    }
++
++    grabbedKeyboardItem = null;
++    originalNextSibling = null;
++    originalIndex = -1;
++  }
++
++  function cancelKeyboardGrab() {
++    if (!grabbedKeyboardItem) return;
++    const item = grabbedKeyboardItem;
++    const handle = item.querySelector('.drag-handle, .handle');
++    const hint = item.querySelector('.reorder-hint');
++
++    if (item.nextElementSibling !== originalNextSibling) {
++      const siblingRects = new Map();
++      for (const child of container.children) {
++        if (child.classList.contains('card') || child.classList.contains('item')) {
++          siblingRects.set(child, child.getBoundingClientRect());
++        }
++      }
++      const scrollBefore = { left: container.scrollLeft, top: container.scrollTop };
++
++      isMovingNode = true;
++      moveNode(container, item, originalNextSibling);
++      item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      if (handle) handle.focus({ preventScroll: true });
++
++      if (!prefersReducedMotion) {
++        for (const [child, oldRect] of siblingRects.entries()) {
++          const newRect = child.getBoundingClientRect();
++          const dx = oldRect.left - newRect.left + (container.scrollLeft - scrollBefore.left);
++          const dy = oldRect.top - newRect.top + (container.scrollTop - scrollBefore.top);
++          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
++            child.animate([
++              { translate: `${dx}px ${dy}px` },
++              { translate: '0px 0px' }
++            ], {
++              duration: 200,
++              easing: 'cubic-bezier(0.2, 0, 0, 1)'
++            });
++          }
++        }
++      }
++      isMovingNode = false;
++    }
++
++    if (handle) {
++      handle.setAttribute('aria-pressed', 'false');
++    }
++    item.classList.remove('is-grabbed');
++    if (hint) {
++      hint.textContent = 'Space to reorder';
++    }
++
++    announce('Reorder cancelled.');
++    grabbedKeyboardItem = null;
++    originalNextSibling = null;
++    originalIndex = -1;
++  }
++
++  function onKeyDown(event) {
++    if (event.key === 'Escape') {
++      if (isDragging) {
++        event.preventDefault();
++        cancelPointerDrag();
++      } else if (grabbedKeyboardItem) {
++        event.preventDefault();
++        cancelKeyboardGrab();
++      }
++      return;
++    }
++
++    const handle = event.target.closest('.drag-handle, .handle');
++    if (!handle || !container.contains(handle)) return;
++    const item = handle.closest('.card, .item');
++    if (!item) return;
++
++    if (event.key === ' ' || event.key === 'Enter') {
++      event.preventDefault();
++      if (grabbedKeyboardItem === item) {
++        // Drop
++        commitKeyboardDrop();
++      } else {
++        // Grab
++        if (grabbedKeyboardItem) {
++          commitKeyboardDrop();
++        }
++        grabbedKeyboardItem = item;
++        originalNextSibling = item.nextElementSibling;
++        originalIndex = getCards().indexOf(item);
++        handle.setAttribute('aria-pressed', 'true');
++        item.classList.add('is-grabbed');
++        const hint = item.querySelector('.reorder-hint');
++        if (hint) {
++          hint.textContent = 'Arrows to move · Space to drop · Esc to cancel';
++        }
++        const itemName = getItemName(item);
++        announce(`${itemName} grabbed. Use Left and Right arrow keys to move, Space or Enter to drop, Escape to cancel.`);
++      }
++      return;
++    }
++
++    if (grabbedKeyboardItem === item && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
++      event.preventDefault();
++      const isRtl = getComputedStyle(container).direction === 'rtl';
++
++      const moveEarlier = (!isRtl && event.key === 'ArrowLeft') || (isRtl && event.key === 'ArrowRight');
++
++      let targetRef = null;
++      if (moveEarlier) {
++        const prev = item.previousElementSibling;
++        if (!prev || (!prev.classList.contains('card') && !prev.classList.contains('item'))) return;
++        targetRef = prev;
++      } else {
++        const next = item.nextElementSibling;
++        if (!next || (!next.classList.contains('card') && !next.classList.contains('item'))) return;
++        targetRef = next.nextElementSibling;
++      }
++
++      const siblingRects = new Map();
++      for (const child of container.children) {
++        if (child.classList.contains('card') || child.classList.contains('item')) {
++          siblingRects.set(child, child.getBoundingClientRect());
++        }
++      }
++      const scrollBefore = { left: container.scrollLeft, top: container.scrollTop };
++
++      isMovingNode = true;
++      moveNode(container, item, targetRef);
++      item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      handle.focus({ preventScroll: true });
++
++      if (!prefersReducedMotion) {
++        for (const [child, oldRect] of siblingRects.entries()) {
++          const newRect = child.getBoundingClientRect();
++          const dx = oldRect.left - newRect.left + (container.scrollLeft - scrollBefore.left);
++          const dy = oldRect.top - newRect.top + (container.scrollTop - scrollBefore.top);
++          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
++            child.animate([
++              { translate: `${dx}px ${dy}px` },
++              { translate: '0px 0px' }
++            ], {
++              duration: 200,
++              easing: 'cubic-bezier(0.2, 0, 0, 1)'
++            });
++          }
++        }
++      }
++      isMovingNode = false;
++
++      const newIndex = getCards().indexOf(item);
++      const totalCount = getCards().length;
++      const itemName = getItemName(item);
++      const dirName = (event.key === 'ArrowLeft') ? 'left' : 'right';
++      announce(`${itemName} moved ${dirName} to position ${newIndex + 1} of ${totalCount}.`);
++    }
++  }
++
++  // Handle focusout on drag handle: drop when handle itself loses focus
++  container.addEventListener('focusout', (event) => {
++    if (isMovingNode) return;
++    if (grabbedKeyboardItem && (event.target.classList.contains('drag-handle') || event.target.classList.contains('handle'))) {
++      commitKeyboardDrop();
++    }
++  });
++
++  // Reveal whole item on keyboard focus
++  container.addEventListener('focusin', (event) => {
++    const card = event.target.closest('.card, .item');
++    if (!card) return;
++    if (card.getAnimations().length > 0) return;
++    try {
++      if (event.target.matches(':focus-visible')) {
++        card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      }
++    } catch (e) {
++      card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++    }
++  });
++
++  // Attach pointer & keyboard listeners
++  container.addEventListener('pointerdown', onPointerDown);
++  container.addEventListener('lostpointercapture', onLostPointerCapture, true);
++  document.addEventListener('pointermove', onPointerMove);
++  document.addEventListener('pointerup', onPointerUp);
++  document.addEventListener('pointercancel', onPointerCancel);
++  document.addEventListener('keydown', onKeyDown);
++
++  // Initialize accessibility attributes & progressive enhancement state
++  getCards().forEach((card) => {
++    const handle = card.querySelector('.drag-handle, .handle');
++    if (handle) {
++      const name = getItemName(card);
++      handle.setAttribute('aria-label', `Reorder ${name}`);
++      handle.setAttribute('aria-pressed', 'false');
++    }
++  });
++
++  container.setAttribute('data-initialized', '');
++})();

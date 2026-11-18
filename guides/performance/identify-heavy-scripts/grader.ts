@@ -57,7 +57,7 @@ function getCombinedCode(): string {
 
 test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
   // Static assertions
-  test('No polyfill for Long Animation Frames should be included', async () => {
+  test('No polyfill for Long Animation Frames is included', async () => {
     const code = getCombinedCode();
     // Check for explicit polyfill attempts for PerformanceLongAnimationFrame
     const polyfillPattern = /PerformanceLongAnimationFrame\s*=/;
@@ -100,8 +100,6 @@ test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
           const originalObserve = originalPerformanceObserver.prototype.observe;
           originalPerformanceObserver.prototype.observe = function(options: any) {
             (window as any)._observeCalls.push(options);
-            // We record the call but may catch errors from the real API if the browser 
-            // version doesn't support the specific type yet.
             try {
               return originalObserve.apply(this, arguments as any);
             } catch {
@@ -114,25 +112,25 @@ test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
       await page.goto(demoUrl);
     });
 
-    test('should use the "type" property in PerformanceObserver.observe instead of "entryTypes"', async ({ page }) => {
+    test('PerformanceObserver.observe uses the type property instead of entryTypes', async ({ page }) => {
       const calls = await page.evaluate(() => (window as any)._observeCalls);
       const hasTypeProp = calls.some((opt: any) => opt && typeof opt === 'object' && 'type' in opt);
       expect(hasTypeProp).toBe(true);
     });
 
-    test('should specify "long-animation-frame" as the observation type', async ({ page }) => {
+    test('PerformanceObserver specifies long-animation-frame as the observation type', async ({ page }) => {
       const calls = await page.evaluate(() => (window as any)._observeCalls);
       const hasLoAF = calls.some((opt: any) => opt && opt.type === 'long-animation-frame');
       expect(hasLoAF).toBe(true);
     });
 
-    test('should enable the "buffered" option to capture past performance entries', async ({ page }) => {
+    test('PerformanceObserver enables the buffered option to capture past performance entries', async ({ page }) => {
       const calls = await page.evaluate(() => (window as any)._observeCalls);
       const hasBuffered = calls.some((opt: any) => opt && opt.buffered === true);
       expect(hasBuffered).toBe(true);
     });
 
-    test('should not use the legacy "entryTypes" property for this API', async ({ page }) => {
+    test('PerformanceObserver does not use the legacy entryTypes property for this API', async ({ page }) => {
       const calls = await page.evaluate(() => (window as any)._observeCalls);
       const usesEntryTypes = calls.some((opt: any) => opt && 'entryTypes' in opt);
       expect(usesEntryTypes).toBe(false);

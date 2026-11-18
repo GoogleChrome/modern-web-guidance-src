@@ -1,0 +1,1 @@
+- Implement accessible spatial navigation using arrow keys for the card grid that works correctly in different layout modes.

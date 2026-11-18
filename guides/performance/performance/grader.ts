@@ -16,12 +16,13 @@
  * Expectation 13 (No complex JS loaders for hero): TESTED - Verified via static HTML check with JavaScript disabled.
  * Expectations 14-20 (INP / scheduler.yield / heavy tasks / timers): SKIPPED - The base application is a static marketing page with no heavy computation or JS task queues.
  * Expectations 21-22 (Third-party script defer & self-hosting): SKIPPED - The base application loads no third-party scripts.
- * Expectations 23-27 (content-visibility: auto, contain-intrinsic-size, CSS containment, will-change): TESTED - Verified on below-the-fold sections and card components.
+ * Expectations 23-25 (content-visibility on large pages or isolated components): SKIPPED - The base application is a single-page marketing site without offscreen lists on large pages or isolated complex widgets.
+ * Expectations 26-27 (Do not apply content-visibility on small simpler pages or overuse will-change): TESTED - Verified that content-visibility is not applied to the small base application and will-change is not overused.
  * Expectations 28-33 (Modern image formats, width/height, lazy below-fold, no lazy above-fold): TESTED - Verified on hero preload/<img> and any content images.
  * Expectations 34-40 (Service Worker caching strategies): SKIPPED - Service Worker setup is outside the single-file static HTML base application scope.
  * Expectations 41-42 (Font preloading): SKIPPED - The base application uses system fonts ('Segoe UI', Tahoma, Geneva, Verdana, sans-serif).
  * Expectations 43-48 (Video element optimization): SKIPPED - The base application contains no <video> elements.
- * Expectations 49-50 (Dynamic import() and bundler vendor chunking): SKIPPED - The base application has no bundler or multi-module JS application code.
+ * Expectations 49-50 (Dynamic import and bundler vendor chunking): SKIPPED - The base application has no bundler or multi-module JS application code.
  */
 
 import { test, expect } from '@playwright/test';
@@ -163,36 +164,19 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(mediaCheck.missingDimensions).toBe(0);
   });
 
-  test('6. Offscreen sections or isolated components use content-visibility: auto (with contain-intrinsic-size) or CSS containment', async ({ page }) => {
+  test('6. The implementation does not apply content-visibility to small simpler pages and does not overuse will-change', async ({ page }) => {
     await page.goto(demoUrl);
     const containmentResult = await page.evaluate(() => {
       const allElements = Array.from(document.querySelectorAll('*'));
       const cvElements = allElements.filter(el => window.getComputedStyle(el).contentVisibility === 'auto');
-      const heroEl = document.querySelector('.hero');
-      const heroHasCv = heroEl ? window.getComputedStyle(heroEl).contentVisibility === 'auto' : false;
-
-      const cvPaired = cvElements.length > 0 && cvElements.every(el => {
-        const style = window.getComputedStyle(el);
-        return Boolean(
-          style.containIntrinsicSize &&
-          !style.containIntrinsicSize.includes('none') &&
-          style.containIntrinsicSize !== 'normal'
-        );
-      });
-
-      const hasCssContain = allElements.some(el => {
-        const contain = window.getComputedStyle(el).contain;
-        return contain === 'content' || contain === 'strict' || contain.includes('layout') || contain.includes('paint');
-      });
-
       const willChangeCount = allElements.filter(el => window.getComputedStyle(el).willChange !== 'auto').length;
 
       return {
-        hasValidContainment: (cvElements.length > 0 && cvPaired && !heroHasCv) || hasCssContain,
+        hasCvOnSmallPage: cvElements.length > 0,
         willChangeOverused: willChangeCount > 5,
       };
     });
-    expect(containmentResult.hasValidContainment).toBe(true);
+    expect(containmentResult.hasCvOnSmallPage).toBe(false);
     expect(containmentResult.willChangeOverused).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { features, groups } from "web-features";
 import { scanAllGuides } from "../core/guide-validation.ts";
 import { getFeatureName } from "../core/baseline.ts";
@@ -203,7 +203,7 @@ function generateEvalsResultsTable(): string {
   try {
     const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, 'utf-8'));
     if (Array.isArray(evalsData) && evalsData.length > 0) {
-      evalsMd += '| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |\n';
+      evalsMd += '| Date | Agent + Model | Tasks / Checks | Unguided → Guided (Uplift) |\n';
       evalsMd += '| :--- | :--- | :---: | :---: |\n';
 
       // Stratified Recency Selection Algorithm

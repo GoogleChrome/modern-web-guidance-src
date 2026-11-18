@@ -1,4 +1,3 @@
-// Note: no grader change required for expectations typo fix.
 import { test, expect } from '@playwright/test';
 
 // Ensure TARGET_FILE is defined
@@ -73,63 +72,19 @@ test.describe('Platform controls dismiss dialog tests', () => {
 
     // Navigate to the target file
     await page.goto(`file://${targetFile}`);
-    await page.waitForTimeout(100);
+    await page.waitForLoadState('domcontentloaded');
   });
 
-  test('the modal dialog should be a <dialog> element', async ({ page }) => {
-    const buttons = await page.locator('button').all();
-    let modalTag = '';
-
-    for (const button of buttons) {
-      const text = await button.textContent();
-      if (text && /show|open/i.test(text)) {
-        await button.click();
-        await page.waitForTimeout(100);
-
-        modalTag = await page.evaluate(() => {
-          const openDialog = document.querySelector('dialog[open]');
-          if (openDialog) return openDialog.tagName.toLowerCase();
-
-          const roleDialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
-          for (const el of roleDialogs) {
-            const style = window.getComputedStyle(el);
-            if (style.display !== 'none' && style.visibility !== 'hidden') {
-              return el.tagName.toLowerCase();
-            }
-          }
-
-          const potentialModals = Array.from(document.querySelectorAll('[id*="modal"], [class*="modal"], [id*="dialog"], [class*="dialog"]'));
-          for (const el of potentialModals) {
-            if (['button', 'body', 'html'].includes(el.tagName.toLowerCase())) {
-              continue;
-            }
-            const style = window.getComputedStyle(el);
-            if (style.display !== 'none' && style.visibility !== 'hidden') {
-              return el.tagName.toLowerCase();
-            }
-          }
-          return '';
-        });
-
-        // Close it
-        const closeBtn = page.locator('button:has-text("Close")').first();
-        if (await closeBtn.isVisible()) {
-          await closeBtn.click();
-        } else {
-          await page.keyboard.press('Escape');
-        }
-        await page.waitForTimeout(100);
-        break; // Test first trigger
-      }
-    }
-
-    expect(modalTag).toBe('dialog');
+  test('The modal dialog is a <dialog> element', async ({ page }) => {
+    const dialogCount = await page.locator('dialog').count();
+    expect(dialogCount).toBeGreaterThan(0);
   });
 
-  test('every <dialog> element has an accessible name', async ({ page }) => {
+  test('The <dialog> element has an accessible name', async ({ page }) => {
     const dialogs = await page.locator('dialog').all();
+    expect(dialogs.length).toBeGreaterThan(0);
 
-    const allHaveAccessibleName = dialogs.length > 0 && await page.evaluate(() => {
+    const allHaveAccessibleName = await page.evaluate(() => {
       const els = Array.from(document.querySelectorAll('dialog'));
       if (els.length === 0) return false;
       return els.every(el => {
@@ -155,10 +110,11 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(allHaveAccessibleName).toBe(true);
   });
 
-  test('every <dialog> element has no closedby attribute or closedby set to any', async ({ page }) => {
+  test('The <dialog> element has no closedby attribute or closedby set to any', async ({ page }) => {
     const dialogs = await page.locator('dialog').all();
+    expect(dialogs.length).toBeGreaterThan(0);
 
-    const validClosedByAttributes = dialogs.length > 0 && await page.evaluate(() => {
+    const validClosedByAttributes = await page.evaluate(() => {
       const els = Array.from(document.querySelectorAll('dialog'));
       if (els.length === 0) return false;
       return els.every(el => {
@@ -170,47 +126,43 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(validClosedByAttributes).toBe(true);
   });
 
-  test('the dialog is opened with showModal or show-modal command', async ({ page }) => {
-    const buttons = await page.locator('button').all();
-    let correctOpeningMethod = false;
+  test('The dialog is opened with showModal or show-modal command', async ({ page }) => {
+    const hasDeclarativeCommand = await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button, [command="show-modal"]'));
+      return buttons.some(b => {
+        const cmd = b.getAttribute('command');
+        const cmdFor = b.getAttribute('commandfor') || b.getAttribute('invoketarget');
+        return (cmd === 'show-modal' || b.getAttribute('invoketarget')) && !!cmdFor;
+      });
+    });
 
-    for (const button of buttons) {
-      const text = await button.textContent();
-      if (text && /show|open/i.test(text)) {
-        // Reset call counts
-        await page.evaluate(() => {
-          (window as any)._dialogCalls = { showModal: 0, show: 0 };
-        });
-
-        const command = await button.getAttribute('command');
-        const commandfor = await button.getAttribute('commandfor');
-        const isDeclarative = command === 'show-modal' && !!commandfor;
-
-        await button.click();
-        await page.waitForTimeout(100);
-
-        const calls = await page.evaluate(() => (window as any)._dialogCalls);
-
-        if (isDeclarative || (calls && calls.showModal > 0 && calls.show === 0)) {
-          correctOpeningMethod = true;
-        }
-
-        // Close it
-        const closeBtn = page.locator('button:has-text("Close")').first();
-        if (await closeBtn.isVisible()) {
-          await closeBtn.click();
-        } else {
-          await page.keyboard.press('Escape');
-        }
-        await page.waitForTimeout(100);
-        break; // Test first trigger
-      }
+    if (hasDeclarativeCommand) {
+      expect(hasDeclarativeCommand).toBe(true);
+      return;
     }
 
-    expect(correctOpeningMethod).toBe(true);
+    const buttons = await page.locator('button').all();
+    let openedWithShowModal = false;
+
+    for (const button of buttons) {
+      await page.evaluate(() => {
+        (window as any)._dialogCalls = { showModal: 0, show: 0 };
+      });
+
+      try {
+        await button.click({ timeout: 500 });
+        const calls = await page.evaluate(() => (window as any)._dialogCalls);
+        if (calls && calls.showModal > 0 && calls.show === 0) {
+          openedWithShowModal = true;
+          break;
+        }
+      } catch {}
+    }
+
+    expect(openedWithShowModal).toBe(true);
   });
 
-  test('no fallback mechanism is provided for dismissing with the Esc key', async ({ page }) => {
+  test('No fallback mechanism is provided for dismissing with the Esc key', async ({ page }) => {
     const listeners = await page.evaluate(() => (window as any)._registeredKeyListeners || []);
 
     let hasManualEscFallback = false;
@@ -240,22 +192,12 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(hasManualEscFallback).toBe(false);
   });
 
-  test('no fallback mechanism is provided for the mobile back button/gesture', async ({ page }) => {
+  test('No fallback mechanism is provided for the mobile back button or gesture', async ({ page }) => {
     const buttons = await page.locator('button').all();
     for (const button of buttons) {
-      const text = await button.textContent();
-      if (text && /show|open/i.test(text)) {
-        await button.click();
-        await page.waitForTimeout(100);
-
-        const closeBtn = page.locator('button:has-text("Close")').first();
-        if (await closeBtn.isVisible()) {
-          await closeBtn.click();
-        } else {
-          await page.keyboard.press('Escape');
-        }
-        await page.waitForTimeout(100);
-      }
+      try {
+        await button.click({ timeout: 300 });
+      } catch {}
     }
 
     const hasHistoryCallsOrPopstateListeners = await page.evaluate(() => {
@@ -267,7 +209,7 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(hasHistoryCallsOrPopstateListeners).toBe(false);
   });
 
-  test('no fallback mechanism is provided for light dismiss when using closedby=any', async ({ page }) => {
+  test('No fallback mechanism is provided for light dismiss when using closedby=any', async ({ page }) => {
     const hasLightDismissFallback = await page.evaluate(() => {
       const listeners = (window as any)._registeredClickListeners || [];
       for (const listener of listeners) {

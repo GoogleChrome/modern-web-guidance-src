@@ -62,7 +62,8 @@ By default, CSS masks use `mask-mode: match-source`. This means the browser auto
 | **Direct Image File** (e.g. PNG, SVG file) | `alpha` | Opacity is determined by transparency. **Opaque** parts reveal content, and **transparent** parts hide it. |
 | **CSS Gradient** | `alpha` | Opacity is determined by transparency. **Opaque** colors (like `black`) reveal content, and **transparent** colors hide it. |
 
-> **Note:** You can explicitly override the default mask mode using the `mask-mode` CSS property (e.g., `mask-mode: luminance;` or `mask-mode: alpha;`).
+> [!NOTE]
+> You can explicitly override the default mask mode using the `mask-mode` CSS property (e.g., `mask-mode: luminance;` or `mask-mode: alpha;`).
 
 ## Fallback strategies
 {{ BASELINE_STATUS("masks") }}

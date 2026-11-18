@@ -1,6 +1,6 @@
 # Expectations: `improve-next-page-load-performance`
 
-- The rule is included in a `<script type="speculationrules"></script>` unless referenced from an `Speculation-Rules` HTTP header.
+- The rule is included in a `<script type="speculationrules"></script>` tag.
 - The rule is valid JSON.
 - The rule contains one or more of the following top-level keys:
   - `"prefetch"`
@@ -25,3 +25,4 @@
 - If using `immediate` for `where` property then the rule should be very specific and match a maximum of 10 urls, and ideally fewer.
 - The `source` property is no-longer needed and discouraged so should not be present in the rule.
 - URLs that likely trigger state changes (such as `"/logout"`) are not speculated.
+- The page should be a Multi-Page Application (MPA), not a Single Page Application (SPA).

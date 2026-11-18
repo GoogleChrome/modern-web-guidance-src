@@ -1,1 +1,1 @@
-- Update the site so the UI adapts to container and viewport sizes, including container-level responsiveness, dynamic viewport sizing, aspect ratios, and responsive typography.
+- Make the Daily Grind homepage responsive across both viewport and component container sizes, updating the "Wake Up Your Senses" hero banner, the "Seasonal Favorites" drink cards, and their media proportions so the layout and typography adapt smoothly on any screen.

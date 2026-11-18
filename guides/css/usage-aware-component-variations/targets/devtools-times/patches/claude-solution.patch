@@ -1,0 +1,286 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..cff3a43 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -20,6 +20,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
++                <span class="teaser-badge">Featured</span>
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+@@ -34,7 +35,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+                         {article.data.readingTime} Min.
+                     </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    <div class="flex items-center gap-2">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-action">Read article</a>
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </div>
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+@@ -64,6 +68,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
++            <span class="teaser-badge">Featured</span>
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+@@ -71,12 +76,15 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++            <div class="flex justify-between items-center text-gray-500 mt-auto pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                <div class="flex items-center gap-2">
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-action">Read article</a>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..82bb2ef 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,13 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    /** Marks the section as a featured surface (sets the `--surface: featured` context). */
++    featured?: boolean;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, featured = false } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section class:list={["p-4 md:p-6", { featured }]}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..c7e9c73 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -8,9 +8,11 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    /** Marks the section as a featured surface (sets the `--surface: featured` context). */
++    featured?: boolean;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, featured = false } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +28,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section class:list={["p-4 md:p-6", { featured }]}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+@@ -35,6 +37,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
++                <span class="teaser-badge">Featured</span>
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                     {capitalizedCategory}
+                 </a>
+@@ -46,11 +49,14 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <p class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
++                <div class="flex items-center justify-between gap-4 text-gray-500 text-sm">
++                    <span class="flex items-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                     </svg>
+                     <span>{topArticle.data.readingTime} Min Read</span>
++                    </span>
++                    <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`} class="teaser-action">Read article</a>
+                 </div>
+             </div>
+             <div class="w-full order-first lg:order-last">
+@@ -74,6 +80,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
++                        <span class="teaser-badge">Featured</span>
+                         <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                             {capitalizedBottomCategory}
+                         </a>
+@@ -87,12 +94,15 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                                 {article.data.summary}
+                             </p>
+                         )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++                        <div class="flex justify-between items-center text-gray-500 mt-auto pt-2 border-t-1 border-gray-100">
+                             <span class="text-xs font-medium flex items-center">
+                                 <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                 {article.data.readingTime} Min.
+                             </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                            <div class="flex items-center gap-2">
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-action">Read article</a>
++                                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                            </div>
+                         </div>
+                     </div>
+                 </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..04bf1ab 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main class="featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -65,7 +65,7 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} featured />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..b440207 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,111 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++:root {
++  --brand-accent: #b45309; /* amber-700 */
++  --brand-accent-hover: #92400e; /* amber-800 */
++}
++
++/*
++ * Semantic surface context.
++ * Featured surfaces only declare the context; they never name the components
++ * that adapt to it. Style queries match descendants of the element that sets
++ * the property, so no `container-type` is required.
++ */
++.featured {
++  --surface: featured;
++}
++
++/*
++ * Context-aware teaser components.
++ * Components only react to the inherited `--surface` flag; they never inspect
++ * which section produced it.
++ */
++@layer components {
++  /* Default (standard surface): badge hidden */
++  .teaser-badge {
++    display: none;
++    align-self: flex-start;
++    margin-bottom: 0.5rem;
++    padding: 0.125rem 0.5rem;
++    border-radius: 9999px;
++    background: var(--brand-accent);
++    color: white;
++    font-size: 0.6875rem;
++    font-weight: 700;
++    letter-spacing: 0.08em;
++    line-height: 1.25rem;
++    text-transform: uppercase;
++  }
++
++  /* Default (standard surface): subtle outlined button */
++  .teaser-action {
++    display: inline-flex;
++    align-items: center;
++    gap: 0.25rem;
++    padding: 0.375rem 0.875rem;
++    border-radius: 0.375rem;
++    border: 1px solid currentColor;
++    background: transparent;
++    color: var(--brand-accent);
++    font-size: 0.875rem;
++    font-weight: 600;
++    line-height: 1.25rem;
++    transition:
++      background-color 150ms ease,
++      color 150ms ease,
++      border-color 150ms ease;
++  }
++
++  .teaser-action:hover {
++    background: color-mix(in srgb, var(--brand-accent) 8%, transparent);
++  }
++
++  .teaser-action:focus-visible {
++    outline: 2px solid var(--brand-accent);
++    outline-offset: 2px;
++  }
++
++  /*
++   * Selector-based fallback for browsers without container style query
++   * support. `:where()` keeps specificity equal to the style query rules
++   * below so they win by source order when supported.
++   * Remove once style queries are widely available.
++   */
++  :where(.featured) .teaser-badge {
++    display: inline-block;
++  }
++
++  :where(.featured) .teaser-action {
++    background: var(--brand-accent);
++    border-color: var(--brand-accent);
++    color: white;
++  }
++
++  :where(.featured) .teaser-action:hover {
++    background: var(--brand-accent-hover);
++    border-color: var(--brand-accent-hover);
++  }
++
++  /* Progressive enhancement: react to the semantic surface context */
++  @container style(--surface: featured) {
++    .teaser-badge {
++      /* Reveal promotional badge only on featured surfaces */
++      display: inline-block;
++    }
++
++    .teaser-action {
++      /* Switch to the filled, prominent variant */
++      background: var(--brand-accent);
++      border-color: var(--brand-accent);
++      color: white;
++    }
++
++    .teaser-action:hover {
++      background: var(--brand-accent-hover);
++      border-color: var(--brand-accent-hover);
++    }
++  }
++}

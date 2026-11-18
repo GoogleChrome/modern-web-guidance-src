@@ -1,0 +1,90 @@
+{"qid":"o0000","query":"unit test mocking with jest","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0001","query":"react native flatlist performance","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0002","query":"postgres index tuning","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0003","query":"docker compose healthcheck","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0004","query":"kubernetes pod autoscaling","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0005","query":"python pandas groupby","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0006","query":"rust borrow checker lifetimes","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0007","query":"go context cancellation","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0008","query":"express middleware error handling","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0009","query":"prisma schema migration","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0010","query":"terraform state locking","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0011","query":"github actions matrix build","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0012","query":"sql join on multiple columns","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0013","query":"redis cache eviction policy","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0014","query":"kafka consumer group rebalancing","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0015","query":"java spring boot dependency injection","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0016","query":"swift ui navigation stack","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0017","query":"android jetpack compose list","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0018","query":"flutter state management","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0019","query":"aws lambda cold start","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0020","query":"mongodb aggregation pipeline","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0021","query":"bash script parse arguments","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0022","query":"git rebase interactive squash","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0023","query":"nginx reverse proxy config","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0024","query":"jwt token refresh on server","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0025","query":"elasticsearch fuzzy query","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0026","query":"c# async await deadlock","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0027","query":"machine learning model training loop","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0028","query":"pytorch dataloader workers","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0029","query":"linux file permissions chmod","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0030","query":"npm publish scoped package","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0031","query":"eslint custom rule","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0032","query":"typescript generic constraints","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0033","query":"graphql resolver n+1","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0034","query":"rest api pagination design","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0035","query":"oauth server token endpoint","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0036","query":"cron job scheduling","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0037","query":"s3 presigned upload url","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0038","query":"stripe webhook signature","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0039","query":"electron auto updater","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0040","query":"unity game physics","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0041","query":"excel vlookup formula","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0042","query":"regex match email address","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0043","query":"binary search tree insert","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0044","query":"dynamic programming knapsack","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0045","query":"kotlin coroutines flow","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0046","query":"django orm queryset","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0047","query":"rails active record callbacks","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0048","query":"php laravel routing","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0049","query":"vim macro recording","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0050","query":"redux store setup","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0051","query":"vue pinia store","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0052","query":"webpack module federation","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0053","query":"vite plugin config","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0054","query":"jest snapshot testing react components","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0055","query":"playwright end to end test","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0056","query":"storybook component docs","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0057","query":"tailwind config theme","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0058","query":"next.js server actions","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0059","query":"react useEffect cleanup","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0060","query":"angular change detection","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0061","query":"svelte stores","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0062","query":"graphql apollo client cache","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0063","query":"websocket reconnect logic","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0064","query":"indexeddb schema migration","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0065","query":"service worker offline caching","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0066","query":"push notification subscription","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0067","query":"web share api","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0068","query":"geolocation permission prompt","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0069","query":"payment request api","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0070","query":"webrtc video call","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0071","query":"web audio synthesizer","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0072","query":"webgpu compute shader","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0073","query":"file upload progress bar","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0074","query":"infinite scroll pagination","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0075","query":"markdown editor component","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0076","query":"rich text editor contenteditable","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0077","query":"seo meta tags","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0078","query":"sitemap generation","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0079","query":"cookie consent banner","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0080","query":"google analytics setup","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0081","query":"cors preflight request","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0082","query":"content security policy nonce","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0083","query":"http caching headers","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0084","query":"image cdn resizing","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0085","query":"i18n pluralization","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0086","query":"date picker component","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0087","query":"chart library line graph","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0088","query":"map embed with markers","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}
+{"qid":"o0089","query":"pdf generation in browser","scope":"out_of_domain","needs":[],"grades":[],"judgeModel":"curated","rubricVersion":"v1"}

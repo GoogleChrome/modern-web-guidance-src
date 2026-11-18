@@ -1,1 +1,1 @@
-- Refactor the styling of the Daily Grind website to follow a modern CSS architecture, including the cascade, selectors, scoping, nesting, and design tokens.
+- Refactor the stylesheet for the Daily Grind homepage (covering the sticky navigation bar, "Wake Up Your Senses" hero banner, "Seasonal Favorites" card grid, and footer) to follow a modern CSS architecture for cascade management, selector grouping, logical layout spacing, and design tokens.

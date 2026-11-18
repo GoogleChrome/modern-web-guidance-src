@@ -55,7 +55,7 @@ function getTotalForegroundTime() {
 
 ## Fallbacks & browser support
 
-{{ FEATURE_FALLBACKS("page-visibility-state") }}
+{{ BASELINE_STATUS("page-visibility-state") }}
 
 The `VisibilityStateEntry` API is a modern addition to the Performance Timeline and may not be supported in all browsers.
 

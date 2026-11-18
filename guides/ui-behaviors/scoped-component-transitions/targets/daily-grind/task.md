@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section on The Daily Grind homepage so visitors can reorder or remove drink cards (or customize items within each drink card) with smooth, self-contained transition animations on that component while the sticky navigation bar and the rest of the page remain interactive and other card transitions can run at the same time.

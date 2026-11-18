@@ -1,0 +1,41 @@
+{
+  "$schema": "./allowlist.schema.json",
+  "include": [
+    "nightly-*-claude_code",
+    "nightly-*-codex_cli",
+    "nightly-*-antigravity_cli",
+    "opus-medium-1.0-rc-2026-11-08",
+    "flash-medium-1.0-2026-11-08b",
+    "sonnet-medium-1.0-2026-11-08",
+    "codex-sol-medium-1.0-rc-2026-11-08",
+    "argon-medium-1.0-2026-11-09"
+  ],
+  "exclude": [],
+  "overrides": [
+    {
+      "id": "codex-sol-medium-1.0-rc-2026-11-08",
+      "excludeGuides": [
+        "sort-high-precision-timestamps"
+      ]
+    }
+  ],
+  "releasedModels": [
+    "claude-fable-5-1",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+    "claude-opus-5",
+    "claude-opus-5-5",
+    "claude-sonnet-5",
+    "claude-sonnet-5-5",
+    "gemini-3.8-flash",
+    "gemini-4-argon",
+    "gpt-5.5",
+    "gpt-5.6-sol",
+    "gpt-6-astra",
+    "gpt-6.1-sol"
+  ],
+  "retention": {
+    "maxSuitesPerAgent": 10,
+    "maxSuites": 30
+  }
+}

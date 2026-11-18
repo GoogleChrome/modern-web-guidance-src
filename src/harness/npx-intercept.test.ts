@@ -37,8 +37,11 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
 
     for (const [cmd, cmdArgs] of [
       ['npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo']],
+      ['npx', ['modern-web-guidance', 'retrieve', 'foo']],
       ['pnpx', ['modern-web-guidance@latest', 'search', 'foo']],
+      ['pnpx', ['modern-web-guidance', 'retrieve', 'foo']],
       ['pnpm', ['dlx', 'modern-web-guidance@latest', 'search', 'foo']],
+      ['pnpm', ['dlx', 'modern-web-guidance', 'retrieve', 'foo']],
     ] as const) {
       const result = spawnSync(cmd, [...cmdArgs], {
         cwd: tempDir,
@@ -52,6 +55,24 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
       assert.ok(fs.existsSync(calledFile), `Dummy CLI should have been called for ${cmd}`);
       assert.strictEqual(fs.readFileSync(calledFile, 'utf8'), 'yes', 'Dummy CLI should have written yes');
       fs.unlinkSync(calledFile);
+    }
+
+    // Verify that when localCliPath is inaccessible (as in unguided sandbox runs),
+    // modern-web-guidance calls fail instead of falling through to npm/pnpm dlx.
+    fs.unlinkSync(dummyCliPath);
+    for (const [cmd, cmdArgs] of [
+      ['npx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['pnpx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['pnpm', ['dlx', 'modern-web-guidance', 'retrieve', 'foo']],
+    ] as const) {
+      const blockedResult = spawnSync(cmd, [...cmdArgs], {
+        cwd: tempDir,
+        encoding: 'utf8',
+        env,
+        timeout: 10000,
+        shell: process.platform === 'win32'
+      });
+      assert.strictEqual(blockedResult.status, 1, `Unguided ${cmd} modern-web-guidance call must be blocked`);
     }
 
     // Run a command that should NOT be intercepted (fallback)

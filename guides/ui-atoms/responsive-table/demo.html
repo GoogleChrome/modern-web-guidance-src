@@ -69,6 +69,7 @@
       }
       @container (width < 600px) {
         table,
+        caption,
         thead,
         tbody,
         tr,
@@ -110,19 +111,19 @@
         }
         /* Labels injected via CSS variables set in JS */
         td:nth-child(2)::before {
-          content: var(--label-2) ": " / var(--label-2);
+          content: var(--label-2) ": ";
         }
         td:nth-child(3)::before {
-          content: var(--label-3) ": " / var(--label-3);
+          content: var(--label-3) ": ";
         }
         td:nth-child(4)::before {
-          content: var(--label-4) ": " / var(--label-4);
+          content: var(--label-4) ": ";
         }
         td:nth-child(5)::before {
-          content: var(--label-5) ": " / var(--label-5);
+          content: var(--label-5) ": ";
         }
         td:nth-child(6)::before {
-          content: var(--label-6) ": " / var(--label-6);
+          content: var(--label-6) ": ";
         }
       }
     </style>
@@ -135,8 +136,9 @@
       transforms into a card-based layout.
     </p>
 
-    <div class="table-wrapper">
+    <div role="region" aria-labelledby="employee-table-caption" class="table-wrapper" tabindex="0">
       <table>
+        <caption id="employee-table-caption">Current employee directory</caption>
         <thead>
           <tr id="header-row">
             <th>Name</th>

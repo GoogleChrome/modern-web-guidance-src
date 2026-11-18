@@ -238,11 +238,11 @@ Query the size (or computed style) of an ancestor container rather than the view
 **Anchor positioning (spatial layout of overlays):**
 
 - Use `position-area` (or `anchor()` on insets) and `anchor-size()` to position and size an overlay relative to its trigger.
-- Use `position-try-fallbacks: flip-block` (or `flip-inline`) to let the browser reposition when the overlay overflows the viewport.
+- Use `position-try-fallbacks` to let the browser reposition when the overlay overflows the viewport. `flip-block, flip-inline, flip-block flip-inline` is a reasonable default, or define use-case specific fallbacks.
 - Don't mix physical and logical keywords in a single `position-area` value — pick one coordinate system.
 - Feature-detect with `@supports (anchor-name: --x)` and provide an absolute-position fallback.
 
-> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to menus and tab indicators, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
+> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to dropdowns, flyouts, and tab indicators, see {{ GUIDE_REF("viewport-aware-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
 
 ## 6 Overflow tracking and layout stability
 
@@ -258,6 +258,8 @@ Manage layout shifts, scrollbars, and clipping predictably.
 - Use `scrollbar-gutter: stable` to reserve space for scrollbars and prevent layout shifts when content grows.
 - Use `overscroll-behavior: contain` (or `none`) on nested scroll regions (such as sidebars, modals, and lists) to stop scroll chains from bubbling into the page, or `overscroll-behavior: chain` on intermediate scroll wrappers (such as swipe-to-reveal tracks) when excess scroll should propagate to an ancestor scroller without triggering a local rubber-band bounce.
 - Use the `-webkit-line-clamp` + `display: -webkit-box` + `-webkit-box-orient: vertical` triad for multi-line truncation — despite the prefix, this pattern is fully specified and not deprecated. Declare the unprefixed `line-clamp` shorthand alongside it; browsers that don't yet support it ignore the property harmlessly.
+- For text that must stay on one line (labels, table cells, file names) see {{ GUIDE_REF("single-line-overflow") }} for techniques for truncating and revealing the full text on demand without UX friction.
+
 **Do not:**
 
 - Don't use `overflow: scroll` when `auto` will do — `scroll` forces scrollbars even when there's nothing to scroll.

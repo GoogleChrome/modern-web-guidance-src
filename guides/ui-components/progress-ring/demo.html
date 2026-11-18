@@ -129,6 +129,13 @@
             );
             border: 0;
           }
+
+          @media (forced-colors: active) {
+            /* Keeps the gradient, which forced colors mode removes, and draws it in system colors */
+            forced-color-adjust: none;
+            --fill-color: CanvasText;
+            --track-color: Canvas;
+          }
         }
 
         .progress-ring-content {
@@ -156,7 +163,8 @@
           max="100"
           aria-label="Upload progress"
         ></progress>
-        <div class="progress-ring-content" id="main-content">0%</div>
+        <!-- Hidden from assistive technologies because it repeats the value of the <progress> element. -->
+        <div class="progress-ring-content" id="main-content" aria-hidden="true">0%</div>
       </div>
 
       <div class="controls">

@@ -1,0 +1,314 @@
+diff --git a/index.html b/index.html
+index 66c9173..26ff189 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,38 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --control-border: #795548;
++      --control-accent: #4e342e;
++      color-scheme: light dark;
++      accent-color: var(--control-accent);
++      scrollbar-color: var(--control-border) var(--secondary);
++      scrollbar-width: auto;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --text: #efebe9;
++        --light: #241a17;
++        --surface: #352621;
++        --secondary: #4e342e;
++        --control-border: #bcaaa4;
++        --control-accent: #ffab40;
++      }
++    }
++
++    ::selection {
++      color: #3e2723;
++      background: var(--accent);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--control-accent);
++      outline-offset: 3px;
++    }
++
++    nav :focus-visible, .hero :focus-visible {
++      outline-color: var(--accent);
+     }
+ 
+     * {
+@@ -108,7 +140,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +149,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--text);
+     }
+ 
+     .btn {
+@@ -135,6 +167,165 @@
+       background: #3e2723;
+     }
+ 
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
++      gap: 24px;
++      align-items: start;
++    }
++
++    .order-form {
++      text-align: left;
++    }
++
++    .order-form > * + * {
++      margin-top: 16px;
++    }
++
++    .field {
++      display: grid;
++      gap: 6px;
++      min-width: 0;
++    }
++
++    label, legend {
++      font-weight: 600;
++    }
++
++    input, select, textarea, button {
++      font: inherit;
++    }
++
++    input:not([type="radio"]):not([type="checkbox"]):not([type="range"]),
++    select, textarea {
++      width: 100%;
++      min-width: 0;
++      padding: 10px;
++      border: 1px solid var(--control-border);
++      border-radius: 5px;
++      background: var(--surface);
++      color: var(--text);
++    }
++
++    input::placeholder, textarea::placeholder {
++      color: var(--text);
++      opacity: 0.7;
++    }
++
++    input:placeholder-shown, textarea:placeholder-shown {
++      border-style: dashed;
++    }
++
++    input:not([type="range"]):user-invalid, select:user-invalid, textarea:user-invalid {
++      border: 2px solid #b54830;
++    }
++
++    input:not([type="range"]):user-valid, select:user-valid, textarea:user-valid {
++      border-color: var(--control-accent);
++    }
++
++    textarea {
++      field-sizing: content;
++      min-height: 6rem;
++      max-height: 16rem;
++      resize: vertical;
++    }
++
++    fieldset {
++      min-width: 0;
++      border: 0;
++    }
++
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-top: 6px;
++    }
++
++    .choice {
++      display: inline-flex;
++      gap: 8px;
++      align-items: center;
++      border: 1px solid var(--control-border);
++      border-radius: 5px;
++      padding: 8px 10px;
++      cursor: pointer;
++    }
++
++    .choice:has(:checked) {
++      background: var(--secondary);
++      border-color: var(--control-accent);
++    }
++
++    input[type="radio"], input[type="checkbox"] {
++      width: 1.1em;
++      height: 1.1em;
++      flex-shrink: 0;
++    }
++
++    input[type="range"] {
++      width: 100%;
++      min-height: 28px;
++    }
++
++    .range-labels {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.85rem;
++    }
++
++    .order-form .btn {
++      border: 0;
++      cursor: pointer;
++      width: 100%;
++    }
++
++    @supports (appearance: base-select) {
++      select, select::picker(select) {
++        appearance: base-select;
++      }
++
++      select::picker(select) {
++        color: var(--text);
++        background: var(--surface);
++        border: 1px solid var(--control-border);
++        border-radius: 5px;
++      }
++
++      select option {
++        padding: 8px 12px;
++      }
++
++      select option:checked {
++        background: var(--secondary);
++      }
++
++      select option:hover, select option:focus-visible {
++        background: var(--accent);
++        color: #3e2723;
++      }
++
++      select::picker-icon {
++        color: var(--control-accent);
++      }
++    }
++
++    @media (max-width: 800px) {
++      .seasonal-layout {
++        grid-template-columns: minmax(0, 1fr);
++      }
++
++      nav, nav ul {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +366,9 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <div class="seasonal-layout">
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +387,62 @@
+         </div>
+       </div>
+     </section>
++    <section class="card order-form" aria-labelledby="customize-title">
++      <h2 id="customize-title">Make It Your Own</h2>
++      <p>Customize your coffee, then continue to order online. Required fields are marked *.</p>
++      <form class="order-form" action="/order-online" method="get">
++        <div class="field">
++          <label for="coffee">Coffee *</label>
++          <select id="coffee" name="coffee" required>
++            <option value="">Choose your coffee</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </div>
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choices">
++            <label class="choice"><input type="radio" name="size" value="small"> Small</label>
++            <label class="choice"><input type="radio" name="size" value="medium" checked> Medium</label>
++            <label class="choice"><input type="radio" name="size" value="large"> Large</label>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="milk">Milk</label>
++          <select id="milk" name="milk">
++            <option value="standard">As described</option>
++            <option value="oat">Oat milk</option>
++            <option value="whole">Whole milk</option>
++            <option value="none">No milk</option>
++          </select>
++        </div>
++        <label class="choice"><input type="checkbox" name="decaf" value="yes"> Make it decaf</label>
++        <div class="field">
++          <label for="sweetness">Sweetness (syrup pumps)</label>
++          <input id="sweetness" name="sweetness" type="range" min="0" max="4" step="1" value="2" list="sweetness-ticks">
++          <datalist id="sweetness-ticks">
++            <option value="0" label="0"></option>
++            <option value="1" label="1"></option>
++            <option value="2" label="2"></option>
++            <option value="3" label="3"></option>
++            <option value="4" label="4"></option>
++          </datalist>
++          <div class="range-labels" aria-hidden="true"><span>0 · Unsweetened</span><span>4 · Extra sweet</span></div>
++        </div>
++        <div class="field">
++          <label for="pickup-time">Preferred pickup time (optional)</label>
++          <input id="pickup-time" name="pickup-time" type="time" aria-describedby="pickup-help">
++          <small id="pickup-help">Availability is confirmed when you order.</small>
++        </div>
++        <div class="field">
++          <label for="notes">Order notes (optional)</label>
++          <textarea id="notes" name="notes" rows="3" maxlength="300" placeholder="For example, extra hot"></textarea>
++        </div>
++        <button class="btn" type="submit">Continue to Order</button>
++      </form>
++    </section>
++    </div>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

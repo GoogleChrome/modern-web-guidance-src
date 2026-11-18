@@ -1,0 +1,151 @@
+diff --git a/index.html b/index.html
+index 66c9173..8385ada 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,111 @@
+       background: #3e2723;
+     }
+ 
++    /* Customization checkboxes */
++    :root {
++      --icon-bean: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 2C7 2 4 7 4 12s3 10 8 10 8-5 8-10S17 2 12 2zm1.2 4.2c-1.6 2.2 1.6 3.6 0 5.6s-1.6 3.4-.4 6c-2.8-1-4.4-3.4-4.4-5.8 0-3 1.8-5.6 4.8-5.8z'/></svg>");
++      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
++    }
++
++    .customize {
++      border: 0;
++      margin-top: 15px;
++      text-align: start;
++    }
++
++    .customize legend {
++      font-size: 0.8rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      color: var(--primary);
++      padding-block-end: 4px;
++    }
++
++    .customize label {
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      cursor: pointer;
++      font-size: 0.95rem;
++    }
++
++    .checkbox-custom {
++      --checkbox-size: 1.4em;
++      --checkbox-icon-size: 0.9em;
++      --checkbox-icon: var(--icon-bean);
++
++      appearance: none;
++      flex: none;
++      display: inline-grid;
++      place-content: center;
++      inline-size: var(--checkbox-size);
++      aspect-ratio: 1;
++      margin: 0;
++      border: 2px solid var(--primary);
++      border-radius: 6px;
++      background-color: white;
++      color: var(--primary);
++      cursor: pointer;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transition: background-color 200ms ease, border-color 200ms ease;
++      }
++
++      &::before {
++        content: "";
++        inline-size: var(--checkbox-icon-size);
++        aspect-ratio: 1;
++        background-color: var(--accent);
++        mask: var(--checkbox-icon) no-repeat center / contain;
++        scale: 0;
++        rotate: -90deg;
++
++        @media (prefers-reduced-motion: no-preference) {
++          transition: scale 200ms cubic-bezier(0.34, 1.56, 0.64, 1), rotate 200ms ease;
++        }
++
++        @media (forced-colors: active) {
++          background-color: CanvasText;
++        }
++      }
++
++      &:is(:checked, :indeterminate) {
++        background-color: var(--primary);
++      }
++
++      &:checked {
++        --checkbox-icon: var(--icon-bean);
++      }
++
++      &:indeterminate {
++        --checkbox-icon: var(--icon-dash);
++        border-color: var(--accent);
++      }
++
++      &:is(:checked, :indeterminate)::before {
++        scale: 1;
++        rotate: 0deg;
++      }
++
++      &:focus-visible {
++        outline: 2px solid var(--primary);
++        outline-offset: 2px;
++      }
++
++      &:disabled {
++        cursor: not-allowed;
++        opacity: 0.5;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .checkbox-custom:is(:checked, :indeterminate) {
++        background-color: Highlight;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,16 +286,34 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customize">
++            <legend>Customize</legend>
++            <label><input type="checkbox" class="checkbox-custom" name="maple-oat-latte" value="extra-shot"> Extra shot</label>
++            <label><input type="checkbox" class="checkbox-custom" name="maple-oat-latte" value="extra-maple"> Extra maple</label>
++            <label><input type="checkbox" class="checkbox-custom" name="maple-oat-latte" value="cinnamon"> Cinnamon dust</label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customize">
++            <legend>Customize</legend>
++            <label><input type="checkbox" class="checkbox-custom" name="dark-roast-espresso" value="double"> Double shot</label>
++            <label><input type="checkbox" class="checkbox-custom" name="dark-roast-espresso" value="decaf"> Decaf</label>
++            <label><input type="checkbox" class="checkbox-custom" name="dark-roast-espresso" value="sparkling-water"> Sparkling water on the side</label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customize">
++            <legend>Customize</legend>
++            <label><input type="checkbox" class="checkbox-custom" name="cold-brew" value="sweet-cream"> Sweet cream</label>
++            <label><input type="checkbox" class="checkbox-custom" name="cold-brew" value="vanilla"> Vanilla syrup</label>
++            <label><input type="checkbox" class="checkbox-custom" name="cold-brew" value="extra-ice"> Extra ice</label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

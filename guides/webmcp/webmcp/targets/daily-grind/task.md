@@ -1,1 +1,1 @@
-- Implement WebMCP in the application to expose client-side functionality as tools to AI agents.
+- Update the Seasonal Favorites section in `index.html` to include interactive coffee ordering functionality for the Maple Oat Latte, Dark Roast Espresso, and Cold Brew cards, and expose these client-side ordering actions as tools that browser AI agents can discover and invoke.

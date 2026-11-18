@@ -1,0 +1,516 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..e9c45b4
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,8 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await Promise.all(
++  ['index.html', 'coffee-card.js'].map((file) =>
++    copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url))
++  )
++);
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..f200e59
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,89 @@
++// This fallback is used only when a host has no pre-rendered shadow root.
++// Keep its structure and styles aligned with the declarative templates in index.html.
++const fallbackTemplate = document.createElement('template');
++fallbackTemplate.innerHTML = `
++<style>
++      :host { display: block; }
++      * { box-sizing: border-box; }
++      .card {
++        height: 100%;
++        background: white;
++        padding: 20px;
++        border-radius: 8px;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++        text-align: center;
++      }
++      ::slotted([slot="heading"]) {
++        margin: 0 0 10px;
++        color: var(--primary, #4e342e);
++      }
++      ::slotted(p) { margin: 0; }
++      ::slotted([slot="action"]) {
++        display: inline-block;
++        background: var(--primary, #4e342e);
++        color: white;
++        padding: 10px 20px;
++        text-decoration: none;
++        border-radius: 5px;
++        margin-top: 15px;
++      }
++      ::slotted([slot="action"]:hover) { background: #3e2723; }
++      button {
++        display: block;
++        margin: 15px auto 0;
++        border: 1px solid var(--primary, #4e342e);
++        border-radius: 5px;
++        background: transparent;
++        color: var(--primary, #4e342e);
++        padding: 8px 12px;
++        font: inherit;
++        cursor: pointer;
++      }
++      button:hover { background: var(--secondary, #d7ccc8); }
++      button:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 3px; }
++      #details { margin-top: 12px; }
++      [hidden] { display: none; }
++    </style>
++    <article class="card">
++      <slot name="heading"></slot>
++      <slot></slot>
++      <button id="toggle" type="button" aria-expanded="false" aria-controls="details">Tasting notes</button>
++      <div id="details" hidden><slot name="details"></slot></div>
++      <slot name="action"></slot>
++    </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  constructor() {
++    super();
++
++    let root = this.shadowRoot;
++    if (!root) {
++      // Older parsers leave the declarative template in the light DOM.
++      const declarativeTemplate = this.querySelector(':scope > template[shadowrootmode="open"]');
++      root = this.attachShadow({ mode: 'open' });
++      const template = declarativeTemplate instanceof HTMLTemplateElement
++        ? declarativeTemplate
++        : fallbackTemplate;
++      root.append(template.content.cloneNode(true));
++      declarativeTemplate?.remove();
++    }
++
++    const toggle = root.getElementById('toggle');
++    const details = root.getElementById('details');
++    if (!(toggle instanceof HTMLButtonElement) || !(details instanceof HTMLElement)) {
++      return;
++    }
++
++    // The constructor runs once, even when the host is disconnected and reinserted.
++    toggle.addEventListener('click', () => {
++      const expanded = this.toggleAttribute('open');
++      toggle.setAttribute('aria-expanded', String(expanded));
++      details.hidden = !expanded;
++    });
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..2023915 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./coffee-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -107,19 +108,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +166,177 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card>
++          <template shadowrootmode="open" shadowrootserializable>
++            <style>
++                  :host { display: block; }
++                  * { box-sizing: border-box; }
++                  .card {
++                    height: 100%;
++                    background: white;
++                    padding: 20px;
++                    border-radius: 8px;
++                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                    text-align: center;
++                  }
++                  ::slotted([slot="heading"]) {
++                    margin: 0 0 10px;
++                    color: var(--primary, #4e342e);
++                  }
++                  ::slotted(p) { margin: 0; }
++                  ::slotted([slot="action"]) {
++                    display: inline-block;
++                    background: var(--primary, #4e342e);
++                    color: white;
++                    padding: 10px 20px;
++                    text-decoration: none;
++                    border-radius: 5px;
++                    margin-top: 15px;
++                  }
++                  ::slotted([slot="action"]:hover) { background: #3e2723; }
++                  button {
++                    display: block;
++                    margin: 15px auto 0;
++                    border: 1px solid var(--primary, #4e342e);
++                    border-radius: 5px;
++                    background: transparent;
++                    color: var(--primary, #4e342e);
++                    padding: 8px 12px;
++                    font: inherit;
++                    cursor: pointer;
++                  }
++                  button:hover { background: var(--secondary, #d7ccc8); }
++                  button:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 3px; }
++                  #details { margin-top: 12px; }
++                  [hidden] { display: none; }
++                </style>
++                <article class="card">
++                  <slot name="heading"></slot>
++                  <slot></slot>
++                  <button id="toggle" type="button" aria-expanded="false" aria-controls="details">Tasting notes</button>
++                  <div id="details" hidden><slot name="details"></slot></div>
++                  <slot name="action"></slot>
++                </article>
++          </template>
++          <h3 slot="heading">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <p slot="details">Smooth espresso, warm maple sweetness, and a creamy oat finish.</p>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <template shadowrootmode="open" shadowrootserializable>
++            <style>
++                  :host { display: block; }
++                  * { box-sizing: border-box; }
++                  .card {
++                    height: 100%;
++                    background: white;
++                    padding: 20px;
++                    border-radius: 8px;
++                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                    text-align: center;
++                  }
++                  ::slotted([slot="heading"]) {
++                    margin: 0 0 10px;
++                    color: var(--primary, #4e342e);
++                  }
++                  ::slotted(p) { margin: 0; }
++                  ::slotted([slot="action"]) {
++                    display: inline-block;
++                    background: var(--primary, #4e342e);
++                    color: white;
++                    padding: 10px 20px;
++                    text-decoration: none;
++                    border-radius: 5px;
++                    margin-top: 15px;
++                  }
++                  ::slotted([slot="action"]:hover) { background: #3e2723; }
++                  button {
++                    display: block;
++                    margin: 15px auto 0;
++                    border: 1px solid var(--primary, #4e342e);
++                    border-radius: 5px;
++                    background: transparent;
++                    color: var(--primary, #4e342e);
++                    padding: 8px 12px;
++                    font: inherit;
++                    cursor: pointer;
++                  }
++                  button:hover { background: var(--secondary, #d7ccc8); }
++                  button:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 3px; }
++                  #details { margin-top: 12px; }
++                  [hidden] { display: none; }
++                </style>
++                <article class="card">
++                  <slot name="heading"></slot>
++                  <slot></slot>
++                  <button id="toggle" type="button" aria-expanded="false" aria-controls="details">Tasting notes</button>
++                  <div id="details" hidden><slot name="details"></slot></div>
++                  <slot name="action"></slot>
++                </article>
++          </template>
++          <h3 slot="heading">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <p slot="details">A full-bodied roast with dark chocolate notes and a lingering finish.</p>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <template shadowrootmode="open" shadowrootserializable>
++            <style>
++                  :host { display: block; }
++                  * { box-sizing: border-box; }
++                  .card {
++                    height: 100%;
++                    background: white;
++                    padding: 20px;
++                    border-radius: 8px;
++                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++                    text-align: center;
++                  }
++                  ::slotted([slot="heading"]) {
++                    margin: 0 0 10px;
++                    color: var(--primary, #4e342e);
++                  }
++                  ::slotted(p) { margin: 0; }
++                  ::slotted([slot="action"]) {
++                    display: inline-block;
++                    background: var(--primary, #4e342e);
++                    color: white;
++                    padding: 10px 20px;
++                    text-decoration: none;
++                    border-radius: 5px;
++                    margin-top: 15px;
++                  }
++                  ::slotted([slot="action"]:hover) { background: #3e2723; }
++                  button {
++                    display: block;
++                    margin: 15px auto 0;
++                    border: 1px solid var(--primary, #4e342e);
++                    border-radius: 5px;
++                    background: transparent;
++                    color: var(--primary, #4e342e);
++                    padding: 8px 12px;
++                    font: inherit;
++                    cursor: pointer;
++                  }
++                  button:hover { background: var(--secondary, #d7ccc8); }
++                  button:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 3px; }
++                  #details { margin-top: 12px; }
++                  [hidden] { display: none; }
++                </style>
++                <article class="card">
++                  <slot name="heading"></slot>
++                  <slot></slot>
++                  <button id="toggle" type="button" aria-expanded="false" aria-controls="details">Tasting notes</button>
++                  <div id="details" hidden><slot name="details"></slot></div>
++                  <slot name="action"></slot>
++                </article>
++          </template>
++          <h3 slot="heading">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <p slot="details">Mellow chocolate notes with low acidity and a refreshing finish.</p>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..1e48c88 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "tsc --noEmit && node build.mjs",
++    "test": "node --test tests/browser.cjs"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "@playwright/test": "^1.58.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tests/browser.cjs b/tests/browser.cjs
+new file mode 100644
+index 0000000..81993b4
+--- /dev/null
++++ b/tests/browser.cjs
+@@ -0,0 +1,133 @@
++const assert = require('node:assert/strict');
++const { test } = require('node:test');
++const { createServer } = require('node:http');
++const { readFile } = require('node:fs/promises');
++const { existsSync } = require('node:fs');
++const { join } = require('node:path');
++const { chromium } = require('@playwright/test');
++
++test('declarative cards render before JavaScript and hydrate in place', async (t) => {
++  const server = createServer(async (request, response) => {
++    const pathname = new URL(request.url, 'http://localhost').pathname;
++    const filename = pathname === '/' ? 'index.html' : pathname.slice(1);
++    if (!['index.html', 'coffee-card.js'].includes(filename)) {
++      response.writeHead(404).end();
++      return;
++    }
++    response.setHeader('Content-Type', filename.endsWith('.js') ? 'text/javascript' : 'text/html');
++    response.end(await readFile(join(__dirname, '..', filename)));
++  });
++  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
++  t.after(() => new Promise((resolve) => server.close(resolve)));
++  const browser = await chromium.launch({
++    executablePath: process.env.CHROME_PATH || (existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined),
++    headless: true,
++    args: ['--no-sandbox'],
++  });
++  t.after(() => browser.close());
++  const url = `http://127.0.0.1:${server.address().port}`;
++
++  const startupPage = await browser.newPage();
++  const errors = [];
++  startupPage.on('pageerror', (error) => errors.push(error.message));
++  await startupPage.goto(url);
++  await startupPage.evaluate(() => customElements.whenDefined('coffee-card'));
++  await startupPage.locator('coffee-card').first().getByRole('button').click();
++  assert.equal(await startupPage.locator('coffee-card').first().locator('#details').isVisible(), true);
++  assert.deepEqual(errors, []);
++  await startupPage.close();
++
++  const noScriptContext = await browser.newContext({ javaScriptEnabled: false });
++  const noScriptPage = await noScriptContext.newPage();
++  await noScriptPage.goto(url);
++  assert.equal(await noScriptPage.locator('coffee-card .card').count(), 3);
++  assert.equal(await noScriptPage.locator('coffee-card .card').first().evaluate(
++    (card) => getComputedStyle(card).backgroundColor
++  ), 'rgb(255, 255, 255)');
++  assert.equal(await noScriptPage.locator('coffee-card .card').first().evaluate(
++    (card) => getComputedStyle(card).padding
++  ), '20px');
++  assert.equal(await noScriptPage.locator('coffee-card').first().evaluate((host) => {
++    const heading = host.querySelector('h3');
++    return host.shadowRoot !== null && host.querySelector('template') === null
++      && heading.parentNode === host
++      && host.shadowRoot.querySelector('slot[name="heading"]').assignedElements()[0] === heading
++      && host.shadowRoot.querySelector('h3') === null;
++  }), true);
++  await noScriptContext.close();
++
++  const context = await browser.newContext();
++  const page = await context.newPage();
++  await page.route('**/coffee-card.js', (route) => route.abort());
++  await page.goto(url);
++  await page.evaluate(() => {
++    const host = document.querySelector('coffee-card');
++    window.originalRoot = host.shadowRoot;
++    window.originalNodes = [...host.shadowRoot.querySelectorAll('*')];
++    window.shadowAttachments = 0;
++    const attach = HTMLElement.prototype.attachShadow;
++    HTMLElement.prototype.attachShadow = function (options) {
++      window.shadowAttachments++;
++      return attach.call(this, options);
++    };
++  });
++  await page.unroute('**/coffee-card.js');
++  await page.evaluate(() => import('/coffee-card.js?hydrate'));
++  assert.equal(await page.evaluate(() => {
++    const host = document.querySelector('coffee-card');
++    return host.shadowRoot === window.originalRoot
++      && window.originalNodes.every((node, index) => node === host.shadowRoot.querySelectorAll('*')[index])
++      && window.shadowAttachments === 0;
++  }), true);
++
++  const firstCard = page.locator('coffee-card').first();
++  const toggle = firstCard.getByRole('button', { name: 'Tasting notes' });
++  await toggle.click();
++  assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
++  assert.equal(await firstCard.locator('#details').isVisible(), true);
++  await page.evaluate(() => {
++    const host = document.querySelector('coffee-card');
++    for (let i = 0; i < 3; i++) {
++      host.remove();
++      document.querySelector('.grid').prepend(host);
++    }
++    window.stateChanges = 0;
++    new MutationObserver((records) => { window.stateChanges += records.length; })
++      .observe(host, { attributes: true, attributeFilter: ['open'] });
++  });
++  await toggle.click();
++  assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
++  assert.equal(await firstCard.locator('#details').isVisible(), false);
++  assert.equal(await page.evaluate(() => window.stateChanges), 1);
++  await context.close();
++
++  // innerHTML leaves DSD inert, simulating a browser without parser support.
++  const fallbackContext = await browser.newContext();
++  const fallbackPage = await fallbackContext.newPage();
++  await fallbackPage.route('**/coffee-card.js', (route) => route.abort());
++  await fallbackPage.goto(url);
++  await fallbackPage.evaluate(() => {
++    const original = document.querySelector('coffee-card');
++    const host = document.createElement('coffee-card');
++    const template = document.createElement('template');
++    template.setAttribute('shadowrootmode', 'open');
++    template.innerHTML = original.shadowRoot.innerHTML;
++    host.append(template, ...[...original.children].map((child) => child.cloneNode(true)));
++    host.id = 'fallback-card';
++    document.querySelector('.grid').append(host);
++  });
++  await fallbackPage.unroute('**/coffee-card.js');
++  await fallbackPage.evaluate(() => import('/coffee-card.js?hydrate'));
++  assert.equal(await fallbackPage.locator('#fallback-card').evaluate((host) =>
++    host.shadowRoot !== null && host.querySelector('template') === null
++  ), true);
++  await fallbackPage.locator('#fallback-card').getByRole('button').click();
++  assert.equal(await fallbackPage.locator('#fallback-card #details').isVisible(), true);
++  assert.equal(await fallbackPage.evaluate(() => {
++    const host = document.createElement('coffee-card');
++    document.querySelector('.grid').append(host);
++    return host.shadowRoot.querySelector('style') !== null
++      && host.shadowRoot.querySelector('button') !== null;
++  }), true);
++  await fallbackContext.close();
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..41761e7
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "strict": true,
++    "noEmit": true,
++    "target": "ES2022",
++    "module": "ES2022",
++    "types": [],
++    "lib": ["ES2022", "DOM"]
++  },
++  "include": ["coffee-card.js"]
++}

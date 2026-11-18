@@ -4,8 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { runAllManifests } from './generate-manifests.js';
-import { extractSuiteSummary } from './summary-extractor.js';
+import { runAllManifests, injectPreviewShim } from './generate-manifests.js';
+import { extractJobSummary } from './summary-extractor.js';
 import { parseBooleanEnv } from '../core/env.ts';
 import {
   rootDir,
@@ -77,6 +77,19 @@ if (STATIC) {
   });
 } else {
 
+const manifestOutDir = path.join(outDir, 'dashboard');
+if (
+  !fs.existsSync(path.join(manifestOutDir, 'features-mapping.gen.js')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'demos.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'grouped-tasks.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'suites.gen.json'))
+) {
+  const resultsSourceDir = process.env.USE_MOCK_RESULTS === 'true'
+    ? path.join(dashboardDir, 'mock-results')
+    : suitesDir;
+  await runAllManifests({ outputDir: manifestOutDir, resultsSourceDir });
+}
+
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -94,11 +107,11 @@ const MIME_TYPES = {
 };
 
 /**
- * @typedef {Partial<import('./summary-extractor.js').SuiteSummary> & {
+ * @typedef {Partial<import('./summary-extractor.js').JobSummary> & {
  *   id: string;
  *   source: import('./api.js').DataSource;
  *   timestamp?: string;
- * }} SuiteInfo
+ * }} JobInfo
  */
 
 /** @type {string | null} */
@@ -132,9 +145,11 @@ async function getGcsAccessToken() {
 
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
+  const parsedUrl = new URL(reqUrl, 'http://localhost');
   
   // Handle CORS and Private Network Access for Playwright Trace Viewer
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -234,46 +249,46 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
-    /** @type {SuiteInfo[]} */
-    let suitesList = [];
+    /** @type {JobInfo[]} */
+    let jobsList = [];
 
     // Local
-    const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+    const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
     try {
-      if (fs.existsSync(localSuitesDir)) {
-        const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
-          .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
+      if (fs.existsSync(localJobsDir)) {
+        const dirs = fs.readdirSync(localJobsDir, { withFileTypes: true })
+          .filter(dirent => (dirent.isDirectory() || dirent.isSymbolicLink()) && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
-          const suiteDir = path.join(localSuitesDir, d);
-          const evalsJsonPath = path.join(suiteDir, 'evals.json');
+          const jobDir = path.join(localJobsDir, d);
+          const evalsJsonPath = path.join(jobDir, 'evals.json');
           let timestamp = null;
           try {
             if (fs.existsSync(evalsJsonPath)) {
               timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
               const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
-              const summary = extractSuiteSummary(d, rawData, timestamp);
+              const summary = extractJobSummary(d, rawData, timestamp);
               if (summary) {
-                suitesList.push({ ...summary, id: d, source: 'local' });
+                jobsList.push({ ...summary, id: d, source: 'local' });
                 return;
               }
             } else {
-              timestamp = fs.statSync(suiteDir).mtime.toISOString();
+              timestamp = fs.statSync(jobDir).mtime.toISOString();
             }
           } catch {
             timestamp = new Date().toISOString();
           }
-          suitesList.push({ id: d, source: 'local', timestamp });
+          jobsList.push({ id: d, source: 'local', timestamp });
         });
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      console.error('Error reading local suites:', message);
+      console.error('Error reading local jobs:', message);
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ suites: suitesList }));
+    res.end(JSON.stringify({ suites: jobsList }));
     return;
   }
 
@@ -284,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      
+
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         const category = (info && info.guideDir)
@@ -294,7 +309,7 @@ const server = http.createServer(async (req, res) => {
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
       }
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
@@ -331,13 +346,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // --- /api/eval-launch : spawns an evaluation run in background ---
+  // --- /api/eval-launch : spawns an evaluation job in background ---
   if (decodedPath === '/api/eval-launch' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        // Return 200 immediately so UI can track the run
+        // Return 200 immediately so UI can track the job
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
 
@@ -349,7 +364,7 @@ const server = http.createServer(async (req, res) => {
         const options = JSON.parse(body);
         fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(options, null, 2)};`);
 
-        console.log(`\n>>> Launching UI Eval Suite in background...`);
+        console.log(`\n>>> Launching UI Eval Job in background...`);
 
         const p = spawn('pnpm', [
           'gd',
@@ -395,19 +410,13 @@ const server = http.createServer(async (req, res) => {
     /** @type {string[]} */
     let files = [];
     if (source === 'local') {
-      const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
-      const targetDir = path.join(localSuitesDir, relativePath);
+      const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+      const targetDir = path.join(localJobsDir, relativePath);
       try {
         if (fs.existsSync(targetDir)) {
           files = fs.readdirSync(targetDir, { withFileTypes: true })
             .filter(d => !d.isDirectory())
             .map(d => d.name);
-          const gradeReportDataDir = path.join(targetDir, 'grade-report', 'data');
-          if (fs.existsSync(gradeReportDataDir)) {
-            const dataFiles = fs.readdirSync(gradeReportDataDir)
-              .map(f => `grade-report/data/${f}`);
-            files.push(...dataFiles);
-          }
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -434,14 +443,19 @@ const server = http.createServer(async (req, res) => {
     }
 
     let filePath;
-    if (checkPath === 'features-mapping.gen.js' || checkPath === 'features_mapping.gen.js' || checkPath === 'grouped-tasks.gen.json' || checkPath === 'suites.gen.json') {
+    if (
+      checkPath === 'features-mapping.gen.js' ||
+      checkPath === 'features_mapping.gen.js' ||
+      checkPath === 'grouped-tasks.gen.json' ||
+      checkPath === 'suites.gen.json'
+    ) {
       const canonicalCheckPath = checkPath === 'features_mapping.gen.js' ? 'features-mapping.gen.js' : checkPath;
       filePath = path.join(outDir, 'dashboard', canonicalCheckPath);
     } else if (checkPath.startsWith('base_apps/')) {
       filePath = path.join(baseAppsDir, checkPath.substring(10));
     } else {
-      const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
-      filePath = path.join(localSuitesDir, checkPath);
+      const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+      filePath = path.join(localJobsDir, checkPath);
     }
 
     const absolutePath = path.resolve(filePath);
@@ -464,13 +478,16 @@ const server = http.createServer(async (req, res) => {
 
   let filePath;
   // Serve generated manifests from out/dashboard
-  if (decodedPath === '/features-mapping.gen.js' || decodedPath === '/features_mapping.gen.js' || decodedPath === '/grouped-tasks.gen.json' || decodedPath === '/suites.gen.json') {
+  if (path.dirname(decodedPath) === '/' && (decodedPath.endsWith('.gen.json') || decodedPath.endsWith('.gen.js'))) {
     const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
     filePath = path.join(outDir, 'dashboard', canonicalName);
   } else if (decodedPath.startsWith('/base_apps/')) {
     filePath = path.join(baseAppsDir, decodedPath.substring(11));
   } else if (decodedPath.startsWith('/guides/')) {
     filePath = path.join(guidesDir, decodedPath.substring(8));
+  } else if (decodedPath.startsWith('/public-evals/')) {
+    // Built by `pnpm public:build` into out/; never read from the dashboard dir, which is deployed.
+    filePath = path.join(outDir, decodedPath.substring(1));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join(dashboardDir, relativePath);
@@ -478,8 +495,8 @@ const server = http.createServer(async (req, res) => {
       localEvalViewPath = path.join(dashboardDir, 'index.html');
     }
 
-    // If the file exists in eval-view, serve it.
-    // Otherwise, assume it's a test result file in suitesDir
+    // If the file exists in dashboard, serve it.
+    // Otherwise, assume it's a trial result file in suitesDir
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
@@ -494,19 +511,19 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
-        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
+        // If this is an absolute navigation link (e.g. /menu) clicked from inside a trial result,
+        // it will lack the <job>/<trial>/... prefix. We must restore it from the referer.
         let finalRelativePath = relativePath;
         if (referer) {
             try {
                 const refererUrl = new URL(referer);
                 const refPath = refererUrl.pathname.substring(1); // remove leading slash
                 
-                // If referer is a test result (e.g. suite/1/task/guided/index.html)
-                // and the requested path does NOT start with the suite name
+                // If referer is a trial result (e.g. job/1/task/guided/index.html)
+                // and the requested path does NOT start with the job ID
                 const parts = refPath.split('/');
                 if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
-                    // Reconstruct the base path up to the run type directory
+                    // Reconstruct the base path up to the condition directory
                     const basePath = parts.slice(0, 4).join('/');
                     finalRelativePath = path.join(basePath, finalRelativePath);
                 }
@@ -515,8 +532,8 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
-        const localSuitesDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
-        filePath = path.join(localSuitesDir, finalRelativePath);
+        const localJobsDir = process.env.USE_MOCK_RESULTS === 'true' ? path.join(dashboardDir, 'mock-results') : suitesDir;
+        filePath = path.join(localJobsDir, finalRelativePath);
     }
   }
 
@@ -564,12 +581,12 @@ const server = http.createServer(async (req, res) => {
 
       if (err.code === 'ENOENT') {
         // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
-        // try to serve the index.html from the same base run directory instead.
+        // try to serve the index.html from the same condition directory instead.
         if (!extname || extname === '.html') {
             const pathParts = filePath.split(path.sep);
-            const runBaseIndex = pathParts.findIndex(p => p === 'guided' || p === 'unguided');
-            if (runBaseIndex !== -1) {
-                const basePath = pathParts.slice(0, runBaseIndex + 1).join(path.sep);
+            const conditionIndex = pathParts.findIndex(p => p === 'guided' || p === 'unguided');
+            if (conditionIndex !== -1) {
+                const basePath = pathParts.slice(0, conditionIndex + 1).join(path.sep);
                 const indexPath = path.join(basePath, 'index.html');
                 if (fs.existsSync(indexPath)) {
                     res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -585,6 +602,15 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      if (isInsideGuides && extname === '.html' && parsedUrl.searchParams.has('preview')) {
+        const injected = injectPreviewShim(content.toString('utf-8'));
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': Buffer.byteLength(injected),
+        });
+        res.end(injected, 'utf-8');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
     }

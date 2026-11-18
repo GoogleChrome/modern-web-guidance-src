@@ -1,0 +1,184 @@
+diff --git a/favorite-toggle.js b/favorite-toggle.js
+new file mode 100644
+index 0000000..33dc7cc
+--- /dev/null
++++ b/favorite-toggle.js
+@@ -0,0 +1,134 @@
++// @ts-check
++
++/** A host-focused switch. Set `checked` to initialize or update its state. */
++class FavoriteToggle extends HTMLElement {
++  static observedAttributes = ['checked', 'drink-name'];
++
++  /** @type {ElementInternals | null} */
++  #internals = null;
++
++  constructor() {
++    super();
++
++    if (typeof this.attachInternals === 'function') {
++      const internals = this.attachInternals();
++      if ('role' in internals && 'ariaChecked' in internals && 'ariaLabel' in internals) {
++        this.#internals = internals;
++        this.#internals.role = 'switch';
++      }
++    }
++
++    // The host owns focus and semantics; its shadow content is decorative.
++    const shadow = this.attachShadow({ mode: 'open' });
++    shadow.innerHTML = `
++      <style>
++        :host {
++          display: flex;
++          align-items: center;
++          justify-content: center;
++          gap: 0.6rem;
++          width: fit-content;
++          min-height: 44px;
++          margin: 12px auto 0;
++          padding: 4px 10px;
++          border: 2px solid transparent;
++          border-radius: 6px;
++          color: var(--primary, #4e342e);
++          font: inherit;
++          cursor: pointer;
++          user-select: none;
++        }
++        :host(:hover) { background: var(--secondary, #d7ccc8); }
++        :host(:focus-visible) {
++          outline: 3px solid var(--primary, #4e342e);
++          outline-offset: 3px;
++        }
++        .track {
++          box-sizing: border-box;
++          display: inline-flex;
++          align-items: center;
++          width: 40px;
++          height: 24px;
++          padding: 2px;
++          border: 2px solid currentColor;
++          border-radius: 20px;
++        }
++        .thumb {
++          width: 16px;
++          height: 16px;
++          border-radius: 50%;
++          background: currentColor;
++        }
++        :host([checked]) .thumb { transform: translateX(16px); }
++        .on { display: none; }
++        :host([checked]) .on { display: inline; }
++        :host([checked]) .off { display: none; }
++        @media (forced-colors: active) {
++          :host { color: ButtonText; }
++          .thumb { background: ButtonText; }
++          :host(:focus-visible) { outline-color: Highlight; }
++        }
++      </style>
++      <span class="track" aria-hidden="true"><span class="thumb"></span></span>
++      <span aria-hidden="true">Favorite: <span class="off">Off</span><span class="on">On</span></span>
++    `;
++
++    this.addEventListener('click', () => {
++      this.focus();
++      this.#toggle();
++    });
++    this.addEventListener('keydown', (event) => {
++      if (event.key === ' ' || event.key === 'Enter') {
++        event.preventDefault();
++        if (!event.repeat) this.#toggle();
++      }
++    });
++  }
++
++  connectedCallback() {
++    if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
++    this.#syncAccessibility();
++  }
++
++  attributeChangedCallback() {
++    this.#syncAccessibility();
++  }
++
++  get checked() {
++    return this.hasAttribute('checked');
++  }
++
++  set checked(value) {
++    this.toggleAttribute('checked', Boolean(value));
++  }
++
++  #toggle() {
++    this.checked = !this.checked;
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #syncAccessibility() {
++    const drinkName = this.getAttribute('drink-name')?.trim();
++    const label = drinkName ? `${drinkName} favorite` : 'Favorite';
++
++    if (this.#internals) {
++      this.#internals.ariaChecked = String(this.checked);
++      this.#internals.ariaLabel = label;
++    } else if (this.isConnected) {
++      // Attribute fallback for browsers without the ElementInternals ARIA mixin.
++      if (!this.hasAttribute('role')) this.setAttribute('role', 'switch');
++      this.setAttribute('aria-checked', String(this.checked));
++      if (!this.hasAttribute('aria-label') || this.#fallbackLabel === this.getAttribute('aria-label')) {
++        this.setAttribute('aria-label', label);
++        this.#fallbackLabel = label;
++      }
++    }
++  }
++
++  /** @type {string | undefined} */
++  #fallbackLabel;
++}
++
++if (!customElements.get('favorite-toggle')) {
++  customElements.define('favorite-toggle', FavoriteToggle);
++}
+diff --git a/index.html b/index.html
+index 66c9173..8fd6f0c 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./favorite-toggle.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -181,16 +182,19 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <favorite-toggle drink-name="Maple Oat Latte"></favorite-toggle>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <favorite-toggle drink-name="Dark Roast Espresso"></favorite-toggle>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <favorite-toggle drink-name="Cold Brew"></favorite-toggle>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+diff --git a/package.json b/package.json
+index 2bd4d77..acdfc3b 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check favorite-toggle.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

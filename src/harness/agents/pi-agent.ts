@@ -5,21 +5,22 @@ import { fileURLToPath } from 'url';
 
 import config, { Agents } from '../config.ts';
 import { parseBooleanEnv } from '../../core/env.ts';
+import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
   parseAgentArgs,
-  watchLogFile,
   runCliAgentCommand,
   parseJsonlFile,
   setupIsolatedWorkDir,
   type GuideUsage
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -29,6 +30,7 @@ import {
   getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
+import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
@@ -51,8 +53,13 @@ export function setupPiCredentials(tempHome: string): void {
     const src = path.join(piSource, 'agent', file);
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
+}
 
-  process.env.PI_CODING_AGENT_DIR = piDestAgent;
+export function getPiEnvOverrides(homeDir?: string): NodeJS.ProcessEnv {
+  return {
+    PI_CODING_AGENT: 'true',
+    ...(homeDir ? { PI_CODING_AGENT_DIR: path.join(homeDir, '.pi', 'agent') } : {}),
+  };
 }
 
 export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
@@ -70,6 +77,7 @@ export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): {
     ...sessionArgs, // ephemeral mode: only if explicitly requested
     '--offline', // disable network operations for update checks
     ...modelArg,
+    ...resolveEffortCliArgs(Agents.PI, piModel),
     ...extraArgs,
     prompt
   ];
@@ -88,7 +96,7 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
     const destName = isSubagent
       ? (baseName.startsWith('subagent-') ? `${baseName}.jsonl` : `subagent-${baseName}.jsonl`)
       : (baseName.startsWith('session-') ? `${baseName}.jsonl` : `session-${baseName}.jsonl`);
-    fs.copyFileSync(src, path.join(targetDir, destName));
+    fs.writeFileSync(path.join(targetDir, destName), sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
   }
 }
 
@@ -97,7 +105,7 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType);
 
   if (!workDir) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -110,23 +118,17 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    process.env.PI_CODING_AGENT = 'true';
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
         workDir,
         targetDir,
         'Pi',
-        runType
+        runType,
+        getPiEnvOverrides(path.dirname(workDir)),
       );
     } finally {
-      stopWatchingMcpLog();
       exportPiTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
     }
@@ -145,6 +147,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
   const toolUseToStepMap = new Map<string, number>();
 
   const modelCounts: Record<string, number> = {};
+  let observedEffort: string | undefined;
   let totalTokens = 0;
   let cachedTokens = 0;
   let hasTokenData = false;
@@ -155,6 +158,14 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
 
   const processEntries = (entries: any[], subagentId?: string) => {
     for (const entry of entries) {
+      if (
+        !subagentId &&
+        (entry.type === 'thinking_level_change' || entry.type === 'session') &&
+        typeof entry.thinkingLevel === 'string' &&
+        entry.thinkingLevel.trim()
+      ) {
+        observedEffort = entry.thinkingLevel.trim().toLowerCase();
+      }
       let model: string | undefined;
       if (entry.type === 'message' && entry.message?.model) {
         model = entry.message.model;
@@ -226,22 +237,22 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
             if (toolName === 'read' && (params.path || params.file_path)) {
               const filePath = (params.path || params.file_path) as string;
               if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
-                const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
-                              filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
-                              filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
-                if (match && match[1] !== 'guide') {
-                  fileReadGuides.add(match[1]);
+                const skillMatch = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+                if (skillMatch) {
+                  toolsUsed.add(skillMatch[1]);
+                } else {
+                  const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
+                  if (match && match[1] !== 'guide') {
+                    fileReadGuides.add(match[1]);
+                  }
                 }
               }
             } else if (toolName === 'bash' && params.command) {
               const command = params.command as string;
-              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                    retrievedGuides.add(g);
-                  }
-                }
+              for (const g of extractRetrievedGuidesFromCommand(command)) {
+                retrievedGuides.add(g);
               }
             }
 
@@ -310,6 +321,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
     steps,
     subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
     model: topModel ? topModel[0] : 'unknown',
+    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),
@@ -350,7 +362,7 @@ export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<
 
   for (const file of subFiles) {
     try {
-      const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+      const subId = extractSubagentIdFromFilename(file);
       subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
     } catch {}
   }

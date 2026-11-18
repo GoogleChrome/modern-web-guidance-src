@@ -1,0 +1,1 @@
+- Refactor the typography across the navigation bar, hero banner, seasonal favorites cards, and footer in `index.html` so that font sizes use accessible relative units and scale smoothly across different screen sizes, line spacing is properly tuned for both headings and body copy, and headings and paragraph text wrap cleanly with balanced lines.

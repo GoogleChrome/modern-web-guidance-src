@@ -1,4 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- Implement Core Web Vitals monitoring on this site using the `web-vitals` JavaScript library. The page should send the Core Web Vitals data to a collection endpoint at `/collect`, and it should batch multiple metrics together in the same request whenever possible to minimize server load.
+- Add client-side analytics tracking to the Daily Grind homepage that records page views and user click interactions, debouncing and batching multiple telemetry events into a single deferred background request so rapid interactions coalesce without overloading the server.

@@ -1,0 +1,89 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..00ea2e0
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://new-app.example.com": {
++    "allow_migration": true
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..f484c3d 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,21 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
+   <style>
++    .migration-banner {
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++      padding: 10px 20px;
++      font-size: 0.9rem;
++    }
++
++    .migration-banner a {
++      color: var(--text);
++      font-weight: bold;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -157,6 +171,12 @@
+ 
+ <body>
+ 
++  <div class="migration-banner" role="region" aria-label="App migration notice">
++    We've moved! Install the new Daily Grind app at
++    <a href="https://new-app.example.com/demo.html">new-app.example.com</a>.
++    Your settings and data won't be transferred automatically, and this app won't be uninstalled for you.
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..eb11e28
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,14 @@
++{
++  "name": "The Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "migrate_to": [
++    {
++      "id": "https://new-app.example.com/",
++      "install_url": "https://new-app.example.com/demo.html"
++    }
++  ]
++}
+diff --git a/new-app/manifest.json b/new-app/manifest.json
+new file mode 100644
+index 0000000..63de59e
+--- /dev/null
++++ b/new-app/manifest.json
+@@ -0,0 +1,13 @@
++{
++  "name": "The Daily Grind (New)",
++  "id": "/demo.html",
++  "start_url": "/demo.html",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "migrate_from": [
++    {
++      "id": "https://old-app.example.com/"
++    }
++  ]
++}

@@ -1,0 +1,1 @@
+- Update The Daily Grind homepage in `index.html` so that when returning customers browse the site or click links like "Rewards", "My Account", or "Order Now", they can sign in right on the current page using their browser's saved passkeys or passwords without having to leave their browsing flow or be redirected to a separate login screen.

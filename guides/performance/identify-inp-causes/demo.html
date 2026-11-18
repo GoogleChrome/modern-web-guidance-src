@@ -41,6 +41,12 @@
           <small>Character Position: <code id="char-position">none</code>.</small>
           <small>Invoker Type: <code id="invoker-type">none</code>.</small>
         </p>
+        <p>
+          <small>Forced Style: <code id="forced-style-val">0ms</code>.</small>
+          <small>Forced Layout: <code id="forced-layout-val">0ms</code>.</small>
+          <small>Render Style: <code id="render-style-val">0ms</code>.</small>
+          <small>Render Layout: <code id="render-layout-val">0ms</code>.</small>
+        </p>
     </div>
 
     <script type="module">
@@ -52,16 +58,26 @@
         function sendToAnalytics(metric) {
         const longestScript = metric.attribution.longestScript;
 
+        let renderStyleDuration = 0;
+        let renderLayoutDuration = 0;
+        for (const entry of metric.attribution.longAnimationFrameEntries) {
+            renderStyleDuration += entry.styleDuration ?? 0;
+            renderLayoutDuration += entry.layoutDuration ?? 0;
+        }
+
         document.getElementById('input-delay-val').textContent = `${(metric.attribution.inputDelay).toFixed(0)}ms`;
         document.getElementById('processing-duration-val').textContent = `${metric.attribution.processingDuration.toFixed(0)}ms`;
         document.getElementById('presentation-delay-val').textContent = `${metric.attribution.presentationDelay.toFixed(0)}ms`;
         document.getElementById('total-duration-val').textContent = `${metric.value.toFixed(0)}ms`;
         document.getElementById('target-element-val').textContent = metric.attribution.interactionTarget;
-        document.getElementById('target-element-val').textContent = metric.attribution.interactionTarget;
 
         document.getElementById('longest-script').textContent = longestScript?.entry?.sourceURL;
         document.getElementById('char-position').textContent = longestScript?.entry?.sourceCharPosition;
         document.getElementById('invoker-type').textContent = longestScript?.entry?.invokerType;
+        document.getElementById('forced-style-val').textContent = `${(longestScript?.entry?.forcedStyleDuration ?? 0).toFixed(0)}ms`;
+        document.getElementById('forced-layout-val').textContent = `${(longestScript?.entry?.forcedLayoutDuration ?? 0).toFixed(0)}ms`;
+        document.getElementById('render-style-val').textContent = `${renderStyleDuration.toFixed(0)}ms`;
+        document.getElementById('render-layout-val').textContent = `${renderLayoutDuration.toFixed(0)}ms`;
 
         const inpDebugInfo = {
             name: 'INP',
@@ -70,8 +86,8 @@
             interactionType: metric.attribution.interactionType,
             interactionTarget: metric.attribution.interactionTarget,
             inputDelay: metric.attribution.inputDelay,
+            processingDuration: metric.attribution.processingDuration,
             presentationDelay: metric.attribution.presentationDelay,
-            interactionTarget: metric.attribution.interactionTarget,
             // Note script entries will be empty when loading this demo from a
             // local file, instead of from a server.
             longestScriptInvokerType: longestScript?.entry?.invokerType,
@@ -79,7 +95,13 @@
             longestScriptSourceFunctionName: longestScript?.entry?.sourceFunctionName,
             longestScriptSourceCharPosition: longestScript?.entry?.sourceCharPosition,
             longestScriptSubpart: longestScript?.subpart,
-            longestScriptIntersectingDuration: longestScript?.intersectingDuration
+            longestScriptIntersectingDuration: longestScript?.intersectingDuration,
+            forcedStyleDuration: longestScript?.entry?.forcedStyleDuration,
+            forcedLayoutDuration: longestScript?.entry?.forcedLayoutDuration,
+            forcedStyleAndLayoutDuration: longestScript?.entry?.forcedStyleAndLayoutDuration,
+            renderStyleDuration,
+            renderLayoutDuration,
+            totalStyleAndLayoutDuration: metric.attribution.totalStyleAndLayoutDuration
         }
 
         // Console log for now, but in a real application would want to beacon

@@ -9,11 +9,12 @@ web-feature-ids:
 
 The CSS Custom Highlight API lets you style arbitrary text ranges on a page without modifying the DOM structure. This enables search-result highlighting, syntax coloring, collaborative editing cursors, or spelling and grammar error markers without wrapping text in extra elements or relying on `innerHTML` manipulation.
 
-### Core implementation
+## Core implementation
 
 To highlight text ranges, you must collect the target text nodes, create `Range` and `Highlight` objects, register them in the `HighlightRegistry`, and then style them with the `::highlight()` pseudo-element.
 
-#### 1. Collect text nodes and create ranges
+### 1. Collect text nodes and create ranges
+
 Use a `TreeWalker` to collect all text nodes in the target element, then create `Range` objects pointing at the character offsets you want to highlight.
 
 ```javascript
@@ -36,14 +37,16 @@ range.setEnd(textNode, matchEndIndex);
 
 Cache the text-node list and only rebuild it when the DOM content actually changes, since walking the tree is expensive.
 
-#### 2. Create a Highlight from the ranges
+### 2. Create a Highlight from the ranges
+
 Group one or more `Range` objects into a `Highlight`. Multiple ranges that share the same style belong in a single highlight.
 
 ```javascript
 const searchHighlight = new Highlight(...matchingRanges);
 ```
 
-#### 3. Register the highlight in the registry
+### 3. Register the highlight in the registry
+
 Register each `Highlight` under a custom name using `CSS.highlights`, which is a `Map`-like `HighlightRegistry`.
 
 ```javascript
@@ -67,29 +70,35 @@ CSS.highlights.set("primary", primary);
 CSS.highlights.set("secondary", secondary);
 ```
 
-#### 4. Style with `::highlight()`
+### 4. Style with `::highlight()`
+
 Use the `::highlight()` pseudo-element in CSS to style each registered highlight by name.
 
 ```css
 ::highlight(search-results) {
-  background-color: #ffdd00;
-  color: black;
+  background-color: #0000FF;
+  color: white;
 }
 ```
 
 Only a limited set of CSS properties work inside `::highlight()`: `color`, `background-color`, `text-decoration` and its longhands, `text-shadow`, `-webkit-text-stroke-color`, `-webkit-text-fill-color`, and `-webkit-text-stroke-width`. Properties like `background-image`, `font-size`, or `padding` are ignored.
 
-### Accessibility
+## Accessibility
 
 **AVOID**: using custom highlights as a replacement for semantic HTML.
 
-Custom highlights are purely presentational and are not exposed to the accessibility tree. If the highlighted text is semantically relevant to the document (e.g., a user-selected passage), use `<mark>` instead. Reserve custom highlights for transient, visual-only effects like search results or syntax coloring.
+Custom highlights are purely presentational and are not exposed to the accessibility tree. If the highlighted text is semantically relevant to the document (e.g., a user-selected passage), or where the highlight conveys meaning (e.g., to indicate a heading element or an ARIA attribute in an HTML tutorial to demonstrate how it is used), use `<mark>` instead. Reserve custom highlights for transient, visual-only effects like search results, or syntax coloring where the meaning can be derived from nearby indicators (e.g., a "+" sign before the highlighted text to indicate syntax that has been added).
 
-Highlights should not rely solely on color to convey meaning. If a highlight indicates an error, pair it with another visual indicator such as `text-decoration: wavy underline` or an adjacent text label. Ensure sufficient contrast between the highlight background and text color to meet WCAG 2.1 requirements (at least 4.5:1 for normal text).
+Make sure that there is sufficient contrast between the highlight background color and text color to meeting WCAG 2.2 Success Criterion 1.4.3 Contrast (Minimum) (Level AA). The contrast ratio must be at least 4.5:1 for text with a font size of less than 18 point or 14 point bold, and at least 3:1 for text with a font size of greater than 18 point or 14 point bold.
 
-### Fallback strategies
+Make sure that the contrast ratio between the highlight background color and adjacent colors is at least 3:1 to meet WCAG 2.2 Success Criterion 1.4.11 Non-text Content (Level AA). 
+The contrast can be less than 3:1 if the highlighted text uses another visual indicator (e.g. `text-decoration: underline;` or the inclusion of a subtle `text-shadow` on the text) to further indicate that the text is highlighted.
 
-{{ FEATURE_FALLBACKS("highlight") }}
+Highlights must not rely solely on color to convey meaning. For example, if a highlight indicates an error, pair it with another visual indicator such as `text-decoration: wavy underline`, an adjacent text label, or an icon.
+
+## Fallback strategies
+
+{{ BASELINE_STATUS("highlight") }}
 
 For browsers that do not support the CSS Custom Highlight API, you should provide a functional base experience where text is still legible, even without the visual highlight.
 

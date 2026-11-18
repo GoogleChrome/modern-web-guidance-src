@@ -68,7 +68,7 @@ export type AgentCaller = (
 ) => Promise<string>;
 
 /**
- * Calls the local agent CLI (Jetski or Gemini CLI based on repository config) inside an isolated workspace.
+ * Calls the local agent CLI (Antigravity or Jetski CLI based on repository config) inside an isolated workspace.
  */
 async function callAgentCli(
   systemInstruction: string,

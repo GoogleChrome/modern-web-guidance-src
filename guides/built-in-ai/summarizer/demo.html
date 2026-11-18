@@ -21,7 +21,7 @@
   <form id="summarize-form">
     <button type="submit">Summarize</button>
   </form>
-  <div id="summary"></div>
+  <div id="summary" aria-live="polite" aria-busy="false" aria-atomic="false"></div>
 
   <script type="module">
     const options = {
@@ -53,7 +53,7 @@
         }
 
         if (!summarizer) {
-          submitBtn.textContent = 'Initializing model...';
+          div.textContent = 'Initializing model...';
           submitBtn.disabled = true;
           summarizer = await Summarizer.create({
             ...options,
@@ -61,25 +61,27 @@
               m.addEventListener('downloadprogress', (progressEvent) => {
                 const total = progressEvent.total || 1;
                 const pct = Math.round((progressEvent.loaded / total) * 100);
-                submitBtn.textContent = `Downloading model... ${pct}%`;
+                div.textContent = `Downloading model... ${pct}%`;
               });
             },
           });
-          submitBtn.textContent = 'Summarize';
           submitBtn.disabled = false;
+          submitBtn.focus();
         }
 
         const text = document.getElementById('article').textContent.trim();
         const stream = summarizer.summarizeStreaming(text);
         div.textContent = '';
+        div.setAttribute('aria-busy', 'true');
         for await (const chunk of stream) {
           div.append(chunk);
         }
+        div.setAttribute('aria-busy', 'false');
       } catch (err) {
         console.error(err);
         div.textContent = `Error: ${err.message}`;
-        submitBtn.textContent = 'Summarize';
         submitBtn.disabled = false;
+        submitBtn.focus();
       }
     });
   </script>

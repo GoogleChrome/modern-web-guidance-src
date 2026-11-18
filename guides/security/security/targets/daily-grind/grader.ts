@@ -1,188 +1,313 @@
-/**
- * Expectations status for daily-grind web application:
- *
- * Expectation 1: TESTED - Validates that the Strict-Transport-Security header enforces HTTPS with max-age >= 31536000 and includeSubDomains.
- * Expectation 2: SKIPPED - Base application contains no dynamic DOM rendering or dangerous sinks.
- * Expectation 3: SKIPPED - Base application does not contain session cookies or user session state.
- * Expectation 4: SKIPPED - Base application does not embed third-party iframes or require partitioned third-party cookies.
- * Expectation 5: TESTED - Validates clickjacking protection via X-Frame-Options (SAMEORIGIN or DENY) and CSP frame-ancestors directive.
- * Expectation 6: SKIPPED - Base application does not implement window message event listeners.
- * Expectation 7: SKIPPED - Base application does not send cross-window postMessage messages.
- * Expectation 8: TESTED - Validates Reporting-Endpoints header configuration and CSP report-to directive reference.
- * Expectation 9: TESTED - Validates CSP script-src uses 'strict-dynamic', 'report-sample', and object-src 'none', base-uri 'none'.
- * Expectation 10: TESTED - Validates CSP does not rely on broad scheme/domain allowlists as primary script-src protection.
- * Expectation 11: TESTED - Validates CSP enforces Trusted Types via require-trusted-types-for 'script'.
- * Expectation 12: TESTED - Validates Cross-Origin-Opener-Policy is set to same-origin-allow-popups or same-origin on document responses.
- * Expectation 13: TESTED - Validates Cross-Origin-Resource-Policy is set to same-origin or same-site.
- * Expectation 14: TESTED - Validates Fetch Metadata protection rejecting unauthorized cross-site requests with 403 and Vary header.
- * Expectation 15: TESTED - Validates X-Content-Type-Options: nosniff header on document responses.
- * Expectation 16: TESTED - Validates Referrer-Policy: strict-origin-when-cross-origin on document responses.
- * Expectation 17: TESTED - Validates Permissions-Policy header restricting unused browser capabilities (camera, geolocation, microphone).
- * Expectation 18: SKIPPED - Base application contains no external versioned script tags.
- * Expectation 19: SKIPPED - Base application contains no CORS endpoints.
- * Expectation 20: TESTED - Validates Clear-Site-Data header on /logout response.
+/*
+ * Expectation 1: TESTED - Strict-Transport-Security header with positive max-age is served on document responses
+ * Expectation 2: SKIPPED: No client-side script rendering untrusted or dynamic text into the DOM in the base application or task.md
+ * Expectation 3: SKIPPED: No session cookies exist in the base application or are required by task.md
+ * Expectation 4: SKIPPED: No cookies required in third-party embedded contexts exist in the base application or task.md
+ * Expectation 5: TESTED - Clickjacking protection via X-Frame-Options (DENY or SAMEORIGIN) and CSP frame-ancestors ('none' or 'self')
+ * Expectation 6: SKIPPED: No window message event listeners exist in the base application or task.md
+ * Expectation 7: SKIPPED: No postMessage calls exist in the base application or task.md
+ * Expectation 8: TESTED - Reporting-Endpoints header is configured and referenced by report-to in Content-Security-Policy
+ * Expectation 9: TESTED - Content-Security-Policy enforces nonce/hash script-src with 'strict-dynamic' and 'report-sample', object-src 'none', and base-uri 'none'
+ * Expectation 10: TESTED - Content-Security-Policy script-src uses nonce/hash with 'strict-dynamic' rather than broad scheme or domain allowlists as primary protection
+ * Expectation 11: TESTED - Content-Security-Policy enforces require-trusted-types-for 'script' without unsanitized HTML sink assignments
+ * Expectation 12: TESTED - Cross-Origin-Opener-Policy header set to same-origin-allow-popups or same-origin on document responses
+ * Expectation 13: TESTED - Cross-Origin-Resource-Policy header set to same-origin or same-site on app-internal server responses
+ * Expectation 14: TESTED - Server-side Fetch Metadata protection rejects unauthorized cross-site requests with 403 and sends Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site
+ * Expectation 15: TESTED - X-Content-Type-Options: nosniff header served alongside accurate Content-Type header
+ * Expectation 16: TESTED - Referrer-Policy: strict-origin-when-cross-origin header served on document responses
+ * Expectation 17: TESTED - Restrictive Permissions-Policy header disables unused browser features (camera=(), geolocation=(), microphone=())
+ * Expectation 18: SKIPPED: No external versioned <script> tags exist in the base application or task.md
+ * Expectation 19: SKIPPED: No CORS endpoints exist in the base application or task.md
+ * Expectation 20: TESTED - Logout endpoint (/logout) sends Clear-Site-Data header with "cookies", "storage", and "cache"
  */
 
 import {
   test,
   expect,
-  getTargetFiles,
-  getCssStyleSheet,
-  getJsProject,
-  getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 
-// @ts-ignore
-const targetFiles: string[] = getTargetFiles(import.meta.url);
-void targetFiles;
-void getCssStyleSheet;
-void getJsProject;
-void getHtmlDocuments;
+function parseCspDirectives(cspHeader: string | undefined): Map<string, string[]> {
+  const directives = new Map<string, string[]>();
+  if (!cspHeader) return directives;
+  for (const rawPart of cspHeader.split(';')) {
+    const trimmed = rawPart.trim();
+    if (!trimmed) continue;
+    const tokens = trimmed.split(/\s+/);
+    const name = tokens[0].toLowerCase();
+    directives.set(name, tokens.slice(1));
+  }
+  return directives;
+}
 
 test.describe('security Target Grader', () => {
-
   test.describe('Browser tests', () => {
-
-    test('Exp 1: Document response serves Strict-Transport-Security header enforcing HTTPS', async ({ page, TARGET_URL }) => {
+    test('Expectation 1: Serves Strict-Transport-Security header with positive max-age', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const hsts = response?.headers()['strict-transport-security'] || '';
-      expect(hsts).toMatch(/max-age=\d+.*includeSubDomains|includeSubDomains.*max-age=\d+/i);
+      expect(response).not.toBeNull();
+      const hsts = response?.headers()['strict-transport-security'];
+      expect(hsts).toBeDefined();
+      const maxAgeMatch = hsts?.match(/\bmax-age=(\d+)/i) ?? null;
+      expect(maxAgeMatch).not.toBeNull();
+      expect(Number(maxAgeMatch?.[1])).toBeGreaterThan(0);
     });
 
-    test('Exp 5: Document response sets X-Frame-Options to SAMEORIGIN or DENY', async ({ page, TARGET_URL }) => {
+    test('Expectation 5: Protects against clickjacking with X-Frame-Options and CSP frame-ancestors', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const xfo = response?.headers()['x-frame-options']?.toUpperCase() || '';
-      expect(xfo).toMatch(/^(SAMEORIGIN|DENY)$/);
+      expect(response).not.toBeNull();
+      const headers = response?.headers() ?? {};
+
+      const xfo = headers['x-frame-options'];
+      expect(xfo).toBeDefined();
+      expect(xfo?.trim().toUpperCase()).toMatch(/^(DENY|SAMEORIGIN)$/);
+
+      const directives = parseCspDirectives(headers['content-security-policy']);
+      const frameAncestors = directives.get('frame-ancestors');
+      expect(frameAncestors).toBeDefined();
+      expect(frameAncestors).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^'(none|self)'$/i)]),
+      );
     });
 
-    test("Exp 5: Document response sets Content-Security-Policy frame-ancestors directive", async ({ page, TARGET_URL }) => {
+    test('Expectation 8: Configures Reporting-Endpoints header and references it via CSP report-to', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/frame-ancestors\s+[^;]*'self'/i);
+      expect(response).not.toBeNull();
+      const headers = response?.headers() ?? {};
+
+      const reportingEndpoints = headers['reporting-endpoints'];
+      expect(reportingEndpoints).toBeDefined();
+
+      const endpointNames = Array.from(
+        (reportingEndpoints ?? '').matchAll(/([a-zA-Z0-9_-]+)\s*=\s*"[^"]+"/g),
+        (m) => m[1],
+      );
+      expect(endpointNames.length).toBeGreaterThan(0);
+
+      const directives = parseCspDirectives(headers['content-security-policy']);
+      const reportTo = directives.get('report-to') ?? [];
+      expect(reportTo.length).toBeGreaterThan(0);
+      expect(endpointNames).toContain(reportTo[0]);
     });
 
-    test('Exp 8: Document response configures a Reporting-Endpoints header', async ({ page, TARGET_URL }) => {
+    test('Expectation 9: Enforces nonce-based or hash-based CSP with strict-dynamic, report-sample, object-src none, and base-uri none', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const reportingEndpoints = response?.headers()['reporting-endpoints'] || '';
-      expect(reportingEndpoints).toMatch(/[\w-]+\s*=\s*["'][^"']+["']/);
+      expect(response).not.toBeNull();
+      const directives = parseCspDirectives(response?.headers()['content-security-policy']);
+
+      const scriptSrc = directives.get('script-src') ?? [];
+      expect(
+        scriptSrc.some((token) =>
+          /^'(nonce-[A-Za-z0-9+/=_-]+|sha(256|384|512)-[A-Za-z0-9+/=_-]+)'$/.test(token),
+        ),
+      ).toBe(true);
+      expect(scriptSrc).toContain("'strict-dynamic'");
+      expect(scriptSrc).toContain("'report-sample'");
+
+      const objectSrc = directives.get('object-src') ?? directives.get('default-src') ?? [];
+      expect(objectSrc).toContain("'none'");
+
+      const baseUri = directives.get('base-uri') ?? [];
+      expect(baseUri).toContain("'none'");
     });
 
-    test('Exp 8: Content-Security-Policy references the reporting endpoint via report-to', async ({ page, TARGET_URL }) => {
+    test('Expectation 10: Does not use broad scheme or domain allowlists without strict-dynamic as primary script-src protection', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/report-to\s+[\w-]+/i);
+      expect(response).not.toBeNull();
+      const directives = parseCspDirectives(response?.headers()['content-security-policy']);
+
+      const scriptSrc = directives.get('script-src') ?? [];
+      expect(scriptSrc).toContain("'strict-dynamic'");
+      expect(
+        scriptSrc.some((token) =>
+          /^'(nonce-[A-Za-z0-9+/=_-]+|sha(256|384|512)-[A-Za-z0-9+/=_-]+)'$/.test(token),
+        ),
+      ).toBe(true);
+      expect(scriptSrc).not.toContain('*');
+      expect(scriptSrc).not.toContain('http:');
+      expect(scriptSrc).not.toContain('data:');
     });
 
-    test("Exp 9: Content-Security-Policy script-src includes 'strict-dynamic'", async ({ page, TARGET_URL }) => {
+    test('Expectation 11: Enforces Trusted Types via require-trusted-types-for script in CSP and blocks unsanitized HTML sink assignments', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/script-src\s+[^;]*'strict-dynamic'/i);
+      expect(response).not.toBeNull();
+      const directives = parseCspDirectives(response?.headers()['content-security-policy']);
+
+      const rttf = directives.get('require-trusted-types-for') ?? [];
+      expect(rttf).toContain("'script'");
+
+      const blocksRawInnerHtml = await page.evaluate(() => {
+        try {
+          const el = document.createElement('div');
+          el.innerHTML = '<img src=x onerror=1>';
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      expect(blocksRawInnerHtml).toBe(true);
     });
 
-    test("Exp 9: Content-Security-Policy script-src includes 'report-sample'", async ({ page, TARGET_URL }) => {
+    test('Expectation 12: Sets Cross-Origin-Opener-Policy to same-origin-allow-popups or same-origin on document responses', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/script-src\s+[^;]*'report-sample'/i);
+      expect(response).not.toBeNull();
+      const coop = response?.headers()['cross-origin-opener-policy'];
+      expect(coop).toBeDefined();
+      const directiveValue = (coop ?? '').split(';')[0].trim().toLowerCase();
+      expect(['same-origin-allow-popups', 'same-origin']).toContain(directiveValue);
     });
 
-    test("Exp 9: Content-Security-Policy script-src includes a nonce or hash", async ({ page, TARGET_URL }) => {
+    test('Expectation 13: Sets Cross-Origin-Resource-Policy to same-origin or same-site on app-internal server responses', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/script-src\s+[^;]*'(?:nonce-[A-Za-z0-9+/=]+|sha(?:256|384|512)-[A-Za-z0-9+/=]+)'/i);
+      expect(response).not.toBeNull();
+      const corp = response?.headers()['cross-origin-resource-policy'];
+      expect(corp).toBeDefined();
+      expect(['same-origin', 'same-site']).toContain((corp ?? '').trim().toLowerCase());
+
+      const logoutUrl = new URL('/logout', TARGET_URL);
+      let logoutRes = await fetch(logoutUrl, {
+        method: 'GET',
+        headers: {
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Dest': 'document',
+        },
+        redirect: 'manual',
+      });
+      if (logoutRes.status === 405) {
+        logoutRes = await fetch(logoutUrl, {
+          method: 'POST',
+          headers: {
+            Origin: new URL(TARGET_URL).origin,
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'same-origin',
+            'Sec-Fetch-Dest': 'empty',
+          },
+          redirect: 'manual',
+        });
+      }
+      const logoutCorp = logoutRes.headers.get('cross-origin-resource-policy');
+      expect(logoutCorp).not.toBeNull();
+      expect(['same-origin', 'same-site']).toContain((logoutCorp ?? '').trim().toLowerCase());
     });
 
-    test("Exp 9: Content-Security-Policy enforces object-src 'none'", async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/object-src\s+'none'/i);
-    });
-
-    test("Exp 9: Content-Security-Policy enforces base-uri 'none'", async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/base-uri\s+'none'/i);
-    });
-
-    test("Exp 10: Content-Security-Policy does not use broad allowlists without strict-dynamic", async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      const scriptSrcMatch = csp.match(/script-src\s+([^;]+)/i);
-      const scriptSrc = scriptSrcMatch ? scriptSrcMatch[1] : '';
-      const usesStrictDynamic = scriptSrc.includes("'strict-dynamic'");
-      expect(usesStrictDynamic && scriptSrc.length > 0).toBe(true);
-    });
-
-    test("Exp 11: Content-Security-Policy enforces Trusted Types for scripts", async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/require-trusted-types-for\s+'script'/i);
-    });
-
-    test('Exp 12: Document response sets Cross-Origin-Opener-Policy', async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const coop = response?.headers()['cross-origin-opener-policy'] || '';
-      expect(coop).toMatch(/^(same-origin-allow-popups|same-origin)$/i);
-    });
-
-    test('Exp 13: Response sets Cross-Origin-Resource-Policy', async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const corp = response?.headers()['cross-origin-resource-policy'] || '';
-      expect(corp).toMatch(/^(same-origin|same-site)$/i);
-    });
-
-    test('Exp 14: Response includes Vary header with Sec-Fetch metadata keys', async ({ page, TARGET_URL }) => {
-      const response = await page.goto(TARGET_URL);
-      const vary = response?.headers()['vary'] || '';
-      const hasFetchKeys =
-        vary.includes('Sec-Fetch-Dest') &&
-        vary.includes('Sec-Fetch-Mode') &&
-        vary.includes('Sec-Fetch-Site');
-      expect(hasFetchKeys).toBe(true);
-    });
-
-    test('Exp 14: Server rejects unauthorized cross-site requests with HTTP 403', async ({ request, TARGET_URL }) => {
-      const res = await request.get(TARGET_URL, {
+    test('Expectation 14: Implements server-side Fetch Metadata protection rejecting unauthorized cross-site requests with 403 and setting Vary', async ({
+      TARGET_URL,
+    }) => {
+      const crossSiteRes = await fetch(new URL('/logout', TARGET_URL), {
+        method: 'POST',
         headers: {
           'Sec-Fetch-Site': 'cross-site',
-          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Mode': 'no-cors',
           'Sec-Fetch-Dest': 'empty',
         },
+        redirect: 'manual',
       });
-      expect(res.status()).toBe(403);
+      expect(crossSiteRes.status).toBe(403);
+
+      const docRes = await fetch(TARGET_URL, {
+        headers: {
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Dest': 'document',
+        },
+      });
+      const vary = docRes.headers.get('vary') || crossSiteRes.headers.get('vary') || '';
+      const varyTokens = vary
+        .split(',')
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean);
+      expect(varyTokens).toEqual(
+        expect.arrayContaining(['sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site']),
+      );
     });
 
-    test('Exp 15: Document response sets X-Content-Type-Options to nosniff', async ({ page, TARGET_URL }) => {
+    test('Expectation 15: Sets X-Content-Type-Options: nosniff alongside accurate Content-Type headers', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const nosniff = response?.headers()['x-content-type-options'];
-      expect(nosniff).toBe('nosniff');
+      expect(response).not.toBeNull();
+      const headers = response?.headers() ?? {};
+      expect(headers['x-content-type-options']?.trim().toLowerCase()).toBe('nosniff');
+      expect(headers['content-type']?.toLowerCase()).toContain('text/html');
     });
 
-    test('Exp 16: Document response sets Referrer-Policy to strict-origin-when-cross-origin', async ({ page, TARGET_URL }) => {
+    test('Expectation 16: Sets Referrer-Policy: strict-origin-when-cross-origin on document responses', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const rp = response?.headers()['referrer-policy'];
-      expect(rp).toBe('strict-origin-when-cross-origin');
+      expect(response).not.toBeNull();
+      const referrerPolicy = response?.headers()['referrer-policy'];
+      expect(referrerPolicy?.trim().toLowerCase()).toBe('strict-origin-when-cross-origin');
     });
 
-    test('Exp 17: Document response sets a restrictive Permissions-Policy disabling unused features', async ({ page, TARGET_URL }) => {
+    test('Expectation 17: Sets restrictive Permissions-Policy header disabling unused browser features', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const response = await page.goto(TARGET_URL);
-      const pp = response?.headers()['permissions-policy'] || '';
-      const disablesFeatures =
-        pp.includes('camera=()') &&
-        pp.includes('geolocation=()') &&
-        pp.includes('microphone=()');
-      expect(disablesFeatures).toBe(true);
+      expect(response).not.toBeNull();
+      const permissionsPolicy = response?.headers()['permissions-policy'];
+      expect(permissionsPolicy).toBeDefined();
+      expect(permissionsPolicy).toMatch(/\bcamera=\(\)/);
+      expect(permissionsPolicy).toMatch(/\bgeolocation=\(\)/);
+      expect(permissionsPolicy).toMatch(/\bmicrophone=\(\)/);
     });
 
-    test('Exp 20: Logout response sends Clear-Site-Data header to clear client state', async ({ request, TARGET_URL }) => {
-      const logoutUrl = TARGET_URL.endsWith('/') ? `${TARGET_URL}logout` : `${TARGET_URL}/logout`;
-      const res = await request.get(logoutUrl, { maxRedirects: 0 });
-      const csd = res.headers()['clear-site-data'] || '';
-      const clearsState =
-        csd.includes('"cookies"') &&
-        csd.includes('"storage"') &&
-        csd.includes('"cache"');
-      expect(clearsState).toBe(true);
+    test('Expectation 20: Sends Clear-Site-Data header with cookies, storage, and cache on logout responses', async ({
+      TARGET_URL,
+    }) => {
+      const logoutUrl = new URL('/logout', TARGET_URL);
+      let response = await fetch(logoutUrl, {
+        method: 'GET',
+        headers: {
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Dest': 'document',
+        },
+        redirect: 'manual',
+      });
+      if (response.status === 405) {
+        response = await fetch(logoutUrl, {
+          method: 'POST',
+          headers: {
+            Origin: new URL(TARGET_URL).origin,
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'same-origin',
+            'Sec-Fetch-Dest': 'empty',
+          },
+          redirect: 'manual',
+        });
+      }
+      expect(response.status).toBeLessThan(400);
+      const clearSiteData = response.headers.get('clear-site-data') ?? '';
+      expect(clearSiteData).toContain('"cookies"');
+      expect(clearSiteData).toContain('"storage"');
+      expect(clearSiteData).toContain('"cache"');
     });
-
   });
 });

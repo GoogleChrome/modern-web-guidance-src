@@ -1,0 +1,889 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..d1dac7c
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++.mail/
++.env
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..bae84de
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,36 @@
++# The Daily Grind
++
++The coffee shop page now includes server-side email ownership verification at `/account`, `/rewards`, and `/`. Supporting browsers populate the hidden Email Verification API field. The server verifies the SD-JWT and browser key binding; empty or invalid tokens automatically continue with a six-digit email code.
++
++## Run
++
++Use Node.js 22 or newer.
++
++```sh
++pnpm install
++npm run build
++npm test
++npm start
++```
++
++The default address is `http://localhost:11222`. Set `PORT` to change the port. For local browser testing, use localhost: the session cookie always uses `HttpOnly; Secure; SameSite=Lax` and a `__Host-` prefix. HTTP on arbitrary hosts cannot set that cookie; deployed sites must use HTTPS.
++
++## Configuration
++
++| Variable | Purpose |
++| --- | --- |
++| `RP_ORIGIN` | Exact public origin, such as `https://coffee.example.com`; mandatory in production. Used as the expected KB-JWT audience and for Origin checks. Never derived from untrusted request headers. |
++| `ORIGIN_TRIAL_TOKEN` | Your browser-issued Origin Trial token for the public origin. Sent through the `Origin-Trial` response header. Without a valid token, the email-code flow still works. |
++| `SMTP_URL` | Nodemailer SMTP connection URL. Mandatory in production; use your email provider’s authenticated SMTP service. |
++| `MAIL_FROM` | Verified sender address for your SMTP provider. |
++| `NODE_ENV` | Set to `production` for a deployment. |
++
++During local development without SMTP, outgoing messages are saved as private `.mail/*.eml` files. Read the newest message to obtain the code. Codes are never exposed in the browser response. This is a development mailbox, not delivery to an actual inbox. Production startup requires SMTP configuration; delivery failures show a retry form.
++
++## Verification and state
++
++`@sd-jwt/core` parses disclosures and validates `sd_hash`, nonce, audience, and key-binding freshness. `jose` verifies the issuer and holder signatures with an asymmetric algorithm allowlist. DNS delegation is checked before issuer discovery; issuer metadata must exactly match `iss`. A missing `kid` tries every eligible JWKS key. Email comparisons are case-insensitive while retaining the submitted address.
++
++The server generates a 256-bit nonce for every email form render. Session cookies contain only a random identifier. Nonces live in process memory, expire after five minutes, and are synchronously read and deleted at POST receipt, before reading the request body. Responses use `Cache-Control: no-store`. Email codes expire in ten minutes, are stored as keyed hashes, allow five attempts, and are single-use. Sending is throttled per session and client IP.
++
++This implementation runs as one Node.js process. For multiple workers or replicas, replace the in-memory session store with a shared store and atomic nonce consumption (for example Redis `GETDEL`), and move throttling into that store. Restarts expire all existing sessions and codes. Terminate HTTPS at your server or reverse proxy. Configure the SMTP provider and a valid Origin Trial token before expecting live browser-issued tokens. Successful verification records the verified email in the server-side session; no separate account database existed in this starter app.
+diff --git a/index.html b/index.html
+index 66c9173..3462abd 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,24 @@
+       background: #3e2723;
+     }
+ 
++    .verification { max-width: 560px; margin: 40px auto; text-align: left; }
++    .verification label { display: block; margin-top: 16px; font-weight: 600; }
++    .verification input:not([type="hidden"]) {
++      width: 100%; padding: 12px; border: 1px solid var(--secondary);
++      border-radius: 5px; font: inherit; background: white;
++    }
++    .verification button { border: 0; font: inherit; cursor: pointer; }
++    .verification input:focus-visible, .verification button:focus-visible {
++      outline: 3px solid var(--accent); outline-offset: 3px;
++    }
++    .status { margin-top: 12px; }
++    @media (max-width: 640px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.2rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +213,11 @@
+         </div>
+       </div>
+     </section>
++    <section class="card verification" id="account" aria-labelledby="account-title">
++      <h2 id="account-title">Your Daily Grind account</h2>
++      <p>Verify your email to get started with rewards. Your browser may verify it instantly; otherwise, we’ll email you a code.</p>
++      <!--VERIFICATION_CONTENT-->
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..38ba138 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,23 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "tsx src/server.ts",
++    "build": "tsc",
++    "test": "tsx --test tests/*.test.ts"
+   },
++  "type": "module",
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@sd-jwt/core": "^0.22.0",
++    "jose": "^6.2.12",
++    "nodemailer": "^10.1.0"
++  },
++  "devDependencies": {
++    "@types/node": "^26.6.5",
++    "@types/nodemailer": "^8.0.2",
++    "tsx": "^4.23.15",
++    "typescript": "^7.0.2"
+   }
+ }
+diff --git a/src/mail.ts b/src/mail.ts
+new file mode 100644
+index 0000000..276a4d4
+--- /dev/null
++++ b/src/mail.ts
+@@ -0,0 +1,31 @@
++import nodemailer from 'nodemailer';
++import { mkdir, writeFile } from 'node:fs/promises';
++import { randomBytes } from 'node:crypto';
++import { resolve } from 'node:path';
++
++export type SendCode = (email: string, code: string) => Promise<void>;
++
++export function createMailer(): SendCode {
++  const smtpUrl = process.env.SMTP_URL;
++  if (!smtpUrl && process.env.NODE_ENV === 'production') {
++    throw new Error('SMTP_URL is required in production');
++  }
++  const transport = smtpUrl
++    ? nodemailer.createTransport(smtpUrl)
++    : nodemailer.createTransport({ streamTransport: true, buffer: true, newline: 'unix' });
++  return async (email, code) => {
++    const result = await transport.sendMail({
++      from: process.env.MAIL_FROM || 'The Daily Grind <accounts@dailygrind.example>',
++      to: email,
++      subject: 'Your Daily Grind verification code',
++      text: `Your verification code is ${code}. It expires in 10 minutes. If you did not request this code, ignore this email.`,
++    });
++    if (!smtpUrl) {
++      const directory = resolve('.mail');
++      await mkdir(directory, { recursive: true, mode: 0o700 });
++      const path = resolve(directory, `${Date.now()}-${randomBytes(8).toString('hex')}.eml`);
++      await writeFile(path, result.message as Buffer, { mode: 0o600 });
++      console.info(`Development verification email saved to ${path}`);
++    }
++  };
++}
+diff --git a/src/server.ts b/src/server.ts
+new file mode 100644
+index 0000000..337711c
+--- /dev/null
++++ b/src/server.ts
+@@ -0,0 +1,198 @@
++import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { resolve } from 'node:path';
++import { SessionStore } from './sessions.js';
++import { verifyEmailVerificationToken } from './verification.js';
++import { createMailer, type SendCode } from './mail.js';
++
++const COOKIE = '__Host-daily-grind-session';
++const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, character =>
++  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
++
++async function formBody(request: IncomingMessage): Promise<URLSearchParams> {
++  if (request.headers['content-type']?.split(';')[0] !== 'application/x-www-form-urlencoded') {
++    throw new Error('Unsupported form encoding');
++  }
++  const chunks: Buffer[] = [];
++  let size = 0;
++  for await (const chunk of request) {
++    const buffer = Buffer.from(chunk as Uint8Array);
++    size += buffer.length;
++    if (size > 100000) throw new Error('Form is too large');
++    chunks.push(buffer);
++  }
++  return new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
++}
++
++const validEmail = (email: string) => email.length <= 254 &&
++  /^[^\s@<>\x00-\x1f\x7f]+@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(email);
++
++export interface AppOptions {
++  origin: string;
++  template: string;
++  sendCode: SendCode;
++  verifyToken?: typeof verifyEmailVerificationToken;
++  store?: SessionStore;
++  originTrialToken?: string;
++}
++
++export function createApp(options: AppOptions) {
++  const originUrl = new URL(options.origin);
++  if (originUrl.origin !== options.origin ||
++      (originUrl.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(originUrl.hostname))) {
++    throw new Error('RP_ORIGIN must be an exact HTTPS origin (HTTP is allowed only on localhost)');
++  }
++  const store = options.store ?? new SessionStore();
++  const verifyToken = options.verifyToken ?? verifyEmailVerificationToken;
++  const emailLimits = new Map<string, { count: number; expires: number }>();
++  function allowEmail(ip: string): boolean {
++    const now = Date.now();
++    for (const [key, value] of emailLimits) if (value.expires <= now) emailLimits.delete(key);
++    const limit = emailLimits.get(ip) ?? { count: 0, expires: now + 600000 };
++    if (limit.count >= 10 || emailLimits.size >= 10000) return false;
++    limit.count++;
++    emailLimits.set(ip, limit);
++    return true;
++  }
++
++  return createServer((request, response) => {
++    void handle(request, response).catch(error => {
++      console.error('Account request failed:', error instanceof Error ? error.message : 'Unknown error');
++      if (!response.headersSent) {
++        response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
++        response.end('We could not complete your request. Please try again.');
++      } else response.end();
++    });
++  });
++
++  async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
++    response.setHeader('Cache-Control', 'no-store');
++    response.setHeader('Content-Type', 'text/html; charset=utf-8');
++    response.setHeader('X-Content-Type-Options', 'nosniff');
++    response.setHeader('Referrer-Policy', 'same-origin');
++    response.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.unsplash.com; script-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
++    if (options.originTrialToken) response.setHeader('Origin-Trial', options.originTrialToken);
++    const path = new URL(request.url ?? '/', options.origin).pathname;
++    const sessionId = request.headers.cookie?.split(';').map(value => value.trim())
++      .find(value => value.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
++    const { id, session, fresh } = store.open(sessionId);
++    if (fresh) response.setHeader('Set-Cookie', `${COOKIE}=${id}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=3600`);
++
++    // Consume the nonce immediately on submission, BEFORE reading the body or doing I/O.
++    const expectedNonce = request.method === 'POST' && path === '/api/verify-email'
++      ? store.consumeNonce(session) : undefined;
++
++    function page(content: string, status = 200): void {
++      response.statusCode = status;
++      response.end(options.template.replace('<!--VERIFICATION_CONTENT-->', content));
++    }
++    function emailForm(message = '', email = '', status = 200): void {
++      const nonce = store.renderNonce(session);
++      page(`<p class="status" role="status">${escapeHtml(message)}</p>
++        <form method="POST" action="/api/verify-email">
++          <label for="email">Email address</label>
++          <input type="email" id="email" name="email" autocomplete="email" maxlength="254" value="${escapeHtml(email)}" required>
++          <input type="hidden" name="token" autocomplete="email-verification-token" nonce="${nonce}">
++          <button class="btn" type="submit">Continue</button>
++        </form>`, status);
++    }
++    function codeForm(message: string, status = 200): void {
++      page(`<p class="status" role="status">${escapeHtml(message)}</p>
++        <form method="POST" action="/api/verify-code">
++          <label for="code">Verification code</label>
++          <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
++          <button class="btn" type="submit">Verify email</button>
++        </form><p><a href="/account">Use another email or request a new code</a></p>`, status);
++    }
++    function success(email: string): void {
++      session.verifiedEmail = email;
++      delete session.challenge;
++      page(`<p class="status" role="status">Your email, ${escapeHtml(email)}, is verified. Welcome to The Daily Grind!</p>`);
++    }
++
++    if (request.method === 'POST') {
++      if (request.headers.origin && request.headers.origin !== options.origin) {
++        page('<p>This request came from another site. <a href="/account">Return to your account</a>.</p>', 403);
++        return;
++      }
++      if (!['/api/verify-email', '/api/verify-code'].includes(path)) {
++        page('<p>Page not found.</p>', 404);
++        return;
++      }
++      let form: URLSearchParams;
++      try { form = await formBody(request); }
++      catch { emailForm('Please submit a valid email form.', '', 400); return; }
++      if (path === '/api/verify-code') {
++        const email = store.verifyCode(session, form.get('code')?.trim() ?? '');
++        if (email) success(email);
++        else if (session.challenge) codeForm('That code did not match. Please try again.', 400);
++        else emailForm('Your code expired or reached its attempt limit. Request a new code.', '', 400);
++        return;
++      }
++
++      const email = form.get('email')?.trim() ?? '';
++      if (!validEmail(email)) { emailForm('Enter a valid email address.', email, 400); return; }
++      const token = form.get('token')?.trim() ?? '';
++      if (token && expectedNonce) {
++        try {
++          await verifyToken({ rawToken: token, submittedEmail: email, expectedNonce, expectedAudience: options.origin });
++          success(email);
++          return;
++        } catch {
++          // Never log the token or email. Any verification failure uses the same fallback.
++          console.warn('Email token verification failed; continuing with email code.');
++        }
++      }
++      if (session.lastEmailSent && Date.now() - session.lastEmailSent < 60000) {
++        if (session.challenge && session.challenge.email.toLowerCase() === email.toLowerCase()) {
++          codeForm('A code was already sent. Check your inbox, or request a new code in a minute.');
++        } else emailForm('Please wait a minute before requesting another code.', email, 429);
++        return;
++      }
++      if (!allowEmail(request.socket.remoteAddress ?? 'unknown')) {
++        emailForm('Too many requests. Please try again in a few minutes.', email, 429);
++        return;
++      }
++      const code = store.createChallenge(session, email);
++      try {
++        await options.sendCode(email, code);
++        codeForm(`We sent a six-digit code to ${email}. Enter it below within 10 minutes.`);
++      } catch {
++        delete session.challenge;
++        delete session.lastEmailSent;
++        emailForm('We could not send your code. Please try again.', email, 503);
++      }
++      return;
++    }
++    if (request.method !== 'GET') { response.statusCode = 405; response.end(); return; }
++    if (path === '/logout') {
++      store.delete(id);
++      response.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
++      response.writeHead(303, { Location: '/' });
++      response.end();
++    } else if (['/', '/account', '/rewards'].includes(path)) {
++      if (session.verifiedEmail) success(session.verifiedEmail);
++      else emailForm();
++    } else page('<p>Page not found. <a href="/">Return home</a>.</p>', 404);
++  }
++}
++
++async function main(): Promise<void> {
++  const port = Number(process.env.PORT || 11222);
++  const origin = process.env.RP_ORIGIN || `http://localhost:${port}`;
++  if (process.env.NODE_ENV === 'production' && !process.env.RP_ORIGIN) {
++    throw new Error('RP_ORIGIN is required in production');
++  }
++  const template = await readFile(resolve('index.html'), 'utf8');
++  const server = createApp({
++    origin, template, sendCode: createMailer(),
++    ...(process.env.ORIGIN_TRIAL_TOKEN ? { originTrialToken: process.env.ORIGIN_TRIAL_TOKEN } : {}),
++  });
++  server.requestTimeout = 15000;
++  server.listen(port, () => console.info(`The Daily Grind is running at ${origin}`));
++}
++
++if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
++  void main().catch(error => { console.error(error); process.exitCode = 1; });
++}
+diff --git a/src/sessions.ts b/src/sessions.ts
+new file mode 100644
+index 0000000..a815a0d
+--- /dev/null
++++ b/src/sessions.ts
+@@ -0,0 +1,76 @@
++import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
++
++interface Challenge { email: string; digest: Buffer; expires: number; attempts: number }
++export interface Session {
++  expires: number;
++  nonce?: { value: string; expires: number };
++  challenge?: Challenge;
++  verifiedEmail?: string;
++  lastEmailSent?: number;
++}
++
++// A single-process server-side store. No nonce or OTP is stored in the cookie.
++// For multiple workers, replace this with a shared store using GETDEL/transactions.
++export class SessionStore {
++  private readonly sessions = new Map<string, Session>();
++  private readonly otpSecret = randomBytes(32);
++
++  open(id?: string): { id: string; session: Session; fresh: boolean } {
++    this.prune();
++    const existing = id ? this.sessions.get(id) : undefined;
++    if (existing && existing.expires > Date.now()) return { id: id!, session: existing, fresh: false };
++    if (this.sessions.size >= 10000) throw new Error('Session capacity reached');
++    const newId = randomBytes(32).toString('base64url');
++    const session: Session = { expires: Date.now() + 3600000 };
++    this.sessions.set(newId, session);
++    return { id: newId, session, fresh: true };
++  }
++
++  renderNonce(session: Session): string {
++    const value = randomBytes(32).toString('base64url');
++    session.nonce = { value, expires: Date.now() + 300000 };
++    return value;
++  }
++
++  consumeNonce(session: Session): string | undefined {
++    // Synchronous read/delete in one JS event-loop turn, before any await.
++    const nonce = session.nonce;
++    delete session.nonce;
++    return nonce && nonce.expires > Date.now() ? nonce.value : undefined;
++  }
++
++  createChallenge(session: Session, email: string): string {
++    const code = randomInt(1000000).toString().padStart(6, '0');
++    session.challenge = { email, digest: this.digest(email, code), expires: Date.now() + 600000, attempts: 0 };
++    session.lastEmailSent = Date.now();
++    delete session.verifiedEmail;
++    return code;
++  }
++
++  verifyCode(session: Session, code: string): string | undefined {
++    const challenge = session.challenge;
++    if (!challenge || challenge.expires <= Date.now() || challenge.attempts >= 5) {
++      delete session.challenge;
++      return undefined;
++    }
++    challenge.attempts++;
++    const valid = /^\d{6}$/.test(code) && timingSafeEqual(challenge.digest, this.digest(challenge.email, code));
++    if (valid) {
++      delete session.challenge;
++      session.verifiedEmail = challenge.email;
++      return challenge.email;
++    }
++    if (challenge.attempts >= 5) delete session.challenge;
++    return undefined;
++  }
++
++  delete(id: string): void { this.sessions.delete(id); }
++  private digest(email: string, code: string): Buffer {
++    return createHmac('sha256', this.otpSecret).update(`${email}\0${code}`).digest();
++  }
++  private prune(): void {
++    for (const [id, session] of this.sessions) {
++      if (session.expires <= Date.now()) this.sessions.delete(id);
++    }
++  }
++}
+diff --git a/src/verification.ts b/src/verification.ts
+new file mode 100644
+index 0000000..0ab495c
+--- /dev/null
++++ b/src/verification.ts
+@@ -0,0 +1,151 @@
++import { createHash } from 'node:crypto';
++import { resolveTxt } from 'node:dns/promises';
++import { decodeSdJwtSync, getClaimsSync, SDJwtInstance, type Hasher } from '@sd-jwt/core';
++import { createLocalJWKSet, importJWK, jwtVerify, errors, type JSONWebKeySet, type JWK } from 'jose';
++
++const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
++const normalizeAlg = (alg: string) => alg === 'Ed25519' ? 'EdDSA' : alg;
++const hashNames: Record<string, string> = { 'sha-256': 'sha256', 'sha-384': 'sha384', 'sha-512': 'sha512' };
++export const hasher: Hasher = (data, alg) => {
++  const name = hashNames[alg];
++  if (!name) throw new Error('Unsupported disclosure hash algorithm');
++  return createHash(name).update(typeof data === 'string' ? data : new Uint8Array(data)).digest();
++};
++const hasherSync = (data: string, alg: string) => {
++  const name = hashNames[alg];
++  if (!name) throw new Error('Unsupported disclosure hash algorithm');
++  return createHash(name).update(data).digest();
++};
++
++export interface VerificationDependencies {
++  resolveTxt: (hostname: string) => Promise<string[][]>;
++  fetchJson: (url: URL) => Promise<unknown>;
++}
++
++function httpsUrl(value: unknown): URL {
++  if (typeof value !== 'string') throw new Error('Missing HTTPS URL');
++  const url = new URL(value);
++  if (url.protocol !== 'https:' || url.username || url.password || url.hash) {
++    throw new Error('Invalid HTTPS URL');
++  }
++  return url;
++}
++
++async function fetchJson(url: URL): Promise<unknown> {
++  const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(5000) });
++  if (!response.ok) throw new Error('Issuer discovery request failed');
++  if (!response.body) throw new Error('Empty issuer discovery response');
++  let length = 0;
++  const chunks: Uint8Array[] = [];
++  for await (const chunk of response.body) {
++    length += chunk.length;
++    if (length > 262144) {
++      await response.body.cancel().catch(() => {});
++      throw new Error('Issuer discovery response too large');
++    }
++    chunks.push(chunk);
++  }
++  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
++}
++
++const defaults: VerificationDependencies = { resolveTxt, fetchJson };
++const isObject = (value: unknown): value is Record<string, unknown> =>
++  typeof value === 'object' && value !== null && !Array.isArray(value);
++
++export async function verifyEmailVerificationToken(
++  input: { rawToken: string; submittedEmail: string; expectedNonce: string; expectedAudience: string },
++  dependencies: VerificationDependencies = defaults,
++): Promise<void> {
++  const { rawToken, submittedEmail, expectedNonce, expectedAudience } = input;
++  if (!expectedNonce || rawToken.length > 65536) throw new Error('Missing nonce or oversized token');
++  // Decode using the SD-JWT library, including selectively disclosed claims.
++  // These claims remain untrusted until BOTH signatures and the binding are verified.
++  const decoded = decodeSdJwtSync(rawToken, hasherSync);
++  if (!decoded.kbJwt || !decoded.jwt.payload) throw new Error('Missing issuer JWT or KB-JWT');
++  const payload = getClaimsSync(decoded.jwt.payload, decoded.disclosures, hasherSync);
++  const iss = payload.iss;
++  if (typeof iss !== 'string' || payload.email_verified !== true ||
++      typeof payload.email !== 'string' || payload.email.toLowerCase() !== submittedEmail.toLowerCase()) {
++    throw new Error('Missing issuer or email ownership claims');
++  }
++  const issuerUrl = httpsUrl(iss);
++  if (issuerUrl.origin !== iss || issuerUrl.port || issuerUrl.pathname !== '/' ||
++      !/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(issuerUrl.hostname)) {
++    throw new Error('Issuer must be an exact HTTPS hostname origin');
++  }
++  const domain = submittedEmail.slice(submittedEmail.lastIndexOf('@') + 1).toLowerCase();
++  const records = await dependencies.resolveTxt(`_email-verification.${domain}`);
++  if (!records.some(record => {
++    const txt = record.join('');
++    if (!txt.startsWith('iss=')) return false;
++    const host = txt.slice(4).trim();
++    return /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(host) && `https://${host}` === iss;
++  })) throw new Error('Issuer is not delegated by the email domain');
++
++  // No issuer HTTP requests are made before exact DNS delegation is confirmed.
++  const metadata = await dependencies.fetchJson(new URL('/.well-known/email-verification', iss));
++  if (!isObject(metadata) || metadata.issuer !== iss) throw new Error('Issuer metadata mismatch');
++  const jwks = await dependencies.fetchJson(httpsUrl(metadata.jwks_uri));
++  if (!isObject(jwks) || !Array.isArray(jwks.keys) || !jwks.keys.every(isObject) || jwks.keys.length > 100) {
++    throw new Error('Invalid JWKS');
++  }
++  const issuerKeys = createLocalJWKSet(jwks as unknown as JSONWebKeySet);
++  const evtOptions = {
++    typ: 'ev+sd-jwt', issuer: iss, algorithms: ALLOWED_ALGS,
++    maxTokenAge: '5m', clockTolerance: '1m',
++  };
++
++  const sdJwt = new SDJwtInstance({
++    hasher,
++    allowedDisclosureHashAlgorithms: ['sha-256', 'sha-384', 'sha-512'],
++    verifier: async (data, sig) => {
++      const compact = `${data}.${sig}`;
++      try {
++        await jwtVerify(compact, issuerKeys, evtOptions);
++      } catch (error) {
++        if (!(error instanceof errors.JWKSMultipleMatchingKeys)) throw error;
++        // Providers may omit kid. Try every eligible public key, not just the first.
++        let matched = false;
++        for await (const key of error) {
++          try {
++            await jwtVerify(compact, key, evtOptions);
++            matched = true;
++            break;
++          } catch { /* Try the next candidate. */ }
++        }
++        if (!matched) throw error;
++      }
++      return true;
++    },
++    kbVerifier: async (data, sig, verifiedPayload) => {
++      const holderJwk = verifiedPayload.cnf?.jwk;
++      const holderAlg = holderJwk?.alg;
++      const kbAlg = decoded.kbJwt?.header.alg;
++      if (!holderJwk || typeof holderAlg !== 'string' || typeof kbAlg !== 'string' || !ALLOWED_ALGS.includes(holderAlg) ||
++          !ALLOWED_ALGS.includes(kbAlg) || normalizeAlg(holderAlg) !== normalizeAlg(kbAlg) ||
++          holderJwk.d || holderJwk.k) {
++        throw new Error('Missing, private, disallowed, or mismatched holder key algorithm');
++      }
++      const key = await importJWK(holderJwk as JWK, kbAlg);
++      await jwtVerify(`${data}.${sig}`, key, {
++        typ: 'kb+jwt', audience: expectedAudience, algorithms: [kbAlg],
++        maxTokenAge: '5m', clockTolerance: '1m',
++      });
++      return true;
++    },
++  });
++  const verified = await sdJwt.verify(rawToken, {
++    requiredClaimKeys: ['email', 'email_verified', 'cnf'],
++    allowedIssuerAlgorithms: ALLOWED_ALGS,
++    allowedKeyBindingAlgorithms: ALLOWED_ALGS,
++    keyBindingNonce: expectedNonce,
++    expectedKeyBindingAudience: expectedAudience,
++    keyBindingMaxAgeSeconds: 300,
++    skewSeconds: 60,
++  });
++  if (!verified.kb || verified.payload.email_verified !== true ||
++      typeof verified.payload.email !== 'string' ||
++      verified.payload.email.toLowerCase() !== submittedEmail.toLowerCase()) {
++    throw new Error('Verified email ownership claims mismatch');
++  }
++}
+diff --git a/tests/server.test.ts b/tests/server.test.ts
+new file mode 100644
+index 0000000..cf163d2
+--- /dev/null
++++ b/tests/server.test.ts
+@@ -0,0 +1,116 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import type { AddressInfo } from 'node:net';
++import { createApp } from '../src/server.js';
++import { SessionStore } from '../src/sessions.js';
++
++test('nonces are fresh, consumed atomically, expire, and are not session identifiers', () => {
++  const store = new SessionStore();
++  const { id, session } = store.open();
++  const first = store.renderNonce(session);
++  const second = store.renderNonce(session);
++  assert.notEqual(first, second);
++  assert.notEqual(second, id);
++  assert.equal(Buffer.from(second, 'base64url').length, 32);
++  assert.equal(store.consumeNonce(session), second);
++  assert.equal(store.consumeNonce(session), undefined);
++  store.renderNonce(session);
++  session.nonce!.expires = 0;
++  assert.equal(store.consumeNonce(session), undefined);
++});
++
++test('OTP codes are single-use, expire, and stop after five attempts', () => {
++  const store = new SessionStore();
++  const { session } = store.open();
++  const code = store.createChallenge(session, 'user@example.com');
++  assert.equal(store.verifyCode(session, code), 'user@example.com');
++  assert.equal(store.verifyCode(session, code), undefined);
++  const expired = store.createChallenge(session, 'user@example.com');
++  session.challenge!.expires = 0;
++  assert.equal(store.verifyCode(session, expired), undefined);
++  const limited = store.createChallenge(session, 'user@example.com');
++  const wrong = limited === '000000' ? '111111' : '000000';
++  for (let i = 0; i < 5; i++) assert.equal(store.verifyCode(session, wrong), undefined);
++  assert.equal(store.verifyCode(session, limited), undefined);
++});
++
++test('form, fast path, replay, empty token, and invalid-token fallback work end to end', async t => {
++  const template = await readFile('index.html', 'utf8');
++  const sent: { email: string; code: string }[] = [];
++  const nonces: string[] = [];
++  const server = createApp({ origin: 'http://localhost:11222', template,
++    sendCode: async (email, code) => { sent.push({ email, code }); },
++    verifyToken: async input => {
++      nonces.push(input.expectedNonce);
++      if (input.rawToken !== 'valid-test-token') throw new Error('Invalid token');
++    },
++  });
++  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
++  t.after(() => { server.closeAllConnections(); server.close(); });
++  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
++  async function open() {
++    const response = await fetch(`${url}/account`);
++    assert.equal(response.headers.get('cache-control'), 'no-store');
++    const cookie = response.headers.get('set-cookie')!;
++    assert.match(cookie, /HttpOnly; Secure; SameSite=Lax/);
++    const html = await response.text();
++    assert.match(html, /<input type="email"[^>]*autocomplete="email"/);
++    const nonce = html.match(/autocomplete="email-verification-token" nonce="([^"]+)"/)![1]!;
++    assert.ok(!cookie.includes(nonce));
++    const form = html.match(/<form[^>]*action="\/api\/verify-email"[\s\S]*?<\/form>/)![0];
++    assert.match(form, /type="email"/);
++    assert.match(form, /type="hidden"/);
++    assert.ok(!html.includes('<script'));
++    return { cookie: cookie.split(';')[0]!, nonce };
++  }
++  async function post(path: string, cookie: string, fields: Record<string, string>) {
++    return fetch(`${url}${path}`, { method: 'POST', headers: { Cookie: cookie }, body: new URLSearchParams(fields) });
++  }
++  const fast = await open();
++  const result = await post('/api/verify-email', fast.cookie, { email: 'User@Example.com', token: 'valid-test-token' });
++  assert.match(await result.text(), /is verified/);
++  assert.deepEqual(nonces, [fast.nonce]);
++  assert.equal(sent.length, 0);
++  const replay = await post('/api/verify-email', fast.cookie, { email: 'User@Example.com', token: 'valid-test-token' });
++  assert.match(await replay.text(), /six-digit code/);
++  assert.equal(nonces.length, 1);
++  assert.equal(sent.length, 1);
++
++  for (const token of ['', 'invalid-token']) {
++    const session = await open();
++    const response = await post('/api/verify-email', session.cookie, { email: 'user@example.com', token });
++    assert.equal(response.status, 200);
++    const html = await response.text();
++    assert.match(html, /autocomplete="one-time-code"/);
++    const message = sent.at(-1)!;
++    assert.ok(!html.includes(message.code));
++    const verified = await post('/api/verify-code', session.cookie, { code: message.code });
++    assert.match(await verified.text(), /is verified/);
++    const reused = await post('/api/verify-code', session.cookie, { code: message.code });
++    assert.equal(reused.status, 400);
++  }
++});
++
++test('nonce is deleted before a slow request body is read', async t => {
++  const store = new SessionStore();
++  const { id, session } = store.open();
++  store.renderNonce(session);
++  const { request } = await import('node:http');
++  const server = createApp({ origin: 'http://localhost:11222', template: '<!--VERIFICATION_CONTENT-->', store,
++    sendCode: async () => {},
++  });
++  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
++  t.after(() => { server.closeAllConnections(); server.close(); });
++  const req = request({ hostname: '127.0.0.1', port: (server.address() as AddressInfo).port,
++    method: 'POST', path: '/api/verify-email', headers: {
++      Cookie: `__Host-daily-grind-session=${id}`, 'Content-Type': 'application/x-www-form-urlencoded',
++      'Content-Length': 100,
++    },
++  });
++  req.on('error', () => {});
++  req.flushHeaders();
++  await new Promise<void>(resolve => server.once('request', () => resolve()));
++  assert.equal(session.nonce, undefined);
++  req.destroy();
++});
+diff --git a/tests/verification.test.ts b/tests/verification.test.ts
+new file mode 100644
+index 0000000..d26f25a
+--- /dev/null
++++ b/tests/verification.test.ts
+@@ -0,0 +1,138 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { CompactSign, decodeProtectedHeader, exportJWK, generateKeyPair, SignJWT } from 'jose';
++import { decodeSdJwtSync, SDJwtInstance } from '@sd-jwt/core';
++import { createHash, randomBytes } from 'node:crypto';
++import { hasher, verifyEmailVerificationToken, type VerificationDependencies } from '../src/verification.js';
++
++const issuer = 'https://issuer.example.com';
++const audience = 'https://coffee.example.com';
++const nonce = 'server-generated-single-use-nonce';
++const email = 'Coffee@Example.com';
++
++async function fixture(alg = 'ES256') {
++  const issuerKey = await generateKeyPair(alg, { extractable: true });
++  const wrongKey = await generateKeyPair(alg, { extractable: true });
++  const holderKey = await generateKeyPair(alg, { extractable: true });
++  const holderJwk = { ...await exportJWK(holderKey.publicKey), alg };
++  const keys = [await exportJWK(wrongKey.publicKey), await exportJWK(issuerKey.publicKey)];
++  const calls: string[] = [];
++  const deps: VerificationDependencies = {
++    resolveTxt: async host => { calls.push(host); return [['iss=issuer.', 'example.com']]; },
++    fetchJson: async url => {
++      calls.push(url.href);
++      return url.pathname === '/.well-known/email-verification'
++        ? { issuer, jwks_uri: `${issuer}/keys` } : { keys };
++    },
++  };
++  async function make(options: {
++    email?: string; iss?: string; verified?: boolean; holderAlg?: string;
++    nonce?: string; aud?: string; iat?: number; issuerIat?: number;
++    disclosures?: boolean; badIssuerSignature?: boolean;
++  } = {}) {
++    const now = Math.floor(Date.now() / 1000);
++    const signer = new SDJwtInstance({
++      hasher, hashAlg: 'sha-256', signAlg: alg,
++      saltGenerator: length => randomBytes(length).toString('base64url'),
++      signer: async data => {
++        const compact = await new CompactSign(Buffer.from(data.split('.')[1]!, 'base64url'))
++          .setProtectedHeader({ ...decodeProtectedHeader(`${data}.`), alg })
++          .sign(options.badIssuerSignature ? wrongKey.privateKey : issuerKey.privateKey);
++        return compact.split('.')[2]!;
++      },
++      kbSignAlg: alg,
++      kbSigner: async data => {
++        const compact = await new CompactSign(Buffer.from(data.split('.')[1]!, 'base64url'))
++          .setProtectedHeader({ ...decodeProtectedHeader(`${data}.`), alg }).sign(holderKey.privateKey);
++        return compact.split('.')[2]!;
++      },
++    });
++    const payload = {
++      iss: options.iss ?? issuer, iat: options.issuerIat ?? now, exp: now + 300,
++      email: options.email ?? email, email_verified: options.verified ?? true,
++      cnf: { jwk: { ...holderJwk, alg: options.holderAlg ?? alg } },
++    };
++    const credential = await signer.issue(payload,
++      options.disclosures ? { _sd: ['email', 'email_verified'] } : undefined,
++      { header: { typ: 'ev+sd-jwt' } });
++    const token = await signer.present(credential, undefined, {
++      kb: { payload: { iat: options.iat ?? now, aud: options.aud ?? audience, nonce: options.nonce ?? nonce } },
++    });
++    return { token, credential };
++  }
++  async function changeBinding(token: string, changes: Record<string, unknown>) {
++    const decoded = decodeSdJwtSync(token, (data, alg) => createHash(alg.replace('-', '')).update(data).digest());
++    const kb = await new SignJWT({ ...decoded.kbJwt!.payload, ...changes })
++      .setProtectedHeader({ typ: 'kb+jwt', alg }).sign(holderKey.privateKey);
++    return token.slice(0, token.lastIndexOf('~') + 1) + kb;
++  }
++  const verify = (token: string, overrides: Partial<VerificationDependencies> = {}) =>
++    verifyEmailVerificationToken({ rawToken: token, submittedEmail: email.toLowerCase(), expectedNonce: nonce, expectedAudience: audience }, { ...deps, ...overrides });
++  return { make, verify, changeBinding, calls, deps };
++}
++
++test('verifies email case-insensitively and tries multiple JWKS keys with no kid', async () => {
++  const f = await fixture();
++  const { token } = await f.make();
++  await f.verify(token);
++  assert.deepEqual(f.calls, ['_email-verification.example.com', `${issuer}/.well-known/email-verification`, `${issuer}/keys`]);
++});
++
++test('selectively disclosed email claims are verified', async () => {
++  const f = await fixture();
++  await f.verify((await f.make({ disclosures: true })).token);
++});
++
++for (const alg of ['EdDSA', 'Ed25519']) {
++  test(`supports issuer and holder ${alg} signatures`, async () => {
++    const f = await fixture(alg);
++    await f.verify((await f.make()).token);
++  });
++}
++
++test('rejects missing KB-JWT and mismatched aud, nonce, sd_hash, and algorithm', async () => {
++  const f = await fixture();
++  const { token, credential } = await f.make();
++  await assert.rejects(f.verify(credential));
++  await assert.rejects(f.verify((await f.make({ aud: 'https://attacker.example' })).token));
++  await assert.rejects(f.verify((await f.make({ nonce: 'other-nonce' })).token));
++  await assert.rejects(f.verify(await f.changeBinding(token, { sd_hash: 'tampered' })));
++  await assert.rejects(f.verify((await f.make({ holderAlg: 'EdDSA' })).token));
++  await assert.rejects(f.verify((await f.make({ holderAlg: 'HS256' })).token));
++});
++
++test('rejects invalid email claims, missing trust, and stale tokens', async () => {
++  const f = await fixture();
++  for (const options of [
++    { email: 'someone-else@example.com' }, { verified: false },
++    { issuerIat: Math.floor(Date.now() / 1000) - 500 },
++    { iat: Math.floor(Date.now() / 1000) - 500 },
++    { iat: Math.floor(Date.now() / 1000) + 500 },
++  ]) await assert.rejects(f.verify((await f.make(options)).token));
++  const { token } = await f.make();
++  await assert.rejects(f.verify(token, { resolveTxt: async () => [['iss=attacker.example']] }));
++  await assert.rejects(f.verify(token, { fetchJson: async () => ({ issuer: `${issuer}/`, jwks_uri: `${issuer}/keys` }) }));
++  await assert.rejects(f.verify(token, { fetchJson: async () => ({ issuer, jwks_uri: 'http://issuer.example.com/keys' }) }));
++});
++
++test('rejects non-origin issuers and DNS mismatch before any HTTP request', async () => {
++  const f = await fixture();
++  for (const iss of [`${issuer}/`, `${issuer}:443`, `${issuer}/path`, 'http://issuer.example.com']) {
++    await assert.rejects(f.verify((await f.make({ iss })).token));
++  }
++  await assert.rejects(f.verify((await f.make()).token, { resolveTxt: async () => [['iss=ISSUER.example.com']] }));
++  assert.equal(f.calls.length, 0);
++});
++
++test('rejects invalid issuer and holder signatures', async () => {
++  const f = await fixture();
++  const { token } = await f.make();
++  const otherKey = await generateKeyPair('ES256');
++  await assert.rejects(f.verify(token, { fetchJson: async url => url.pathname === '/keys'
++    ? { keys: [await exportJWK(otherKey.publicKey)] }
++    : { issuer, jwks_uri: `${issuer}/keys` } }));
++  const decoded = decodeSdJwtSync(token, (data, alg) => createHash(alg.replace('-', '')).update(data).digest());
++  const badKb = await new SignJWT(decoded.kbJwt!.payload)
++    .setProtectedHeader({ typ: 'kb+jwt', alg: 'ES256' }).sign(otherKey.privateKey);
++  await assert.rejects(f.verify(token.slice(0, token.lastIndexOf('~') + 1) + badKb));
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..9466872
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,15 @@
++{
++  "compilerOptions": {
++    "target": "ES2023",
++    "module": "NodeNext",
++    "moduleResolution": "NodeNext",
++    "strict": true,
++    "noUncheckedIndexedAccess": true,
++    "exactOptionalPropertyTypes": true,
++    "outDir": "dist",
++    "rootDir": ".",
++    "types": ["node"],
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts", "tests/**/*.ts"]
++}

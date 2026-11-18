@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section in `index.html` to include a customer reviews feature where users can submit and render rich HTML feedback for drinks like the Maple Oat Latte, Dark Roast Espresso, and Cold Brew, ensuring the browser safely parses the untrusted markup and strips out any unsafe elements and attributes before displaying it on the page.

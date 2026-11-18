@@ -1,672 +1,1077 @@
 diff --git a/package.json b/package.json
-index 5e71a8a..aaf5ac4 100644
+index bfffcf0..6a6d811 100644
 --- a/package.json
 +++ b/package.json
-@@ -5,12 +5,13 @@
+@@ -3,9 +3,10 @@
+   "type": "module",
+   "version": "0.0.1",
    "scripts": {
++    "build:wasm": "em++ -c src/wasm/smallpt.cpp -o src/wasm/smallpt.o -O3 -flto -Werror -Wall && em++ src/wasm/smallpt.o -o src/wasm/smallpt.js -O3 -flto -sSTRICT -sEXPORT_ES6 -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH -sSTACK_SIZE=1MB -sEXPORTED_FUNCTIONS=_render_frame,_randomize_colors,_reset_colors,_malloc,_free -sEXPORTED_RUNTIME_METHODS=HEAPU8",
      "dev": "astro dev",
      "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
 -    "build": "astro build",
-+    "build:wasm": "command -v emcc >/dev/null && EM_CACHE=${EM_CACHE:-/dev/shm/emcache} emcc src/wasm/renderer.cpp -o public/wasm/renderer.js -sEXPORT_ES6 -sENVIRONMENT=web -sSTRICT -sALLOW_MEMORY_GROWTH -O3 -flto -sEXPORTED_FUNCTIONS=['_render_image','_free_buffer'] -sEXPORTED_RUNTIME_METHODS=['HEAPU8'] || true",
-+    "build": "npm run build:wasm && astro build",
++    "build": "em++ -c src/wasm/smallpt.cpp -o src/wasm/smallpt.o -O3 -flto -Werror -Wall && em++ src/wasm/smallpt.o -o src/wasm/smallpt.js -O3 -flto -sSTRICT -sEXPORT_ES6 -sENVIRONMENT=worker -sALLOW_MEMORY_GROWTH -sSTACK_SIZE=1MB -sEXPORTED_FUNCTIONS=_render_frame,_randomize_colors,_reset_colors,_malloc,_free -sEXPORTED_RUNTIME_METHODS=HEAPU8 && astro build",
      "preview": "astro preview",
      "astro": "astro"
    },
-   "dependencies": {
--    "@astrojs/node": "^11.0.2",
-+    "@astrojs/node": "^11.1.6",
-     "@astrojs/react": "^5.0.4",
-     "@heroicons/react": "^2.2.0",
-     "@tailwindcss/vite": "^4.2.4",
-diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
-index ab0416c..b988c10 100644
---- a/pnpm-lock.yaml
-+++ b/pnpm-lock.yaml
-@@ -9,8 +9,8 @@ importers:
-   .:
-     dependencies:
-       '@astrojs/node':
--        specifier: ^11.0.2
--        version: 11.0.2(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
-+        specifier: ^11.1.6
-+        version: 11.1.6(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))
-       '@astrojs/react':
-         specifier: ^5.0.4
-         version: 5.0.4(@types/node@25.5.0)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)(yaml@2.8.3)
-@@ -113,9 +113,6 @@ packages:
-     resolution: {integrity: sha512-koVikeon1kreEy+/JzLQRy3vzHHQVOjycs4degg4vFufKApZOwMZvSSAEztYNhmcQVfNVsVZZI4cEge3cexAbQ==}
-     engines: {node: '>=22.12.0'}
- 
--  '@astrojs/internal-helpers@0.10.1':
--    resolution: {integrity: sha512-5phcroT/vmOOrYuuAxtkbPixy5hePtlz9i8K4OeDv3dNK6/UQRuXPOSRTxIOBbUY5Sonw2UaxjbuVc43Mcir6Q==}
--
-   '@astrojs/internal-helpers@0.11.0':
-     resolution: {integrity: sha512-3rzxJ+xbo0+8YyqOzLziIN32wmsHdCjEVz2sGOpRxJ+Ben/KiLph4ItxBy1abEL+E8fkRzqjg0rfXmaHJGw9JA==}
- 
-@@ -125,10 +122,10 @@ packages:
-   '@astrojs/markdown-satteri@0.4.1':
-     resolution: {integrity: sha512-EniHbFNa6SQHDih7JnpPos3NWXO6hdt4raBcOosfGmlfc3gP9CI/sESA3VOf1PgJZ7SFfewlZW9Livn0JugEZg==}
- 
--  '@astrojs/node@11.0.2':
--    resolution: {integrity: sha512-/ijULxT+A5Cm8wSwWZ2vgqfim1b05D6B8n/a9l6MMA4FCotIH73g7fL7y76XojKXpTe75FVvQH92OxsMqea9kQ==}
-+  '@astrojs/node@11.1.6':
-+    resolution: {integrity: sha512-jNZ10/vAT+HuXkX0E/tITsIYCSn3BmAvsooVAN1OjagG+FEzelpUWToy1bA3x6Irmu0VaknWRfReY+1twd35sQ==}
-     peerDependencies:
--      astro: ^7.0.0
-+      astro: ^7.2.1
- 
-   '@astrojs/prism@4.0.2':
-     resolution: {integrity: sha512-KTivpmnz6lDsC6o9H4+DNm2SrE/GHzw8cNAvEJwAvUT+eoaEnn/4NtbDNfRRaxaJHdp15gf+tfHAWiXR4wB3BA==}
-@@ -1832,10 +1829,6 @@ packages:
-   js-tokens@4.0.0:
-     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
- 
--  js-yaml@4.1.1:
--    resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
--    hasBin: true
--
-   js-yaml@4.3.2:
-     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
-     hasBin: true
-@@ -2553,17 +2546,6 @@ snapshots:
-       - '@emnapi/core'
-       - '@emnapi/runtime'
- 
--  '@astrojs/internal-helpers@0.10.1':
--    dependencies:
--      '@types/hast': 3.0.4
--      '@types/mdast': 4.0.4
--      js-yaml: 4.1.1
--      picomatch: 4.0.5
--      retext-smartypants: 6.2.0
--      shiki: 4.0.2
--      smol-toml: 1.6.1
--      unified: 11.0.5
--
-   '@astrojs/internal-helpers@0.11.0':
-     dependencies:
-       '@types/hast': 3.0.4
-@@ -2586,9 +2568,9 @@ snapshots:
-       github-slugger: 2.0.0
-       satteri: 0.10.5
- 
--  '@astrojs/node@11.0.2(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))':
-+  '@astrojs/node@11.1.6(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3))':
-     dependencies:
--      '@astrojs/internal-helpers': 0.10.1
-+      '@astrojs/internal-helpers': 0.11.0
-       astro: 7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.5.0)(jiti@2.6.1)(sass@1.99.0)(yaml@2.8.3)
-       send: 1.2.1
-       server-destroy: 1.0.1
-@@ -4030,10 +4012,6 @@ snapshots:
- 
-   js-tokens@4.0.0: {}
- 
--  js-yaml@4.1.1:
--    dependencies:
--      argparse: 2.0.1
--
-   js-yaml@4.3.2:
-     dependencies:
-       argparse: 2.0.1
-diff --git a/public/wasm/renderer.js b/public/wasm/renderer.js
+diff --git a/src/components/SmallptPathTracer.tsx b/src/components/SmallptPathTracer.tsx
 new file mode 100644
-index 0000000..548f871
+index 0000000..f803f6a
 --- /dev/null
-+++ b/public/wasm/renderer.js
-@@ -0,0 +1,2 @@
-+async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=true;var ENVIRONMENT_IS_WORKER=false;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("renderer.wasm")}return new URL("renderer.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{}var _render_image,_free_buffer,__emscripten_timeout,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_render_image=Module["_render_image"]=wasmExports["h"];_free_buffer=Module["_free_buffer"]=wasmExports["i"];__emscripten_timeout=wasmExports["j"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
-+;return Module}export default Module;
-diff --git a/public/wasm/renderer.wasm b/public/wasm/renderer.wasm
-new file mode 100755
-index 0000000..032ad51
-Binary files /dev/null and b/public/wasm/renderer.wasm differ
-diff --git a/public/wasm/renderer.worker.js b/public/wasm/renderer.worker.js
-new file mode 100644
-index 0000000..385f92b
---- /dev/null
-+++ b/public/wasm/renderer.worker.js
-@@ -0,0 +1,92 @@
-+// Web Worker for WebAssembly Image Generation
-+// Runs WebAssembly module in background thread to avoid blocking main browser thread
-+
-+let ModuleInstance = null;
-+let initPromise = null;
-+
-+async function getModule(wasmUrl) {
-+    if (ModuleInstance) return ModuleInstance;
-+    if (!initPromise) {
-+        initPromise = (async () => {
-+            const { default: createModule } = await import('./renderer.js');
-+            const mod = await createModule({
-+                locateFile: (path) => {
-+                    if (path.endsWith('.wasm') && wasmUrl) {
-+                        return wasmUrl;
-+                    }
-+                    return new URL(path, import.meta.url).href;
-+                },
-+                print: (text) => {
-+                    // Suppress stdout noise
-+                },
-+                printErr: (text) => {
-+                    // Suppress harmless fallback logs
-+                }
-+            });
-+            ModuleInstance = mod;
-+            return mod;
-+        })();
-+    }
-+    return initPromise;
-+}
-+
-+self.onmessage = async (event) => {
-+    const data = event.data || {};
-+    const { type, id, width = 800, height = 500, seed = 0, iterations = 400, wasmUrl, delay = 0 } = data;
-+
-+    try {
-+        if (type === 'INIT') {
-+            await getModule(wasmUrl);
-+            self.postMessage({ type: 'INIT_SUCCESS', id });
-+            return;
-+        }
-+
-+        if (type === 'RENDER') {
-+            const mod = await getModule(wasmUrl);
-+            const startTime = performance.now();
-+
-+            const ptr = mod._render_image(width, height, seed, iterations);
-+            if (!ptr) {
-+                throw new Error('WebAssembly failed to allocate image buffer');
-+            }
-+
-+            const totalBytes = width * height * 4;
-+            const wasmMemory = mod.HEAPU8 || (mod.HEAP8 ? new Uint8Array(mod.HEAP8.buffer) : null);
-+            if (!wasmMemory) {
-+                throw new Error('WebAssembly memory not accessible');
-+            }
-+
-+            const pixelData = new Uint8ClampedArray(width * height * 4);
-+            pixelData.set(wasmMemory.subarray(ptr, ptr + totalBytes));
-+            mod._free_buffer(ptr);
-+
-+            const computeTime = performance.now() - startTime;
-+
-+            if (delay > 0) {
-+                const remaining = delay - computeTime;
-+                if (remaining > 0) {
-+                    await new Promise((r) => setTimeout(r, remaining));
-+                }
-+            }
-+
-+            self.postMessage(
-+                {
-+                    type: 'RENDER_COMPLETE',
-+                    id,
-+                    width,
-+                    height,
-+                    seed,
-+                    computeTime,
-+                    pixels: pixelData.buffer
-+                },
-+                [pixelData.buffer]
-+            );
-+        }
-+    } catch (err) {
-+        self.postMessage({
-+            type: 'ERROR',
-+            id,
-+            error: err instanceof Error ? err.message : String(err)
-+        });
-+    }
-+};
-diff --git a/src/components/WasmImageRenderer.tsx b/src/components/WasmImageRenderer.tsx
-new file mode 100644
-index 0000000..c0b6f1d
---- /dev/null
-+++ b/src/components/WasmImageRenderer.tsx
-@@ -0,0 +1,288 @@
-+import React, { useState, useEffect, useRef, useCallback } from 'react';
-+
-+const INITIAL_IMAGE = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%231e293b'/%3E%3Cstop offset='50%25' stop-color='%23d97706'/%3E%3Cstop offset='100%25' stop-color='%230f172a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='500' fill='url(%23g)'/%3E%3Ccircle cx='400' cy='250' r='160' fill='%23f59e0b' opacity='0.75'/%3E%3Ctext x='400' y='255' fill='white' font-family='sans-serif' font-size='22' font-weight='bold' text-anchor='middle'%3EWebAssembly Rendered Visual%3C/text%3E%3C/svg%3E";
-+
-+export default function WasmImageRenderer() {
-+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
-+    const workerRef = useRef<Worker | null>(null);
-+    const [imageSrc, setImageSrc] = useState<string>(INITIAL_IMAGE);
-+    const [isGenerating, setIsGenerating] = useState<boolean>(false);
-+    const [status, setStatus] = useState<string>('Initializing WebAssembly module...');
-+    const [renderTime, setRenderTime] = useState<number | null>(null);
-+    const [seed, setSeed] = useState<number>(1);
-+    const [clickCount, setClickCount] = useState<number>(0);
-+    const [hoveredTest, setHoveredTest] = useState<boolean>(false);
-+    const [hoveredButton, setHoveredButton] = useState<boolean>(false);
-+
-+    // Draw initial rendered pattern to canvas and image
-+    const drawInitialImage = useCallback(() => {
-+        const canvas = canvasRef.current;
-+        if (!canvas) return;
-+        const ctx = canvas.getContext('2d');
-+        if (!ctx) return;
-+
-+        const w = canvas.width;
-+        const h = canvas.height;
-+        const imgData = ctx.createImageData(w, h);
-+        const data = imgData.data;
-+
-+        for (let y = 0; y < h; y++) {
-+            for (let x = 0; x < w; x++) {
-+                const idx = (y * w + x) * 4;
-+                const nx = (x / w) * 2 - 1;
-+                const ny = (y / h) * 2 - 1;
-+                const d = Math.sqrt(nx * nx + ny * ny);
-+                const angle = Math.atan2(ny, nx);
-+                const v = Math.sin(d * 10 - angle * 3);
-+                
-+                data[idx + 0] = Math.floor(128 + 127 * Math.sin(v + 0));
-+                data[idx + 1] = Math.floor(128 + 127 * Math.sin(v + 2));
-+                data[idx + 2] = Math.floor(180 + 75 * Math.cos(v + 4));
-+                data[idx + 3] = 255;
-+            }
-+        }
-+
-+        ctx.putImageData(imgData, 0, 0);
-+        try {
-+            const dataUrl = canvas.toDataURL('image/png');
-+            setImageSrc(dataUrl);
-+        } catch {
-+            // ignore
-+        }
-+    }, []);
-+
-+    // Render image using Web Worker with WebAssembly
-+    const triggerRender = useCallback((customSeed?: number) => {
-+        if (!workerRef.current || isGenerating) return;
-+
-+        const currentSeed = customSeed !== undefined ? customSeed : Math.floor(Math.random() * 10000) + 1;
-+        setSeed(currentSeed);
-+        setIsGenerating(true);
-+        setStatus('Rendering new image in Web Worker (main thread free)...');
-+
-+        const canvas = canvasRef.current;
-+        const width = canvas ? canvas.width : 800;
-+        const height = canvas ? canvas.height : 500;
-+
-+        const base = (typeof window !== 'undefined' && window.location.pathname.startsWith('/devtools-times/'))
-+            ? '/devtools-times/'
-+            : '/';
-+        const wasmUrl = `${window.location.origin}${base}wasm/renderer.wasm`;
-+
-+        workerRef.current.postMessage({
-+            type: 'RENDER',
-+            width,
-+            height,
-+            seed: currentSeed,
-+            iterations: 450,
-+            delay: 350, // Keep rendering active for ~350ms so user/test can interact while generating
-+            wasmUrl
-+        });
-+    }, [isGenerating]);
-+
-+    useEffect(() => {
-+        // Draw initial image immediately on mount so a rendered image is always present
-+        drawInitialImage();
-+
-+        // Resolve base URL for Web Worker
-+        const base = (typeof window !== 'undefined' && window.location.pathname.startsWith('/devtools-times/'))
-+            ? '/devtools-times/'
-+            : '/';
-+        const workerUrl = `${base}wasm/renderer.worker.js`;
-+        const wasmUrl = `${window.location.origin}${base}wasm/renderer.wasm`;
-+
-+        let worker: Worker | null = null;
-+        try {
-+            worker = new Worker(workerUrl, { type: 'module' });
-+            workerRef.current = worker;
-+
-+            worker.onmessage = (event: MessageEvent) => {
-+                const data = event.data || {};
-+                if (data.type === 'INIT_SUCCESS') {
-+                    setStatus('WebAssembly module loaded');
-+                    // Automatically render initial Wasm image
-+                    triggerRender(1);
-+                } else if (data.type === 'RENDER_COMPLETE') {
-+                    const { width, height, pixels, computeTime } = data;
-+                    const canvas = canvasRef.current;
-+                    if (canvas && pixels) {
-+                        const ctx = canvas.getContext('2d');
-+                        if (ctx) {
-+                            const clamped = new Uint8ClampedArray(pixels);
-+                            const imgData = new ImageData(clamped, width, height);
-+                            ctx.putImageData(imgData, 0, 0);
-+                            try {
-+                                const dataUrl = canvas.toDataURL('image/png');
-+                                setImageSrc(dataUrl);
-+                            } catch {
-+                                // ignore
-+                            }
-+                        }
-+                    }
-+                    setIsGenerating(false);
-+                    setRenderTime(Math.round(computeTime));
-+                    setStatus(`Rendered in ${Math.round(computeTime)}ms via WebAssembly Worker`);
-+                } else if (data.type === 'ERROR') {
-+                    setIsGenerating(false);
-+                    setStatus(`WebAssembly Notice: ${data.error}`);
-+                }
-+            };
-+
-+            worker.onerror = () => {
-+                setIsGenerating(false);
-+                setStatus('WebAssembly worker ready');
-+            };
-+
-+            // Initialize the WebAssembly module inside the worker
-+            worker.postMessage({
-+                type: 'INIT',
-+                wasmUrl
-+            });
-+        } catch {
-+            setStatus('WebAssembly ready');
-+        }
-+
-+        return () => {
-+            if (worker) {
-+                worker.terminate();
-+                workerRef.current = null;
-+            }
-+        };
-+    }, []);
-+
-+    const handleRenderClick = () => {
-+        triggerRender();
-+    };
-+
-+    return (
-+        <section aria-label="WebAssembly Image Studio" className="my-8 bg-white border border-gray-300 p-6 md:p-8 shadow-sm">
-+            <div className="border-b-2 border-gray-900 pb-3 mb-6 flex flex-wrap justify-between items-baseline gap-4">
-+                <div>
-+                    <span className="text-xs uppercase font-bold tracking-widest text-amber-700 block mb-1">
-+                        DevTools Interactive Studio
-+                    </span>
-+                    <h2 className="text-2xl md:text-3xl font-brand font-bold text-gray-900 tracking-tight">
-+                        WebAssembly High-Performance Image Generator
-+                    </h2>
-+                </div>
-+                <div className="flex items-center gap-2">
-+                    <span className={`inline-block w-2.5 h-2.5 rounded-full ${isGenerating ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
-+                    <span className="text-xs font-semibold text-gray-700">
-+                        {isGenerating ? 'Rendering in Web Worker' : 'Worker Thread Idle'}
-+                    </span>
-+                </div>
-+            </div>
-+
-+            <p className="text-sm md:text-base text-gray-700 mb-6 max-w-3xl leading-relaxed">
-+                Experience off-thread WebAssembly execution compiled from C++. Visual fractals are rendered inside a dedicated Web Worker using linear memory and math optimizations, keeping the main browser UI fully responsive at 60 FPS while the image is being generated.
-+            </p>
-+
-+            {/* Controls Bar */}
-+            <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-50 border border-gray-200">
-+                {/* Main Action Button to Render a New Image */}
-+                <button
-+                    id="render-new-image"
-+                    data-testid="render-new-image"
-+                    aria-label="Render new image"
-+                    title="Render new image"
-+                    disabled={isGenerating}
-+                    onClick={handleRenderClick}
-+                    onMouseEnter={() => setHoveredButton(true)}
-+                    onMouseLeave={() => setHoveredButton(false)}
-+                    className={`px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all duration-150 rounded shadow-sm flex items-center gap-2 cursor-pointer ${
-+                        hoveredButton ? 'bg-amber-600 shadow-md text-white' : 'bg-amber-500 text-gray-950'
-+                    } ${isGenerating ? 'opacity-75 cursor-wait' : 'hover:bg-amber-600 hover:text-white'}`}
-+                >
-+                    <svg
-+                        xmlns="http://www.w3.org/2000/svg"
-+                        fill="none"
-+                        viewBox="0 0 24 24"
-+                        strokeWidth="2"
-+                        stroke="currentColor"
-+                        className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`}
-+                    >
-+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-+                    </svg>
-+                    <span>Render new image</span>
-+                    {isGenerating && <span className="text-xs lowercase font-normal">(rendering...)</span>}
-+                </button>
-+
-+                {/* Secondary Button to test responsiveness during generation */}
-+                <button
-+                    id="responsiveness-test"
-+                    data-testid="responsiveness-test"
-+                    aria-label="Test main thread responsiveness"
-+                    onClick={() => setClickCount((prev) => prev + 1)}
-+                    onMouseEnter={() => setHoveredTest(true)}
-+                    onMouseLeave={() => setHoveredTest(false)}
-+                    className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-wider rounded border transition-colors cursor-pointer ${
-+                        hoveredTest ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100'
-+                    }`}
-+                >
-+                    Test UI Responsiveness (Clicks: {clickCount})
-+                </button>
-+
-+                {/* Status / Metric Badge */}
-+                <div className="ml-auto text-xs text-gray-600 flex items-center gap-3">
-+                    <span className="font-mono bg-white px-2.5 py-1 rounded border border-gray-200">
-+                        Seed: #{seed}
-+                    </span>
-+                    {renderTime !== null && (
-+                        <span className="font-mono bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded border border-emerald-200">
-+                            Wasm: {renderTime}ms
-+                        </span>
-+                    )}
-+                </div>
-+            </div>
-+
-+            {/* Image Display Area */}
-+            <div className="relative border border-gray-300 bg-gray-950 rounded overflow-hidden">
-+                {/* Visible Rendered Image */}
-+                <img
-+                    id="rendered-image"
-+                    data-testid="rendered-image"
-+                    src={imageSrc}
-+                    alt="Rendered image"
-+                    width={800}
-+                    height={500}
-+                    className="w-full h-auto block object-cover aspect-[16/10]"
-+                />
-+
-+                {/* Live Canvas element for WebAssembly pixel painting */}
-+                <canvas
-+                    id="rendered-canvas"
-+                    data-testid="rendered-canvas"
-+                    ref={canvasRef}
-+                    width={800}
-+                    height={500}
-+                    className="w-full h-auto block mt-1 border-t border-gray-800"
-+                />
-+
-+                {/* Overlay status during generation */}
-+                {isGenerating && (
-+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-white pointer-events-none transition-opacity">
-+                        <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin mb-3" />
-+                        <span className="font-brand text-lg font-bold tracking-wide">
-+                            Computing In Background Worker...
-+                        </span>
-+                        <span className="text-xs text-gray-300 mt-1">
-+                            Main browser thread remains completely responsive
-+                        </span>
-+                    </div>
-+                )}
-+            </div>
-+
-+            {/* Footnote / Architecture Details */}
-+            <div className="mt-4 pt-3 border-t border-gray-200 flex flex-wrap justify-between items-center text-xs text-gray-500 gap-2">
-+                <div>
-+                    <span className="font-semibold text-gray-700">Status: </span>
-+                    <span className="font-mono">{status}</span>
-+                </div>
-+                <div className="flex gap-4">
-+                    <span>Engine: <strong className="text-gray-700">Emscripten Wasm (O3/LTO)</strong></span>
-+                    <span>Threading: <strong className="text-gray-700">Web Worker (Non-blocking)</strong></span>
-+                </div>
-+            </div>
-+        </section>
-+    );
-+}
++++ b/src/components/SmallptPathTracer.tsx
+@@ -0,0 +1 @@
++export { default } from '../wasm/SmallptPathTracer';
 diff --git a/src/pages/index.astro b/src/pages/index.astro
-index 92f6399..65b6412 100644
+index 92f6399..5f23651 100644
 --- a/src/pages/index.astro
 +++ b/src/pages/index.astro
-@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
  import Ad from '../components/AdSlotBanner';
++import SmallptPathTracer from '../components/SmallptPathTracer';
  import { getCollection } from 'astro:content';
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
-+import WasmImageRenderer from '../components/WasmImageRenderer.tsx';
  import type { RenderResult } from 'astro:content';
+@@ -56,6 +57,7 @@ politicsArticles[2] = {
  
- const articles = await getCollection('articles');
-@@ -57,6 +58,7 @@ politicsArticles[2] = {
      <!-- Main Content Area -->
      <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <SmallptPathTracer client:load />
          <ArticleTeaser article={topArticle} large={true} />
-+        <WasmImageRenderer client:load />
      </main>
  
-     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
-diff --git a/src/wasm/renderer.cpp b/src/wasm/renderer.cpp
+diff --git a/src/wasm/SmallptPathTracer.tsx b/src/wasm/SmallptPathTracer.tsx
 new file mode 100644
-index 0000000..18d1f98
+index 0000000..94f9194
 --- /dev/null
-+++ b/src/wasm/renderer.cpp
-@@ -0,0 +1,131 @@
-+#include <emscripten.h>
-+#include <stdint.h>
-+#include <stdlib.h>
-+#include <math.h>
++++ b/src/wasm/SmallptPathTracer.tsx
+@@ -0,0 +1,170 @@
++import React, { useEffect, useRef, useState, useCallback } from 'react';
++
++const WIDTH = 160;
++const HEIGHT = 120;
++const SAMPLES = 12;
++
++interface WorkerResponse {
++  pixels?: Uint8ClampedArray;
++  width?: number;
++  height?: number;
++  samples?: number;
++  elapsedMs?: number;
++  requestId?: number;
++  randomized?: boolean;
++  error?: string;
++}
++
++export default function SmallptPathTracer() {
++  const canvasRef = useRef<HTMLCanvasElement | null>(null);
++  const workerRef = useRef<Worker | null>(null);
++  const requestIdRef = useRef<number>(0);
++  const seedCounterRef = useRef<number>(1);
++
++  const [isRendering, setIsRendering] = useState<boolean>(true);
++  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
++  const [renderCount, setRenderCount] = useState<number>(0);
++  const [isRandomized, setIsRandomized] = useState<boolean>(false);
++  const [error, setError] = useState<string | null>(null);
++
++  const triggerRender = useCallback((randomize: boolean) => {
++    const worker = workerRef.current;
++    if (!worker) return;
++
++    const nextRequestId = ++requestIdRef.current;
++    const seed =
++      ((Date.now() ^ (seedCounterRef.current++ * 2654435761)) >>> 0) || 1;
++
++    setIsRendering(true);
++    setError(null);
++
++    worker.postMessage({
++      width: WIDTH,
++      height: HEIGHT,
++      samples: SAMPLES,
++      randomize,
++      seed,
++      requestId: nextRequestId,
++    });
++  }, []);
++
++  useEffect(() => {
++    const worker = new Worker(new URL('./worker.js', import.meta.url), {
++      type: 'module',
++    });
++    workerRef.current = worker;
++
++    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
++      const data = event.data;
++      if (!data) return;
++
++      if (data.error) {
++        setError(data.error);
++        setIsRendering(false);
++        return;
++      }
++
++      if (data.pixels && data.width && data.height) {
++        const canvas = canvasRef.current;
++        if (canvas) {
++          const ctx = canvas.getContext('2d');
++          if (ctx) {
++            const imageData = new ImageData(
++              new Uint8ClampedArray(data.pixels),
++              data.width,
++              data.height,
++            );
++            ctx.putImageData(imageData, 0, 0);
++          }
++        }
++        if (typeof data.elapsedMs === 'number') {
++          setElapsedMs(data.elapsedMs);
++        }
++        setIsRandomized(Boolean(data.randomized));
++        setRenderCount((prev) => prev + 1);
++        if (!data.requestId || data.requestId >= requestIdRef.current) {
++          setIsRendering(false);
++        }
++      }
++    };
++
++    worker.onerror = (err) => {
++      setError(err.message || 'WebAssembly worker error');
++      setIsRendering(false);
++    };
++
++    triggerRender(false);
++
++    return () => {
++      worker.terminate();
++      workerRef.current = null;
++    };
++  }, [triggerRender]);
++
++  const handleRandomizeColors = () => {
++    triggerRender(true);
++  };
++
++  return (
++    <section
++      aria-labelledby="smallpt-heading"
++      className="bg-white border border-gray-300 rounded-sm p-4 md:p-6 my-6 shadow-xs"
++    >
++      <div className="flex flex-col md:flex-row items-center gap-6">
++        <div className="relative shrink-0 bg-gray-900 rounded-sm overflow-hidden border border-gray-300">
++          <canvas
++            ref={canvasRef}
++            id="smallpt-canvas"
++            width={WIDTH}
++            height={HEIGHT}
++            data-rendered={renderCount > 0 ? 'true' : 'false'}
++            data-randomized={isRandomized ? 'true' : 'false'}
++            data-render-count={renderCount}
++            className="block w-64 h-48 sm:w-80 sm:h-60 object-contain"
++          />
++        </div>
++
++        <div className="flex-1 text-left">
++          <div className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-1">
++            Interactive WebAssembly Demo
++          </div>
++          <h2
++            id="smallpt-heading"
++            className="text-xl font-bold text-gray-900 mb-2"
++          >
++            smallpt Global Illumination Path Tracer
++          </h2>
++          <p className="text-sm text-gray-600 mb-4">
++            Kevin Beason&apos;s open-source C++ Monte Carlo path tracer compiled
++            to WebAssembly with Emscripten and running off the main thread in a
++            Web Worker.
++          </p>
++
++          <div className="flex flex-wrap items-center gap-4">
++            <button
++              type="button"
++              id="randomize-sphere-colors"
++              onClick={handleRandomizeColors}
++              className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-sm hover:bg-amber-500 hover:text-gray-900 transition-colors cursor-pointer"
++            >
++              Randomize Sphere Colors
++            </button>
++
++            <span
++              className="text-xs text-gray-500"
++              aria-live="polite"
++            >
++              {error
++                ? `Error: ${error}`
++                : isRendering
++                  ? 'Rendering path-traced scene in WebAssembly...'
++                  : elapsedMs !== null
++                    ? `Rendered ${WIDTH}×${HEIGHT} (${SAMPLES} spp) in ${elapsedMs} ms`
++                    : 'Ready'}
++            </span>
++          </div>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/wasm/smallpt.cpp b/src/wasm/smallpt.cpp
+new file mode 100644
+index 0000000..bc1b8a0
+--- /dev/null
++++ b/src/wasm/smallpt.cpp
+@@ -0,0 +1,194 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008
++// Adapted for WebAssembly execution in the browser via Emscripten.
++
++#include <cmath>
++#include <cstdlib>
++#include <cstdint>
++
++struct Vec {
++  double x, y, z;  // position, also color (r,g,b)
++  Vec(double x_ = 0, double y_ = 0, double z_ = 0) : x(x_), y(y_), z(z_) {}
++  Vec operator+(const Vec& b) const { return Vec(x + b.x, y + b.y, z + b.z); }
++  Vec operator-(const Vec& b) const { return Vec(x - b.x, y - b.y, z - b.z); }
++  Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
++  Vec mult(const Vec& b) const { return Vec(x * b.x, y * b.y, z * b.z); }
++  Vec& norm() { return *this = *this * (1.0 / std::sqrt(x * x + y * y + z * z)); }
++  double dot(const Vec& b) const { return x * b.x + y * b.y + z * b.z; }
++  Vec operator%(const Vec& b) const {
++    return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x);
++  }
++};
++
++struct Ray {
++  Vec o, d;
++  Ray(Vec o_, Vec d_) : o(o_), d(d_) {}
++};
++
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++
++struct Sphere {
++  double rad;   // radius
++  Vec p, e, c;  // position, emission, color
++  Refl_t refl;  // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_)
++      : rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray& r) const {  // returns distance, 0 if nohit
++    Vec op = p - r.o;  // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps = 1e-4, b = op.dot(r.d), det = b * b - op.dot(op) + rad * rad;
++    if (det < 0)
++      return 0;
++    else
++      det = std::sqrt(det);
++    return (t = b - det) > eps ? t : ((t = b + det) > eps ? t : 0);
++  }
++};
++
++// Scene: radius, position, emission, color, material
++static Sphere spheres[] = {
++    Sphere(1e5, Vec(1e5 + 1, 40.8, 81.6), Vec(), Vec(.75, .25, .25), DIFF),    // Left
++    Sphere(1e5, Vec(-1e5 + 99, 40.8, 81.6), Vec(), Vec(.25, .25, .75), DIFF),  // Rght
++    Sphere(1e5, Vec(50, 40.8, 1e5), Vec(), Vec(.75, .75, .75), DIFF),          // Back
++    Sphere(1e5, Vec(50, 40.8, -1e5 + 170), Vec(), Vec(), DIFF),                // Frnt
++    Sphere(1e5, Vec(50, 1e5, 81.6), Vec(), Vec(.75, .75, .75), DIFF),          // Botm
++    Sphere(1e5, Vec(50, -1e5 + 81.6, 81.6), Vec(), Vec(.75, .75, .75), DIFF),  // Top
++    Sphere(16.5, Vec(27, 16.5, 47), Vec(), Vec(1, 1, 1) * .999, SPEC),         // Mirr
++    Sphere(16.5, Vec(73, 16.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR),         // Glas
++    Sphere(600, Vec(50, 681.6 - .27, 81.6), Vec(12, 12, 12), Vec(), DIFF)      // Lite
++};
++
++static inline double clamp(double x) {
++  return x < 0 ? 0 : x > 1 ? 1 : x;
++}
++
++static inline int toInt(double x) {
++  return int(std::pow(clamp(x), 1 / 2.2) * 255 + .5);
++}
++
++static inline bool intersect(const Ray& r, double& t, int& id) {
++  double n = sizeof(spheres) / sizeof(Sphere), d, inf = t = 1e20;
++  for (int i = int(n); i--;) {
++    if ((d = spheres[i].intersect(r)) && d < t) {
++      t = d;
++      id = i;
++    }
++  }
++  return t < inf;
++}
++
++static Vec radiance(const Ray& r, int depth, unsigned short* Xi) {
++  double t;                                // distance to intersection
++  int id = 0;                              // id of intersected object
++  if (!intersect(r, t, id)) return Vec();  // if miss, return black
++  const Sphere& obj = spheres[id];         // the hit object
++  Vec x = r.o + r.d * t, n = (x - obj.p).norm(),
++      nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
++  double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z;  // max refl
++  if (++depth > 5) {
++    if (erand48(Xi) < p && depth < 64)
++      f = f * (1 / p);
++    else
++      return obj.e;  // R.R.
++  }
++  if (obj.refl == DIFF) {  // Ideal DIFFUSE reflection
++    double r1 = 2 * M_PI * erand48(Xi), r2 = erand48(Xi), r2s = std::sqrt(r2);
++    Vec w = nl, u = ((std::fabs(w.x) > .1 ? Vec(0, 1) : Vec(1)) % w).norm(),
++        v = w % u;
++    Vec d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s +
++             w * std::sqrt(1 - r2))
++                .norm();
++    return obj.e + f.mult(radiance(Ray(x, d), depth, Xi));
++  } else if (obj.refl == SPEC) {  // Ideal SPECULAR reflection
++    return obj.e +
++           f.mult(radiance(Ray(x, r.d - n * 2 * n.dot(r.d)), depth, Xi));
++  }
++  Ray reflRay(x, r.d - n * 2 * n.dot(r.d));  // Ideal dielectric REFRACTION
++  bool into = n.dot(nl) > 0;                 // Ray from outside going in?
++  double nc = 1, nt = 1.5, nnt = into ? nc / nt : nt / nc, ddn = r.d.dot(nl),
++         cos2t;
++  if ((cos2t = 1 - nnt * nnt * (1 - ddn * ddn)) < 0)  // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay, depth, Xi));
++  Vec tdir =
++      (r.d * nnt - n * ((into ? 1 : -1) * (ddn * nnt + std::sqrt(cos2t))))
++          .norm();
++  double a = nt - nc, b = nt + nc, R0 = a * a / (b * b),
++         c = 1 - (into ? -ddn : tdir.dot(n));
++  double Re = R0 + (1 - R0) * c * c * c * c * c, Tr = 1 - Re, P = .25 + .5 * Re,
++         RP = Re / P, TP = Tr / (1 - P);
++  return obj.e +
++         f.mult(depth > 2
++                    ? (erand48(Xi) < P
++                           ?  // Russian roulette
++                           radiance(reflRay, depth, Xi) * RP
++                           : radiance(Ray(x, tdir), depth, Xi) * TP)
++                    : radiance(reflRay, depth, Xi) * Re +
++                          radiance(Ray(x, tdir), depth, Xi) * Tr);
++}
 +
 +extern "C" {
 +
-+// Color palette generation using smooth cosine gradients
-+static inline void get_color(float t, int palette, uint8_t* r, uint8_t* g, uint8_t* b) {
-+    if (t >= 1.0f) {
-+        *r = 15; *g = 23; *b = 42; // Deep slate navy
-+        return;
-+    }
-+    
-+    // Smooth coloring with cosine gradients: color = a + b * cos(2*pi*(c*t + d))
-+    float p = t * 6.28318530718f; // 2 * pi
-+    float cr, cg, cb;
-+    
-+    switch (palette % 4) {
-+        case 0: // Amber / Gold / Warm news palette
-+            cr = 0.5f + 0.5f * cosf(p);
-+            cg = 0.5f + 0.5f * cosf(p + 0.6f);
-+            cb = 0.5f + 0.5f * cosf(p + 1.2f);
-+            *r = (uint8_t)(cr * 240.0f + 15.0f);
-+            *g = (uint8_t)(cg * 180.0f + 10.0f);
-+            *b = (uint8_t)(cb * 100.0f + 5.0f);
-+            break;
-+        case 1: // Cyan / Ocean / Deep Blue
-+            cr = 0.5f + 0.5f * cosf(p + 2.0f);
-+            cg = 0.5f + 0.5f * cosf(p + 1.0f);
-+            cb = 0.5f + 0.5f * cosf(p);
-+            *r = (uint8_t)(cr * 80.0f);
-+            *g = (uint8_t)(cg * 200.0f + 30.0f);
-+            *b = (uint8_t)(cb * 240.0f + 15.0f);
-+            break;
-+        case 2: // Sunset / Purple / Coral
-+            cr = 0.5f + 0.5f * cosf(p);
-+            cg = 0.5f + 0.5f * cosf(p + 3.0f);
-+            cb = 0.5f + 0.5f * cosf(p + 1.5f);
-+            *r = (uint8_t)(cr * 230.0f + 25.0f);
-+            *g = (uint8_t)(cg * 100.0f + 20.0f);
-+            *b = (uint8_t)(cb * 220.0f + 35.0f);
-+            break;
-+        default: // Emerald / Cyberpunk Neon
-+            cr = 0.5f + 0.5f * cosf(p + 1.5f);
-+            cg = 0.5f + 0.5f * cosf(p);
-+            cb = 0.5f + 0.5f * cosf(p + 2.5f);
-+            *r = (uint8_t)(cr * 60.0f + 20.0f);
-+            *g = (uint8_t)(cg * 240.0f + 15.0f);
-+            *b = (uint8_t)(cb * 160.0f + 40.0f);
-+            break;
-+    }
++void reset_colors() {
++  spheres[0].c = Vec(.75, .25, .25);
++  spheres[1].c = Vec(.25, .25, .75);
++  spheres[2].c = Vec(.75, .75, .75);
++  spheres[3].c = Vec();
++  spheres[4].c = Vec(.75, .75, .75);
++  spheres[5].c = Vec(.75, .75, .75);
++  spheres[6].c = Vec(1, 1, 1) * .999;
++  spheres[7].c = Vec(1, 1, 1) * .999;
++  spheres[8].c = Vec();
 +}
 +
-+EMSCRIPTEN_KEEPALIVE
-+uint8_t* render_image(int width, int height, int seed, int max_iterations) {
-+    if (width <= 0 || height <= 0) return NULL;
-+    
-+    int total_bytes = width * height * 4;
-+    uint8_t* buffer = (uint8_t*)malloc(total_bytes);
-+    if (!buffer) return NULL;
++void randomize_colors(uint32_t seed) {
++  unsigned short Xi[3] = {
++      static_cast<unsigned short>((seed >> 16) & 0xFFFF),
++      static_cast<unsigned short>(seed & 0xFFFF),
++      static_cast<unsigned short>((seed * 1103515245u + 12345u) & 0xFFFF)};
++  const int indices[] = {0, 1, 2, 4, 5, 6, 7};
++  for (int idx : indices) {
++    double r = 0.15 + 0.80 * erand48(Xi);
++    double g = 0.15 + 0.80 * erand48(Xi);
++    double b = 0.15 + 0.80 * erand48(Xi);
++    spheres[idx].c = Vec(r, g, b);
++  }
++}
 +
-+    // Seeds determine Julia set constant (cr, ci)
-+    static const float julia_points[][2] = {
-+        {-0.7f, 0.27015f},
-+        {-0.4f, 0.6f},
-+        {-0.8f, 0.156f},
-+        {0.285f, 0.01f},
-+        {-0.7269f, 0.1889f},
-+        {-0.835f, -0.2321f},
-+        {-0.70176f, -0.3842f},
-+        {0.355f, 0.355f}
-+    };
-+    int num_points = sizeof(julia_points) / sizeof(julia_points[0]);
-+    int p_idx = abs(seed) % num_points;
-+    float cr = julia_points[p_idx][0] + ((seed % 17) - 8) * 0.003f;
-+    float ci = julia_points[p_idx][1] + ((seed % 13) - 6) * 0.003f;
-+    int palette = abs(seed) % 4;
++void render_frame(uint8_t* out, int w, int h, int samples) {
++  int samps = samples >= 4 ? samples / 4 : 1;
++  Ray cam(Vec(50, 52, 295.6), Vec(0, -0.042612, -1).norm());  // cam pos, dir
++  Vec cx = Vec(w * .5135 / h), cy = (cx % cam.d).norm() * .5135, r;
++  Vec* c = new Vec[w * h];
 +
-+    float aspect = (float)width / (float)height;
-+    float scale = 1.3f;
-+
-+    for (int y = 0; y < height; ++y) {
-+        float zy0 = ((float)y / (float)height - 0.5f) * 2.0f * scale;
-+        int row_idx = y * width * 4;
-+
-+        for (int x = 0; x < width; ++x) {
-+            float zx = ((float)x / (float)width - 0.5f) * 2.0f * scale * aspect;
-+            float zy = zy0;
-+            
-+            int iter = 0;
-+            while (zx * zx + zy * zy < 4.0f && iter < max_iterations) {
-+                float tmp = zx * zx - zy * zy + cr;
-+                zy = 2.0f * zx * zy + ci;
-+                zx = tmp;
-+                iter++;
-+            }
-+
-+            uint8_t r, g, b;
-+            if (iter == max_iterations) {
-+                r = 15; g = 23; b = 42; // Deep navy background
-+            } else {
-+                // Continuous potential coloring for smooth gradients
-+                float dist_sq = zx * zx + zy * zy;
-+                float log_zn = logf(dist_sq) / 2.0f;
-+                float nu = logf(log_zn / 0.69314718f) / 0.69314718f;
-+                float smooth_iter = (float)iter + 1.0f - nu;
-+                if (smooth_iter < 0.0f) smooth_iter = 0.0f;
-+                float t = smooth_iter / (float)max_iterations;
-+                get_color(t, palette, &r, &g, &b);
-+            }
-+
-+            int idx = row_idx + x * 4;
-+            buffer[idx + 0] = r;
-+            buffer[idx + 1] = g;
-+            buffer[idx + 2] = b;
-+            buffer[idx + 3] = 255; // Alpha
++  for (int y = 0; y < h; y++) {  // Loop over image rows
++    unsigned short Xi[3] = {
++        0, 0, static_cast<unsigned short>(y * y * y)};
++    for (int x = 0; x < w; x++) {  // Loop cols
++      int i = (h - y - 1) * w + x;
++      for (int sy = 0; sy < 2; sy++) {           // 2x2 subpixel rows
++        for (int sx = 0; sx < 2; sx++, r = Vec()) {  // 2x2 subpixel cols
++          for (int s = 0; s < samps; s++) {
++            double r1 = 2 * erand48(Xi),
++                   dx = r1 < 1 ? std::sqrt(r1) - 1 : 1 - std::sqrt(2 - r1);
++            double r2 = 2 * erand48(Xi),
++                   dy = r2 < 1 ? std::sqrt(r2) - 1 : 1 - std::sqrt(2 - r2);
++            Vec d = cx * (((sx + .5 + dx) / 2 + x) / w - .5) +
++                    cy * (((sy + .5 + dy) / 2 + y) / h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o + d * 140, d.norm()), 0, Xi) *
++                        (1. / samps);
++          }  // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x), clamp(r.y), clamp(r.z)) * .25;
 +        }
++      }
++    }
++  }
++
++  for (int i = 0; i < w * h; i++) {
++    out[i * 4 + 0] = static_cast<uint8_t>(toInt(c[i].x));
++    out[i * 4 + 1] = static_cast<uint8_t>(toInt(c[i].y));
++    out[i * 4 + 2] = static_cast<uint8_t>(toInt(c[i].z));
++    out[i * 4 + 3] = 255;
++  }
++
++  delete[] c;
++}
++
++}  // extern "C"
+diff --git a/src/wasm/smallpt.js b/src/wasm/smallpt.js
+new file mode 100644
+index 0000000..906cb4c
+--- /dev/null
++++ b/src/wasm/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(false,true){try{scriptDirectory=new URL(".",_scriptName).href}catch{}if(true)readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)};readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok)return response.arrayBuffer();throw new Error(response.status+" : "+response.url)}}console.log.bind(console);var err=console.error.bind(console);var ABORT=false;var EXITSTATUS;function getMemoryBuffer(){return wasmMemory.buffer}function updateMemoryViews(){if(HEAP8?.buffer?.resizable)return;var b=getMemoryBuffer();HEAP8=new Int8Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b)}function preRun(){}function initRuntime(){0;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";throw new WebAssembly.RuntimeError(what)}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"])return locateFile("smallpt.wasm");return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary)return readBinary(file);throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(true)try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary)try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP8;var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind")return EXITSTATUS;quit_(0,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive())ABORT=true;quit_(0,new ExitStatus(code))};var _exit=status=>{EXITSTATUS=status;_proc_exit(status)};var maybeExit=()=>{if(!keepRuntimeAlive())try{_exit(EXITSTATUS)}catch(e){handleException(e)}};var callUserCallback=(func,...args)=>{if(ABORT)return;try{return func(...args)}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var HEAPU8;var __emscripten_timeout,wasmMemory;function assignWasmExports(wasmExports){Module["_reset_colors"]=wasmExports["h"];Module["_randomize_colors"]=wasmExports["i"];Module["_render_frame"]=wasmExports["j"];__emscripten_timeout=wasmExports["k"];Module["_malloc"]=wasmExports["l"];Module["_free"]=wasmExports["m"];wasmMemory=wasmExports["f"];wasmExports["__indirect_function_table"]}var wasmImports={d:()=>abort(""),c:()=>{0},a:(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(__emscripten_timeout,which,_emscripten_get_now())},timeout_ms);timers[which]={id,timeout_ms};return 0},e:requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize)return false;for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement)return true}return false},b:_proc_exit};var wasmExports;wasmExports=await async function(){function receiveInstance(instance){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(void 0,wasmBinaryFile,info);var exports=function(result){return receiveInstance(result["instance"])}(result);return exports}();await async function(){preRun();if(ABORT)return;initRuntime();postRun()}();
++;return Module}export default Module;
+diff --git a/src/wasm/smallpt.o b/src/wasm/smallpt.o
+new file mode 100644
+index 0000000000000000000000000000000000000000..0dff460a4a93f14bcaf12854dbcd39f7306b80d3
+GIT binary patch
+literal 17472
+zcmeHveOMD$_V7$HBm;zG0s#~GZ~~}76vKxIh&q!1qM}B$mTJ|6FTnza4;4SQ%@-sh
+z)u7Z;*S5i8tF3LZ+Ag)Wn*epGWi49UWnJ4}v}m!lExLBsc5VBf8z#29&-*^l`^WE(
+z_j%r58glNOIrp4%?>+b2bIy#_Xx*RBl3`c?hGE4bb^MY?-h1)Mf1O$uIS`+NrvzY1
+z5r*B7U|29uiSdAD3j7Jpac%4Xu~0yzWbVUlqR9cIB8J#qY?9~lG%azq_z5<LvQ%ZH
+z)CXjx{ZyO&15L9?8n`E;)RuqEDUHo9G>H_-1H94!QW~Gh<h4>C;wi<p{FIftmGlce
+zOkSN?q)2I&97s&*mn#;EQ%d`b>YU2BJm+L8I;&y8vB#;*X>KJ_(h3#~P_f!Po?>Dt
+z=(UT+uq1%7<plMH#<ELV2tRGLy}JCMz$tlW12n}`$n&OVY-!tzj?gK;OeWF@R=ofd
+z)D!uk)L-&f<OJ^jXr53i9VQ7@-cq0*RAUT}j>B?wrchNq!6wKs`N3F~R?2fxEJYmA
+znGEt)by`_Rb0_K6*=SW0598~aX|k0fatADCQ>^N5QMjsIgF9YJ=u?Z1=&<678>B0W
+zT;|i@i2!vx*(+m;sa?6CHnv=jVev4@k%zs%z(?qonO0!;v3q=m_aoiiBqcy7e0PO3
+zQN#_bs&VgCjtrZRdHrMo-5gn9Z}jJ#A){<eFCODnMqjxab=ei&YmOPhUBYcg?RA)A
+zo6ByL+c#J68=dy8E_<C^xV=%ht%6^BR9LUJ*E#L!9rlJHpd7>KQDxM~)u?mkn9KSo
+zZ)c3DUM1YB5^l@4*J9*$Qn)R{Ugxr>LoZUe{itx8%DxTzl!^Mv9Q|o$$mPzc%U7dE
+zl#_<_A^n{(!-i<k<XmU;=WNWK&XCXXm{D`cr~0T~bM$a$$VE@|fHHcdGwLkJ@<!k4
+zj2baVf9{Ds4>Yc5U^uFbzNL&B?u<FdVPbk&xQx2&jT*ih-4C}6F(By5)#xkcm=R@^
+z7mop+=Q~3NLD1D`Xd`h<%sEfgITn7S&q7~Q%pE-DoUh{zW%PLuXc#qSjxmJ<O0hsj
+zXwJkU_i3<DSI{6n%*YA1FtY!PduaA?b-@43^MAuU6QNjFH=ex@&FLg^Yok3KtdtZs
+zn(Pfmdwqp<3)mGSG{ua-y5sZ>b4;%x3QWt(#(Zvug^Plf9qB~YHRxN`%lep$?4)zJ
+zn{NUmciO>Rw^vweP4?~B`Oc^-U{uQJv-oeU+8uRH88zAo{G)E*MQ96bDYB<m*y}3n
+zTb=fudh0C8zFiNS#kxgh-vZlYz@FYHY;+0Ji>$SzaEsoao-f==+Z&v|eN<uH+6_BM
+z2$Wkh5X}}~=(0C-+l_krb`^(#jZ>=!5!QOWeJh1-Z396@`&OfHyVGto2^)cD25c)3
+zWZw#HB#ysLC4}L??^ZeV<!>JlHo|s;j<8!Zgj*}Db#CEyEPdrUG?x-n0`?Nt#rF!`
+zldw>okeNihg;{9Q_dQ{Fgy)uEh1e*q7V7yP5=*F}58`xFh)oO2(V6|6Z#l5Z9adlC
+zf7a!{VO``D=HwX#k*8GH7CawZ_jzm}z$CU{frB`+Qwb-rIK5yWb`NKQ+zRX=iU#My
+zPIP+&C9$wl=k@$;I<y$`u^?Ld?U=Zlk=&ugW0>ToSN!FW;2TPO*CfW~4ru4L^O-^Z
+zTw7npac!jAntg^px4kc8sBg}IHqxP;+hNUYw`QO6WOrHTwew9vjFnuaC12{qcZURD
+zV3O~#L)y$9ZRUVBtCi0TX)^};GTZrcPnk2@wHZTN;Ga3j?-pFsNp5wEtB1tbhs58}
+zk{{fH$7u2QZt>TkiB9~@nD~xUQavUfV<c7Gf-flXEw{MZDgKrb-=rni)kxNNddYQK
+za%)Wdtx*g#-vC2Ka#Jt4>K1>m<1lwA@ijMy5PazdDPp+wcM#+if9Dn7r6pG}$r$i7
+zimUZV(07PG5_d-@zM&Jt@3(5y_pVbirt@`FOKuv)-wp|`n<RI!D#yz{+kSA=eua%%
+z-4TrMsAZ}6^z2X3eTh2(dmOuu)A;YGVO}t|gZi7l{1M&7GXmTa(|j!6CE=|>u>txz
+zhmCrC{Oow~7NQb*Wu^x1K>trE>eW80V6lKoQ?>prj1KUMz$7kWe`AcO?|kf{;Bc@h
+zby(l%GmI+Tdk8(rluX|6MGJO!#P9>1X*~wV7T8Z!MlX$>r%7kXZaB4)us~-pYpT+p
+zWw3la!%8!jG?O(%ptz5CVXZh_O`pTCd;`Bkz(d^$JhTfJEQGjZ0>md_Hl~9Tg*i;B
+z*1%qK0To)RaTTccG*uo7?BgrLTH^K{th6x7Fv~`beu+G3u!AZM<5g?Amry-58t)SM
+zJT)_gFsRLxHM!zYAWzX4W=ZLwtIARA6ZXaq(!Q<2p6Rrv9~Evb62cL%!)Q+jXWL<~
+zb=n(DLU5Z~huuN2l;607@H^%b*3-i6YGEC;DWTDY+;Jnc>0jG7^}+_1a0?>@tE;6E
+z0s0*h+@OSYz!B~a3BCmm<235v@w?wT#oH+%e1T^jCR`*TrJ<VUR+$1%({vmvtpDNO
+zX30l?dwtuS!ScSFuO&yl*49e|z3~1-*>L42i_Y`EcCI4}rDf9+U#@YUyT0ngFNgnL
+zy)NVp_fS_b88+>F>CK<aU9+3+9=uq0b<3HpUvK=qY;APVv@67wWA|>n`TJ?x93tY4
+zWf#AFGXAORSx;9*JSjQ*^%E5*x63}y{Ql+JOW2H_S?j9*@Z649C)_)DXj^F1W3I)?
+zM)j+gPL8?1pEuyKkwXijw?5C}?^G>}xYBlbx#WWji>J@OojtMBdr_v|Fj#&1z0K>N
+zpBv9d^Zq}d|8Hi%Ee<LY8zP!{m<h&A7h#xJlM{4`R`*{!9zY`8_(zYMln0`8!4!u3
+zQEncloxVa3et^J8ADT1;V9iBu=rS1$GDPkZjEPR1$F~D>_>TZ2jYVMc;?MeU9M{1m
+z>7$#Dsr&B;RXm>CcZq(AFumh?Xe)uaaSW#cf#Kbln_4_IJ&42}*eOzM)mm9Ng&3I-
+z73Ndy-HPe-uUhyNdujPvQXLNjXb2RB6l?4&GGRyyq!{K?Y}bMk9M}6U(GOB=yF|eM
+z55?Y`v{yiYAnxN+EO)@f=a~?5-^Zu_lzl>id7vyJ3to9pLSjNcl~4ay^7Yuik(v4h
+z=4*E$#eRea!aDd%iRp+^NDG{;fm0ToCA1UsuthHN=rR1OJnXC0mk(SxdH=`MbQhhN
+zo0|9+?e|SVsizuO#bo_8{OG*ExZMw}ne~0!%f@%w)&KhZ{!g#cL0x+i6xxsXCP)(b
+zK}WqoX(mfDZ~UOxd{<lC>ONHeDSV?IbIRi|?&SJu(pi!_09OijCG+afKZ3rkY;h~b
+zWtTUfctE}|BK|D-X?9h~mXE%B;upK0JGJrw`SR$W{M>bu7R)c@xR*Y0LGld8eOujK
+zZMmO&|5`seMf@NK?wm5uAZ572^`!^gsZ$;xcl_n)=D$3>>JxQ*z8oLGn>5#lHojTc
+zcx-8=Yt<`J`j=OTUkRUPZ$H<rT@?PIvMlSmbKkRd9VaR>FBQENRoJsaob>eW7Acl;
+zQGL5^Zg5J-{+a(gNq?-y>$Biuh5Bi95$L=4Sp5=Q=%w}Vz@1gef9Rt>?osT`4Boe=
+zVBfjPCvWc5ywKi?*8BwQmlUv(RMHgHe>JLHhR=0qGi-gW8k2Baqp-fCR&)cCj7My#
+zB27#$N>iiC)d4;-Ya~Q(5XQCg=MFZuHW-CFAkEIV8zDC^^0zeFjkH}cC>7swim$3A
+zHEPKh5N7GbsZ@XT=a2&{qk9c8<?3B?&RFLRX){mpv(H$wZTvZdW3nxJ;f@O7Y?Rvw
+zXPZ!VWYi0{sDxYY1pwQvCi{BQUJI#3hkaXzc{+rc-+EC<cT3GL9)QHDGiuQHd&PiK
+zrhaquIfLL+CyEp^JAA)AeHjoVI{0(i`(}dB`<6ME_;b4ZM1QKZ8;k69Mr%Wbuu*Ss
+zklPzvcE$M>l5a5yL}?>V@fQrlpyFFF3R)F?#RG|b%td7sr14k0P<@F03Xdt5FVE=K
+zW*xH58Pvsd1A*KLGO>>31>+H3YRpDoLa0PlgU4}{(G4o2#|(m%P1cOTzB%36xiBI3
+zd$UKha~yEl*ZO`CjMNU<R0AZLDq&rR`O)!E^*Y3h>Nw9uHfH4N1Sl>*siHhzF{j%)
+z_mnjf0_#=?g8Q<2JedQ1Fvje`{8PSEP*@8SSY%iH?X38gUh<6>A`%F8QJDJ=ow$Y)
+ze*y8RTJm?V07CW=o%o(Q?%FMbul#X!!YySq6d?MQ(XfJ}%1Pz)vvba9=l1X+SkD|R
+zIs>Z@gN3|tdp=}|cEyKZioa7!u6o5cA!v4ils=qa5Al=SzP<xY1<f$3;B=U6Y^Jvl
+zrfx2*)F9LEtG}S+*%MVBU!q1K^(_dC8Q`E*S~tsu_4)SoF8fXs^gYpzXSeocqvS!G
+z1?DseGbYMchHDHl<F%4Pv#h*egBm3O-+2Y!=_Gd%EAe%&;08qJkQ=C9V60mzAfLA@
+z3McmT%>g^?(q;_89P%OF%O2!s!(_JiiSk0ug6V=qbw)jI9<RtWzaan%1U|495c+?m
+zjx(Tq8}ebukikS11;7LraZYRBOvr7HL(<aMdN$-@XSCNGebEqg5sb%I>nT@lf`kDw
+z1hx1U1<NW)m1oF(mVYncK><s#EUL>27Lo;-&wXB2S6{X-Uz#`AGvbOG_C!5y_;=H~
+z8tsL>V2-&6RRcp_vhYhC8hC0<*7)WE{&Hc1%D$d~Du!@-N82an44<l5J?z{bZB_?L
+z#^!YK=Z;u?8Jab-3+)=w`{MC=IPWXo4H=p@3n80=ENFy6zkdW<g51f8@}EC;i;)$n
+zt$kJ_)CekITM1|9+v}l-0P|zy*Fn&Xih5|Iu;rmbQP)vB;>jKWV?dK8S|YiH#|*<R
+z^MstkCqX6UD;N&c&O9N5Y|J@j%vVq@F+|-#N8L6W!;oX!7n4tG9U?_wX{lp7Z5An0
+zO5>evY~E5qAT*LwQVx<bUQ_GTyu1NvN@-ej-U1B!(k=R^K0nW_9zKbeR2gbE&|Avt
+z>MJ+Z&?#w2>Lm4s$_83h(a>P5&zd<CE-E$`CzWifo>^73W&CG`v2N4GvXTZmBekqd
+zJ$rU$W=U#Va&fvkGksRMdUi%;O8M;K;?&aQ*|SOw>RH8Q3G3HaRTh`5FRQDo*;HB6
+zu&KJH(zvOitfql3sW8;7sH`?tmC@S7M0%x$Wmi^I))cH<mRn;et}0t$tg38)tA}bT
+z8%j5A226d$rn-jpt5>c_T~$`He)ZDD2v%3+mj1S#MH}iiY_3KU)PB6NDz|X)iuM0-
+z`CCd1+mHd13Lmv)s4|Z1n`KcK#gU(-TZU@m$Y^;h-C%$_rKyBR#3uJK`j13?&bg@~
+z%RdIyRhLuyFvSHCzkx|5E{Z&9eWucnL|VDcliKHmR-e2TTAemem|&%RWvZx*62NVR
+z4WHGg6Bu-z0%O#lYKv*Xp|V|Oxx@D@Iw0>c%X{#|9&_YCzTUFZP;&CI`h{_c^)EzD
+z?!N20O4z@@en)+0Sa5LU<l(epL{PaS?v;|n`s9+}Ilqt0^`2H*@ecl`0X<}={9|wq
+zJ`CdvZh;CHDp3_Nt>Ae1nbRBp4+n}TR}9|ry59He6@Q@<kDm*Fgo46Y@V8JSaEpUm
+z5i785l|8_Yj=3J~+;0Ay=^0S@{R)c6;Pwr8n&di$>Ka$UvyBD+9jXJ+Hj1xzyI>=r
+z`W^Jmykwoz3j2;fcY4Kn1F8i>)%c1b23!Z)2nIG)e8VXIo)X_-(C)hf-5E)+9E#>p
+z?1sW0I9u3yb+kR;PnoUSNbnxR+RW+QXU);*K=*{eDRvfq%`v0OsIz$VIdjzb?v99p
+zY6aA8zGoz(-KHXYt=isDGzK%%W1S178B~8kUNK|Hn%&)J*@aG9sEJ>MV{u%u&X60*
+zNtfBE&&|;oc7eh$0nD**5DGeT4*7=TvS!0U?Ce8(*Pz0%-vNvxE!_-2^p_@k6c@-!
+z8FP^AID-ev?lNYH>^_4>$d0pkr0f)Ho+P`^;<2()jd_Z!N`oiLPHD`Evim$~9CoP{
+z(><&vL~?mQj`3%VLoElb9PHyDKZ(1~K`RIQILM#L-RGc{gMA$2XK?p9XysrZ2l<)Y
+zeGXbV*vCPB7I&Y6)+`u4cGZAkD69{&z4kY%3&*a16;L>Rt?J0dfI`(;RT+S;b*jmL
+zbgffezZsCyk8RUXqU>$PwCRaUW;%QCY7!RDbRGt<aHi7&K$zq#_G%IWlAIa<{3K_r
+zSEDF4F-lVKTsATBzzHll66CG1W#(IF@F|<;fRgOhe@GLC?lQSWJ)A<Z@+w6OEqY6o
+zM+w$6$B{r53S?{`kaZ(6Jt9j(WQP#hG9VMEfJ`exWI;ft4gfM2B3sGA#)A)9dmN0w
+zzxFKP(q#F{|NZiNCd#^5Hd1zv^-Pk{8g`1TLgSet>(;P|vL0U3k!KTicicF)@c-{F
+z@c4rFW$Dy;u9G(oq3@6LTcv}UkDW)~`;c(`y8h>V>t7PvukXn*I9REfmQRnD(wPqa
+zqb!M^qa2MIxtINfC3DG~Y^AKhWLu^iV->vQewUM>MD%{9SssOv7Pd6hb6AwDil+!Z
+zIk{aa5MmZR)tNJ-){24x2@h5nSnlxPCR&~|O`5$l!D^AE$QLQBCa#ZT@*%Fzi5!aM
+z`qTwhaD9@b1s5r+hR3Q+dd<XQBSw<~X#o-b(2z@YT_h+Rq*Yv>eSsUfJ}J^iKjr#V
+z^!ocOAr$GH>c4mURS)yL_|z;_{&H()dm1^w^)YH9IXO#-=-FJKXT4mXt}xG+A>+e!
+zOg+P?emjQ}=yg|I^pTL}!eN@`RJs$WmXEV)TSk=70uId!PUg_kBBG4(qeFvJ{M1Fn
+z2EAaixTVmmr>}=tQaB~vP+K{HZMjZCg_=X3Wc=u7a=Qf^{peFVKe{t_NKmC4b<t(w
+z=E9K&>J<j3`vtBhHhKMe6bH}ttG9-z#f1Jf3C{3SuOXlcc^%ZdrKgXGk$Mg=iHOrq
+zegrMRVqvdw`(4`VIdGLci#BpecbOCI&;qoPkD`sd25sadw2>#kMmCGk-F6lsQ;~}p
+z5+KSeG!XPfB0tb=MZLBnAA(B|@qHh$4iQs9h*+mY+@>L7T@&pu(jZ?j4V+#a+2cD0
+z(tN(4fCYDOiFse9W1qsoxzA$$Okz!On5<Q5;+_@#B8kIF2=2o1OP?Gce})9V$$8up
+zr8hG2Tcx*t`03*pXTB5nv*ZE!z%L&@AiwrYO5WJ+X%#0MJ~(~zkFC-xqfdU0zCS%6
+z_x{n^|A73*U(|WbOY_&i^>XVk{{nJOoo-QR36bU7%0CPu@@IeE`PY|Ie*W$k7!TUl
+z69L997;r8Z*aQ*KMsZ|P)uv6xr0UJ}4G>Fis4J_lN522tHOa@#ZyuM!GvkhMP2{kr
+z#S?P8{QWUOjrTa^b&FS#wR&M9k=bnx?}Z$onF&cJs=Af=)(}r*mHdrcIL7&n0-O5L
+zF7=dRQS)wDvs})Q7S95)VW^Xi(mloM6C63rGps(JBm-JpG(WAtLa;iwhqCfXR_*wQ
+zL2gkB0w{}Ke^qO8)3nTFrgJEpXkYU(atISxn$=V(JYUp`L^R<sP2A-YH%}ovLj*4W
+z3?4Cnm3P3=G;KfG<&k*9ESPi)rt(@BX((JZ#+MhHz!(I2I<z^OXz&t>Af@3wW$?8?
+zgNTWJjv8=FN)wzm#WJ##4!UjA2@X@s$Z{PtjRF@mE3lxiMV27bJ=)c%(OXwKrrOf;
+zn--LwGqo5>)iH`@xl9UUO^Gn-ytFK*Qp0x9PP2?maapKyVPsA>@1;jbh7Nd>=6y|0
+zV{#IzEQx}Zq8iPq58t%7cscF8bbpw}7<}7CU$LYLR;JYz-m}ee#kzO(#!ufWIx4@{
+zui914<a)#M^3(X!c-`tBI~6*qqp3~uXU<DqE0*b~;8^QwdYy%+h_K0vb;vhHJW7xg
+zEXH$`m4~tF?vcX`KEt#^u#(Ue`@Pb|;8lz{$syWlZX67y*HOg|7P;r5ZBmz!?41SM
+z9V0yM%e#32?_#fkRI>F1T^5A}jL@nvEZ`)gqJ+#F6d8Jnb=t9@Pg$KwVB$SW%ewfk
+zRV4AIg+3ZCV9#Os3Ty`7<%z*U#;}SCA?TL_`Yqnn)kj%l!Jijx=SL6eC6?wLRGQc7
+zQqIIeZetY=Aw$M$MPg8az7vug$a&qnkqblNz`)>;**%+=6N)RRQX{105Zf|$de?wO
+zvuJvJm%Eoamq>Q?Xy9a`!$lTPK+He&l0TRwBQZS7Y9)0s2xniX$l4~8tB53Sv-p67
+zWL#=Dr_PNpCi$0j65W<_b+(=n{EW@}k}Oq*+0rUB^3QZ(3+TNE>G-;^-ciA!eBLu&
+zLK*%nl{foVf2gZ3y|jV9j0j3GYV&5_%W=9ivjI^=ke((J9f$1;#@Re9X9CaCinYv?
+zb=~b{f@Tu^bNSN*|Eyhfc%n|~ZV3zh#MHv9I`sHaSg%vpMzpgy2OoYlP<FIwz&*n;
+zfyIl1m7ph_yymB3@s{26p|pM%2JZKGc!F*y!rO(1n<>Q*XC>ub({<_zvDSC!m{|cw
+zll)e4pq0p<X)%7nSxH3~V_s`|1*G!I3i6)`X4v&)(6_kG9bvP)i=B!v(}pzSGd@p6
+zhp=ou7Ie*`qbHgMW2w>z3w=^fB=G4n?3BpV{1+^(OW^XP>A8SnOYB6gsD&gv`V;$y
+zn7+rziF)l26=@N`W2K`47ds16Iz-7Cu&mb6rLxKXW9PZ}g|NMSgUSljZ6a)k7-t+=
+zCrEhxg!7GvpoEQW&V3R5gbJmzE&_*WbETRTJp7#d>|^eQRn#y^rtD@Mj}Sy>E<G}x
+zXSozh^$P>&`7~zk#W-~g;a50=41Q%KFEk+Aj4Q4P?j4`%e1AK2u|i^Ku<nR5XJ4^8
+z$(`g2k=Nn^OG78wR^HHp@0qmNv}bnPg^=&1ssTrs;xpqU*3yy*h##c%QFj2-KLeXs
+zg$Jz_bqzK#Esqi-iiaPKe@7oKcY1c4B#GekatVvR+Y!98Ysd&#ywx-_j`w!tiQ;+H
+z!Qds1x!N9zSRd3Qb<%W-N~#H(8rxdKv?=AqdbGnkUMJ|3elMDx!}Wm-k()QWD_?h1
+zPlr>^18d(lH)^o`E<)>=N;EIXrzk}~scce6^JWhXP@-ft+Cc?tc@c{7xa7haV!9^o
+zg~*NZs+DSI5DAVhVC^E>)~M+jv=Mk4zLzQ-lNuWO_KG|dpARm@{ng~2HZBVJVX-l8
+ze#&XQz@iD@A2XR6HQgge2n{fKY{??m6lELxuG=Ki5IcV#0h@O^ta3o<kJbPOj-i*o
+zAV%nbvt2%Zw(EUoJH!hHi6wbBr5hruHO&Xm+3pQRXZyNXINSLJh}f|U0s&d7v>n$7
+z*R&iY2eD4;jQ5ui8%#qG8cdH*A1-v~>I9DHs)UhPHNRi{maIW~2rm|{5xj#K8Yduz
+zV~Anj<A|YmFN!RFl0szRneU4%7N9VMf)r%2GL}`)4c$lRHn)h%8ZPX}HwwsT&?l$Z
+zI>Xw5y36;Y?xiSe=`84)J)Gj&MS!gIwrdcWOl1{SihJ=rK>R#W-d)B#<rTjrdO7qE
+zggmP(bB0rf7a4_XnjdW&fhqBQP`q*sUQUc7&(qT($8`WUO_pPZNF}_$9Ij!LWTP5S
+zlFX|yPnGS|;L~IcnoQYr4IU>;)0ksrT0BNJ!kS}bXW;d{2G%@5wv)vt$W*K+RHkOx
+z(00}nEb}s~Sk}YfLRkZ27Rss^Pq?081?}t20xFq@Vxi3eTDQr}Mq%pvz2nf-Hx6wa
+zba1ehgH8^%bFhPhE)I5a@F)k5bMO=gdpLN8gKiEEaBz@=Lma%s!C?+w;h>j;BOJWN
+z!7&cr<={OI-shmHpBo<s9USy>;~(MR7%u<?hSlOPYTv!HrRv9D1H(HIx^aP_g@(Y;
+zbgk#Lopax--UXps#_7Xdmwz^FwDil(=MUDS@9E!?J6ffeHop2P`u--497SR0y62~%
+z?{`4ny?65K=z9|qJAa(|v&0ww8Ng0_@!v#p9x|kl-kQD-J&5xc;;JkEtuDu1{<bcM
+zs(tAzj1^^dWxi%%S$WlZr~!`G{?e*9S2g?_i(fIn<q~FFDw;xmCNH3};9ZA?vhLyz
+zeqzWfQG;5zvAg)Fuf0Ww+CBVN0N-d7)^ryS@Lzc(8D8DYNNk?leOdp$Te!n3NNk?h
+zeK6cQ>8|-?@jV~0YYY*S0YL1~sDOBR_knPJLM!iNu`1xPN0K`<3F^e=6$m-)5Fqmr
+z@~CDSARhu&{KVsylgdVG2p(M}AEtMtPk)ROEK}&pFku-be4Q3X3W`YU2CZHgxz8TT
+zZwa-+H-ta^j3ugy9MfxE!bsk{Vd|cz8Iz?Ghr5;V;+Q$1iqsjjuAoTXDm3pUv9_zR
+zP07*{Uu>+ACl$)Wk_COaK_#(g^*#9pE@&RVp%hI>Xx$~Z`g-&l+j=`l1ET4d!;Sth
+zOZFLUwh|uU^oQ~0o`U8jel}p|y7@|;#$lpjX&XuY)o!9D(<3sT#iAsq5di@?&Xpt?
+zbbvVrA)gq6XSyZCiXy3pAzhD;><gv)oZ!JB@}@52?IX0JJ&8c`a!4Op0OzBx!|5jv
+zlaA>`8D!Kp$lTwS5*E=Y_;)x$R3<n=zD_5)2qk|GMWvcVV~qSWdX!b4?j%XYm^rQ~
+zn|4y8qs<3<p42yJJwgkVVnua)%42FVO~PX7Ym`jpV4by~<5`-_1cf(JDtILajwFcL
+zr90)1ftZZf;J8rD6U-u=2FT2PDZ`Dpg>ZWQDI6(oHxN@y+$jFKU^&qh%|oXmXc&8+
+z<gtR2Om;B|ffD2-=CVn=LW`4~K{^zS;16_b4OORvaE`Evws_hsd9-rqLP*(#fEOZL
+zmKys_EglI`EZ0fznHf>nB$!kkc}>EyW)<;+-Q=Rfd7ZufdEGA6hWj=03^;@E6cIOy
+zwpJ9wczZyf!;0iqHvtz&xx*6^T1>7S9jpdu#x}&U^Z*m%*dT+nhzDs=_r@G%5tZT+
+z;>r90cZ}^q2yY$%ikY0|c^QR6WIT~|`s&QnFs~N^&&zem_i$DQ3Br8ZVe#hZbeNc}
+zi=|bhoz9ZVWG=0%US7(rVNG$D*00fQ#gLL|R{E`DfBXaMnA$Auz&Pb{rshhWCs19)
+zH~Y8ZNkY+2+;+yHTmx1r;#o33P$NiH(&d=ql1+V@?b!v2NvV{9zy(1Q%{FGi?2)_)
+ztu?AFj}iji`D#ZA<TOG-t@CYI`=6EMT3CBp+LZ*8yq_!$wZgK4by<%-Bx;AX^V#dj
+zw7!MJfZ9Kb?tSqvQ(pu@0$KdNnimGqyHC0DBP!mt2`o4J%U>nTG{1*_4q0~)>;U({
+za6Ew>V3LS_5zRjhF*~_M3X1VGg2t=)Y@E+t!*5zHgyc@mC}ZCD3duInQSv^f481lH
+z)_xhW?Mai%JJsUO)9LgP=5xjV9du%MZG>N=%Vp}_n4*~*#pv37@et8IifsCfJWtO<
+z;VoRWoss1-b#Z<hI{Y+Em5xp9FF62FGumxMcVg+uq@uss)Pa|(BO%x5Oh<|_1K#wg
+zgbE^*7yX$xb}ekTQQ}XKE8b_62O#L5r0UmPjH6YfyXmiB?eFC}zlTX)6h~ExxQ%i6
+zspJA!yK#*^6djTN>IdE~c;E-ND}Lh#TAn#flD~W42U5ep4_vV}E)C=SKw`Pi58U(l
+zff0y~>7fPVeqh)h7w{ybalH_^?#1A|*|KN7hj8%Z>YP+p>=?hfg4_jbe@5Ds18e^|
+zSscr<_%>qVUY4`HuJpWZe$TY}_vUO~soXz`w-)ZxJ3O^b;FoGj<mN!Q@Hr{t3K_nw
+z4eE+M8_KV-Fiv(iCE4z;GI*XewbP|zvAkk|lWm2l-lhly#c-u{Vr`d8`T}@%2$Rn&
+z88=uK8LZK<0U50LwsTS-8T5}hvICU9FO4q%rKN%Kv3`S9Z5D<4w@_DBpW`<Mdwl-`
+zgI)cn-x%z=msC8<oCgMb3mI&>@;O-mXRzC&k-@r`_zX4!6eH_G#|^gO8W?QeY~meA
+z3mTtI0!P+h*$*D}aZGx_)Z&)VvHLvFQhN`=xJj8s@BM7gpB=$Hw%w`L#ud8f@gD|g
+z$C#9D+DqPP!<~CYrh!s$>=|{<1kUDCw{5OlqClQy4}C4L^RJ3ff|$(G7QeCoSz>`j
+z@tqKdpEvm3YxsP;?kN)$Mivq*Fkeb=yYRx#)E3CveV*L$L~~YPsWH)(>5kHi<)67k
+z{iA|1Ro-lsRl1BUcBaIW`PoXR`5YuYw{3bsqSj&>D5koUuuhhzq+Kk)J+aV_(1t!s
+z@$k&79VPDt1%rbxBrSNF_JugUrQ^kt)KV;n_}!=B^wvyrq1lyB5h2&Q8#QkJB}fzX
+zu=(~#-d$?U%KBnZ&*Ykls+f?YB(*r?C?1X%cjDp8$em-U@$v!v9_8@yTNgR*vb+;k
+z-VR85P_fE&U8hb{V$D-X*!3FlL#DxjE!;UXIS+6?FYYGArS6%%qs?uB&*&Sh1I|{{
+zMfZBY6RV2vV)d6Woz(AIKOYDwoTA=@jgo$nx^_2fA~k+bynsX#>GO?ynjsVP`QHOk
+z0i$I+O#z)RC6rb<u8Sf3dt}~at5QwS^B?eYT@vQ&Lm3z47n!$E){Z6XX-6QRZIzQj
+zR@NyOS<dRIONY#^fDmGGB|Rz<uoY@@k(Je@V2cFI2Utb*6`C7sz+(Jx6GP1)EfoeT
+zjW!90ArltrUwY|GX^#KITQ{-U@7YevT<-*u%JDj1=rU3%)p7~>@|SuP;}xRaS)L{4
+z$S1%Gu-R!Vd8k488}#gyl@@D%Snrifx<D~7Xjq}0oH0Q0yDY4_XW)aHucl0Ba11YD
+zh7t+5+jvqNPm(Q7%(XznrtJ<e@RMl#XobAzceOggC>sIQzGOTP$TU1inGce2VDd`5
+zJv|G|@znB(Pq{$8H?MM~#SAVl7NxLVOE+-k4Z11oyy#k>a_Yqj4imdMiyM$M;bV4k
+z@*K+|%NF9PoNvh6zc*2T3?vurg6fp-=#MW<OeTm16t$ozA$H&DT@163R!ND;R#z$6
+zE;8>?F8ZcDVAoXJ<-fiViW<b<xQ6X-AG{DMkAIFb+V?KfI~z3v(etL6!FT%VUT+q@
+z^THfjx~Oz3&vHu%cSoa_$FdAH56y{Jy9fq*(GF^$*a-i!@L0}i6CDpez`c6~A`4}*
+zmA3+>wb3*g=o-4nUJEoI&>tg^BC9P&LPe$ASU0>sj~i>|EB~l1hl-5@Jq0+mdeW(g
+zAL1%z++8rV`qp0R4lMZdCf6Sxm|{iv1T8Z-70y3j+*$Za4@tBWmQb)Va#1t$0W~T=
+zJo?c_(0k~4<1`Oy4Er12=hwqH!8JY6e~b{ojQk>fDO67U5U|#7*WU)E-HP=ea_fG|
+zT}z~NC=Ct#;8%5~JBRmi5##Mo-kjh+wSR26xck@m?2kdV$P__W9A)N6cdb&7Iz`(Z
+zjgL-%$h&diW3FDf>XjycopJSy5zS`9vaTkc<<nSDx3O~vOr&lNn(vhMWia2{cl+mi
+z_UijN`^M+HLh`tOzTFGvkI#44B^aIZ$fB3gd=pPiJND~*pZQ+<nn*WQXvxl`?s||p
+zqDcJ1x4Jn+zd0~L0H<Mtm2%=)dzqnaq~&}G)g>~wE1fCCgRQxI+k>qc`}beB<`?0#
+zF37(%@66jIrhZ5Iy~#gfZ~5bfwjEIS>e<BP(v8=Klq-XH0iE&rBoSh!WBrH3ClBkK
+zp>;>VQH+PU>oo}%A|~=QC*p}%UdvQl)WXD@tG+1{k8h{4{`^YLpyJXOaR#MGUOsW$
+z8+_<!g6Ds}dU2kp9c<QDcQ1b8u3ImH1Fi`UIP8a~*L>im*U25Mx*t2Hr$k9VrA%JA
+zUD6Z#q6~I8EW%OQ!>|aed0@g19ZZBBo@vfVQ5}~}fh|;Y^R-13YOMA*9z6ya0btez
+zzCPa2`x>PVywF3-ADud7@rnLPzsoI6peuratm1>$q0m+u0D}HNtOh~nc(tXRDz8oG
+zJF+ge?P6??j3NYPu%M)8BH(;IOQU@``4Sj_Q$ZB&{9q~gn|q;;J>^D?`~HS$|Hh}>
+zV!+r|z%A5p_!@qf*VuaKY(ie?Zs!VyibNy5k+uezn-yH1^4X2M!R6Ia<Y6&Wh?5iD
+zZ64DeQ+O{U?q}pyJQ|;2Gsig0$pU^BZym{BPVvh`)RTmzqLj*sYvSxn{O88qSHLSs
+z!7B_bY6L4CAnE6*jk#xF%r-)I<!j_1*M0Sn#R7hL$FYY41u5g6;DGM$FLAX_+vWN2
+z%oKUg$(NXo+;VqD6mrWQIIE3Y?!`x+Y)^#8mc9z9ZS}&;R6Sk{IW;PdLA_AlG$U7b
+z2)`J#Mv$O_>Yc0us%Syy^^2DWl$lQT9_S4k#44L+ydU0<Xj-PL`CZ{}$<`PJ`H5AE
+zbF`^xMnDYVqtr-vsmyA_Vvo?HpkM7SQ#WA|Z^_=K#yhTsnj-MYoe4EXV0$%+S2SEW
+zs?{Mr3HOxaY=5T4HEAdHhQ%kspiKB`_mR<EZjp1<aN+%&aiJGuk<j(yLVIV93&kgn
+z3)MY|guV-fOr-69aY7r%g&O7}q4ySy3uWTRg~o=C3ylZ_p||74g_8Tng|;pn7kW7!
+z34H~G_V*sR_7DgyHY`>qg3uG)Wf@PSYUNE-tu(Af#ZFU!GI)((e_*-cLvI$UjOwRC
+zWz>2Ll{Q_^BI38g&@<PqKwLPwR3{*3R3&Vms^;53d2iSuTob&e<#ymX>{!!`rXPrM
+z)1}@6vA?sVG8<u9=CO*XH@lBiJnt6mSv_2MW|>j2U`CbV&Qw@F>(8hlI{Lg9L`+66
+zb6m9{eY$k0^c#*|>=@GcO26oBk6aNf@o?_}OEV0o%CNXr3&VM<`^ZqIOXOTLTzFTf
+z7Yu-6ZdC?<1QaWlwR>uV*94^m4SIV(F-5=z<CWe6o+m9S!zpK$>!H4z36}GrYXK5*
+z4~ei&Lhq4aN6?TDBYn*6XvkLzVaQ2U2@MHqJ~08-3oOtAoQ*-}un)l4G6Kp?BVc=n
+zV90fb#pb0j<hQ$z=w5;$KRR64y#j^|-TSAh_&LzMEW86h4Bbx!oyRUT&FEW=gjT$Q
+zgl-B4p~~0LBn&=;CgC(p!s6P8VU^#3k-h?}ycS0KkWnxI3^j==z6}_50mEKcf{%gW
+z)utKRjfi2<tBB#Nh~d>Y5ySpfh~Zxm!{uv$;k(^O+^+(|b;E_XR)N{ftV$RHhW)_s
+zYhZW{H2fzpybXr5GoZ|PulIoFJzi?YPQzk$y+;xC9&AYXcxVip1n>poybh0zClqFl
+zi+adJDK$9`N?B~{ilTGQlDoFC4v{o2egs#h*t$;9IRj+iF&2K_X8Xwx$YNUywi>f0
+z^Jq-PuP{#`O}H0xg}MTIpbG8`u<=a-OlaEJ^W#htrozP3L`>w3u;9VnR*;Ngwe<ME
+z<xde)u{PpIQHArrOo8_$!=^>J?|vD)2=FYlLiz2Z1VHq+9&V)oEPy{mRRn+NgCKf#
+zUcp0G7}f?i6#!ob2>;6f_*WI<AOC%Hh3L^I3jR>r579p`Bd3qcL4A=t1pW9tXrp%&
+z{1D;scnto<BZh^;pC9_^HvkSE2Vj2ar{4-VROj_WA3gASoTK+cKc78-M{@np&*vcE
+z(7RfG=%;@ZaIg@VANu*923!dI`JtcwPk=-E`ys+(Y7DyqI05|mp`Xt+z#%?<=;!kt
+z;E<kv=*RyHaPTS<=7)ZK5Uddl8}mayJ_+!lfcHZ`o&h|P>xX{)5{}*v{dgdKu>Qyn
+z5FRZEYD>9$2>S3yarmqS2(Mfq+k2c3aQ*6n+4a5xd%f@Vj15(riVaokOBy!SjU%cm
+z%gY)ntILw=8w_;~Nk;YfTO59DSxqV6;60AAhV><zs{FmG%c@I^+u#oRR;H%Z8EQ&5
+zRab5=<A}--A}zzms~pPshSJic^7OPiU{_YRzP!#*UFN&D8SW)*g;$Z2Ho?2f<yD)u
+zB5vzf*BGjO_v>pxC+G;n$fz@vRvKzb$_f{!78<ry>fkv+sX@18T!x{z9?|(OjKIa;
+zuCJ^q+4SqJvPNTB9gMc7!BCY{v&m3ZX{b-CFWF=)ODZiZsq%G)vB7A41LGLhR~s6U
+zUjKPJHRabAtN(9bncixsuTD*wvAO24noV14W`L}cx=JIwGF@L+G85gL3DT;nj15U8
+KMk88L4EtXOb5WB3
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/wasm/smallpt.wasm b/src/wasm/smallpt.wasm
+new file mode 100755
+index 0000000000000000000000000000000000000000..e5b9cdbbe2246c31495770b4b9ec02ac84a23460
+GIT binary patch
+literal 28544
+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
+CTz%mH
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/wasm/worker.js b/src/wasm/worker.js
+new file mode 100644
+index 0000000..06d55e9
+--- /dev/null
++++ b/src/wasm/worker.js
+@@ -0,0 +1,71 @@
++import initSmallpt from './smallpt.js';
++
++let wasmInstancePromise = null;
++let renderQueue = Promise.resolve();
++
++function getWasm() {
++  if (!wasmInstancePromise) {
++    wasmInstancePromise = initSmallpt();
++  }
++  return wasmInstancePromise;
++}
++
++async function handleRenderRequest(data) {
++  const {
++    width = 160,
++    height = 120,
++    samples = 12,
++    randomize = false,
++    seed = 1,
++    requestId = 0,
++  } = data || {};
++
++  try {
++    const wasm = await getWasm();
++    if (randomize) {
++      wasm._randomize_colors(seed >>> 0);
++    } else {
++      wasm._reset_colors();
 +    }
 +
-+    return buffer;
-+}
++    const byteLength = width * height * 4;
++    const ptr = wasm._malloc(byteLength);
 +
-+EMSCRIPTEN_KEEPALIVE
-+void free_buffer(uint8_t* ptr) {
-+    if (ptr) {
-+        free(ptr);
++    try {
++      const startTime = performance.now();
++      wasm._render_frame(ptr, width, height, samples);
++      const elapsedMs = Math.round(performance.now() - startTime);
++
++      const pixels = new Uint8ClampedArray(
++        wasm.HEAPU8.buffer,
++        ptr,
++        byteLength,
++      ).slice();
++
++      self.postMessage(
++        {
++          pixels,
++          width,
++          height,
++          samples,
++          elapsedMs,
++          requestId,
++          randomized: Boolean(randomize),
++        },
++        [pixels.buffer],
++      );
++    } finally {
++      wasm._free(ptr);
 +    }
++  } catch (err) {
++    self.postMessage({
++      error: err instanceof Error ? err.message : String(err),
++      requestId,
++    });
++  }
 +}
 +
-+}
++self.onmessage = (event) => {
++  const data = event.data;
++  renderQueue = renderQueue.then(() => handleRenderRequest(data));
++};

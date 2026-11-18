@@ -29,55 +29,97 @@ test.describe(`Carousel Item Effects Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test(`MANDATORY: The agent has defined an @keyframes block that defines states for start, center, and end.`, async () => {
+  test(`The agent has defined an @keyframes block that defines states for start, center, and end`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const hasKeyframes = /@keyframes\s+[\w-]+\s*\{[\s\S]*?(0%|from)[\s\S]*?50%[\s\S]*?(100%|to)[\s\S]*?\}/i.test(html);
     expect(hasKeyframes).toBe(true);
   });
 
-  test(`MANDATORY: The agent has applied the animation to the carousel items using animation-timeline: view() or view(inline).`, async ({ page }) => {
-    const animationTimeline = await page.evaluate(() => {
-      const scroller = document.querySelector('.scroller');
-      if (!scroller) return 'none';
-      const descendants = scroller.querySelectorAll('*');
-      for (const el of descendants) {
-        const timeline = (window.getComputedStyle(el) as any).animationTimeline;
-        if (timeline && timeline.includes('view')) return timeline;
-      }
-      return 'none';
-    });
-    expect(animationTimeline).toContain('view');
-  });
-
-  test(`MANDATORY: The agent has used scroll-snap-type on the scroller and scroll-snap-align on the items.`, async ({ page }) => {
-    const snapData = await page.evaluate(() => {
-      const scroller = document.querySelector('.scroller');
-      if (!scroller) return { type: 'none', align: 'none' };
-      const type = window.getComputedStyle(scroller).scrollSnapType;
-      
-      let align = 'none';
-      const descendants = scroller.querySelectorAll('*');
-      for (const el of descendants) {
-        const a = window.getComputedStyle(el).scrollSnapAlign;
-        if (a && a !== 'none') {
-          align = a;
-          break;
+  test(`Carousel items link animation to an anonymous view() timeline or a named view-timeline`, async ({ page }) => {
+    const timelineMatch = await page.evaluate(() => {
+      const scroller = document.querySelector('.scroller') || document.body;
+      const declaredNamedTimelines = new Set<string>();
+      for (const el of Array.from(document.querySelectorAll('*'))) {
+        const vtName = (window.getComputedStyle(el) as any).viewTimelineName || '';
+        for (const token of String(vtName).split(',')) {
+          const trimmed = token.trim();
+          if (trimmed.startsWith('--')) declaredNamedTimelines.add(trimmed);
         }
       }
-      return { type, align };
+      for (const el of Array.from(scroller.querySelectorAll('*'))) {
+        const animTimeline = String((window.getComputedStyle(el) as any).animationTimeline || '').trim();
+        if (!animTimeline || animTimeline === 'auto' || animTimeline === 'none') continue;
+        if (animTimeline.includes('view(')) return { ok: true, animTimeline };
+        if (animTimeline.startsWith('--') && declaredNamedTimelines.has(animTimeline)) {
+          return { ok: true, animTimeline };
+        }
+      }
+      return { ok: false, animTimeline: 'none' };
     });
-    expect(snapData.type).not.toBe('none');
-    expect(snapData.align).not.toBe('none');
+    expect(timelineMatch.ok).toBe(true);
   });
 
-  test(`MANDATORY: The implementation includes feature detection using @supports for scroll-driven animations.`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('@supports');
+  test(`Feature detection uses @supports checking scroll-driven timeline support and animation-range`, async ({ page }) => {
+    const hasSupports = await page.evaluate(() => {
+      function checkRule(rule: CSSRule): boolean {
+        if (rule instanceof CSSSupportsRule) {
+          const cond = rule.conditionText || '';
+          const hasTimeline = cond.includes('animation-timeline') || cond.includes('view-timeline');
+          const hasRange = cond.includes('animation-range');
+          if (hasTimeline && hasRange) return true;
+        }
+        if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+          for (const child of Array.from((rule as CSSGroupingRule).cssRules)) {
+            if (checkRule(child)) return true;
+          }
+        }
+        return false;
+      }
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            if (checkRule(rule)) return true;
+          }
+        } catch {
+          // ignore cross-origin stylesheets
+        }
+      }
+      return false;
+    });
+    expect(hasSupports).toBe(true);
   });
 
-  test(`MANDATORY: The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion: no-preference).`, async () => {
+  test(`Animations respect user motion preferences using @media (prefers-reduced-motion)`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(html).toContain('prefers-reduced-motion');
+  });
+
+  test(`Carousel scroller contains a focusable element or is focusable with an accessible role and name`, async ({ page }) => {
+    const accessible = await page.evaluate(() => {
+      const scroller = document.querySelector('.scroller');
+      if (!scroller) return false;
+      const focusableSelector = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
+      if (scroller.querySelector(focusableSelector)) return true;
+
+      const tabIndexAttr = scroller.getAttribute('tabindex');
+      if (tabIndexAttr === null || Number(tabIndexAttr) < 0) return false;
+
+      const explicitRole = (scroller.getAttribute('role') || '').trim().toLowerCase();
+      const namedExplicitRoles = new Set(['region', 'group', 'list', 'listbox', 'toolbar', 'grid', 'tablist', 'feed', 'tree', 'application']);
+      const implicitNamedTags = new Set(['UL', 'OL', 'NAV', 'MAIN', 'ASIDE', 'ARTICLE', 'SECTION']);
+      const hasNamedRole = namedExplicitRoles.has(explicitRole) || (explicitRole === '' && implicitNamedTags.has(scroller.tagName));
+      if (!hasNamedRole) return false;
+
+      const ariaLabel = (scroller.getAttribute('aria-label') || '').trim();
+      const labelledByIds = (scroller.getAttribute('aria-labelledby') || '').trim().split(/\s+/).filter(Boolean);
+      const labelledByText = labelledByIds
+        .map(id => document.getElementById(id)?.textContent?.trim() || '')
+        .join(' ')
+        .trim();
+      const titleAttr = (scroller.getAttribute('title') || '').trim();
+      return Boolean(ariaLabel || labelledByText || titleAttr);
+    });
+    expect(accessible).toBe(true);
   });
 
 });

@@ -1,0 +1,468 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..ad66e42 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,32 @@
+       background: #3e2723;
+     }
+ 
++    a:focus-visible {
++      outline: 3px solid #b65c00;
++      outline-offset: 4px;
++    }
++
++    nav a:focus-visible, .hero a:focus-visible {
++      outline-color: var(--accent);
++    }
++
++    [data-spatial-item] {
++      scroll-margin-top: 6rem;
++      scroll-margin-bottom: 1rem;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,22 +202,23 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="favorites-help" class="sr-only">Use arrow keys to move between favorites in the grid. Use Tab to leave the group.</p>
++      <div class="grid" role="toolbar" aria-labelledby="favorites-heading" aria-describedby="favorites-help" data-spatial-navigation>
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-spatial-item tabindex="0" aria-label="View Maple Oat Latte details">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-spatial-item tabindex="-1" aria-label="View Dark Roast Espresso details">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-spatial-item tabindex="-1" aria-label="View Cold Brew details">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +234,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/dist/spatial-navigation.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..6f795fe 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "npm run build && pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "tsc",
++    "test": "npm run build && node --test tests/spatial-navigation.cjs"
++  },
++  "devDependencies": {
++    "playwright": "^1.58.2",
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/spatial-navigation.ts b/src/spatial-navigation.ts
+new file mode 100644
+index 0000000..5471bc9
+--- /dev/null
++++ b/src/spatial-navigation.ts
+@@ -0,0 +1,128 @@
++type Direction = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
++type PositionedItem = { element: HTMLElement; rect: DOMRect };
++
++const tolerance = 1;
++const perpendicularWeight = 2;
++
++function isDirection(key: string): key is Direction {
++  return ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key);
++}
++
++function isVisible(element: HTMLElement): boolean {
++  if (element.closest('[hidden], [inert], [aria-hidden="true"]') ||
++      element.matches(':disabled, [aria-disabled="true"]')) return false;
++  if (typeof element.checkVisibility === 'function' &&
++      !element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return false;
++  const style = getComputedStyle(element);
++  const rect = element.getBoundingClientRect();
++  return style.visibility === 'visible' && style.display !== 'none' &&
++    rect.width > 0 && rect.height > 0;
++}
++
++function findNext(current: DOMRect, items: PositionedItem[], direction: Direction): HTMLElement | undefined {
++  const horizontal = direction === 'ArrowLeft' || direction === 'ArrowRight';
++  const forward = direction === 'ArrowRight' || direction === 'ArrowDown';
++  const currentNear = horizontal ? current.left : current.top;
++  const currentFar = horizontal ? current.right : current.bottom;
++  const currentCrossNear = horizontal ? current.top : current.left;
++  const currentCrossFar = horizontal ? current.bottom : current.right;
++  const currentCrossCenter = (currentCrossNear + currentCrossFar) / 2;
++  const candidates = items.flatMap(({ element, rect }) => {
++    const near = horizontal ? rect.left : rect.top;
++    const far = horizontal ? rect.right : rect.bottom;
++    const rawGap = forward ? near - currentFar : currentNear - far;
++    if (rawGap < -tolerance) return [];
++    const crossNear = horizontal ? rect.top : rect.left;
++    const crossFar = horizontal ? rect.bottom : rect.right;
++    return [{
++      element,
++      gap: Math.max(0, rawGap),
++      offset: Math.abs((crossNear + crossFar) / 2 - currentCrossCenter),
++      overlaps: Math.min(crossFar, currentCrossFar) > Math.max(crossNear, currentCrossNear),
++    }];
++  });
++  const aligned = candidates.filter(candidate => candidate.overlaps);
++  if (aligned.length) {
++    aligned.sort((a, b) => a.gap - b.gap || a.offset - b.offset);
++    return aligned[0]?.element;
++  }
++  candidates.sort((a, b) =>
++    (a.gap + perpendicularWeight * a.offset) - (b.gap + perpendicularWeight * b.offset));
++  return candidates[0]?.element;
++}
++
++function initializeSpatialNavigation(container: HTMLElement): void {
++  let active: HTMLElement | undefined;
++  const allItems = (): HTMLElement[] => Array.from(
++    container.querySelectorAll<HTMLElement>('[data-spatial-item]'),
++  ).filter(item => item.closest('[data-spatial-navigation]') === container);
++
++  function activate(item: HTMLElement): void {
++    active = item;
++    for (const candidate of allItems()) {
++      candidate.tabIndex = candidate === item ? 0 : -1;
++      if (candidate.classList.contains('is-active') !== (candidate === item)) {
++        candidate.classList.toggle('is-active', candidate === item);
++      }
++    }
++  }
++
++  function refresh(): HTMLElement[] {
++    const items = allItems();
++    const visible = items.filter(isVisible);
++    const focused = visible.find(item => item === document.activeElement);
++    const next = focused ?? (active && visible.includes(active) ? active : visible[0]);
++    if (next) activate(next);
++    else {
++      active = undefined;
++      for (const item of items) {
++        item.tabIndex = -1;
++        if (item.classList.contains('is-active')) item.classList.remove('is-active');
++      }
++    }
++    return visible;
++  }
++
++  container.addEventListener('focusin', event => {
++    const target = event.composedPath()[0];
++    if (!(target instanceof HTMLElement) || !allItems().includes(target) || !isVisible(target)) return;
++    activate(target);
++    target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++  });
++
++  container.addEventListener('keydown', event => {
++    if (!isDirection(event.key) || event.defaultPrevented || event.altKey ||
++        event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
++    const target = event.composedPath()[0];
++    if (!(target instanceof HTMLElement) ||
++        target.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
++    const items = refresh();
++    // Nested controls retain their own keyboard behavior; only exact candidates navigate.
++    if (!items.includes(target) || target !== document.activeElement) return;
++    const positions = items.map(element => ({ element, rect: element.getBoundingClientRect() }));
++    // A single visual column uses native arrow scrolling rather than spatial navigation.
++    const hasColumns = positions.some((a, index) => positions.slice(index + 1).some(b =>
++      b.rect.left >= a.rect.right - tolerance || a.rect.left >= b.rect.right - tolerance));
++    if (!hasColumns) return;
++    const current = target.getBoundingClientRect();
++    const next = findNext(current, positions.filter(item => item.element !== target), event.key);
++    if (!next) return;
++    event.preventDefault();
++    activate(next);
++    next.focus({ preventScroll: true });
++    next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++  });
++
++  refresh();
++  // Reconcile the tab stop when items are inserted, hidden, disabled, or removed.
++  // Active class writes are idempotent, so observing class changes cannot loop.
++  new MutationObserver(refresh).observe(container, {
++    subtree: true,
++    childList: true,
++    attributes: true,
++    attributeFilter: ['hidden', 'inert', 'style', 'class', 'disabled', 'aria-disabled', 'aria-hidden'],
++  });
++  new ResizeObserver(refresh).observe(container);
++}
++
++document.querySelectorAll<HTMLElement>('[data-spatial-navigation]').forEach(initializeSpatialNavigation);
+diff --git a/tests/spatial-navigation.cjs b/tests/spatial-navigation.cjs
+new file mode 100644
+index 0000000..e5a4e6a
+--- /dev/null
++++ b/tests/spatial-navigation.cjs
+@@ -0,0 +1,209 @@
++const { test, before, after } = require('node:test');
++const assert = require('node:assert/strict');
++const { createServer } = require('node:http');
++const { readFile } = require('node:fs/promises');
++const { chromium } = require('playwright');
++
++let browser;
++let server;
++let origin;
++
++before(async () => {
++  server = createServer(async (request, response) => {
++    const file = request.url === '/' ? 'index.html' :
++      request.url === '/dist/spatial-navigation.js' ? 'dist/spatial-navigation.js' : undefined;
++    if (!file) { response.writeHead(404).end(); return; }
++    response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : 'text/html');
++    response.end(await readFile(file));
++  });
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  origin = `http://127.0.0.1:${server.address().port}`;
++  browser = await chromium.launch({
++    headless: true,
++    ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
++  });
++});
++
++after(async () => {
++  await browser?.close();
++  await new Promise(resolve => server?.close(resolve));
++});
++
++async function withPage(run) {
++  const page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
++  await page.route('https://images.unsplash.com/**', route => route.abort());
++  const errors = [];
++  page.on('pageerror', error => errors.push(error.message));
++  try {
++    await page.goto(origin);
++    await page.waitForFunction(() => document.querySelector('.is-active'));
++    await run(page);
++    assert.deepEqual(errors, []);
++  } finally { await page.close(); }
++}
++
++async function activeIndex(page) {
++  return page.evaluate(() => [...document.querySelectorAll('[data-spatial-item]')]
++    .indexOf(document.activeElement));
++}
++
++test('one tab stop, horizontal arrows, active attributes, and Tab exits', () => withPage(async page => {
++  const items = page.locator('[data-spatial-item]');
++  assert.equal(await page.locator('[data-spatial-item][tabindex="0"]').count(), 1);
++  await page.locator('.hero .btn').focus();
++  await page.keyboard.press('Tab');
++  assert.equal(await activeIndex(page), 0);
++  await page.keyboard.press('ArrowRight');
++  assert.equal(await activeIndex(page), 1);
++  await page.keyboard.press('ArrowRight');
++  assert.equal(await activeIndex(page), 2);
++  await page.keyboard.press('ArrowLeft');
++  assert.equal(await activeIndex(page), 1);
++  assert.equal(await items.nth(1).getAttribute('tabindex'), '0');
++  assert.equal(await page.locator('.is-active').count(), 1);
++  await page.keyboard.press('Tab');
++  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('href')), '/about');
++  await page.keyboard.press('Shift+Tab');
++  assert.equal(await activeIndex(page), 1);
++}));
++
++test('wrapped grid handles all four directions with fresh visual geometry', () => withPage(async page => {
++  await page.evaluate(() => {
++    const grid = document.querySelector('.grid');
++    grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
++    grid.append(grid.lastElementChild.cloneNode(true));
++  });
++  await page.locator('[data-spatial-item]').first().focus();
++  for (const [key, expected] of [['ArrowRight', 1], ['ArrowDown', 3], ['ArrowLeft', 2], ['ArrowUp', 0]]) {
++    await page.keyboard.press(key);
++    assert.equal(await activeIndex(page), expected);
++  }
++  await page.evaluate(() => document.querySelector('.card').style.order = '2');
++  await page.keyboard.press('ArrowLeft');
++  assert.equal(await activeIndex(page), 3);
++}));
++
++test('boundaries remain uncanceled and focused items are visible', () => withPage(async page => {
++  await page.locator('[data-spatial-item]').last().focus();
++  const canceled = await page.evaluate(() => {
++    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
++    document.activeElement.dispatchEvent(event);
++    return event.defaultPrevented;
++  });
++  assert.equal(canceled, false);
++  const rect = await page.locator('[data-spatial-item]').last().boundingBox();
++  assert.ok(rect.y >= 0 && rect.y + rect.height <= 700);
++  await page.evaluate(() => {
++    document.body.style.paddingBottom = '1200px';
++    document.querySelector('.grid').style.marginTop = '900px';
++  });
++  await page.locator('[data-spatial-item]').first().focus();
++  await page.keyboard.press('ArrowRight');
++  const movedRect = await page.locator('[data-spatial-item]').nth(1).boundingBox();
++  assert.ok(movedRect.y >= 0 && movedRect.y + movedRect.height <= 700);
++  const before = await page.evaluate(() => window.scrollY);
++  await page.keyboard.press('ArrowDown');
++  await page.waitForTimeout(250);
++  assert.ok(await page.evaluate(() => window.scrollY) > before);
++}));
++
++test('hidden items are excluded and removing the active item restores one tab stop', () => withPage(async page => {
++  await page.locator('[data-spatial-item]').first().focus();
++  await page.evaluate(() => document.querySelectorAll('.card')[1].hidden = true);
++  await page.keyboard.press('ArrowRight');
++  assert.equal(await activeIndex(page), 2);
++  await page.evaluate(() => document.activeElement.closest('.card').remove());
++  await page.waitForFunction(() => document.querySelector('[data-spatial-item][tabindex="0"]'));
++  assert.equal(await page.locator('[data-spatial-item][tabindex="0"]').count(), 1);
++  assert.equal(await page.locator('[data-spatial-item]').first().getAttribute('tabindex'), '0');
++}));
++
++test('modifiers, consumed events, nested controls, and ordinary links are left alone', () => withPage(async page => {
++  await page.locator('[data-spatial-item]').first().focus();
++  assert.deepEqual(await page.evaluate(() => {
++    return ['altKey', 'ctrlKey', 'metaKey', 'shiftKey', 'consumed'].map(modifier => {
++      const event = new KeyboardEvent('keydown', {
++        key: 'ArrowRight', bubbles: true, cancelable: true, [modifier]: true,
++      });
++      if (modifier === 'consumed') event.preventDefault();
++      const initial = document.activeElement;
++      initial.dispatchEvent(event);
++      return document.activeElement === initial;
++    });
++  }), [true, true, true, true, true]);
++  await page.evaluate(() => {
++    const input = document.createElement('input');
++    document.querySelector('.card').append(input);
++    input.focus();
++  });
++  await page.keyboard.press('ArrowRight');
++  assert.equal(await page.evaluate(() => document.activeElement.tagName), 'INPUT');
++  await page.locator('nav a').first().focus();
++  await page.keyboard.press('ArrowRight');
++  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('href')), '/menu');
++}));
++
++test('single-column mobile layout preserves native arrow behavior', () => withPage(async page => {
++  await page.setViewportSize({ width: 390, height: 700 });
++  await page.locator('[data-spatial-item]').first().focus();
++  assert.equal(await page.evaluate(() => {
++    const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
++    document.activeElement.dispatchEvent(event);
++    return event.defaultPrevented;
++  }), false);
++  assert.equal(await activeIndex(page), 0);
++}));
++
++test('edge filtering and perpendicular overlap take priority in asymmetric layouts', () => withPage(async page => {
++  await page.evaluate(() => {
++    const grid = document.querySelector('.grid');
++    grid.append(grid.lastElementChild.cloneNode(true));
++    grid.style.cssText = 'display:block; position:relative; width:750px; height:350px';
++    const positions = [[0, 100, 300], [320, 100, 200], [305, 180, 40], [250, 100, 200]];
++    grid.querySelectorAll('[data-spatial-item]').forEach((item, index) => {
++      const [left, top, width] = positions[index];
++      item.style.cssText = `position:absolute; margin:0; left:${left}px; top:${top}px; width:${width}px; height:40px`;
++    });
++  });
++  await page.locator('[data-spatial-item]').first().focus();
++  await page.keyboard.press('ArrowRight');
++  // The aligned wide item wins over the nearer diagonal item. The overlapping
++  // fourth item is ineligible even though its center is to the right.
++  assert.equal(await activeIndex(page), 1);
++}));
++
++test('unaligned candidates use a weighted perpendicular distance', () => withPage(async page => {
++  await page.evaluate(() => {
++    const grid = document.querySelector('.grid');
++    grid.style.cssText = 'display:block; position:relative; width:750px; height:350px';
++    const positions = [[0, 100], [300, 160], [120, 200]];
++    grid.querySelectorAll('[data-spatial-item]').forEach((item, index) => {
++      const [left, top] = positions[index];
++      item.style.cssText = `position:absolute; margin:0; left:${left}px; top:${top}px; width:100px; height:40px`;
++    });
++  });
++  await page.locator('[data-spatial-item]').first().focus();
++  await page.keyboard.press('ArrowRight');
++  assert.equal(await activeIndex(page), 2);
++}));
++
++test('arrow-consuming controls inside shadow DOM retain their keyboard behavior', () => withPage(async page => {
++  await page.evaluate(() => {
++    const host = document.createElement('div');
++    host.setAttribute('data-spatial-item', '');
++    document.querySelector('.card').append(host);
++    const shadow = host.attachShadow({ mode: 'open' });
++    const input = document.createElement('input');
++    input.type = 'range';
++    shadow.append(input);
++    input.focus();
++  });
++  assert.equal(await page.evaluate(() => {
++    const input = document.activeElement.shadowRoot.activeElement;
++    const event = new KeyboardEvent('keydown', {
++      key: 'ArrowRight', bubbles: true, cancelable: true, composed: true,
++    });
++    input.dispatchEvent(event);
++    return event.defaultPrevented;
++  }), false);
++}));
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..c2f652b
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ES2022",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "types": [],
++    "strict": true,
++    "noEmitOnError": true,
++    "outDir": "./dist"
++  },
++  "include": ["src/**/*.ts"]
++}

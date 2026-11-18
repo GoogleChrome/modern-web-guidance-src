@@ -1,12 +1,12 @@
 ---
 name: dialog
 description: Build a modal or non-modal dialog component that is accessible, manages focus appropriately, and can be dismissed the way users expect on each platform.
-draft: stub
 web-feature-ids:
   - dialog
   - dialog-closedby
   - invoker-commands
   - popover
+  - overscroll-behavior
 guides:
   - declarative-dialog-popover-control
   - prevent-page-scroll-under-modal-dialog
@@ -17,29 +17,186 @@ guides:
 
 # Dialog
 
-## Notes for guide authors
+## Overview
 
-This is meant to be the first stop for any "dialog" or "modal dialog" request. Developers typically ask for a dialog with the expected behaviors included; they rarely ask for light dismiss or `Esc` handling as separate features. Today there is no core dialog guide, so those requests land on satellite guides (`declarative-dialog-popover-control`, `light-dismiss-a-dialog`) that each cover one slice and, in the case of the two dismiss guides, contradict each other on fallbacks (#1671).
+Use the native `<dialog>` element for modal and non-modal dialogs. It provides the accessibility semantics, focus handling, top-layer rendering and `Esc` handling that custom overlays have to rebuild by hand.
 
-Cover, in roughly this order:
+## Choose the overlay type
 
-- **Choosing the right overlay (modal vs. non-modal vs. popover)**:
-  - **Modal dialog (`<dialog>` opened with `showModal()` or `command="show-modal"`)**: Blocks interaction with the rest of the page (`inert` background, focus trap, top layer, `::backdrop`, platform close requests). The default and most common choice for confirmations, forms, and critical interruptions. Never use `show()` or the `open` attribute for a modal.
-  - **Non-modal dialog (`<dialog popover>` vs. `dialog.show()`)**: When the user needs to keep interacting with the page while a semantic `role="dialog"` panel stays open (such as a find-in-page bar, floating inspector or palette, or persistent compose pane). Explain that `dialog.show()` does *not* place the dialog in the top layer, whereas `<dialog popover="auto">` (or `popover="manual"`) combines `<dialog>` semantics with top-layer rendering without making the page `inert`.
-  - **Plain `[popover]`**: When the overlay is not a dialog at all (menus, tooltips, hovercards, toasts), use a semantic element with `popover` instead of `<dialog>`.
-- **Accessible name and initial focus**: `aria-labelledby` pointing at the heading, and `autofocus` on the primary control or first field when a specific element should receive initial focus.
-- **Closing**: `<form method="dialog">` (and `command="close"`) for buttons, `closedby="any"` for light dismiss, `closedby="closerequest"` (the modal default) for `Esc` and mobile back gesture, and `closedby="none"` for dialogs that must not be dismissed implicitly. Treat all of `closedby` as a progressive enhancement; include a backdrop-click fallback only if it tracks `pointerdown` as well as `click`, so a text-selection drag that ends over the backdrop does not close the dialog (the root cause of #1671).
-- **Hooking into close**: `cancel` (user-initiated close request) vs. `close` (any close), `returnValue`, and the caveat that `cancel.preventDefault()` is not honored on a repeated `Esc` without intervening user activation (close watcher anti-abuse). Point to `closedby="none"` plus an explicit confirmation step for dirty forms instead.
-- **Backdrop and styling**: `::backdrop` styling, scroll containment (referencing `prevent-page-scroll-under-modal-dialog`), and entry/exit animations (referencing `animate-to-from-top-layer`).
+Pick the first rule that matches. If unsure, use Rule 1.
 
-Keep it one guide with clear headings so RAG chunks match "modal dialog," "non-modal dialog," "accessible modal dialog," "modal dialog form," "modal dialog backdrop," and similar prompts.
+### Rule 1: The overlay interrupts the user and blocks the page (default)
 
-## Relationship to other guides
+Use for confirmations, forms, sign-in, destructive actions, and any "modal", "dialog", "lightbox" or "popup" request that does not say otherwise.
 
-- `light-dismiss-a-dialog` and `platform-controls-dismiss-dialog` should fold into the "Closing" section here and be retired. Their one disagreement (whether a JS fallback for `closedby="any"` is mandatory) is settled by this guide: progressive enhancement, optional fallback, `pointerdown`-aware if present. Resolve #1671 by retiring them rather than patching both.
-- `declarative-dialog-popover-control` stays as the guide for the `command`/`commandfor` invoker pattern; this guide shows the one-line declarative open/close and refers to it for the rest.
-- `prevent-page-scroll-under-modal-dialog` stays separate; this guide references it in the overview since it applies to every modal.
-- `animate-to-from-top-layer` stays separate and owns `@starting-style`, `transition-behavior: allow-discrete`, `overlay`, and the `data-closing` exit fallback; this guide references it rather than duplicating the animation fallback logic.
-- `drag` stays separate for movable floating dialogs and palettes; its `GUIDE_REF` to `platform-controls-dismiss-dialog` should be updated to point here when `platform-controls-dismiss-dialog` is retired.
-- `persistent-top-layer-ui` stays separate for preserving open `<dialog>` and `[popover]` state across DOM reparenting with `moveBefore()`; this guide can cross-reference it.
-- `accessibility` currently absorbs "accessible modal dialog" queries; once this guide exists, it should own that intent, and the accessibility guide can point here.
+Use `<dialog>` opened as a modal, declaratively with `command="show-modal"` (see {{ GUIDE_REF("declarative-dialog-popover-control") }}) or from script with `showModal()`.
+
+```html
+<button type="button" command="show-modal" commandfor="confirm">Delete</button>
+
+<!-- MANDATORY: no role="dialog" or aria-modal; the native modal already provides them -->
+<dialog id="confirm" aria-labelledby="confirm-title">
+  <h2 id="confirm-title">Delete this item?</h2>
+  <form method="dialog">
+    <button value="cancel" autofocus>Cancel</button>
+    <button value="delete">Delete</button>
+  </form>
+</dialog>
+```
+
+The browser provides: inert page, focus containment, top layer, `::backdrop`, `Esc` and back-gesture dismissal, and focus return to the invoker.
+
+- **DON'T** add `role="dialog"`, `aria-modal`, a focus trap, `inert` toggling or an `Esc` handler.
+- **DON'T** open it with `show()` or the `open` attribute.
+- **DO** stop the page scrolling behind it with the CSS below. See {{ GUIDE_REF("prevent-page-scroll-under-modal-dialog") }} for the details.
+- **DON'T** lock scrolling with `overflow: hidden` or `position: fixed` on `html` or `body`.
+
+```css
+/* MANDATORY (both rules): without them, scrolling over the backdrop or inside the dialog scrolls the page behind it */
+dialog:modal {
+  overscroll-behavior: contain; /* stops scroll gestures in the dialog chaining to the page */
+}
+dialog::backdrop {
+  overflow: hidden; /* ::backdrop is not a scroll container by default, so it would ignore overscroll-behavior */
+  overscroll-behavior: contain;
+}
+```
+
+Not for menus or tooltips: see Rule 3.
+
+### Rule 2: The user keeps working in the page while the panel is open
+
+Use for find bars, inspectors, palettes and compose panes that are still dialogs semantically.
+
+Use `<dialog popover>` for a top-layer panel with popover dismissal (`auto` light-dismisses, `manual` does not). Use `dialog.show()` only when the panel must not be in the top layer.
+
+```html
+<button type="button" popovertarget="find">Find</button>
+<dialog id="find" popover="manual" aria-labelledby="find-title">
+  <h2 id="find-title">Find</h2>
+  <input type="search" aria-label="Search">
+  <button type="button" popovertarget="find" popovertargetaction="hide">Close</button>
+</dialog>
+```
+
+The page stays interactive and is not made inert.
+
+- **DO** include a visible close button.
+- **DON'T** use `showModal()`, which blocks the page.
+
+Not for blocking confirmations: see Rule 1.
+
+### Rule 3: The overlay is not a dialog
+
+Use for menus, dropdowns, tooltips, hovercards and toasts.
+
+Use a semantic element with the `popover` attribute, not `<dialog>`.
+
+```html
+<button type="button" popovertarget="menu">Actions</button>
+<ul id="menu" popover>
+  <li><a href="/rename">Rename</a></li>
+</ul>
+```
+
+## Choose how it can be dismissed
+
+The default depends on how the dialog is opened. If `closedby` is absent or invalid, `showModal()` behaves as `closerequest` and any other way of opening behaves as `none`.
+
+- **Esc and back gesture only (modal default):** set nothing, or `closedby="closerequest"`.
+- **Also click outside to close:** use `closedby="any"`.
+- **Only the developer closes it (for example a form with unsaved changes):** use `closedby="none"` and add a confirmation path. See Closing below.
+
+## Guidelines
+
+### Accessible name and initial focus
+
+- **DO** name every dialog with `aria-labelledby` pointing at its heading, or `aria-label` when there is no visible title.
+- **DO** put `autofocus` on the primary control or first field.
+- **DO** put `autofocus` on the safe action (such as Cancel or Keep) in a destructive confirmation.
+- **DON'T** write code to return focus on close. The browser returns it to the invoker.
+
+### Opening
+
+- **DO** open declaratively with `command="show-modal"` and `commandfor` on a `<button>`. See {{ GUIDE_REF("declarative-dialog-popover-control") }}.
+- **DO** use `dialog.showModal()` when opening from script.
+
+### Closing
+
+- **DO** close with `<form method="dialog">` buttons or `command="close"`.
+- **DO** choose `closedby` deliberately: `any` (light dismiss and `Esc`), `closerequest` (`Esc` only, the modal default) or `none` (developer-controlled close only).
+- **DO** use `command="request-close"` or `requestClose()` for Cancel buttons that must honor unsaved-changes logic. They fire `cancel` first and ignore `closedby`.
+- **DO** treat `closedby` as progressive enhancement. `Esc` and the mobile back gesture already close modals without it.
+
+### Hooking into close
+
+- **DO** read `dialog.returnValue` in a `close` listener to learn which button was used, then reset it with `dialog.returnValue = ''`. `Esc` and other close requests set no value, and browsers differ on whether they clear the previous one, so without the reset a stale value can leak. Treat `''` as "dismissed without choosing".
+- **DO** use `cancel` to intercept `Esc` and `request-close`, but do not rely on `preventDefault()` for repeated `Esc` presses without user activation.
+- **DO** use `closedby="none"` with an explicit confirmation step for dirty forms.
+- **DO** tell the user why the dialog stayed open when `cancel` is prevented: show a visible message and reference it with `aria-describedby` from the control that receives focus (such as Discard), so a screen reader reads it when focus moves. Without it, focus moving to a new button announces only that button's name.
+- **DON'T** let the confirmation move controls under the pointer. Reserve the message's space (hide it with `visibility`, not `display` or `hidden`) and add the destructive button where existing buttons do not move (for example first in a right-aligned row), so a second click at the same spot cannot discard the user's changes.
+
+### Non-modal dialogs
+
+- **DO** use `<dialog popover>` (`auto` or `manual`) for a top-layer panel, and `dialog.show()` when you do not want the top layer.
+- **DO** include a visible close button in every non-modal dialog.
+
+### Backdrop and styling
+
+- **DO** style `::backdrop` and use `dialog:modal` to target modal-only styles.
+- **DO** leave animation to {{ GUIDE_REF("animate-to-from-top-layer") }}, dragging to {{ GUIDE_REF("drag") }}, and reparenting to {{ GUIDE_REF("persistent-top-layer-ui") }}.
+- **DON'T** set `display` on `dialog` unconditionally. It overrides the closed state. Scope it with `dialog[open]`.
+
+### Accessibility
+
+- **DON'T** add `role="dialog"`, `aria-modal`, a manual focus trap or `inert` toggling to a native modal.
+- **DO** use a native `<button>` with an accessible name for close controls.
+- **DO** use one consistent heading level for dialog titles.
+
+## Fallback strategies
+
+### `closedby` (`dialog-closedby`)
+
+{{ BASELINE_STATUS("dialog-closedby") }}
+
+Without `closedby`, a modal still closes with `Esc` and the back gesture; only click-outside is lost, so this is graceful degradation. `closedby="none"` is ignored the same way: `Esc` fires `cancel` and then closes the dialog. Keep the unsaved-changes guard in a `cancel` handler, not in `closedby="none"` alone, so it also protects where `closedby` is missing. If your Baseline target requires light dismiss, add this where `closedby` is missing:
+
+```js
+if (!('closedBy' in HTMLDialogElement.prototype)) {
+  // Test the pointer position, not event.target: the <dialog> is also the target for its own
+  // padding and the gaps between its children, so a target check would close on those clicks
+  const outside = (e, dialog) => {
+    const r = dialog.getBoundingClientRect();
+    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+  };
+  for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
+    let pressedOutside = false;
+    dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
+    // Require the press and the release outside, so a text-selection drag that ends on the backdrop does not dismiss
+    dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
+  }
+}
+```
+
+### `overscroll-behavior`
+
+{{ BASELINE_STATUS("overscroll-behavior") }}
+
+Treat scroll containment as progressive enhancement. Do not feature-detect it: `@supports` reports the property as supported even where non-scrollable containers ignore it. Where it is not enforced, the dialog still contains scroll whenever its own content overflows, and `showModal()` still makes the page inert. Do not fall back to `overflow: hidden` or `position: fixed` on `html` or `body`, which removes the root scrollbar and shifts the layout.
+
+### Invoker Commands (`command` / `commandfor`)
+
+{{ BASELINE_STATUS("invoker-commands") }}
+
+If your Baseline target does not include Invoker Commands, keep the same markup and conditionally load the polyfill (the same experience, as progressive enhancement). Detect on the interface and never load it unconditionally:
+
+```js
+// MANDATORY: feature detect on HTMLButtonElement.prototype and load only when native support is missing
+if (!('commandForElement' in HTMLButtonElement.prototype)) {
+  import('invokers-polyfill'); // npm install invokers-polyfill
+}
+```
+
+Only Rules 2 and 3 use Popover.
+
+{{ FEATURE_FALLBACKS("popover") }}

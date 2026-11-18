@@ -1,10 +1,27 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
+import os from 'os';
+import { stripVTControlCharacters } from 'util';
+import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../core/guide-validation.ts';
+import { getTaskMap, resolveTaskGraderPath } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { rootDir } from '../../core/paths.ts';
+import { extractTestTitles } from '../../core/grader-coverage.ts';
+import { isSpecSkipped } from '../../grading/run-grader.ts';
+import { type PageLoadResult, type ScenarioCheck } from './metrics.ts';
+import {
+  pickHigherPrecedenceEffort,
+  resolveReasoningEffort,
+  sanitizeReasoningEffort,
+  type ReasoningEffort,
+} from './reasoning-effort.ts';
+import {
+  ensureFreshTrajectorySummarySync,
+  hasRawSessionLogs,
+  NORMALIZER_VERSION,
+} from './trajectory-normalizer.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson) || (targetPatchFile ? fs.existsSync(targetPatchFile) : false);
@@ -23,6 +40,35 @@ export function extractModelFromResults(resultsDir: string): string {
   return 'unknown';
 }
 
+export function extractReasoningEffortFromResults(resultsDir: string): ReasoningEffort | undefined {
+  const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
+  let parsedVersion: number | undefined;
+  let existingEffort: ReasoningEffort | undefined;
+  try {
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    parsedVersion = summary?.normalizerVersion;
+    existingEffort = sanitizeReasoningEffort(summary?.reasoningEffort);
+  } catch (err) {
+    if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
+  }
+
+  if (existingEffort && parsedVersion === NORMALIZER_VERSION) {
+    return existingEffort;
+  }
+  const rawLogsPresent = hasRawSessionLogs(resultsDir);
+  if (existingEffort && !rawLogsPresent) {
+    return existingEffort;
+  }
+  if (rawLogsPresent) {
+    const refreshed = ensureFreshTrajectorySummarySync(resultsDir);
+    const refreshedEffort = sanitizeReasoningEffort(refreshed?.reasoningEffort);
+    if (refreshedEffort) {
+      return refreshedEffort;
+    }
+  }
+  return existingEffort;
+}
+
 export function extractTokenUsageFromResults(resultsDir: string): { total: number; cached: number } | null {
   const summaryPath = path.join(resultsDir, 'trajectory_summary.json');
   try {
@@ -34,31 +80,6 @@ export function extractTokenUsageFromResults(resultsDir: string): { total: numbe
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
   }
   return null;
-}
-
-function extractErrorMessage(dir: string, targetFile: string): string {
-  const failureFile = path.join(dir, 'generation_failed.json');
-  if (fs.existsSync(failureFile)) {
-    try {
-      const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
-      return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
-    } catch (e) {
-      return 'Generation failed (could not parse failure info)';
-    }
-  }
-
-  const stderrPath = path.join(dir, 'agent_stderr.log');
-  
-  if (!fs.existsSync(stderrPath)) {
-    const fileName = path.relative(dir, targetFile) || path.basename(targetFile) || 'index.html';
-    return fs.existsSync(targetFile) ? 'Generation failed' : `${fileName} not found`;
-  }
-
-  return fs.readFileSync(stderrPath, 'utf8')
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l && !l.includes('YOLO mode'))
-    .pop()?.slice(0, 100) || 'Generation mysteriously failed';
 }
 
 export function parseResultPath(relPath: string): { guide: string, taskName: string, runType: string } | null {
@@ -88,6 +109,7 @@ function getAppFiles(currentDir: string, base = ''): string[] {
       entry.name === 'dist' ||
       entry.name === 'test-results' ||
       entry.name === 'grade-report' ||
+      entry.name === 'traces' ||
       entry.name.startsWith('.')
     ) {
       continue;
@@ -213,16 +235,23 @@ function getTaskRunContext(
     return null;
   }
 
+  // run-suite pre-creates every task dir (with run.mjs and package.json) before any agent runs.
+  // In a stopped or partial suite, a dir that has no runtime.json, generation_failed.json, or grader results
+  // never had an agent run. Grading it would score the untouched base app.
+  const graderResults = path.join(dir, `${guide}_results.json`);
+  const agentRan = ['runtime.json', 'generation_failed.json'].some(f => fs.existsSync(path.join(dir, f)));
+  if (!agentRan && !fs.existsSync(graderResults)) {
+    if (warnIfMissing) {
+      console.warn(`Skipping ${relPath}: agent never ran`);
+    }
+    return null;
+  }
+
   const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
   const targetPatchFile = path.join(dir, 'agent.patch');
-  let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-  const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
-  if (fs.existsSync(targetGraderPath)) {
-    graderPath = targetGraderPath;
-  }
-  const graderResults = path.join(dir, `${guide}_results.json`);
+  const graderPath = resolveTaskGraderPath(taskInfo, taskName);
   const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
 
   return {
@@ -260,14 +289,11 @@ function setupGraderForTask(
   if (!ctx) return null;
 
   const failureFile = path.join(dir, 'generation_failed.json');
-
-  // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
   if (!fs.existsSync(ctx.graderPath) || fs.existsSync(failureFile) || !ctx.targetAppExists || fs.existsSync(ctx.graderResults)) {
     return null;
   }
 
-  // Generate a runner script to be picked up by pnpm -r run-grader
-  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
+  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide, ctx.taskInfo.baselineTarget);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
 
@@ -305,7 +331,9 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   }
 
   const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
-  fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+  // List only the tasks prepared above. A '**' glob would also re-run every task that was graded before
+  // (their run-grader scripts linger), using whatever checkout their grade.mjs points at.
+  fs.writeFileSync(pnpmWorkspacePath, ['packages:', ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)].join('\n') + '\n');
 
   try {
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
@@ -324,7 +352,7 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   console.log(`✅ Completed parallel grading pass\n`);
 }
 
-async function collectGuideUsage(dir: string, runType: string) {
+async function collectGuideUsage(dir: string, runType: string, guideName: string) {
   let guidesUsedResult: string[] = [];
   let retrievedGuides: string[] = [];
   let fileReadGuides: string[] = [];
@@ -336,67 +364,162 @@ async function collectGuideUsage(dir: string, runType: string) {
     fileReadGuides = usage.fileReadGuides;
     guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
     guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir);
+  } else if (runType === 'unguided' && hasTrajectoryGuideLeak(dir, guideName)) {
+    const usage = await collectGuidesUsed(dir);
+    retrievedGuides = usage.retrievedGuides;
+    fileReadGuides = usage.fileReadGuides;
+    guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides, guideName])];
+    const tools = await collectGuidanceToolsUsed(dir);
+    guidanceToolsUsedResult = [...new Set([...tools, 'modern-web-guidance'])];
   }
 
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
 }
 
-function evaluateScenarioResults(
+export function evaluateScenarioResults(
   dir: string,
   guide: string,
   graderPath: string,
   graderResults: string,
   targetAppExists: boolean,
-  targetFile: string
-): any[] {
-  const scenarioResults: any[] = [];
+  _targetFile?: string
+): ScenarioCheck[] {
+  const makeInfraError = (reason: string): ScenarioCheck[] => [{
+    id: 'early-failure-1',
+    passed: false,
+    message: reason,
+    isEarlyFailure: true,
+  }];
+
+  const makeAgentFailures = (reason: string): ScenarioCheck[] => {
+    const titles = extractTestTitles(graderPath);
+    if (titles.length === 0) {
+      return [{
+        id: 'agent-failure-1',
+        passed: false,
+        message: reason,
+        failureReason: reason,
+      }];
+    }
+    return titles.map((title, idx) => ({
+      id: `agent-failure-${idx + 1}`,
+      passed: false,
+      message: title,
+      failureReason: reason,
+    }));
+  };
 
   if (!fs.existsSync(graderPath)) {
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
-    scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
-  } else if (!targetAppExists) {
-    scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
-  } else if (!fs.existsSync(graderResults)) {
-    const errorMessage = extractErrorMessage(dir, targetFile);
-    scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
-  } else {
-    try {
-      let json: any = null;
-
-      if (fs.existsSync(graderResults)) {
-        try {
-          json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
-        } catch (e) {
-          console.error(`Error parsing JSON results for ${guide} in ${dir}`, e);
-        }
-      } else {
-        console.error(`Missing grader results JSON for ${guide} in ${dir}`);
-      }
-
-      if (json && json.suites && json.suites.length > 0) {
-        const specs: any[] = [];
-        const traverse = (suite: any) => {
-          if (suite.specs) specs.push(...suite.specs);
-          if (suite.suites) suite.suites.forEach(traverse);
-        };
-        json.suites.forEach(traverse);
-
-        return specs.map((spec: any) => {
-          const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
-          return {
-            passed: lastResult.status === 'passed',
-            message: spec.title,
-            testId: spec.id
-          };
-        });
-      }
-    } catch (err: any) {
-      console.error(`Error processing results for ${dir}:`, err);
-      scenarioResults.push({ name: 'System Error', status: 'fail', message: err.message });
+    return makeInfraError('Grader not found');
+  }
+  const failureFile = path.join(dir, 'generation_failed.json');
+  try {
+    const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+    return makeInfraError(`Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`);
+  } catch (err) {
+    if (!isEnoent(err)) {
+      return makeInfraError('Generation failed (could not parse failure info)');
     }
   }
+  if (!targetAppExists) {
+    return makeAgentFailures('Target app missing');
+  }
 
-  return scenarioResults;
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+
+    if (Array.isArray(json?.suites) && json.suites.length > 0) {
+      const specs: any[] = [];
+      const traverse = (suite: any) => {
+        if (suite.specs) specs.push(...suite.specs);
+        if (suite.suites) suite.suites.forEach(traverse);
+      };
+      json.suites.forEach(traverse);
+
+      if (specs.length > 0) {
+        const scenarioChecks: ScenarioCheck[] = [];
+        for (const spec of specs) {
+          if (isSpecSkipped(spec)) {
+            continue;
+          }
+          const lastResult = spec.tests?.[0]?.results?.at(-1);
+          if (lastResult?.status === 'passed') {
+            scenarioChecks.push({ id: spec.id, passed: true, message: spec.title });
+            continue;
+          }
+
+          // Strip ANSI colors and local paths (repo root, temp grading dir, agent homes, home) so diagnostics are portable and shareable.
+          const clean = sanitizeDiagnosticText;
+          // A timeout reports "Test timeout exceeded" first (no location) and the action that was cut off second.
+          const errors: { message?: string; location?: { file: string; line: number } }[] = lastResult?.errors ?? [];
+          const rawError = errors.map(e => e.message).filter(Boolean).join('\n\n');
+          const errorMsg = rawError ? clean(rawError) : undefined;
+
+          const loc = lastResult?.errorLocation ?? errors.find(e => e.location)?.location;
+          const errorLocation = loc ? `${path.relative(rootDir, loc.file)}:${loc.line}` : undefined;
+
+          const snapshotAtt = lastResult?.attachments?.find((a: any) => a.name === 'page-snapshot');
+          const pageSnapshot = snapshotAtt?.body ? Buffer.from(snapshotAtt.body, 'base64').toString('utf8') : undefined;
+
+          const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
+          const browserErrors = browserErrorsAtt?.body ? clean(Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8')) : undefined;
+
+          scenarioChecks.push({
+            id: spec.id,
+            passed: false,
+            message: spec.title,
+            ...(errorMsg ? { error: errorMsg } : {}),
+            ...(errorLocation ? { errorLocation } : {}),
+            ...(pageSnapshot ? { pageSnapshot } : {}),
+            ...(browserErrors ? { browserErrors } : {}),
+          });
+        }
+        return scenarioChecks;
+      }
+    }
+
+    return makeAgentFailures('Playwright test runner failed or produced no test results');
+  } catch (err: any) {
+    if (isEnoent(err)) {
+      return makeAgentFailures('Playwright test runner failed to produce a results file');
+    }
+    console.error(`Error processing results for ${dir}:`, err);
+    return makeAgentFailures(err.message || 'System Error');
+  }
+}
+
+export function sanitizeDiagnosticText(text: string): string {
+  return stripVTControlCharacters(String(text))
+    .replaceAll(`file://${rootDir}${path.sep}`, '')
+    .replaceAll(`file://${rootDir}`, '')
+    .replaceAll(rootDir + path.sep, '')
+    .replace(/file:\/\/\/tmp\/(?:grade-run|ghh)-[^/]+\//g, '')
+    .replace(/\/tmp\/(?:grade-run|ghh)-[^/]+\//g, '')
+    .replaceAll(`file://${os.homedir()}`, '~')
+    .replaceAll(os.homedir(), '~')
+    .trim();
+}
+
+function extractPageLoadFromResults(graderResults: string): PageLoadResult | undefined {
+  if (!fs.existsSync(graderResults)) return undefined;
+  try {
+    const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+    const raw = json?.pageLoad;
+    if (raw && typeof raw === 'object' && typeof raw.ok === 'boolean' && Array.isArray(raw.errors)) {
+      if (raw.noPage) return undefined;
+      return {
+        ok: raw.ok,
+        errors: raw.errors.map((e: unknown) => sanitizeDiagnosticText(String(e))),
+        ...(typeof raw.buildWarning === 'string' && raw.buildWarning
+          ? { buildWarning: sanitizeDiagnosticText(raw.buildWarning) }
+          : {}),
+      };
+    }
+  } catch {
+    // ignore malformed or unreadable results file
+  }
+  return undefined;
 }
 
 function readRuntimeData(dir: string): any | undefined {
@@ -463,14 +586,10 @@ function prepareGradersForRuns(
 
 async function collectTaskRunEntry(
   dir: string,
-  runPath: string,
-  runNumber: number,
-  taskMap: Map<string, any>
-): Promise<{ testName: string; payload: any } | null> {
-  const ctx = getTaskRunContext(dir, runPath, taskMap, true);
-  if (!ctx) return null;
-
-  const usage = await collectGuideUsage(dir, ctx.runType);
+  ctx: TaskRunContext,
+  runNumber: number
+): Promise<{ testName: string; payload: any }> {
+  const usage = await collectGuideUsage(dir, ctx.runType, ctx.guide);
 
   const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
   const expectedToolPrefixes = ['modern-web'];
@@ -487,6 +606,7 @@ async function collectTaskRunEntry(
   const testName = `${ctx.taskName} - ${ctx.guide} - ${ctx.runType}`;
   const tokenUsage = extractTokenUsageFromResults(dir);
   const runtimeData = readRuntimeData(dir);
+  const pageLoad = extractPageLoadFromResults(ctx.graderResults);
 
   const payload = {
     runNumber,
@@ -505,6 +625,7 @@ async function collectTaskRunEntry(
     files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
     runtime: runtimeData,
     tokenUsage,
+    ...(pageLoad ? { pageLoad } : {}),
   };
 
   return { testName, payload };
@@ -514,11 +635,31 @@ async function collectAllResults(
   resultsDir: string,
   runDirs: string[],
   taskMap: Map<string, any>
-): Promise<{ allResults: Record<string, any[]>; model: string }> {
+): Promise<{
+  allResults: Record<string, any[]>;
+  model: string;
+  reasoningEffort?: ReasoningEffort;
+  hasAnySummary: boolean;
+}> {
   const allResults: Record<string, any[]> = {};
   let model = 'unknown';
+  let bestEffort: ReasoningEffort | undefined;
+  let hasAnySummary = false;
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    // Skip never-run dirs before touching their trajectory summaries or suite-level metadata.
+    const ctx = getTaskRunContext(dir, runPath, taskMap, true);
+    if (!ctx) continue;
+
+    // Runs first: it may regenerate a stale trajectory_summary.json that collectTaskRunEntry reads.
+    const extractedEffort = extractReasoningEffortFromResults(dir);
+    if (extractedEffort) {
+      bestEffort = pickHigherPrecedenceEffort(bestEffort, extractedEffort);
+      hasAnySummary = true;
+    } else if (!hasAnySummary && fs.existsSync(path.join(dir, 'trajectory_summary.json'))) {
+      hasAnySummary = true;
+    }
+
     if (model === 'unknown') {
       const extracted = extractModelFromResults(dir);
       if (extracted !== 'unknown') {
@@ -526,8 +667,7 @@ async function collectAllResults(
       }
     }
 
-    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap);
-    if (!entry) continue;
+    const entry = await collectTaskRunEntry(dir, ctx, parseInt(runDir));
 
     if (!allResults[entry.testName]) {
       allResults[entry.testName] = [];
@@ -535,24 +675,33 @@ async function collectAllResults(
     allResults[entry.testName].push(entry.payload);
   }
 
-  return { allResults, model };
+  return { allResults, model, reasoningEffort: bestEffort, hasAnySummary };
 }
 
-export async function collectResults(resultsDir: string, _suiteConfig?: SuiteConfig) {
+export async function collectResults(resultsDir: string, suiteConfig?: SuiteConfig) {
   const taskMap = getTaskMap();
   const runDirs = getRunNumberDirs(resultsDir);
 
-  // PASS 1: Generate parallel grader scripts for missing results
   const graderPackages = prepareGradersForRuns(resultsDir, runDirs, taskMap);
-
-  // PASS 1.5: Execute parallel grading runs
   await executeParallelGrading(resultsDir, graderPackages);
+  const { allResults, model, reasoningEffort: runEffort, hasAnySummary } = await collectAllResults(
+    resultsDir,
+    runDirs,
+    taskMap,
+  );
 
-  // PASS 2: Collect all results and formulate report
-  const { allResults, model } = await collectAllResults(resultsDir, runDirs, taskMap);
+  const reasoningEffort =
+    runEffort && runEffort.source !== 'agent-default'
+      ? runEffort
+      : resolveReasoningEffort({
+          agent: suiteConfig?.agent,
+          model,
+          fallback: runEffort,
+          ...(hasAnySummary ? { env: {} } : {}),
+        });
 
   const estimatedRuntime = estimateTotalRuntime(resultsDir);
 
-  return { allResults, numRuns: runDirs.length, model, totalRuntime: estimatedRuntime };
+  return { allResults, numRuns: runDirs.length, model, reasoningEffort, totalRuntime: estimatedRuntime };
 }
 

@@ -1,0 +1,235 @@
+diff --git a/index.html b/index.html
+index 66c9173..ec56355 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,32 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
++    } catch {}
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
++
++      &:has(> head > meta[name="color-scheme"][content="dark"]) {
++        color-scheme: dark;
++      }
++      &:has(> head > meta[name="color-scheme"][content="light"]) {
++        color-scheme: light;
++      }
++
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      --secondary: light-dark(#d7ccc8, #2b1d19);
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --text: light-dark(#3e2723, #efebe9);
++      --light: light-dark(#fafafa, #1a120f);
++      --card-bg: light-dark(#ffffff, #2b1d19);
++      --card-heading: light-dark(#4e342e, #ffab40);
++      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+     }
+ 
+     * {
+@@ -27,6 +45,18 @@
+       background-color: var(--light);
+     }
+ 
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -48,6 +78,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -72,6 +103,52 @@
+       border-radius: 4px;
+     }
+ 
++    .theme-toggle {
++      background: transparent;
++      border: 1px solid var(--accent);
++      color: white;
++      padding: 5px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font: inherit;
++      font-size: 0.9rem;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    .theme-toggle:hover {
++      color: var(--accent);
++    }
++
++    .theme-toggle svg {
++      width: 18px;
++      height: 18px;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-option-light,
++    :root:has(> head > meta[name="color-scheme"][content="light"]) .theme-option-dark {
++      display: none;
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-option-light {
++        display: none;
++      }
++    }
++
++    @media (prefers-color-scheme: light) {
++      :root:not(:has(> head > meta[name="color-scheme"][content="dark"])) .theme-option-dark {
++        display: none;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,16 +185,17 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+@@ -137,6 +215,7 @@
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -165,6 +244,30 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="theme-toggle" id="theme-toggle">
++          <span class="theme-option-light">
++            <svg aria-hidden="true" viewBox="0 0 24 24">
++              <circle cx="12" cy="12" r="5"></circle>
++              <line x1="12" y1="1" x2="12" y2="3"></line>
++              <line x1="12" y1="21" x2="12" y2="23"></line>
++              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
++              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
++              <line x1="1" y1="12" x2="3" y2="12"></line>
++              <line x1="21" y1="12" x2="23" y2="12"></line>
++              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
++              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
++            </svg>
++            <span class="sr-only">Switch to dark theme</span>
++          </span>
++          <span class="theme-option-dark">
++            <svg aria-hidden="true" viewBox="0 0 24 24">
++              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
++            </svg>
++            <span class="sr-only">Switch to light theme</span>
++          </span>
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +310,54 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const meta = document.querySelector('meta[name="color-scheme"]');
++      const toggle = document.getElementById('theme-toggle');
++
++      function getStoredScheme() {
++        try {
++          const val = localStorage.getItem('color-scheme');
++          if (val === 'light' || val === 'dark') return val;
++        } catch {}
++        if (meta.content === 'light' || meta.content === 'dark') {
++          return meta.content;
++        }
++        return null;
++      }
++
++      function getSystemScheme() {
++        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
++      }
++
++      toggle.addEventListener('click', () => {
++        const systemScheme = getSystemScheme();
++        const storedScheme = getStoredScheme();
++        const currentRendered = storedScheme ?? systemScheme;
++        const targetScheme = currentRendered === 'dark' ? 'light' : 'dark';
++
++        if (targetScheme !== systemScheme) {
++          try {
++            localStorage.setItem('color-scheme', targetScheme);
++          } catch {}
++          meta.content = targetScheme;
++        } else {
++          try {
++            localStorage.removeItem('color-scheme');
++          } catch {}
++          meta.content = 'light dark';
++        }
++      });
++
++      window.addEventListener('storage', (event) => {
++        if (event.key === 'color-scheme' || event.key === null) {
++          const val = event.key === null ? null : event.newValue;
++          meta.content = (val === 'light' || val === 'dark') ? val : 'light dark';
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

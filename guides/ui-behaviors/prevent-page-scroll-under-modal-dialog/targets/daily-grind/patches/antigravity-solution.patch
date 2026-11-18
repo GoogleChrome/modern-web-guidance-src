@@ -1,0 +1,91 @@
+diff --git a/index.html b/index.html
+index 66c9173..ff474fb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,11 +152,64 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Patio Notice Modal Dialog */
++    dialog {
++      border: none;
++      border-radius: 8px;
++      padding: 2rem;
++      max-width: 450px;
++      width: 90%;
++      margin: auto;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
++      text-align: center;
++      overscroll-behavior: contain;
++    }
++
++    dialog:modal {
++      /* MANDATORY: Prevent scroll gestures inside the modal (even when its content
++         does not overflow) from chaining to the underlying page. */
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      /* MANDATORY: ::backdrop defaults to overflow: visible (not a scroll container).
++         Set overflow: hidden so it becomes a non-scrollable scroll container that
++         honors overscroll-behavior. */
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog h2 {
++      color: var(--primary);
++      margin-bottom: 0.75rem;
++    }
++
++    dialog p {
++      margin-bottom: 1.25rem;
++    }
++
++    dialog .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <dialog id="patio-notice" aria-labelledby="patio-notice-title">
++    <h2 id="patio-notice-title">Seasonal Patio Notice</h2>
++    <p>Our outdoor patio seating is now closed for the autumn and winter season. Join us indoors for warm seasonal drinks and cozy seating!</p>
++    <form method="dialog">
++      <button type="submit" id="close-patio-notice" class="btn">Close</button>
++    </form>
++  </dialog>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -207,6 +260,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const patioNotice = document.getElementById('patio-notice');
++    const closePatioNoticeBtn = document.getElementById('close-patio-notice');
++
++    if (patioNotice && typeof patioNotice.showModal === 'function') {
++      patioNotice.showModal();
++    }
++
++    if (closePatioNoticeBtn && patioNotice) {
++      closePatioNoticeBtn.addEventListener('click', () => {
++        patioNotice.close();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

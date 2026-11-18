@@ -74,6 +74,10 @@
       scale: 1.25;
     }
 
+    .target.is-rounded {
+      border-radius: 50%;
+    }
+
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -132,6 +136,7 @@
       -->
       <button commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
       <button commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
+      <button commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
       <button commandfor="action-target" command="--reset">Reset All</button>
     </div>
     
@@ -168,8 +173,12 @@
         const isGrown = target.classList.toggle('is-grown');
         source?.setAttribute('aria-pressed', isGrown);
       },
+      '--round': (target, source) => {
+        const isRounded = target.classList.toggle('is-rounded');
+        source?.setAttribute('aria-pressed', isRounded);
+      },
       '--reset': (target) => {
-        target.classList.remove('is-spun', 'is-grown');
+        target.classList.remove('is-spun', 'is-grown', 'is-rounded');
         // Reset all associated buttons' ARIA states
         document.querySelectorAll(`button[commandfor="${target.id}"]`).forEach(btn => {
           btn.setAttribute('aria-pressed', 'false');

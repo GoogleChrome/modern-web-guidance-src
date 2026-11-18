@@ -34,7 +34,7 @@ async function setupLocalhostRoute(page: any, targetDir: string, fileName: strin
 }
 
 // Test 1: "The code checks for modelContext in document before registering a tool."
-test('1. Checks for modelContext in document before registering', async ({ page }) => {
+test('Checks for modelContext in document before registering', async ({ page }) => {
   const { targetDir, fileName, targetUrl } = checkTargetFile();
   await setupLocalhostRoute(page, targetDir, fileName);
 
@@ -45,9 +45,7 @@ test('1. Checks for modelContext in document before registering', async ({ page 
 
   // Load the page WITHOUT mocking document.modelContext
   await page.goto(targetUrl);
-
-  // Give any scripts half a second to execute and possibly crash
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('domcontentloaded');
 
   // If the page does not support WebMCP and has no feature detection/checks,
   // it will throw an error immediately because modelContext is undefined.
@@ -94,11 +92,13 @@ test.describe('With mocked WebMCP API', () => {
 
     await page.goto(targetUrl);
     // Wait for page load and execution
-    await page.waitForTimeout(500);
+    await expect.poll(async () => {
+      return page.evaluate(() => (window as any).__webmcp_register_calls?.length > 0);
+    }).toBe(true);
   });
 
   // Test 2: "document.modelContext.registerTool is called with a tool definition object."
-  test('2. document.modelContext.registerTool is called with a tool definition object', async ({ page }) => {
+  test('document.modelContext.registerTool is called with a tool definition object', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
 
     expect(registerCalls).toBeDefined();
@@ -115,7 +115,7 @@ test.describe('With mocked WebMCP API', () => {
   });
 
   // Test 3: "The tool definition includes a name, description, inputSchema, and execute."
-  test('3. Tool definition includes name, description, inputSchema, and execute', async ({ page }) => {
+  test('Tool definition includes name, description, inputSchema, and execute', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
 
     expect(registerCalls).toBeDefined();
@@ -153,7 +153,7 @@ test.describe('With mocked WebMCP API', () => {
   });
 
   // Test 4: "The inputSchema is a valid JSON Schema object with property descriptions."
-  test('4. The inputSchema is a valid JSON Schema object with property descriptions', async ({ page }) => {
+  test('The inputSchema is a valid JSON Schema object with property descriptions', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
 
     expect(registerCalls).toBeDefined();
@@ -198,7 +198,7 @@ test.describe('With mocked WebMCP API', () => {
   });
 
   // Test 5: "An AbortController is created and its signal is passed to registerTool."
-  test('5. An AbortController is created and its signal is passed to registerTool', async ({ page }) => {
+  test('An AbortController is created and its signal is passed to registerTool', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
 
     expect(registerCalls).toBeDefined();
@@ -223,7 +223,7 @@ test.describe('With mocked WebMCP API', () => {
   });
 
   // Test 6: "The execute function is asynchronous if it performs any async operations."
-  test('6. The execute function is asynchronous if it performs any async operations', async ({ page }) => {
+  test('The execute function is asynchronous if it performs any async operations', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
 
     expect(registerCalls).toBeDefined();

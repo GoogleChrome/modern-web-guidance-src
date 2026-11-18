@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+index 66c9173..f1a49c3 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,13 @@
+       padding: 0 20px;
+     }
+ 
++    .featured,
++    .seasonal {
++      --surface: featured;
++      --theme: seasonal;
++      --category: seasonal;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -113,6 +120,8 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
++      border: 1px solid transparent;
+     }
+ 
+     .card h3 {
+@@ -120,19 +129,121 @@
+       color: var(--primary);
+     }
+ 
++    .badge {
++      display: none;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid currentColor;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      color: white;
++    }
++
++    .hero .btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++    }
++
++    /* Selector-based contextual styles — broad browser support fallback */
++    :where(.featured, .seasonal) .card {
++      border-color: var(--accent);
++      background: #fffdf9;
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++    }
++
++    :where(.featured, .seasonal) .badge {
++      display: inline-block;
++    }
++
++    :where(.featured, .seasonal) .btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++    }
++
++    :where(.featured, .seasonal) .btn:hover {
++      background: #ff9100;
++    }
++
++    /* Progressive enhancement: style queries override when supported */
++    @container style(--surface: featured) {
++      .card {
++        border-color: var(--accent);
++        background: #fffdf9;
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++      }
++
++      .badge {
++        display: inline-block;
++      }
++
++      .btn {
++        background: var(--accent);
++        color: var(--text);
++        border: none;
++      }
++
++      .btn:hover {
++        background: #ff9100;
++      }
++    }
++
++    @container style(--theme: seasonal) {
++      .card {
++        border-color: var(--accent);
++        background: #fffdf9;
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++      }
++
++      .badge {
++        display: inline-block;
++      }
++
++      .btn {
++        background: var(--accent);
++        color: var(--text);
++        border: none;
++      }
++    }
++
++    @container style(--category: seasonal) {
++      .card {
++        border-color: var(--accent);
++        background: #fffdf9;
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++      }
++
++      .badge {
++        display: inline-block;
++      }
++
++      .btn {
++        background: var(--accent);
++        color: var(--text);
++        border: none;
++      }
+     }
+ 
+     footer {
+@@ -175,20 +286,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="featured seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge">Seasonal Pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge">Barista's Choice</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge">Fan Favorite</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

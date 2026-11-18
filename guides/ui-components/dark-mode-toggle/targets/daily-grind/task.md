@@ -1,0 +1,1 @@
+- Update index.html for The Daily Grind site to add a dark mode toggle in the navigation bar so users can manually switch the page, seasonal favorite cards, and footer between light and dark themes, overriding whatever default theme their system is set to.

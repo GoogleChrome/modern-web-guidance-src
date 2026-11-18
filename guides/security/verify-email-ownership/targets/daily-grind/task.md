@@ -1,0 +1,1 @@
+- Build a new rewards account sign-up form on the Daily Grind homepage (with a server verification endpoint) that lets the browser confirm the customer's email address during registration without sending a one-time passcode or magic link email.

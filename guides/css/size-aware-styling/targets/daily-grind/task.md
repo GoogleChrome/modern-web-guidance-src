@@ -1,1 +1,1 @@
-- Update the card components so their layout and styling adapt based on their own width or height rather than the width or height of the viewport.
+- Update the "Seasonal Favorites" drink cards on the Daily Grind homepage so each card's layout and styling adapt between stacked and side-by-side arrangements based on the card's own available width rather than the overall viewport size.

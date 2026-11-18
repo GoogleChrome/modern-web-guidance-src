@@ -7,5 +7,6 @@ describe('Playwright Config', () => {
     // or other ESM related errors.
     const config = await import('./playwright.config.ts');
     assert.ok(config.default, 'Config should have a default export');
+    assert.deepStrictEqual(config.default.captureGitInfo, { commit: false, diff: false });
   });
 });

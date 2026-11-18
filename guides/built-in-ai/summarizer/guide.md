@@ -15,7 +15,6 @@ The **Summarizer API** allows web developers to offer local, AI-powered text dis
 
 The Summarizer API is available starting in **Chrome and Edge 138**. It requires a one-time model download of Gemini Nano or Phi (respectively).
 
-
 ### Hardware & Software Requirements
 
 - **OS**: Windows 10/11, macOS 13+, Linux, or ChromeOS (Chromebook Plus).
@@ -100,6 +99,8 @@ const summarizer = await Summarizer.create({
 });
 ```
 
+**MANDATORY:** if the output language is different from the overall page language, you **MUST** apply the `lang` attribute to the container element for the summary, and set its value to match the BCP 47 language code set using the `outputLanguage` property.
+
 ## Summarization Methods
 
 ### 1. Batch Summarization
@@ -132,9 +133,11 @@ for await (const chunk of stream) {
   device.
 - **Cross-Origin**: Access can be granted to iframes using the Permission
   Policy.
+
   ```html
   <iframe src="https://example.com/" allow="summarizer"></iframe>
   ```
+
 - **Web Workers**: Currently not supported.
 
 ## Fallback Strategy
@@ -154,6 +157,7 @@ if ('Summarizer' in self) {
 If the `Summarizer` API is unsupported or availability checks return `'unavailable'`, you must gracefully fall back.
 
 Recommended options:
+
 1. **Remote API Fallback**: Direct the distillation request to a server endpoint or remote API (such as the Vertex AI Gemini API) so that users still get summaries.
 2. **Graceful Degradation**: Visually disable the summarization controls in the UI, or hide the button while displaying a friendly message (e.g., `"Local summarization is currently unsupported in this browser"`). Do not allow interaction to trigger generic unhandled runtime exceptions.
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services with models in the cloud or on-device inference with local models.

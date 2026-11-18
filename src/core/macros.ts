@@ -1,28 +1,28 @@
-import path from "node:path";
-import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
-import { getGuidesMap, getGuideMarkdownPath } from "./guide-validation.ts";
+import { validateFeature, getStatusMessage, getFeatureName, pendingFeatures } from "./baseline.ts";
+import { getGuidesMap } from "./guide-validation.ts";
 import { resolveInclude } from "./include.ts";
-import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
+import { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getMacroFeatureId, getTranscludedFeatureIds, stripComments, maskComments } from "./macro-parsing.ts";
 
 // Re-exported for convenience; the implementations live in the dependency-free ./macro-parsing.ts
 export { MACRO_PATTERN, CONSECUTIVE_MACRO_PATTERN, COMMENT_PATTERN, parseArguments, getTranscludedFeatureIds, stripComments, maskComments };
 
-export type BuildTarget = 'skills-cli' | 'local-dev' | 'static-site';
+export type BuildTarget = 'skills-cli' | 'devsite';
 
-type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
+export interface MacroOptions {
+  target?: BuildTarget;
+  includedFiles?: Set<string>;
+  // The guide's `web-feature-ids`. When set, validateMacros reports each feature referenced by an otherwise valid
+  // macro that is missing from it, since feature gating (origin trials, volatile features) reads only the frontmatter.
+  webFeatureIds?: readonly string[];
+}
+
+type MacroHandler = (args: string[], filePath: string, options?: MacroOptions) => string;
 
 export class MacroError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "MacroError";
   }
-}
-
-export function formatTitle(id: string): string {
-  return id
-    .split("-")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
@@ -40,6 +40,10 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       throw new MacroError(`Transcluded file or section not found: "${rawArg}" in ${filePath}.`);
     }
 
+    if (result.absolutePath) {
+      options?.includedFiles?.add(result.absolutePath);
+    }
+
     // NOTE: no cycle detection. If files INCLUDE each other in a loop, this
     // will overflow the call stack. Add a visited set if it becomes a problem.
     return replaceMacros(result.content, result.absolutePath!, options);
@@ -55,27 +59,23 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       throw new MacroError(`Guide "${guideId}" not found (referenced in GUIDE_REF macro in ${filePath}).`);
     }
 
-    const target = options?.target || 'local-dev';
-
-    if (target === 'static-site') {
-      return `[${formatTitle(guideInfo.name)}](../${guideInfo.category}/${guideInfo.name}.md)`;
+    if (options?.target === 'devsite') {
+      if (!guideInfo.isPublished) {
+        throw new MacroError(`GUIDE_REF("${guideId}") in ${filePath} links to an unpublished guide; DevSite would have a dead link.`);
+      }
+      if (!guideInfo.title) {
+        throw new MacroError(`Guide "${guideId}" has no H1 heading or frontmatter title (referenced in GUIDE_REF macro in ${filePath}).`);
+      }
+      return `[${guideInfo.title}](/docs/modern-web-guidance/guides/${guideInfo.category}/${guideInfo.name})`;
     }
 
-    if (target === 'skills-cli') {
-      return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
-    }
-
-    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));
-    return `\`${relativePath}\``;
+    return `\`${guideId}\` (via \`npx -y modern-web-guidance@latest retrieve "${guideId}"\`)`;
   }
 };
 
 defineFeatureMacro("BASELINE_STATUS", {
   content: (args, filePath, options) => {
     const [featureId, bcdKey] = args;
-    if (options?.target === 'static-site') {
-      return bcdKey ? `{{ BASELINE_STATUS("${featureId}", "${bcdKey}") }}` : `{{ BASELINE_STATUS("${featureId}") }}`;
-    }
     const status = getStatusMessage(featureId, bcdKey);
     if (!status) {
       if (bcdKey) {
@@ -84,10 +84,13 @@ defineFeatureMacro("BASELINE_STATUS", {
       throw new MacroError(`Status not found for feature "${featureId}" (referenced in ${filePath}).`);
     }
 
+    if (options?.target === 'devsite' && !bcdKey) {
+      return `{{ macros.BaselineStatus('${featureId}') }}`;
+    }
+
     return status;
   }
 });
-
 
 defineFeatureMacro("FEATURE", {
   content: (args, filePath, options) => {
@@ -100,29 +103,38 @@ defineFeatureMacro("FEATURE", {
   }
 });
 
+function formatFeatureHeadingName(name: string): string {
+  // Wrap raw HTML tag names like `<select>` in backticks so they don't render as live HTML elements.
+  return name.replace(/`?<([a-zA-Z0-9:-]+)>`?/g, '`<$1>`');
+}
+
 defineFeatureMacro("FEATURE_FALLBACKS", {
   content: (args, filePath, options) => {
     const [featureId] = args;
-    let fallbacks = "";
+    let fallbacks: string;
     try {
       fallbacks = MACRO_HANDLERS.FEATURE([featureId, "fallbacks"], filePath, options);
     } catch (e) {
       if (e instanceof MacroError) {
-        fallbacks = "";
-      } else {
-        throw e;
+        throw new MacroError(
+          `${e.message} Either add a "## Fallbacks" section in "features/${featureId}.md" or use {{ BASELINE_STATUS("${featureId}") }} with inline fallback guidance instead.`
+        );
       }
+      throw e;
     }
-    const baselineStatus = MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
-    if (!fallbacks) {
-      return baselineStatus;
+    if (!fallbacks.trim()) {
+      throw new MacroError(
+        `Empty "#fallbacks" section in "features/${featureId}.md" (referenced in FEATURE_FALLBACKS macro in ${filePath}). Either add fallback guidance in "features/${featureId}.md" or use {{ BASELINE_STATUS("${featureId}") }} with inline fallback guidance instead.`
+      );
     }
+    // Pending `tmp-*` features have no upstream status yet (#2004), so only their fallbacks are emitted.
+    const baselineStatus = featureId in pendingFeatures ? "" : MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
 
     return [
-      `### Fallbacks & browser support for ${getFeatureName(featureId)}`,
+      `### Fallbacks & browser support for ${formatFeatureHeadingName(getFeatureName(featureId))}`,
       baselineStatus,
       fallbacks
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
   }
 });
 
@@ -141,7 +153,7 @@ defineFeatureMacro("FEATURE_ISSUES", {
     }
     if (!included) return "";
     return [
-      `### Issues to be aware of when using ${getFeatureName(featureId)}`,
+      `### Issues to be aware of when using ${formatFeatureHeadingName(getFeatureName(featureId))}`,
       included
     ].join("\n\n");
   }
@@ -153,7 +165,7 @@ function defineFeatureMacro(name: string, {
 }: {
   recursive?: boolean;
   // Producer: may return anything; we coerce to string below.
-  content: (args: string[], filePath: string, options?: { target?: BuildTarget }) => any;
+  content: (args: string[], filePath: string, options?: MacroOptions) => any;
 }): MacroHandler {
   const fn: MacroHandler = (args, filePath, options) => {
     const [featureId] = args;
@@ -179,14 +191,14 @@ function defineFeatureMacro(name: string, {
  */
 function processMacros(
   content: string,
-  onMatch: (handler: MacroHandler, args: string[], match: string) => string | void
+  onMatch: (handler: MacroHandler, args: string[], match: string, name: string) => string | void
 ): string {
   return content.replace(MACRO_PATTERN, (match: string, name: string, argsString: string): string => {
     const handler = MACRO_HANDLERS[name];
     if (!handler) return match;
 
     const args = parseArguments(argsString);
-    const result = onMatch(handler, args, match);
+    const result = onMatch(handler, args, match, name);
     return typeof result === 'string' ? result : match;
   });
 }
@@ -197,11 +209,16 @@ function processMacros(
  * @param filePath - The path to the file (for error reporting)
  * @returns Array of validation errors
  */
-export function validateMacros(content: string, filePath: string): string[] {
+export function validateMacros(content: string, filePath: string, options: MacroOptions = {}): string[] {
   const errors: string[] = [];
-  processMacros(content, (handler, args, match) => {
+  const unlistedFeatures = new Map<string, string>(); // feature ID -> first macro referencing it
+  processMacros(content, (handler, args, match, name) => {
     try {
-      handler(args, filePath);
+      handler(args, filePath, options);
+      const featureId = getMacroFeatureId(name, args);
+      if (featureId && options.webFeatureIds && !options.webFeatureIds.includes(featureId) && !unlistedFeatures.has(featureId)) {
+        unlistedFeatures.set(featureId, name);
+      }
     } catch (err: any) {
       if (err instanceof MacroError) {
         errors.push(err.message);
@@ -210,10 +227,13 @@ export function validateMacros(content: string, filePath: string): string[] {
       }
     }
   });
+  for (const [featureId, name] of unlistedFeatures) {
+    errors.push(`Feature "${featureId}" is missing from "web-feature-ids" in frontmatter (referenced in ${name} macro in ${filePath}).`);
+  }
   return errors;
 }
 
-export function replaceMacros(content: string, filePath: string, options: { target?: BuildTarget } = {}): string {
+export function replaceMacros(content: string, filePath: string, options: MacroOptions = {}): string {
   const stripped = stripComments(content);
   const normalized = stripped.replace(CONSECUTIVE_MACRO_PATTERN, "$1\n\n");
   return processMacros(normalized, (handler, args, match) => {

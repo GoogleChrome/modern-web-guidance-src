@@ -1,0 +1,47 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..386b1a1 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,23 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* @media is guaranteed in browsers that support at-rule() queries.
++       Use it to gate these enhancements; the base styles above remain the fallback. */
++    @supports at-rule(@media) {
++      nav {
++        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++      }
++
++      .hero h1 {
++        text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
++      }
++
++      .card {
++        border-top: 3px solid var(--accent);
++        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      }
++    }
+   </style>
+ </head>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..6ea870f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --input-type=module -e \"import { mkdirSync, copyFileSync } from 'node:fs'; mkdirSync('dist', { recursive: true }); copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

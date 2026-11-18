@@ -25,6 +25,7 @@
     .thumbnails {
       display: flex;
       gap: 8px;
+      justify-content: center;
       margin-bottom: 16px;
     }
 
@@ -41,7 +42,6 @@
       font-weight: bold;
       color: #fff;
       font-size: 0.8rem;
-      opacity: 0.5;
       padding: 0;
       font-family: inherit;
       appearance: none;
@@ -49,7 +49,6 @@
 
     .thumbnail.pending {
       border-color: rgba(0, 0, 0, 0.3);
-      opacity: 0.8;
     }
 
     .thumbnail.active {
@@ -57,11 +56,15 @@
       opacity: 1;
     }
 
-    .thumbnail:nth-child(1) { background: #e74c3c; }
-    .thumbnail:nth-child(2) { background: #3498db; }
-    .thumbnail:nth-child(3) { background: #2ecc71; }
-    .thumbnail:nth-child(4) { background: #f39c12; }
+    .thumbnail:nth-child(1) { background: #db1400; }
+    .thumbnail:nth-child(2) { background: #3671d3; }
+    .thumbnail:nth-child(3) { background: #287248; }
+    .thumbnail:nth-child(4) { background: #a46500; }
     .thumbnail:nth-child(5) { background: #9b59b6; }
+
+    .thumbnail:focus-visible {
+      outline-offset: 3px;
+    }
 
     .gallery {
       position: relative;
@@ -87,10 +90,10 @@
       color: #fff;
     }
 
-    .gallery-item:nth-child(1) { background: #e74c3c; }
-    .gallery-item:nth-child(2) { background: #3498db; }
-    .gallery-item:nth-child(3) { background: #2ecc71; }
-    .gallery-item:nth-child(4) { background: #f39c12; }
+    .gallery-item:nth-child(1) { background: #db1400; }
+    .gallery-item:nth-child(2) { background: #3671d3; }
+    .gallery-item:nth-child(3) { background: #287248; }
+    .gallery-item:nth-child(4) { background: #a46500; }
     .gallery-item:nth-child(5) { background: #9b59b6; }
   </style>
 </head>
@@ -98,21 +101,23 @@
 <body>
   <h1>Gallery with Real-time Thumbnail Feedback</h1>
 
-  <div class="thumbnails">
-    <button type="button" class="thumbnail active" aria-current="true" aria-label="Photo 1">1</button>
-    <button type="button" class="thumbnail" aria-label="Photo 2">2</button>
-    <button type="button" class="thumbnail" aria-label="Photo 3">3</button>
-    <button type="button" class="thumbnail" aria-label="Photo 4">4</button>
-    <button type="button" class="thumbnail" aria-label="Photo 5">5</button>
-  </div>
+  <section aria-label="Gallery with thumbnails">
+    <div class="thumbnails" focusgroup="toolbar wrap" aria-label="Gallery display controls">
+      <button type="button" class="thumbnail active" aria-current="true" aria-label="Photo 1">1</button>
+      <button type="button" class="thumbnail" aria-label="Photo 2">2</button>
+      <button type="button" class="thumbnail" aria-label="Photo 3">3</button>
+      <button type="button" class="thumbnail" aria-label="Photo 4">4</button>
+      <button type="button" class="thumbnail" aria-label="Photo 5">5</button>
+    </div>
 
-  <div class="gallery" id="gallery">
-    <div class="gallery-item">Photo 1</div>
-    <div class="gallery-item">Photo 2</div>
-    <div class="gallery-item">Photo 3</div>
-    <div class="gallery-item">Photo 4</div>
-    <div class="gallery-item">Photo 5</div>
-  </div>
+    <div class="gallery" id="gallery" role="region" aria-label="Gallery" tabindex="0">
+      <div class="gallery-item">Photo 1</div>
+      <div class="gallery-item">Photo 2</div>
+      <div class="gallery-item">Photo 3</div>
+      <div class="gallery-item">Photo 4</div>
+      <div class="gallery-item">Photo 5</div>
+    </div>
+  </section>
 
   <script>
     const gallery = document.getElementById('gallery');

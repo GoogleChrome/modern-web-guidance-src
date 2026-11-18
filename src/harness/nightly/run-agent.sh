@@ -135,7 +135,15 @@ cleanup() {
 
   local body
   if [ "$exit_code" -eq 0 ]; then
-    body="✅ ${DISPLAY_NAME} run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
+    local summary_text=""
+    if [ -f "${RESULTS_JSON:-}" ]; then
+      summary_text=$(node "$SCRIPT_DIR/analyze-results.ts" "$RESULTS_JSON" summary || true)
+    fi
+    body="✅ ${DISPLAY_NAME} run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}"
+    if [ -n "$summary_text" ]; then
+      body="${body}\n\n${summary_text}"
+    fi
+    body="${body}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
   elif [ "$exit_code" -eq 3 ]; then
     body="❌ ${DISPLAY_NAME} run for agent ${AGENT} FAILED due to CATASTROPHIC GENERATION ERRORS. Upload skipped.\nSuite ID: ${SUITE_ID}\n"
     if [ -n "$FAIL_REASON" ]; then

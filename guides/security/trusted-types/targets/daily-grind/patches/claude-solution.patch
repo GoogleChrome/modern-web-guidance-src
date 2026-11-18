@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+index 66c9173..122dde0 100644
+--- a/index.html
++++ b/index.html
+@@ -2,6 +2,9 @@
+ <html lang="en">
+ 
+ <head>
++  <!-- First child of <head>: enforce Trusted Types for all DOM XSS sinks on this page. -->
++  <meta http-equiv="Content-Security-Policy"
++    content="require-trusted-types-for 'script'; trusted-types daily-grind-sanitize-html daily-grind-inert-parse;">
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+@@ -177,23 +180,7 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites" aria-live="polite"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +194,136 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // Tinyfill for browsers without Trusted Types: policies become plain rule
++      // objects, so sanitization logic still runs even without sink enforcement.
++      if (!window.trustedTypes) {
++        window.trustedTypes = {
++          createPolicy: function (name, rules) { return rules; },
++        };
++      }
++
++      // Internal-only policy used solely to parse markup into an *inert*
++      // DOMParser document (scripts never run and resources never load there).
++      // It is never exposed outside this closure and never writes to the live DOM.
++      var inertParsePolicy = window.trustedTypes.createPolicy('daily-grind-inert-parse', {
++        createHTML: function (input) { return String(input); },
++      });
++
++      // Allowlist sanitizer configuration for Seasonal Favorites card markup.
++      var ALLOWED_ELEMENTS = {
++        DIV: true, H3: true, P: true, A: true, SPAN: true,
++        STRONG: true, EM: true, B: true, I: true, BR: true,
++      };
++      // Elements whose entire subtree is dropped (not unwrapped).
++      var DROP_WITH_CONTENT = {
++        SCRIPT: true, STYLE: true, TEMPLATE: true, IFRAME: true, OBJECT: true,
++        EMBED: true, NOSCRIPT: true, SVG: true, MATH: true, NOEMBED: true,
++        NOFRAMES: true, XMP: true, PLAINTEXT: true, TEXTAREA: true, TITLE: true,
++      };
++      var ALLOWED_ATTRIBUTES = { 'class': true, 'title': true };
++      var SAFE_URL_PROTOCOLS = { 'http:': true, 'https:': true };
++
++      function sanitizeUrl(value) {
++        try {
++          var url = new URL(value, window.location.href);
++          return SAFE_URL_PROTOCOLS[url.protocol] ? value : null;
++        } catch (e) {
++          return null;
++        }
++      }
++
++      function sanitizeNode(source, targetDoc, targetParent) {
++        var children = source.childNodes;
++        for (var i = 0; i < children.length; i++) {
++          var node = children[i];
++          if (node.nodeType === Node.TEXT_NODE) {
++            targetParent.appendChild(targetDoc.createTextNode(node.nodeValue));
++            continue;
++          }
++          if (node.nodeType !== Node.ELEMENT_NODE) {
++            continue; // Drop comments, processing instructions, etc.
++          }
++          var tag = node.nodeName.toUpperCase();
++          if (DROP_WITH_CONTENT[tag]) {
++            continue;
++          }
++          if (!ALLOWED_ELEMENTS[tag]) {
++            // Unwrap unknown elements, keeping their (sanitized) content.
++            sanitizeNode(node, targetDoc, targetParent);
++            continue;
++          }
++          var clean = targetDoc.createElement(tag.toLowerCase());
++          for (var j = 0; j < node.attributes.length; j++) {
++            var attr = node.attributes[j];
++            var name = attr.name.toLowerCase();
++            if (ALLOWED_ATTRIBUTES[name]) {
++              clean.setAttribute(name, attr.value);
++            } else if (tag === 'A' && name === 'href') {
++              var safeHref = sanitizeUrl(attr.value);
++              if (safeHref !== null) {
++                clean.setAttribute('href', safeHref);
++              }
++            }
++            // All other attributes (on*, style, src, srcdoc, ...) are dropped.
++          }
++          sanitizeNode(node, targetDoc, clean);
++          targetParent.appendChild(clean);
++        }
++      }
++
++      function sanitizeHtml(input) {
++        var parsed = new DOMParser().parseFromString(
++          inertParsePolicy.createHTML(String(input)),
++          'text/html'
++        );
++        var outDoc = document.implementation.createHTMLDocument('');
++        var container = outDoc.createElement('div');
++        sanitizeNode(parsed.body, outDoc, container);
++        // Reading innerHTML is not a sink; this serializes the rebuilt, allowlisted DOM.
++        return container.innerHTML;
++      }
++
++      // Public policy: the only way markup reaches the live page's DOM sinks.
++      var sanitizePolicy = window.trustedTypes.createPolicy('daily-grind-sanitize-html', {
++        createHTML: sanitizeHtml,
++      });
++
++      // Seasonal Favorites card markup (e.g. delivered by a CMS/menu feed as HTML strings).
++      var seasonalFavorites = [
++        '<div class="card">' +
++          '<h3>Maple Oat Latte</h3>' +
++          '<p>Creamy oat milk with a hint of Vermont maple syrup.</p>' +
++          '<a href="/menu/seasonal" class="btn">View Details</a>' +
++        '</div>',
++        '<div class="card">' +
++          '<h3>Dark Roast Espresso</h3>' +
++          '<p>Bold, smokey, and perfect for a morning boost.</p>' +
++          '<a href="/menu/espresso" class="btn">View Details</a>' +
++        '</div>',
++        '<div class="card">' +
++          '<h3>Cold Brew</h3>' +
++          '<p>Steeped for 18 hours for maximum smoothness.</p>' +
++          '<a href="/menu/cold-brew" class="btn">View Details</a>' +
++        '</div>',
++      ];
++
++      function renderSeasonalFavorites(cards) {
++        var grid = document.getElementById('seasonal-favorites');
++        if (!grid) {
++          return;
++        }
++        // Sink write uses a TrustedHTML object produced by the sanitizing policy.
++        grid.innerHTML = sanitizePolicy.createHTML(cards.join(''));
++      }
++
++      renderSeasonalFavorites(seasonalFavorites);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

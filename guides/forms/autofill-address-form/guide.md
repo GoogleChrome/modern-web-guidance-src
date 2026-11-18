@@ -2,7 +2,7 @@
 name: autofill-address-form
 description: Build an address form with correct autocomplete attributes and autofill support.
 web-feature-ids:
-  - autofill
+  - input
 ---
 
 # Build an address form that follows best practice
@@ -28,7 +28,7 @@ To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
+Make it easy for users to enter data, by using the appropriate `<input>` element with a `type` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
@@ -48,7 +48,11 @@ Give each form submit button a value that says what it does. For each step towar
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
+Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler. Use `autocomplete="name"` for a single input for name.
+
+```html
+<input type="text" id="fullname" name="fullname" autocomplete="name">
+```
 
 Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
 
@@ -65,6 +69,14 @@ Use a single `<textarea>` element for the street address if possible.
 
 This is the most flexible option for a variety of local and international address formats.
 
+If your data model needs separate address lines, use one `<input>` per line with the `address-line1`, `address-line2` (and, if needed, `address-line3`) `autocomplete` tokens so that autofill still works. Don't split the street address across inputs that lack these tokens, and make only the first line required.
+
+```html
+<!-- Alternative: one input per line, each with its own autocomplete token -->
+<input type="text" id="address-line1" name="address-line1" autocomplete="address-line1" required>
+<input type="text" id="address-line2" name="address-line2" autocomplete="address-line2">
+```
+
 ### Help save users from accidentally missing data fields
 
 Add the `required` attribute to mandatory fields.
@@ -75,6 +87,6 @@ Add the `required` attribute to mandatory fields.
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("autofill") }}
+{{ BASELINE_STATUS("input", "html.elements.input.autocomplete") }}
 
 Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their address details. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately as standard form validation.

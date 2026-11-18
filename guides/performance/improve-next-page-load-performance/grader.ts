@@ -13,23 +13,40 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Helper to get speculation rules
-function getSpeculationRules(html: string) {
-  const match = html.match(/<script type="speculationrules">([\s\S]*?)<\/script>/);
+interface SpeculationRuleSet {
+  urls?: unknown[];
+  where?: Record<string, unknown>;
+  eagerness?: string;
+  source?: unknown;
+  tag?: string;
+}
+
+interface SpeculationRulesDocument {
+  prefetch?: SpeculationRuleSet[];
+  prerender?: SpeculationRuleSet[];
+  prerender_until_script?: SpeculationRuleSet[];
+  tag?: string;
+  [key: string]: unknown;
+}
+
+// Helper to get speculation rules from <script type="speculationrules">
+function getSpeculationRules(html: string): SpeculationRulesDocument | 'INVALID_JSON' | null {
+  const match = html.match(/<script\b[^>]*\btype\s*=\s*["']speculationrules["'][^>]*>([\s\S]*?)<\/script>/i);
   if (!match) return null;
   try {
-    return JSON.parse(match[1]);
+    return JSON.parse(match[1]) as SpeculationRulesDocument;
   } catch {
     return 'INVALID_JSON';
   }
 }
 
+const STATE_CHANGING_TOKEN_REGEX = /\b(logout|signout|sign-out|add-to-cart|delete-confirm|wipe-data|drop-tables)\b/i;
+
 test.describe(`Improve next page load performance Expectations: ${demoName}`, () => {
-  
   // 1. Check for <script type="speculationrules">
   test('The rule is included in a <script type="speculationrules"> tag', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('<script type="speculationrules">');
+    expect(getSpeculationRules(html)).not.toBeNull();
   });
 
   // 2. Check if the rule is valid JSON
@@ -47,8 +64,8 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     if (rules && rules !== 'INVALID_JSON') {
       const keys = Object.keys(rules);
       const validKeys = ['prefetch', 'prerender', 'prerender_until_script', 'tag'];
-      expect(keys.some(key => validKeys.includes(key))).toBe(true);
-      expect(keys.every(key => validKeys.includes(key))).toBe(true);
+      expect(keys.some((key) => validKeys.includes(key))).toBe(true);
+      expect(keys.every((key) => validKeys.includes(key))).toBe(true);
     } else {
       throw new Error('Rules not found or invalid');
     }
@@ -59,10 +76,21 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      const ruleSets = [
+        ...(rules.prefetch || []),
+        ...(rules.prerender || []),
+        ...(rules.prerender_until_script || []),
+      ];
       expect(ruleSets.length).toBeGreaterThan(0);
+      const validWhereKeys = ['href_matches', 'selector_matches', 'not', 'and', 'or'];
       for (const set of ruleSets) {
         expect(set.urls || set.where).toBeDefined();
+        if (set.where) {
+          expect(typeof set.where).toBe('object');
+          const whereKeys = Object.keys(set.where);
+          expect(whereKeys.length).toBeGreaterThan(0);
+          expect(whereKeys.every((k) => validWhereKeys.includes(k))).toBe(true);
+        }
       }
     } else {
       throw new Error('Rules not found or invalid');
@@ -74,7 +102,11 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      const ruleSets = [
+        ...(rules.prefetch || []),
+        ...(rules.prerender || []),
+        ...(rules.prerender_until_script || []),
+      ];
       expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         expect(set.source).toBeUndefined();
@@ -89,7 +121,11 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      const ruleSets = [
+        ...(rules.prefetch || []),
+        ...(rules.prerender || []),
+        ...(rules.prerender_until_script || []),
+      ];
       expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.urls) {
@@ -107,7 +143,11 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      const ruleSets = [
+        ...(rules.prefetch || []),
+        ...(rules.prerender || []),
+        ...(rules.prerender_until_script || []),
+      ];
       expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
         if (set.eagerness === 'immediate' && set.urls) {
@@ -124,11 +164,17 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      const ruleSets = [
+        ...(rules.prefetch || []),
+        ...(rules.prerender || []),
+        ...(rules.prerender_until_script || []),
+      ];
       expect(ruleSets.length).toBeGreaterThan(0);
       for (const set of ruleSets) {
-        if (set.urls) {
-          expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
+        if (Array.isArray(set.urls)) {
+          expect(
+            set.urls.some((url: unknown) => typeof url === 'string' && STATE_CHANGING_TOKEN_REGEX.test(url))
+          ).toBe(false);
         }
         if (set.where) {
           // Check the rule against the page's logout links, as the browser would.
@@ -171,11 +217,8 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
   // 9. Check if it's an SPA
   test('The page should be a Multi-Page Application (MPA), not a Single Page Application (SPA)', async ({ page }) => {
     const hasHashChange = await page.evaluate(() => {
-        // Simple check for hashchange listener or router-like behavior
-        // This is a bit heuristic but fits the negative-demo.html
-        return typeof (window as any).router === 'function' || !!(window as any).onhashchange;
+      return typeof (window as unknown as Record<string, unknown>).router === 'function' || Boolean(window.onhashchange);
     });
-    // negative-demo.html has a router function and hashchange listener
     expect(hasHashChange).toBe(false);
   });
 
@@ -184,7 +227,11 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
-      const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
+      const ruleSets = [
+        ...(rules.prefetch || []),
+        ...(rules.prerender || []),
+        ...(rules.prerender_until_script || []),
+      ];
       expect(ruleSets.length).toBeGreaterThan(0);
       const validEagerness = ['immediate', 'eager', 'moderate', 'conservative'];
       for (const set of ruleSets) {
@@ -193,8 +240,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
         }
       }
     } else {
-        throw new Error('Rules not found or invalid');
+      throw new Error('Rules not found or invalid');
     }
   });
-
 });

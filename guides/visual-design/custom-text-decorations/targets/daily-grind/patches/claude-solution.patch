@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+index 66c9173..d7f1886 100644
+--- a/index.html
++++ b/index.html
+@@ -57,9 +57,7 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+@@ -149,9 +147,107 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ------------------------------------------------------------------
++       Text decorations
++       Native text-decoration lines follow the font metrics, wrap with the
++       text, and skip glyph descenders. Ink skipping is left at its default
++       (auto), which already breaks the line cleanly around Latin
++       descenders such as "y", "g", and "p".
++       Defaults are wrapped in :where() so they carry zero specificity.
++       ------------------------------------------------------------------ */
++
++    /* Decorated links: navigation and footer */
++    :where(nav ul a, .footer-links a) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-decoration-color: color-mix(in srgb, currentColor, transparent);
++      text-underline-offset: 0.25em;
++      transition: color 0.3s;
++    }
++
++    :where(nav ul a, .footer-links a):is(:hover, :focus-visible) {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    /* The bordered logout button sits a little tighter */
++    :where(nav ul a.logout-link) {
++      text-underline-offset: 0.18em;
++    }
++
++    /* Section heading: not a link, so use an accent-colored, thicker,
++       trimmed line that cannot be mistaken for a link underline. */
++    :where(.section-title) {
++      text-align: center;
++      text-decoration: underline solid var(--accent) max(2px, 0.12em);
++      text-underline-offset: 0.22em;
++      text-decoration-inset: 0.15em;
++    }
++
++    /* Coffee card titles: decorative accent underline with trimmed ends */
++    :where(.card h3) {
++      text-decoration: underline solid var(--accent) max(1px, 0.1em);
++      text-underline-offset: 0.2em;
++      text-decoration-inset: 0.2em;
++    }
++
++    /* Reveal animations. Without this media match (reduced motion), every
++       line above simply stays fully visible. */
++    @media (prefers-reduced-motion: no-preference) {
++
++      /* Links: trim the end by the full inline size and draw it on
++         hover and keyboard focus. */
++      :where(nav ul a, .footer-links a) {
++        text-decoration-inset: 0 100%;
++        transition:
++          color 0.3s,
++          text-decoration-inset 0.25s ease-out,
++          text-decoration-color 0.25s ease-out;
++      }
++
++      :where(nav ul a, .footer-links a):is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++
++      /* Non-interactive headings: draw the line once on page load. */
++      :where(.section-title) {
++        animation: deco-reveal-heading 0.6s ease-out 0.2s both;
++      }
++
++      :where(.card h3) {
++        animation: deco-reveal-card 0.5s ease-out 0.4s both;
++      }
++
++      :where(.card:nth-child(2) h3) {
++        animation-delay: 0.5s;
++      }
++
++      :where(.card:nth-child(3) h3) {
++        animation-delay: 0.6s;
++      }
++
++      @keyframes deco-reveal-heading {
++        from {
++          text-decoration-inset: 0.15em 100%;
++        }
++
++        to {
++          text-decoration-inset: 0.15em;
++        }
++      }
++
++      @keyframes deco-reveal-card {
++        from {
++          text-decoration-inset: 0.2em 100%;
++        }
++
++        to {
++          text-decoration-inset: 0.2em;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +272,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

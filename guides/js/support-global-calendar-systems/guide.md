@@ -42,12 +42,12 @@ const targetDate = isCalendarSupported(calendarId)
   ? isoDate.withCalendar(calendarId)
   : isoDate; // Fallback to ISO if not supported
 
-if (targetDate.calendar.id !== calendarId) {
+if (targetDate.calendarId !== calendarId) {
   console.warn(`Calendar ${calendarId} not supported; falling back to ISO 8601`);
 }
 
 // 4. Log properties specific to the calendar
-console.log(`Calendar: ${targetDate.calendar.id}`);
+console.log(`Calendar: ${targetDate.calendarId}`);
 console.log(`Year: ${targetDate.year}`);
 console.log(`Month Code: ${targetDate.monthCode}`); // Stable across leap years
 
@@ -57,16 +57,17 @@ for (let m = 1; m <= targetDate.monthsInYear; m++) {
 }
 
 // 6. Compare dates within the same calendar
-const today = Temporal.Now.plainDateISO().withCalendar(calendarId);
+const today = Temporal.Now.plainDateISO().withCalendar(targetDate.calendarId);
 const comparison = Temporal.PlainDate.compare(targetDate, today);
 const relative = comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today';
 console.log(`Timeline: ${relative}`);
 
-// 7. Format for display using toLocaleString
-const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
+// 7. Format for display using toLocaleString (including era for era-based calendars like 'japanese')
+const localizedDisplay = targetDate.toLocaleString(`en-u-ca-${targetDate.calendarId}`, {
   day: 'numeric',
   month: 'long',
-  year: 'numeric'
+  year: 'numeric',
+  era: 'long'
 });
 ```
 
@@ -84,29 +85,4 @@ const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
 
 ## Fallback Strategy
 
-{{ BASELINE_STATUS("temporal") }}
-
-For production use in browsers that do not support it natively, you must use a polyfill.
-
-The recommended approach is to progressively enhance by checking for native support and dynamically loading a polyfill like `@js-temporal/polyfill` if needed.
-
-```javascript
-/**
- * Progressive Enhancement Fallback
- */
-async function getTemporal() {
-  if (typeof Temporal !== 'undefined') {
-    return Temporal;
-  }
-  
-  try {
-    // Load polyfill dynamically from CDN
-    const module = await import('https://esm.sh/@js-temporal/polyfill');
-    globalThis.Temporal = module.Temporal;
-    return module.Temporal;
-  } catch (e) {
-    console.error('Failed to load Temporal polyfill:', e);
-    throw e;
-  }
-}
-```
+{{ FEATURE_FALLBACKS("temporal") }}

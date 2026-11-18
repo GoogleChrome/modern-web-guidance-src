@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "modern-web-guidance",
+  "version": "0.0.26",
+  "description": "Keep your coding agent up to date with the latest web best practices",
+  "author": {
+    "name": "Google Chrome",
+    "url": "https://developer.chrome.com/"
+  },
+  "homepage": "https://developer.chrome.com/docs/modern-web-guidance",
+  "repository": "https://github.com/GoogleChrome/modern-web-guidance",
+  "license": "Apache-2.0",
+  "keywords": [
+    "web",
+    "html",
+    "css",
+    "javascript",
+    "best-practices"
+  ]
+}

@@ -2,5 +2,6 @@
 - The component title has a `font-size` that uses container query units (like `cqi` or `cqw`).
 - The component title uses `clamp()` to constrain the font size between a minimum and maximum value.
 - The maximum size in `clamp()` for font size is at most 2.5 times the minimum size to meet accessibility guidelines.
+- The container must not get smaller when zooming in with the browser, in order to meet accessibility guidelines.
 - The font size of the title changes when the width of the container changes, independently of the viewport size.
 - A fallback font size using viewport units (like `vw`) or media queries is provided for browsers that do not support container query units.

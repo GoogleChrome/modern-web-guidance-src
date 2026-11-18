@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section in `index.html` to include a hovercard component on the "View Details" links inside the drink cards (Maple Oat Latte, Dark Roast Espresso, and Cold Brew) so that hovering over any of those links pops up an interactive, structured preview of the target drink page it navigates to.

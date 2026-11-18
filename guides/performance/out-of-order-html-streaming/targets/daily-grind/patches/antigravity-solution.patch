@@ -1,0 +1,348 @@
+diff --git a/index.html b/index.html
+index 66c9173..fd21a08 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="https://unpkg.com/template-for-polyfill"></script>
++  <script type="module" src="https://unpkg.com/html-setters-polyfill"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -113,6 +115,11 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      min-height: 185px;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
+     }
+ 
+     .card h3 {
+@@ -120,6 +127,115 @@
+       color: var(--primary);
+     }
+ 
++    /* Skeleton placeholder styles to prevent Cumulative Layout Shift (CLS) */
++    .card.skeleton {
++      pointer-events: none;
++    }
++
++    .skeleton-line {
++      background: linear-gradient(90deg, #ece6e4 25%, #f5f2f1 50%, #ece6e4 75%);
++      background-size: 200% 100%;
++      animation: shimmer 1.5s infinite;
++      border-radius: 4px;
++    }
++
++    .skeleton-title {
++      width: 65%;
++      height: 1.4rem;
++      margin-bottom: 12px;
++    }
++
++    .skeleton-body {
++      width: 90%;
++      height: 2.4rem;
++      margin-bottom: 15px;
++    }
++
++    .skeleton-btn {
++      width: 120px;
++      height: 40px;
++      border-radius: 5px;
++    }
++
++    @keyframes shimmer {
++      0% {
++        background-position: 200% 0;
++      }
++      100% {
++        background-position: -200% 0;
++      }
++    }
++
++    .section-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .menu-controls {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.9rem;
++    }
++
++    .menu-controls select {
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      color: var(--text);
++      background: white;
++    }
++
++    .seasonal-extras {
++      display: grid;
++      grid-template-columns: 2fr 1fr;
++      gap: 20px;
++      margin-top: 30px;
++    }
++
++    .reviews-panel,
++    .promo-panel {
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .review-item {
++      border-bottom: 1px solid var(--secondary);
++      padding: 10px 0;
++    }
++
++    .review-item:last-child {
++      border-bottom: none;
++    }
++
++    .review-form {
++      margin-top: 15px;
++      display: flex;
++      gap: 8px;
++    }
++
++    .review-form input {
++      flex: 1;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++    }
++
++    .promo-panel {
++      background: var(--primary);
++      color: white;
++    }
++
++    .promo-panel h3 {
++      color: var(--accent);
++      margin-bottom: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,24 +291,53 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++    <section id="seasonal-favorites">
++      <div class="section-header">
++        <h2 style="text-align: center;">Seasonal Favorites</h2>
++        <div class="menu-controls">
++          <label for="menu-select">Menu:</label>
++          <select id="menu-select" aria-label="Select seasonal menu">
++            <option value="autumn">Autumn Harvest</option>
++            <option value="winter">Winter Warmers</option>
++            <option value="spring">Spring Roasts</option>
++          </select>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++
++      <div id="seasonal-cards-grid" class="grid" aria-live="polite">
++        <?start name="seasonal-cards">
++          <div class="card skeleton" aria-busy="true">
++            <div class="skeleton-line skeleton-title"></div>
++            <div class="skeleton-line skeleton-body"></div>
++            <div class="skeleton-line skeleton-btn"></div>
++          </div>
++          <div class="card skeleton" aria-busy="true">
++            <div class="skeleton-line skeleton-title"></div>
++            <div class="skeleton-line skeleton-body"></div>
++            <div class="skeleton-line skeleton-btn"></div>
++          </div>
++          <div class="card skeleton" aria-busy="true">
++            <div class="skeleton-line skeleton-title"></div>
++            <div class="skeleton-line skeleton-body"></div>
++            <div class="skeleton-line skeleton-btn"></div>
++          </div>
++        <?end>
++      </div>
++
++      <div class="seasonal-extras">
++        <div class="reviews-panel" aria-live="polite">
++          <h3>Customer Reviews</h3>
++          <div id="customer-reviews"></div>
++          <form id="review-form" class="review-form">
++            <input type="text" id="review-author" placeholder="Your name" required>
++            <input type="text" id="review-comment" placeholder="Share your thoughts on our seasonal drinks..." required>
++            <button type="submit" class="btn" style="margin-top: 0;">Post Review</button>
++          </form>
+         </div>
++
++        <aside id="cms-promo" class="promo-panel" aria-live="polite">
++          <?marker name="cms-promo-slot">
++        </aside>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +352,136 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Streamed Seasonal Favorites cards replacing the placeholder cards -->
++  <template for="seasonal-cards">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++  </template>
++
++  <script>
++    const seasonalGrid = document.getElementById('seasonal-cards-grid');
++    const menuSelect = document.getElementById('menu-select');
++    const customerReviews = document.getElementById('customer-reviews');
++    const reviewForm = document.getElementById('review-form');
++    const cmsPromo = document.getElementById('cms-promo');
++
++    // 1. Refresh coffee cards with fresh HTML streamed from the server whenever the menu changes
++    async function refreshSeasonalCards(menu = menuSelect.value) {
++      const response = await fetch(`/api/menu/seasonal?menu=${encodeURIComponent(menu)}`);
++
++      if (typeof response.textStream === 'function') {
++        await response
++          .textStream()
++          .pipeTo(seasonalGrid.streamHTML());
++      } else {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(seasonalGrid.streamHTML());
++      }
++    }
++
++    menuSelect.addEventListener('change', (event) => {
++      refreshSeasonalCards(event.target.value);
++    });
++
++    document.addEventListener('menu-change', (event) => {
++      refreshSeasonalCards(event.detail?.menu || menuSelect.value);
++    });
++
++    // 2. Render untrusted customer-submitted reviews using safe HTML setters (sanitized by default)
++    const initialCustomerReviewsHTML = `
++      <article class="review-item">
++        <strong>Elena R.</strong>
++        <p>The Maple Oat Latte is the best fall drink in town!</p>
++      </article>
++      <article class="review-item">
++        <strong>Marcus T.</strong>
++        <p>Smooth 18-hour Cold Brew every single morning.</p>
++      </article>
++    `;
++
++    function renderCustomerReviews(reviewsHTML) {
++      if (typeof customerReviews.setHTML === 'function') {
++        customerReviews.setHTML(reviewsHTML);
++      }
++    }
++
++    function appendCustomerReview(authorHTML, commentHTML) {
++      const reviewMarkup = `
++        <article class="review-item">
++          <strong>${authorHTML}</strong>
++          <p>${commentHTML}</p>
++        </article>
++      `;
++      if (typeof customerReviews.appendHTML === 'function') {
++        customerReviews.appendHTML(reviewMarkup);
++      } else if (typeof customerReviews.setHTML === 'function') {
++        customerReviews.setHTML(customerReviews.innerHTML + reviewMarkup);
++      }
++    }
++
++    reviewForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      const author = document.getElementById('review-author').value;
++      const comment = document.getElementById('review-comment').value;
++      appendCustomerReview(author, comment);
++      reviewForm.reset();
++    });
++
++    // 3. Render trusted CMS promo block that comes with its own embedded widget script
++    // Uses setHTMLUnsafe / streamHTMLUnsafe with { runScripts: true } so the embedded CMS widget script executes
++    const trustedCmsPromoHTML = `
++      <div class="cms-promo-block">
++        <h3>Double Bean Rewards</h3>
++        <p>Order any seasonal drink today and earn 2x loyalty beans!</p>
++        <div id="cms-promo-widget" data-promo-code="AUTUMN2X">Loading reward widget...</div>
++        <script>
++          (() => {
++            const widget = document.getElementById('cms-promo-widget');
++            if (widget) {
++              const code = widget.getAttribute('data-promo-code');
++              widget.textContent = 'Active Promo Code: ' + code;
++            }
++          })();
++        <\/script>
++      </div>
++    `;
++
++    function renderCmsPromo(promoHTML) {
++      if (typeof cmsPromo.setHTMLUnsafe === 'function') {
++        cmsPromo.setHTMLUnsafe(promoHTML, { runScripts: true });
++      }
++    }
++
++    async function streamCmsPromo(url = '/api/cms/seasonal-promo') {
++      const response = await fetch(url);
++      if (typeof response.textStream === 'function') {
++        await response
++          .textStream()
++          .pipeTo(cmsPromo.streamHTMLUnsafe({ runScripts: true }));
++      } else {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(cmsPromo.streamHTMLUnsafe({ runScripts: true }));
++      }
++    }
++
++    renderCustomerReviews(initialCustomerReviewsHTML);
++    renderCmsPromo(trustedCmsPromoHTML);
++  </script>
+ </body>
+ 
+ </html>

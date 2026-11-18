@@ -2,16 +2,28 @@
   "default": {
     "accessibility": [
       "LJWatson",
-      "jenknoll"
+      "jenjknoll"
     ],
     "built-in-ai": "tomayac",
+    "chrome-extensions": [
+      "oliverdunk",
+      "patrickkettner"
+    ],
     "css": "LeaVerou",
     "html": "LeaVerou",
     "forms": "LeaVerou",
     "ui-behaviors": "LeaVerou",
     "ui-atoms": "LeaVerou",
     "ui-components": "LeaVerou",
+    "user-experience": [
+      "NourNabil",
+      "LeaVerou"
+    ],
     "visual-design": "LeaVerou",
+    "media": [
+      "ewewraw",
+      "beaufortfrancois"
+    ],
     "performance": [
       "tunetheweb",
       "malchata"
@@ -20,6 +32,10 @@
     "pwa": "dmurph",
     "security": "rowan-m",
     "wasm": "sbc100",
+    "webgpu": [
+      "ewewraw",
+      "beaufortfrancois"
+    ],
     "webmcp": [
       "beaufortfrancois",
       "Kulikowski"

@@ -29,3 +29,20 @@ button.save::before {
 ```
 
 A screen reader would read it out as "Save save".
+
+## Fallback strategies
+
+{{ BASELINE_STATUS("alt-text-generated-content") }}
+
+If your Baseline target includes browsers that do not support the `/` alternative text syntax, precede the declaration with a single-value `content` fallback so unsupported browsers do not drop the entire declaration as invalid CSS:
+
+```css
+.more-link::after {
+  /* Fallback: render the glyph in browsers without `/` support
+     (screen readers there will still announce it) */
+  content: " →";
+  content: " →" / "";
+}
+```
+
+For non-empty alternative text (`content: url(...) / "..."`), a single-value `content: url(...)` fallback keeps the image visible in older browsers but drops its alt text. If that label is required in older browsers, put it in the DOM instead (e.g., via a visually hidden `<span>` or `aria-label`) and use a plain `content: url(...)` declaration without `/`.

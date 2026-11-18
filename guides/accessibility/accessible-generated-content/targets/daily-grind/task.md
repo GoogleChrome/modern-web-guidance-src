@@ -1,1 +1,1 @@
-- Update the site to use CSS generated content in ways that stay accessible, including alternative text for decorative content.
+- Add decorative CSS-generated icons and visual flourishes to the "Seasonal Favorites" drink headings and "Order Now" / "View Details" buttons on the Daily Grind homepage in a way that remains accessible to screen readers, including appropriate alternative text handling for decorative content.

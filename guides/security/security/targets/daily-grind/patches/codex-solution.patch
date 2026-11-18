@@ -1,28 +1,38 @@
 diff --git a/index.html b/index.html
-index 66c9173..f3aec23 100644
+index 66c9173..9654b09 100644
 --- a/index.html
 +++ b/index.html
-@@ -94,6 +94,9 @@
+@@ -5,7 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
++  <style nonce="__CSP_NONCE__">
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -107,6 +107,10 @@
+       margin-top: 20px;
      }
  
-     /* Content Sections */
-+    .section-heading {
++    .section-title {
 +      text-align: center;
 +    }
-     .container {
-       max-width: 1100px;
-       margin: 40px auto;
-@@ -176,7 +179,7 @@
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -176,7 +180,7 @@
  
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <h2 class="section-heading">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
 diff --git a/package.json b/package.json
-index 2bd4d77..608e9d5 100644
+index 2bd4d77..72ca0e0 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,7 +2,8 @@
@@ -30,99 +40,227 @@ index 2bd4d77..608e9d5 100644
    "version": "1.0.0",
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "node statikk.config.mjs",
-+    "build": "node --check statikk.config.mjs"
++    "start": "node server.mjs",
++    "build": "node --check server.mjs && node --test security.test.mjs"
    },
    "pnpm": {
      "onlyBuiltDependencies": []
-diff --git a/statikk.config.mjs b/statikk.config.mjs
+diff --git a/security.test.mjs b/security.test.mjs
 new file mode 100644
-index 0000000..af7771e
+index 0000000..c2f409a
 --- /dev/null
-+++ b/statikk.config.mjs
-@@ -0,0 +1,85 @@
-+import http from 'node:http';
-+import { createHash, randomBytes } from 'node:crypto';
-+import { readFile } from 'node:fs/promises';
-+import { fileURLToPath } from 'node:url';
++++ b/security.test.mjs
+@@ -0,0 +1,78 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { Readable } from 'node:stream';
++import { handleRequest } from './server.mjs';
 +
-+const root = fileURLToPath(new URL('.', import.meta.url));
-+const html = await readFile(new URL('index.html', import.meta.url), 'utf8');
-+const styles = [...html.matchAll(/<style>([sS]*?)<\/style>/g)].map((match) =>
-+  `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`,
-+);
-+
-+const reportingEndpoint = process.env.REPORTING_ENDPOINT || '/';
-+if (reportingEndpoint !== '/') {
-+  const endpoint = new URL(reportingEndpoint);
-+  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password ||
-+      endpoint.hash || endpoint.search || /["\r\n\\]/.test(reportingEndpoint)) {
-+    throw new Error('REPORTING_ENDPOINT must be an HTTPS URL without credentials, query, or fragment.');
-+  }
++// Exercise the handler in memory; never open a listening socket during the build.
++async function request(url = '/', { method = 'GET', headers = {}, body = '' } = {}) {
++  const input = Readable.from(body ? [Buffer.from(body)] : []);
++  Object.assign(input, { url, method, headers });
++  const output = {
++    headers: {},
++    setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
++    end(value) { this.body = value ?? ''; },
++  };
++  await handleRequest(input, output);
++  return output;
 +}
 +
-+const server = http.createServer((request, response) => {
-+  const nonce = randomBytes(16).toString('base64');
++test('HTML has a fresh CSP nonce, compatible styles and restrictive security headers', async () => {
++  const first = await request();
++  const second = await request();
++  assert.equal(first.statusCode, 200);
++  const nonce = first.body.match(/<style nonce="([^"]+)"/)[1];
++  assert.ok(first.headers['content-security-policy'].includes(`style-src 'nonce-${nonce}'`));
++  assert.ok(first.headers['content-security-policy'].includes(`script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`));
++  assert.notEqual(first.headers['content-security-policy'], second.headers['content-security-policy']);
++  assert.doesNotMatch(first.body, /__CSP_NONCE__|\sstyle=|<script\b|\son\w+=/i);
++  for (const directive of ["object-src 'none'", "base-uri 'none'", "frame-ancestors 'none'", "require-trusted-types-for 'script'", 'report-to default', 'img-src https://images.unsplash.com']) {
++    assert.ok(first.headers['content-security-policy'].includes(directive));
++  }
++  assert.equal(first.headers['reporting-endpoints'], 'default="/security-reports"');
++  assert.equal(first.headers['x-frame-options'], 'DENY');
++  assert.equal(first.headers['x-content-type-options'], 'nosniff');
++  assert.equal(first.headers['cross-origin-resource-policy'], 'same-origin');
++  assert.ok(first.headers['cross-origin-opener-policy'].startsWith('same-origin-allow-popups'));
++  assert.ok(first.headers['strict-transport-security']);
++  assert.ok(first.headers['permissions-policy'].includes('camera=()'));
++  assert.equal(first.headers['cache-control'], 'no-store');
++  assert.equal((await request('/', { method: 'HEAD' })).body, '');
++});
++
++test('logout clears browser state and redirects without caching', async () => {
++  const response = await request('/logout');
++  assert.equal(response.statusCode, 303);
++  assert.equal(response.headers.location, '/');
++  assert.equal(response.headers['clear-site-data'], '"cookies", "storage", "cache"');
++  assert.equal(response.headers['cache-control'], 'no-store');
++});
++
++test('Fetch Metadata blocks cross-site resource access before routing', async () => {
++  for (const url of ['/', '/logout', '/missing', '/security-reports']) {
++    const response = await request(url, { headers: { 'sec-fetch-site': 'cross-site' } });
++    assert.equal(response.statusCode, 403);
++    assert.equal(response.headers.vary, 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++    assert.equal(response.headers['clear-site-data'], undefined);
++  }
++  const response = await request('/', { headers: {
++    'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document',
++  } });
++  assert.equal(response.statusCode, 200);
++  assert.equal((await request('/', { headers: { 'sec-fetch-site': 'same-site' } })).statusCode, 403);
++});
++
++test('only public HTML and requested endpoints are exposed', async () => {
++  for (const url of ['/server.mjs', '/package.json', '/guide.md', '/task.md', '/%2e%2e/package.json']) {
++    assert.equal((await request(url)).statusCode, 404);
++  }
++  assert.equal((await request('/', { method: 'POST' })).statusCode, 405);
++});
++
++test('report receiver enforces method, MIME type, valid JSON and size limit', async () => {
++  const headers = { 'content-type': 'application/reports+json' };
++  assert.equal((await request('/security-reports')).statusCode, 405);
++  assert.equal((await request('/security-reports', { method: 'POST' })).statusCode, 415);
++  assert.equal((await request('/security-reports', { method: 'POST', headers, body: '{}' })).statusCode, 204);
++  assert.equal((await request('/security-reports', { method: 'POST', headers, body: 'invalid' })).statusCode, 400);
++  assert.equal((await request('/security-reports', { method: 'POST', headers, body: 'x'.repeat(16385) })).statusCode, 413);
++});
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..5fbcbed
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,129 @@
++import { createServer } from 'node:http';
++import { randomBytes } from 'node:crypto';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { resolve } from 'node:path';
++
++const template = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++if (template.split('__CSP_NONCE__').length !== 2) {
++  throw new Error('Expected exactly one explicit style nonce placeholder');
++}
++
++/** @param {import('node:http').IncomingMessage} request
++ * @param {import('node:http').ServerResponse} response */
++export async function handleRequest(request, response) {
++  const nonce = randomBytes(18).toString('base64');
 +  response.setHeader('Content-Security-Policy', [
 +    "default-src 'none'",
 +    `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
-+    `style-src ${styles.join(' ')}`,
-+    "img-src https://images.unsplash.com",
++    `style-src 'nonce-${nonce}'`,
++    "style-src-attr 'none'",
++    'img-src https://images.unsplash.com',
 +    "object-src 'none'",
 +    "base-uri 'none'",
-+    "frame-ancestors 'self'",
++    "frame-ancestors 'none'",
 +    "form-action 'self'",
 +    "require-trusted-types-for 'script'",
 +    "trusted-types 'none'",
 +    'report-to default',
 +  ].join('; '));
-+  response.setHeader('Reporting-Endpoints', `default="${reportingEndpoint}"`);
-+  response.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-+  response.setHeader('X-Frame-Options', 'SAMEORIGIN');
++  response.setHeader('Reporting-Endpoints', 'default="/security-reports"');
++  response.setHeader('X-Frame-Options', 'DENY');
 +  response.setHeader('X-Content-Type-Options', 'nosniff');
 +  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 +  response.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), focus-without-user-activation=()');
-+  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups; report-to="default"');
 +  response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
++  // Deploy behind an HTTPS terminator in production. Browsers ignore HSTS on HTTP.
++  // Start with a short lifetime; increase after verifying the HTTPS deployment.
++  response.setHeader('Strict-Transport-Security', 'max-age=300');
 +  response.setHeader('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++  response.setHeader('Cache-Control', 'no-store');
 +
-+  function finish(status, message) {
++  const send = (status, body = '') => {
 +    response.statusCode = status;
 +    response.setHeader('Content-Type', 'text/plain; charset=utf-8');
-+    response.end(message);
-+  }
++    response.end(request.method === 'HEAD' ? undefined : body);
++  };
 +
++  // No cross-site APIs or embeds exist. Permit incoming links, but not resource reads.
 +  const site = request.headers['sec-fetch-site'];
-+  const mode = request.headers['sec-fetch-mode'];
-+  const destination = request.headers['sec-fetch-dest'];
-+  if (site && site !== 'same-origin' && site !== 'none' &&
-+      !(site === 'cross-site' && mode === 'navigate' &&
-+        request.method === 'GET' && destination === 'document')) {
-+    finish(403, 'Forbidden');
-+    return;
++  if (site && site !== 'same-origin' && site !== 'none') {
++    const navigation = site === 'cross-site' && request.method === 'GET'
++      && request.headers['sec-fetch-mode'] === 'navigate'
++      && request.headers['sec-fetch-dest'] === 'document';
++    if (!navigation) return send(403, 'Forbidden');
 +  }
 +
 +  let pathname;
 +  try {
-+    pathname = new URL(request.url || '/', 'http://localhost').pathname;
++    pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
 +  } catch {
-+    finish(400, 'Invalid URL');
-+    return;
++    return send(400, 'Bad Request');
 +  }
-+  if (pathname === '/logout' || pathname === '/logout/') {
++
++  if (pathname === '/security-reports') {
++    if (request.method !== 'POST') {
++      response.setHeader('Allow', 'POST');
++      return send(405, 'Method Not Allowed');
++    }
++    const contentType = request.headers['content-type']?.split(';')[0].trim();
++    if (!['application/reports+json', 'application/csp-report'].includes(contentType)) {
++      return send(415, 'Unsupported Media Type');
++    }
++    // Never persist raw reports: URLs, samples and extension data can contain secrets.
++    const chunks = [];
++    let size = 0;
++    try {
++      for await (const chunk of request) {
++        size += chunk.length;
++        if (size > 16384) return send(413, 'Payload Too Large');
++        chunks.push(chunk);
++      }
++      const report = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++      if (!report || typeof report !== 'object') return send(400, 'Bad Request');
++      const entries = Array.isArray(report) ? report : [report];
++      // Fixed labels only: no attacker-controlled fields enter telemetry logs.
++      const count = entries.filter(entry => entry?.type === 'csp-violation'
++        || entry?.type === 'coop' || entry?.['csp-report']).length;
++      if (count) console.info('Security policy reports received:', count);
++      return send(204);
++    } catch {
++      return send(400, 'Bad Request');
++    }
++  }
++
++  if (!['GET', 'HEAD'].includes(request.method ?? '')) {
++    response.setHeader('Allow', 'GET, HEAD');
++    return send(405, 'Method Not Allowed');
++  }
++  if (pathname === '/logout') {
++    // There is no server-side session store or authentication cookie in this app.
++    // Clear all origin cookies (including HttpOnly cookies), storage and cached data.
 +    response.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
-+    response.setHeader('Cache-Control', 'no-store');
++    response.setHeader('Location', '/');
++    return send(303);
 +  }
++  if (pathname !== '/' && pathname !== '/index.html') return send(404, 'Not Found');
 +
-+  if (pathname !== '/' && pathname !== '/index.html' && pathname !== '/logout' && pathname !== '/logout/') {
-+    finish(404, 'Not Found');
-+    return;
-+  }
++  response.statusCode = 200;
 +  response.setHeader('Content-Type', 'text/html; charset=utf-8');
-+  response.end(html);
-+});
++  response.end(request.method === 'HEAD' ? undefined : template.replace('__CSP_NONCE__', nonce));
++}
 +
-+const port = process.env.PORT || 11222;
-+server.listen(port, () => {
-+  console.info(`The Daily Grind: http://localhost:${port}`);
-+});
++if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
++  const port = Number(process.env.PORT ?? 11222);
++  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT');
++  const server = createServer((request, response) => {
++    handleRequest(request, response).catch(() => {
++      if (!response.headersSent) {
++        response.statusCode = 500;
++        response.setHeader('Content-Type', 'text/plain; charset=utf-8');
++      }
++      response.end('Internal Server Error');
++    });
++  });
++  server.requestTimeout = 15000;
++  server.headersTimeout = 10000;
++  server.listen(port);
++}

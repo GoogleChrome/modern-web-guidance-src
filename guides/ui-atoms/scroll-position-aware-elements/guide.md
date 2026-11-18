@@ -43,7 +43,8 @@ Place the element inside the container and style it. By default, it should be hi
 }
 ```
 
-> **Important:** Sticky or floating elements hover above the scrollable content. Ensure that the main content has sufficient bottom padding or margin so that the last few elements are not permanently covered by the button when the user scrolls completely to the bottom.
+> [!IMPORTANT]
+> Sticky or floating elements hover above the scrollable content. Ensure that the main content has sufficient bottom padding or margin so that the last few elements are not permanently covered by the button when the user scrolls completely to the bottom.
 
 ### 3. Respond to the Scroll State
 
@@ -59,6 +60,11 @@ Use the `@container` rule with the `scroll-state` function. To check if the user
   }
 }
 ```
+
+### 4. Manage Focus and Scroll Container Semantics
+
+When hiding elements that are dependent on scroll position, account for loss of focus when the control disappears. For example, if someone is focused on a "Back to Top" control and uses `Page Up` or `Home` to scroll the container in the background without activating the control directly, the control becomes hidden (`visibility: hidden`) at the top of the scrollable region and focus would otherwise reset to the `<body>` element. Listen for `focusout` and move focus to the scrollable region when the hidden control loses focus without transferring focus to another element:
+
 
 ## Fallback strategies
 

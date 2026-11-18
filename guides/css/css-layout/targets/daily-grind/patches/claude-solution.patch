@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+index 66c9173..3cd0567 100644
+--- a/index.html
++++ b/index.html
+@@ -31,12 +31,15 @@
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding-block: 1rem;
++      padding-inline: 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+-      align-items: center;
++      align-items: safe center;
++      gap: 0.5rem 1rem;
+       position: sticky;
+-      top: 0;
++      inset-block-start: 0;
+       z-index: 1000;
+     }
+ 
+@@ -48,13 +51,13 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      flex-wrap: balance;
++      align-items: center;
++      gap: 0.5rem 20px;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
+       color: white;
+       text-decoration: none;
+@@ -74,7 +77,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-block-size: 60dvb;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,26 +88,35 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding-block: 3rem;
++      padding-inline: 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 6vw, 3rem);
++      margin-block-end: 1rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      max-inline-size: 1100px;
++      margin-block: 40px;
++      margin-inline: auto;
++      padding-inline: 20px;
++    }
++
++    .favorites {
++      container: favorites / inline-size;
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
++      /* Each card spans three rows: heading, description, action. */
++      grid-auto-rows: auto 1fr auto;
++      column-gap: 20px;
++      row-gap: 0;
++      margin-block-start: 20px;
+     }
+ 
+     .card {
+@@ -113,11 +125,29 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      margin-block-end: 20px;
++      grid-row: span 3;
++      display: grid;
++      /* Same-cascade fallback: ignored when subgrid is supported. */
++      grid-template-rows: auto 1fr auto;
++      grid-template-rows: subgrid;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-block-end: 10px;
+       color: var(--primary);
++      font-size: clamp(1.1rem, 6cqi, 1.5rem);
++    }
++
++    .card .btn {
++      justify-self: center;
++      align-self: end;
++    }
++
++    @container favorites (inline-size < 560px) {
++      .card {
++        padding: 16px;
++      }
+     }
+ 
+     .btn {
+@@ -127,7 +157,7 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-block-start: 15px;
+       transition: background 0.3s;
+     }
+ 
+@@ -138,16 +168,17 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
++      padding-block: 40px;
++      padding-inline: 20px;
++      margin-block-start: 40px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-block-end: 20px;
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      margin-inline: 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+@@ -175,7 +206,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

@@ -1,0 +1,1 @@
+- Update the Daily Grind homepage in `index.html` to add icons to the navigation links, the action buttons, and the Seasonal Favorites cards (including a roast-level icon and an icon-only favorite button on each card), using an icon system.

@@ -14,5 +14,4 @@
 - The `type="password"` attribute **MUST NOT** be used on the security code input.
 - **DO NOT** enforce Latin-only characters for the cardholder name input (e.g. do not use a `pattern` that only matches `[a-zA-Z]`).
 - All required payment form fields **MUST** have the `required` attribute.
-- Input format hints **MUST** be positioned above their corresponding input elements in the markup to prevent mobile keyboards from obscuring them.
-- The `placeholder` attribute **MUST NOT** be used to convey data entry constraints or format examples.
+- The expiry date input **MUST** have a visible format hint (for example `MM/YY`) that is rendered **above** the input, so mobile keyboards and autofill popovers do not obscure it, and that is linked to the input with `aria-describedby`. A `placeholder` **MUST NOT** be the only format hint, and **MUST NOT** stand in for the label.

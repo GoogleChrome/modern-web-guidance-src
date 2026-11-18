@@ -12,7 +12,7 @@ test.describe('IME-Safe Enter-to-Submit', () => {
     await page.goto(url);
   });
 
-  test('The interface must include a semantic, visible submit button', async ({ page }) => {
+  test('The interface includes a semantic, visible submit button.', async ({ page }) => {
     const submitButton = page.locator('button[type="submit"], input[type="submit"], button:has-text("Send"), button:has-text("Submit")');
 
     const count = await submitButton.count();
@@ -26,7 +26,7 @@ test.describe('IME-Safe Enter-to-Submit', () => {
     expect(visibleFound, 'No visible semantic submit button found').toBe(true);
   });
 
-  test('Pressing Enter (without Shift) when NOT composing triggers form submission', async ({ page }) => {
+  test('Pressing Enter without Shift on a textarea when not composing triggers form submission.', async ({ page }) => {
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
 
@@ -52,22 +52,34 @@ test.describe('IME-Safe Enter-to-Submit', () => {
     expect(await resultPromise).toBe('submitted');
   });
 
-  test('Pressing Enter when IS composing (standard) does NOT trigger submission', async ({ page }) => {
+  test('Pressing Enter on a textarea when composition is active (`isComposing` is true) does not trigger form submission.', async ({ page }) => {
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
     await textarea.fill('Composition test');
+
+    await page.evaluate(() => {
+      (window as any).__formSubmitted = false;
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          (window as any).__formSubmitted = true;
+        }, { once: true });
+      }
+    });
 
     await textarea.evaluate((el) => {
       el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
     });
 
     await textarea.focus();
+    // Real browsers report keyCode 229 (VK_PROCESSKEY) during IME composition, never 13
     await textarea.evaluate((el) => {
       const event = new KeyboardEvent('keydown', {
         key: 'Enter',
         code: 'Enter',
-        keyCode: 13,
-        which: 13,
+        keyCode: 229,
+        which: 229,
         bubbles: true,
         cancelable: true,
         isComposing: true
@@ -75,14 +87,28 @@ test.describe('IME-Safe Enter-to-Submit', () => {
       el.dispatchEvent(event);
     });
 
+    const wasSubmitted = await page.evaluate(() => (window as any).__formSubmitted === true);
+    expect(wasSubmitted).toBe(false);
+
     const value = await textarea.inputValue();
     expect(value, 'Textarea should not be cleared during composition').toBe('Composition test');
   });
 
-  test('Pressing Enter when IS composing (Safari confirmation) does NOT trigger submission', async ({ page }) => {
+  test('Pressing Enter on a textarea when the browser signals an IME-consumed keystroke (`keyCode 229`) does not trigger form submission.', async ({ page }) => {
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
     await textarea.fill('Composition test');
+
+    await page.evaluate(() => {
+      (window as any).__formSubmitted = false;
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          (window as any).__formSubmitted = true;
+        }, { once: true });
+      }
+    });
 
     await textarea.focus();
     // Dispatch keydown with key: 'Enter', keyCode: 229, isComposing: false (Safari composition confirmation behavior)
@@ -99,23 +125,40 @@ test.describe('IME-Safe Enter-to-Submit', () => {
       el.dispatchEvent(event);
     });
 
+    const wasSubmitted = await page.evaluate(() => (window as any).__formSubmitted === true);
+    expect(wasSubmitted).toBe(false);
+
     const value = await textarea.inputValue();
     expect(value, 'Textarea should not be cleared during composition').toBe('Composition test');
   });
 
-  test('Pressing Shift+Enter does NOT trigger submission', async ({ page }) => {
+  test('Pressing Shift+Enter on a textarea does not trigger form submission.', async ({ page }) => {
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
     await textarea.fill('Shift test');
 
+    await page.evaluate(() => {
+      (window as any).__formSubmitted = false;
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          (window as any).__formSubmitted = true;
+        }, { once: true });
+      }
+    });
+
     await textarea.focus();
     await page.keyboard.press('Shift+Enter');
+
+    const wasSubmitted = await page.evaluate(() => (window as any).__formSubmitted === true);
+    expect(wasSubmitted).toBe(false);
 
     const value = await textarea.inputValue();
     expect(value, 'Textarea should not be cleared on Shift+Enter').toContain('Shift test');
   });
 
-  test('Shift+Enter should allow normal newline insertion', async ({ page }) => {
+  test('Pressing Shift+Enter on a textarea inserts a newline into the text content.', async ({ page }) => {
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
     await textarea.fill('Line 1');

@@ -56,6 +56,12 @@ targetHeading.focus({ preventScroll: true });
 - **DO**: Guard post-scroll effects with a request token if rapid user interactions can trigger overlapping smooth scrolls on the same container, since interrupting a smooth scroll resolves (rather than rejects) the previous promise.
 - **Known Chrome bug with the root scroller**: Chrome has a bug {# https://issues.chromium.org/issues/567407819 #} where the `Promise` returned by `scrollIntoView()` resolves too early when it is the document's root scroller that is scrolling. Awaiting a `scrollIntoView()` on a nested scroll container works as expected. Do not wrap your content in a scroll container, such as `div` with `overflow-y: auto`, as a workaround for this bug.
 
+## Accessibility considerations
+
+Ensure that the control used to trigger scrolling has an appropriate role. If the scrolling is intended to redirect the user elsewhere in the current context, then use a `<a>` element with a `href` attribute, so that it receives an implicit `link` role, along with the expected keyboard interactions. Redirect focus to this location scrolled to, so that people can continue navigating from the location that they are redirected to.
+
+**DON'T** provide important information solely through visual design updates upon completion of programmatic scrolling. If there is important information that needs to be conveyed as a result of this interaction, ensure that this is available in sufficiently contrasting text, and that this is conveyed to people using screen readers through use of an ARIA live region.
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("scroll-promises") }}

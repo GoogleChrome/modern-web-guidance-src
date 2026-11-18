@@ -6,13 +6,16 @@ import { REPORT_FILE } from '../core/guide-validation.ts';
 import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/paths.ts';
 
 export type DevPrLabel = 'gd-dev-content' | 'gd-dev-eval';
-export type DevPrRerunLabel = 'needs-eval-gen' | 'needs-eval-run';
+/** Label that triggers a `gd dev-gap` rerun; `gd dev` decides what to regenerate from the files that changed. */
+export type DevPrRerunLabel = 'needs-dev-rerun';
+
+export const DEV_PR_BRANCH_PREFIX = 'gd-dev/';
+export const DEV_PR_TITLE_PREFIX = 'grader updates:';
 
 const MANAGED_PR_LABELS: readonly string[] = [
   'gd-dev-content',
   'gd-dev-eval',
-  'needs-eval-gen',
-  'needs-eval-run',
+  'needs-dev-rerun',
 ];
 
 interface OpenDevPr {
@@ -112,7 +115,7 @@ export const devPrCli = {
 
 /**
  * Computes which gd-dev labels to add or remove based on new recommendations vs existing PR labels.
- * Also removes any trigger rerun labels (`needs-eval-gen`, `needs-eval-run`).
+ * Also removes the `needs-dev-rerun` trigger label.
  */
 export function computeLabelDiff(
   newLabels: DevPrLabel[],

@@ -26,6 +26,7 @@ export const CommandType = {
   UPDATE: 3,
   UNINSTALL: 4,
   LIST: 5,
+  LEGACY_SCAN: 6,
 } as const;
 
 export type CommandType = typeof CommandType[keyof typeof CommandType];

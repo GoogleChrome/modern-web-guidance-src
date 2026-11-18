@@ -1,4 +1,1 @@
----
-base_app: daily-grind
----
-- Add a special promo area to index.html. We need a container with id `domContainer` to hold our promo cards. Make sure all promo cards use the class `card`. Add a button with id `addBtn` that appends a new promo card to `domContainer`, and a button with id `removeBtn` that removes the last promo card from `domContainer`. Also include a default promo card with id `toggleCard` and a button with id `toggleBtn` that toggles the `hidden` attribute on `toggleCard`. MANDATORY: Ensure these promo cards fade and scale smoothly when they are added/removed.
+- Add a special promo section to index.html with a container (#domContainer) holding promo cards (.card), an add button (#addBtn) appending a new promo card, a remove button (#removeBtn) animating and removing the last card, and a toggle button (#toggleBtn) that toggles a default promo card (#toggleCard), smoothly fading and scaling promo cards on entry and during exit before removal from display.

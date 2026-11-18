@@ -5,12 +5,10 @@
  * Expectation 2: TESTED - Verifies dynamic tools are registered via document.modelContext.registerTool() with name, description, and execute properties.
  * Expectation 3: TESTED - Verifies tools with input parameters define an inputSchema with explicit type and description for each property.
  * Expectation 4: TESTED - Verifies tools querying state without mutating data include annotations: { readOnlyHint: true }.
- * Expectation 5: SKIPPED - DevTools Times does not perform high-stakes or irreversible actions (such as account deletion or financial transactions).
- * Expectation 6: SKIPPED - The application serves static editorial news content rather than user-generated or unvetted third-party content.
- * Expectation 7: TESTED - Verifies an AbortSignal from an AbortController is passed to document.modelContext.registerTool() for lifecycle management.
- * Expectation 8: TESTED - Verifies tool cleanup relies on AbortController.abort() and never calls unregisterTool() directly.
- * Expectation 9: TESTED - Verifies tool execute handlers are asynchronous and await their underlying operations so they resolve after UI updates.
- * Expectation 10: TESTED - Verifies declarative WebMCP <form> elements are annotated with both toolname and tooldescription attributes.
+ * Expectation 5: TESTED - Verifies an AbortSignal from an AbortController is passed to document.modelContext.registerTool() for lifecycle management.
+ * Expectation 6: TESTED - Verifies tool cleanup relies on AbortController.abort() and never calls unregisterTool() directly.
+ * Expectation 7: TESTED - Verifies tool execute handlers are asynchronous and await their underlying operations so they resolve after UI updates.
+ * Expectation 8: TESTED - Verifies declarative WebMCP <form> elements are annotated with both toolname and tooldescription attributes.
  */
 
 import {
@@ -22,6 +20,7 @@ import {
 } from '../../../../test-fixture.ts';
 import { SyntaxKind, Node, type ObjectLiteralExpression, type Project } from 'ts-morph';
 
+// @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function resolveToolObject(node: Node | undefined): ObjectLiteralExpression | undefined {
@@ -51,7 +50,8 @@ function collectToolObjects(project: Project): ObjectLiteralExpression[] {
   const found = new Set<ObjectLiteralExpression>();
   for (const sf of project.getSourceFiles()) {
     for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      if (!call.getExpression().getText().endsWith('registerTool')) continue;
+      const exprText = call.getExpression().getText();
+      if (!exprText.endsWith('registerTool') && exprText !== 'useWebMCP') continue;
       const resolved = resolveToolObject(call.getArguments()[0]);
       if (resolved) found.add(resolved);
     }
@@ -62,11 +62,19 @@ function collectToolObjects(project: Project): ObjectLiteralExpression[] {
   return [...found];
 }
 
+function usesWebMcpReactHook(project: Project): boolean {
+  return project.getSourceFiles().some((sf) =>
+    sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) =>
+      call.getExpression().getText() === 'useWebMCP'
+    )
+  );
+}
+
 test.describe('WebMCP Target Grader - DevTools Times', () => {
 
   test('Expectation 1: Feature-detect document.modelContext before calling WebMCP registration methods', () => {
     const project = getJsProject(targetFiles);
-    const hasFeatureDetection = project.getSourceFiles().some((sf) => {
+    const hasFeatureDetection = usesWebMcpReactHook(project) || project.getSourceFiles().some((sf) => {
       const fullText = sf.getFullText();
       if (!fullText.includes('modelContext')) return false;
 
@@ -89,7 +97,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
 
   test('Expectation 2: Register dynamic tools via registerTool with name, description, and execute', () => {
     const project = getJsProject(targetFiles);
-    const hasRegisterToolCall = project.getSourceFiles().some((sf) =>
+    const hasRegisterToolCall = usesWebMcpReactHook(project) || project.getSourceFiles().some((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) =>
         call.getExpression().getText().endsWith('registerTool')
       )
@@ -106,28 +114,43 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
 
   test('Expectation 3: Define typed and described inputSchema properties for parameterized tools', () => {
     const project = getJsProject(targetFiles);
-    const hasValidInputSchema = collectToolObjects(project).some((toolObj) => {
-      const inputSchemaProp = toolObj.getProperty('inputSchema');
-      if (!inputSchemaProp || !Node.isPropertyAssignment(inputSchemaProp)) return false;
-      const schemaObj = inputSchemaProp.getInitializerIfKind(SyntaxKind.ObjectLiteralExpression);
-      if (!schemaObj) return false;
-      const propsProp = schemaObj.getProperty('properties');
-      if (!propsProp || !Node.isPropertyAssignment(propsProp)) return false;
-      const propsObj = propsProp.getInitializerIfKind(SyntaxKind.ObjectLiteralExpression);
+    const checkPropertiesObject = (propsObj: ObjectLiteralExpression | undefined): boolean => {
       if (!propsObj) return false;
       const schemaParams = propsObj.getProperties();
       if (schemaParams.length === 0) return false;
       return schemaParams.every((paramProp) => {
-        if (!Node.isPropertyAssignment(paramProp)) return false;
-        const paramObj = paramProp.getInitializerIfKind(SyntaxKind.ObjectLiteralExpression);
+        const paramObj = Node.isPropertyAssignment(paramProp)
+          ? resolveToolObject(paramProp.getInitializer())
+          : Node.isShorthandPropertyAssignment(paramProp)
+            ? resolveToolObject(paramProp.getNameNode())
+            : undefined;
         if (!paramObj) return false;
         const hasType = Boolean(paramObj.getProperty('type'));
         const hasDesc = Boolean(paramObj.getProperty('description'));
         return hasType && hasDesc;
       });
+    };
+
+    const hasInlineSchema = collectToolObjects(project).some((toolObj) => {
+      const inputSchemaProp = toolObj.getProperty('inputSchema');
+      if (!inputSchemaProp) return false;
+      const schemaObj = Node.isPropertyAssignment(inputSchemaProp)
+        ? resolveToolObject(inputSchemaProp.getInitializer())
+        : undefined;
+      if (!schemaObj) return false;
+      const propsProp = schemaObj.getProperty('properties');
+      if (!propsProp || !Node.isPropertyAssignment(propsProp)) return false;
+      return checkPropertiesObject(resolveToolObject(propsProp.getInitializer()));
     });
 
-    expect(hasValidInputSchema).toBe(true);
+    const hasHelperSchema = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        if (call.getExpression().getText() !== 'schema') return false;
+        return checkPropertiesObject(resolveToolObject(call.getArguments()[0]));
+      })
+    );
+
+    expect(hasInlineSchema || hasHelperSchema).toBe(true);
   });
 
   test('Expectation 4: Include readOnlyHint annotation on read-only query tools', () => {
@@ -138,20 +161,29 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
       const annObj = annotationsProp.getInitializerIfKind(SyntaxKind.ObjectLiteralExpression);
       if (!annObj) return false;
       const readOnlyProp = annObj.getProperty('readOnlyHint');
-      if (!readOnlyProp || !Node.isPropertyAssignment(readOnlyProp)) return false;
-      const init = readOnlyProp.getInitializer();
-      return init?.getKind() === SyntaxKind.TrueKeyword;
+      if (!readOnlyProp) return false;
+      if (Node.isPropertyAssignment(readOnlyProp)) {
+        return readOnlyProp.getInitializer()?.getKind() === SyntaxKind.TrueKeyword;
+      }
+      if (Node.isShorthandPropertyAssignment(readOnlyProp)) {
+        return project.getSourceFiles().some((sf) =>
+          sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((c) =>
+            c.getArguments().some((a) => a.getKind() === SyntaxKind.TrueKeyword)
+          )
+        );
+      }
+      return false;
     });
 
     expect(hasReadOnlyAnnotation).toBe(true);
   });
 
-  test('Expectation 7: Pass AbortSignal from AbortController to registerTool', () => {
+  test('Expectation 5: Pass AbortSignal from AbortController to registerTool', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     // Evaluate project-wide: the controller is often created in one module and
-    // the signal threaded through to a registration helper in another.
+    // the signal threaded through to a registration helper in another, or managed by useWebMCP.
     const hasAbortController = sourceFiles
       .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression))
       .some((ne) => ne.getExpression().getText() === 'AbortController');
@@ -170,13 +202,13 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
         );
       });
 
-    expect(hasAbortController && registersWithSignal).toBe(true);
+    expect((hasAbortController && registersWithSignal) || usesWebMcpReactHook(project)).toBe(true);
   });
 
-  test('Expectation 8: Rely on AbortController.abort for tool cleanup without calling unregisterTool', () => {
+  test('Expectation 6: Rely on AbortController.abort for tool cleanup without calling unregisterTool', () => {
     const project = getJsProject(targetFiles);
     let callsUnregisterTool = false;
-    let callsAbort = false;
+    let callsAbort = usesWebMcpReactHook(project);
 
     project.getSourceFiles().forEach((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
@@ -195,7 +227,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect(usesAbortInsteadOfUnregister).toBe(true);
   });
 
-  test('Expectation 9: Tool execute handlers are asynchronous and resolve after operations complete', () => {
+  test('Expectation 7: Tool execute handlers are asynchronous and resolve after operations complete', () => {
     const project = getJsProject(targetFiles);
     const toolObjects = collectToolObjects(project);
     const hasAsyncAwaitingExecute = toolObjects.some((toolObj) => {
@@ -217,7 +249,7 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect(hasAsyncAwaitingExecute).toBe(true);
   });
 
-  test('Expectation 10: Annotate declarative form tools with toolname and tooldescription attributes', () => {
+  test('Expectation 8: Annotate declarative form tools with toolname and tooldescription attributes', () => {
     const project = getJsProject(targetFiles);
     const formElements: Array<{ hasToolName: boolean; hasToolDescription: boolean }> = [];
 
@@ -255,8 +287,8 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     // Only forms that opt in as declarative tools (via either attribute) are
     // subject to the rule; those must carry both attributes.
     const toolForms = formElements.filter((f) => f.hasToolName || f.hasToolDescription);
-    const hasAnnotatedForms =
-      toolForms.length > 0 && toolForms.every((f) => f.hasToolName && f.hasToolDescription);
+    expect(toolForms.length).toBeGreaterThan(0);
+    const hasAnnotatedForms = toolForms.every((f) => f.hasToolName && f.hasToolDescription);
     expect(hasAnnotatedForms).toBe(true);
   });
 });

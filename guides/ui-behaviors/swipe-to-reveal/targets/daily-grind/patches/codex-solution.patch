@@ -1,0 +1,192 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..f43bc1d
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,10 @@
++import { copyFile, mkdir, readFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++// Check the inline application JavaScript before emitting the static site.
++const html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
++  new Script(match[1], { filename: 'index.html' });
++}
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
+diff --git a/index.html b/index.html
+index 66c9173..0baa1c6 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,62 @@
+       color: var(--primary);
+     }
+ 
++    .SwipeReveal {
++      display: grid;
++      grid-template-columns: 100% max-content;
++      min-width: 0;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      overscroll-behavior: auto;
++      overscroll-behavior: chain;
++      padding: 0;
++    }
++
++    .SwipeReveal-content {
++      min-width: 0;
++      padding: 20px;
++      background: white;
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
++    }
++
++    .SwipeReveal-panel {
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      gap: 12px;
++      padding: 16px;
++      background: var(--secondary);
++      scroll-snap-align: end;
++    }
++
++    .SwipeReveal button {
++      font: inherit;
++      cursor: pointer;
++      border: 0;
++    }
++
++    .SwipeReveal-panel .btn {
++      margin-top: 0;
++    }
++
++    .SwipeReveal :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -3px;
++    }
++
++    .swipe-hint {
++      margin-top: 10px;
++      font-size: 0.85rem;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .SwipeReveal {
++        scroll-behavior: smooth;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,20 +234,41 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content" tabindex="0" role="group" aria-labelledby="maple-title">
++            <h3 id="maple-title">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <button type="button" class="btn reveal-actions" aria-controls="maple-actions" aria-label="Show actions for Maple Oat Latte">Actions</button>
++            <p class="swipe-hint">Swipe left to reveal actions</p>
++          </div>
++          <div id="maple-actions" class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
++            <a href="/menu/seasonal" class="btn" aria-label="View Maple Oat Latte details">View Details</a>
++            <button type="button" class="btn close-actions" aria-label="Close Maple Oat Latte actions">Close</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content" tabindex="0" role="group" aria-labelledby="espresso-title">
++            <h3 id="espresso-title">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <button type="button" class="btn reveal-actions" aria-controls="espresso-actions" aria-label="Show actions for Dark Roast Espresso">Actions</button>
++            <p class="swipe-hint">Swipe left to reveal actions</p>
++          </div>
++          <div id="espresso-actions" class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
++            <a href="/menu/espresso" class="btn" aria-label="View Dark Roast Espresso details">View Details</a>
++            <button type="button" class="btn close-actions" aria-label="Close Dark Roast Espresso actions">Close</button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content" tabindex="0" role="group" aria-labelledby="cold-brew-title">
++            <h3 id="cold-brew-title">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <button type="button" class="btn reveal-actions" aria-controls="cold-brew-actions" aria-label="Show actions for Cold Brew">Actions</button>
++            <p class="swipe-hint">Swipe left to reveal actions</p>
++          </div>
++          <div id="cold-brew-actions" class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
++            <a href="/menu/cold-brew" class="btn" aria-label="View Cold Brew details">View Details</a>
++            <button type="button" class="btn close-actions" aria-label="Close Cold Brew actions">Close</button>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +284,35 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    for (const track of document.querySelectorAll('.SwipeReveal')) {
++      const content = track.querySelector('.SwipeReveal-content');
++      const panel = track.querySelector('.SwipeReveal-panel');
++      const reveal = track.querySelector('.reveal-actions');
++      const close = track.querySelector('.close-actions');
++
++      if (!(track instanceof HTMLElement) || !(content instanceof HTMLElement) ||
++          !(panel instanceof HTMLElement) || !(reveal instanceof HTMLButtonElement) ||
++          !(close instanceof HTMLButtonElement)) continue;
++
++      content.addEventListener('focusin', (event) => {
++        if (event.target instanceof Element && event.target.matches(':focus-visible')) {
++          content.scrollIntoView({ block: 'nearest', inline: 'start' });
++        }
++      });
++
++      reveal.addEventListener('click', () => {
++        panel.scrollIntoView({ block: 'nearest', inline: 'end' });
++        const firstAction = panel.querySelector('a');
++        if (firstAction instanceof HTMLElement) firstAction.focus({ preventScroll: true });
++      });
++
++      close.addEventListener('click', () => {
++        track.scrollTo({ left: 0 });
++        reveal.focus({ preventScroll: true });
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

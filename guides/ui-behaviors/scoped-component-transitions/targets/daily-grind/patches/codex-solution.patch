@@ -1,0 +1,290 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..b08bbf7
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,110 @@
++// @ts-check
++export {};
++
++/** @typedef {{ ready: Promise<void>, updateCallbackDone: Promise<void>, finished: Promise<void> }} ScopedTransition */
++/** @typedef {HTMLElement & { startViewTransition?: (update: () => void) => ScopedTransition }} ScopedElement */
++
++/**
++ * Only the supplied component is captured. Never fall back to a document transition.
++ * @param {HTMLElement} scope
++ * @param {() => void} update
++ */
++function runScopedTransition(scope, update) {
++  const element = /** @type {ScopedElement} */ (scope);
++  if (!('startViewTransition' in Element.prototype) ||
++      typeof element.startViewTransition !== 'function' ||
++      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++    update();
++    return;
++  }
++  const transition = element.startViewTransition(update);
++  // A new interaction can skip the previous animation on this same scope.
++  void transition.ready.catch(() => {});
++  void transition.finished.catch(() => {});
++  void transition.updateCallbackDone.catch((error) => console.error('Could not update favorites', error));
++}
++
++const list = document.querySelector('#favorites-list');
++const restore = document.querySelector('#restore-favorites');
++const status = document.querySelector('#favorites-status');
++
++if (list instanceof HTMLElement && restore instanceof HTMLButtonElement && status instanceof HTMLElement) {
++  const originalCards = Array.from(list.querySelectorAll('.card-wrapper'));
++
++  function refreshControls() {
++    if (!(list instanceof HTMLElement) || !(restore instanceof HTMLButtonElement)) return;
++    const cards = Array.from(list.children);
++    cards.forEach((card, index) => {
++      const earlier = card.querySelector('[data-action="earlier"]');
++      const later = card.querySelector('[data-action="later"]');
++      if (earlier instanceof HTMLButtonElement) earlier.disabled = index === 0;
++      if (later instanceof HTMLButtonElement) later.disabled = index === cards.length - 1;
++    });
++    restore.disabled = cards.length === originalCards.length;
++  }
++
++  list.addEventListener('click', (event) => {
++    if (!(event.target instanceof Element)) return;
++    const button = event.target.closest('button');
++    const card = button?.closest('.card-wrapper');
++    if (!(button instanceof HTMLButtonElement) || !(card instanceof HTMLElement)) return;
++    const action = button.dataset.action;
++    if (action === 'temperature') {
++      const scope = button.closest('.drink-customization');
++      const label = scope?.querySelector('.drink-temperature');
++      if (!(scope instanceof HTMLElement) || !label) return;
++      runScopedTransition(scope, () => {
++        const temperature = label.textContent === 'Served hot' ? 'iced' : 'hot';
++        const next = temperature === 'hot' ? 'iced' : 'hot';
++        label.textContent = `Served ${temperature}`;
++        button.textContent = `Serve ${next}`;
++        button.setAttribute('aria-label', `Serve ${card.dataset.drink} ${next}`);
++      });
++      return;
++    }
++    if (action !== 'remove' && action !== 'earlier' && action !== 'later') return;
++    runScopedTransition(list, () => {
++      // Resolve neighbors in the callback so rapid interactions use the current order.
++      if (card.parentElement !== list) return;
++      const hadFocus = card.contains(document.activeElement);
++      if (action === 'remove') {
++        const neighbor = card.nextElementSibling ?? card.previousElementSibling;
++        card.remove();
++        refreshControls();
++        if (hadFocus) {
++          const target = neighbor?.querySelector('button:not(:disabled)');
++          if (target instanceof HTMLElement) target.focus();
++          else restore.focus();
++        }
++        status.textContent = list.children.length
++          ? `${card.dataset.drink} removed.`
++          : 'All drinks removed. Use Restore removed drinks to bring them back.';
++      } else {
++        const neighbor = action === 'earlier' ? card.previousElementSibling : card.nextElementSibling;
++        if (!neighbor) return;
++        if (action === 'earlier') list.insertBefore(card, neighbor);
++        else list.insertBefore(neighbor, card);
++        refreshControls();
++        if (hadFocus) {
++          const target = button.disabled ? card.querySelector('button:not(:disabled)') : button;
++          if (target instanceof HTMLElement) target.focus();
++        }
++        status.textContent = `${card.dataset.drink} moved ${action}.`;
++      }
++    });
++  });
++
++  restore.addEventListener('click', () => {
++    runScopedTransition(list, () => {
++      // Keep node identity and each drink's customization when restoring.
++      for (const card of originalCards) {
++        if (card.parentElement !== list) list.appendChild(card);
++      }
++      const hadFocus = document.activeElement === restore;
++      refreshControls();
++      if (hadFocus) list.querySelector('button')?.focus();
++      status.textContent = 'All seasonal drinks restored.';
++    });
++  });
++  refreshControls();
++}
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..64f17c6
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,4 @@
++import { mkdir, copyFile } from 'node:fs/promises';
++
++await mkdir('dist', { recursive: true });
++await Promise.all(['index.html', 'app.js'].map(file => copyFile(file, `dist/${file}`)));
+diff --git a/index.html b/index.html
+index 66c9173..01d3405 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,40 @@
+       color: var(--primary);
+     }
+ 
++    .favorites-heading, .favorites-tools { text-align: center; }
++    .favorites-tools { margin-top: 12px; }
++    button {
++      font: inherit;
++      cursor: pointer;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 6px 12px;
++      background: white;
++      color: var(--primary);
++    }
++    button:hover { background: var(--secondary); }
++    button:disabled { opacity: 0.45; cursor: default; }
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
++    .drink-customization { margin-top: 16px; padding: 12px; background: #faf5f0; border-radius: 5px; overflow: clip; view-transition-scope: all; }
++    .drink-temperature { view-transition-name: temperature; }
++    .drink-customization button { margin-top: 8px; }
++    .card-wrapper { min-width: 0; view-transition-name: match-element; }
++    .card { height: 100%; }
++    #favorites-list { overflow: clip; padding: 6px; }
++    #favorites-list:empty { display: none; }
++    .favorites-status { text-align: center; margin-top: 14px; min-height: 1.6em; }
++    #favorites-list::view-transition-group(*),
++    .drink-customization::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) { animation: none !important; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,25 +209,61 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" class="favorites-heading">Seasonal Favorites</h2>
++      <p class="favorites-heading">Make these favorites your own. Change their order, customize a drink, or remove a card.</p>
++      <div class="favorites-tools"><button id="restore-favorites" type="button" disabled>Restore removed drinks</button></div>
++      <div class="grid" id="favorites-list">
++        <div class="card-wrapper" data-drink="Maple Oat Latte">
++        <article class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="drink-customization">
++            <p class="drink-temperature">Served hot</p>
++            <button type="button" data-action="temperature" aria-label="Serve Maple Oat Latte iced">Serve iced</button>
++          </div>
++          <div class="card-actions">
++            <button type="button" data-action="earlier" aria-label="Move Maple Oat Latte earlier" disabled>Move earlier</button>
++            <button type="button" data-action="later" aria-label="Move Maple Oat Latte later">Move later</button>
++            <button type="button" data-action="remove" aria-label="Remove Maple Oat Latte">Remove</button>
++          </div>
++        </article>
+         </div>
+-        <div class="card">
++        <div class="card-wrapper" data-drink="Dark Roast Espresso">
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="drink-customization">
++            <p class="drink-temperature">Served hot</p>
++            <button type="button" data-action="temperature" aria-label="Serve Dark Roast Espresso iced">Serve iced</button>
++          </div>
++          <div class="card-actions">
++            <button type="button" data-action="earlier" aria-label="Move Dark Roast Espresso earlier">Move earlier</button>
++            <button type="button" data-action="later" aria-label="Move Dark Roast Espresso later">Move later</button>
++            <button type="button" data-action="remove" aria-label="Remove Dark Roast Espresso">Remove</button>
++          </div>
++        </article>
+         </div>
+-        <div class="card">
++        <div class="card-wrapper" data-drink="Cold Brew">
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="drink-customization">
++            <p class="drink-temperature">Served iced</p>
++            <button type="button" data-action="temperature" aria-label="Serve Cold Brew hot">Serve hot</button>
++          </div>
++          <div class="card-actions">
++            <button type="button" data-action="earlier" aria-label="Move Cold Brew earlier">Move earlier</button>
++            <button type="button" data-action="later" aria-label="Move Cold Brew later" disabled>Move later</button>
++            <button type="button" data-action="remove" aria-label="Remove Cold Brew">Remove</button>
++          </div>
++        </article>
+         </div>
+       </div>
++      <p id="favorites-status" class="favorites-status" role="status" aria-live="polite"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +277,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..3dfa3fa 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "tsc && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "typescript": "^7.0.2"
+   }
+ }
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..224282d
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,11 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "target": "ES2022",
++    "lib": ["ES2022", "DOM"]
++  },
++  "include": ["app.js"]
++}

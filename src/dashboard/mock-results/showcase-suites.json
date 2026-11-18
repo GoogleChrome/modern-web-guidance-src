@@ -1,0 +1,3618 @@
+{
+  "suites": [
+    {
+      "testId": "nightly-2026-10-28_01-55-42-claude_code",
+      "timestamp": "2026-10-28T03:32:35.836Z",
+      "agent": "claude_code",
+      "serving": "skills_cli",
+      "model": "claude-fable-5-1",
+      "reasoningEffort": {
+        "level": "high",
+        "source": "configured"
+      },
+      "taskCount": 198,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 1489,
+        "total": 1646
+      },
+      "unguidedStats": {
+        "passed": 890,
+        "total": 1646
+      },
+      "a11yStats": {
+        "guidedPassed": 187,
+        "guidedTotal": 202,
+        "guidedRate": 93,
+        "unguidedPassed": 113,
+        "unguidedTotal": 202,
+        "unguidedRate": 56,
+        "uplift": 37,
+        "guideCount": 75,
+        "bySubCategory": {
+          "focus_inert": {
+            "guidedPassed": 41,
+            "guidedTotal": 42,
+            "guidedRate": 98,
+            "unguidedPassed": 21,
+            "unguidedTotal": 42,
+            "unguidedRate": 50,
+            "uplift": 48
+          },
+          "motion_contrast_visual": {
+            "guidedPassed": 50,
+            "guidedTotal": 57,
+            "guidedRate": 88,
+            "unguidedPassed": 28,
+            "unguidedTotal": 57,
+            "unguidedRate": 49,
+            "uplift": 39
+          },
+          "aria_roles_live": {
+            "guidedPassed": 59,
+            "guidedTotal": 64,
+            "guidedRate": 92,
+            "unguidedPassed": 36,
+            "unguidedTotal": 64,
+            "unguidedRate": 56,
+            "uplift": 36
+          },
+          "labels_forms": {
+            "guidedPassed": 22,
+            "guidedTotal": 23,
+            "guidedRate": 96,
+            "unguidedPassed": 17,
+            "unguidedTotal": 23,
+            "unguidedRate": 74,
+            "uplift": 22
+          },
+          "keyboard": {
+            "guidedPassed": 15,
+            "guidedTotal": 16,
+            "guidedRate": 94,
+            "unguidedPassed": 11,
+            "unguidedTotal": 16,
+            "unguidedRate": 69,
+            "uplift": 25
+          }
+        }
+      },
+      "earlyFailureRate": 1,
+      "guides": {},
+      "showcase": {
+        "swipe-to-remove": {
+          "prompt": "can you add a shopping cart section underneath the seasonal favorites on our menu page? list items like Maple Oat Latte, Dark Roast Espresso, and Cold Brew, and implement a swipe-to-remove gesture on each item in the list. please use our team's naming convention: the list should be a ul with class 'SwipeableList', and each item a li with class 'SwipeableList-item' (adding 'is-initialized' once initialized). inside each item, put a 'SwipeableList-track' container and a 'SwipeableList-content' element. when a user swipes past a certain point, the item should show an action color and smoothly collapse down in height to remove it from the page.",
+          "discipline": "ui-behaviors",
+          "unguided": {
+            "passed": 3,
+            "total": 21,
+            "a11yPassed": 0,
+            "a11yTotal": 1,
+            "runtimeMs": 21534,
+            "uncachedTokens": 19812,
+            "totalTokens": 73908,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 21,
+            "total": 21,
+            "a11yPassed": 1,
+            "a11yTotal": 1,
+            "runtimeMs": 37476,
+            "uncachedTokens": 45789,
+            "totalTokens": 173881,
+            "guidesUsed": [
+              "swipe-to-remove",
+              "animate-to-intrinsic-sizes"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Track has scroll-snap-type x mandatory",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track has overscroll-behavior-x none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track hides its scrollbar with scrollbar-width none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track spacers have scroll-snap-align set to be valid snap targets",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has scroll-snap-align set",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has an opaque background to hide action behind it",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target nearest is gated behind initialization class",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector IntersectionObserver is rooted at the track",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector has low commit and high activate thresholds",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Updates data-swipe-direction attribute during swipe",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Toggles is-activating class during swipe before commit",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Triggers row collapse animation when swiped past commit threshold",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Does not drive the swipe with manual pointermove transform updates",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "MutationObserver wires up dynamically added list items",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target fallback scrolls track programmatically when CSS.supports is false",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is attached to track when fallback is active",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is NOT attached to track when scroll-initial-target is supported",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Safari scroll-latching workaround defers item removal and sets inert",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Non-Safari browsers remove the item immediately after collapse",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Uses WAAPI animations to collapse row height and translate content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Projects focus affordance onto content element when track has focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "scrollability-affordance-hints": {
+          "prompt": "add a customer reviews section below seasonal favorites with a scrollable list of reviews. style the scroll container with a fixed height and vertical overflow, with top and bottom scrollability hints that dynamically show/hide based on whether there's more content to scroll. the top hint should only appear when the user has scrolled down, and the bottom hint should only appear when the user can scroll down further. make sure the hints don't block clicks.",
+          "discipline": "ui-atoms",
+          "unguided": {
+            "passed": 5,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 18491,
+            "uncachedTokens": 30925,
+            "totalTokens": 89162,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 21159,
+            "uncachedTokens": 27947,
+            "totalTokens": 115543,
+            "guidesUsed": [
+              "scrollability-affordance-hints"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The hint at the start edge of the scroller is not visible when the scroller is scrolled to the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the start edge of the scroller is visible when the scroller is scrolled away from the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is visible when there is more content to scroll to.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is not visible when the scroller is scrolled to the end.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the content fits in the scroller without scrolling, neither hint is visible.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints are drawn with ::before/::after pseudo-elements of the scroller or a mask-image on the scroller, not with extra elements in the markup.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints do not intercept clicks on the scrollable content.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Scroll state is detected with CSS scroll-state container queries or scroll-driven animations.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "No scroll event listeners are used to show or hide the hints.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-state container queries are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-driven animations are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and both scroll-driven animations and scroll-state container queries are unsupported, a CSS fallback or an IntersectionObserver-powered fallback is used.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "progress-ring": {
+          "prompt": "Update `index.html` on The Daily Grind site to add a loyalty rewards section in the main container alongside Seasonal Favorites, featuring a circular progress ring that visually tracks how close a customer is to their next free drink, displays the current progress details in the center of the ring, and uses styling that matches our coffee shop's existing brand palette.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 0,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 2,
+            "runtimeMs": 13684,
+            "uncachedTokens": 24582,
+            "totalTokens": 54366,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 2,
+            "a11yTotal": 2,
+            "runtimeMs": 19565,
+            "uncachedTokens": 25874,
+            "totalTokens": 116121,
+            "guidesUsed": [
+              "progress-ring"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The component contains a native HTML <progress> element",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The visual progress ring is implemented using a CSS conic-gradient",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The center of the progress ring is transparent or \"hollowed out\" using background-clip: border-area",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When background-clip: border-area is not supported, the center of the ring is hollowed out with a radial gradient mask",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The value attribute on <progress> is used to drive the visual progress of the ring using attr()",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When using attr() on non-content properties is not supported, a MutationObserver monitors the value attribute and updates the --value custom property",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The ring smoothly transitions between values when the --value property is updated (requiring @property support in the browser)",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The <progress> element includes an aria-label for accessibility",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "The component has a distinct visual \"track\" (background) behind the progress fill",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The progress ring respects prefers-reduced-motion by changing to a new value immediately, rather than having a smooth transition",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "The component is visible on the page",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The component supports displaying text content (e.g., the percentage) in the center of the ring",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "passkey-authentication": {
+          "prompt": "Implement passkey authentication in index.html, ensuring the sign-in username input field with data-testid=\"username-field\" offers registered passkeys as autofill suggestions on focus, clicking the button with data-testid=\"auth-button\" prompts for biometrics directly, request options are fetched from /api/login/options, and authenticated credentials are sent to /api/login/verify to update the element with data-testid=\"auth-status\" on success.",
+          "discipline": "security",
+          "unguided": {
+            "passed": 1,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 22125,
+            "uncachedTokens": 21019,
+            "totalTokens": 56424,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 7,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 26165,
+            "uncachedTokens": 30307,
+            "totalTokens": 122924,
+            "guidesUsed": [
+              "passkey-authentication",
+              "passkeys"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The HTML form annotates the username input element with autocomplete=\"username webauthn\"",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\"",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The explicit passkey sign-in button click aborts pending Conditional UI autofill suggestions prior to prompting users",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A successful credential verification updates the UI status to indicate successful authentication and session establishment",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "menu": {
+          "prompt": "Update the navigation bar and seasonal favorite cards in index.html with an interactive menu component that lets users choose from a list of actions and options, including multi-level nested submenus for drink categories and order customizations. Order customizations include at least one on/off option and at least one pick-one option.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 1,
+            "total": 25,
+            "a11yPassed": 0,
+            "a11yTotal": 15,
+            "runtimeMs": 51412,
+            "uncachedTokens": 34949,
+            "totalTokens": 83108,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 22,
+            "total": 25,
+            "a11yPassed": 14,
+            "a11yTotal": 15,
+            "runtimeMs": 167086,
+            "uncachedTokens": 88748,
+            "totalTokens": 287831,
+            "guidesUsed": [
+              "menu",
+              "navbar"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Each trigger is a button[type=\"button\"] with aria-haspopup=\"menu\", commandfor, command=\"toggle-popover\", and no popovertarget or popovertargetaction",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menus are anchored to their triggers via CSS Anchor Positioning without per-menu CSS anchor rules, positioning top-level menus below and submenus beside with indented fallback",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menu items align their content across rows with fixed-size leading icon or check slot and trailing content at inline end, without subgrid",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Each menu list has focusgroup=\"menu nomemory\" on an element inside its popover, exposes role=\"menu\" labeled by its trigger via aria-labelledby, and exposes role=\"menuitem\" on command buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Separators between item groups are <hr> elements, checkable items are button[type=\"button\"] with role=\"menuitemcheckbox\" or \"menuitemradio\" (radios in named role=\"group\") and aria-checked, Space toggles checkbox and keeps open, Enter toggles and closes, radios close on either key",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Each popover is the immediate next sibling of its trigger, submenus are popover=\"auto\" placed after trigger inside parent focusgroup without aria-details, and closed submenus are not inline",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Focusing a submenu trigger previews its submenu and sets aria-expanded=\"true\" without moving focus into the submenu, and moving focus to a sibling item closes that submenu and sets aria-expanded=\"false\"",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a previewed submenu trigger closes that preview and sets aria-expanded=\"false\" without moving focus from the trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a closed trigger opens its menu, sets aria-expanded=\"true\", and moves focus to the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing ArrowDown on a top-level trigger opens its menu if closed and moves focus to the first enabled item, including when opened by pointer and focus is on trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Inside an open menu, ArrowUp and ArrowDown move focus between enabled items, and Home and End move focus to first and last enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing ArrowRight on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing ArrowLeft in a submenu closes only that submenu and restores focus to its parent trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing Escape closes only current menu level, sets trigger aria-expanded to \"false\", and restores focus to the trigger that opened it, including for nested submenus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Keyboard"
+            },
+            {
+              "message": "Pressing Tab from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Clicking a closed trigger opens its menu with focus left on the trigger (no item focused), clicking an open trigger closes its menu and leaves focus on the trigger, and clicking outside closes every open menu level",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Opening a menu by pointer keeps focus on its trigger with no item focused or matching :focus-visible; opening by keyboard focuses the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Any open or close animation is under 150 ms, changes only opacity and a small translate, is off under prefers-reduced-motion: reduce, and never delays focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a safe triangle), while moving to a sibling item outside that path closes it",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Checked items render a visible check mark in the leading slot (::before content is not empty); unchecked items do not",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "At a 375 px viewport, an open submenu sits directly below its trigger item and its box does not intersect the trigger box",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "After a pointer activation of a command, focus returns to the root trigger without :focus-visible",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "form-fields-automatically-fit-contents": {
+          "prompt": "Add a form with a text input, a textarea, and a select dropdown (with some options) and automatically size them based on their content so they don't have unnecessary whitespace.",
+          "discipline": "forms",
+          "unguided": {
+            "passed": 7,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 13502,
+            "uncachedTokens": 16830,
+            "totalTokens": 70598,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 10,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 14608,
+            "uncachedTokens": 24001,
+            "totalTokens": 111212,
+            "guidesUsed": [
+              "form-fields-automatically-fit-contents"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The input element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a minimum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit height of auto or fit-content applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit inline size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a minimum block size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a maximum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "testId": "nightly-2026-10-27_23-00-02-antigravity_cli",
+      "timestamp": "2026-10-28T01:53:44.172Z",
+      "agent": "antigravity_cli",
+      "serving": "skills_cli",
+      "model": "gemini-4-argon",
+      "reasoningEffort": {
+        "level": "high",
+        "source": "observed"
+      },
+      "taskCount": 197,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 1554,
+        "total": 1629
+      },
+      "unguidedStats": {
+        "passed": 981,
+        "total": 1629
+      },
+      "a11yStats": {
+        "guidedPassed": 187,
+        "guidedTotal": 196,
+        "guidedRate": 95,
+        "unguidedPassed": 105,
+        "unguidedTotal": 196,
+        "unguidedRate": 54,
+        "uplift": 41,
+        "guideCount": 74,
+        "bySubCategory": {
+          "focus_inert": {
+            "guidedPassed": 41,
+            "guidedTotal": 42,
+            "guidedRate": 98,
+            "unguidedPassed": 15,
+            "unguidedTotal": 42,
+            "unguidedRate": 36,
+            "uplift": 62
+          },
+          "motion_contrast_visual": {
+            "guidedPassed": 51,
+            "guidedTotal": 56,
+            "guidedRate": 91,
+            "unguidedPassed": 21,
+            "unguidedTotal": 56,
+            "unguidedRate": 38,
+            "uplift": 53
+          },
+          "aria_roles_live": {
+            "guidedPassed": 57,
+            "guidedTotal": 60,
+            "guidedRate": 95,
+            "unguidedPassed": 38,
+            "unguidedTotal": 60,
+            "unguidedRate": 63,
+            "uplift": 32
+          },
+          "labels_forms": {
+            "guidedPassed": 23,
+            "guidedTotal": 23,
+            "guidedRate": 100,
+            "unguidedPassed": 21,
+            "unguidedTotal": 23,
+            "unguidedRate": 91,
+            "uplift": 9
+          },
+          "keyboard": {
+            "guidedPassed": 15,
+            "guidedTotal": 15,
+            "guidedRate": 100,
+            "unguidedPassed": 10,
+            "unguidedTotal": 15,
+            "unguidedRate": 67,
+            "uplift": 33
+          }
+        }
+      },
+      "earlyFailureRate": 1,
+      "guides": {
+        "content-vis": {
+          "guidedPassed": 7,
+          "guidedTotal": 7,
+          "guidedRate": 100,
+          "unguidedPassed": 4,
+          "unguidedTotal": 7,
+          "unguidedRate": 57,
+          "uplift": 43,
+          "taskName": "content-vis-task"
+        }
+      },
+      "showcase": {
+        "swipe-to-remove": {
+          "prompt": "can you add a shopping cart section underneath the seasonal favorites on our menu page? list items like Maple Oat Latte, Dark Roast Espresso, and Cold Brew, and implement a swipe-to-remove gesture on each item in the list. please use our team's naming convention: the list should be a ul with class 'SwipeableList', and each item a li with class 'SwipeableList-item' (adding 'is-initialized' once initialized). inside each item, put a 'SwipeableList-track' container and a 'SwipeableList-content' element. when a user swipes past a certain point, the item should show an action color and smoothly collapse down in height to remove it from the page.",
+          "discipline": "ui-behaviors",
+          "unguided": {
+            "passed": 2,
+            "total": 21,
+            "a11yPassed": 0,
+            "a11yTotal": 1,
+            "runtimeMs": 260710,
+            "uncachedTokens": 43273,
+            "totalTokens": 109287,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 21,
+            "total": 21,
+            "a11yPassed": 1,
+            "a11yTotal": 1,
+            "runtimeMs": 169214,
+            "uncachedTokens": 52191,
+            "totalTokens": 196433,
+            "guidesUsed": [
+              "swipe-to-remove",
+              "animate-to-intrinsic-sizes"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Track has scroll-snap-type x mandatory",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track has overscroll-behavior-x none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track hides its scrollbar with scrollbar-width none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track spacers have scroll-snap-align set to be valid snap targets",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has scroll-snap-align set",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has an opaque background to hide action behind it",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target nearest is gated behind initialization class",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector IntersectionObserver is rooted at the track",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector has low commit and high activate thresholds",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Updates data-swipe-direction attribute during swipe",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Toggles is-activating class during swipe before commit",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Triggers row collapse animation when swiped past commit threshold",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Does not drive the swipe with manual pointermove transform updates",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "MutationObserver wires up dynamically added list items",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target fallback scrolls track programmatically when CSS.supports is false",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is attached to track when fallback is active",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is NOT attached to track when scroll-initial-target is supported",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Safari scroll-latching workaround defers item removal and sets inert",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Non-Safari browsers remove the item immediately after collapse",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Uses WAAPI animations to collapse row height and translate content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Projects focus affordance onto content element when track has focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "scrollability-affordance-hints": {
+          "prompt": "add a customer reviews section below seasonal favorites with a scrollable list of reviews. style the scroll container with a fixed height and vertical overflow, with top and bottom scrollability hints that dynamically show/hide based on whether there's more content to scroll. the top hint should only appear when the user has scrolled down, and the bottom hint should only appear when the user can scroll down further. make sure the hints don't block clicks.",
+          "discipline": "ui-atoms",
+          "unguided": {
+            "passed": 5,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 158743,
+            "uncachedTokens": 41232,
+            "totalTokens": 89010,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 260259,
+            "uncachedTokens": 83132,
+            "totalTokens": 444271,
+            "guidesUsed": [
+              "scrollability-affordance-hints",
+              "accessibility",
+              "css",
+              "html"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The hint at the start edge of the scroller is not visible when the scroller is scrolled to the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the start edge of the scroller is visible when the scroller is scrolled away from the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is visible when there is more content to scroll to.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is not visible when the scroller is scrolled to the end.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the content fits in the scroller without scrolling, neither hint is visible.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints are drawn with ::before/::after pseudo-elements of the scroller or a mask-image on the scroller, not with extra elements in the markup.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints do not intercept clicks on the scrollable content.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Scroll state is detected with CSS scroll-state container queries or scroll-driven animations.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "No scroll event listeners are used to show or hide the hints.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-state container queries are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-driven animations are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and both scroll-driven animations and scroll-state container queries are unsupported, a CSS fallback or an IntersectionObserver-powered fallback is used.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "progress-ring": {
+          "prompt": "Update `index.html` on The Daily Grind site to add a loyalty rewards section in the main container alongside Seasonal Favorites, featuring a circular progress ring that visually tracks how close a customer is to their next free drink, displays the current progress details in the center of the ring, and uses styling that matches our coffee shop's existing brand palette.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 1,
+            "total": 12,
+            "a11yPassed": 1,
+            "a11yTotal": 2,
+            "runtimeMs": 63540,
+            "uncachedTokens": 27670,
+            "totalTokens": 81012,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 2,
+            "a11yTotal": 2,
+            "runtimeMs": 331961,
+            "uncachedTokens": 54380,
+            "totalTokens": 228100,
+            "guidesUsed": [
+              "progress-ring",
+              "css",
+              "html"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The component contains a native HTML <progress> element",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The visual progress ring is implemented using a CSS conic-gradient",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The center of the progress ring is transparent or \"hollowed out\" using background-clip: border-area",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When background-clip: border-area is not supported, the center of the ring is hollowed out with a radial gradient mask",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The value attribute on <progress> is used to drive the visual progress of the ring using attr()",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When using attr() on non-content properties is not supported, a MutationObserver monitors the value attribute and updates the --value custom property",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The ring smoothly transitions between values when the --value property is updated (requiring @property support in the browser)",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The <progress> element includes an aria-label for accessibility",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "The component has a distinct visual \"track\" (background) behind the progress fill",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The progress ring respects prefers-reduced-motion by changing to a new value immediately, rather than having a smooth transition",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "The component is visible on the page",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The component supports displaying text content (e.g., the percentage) in the center of the ring",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "passkey-authentication": {
+          "prompt": "Implement passkey authentication in index.html, ensuring the sign-in username input field with data-testid=\"username-field\" offers registered passkeys as autofill suggestions on focus, clicking the button with data-testid=\"auth-button\" prompts for biometrics directly, request options are fetched from /api/login/options, and authenticated credentials are sent to /api/login/verify to update the element with data-testid=\"auth-status\" on success.",
+          "discipline": "security",
+          "unguided": {
+            "passed": 2,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 420763,
+            "uncachedTokens": 70558,
+            "totalTokens": 147558,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 7,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 247890,
+            "uncachedTokens": 51571,
+            "totalTokens": 197514,
+            "guidesUsed": [
+              "passkey-authentication",
+              "passkeys"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The HTML form annotates the username input element with autocomplete=\"username webauthn\"",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\"",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The explicit passkey sign-in button click aborts pending Conditional UI autofill suggestions prior to prompting users",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A successful credential verification updates the UI status to indicate successful authentication and session establishment",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "menu": {
+          "prompt": "Update the navigation bar and seasonal favorite cards in index.html with an interactive menu component that lets users choose from a list of actions and options, including multi-level nested submenus for drink categories and order customizations. Order customizations include at least one on/off option and at least one pick-one option.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 0,
+            "total": 25,
+            "a11yPassed": 0,
+            "a11yTotal": 15,
+            "runtimeMs": 330991,
+            "uncachedTokens": 63186,
+            "totalTokens": 86087,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 25,
+            "total": 25,
+            "a11yPassed": 15,
+            "a11yTotal": 15,
+            "runtimeMs": 490628,
+            "uncachedTokens": 119396,
+            "totalTokens": 426096,
+            "guidesUsed": [
+              "menu",
+              "accessibility",
+              "html",
+              "css"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Each trigger is a button[type=\"button\"] with aria-haspopup=\"menu\", commandfor, command=\"toggle-popover\", and no popovertarget or popovertargetaction",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menus are anchored to their triggers via CSS Anchor Positioning without per-menu CSS anchor rules, positioning top-level menus below and submenus beside with indented fallback",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menu items align their content across rows with fixed-size leading icon or check slot and trailing content at inline end, without subgrid",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Each menu list has focusgroup=\"menu nomemory\" on an element inside its popover, exposes role=\"menu\" labeled by its trigger via aria-labelledby, and exposes role=\"menuitem\" on command buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Separators between item groups are <hr> elements, checkable items are button[type=\"button\"] with role=\"menuitemcheckbox\" or \"menuitemradio\" (radios in named role=\"group\") and aria-checked, Space toggles checkbox and keeps open, Enter toggles and closes, radios close on either key",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Each popover is the immediate next sibling of its trigger, submenus are popover=\"auto\" placed after trigger inside parent focusgroup without aria-details, and closed submenus are not inline",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Focusing a submenu trigger previews its submenu and sets aria-expanded=\"true\" without moving focus into the submenu, and moving focus to a sibling item closes that submenu and sets aria-expanded=\"false\"",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a previewed submenu trigger closes that preview and sets aria-expanded=\"false\" without moving focus from the trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a closed trigger opens its menu, sets aria-expanded=\"true\", and moves focus to the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing ArrowDown on a top-level trigger opens its menu if closed and moves focus to the first enabled item, including when opened by pointer and focus is on trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Inside an open menu, ArrowUp and ArrowDown move focus between enabled items, and Home and End move focus to first and last enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing ArrowRight on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing ArrowLeft in a submenu closes only that submenu and restores focus to its parent trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing Escape closes only current menu level, sets trigger aria-expanded to \"false\", and restores focus to the trigger that opened it, including for nested submenus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Keyboard"
+            },
+            {
+              "message": "Pressing Tab from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Clicking a closed trigger opens its menu with focus left on the trigger (no item focused), clicking an open trigger closes its menu and leaves focus on the trigger, and clicking outside closes every open menu level",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Opening a menu by pointer keeps focus on its trigger with no item focused or matching :focus-visible; opening by keyboard focuses the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Any open or close animation is under 150 ms, changes only opacity and a small translate, is off under prefers-reduced-motion: reduce, and never delays focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a safe triangle), while moving to a sibling item outside that path closes it",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Checked items render a visible check mark in the leading slot (::before content is not empty); unchecked items do not",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "At a 375 px viewport, an open submenu sits directly below its trigger item and its box does not intersect the trigger box",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "After a pointer activation of a command, focus returns to the root trigger without :focus-visible",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "form-fields-automatically-fit-contents": {
+          "prompt": "Add a form with a text input, a textarea, and a select dropdown (with some options) and automatically size them based on their content so they don't have unnecessary whitespace.",
+          "discipline": "forms",
+          "unguided": {
+            "passed": 5,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 109872,
+            "uncachedTokens": 26199,
+            "totalTokens": 80335,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 10,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 173645,
+            "uncachedTokens": 43023,
+            "totalTokens": 188439,
+            "guidesUsed": [
+              "form-fields-automatically-fit-contents",
+              "forms"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The input element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a minimum inline size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit height of auto or fit-content applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit inline size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a minimum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a maximum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "testId": "nightly-2026-10-28_03-33-45-codex_cli",
+      "timestamp": "2026-10-28T04:17:37.188Z",
+      "agent": "codex_cli",
+      "serving": "skills_cli",
+      "model": "gpt-6.1-sol",
+      "reasoningEffort": {
+        "level": "medium",
+        "source": "observed"
+      },
+      "taskCount": 198,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 1427,
+        "total": 1675
+      },
+      "unguidedStats": {
+        "passed": 932,
+        "total": 1675
+      },
+      "a11yStats": {
+        "guidedPassed": 174,
+        "guidedTotal": 202,
+        "guidedRate": 86,
+        "unguidedPassed": 115,
+        "unguidedTotal": 202,
+        "unguidedRate": 57,
+        "uplift": 29,
+        "guideCount": 75,
+        "bySubCategory": {
+          "focus_inert": {
+            "guidedPassed": 36,
+            "guidedTotal": 42,
+            "guidedRate": 86,
+            "unguidedPassed": 19,
+            "unguidedTotal": 42,
+            "unguidedRate": 45,
+            "uplift": 41
+          },
+          "motion_contrast_visual": {
+            "guidedPassed": 46,
+            "guidedTotal": 57,
+            "guidedRate": 81,
+            "unguidedPassed": 28,
+            "unguidedTotal": 57,
+            "unguidedRate": 49,
+            "uplift": 32
+          },
+          "aria_roles_live": {
+            "guidedPassed": 55,
+            "guidedTotal": 64,
+            "guidedRate": 86,
+            "unguidedPassed": 39,
+            "unguidedTotal": 64,
+            "unguidedRate": 61,
+            "uplift": 25
+          },
+          "labels_forms": {
+            "guidedPassed": 23,
+            "guidedTotal": 23,
+            "guidedRate": 100,
+            "unguidedPassed": 17,
+            "unguidedTotal": 23,
+            "unguidedRate": 74,
+            "uplift": 26
+          },
+          "keyboard": {
+            "guidedPassed": 14,
+            "guidedTotal": 16,
+            "guidedRate": 88,
+            "unguidedPassed": 12,
+            "unguidedTotal": 16,
+            "unguidedRate": 75,
+            "uplift": 13
+          }
+        }
+      },
+      "earlyFailureRate": 0,
+      "guides": {},
+      "showcase": {
+        "swipe-to-remove": {
+          "prompt": "can you add a shopping cart section underneath the seasonal favorites on our menu page? list items like Maple Oat Latte, Dark Roast Espresso, and Cold Brew, and implement a swipe-to-remove gesture on each item in the list. please use our team's naming convention: the list should be a ul with class 'SwipeableList', and each item a li with class 'SwipeableList-item' (adding 'is-initialized' once initialized). inside each item, put a 'SwipeableList-track' container and a 'SwipeableList-content' element. when a user swipes past a certain point, the item should show an action color and smoothly collapse down in height to remove it from the page.",
+          "discipline": "ui-behaviors",
+          "unguided": {
+            "passed": 2,
+            "total": 21,
+            "a11yPassed": 0,
+            "a11yTotal": 1,
+            "runtimeMs": 106301,
+            "uncachedTokens": 10014,
+            "totalTokens": 110494,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 19,
+            "total": 21,
+            "a11yPassed": 1,
+            "a11yTotal": 1,
+            "runtimeMs": 150307,
+            "uncachedTokens": 80857,
+            "totalTokens": 367193,
+            "guidesUsed": [
+              "swipe-to-remove",
+              "accessibility"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Track has scroll-snap-type x mandatory",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track has overscroll-behavior-x none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track hides its scrollbar with scrollbar-width none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track spacers have scroll-snap-align set to be valid snap targets",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has scroll-snap-align set",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has an opaque background to hide action behind it",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target nearest is gated behind initialization class",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector IntersectionObserver is rooted at the track",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector has low commit and high activate thresholds",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Updates data-swipe-direction attribute during swipe",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Toggles is-activating class during swipe before commit",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Triggers row collapse animation when swiped past commit threshold",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Does not drive the swipe with manual pointermove transform updates",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "MutationObserver wires up dynamically added list items",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target fallback scrolls track programmatically when CSS.supports is false",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is attached to track when fallback is active",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is NOT attached to track when scroll-initial-target is supported",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Safari scroll-latching workaround defers item removal and sets inert",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Non-Safari browsers remove the item immediately after collapse",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Uses WAAPI animations to collapse row height and translate content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Projects focus affordance onto content element when track has focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "scrollability-affordance-hints": {
+          "prompt": "add a customer reviews section below seasonal favorites with a scrollable list of reviews. style the scroll container with a fixed height and vertical overflow, with top and bottom scrollability hints that dynamically show/hide based on whether there's more content to scroll. the top hint should only appear when the user has scrolled down, and the bottom hint should only appear when the user can scroll down further. make sure the hints don't block clicks.",
+          "discipline": "ui-atoms",
+          "unguided": {
+            "passed": 5,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 59476,
+            "uncachedTokens": 9198,
+            "totalTokens": 80366,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 73639,
+            "uncachedTokens": 28337,
+            "totalTokens": 138673,
+            "guidesUsed": [
+              "scrollability-affordance-hints"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The hint at the start edge of the scroller is not visible when the scroller is scrolled to the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the start edge of the scroller is visible when the scroller is scrolled away from the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is visible when there is more content to scroll to.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is not visible when the scroller is scrolled to the end.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the content fits in the scroller without scrolling, neither hint is visible.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints are drawn with ::before/::after pseudo-elements of the scroller or a mask-image on the scroller, not with extra elements in the markup.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints do not intercept clicks on the scrollable content.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Scroll state is detected with CSS scroll-state container queries or scroll-driven animations.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "No scroll event listeners are used to show or hide the hints.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-state container queries are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-driven animations are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and both scroll-driven animations and scroll-state container queries are unsupported, a CSS fallback or an IntersectionObserver-powered fallback is used.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "progress-ring": {
+          "prompt": "Update `index.html` on The Daily Grind site to add a loyalty rewards section in the main container alongside Seasonal Favorites, featuring a circular progress ring that visually tracks how close a customer is to their next free drink, displays the current progress details in the center of the ring, and uses styling that matches our coffee shop's existing brand palette.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 4,
+            "total": 12,
+            "a11yPassed": 2,
+            "a11yTotal": 2,
+            "runtimeMs": 49568,
+            "uncachedTokens": 6741,
+            "totalTokens": 67541,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 9,
+            "total": 12,
+            "a11yPassed": 2,
+            "a11yTotal": 2,
+            "runtimeMs": 68860,
+            "uncachedTokens": 31746,
+            "totalTokens": 146946,
+            "guidesUsed": [
+              "progress-ring",
+              "html"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The component contains a native HTML <progress> element",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The visual progress ring is implemented using a CSS conic-gradient",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The center of the progress ring is transparent or \"hollowed out\" using background-clip: border-area",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When background-clip: border-area is not supported, the center of the ring is hollowed out with a radial gradient mask",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The value attribute on <progress> is used to drive the visual progress of the ring using attr()",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When using attr() on non-content properties is not supported, a MutationObserver monitors the value attribute and updates the --value custom property",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The ring smoothly transitions between values when the --value property is updated (requiring @property support in the browser)",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The <progress> element includes an aria-label for accessibility",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "The component has a distinct visual \"track\" (background) behind the progress fill",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The progress ring respects prefers-reduced-motion by changing to a new value immediately, rather than having a smooth transition",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "The component is visible on the page",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The component supports displaying text content (e.g., the percentage) in the center of the ring",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "passkey-authentication": {
+          "prompt": "Implement passkey authentication in index.html, ensuring the sign-in username input field with data-testid=\"username-field\" offers registered passkeys as autofill suggestions on focus, clicking the button with data-testid=\"auth-button\" prompts for biometrics directly, request options are fetched from /api/login/options, and authenticated credentials are sent to /api/login/verify to update the element with data-testid=\"auth-status\" on success.",
+          "discipline": "security",
+          "unguided": {
+            "passed": 4,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 105432,
+            "uncachedTokens": 14155,
+            "totalTokens": 106315,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 7,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 189290,
+            "uncachedTokens": 53257,
+            "totalTokens": 483977,
+            "guidesUsed": [
+              "passkey-authentication",
+              "passkeys"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The HTML form annotates the username input element with autocomplete=\"username webauthn\"",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\"",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The explicit passkey sign-in button click aborts pending Conditional UI autofill suggestions prior to prompting users",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A successful credential verification updates the UI status to indicate successful authentication and session establishment",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "menu": {
+          "prompt": "Update the navigation bar and seasonal favorite cards in index.html with an interactive menu component that lets users choose from a list of actions and options, including multi-level nested submenus for drink categories and order customizations. Order customizations include at least one on/off option and at least one pick-one option.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 0,
+            "total": 30,
+            "a11yPassed": 0,
+            "a11yTotal": 21,
+            "runtimeMs": 133801,
+            "uncachedTokens": 14078,
+            "totalTokens": 97918,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 26,
+            "total": 30,
+            "a11yPassed": 19,
+            "a11yTotal": 21,
+            "runtimeMs": 216698,
+            "uncachedTokens": 35575,
+            "totalTokens": 360055,
+            "guidesUsed": [
+              "menu"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Menus are anchored to their triggers via CSS Anchor Positioning (using the invoker or showPopover({ source: trigger }) without per-menu CSS anchor rules), positioning top-level menus below their trigger and submenus beside their trigger on wide viewports, and falling back to directly below the submenu trigger, indented, when neither side fits so a submenu never covers its own trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menu items align their content across rows with a fixed-size leading icon or check slot and trailing content at the inline end, without subgrid",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Each menu list has focusgroup=\"menu nomemory\" on an element inside its popover (not on the popover element), exposes role=\"menu\" labeled by its trigger via aria-labelledby, and exposes role=\"menuitem\" on its command buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Separators between item groups are <hr> elements, and checkable items are <button type=\"button\"> elements with an explicit role=\"menuitemcheckbox\" or role=\"menuitemradio\" (radios wrapped in a named role=\"group\") and aria-checked; Space on a checkbox item toggles it and keeps the menu open, Enter toggles it and closes the menu, and radio items close on either key",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "The top-level triggers are either inside a container with role=\"menubar\" that is styled as one continuous bar and acts as a single Tab stop, or are separate Tab stops with no role=\"menubar\", no arrow-key movement between them, and no preview or hover switching; the role, keyboard model, and styling never disagree",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Each trigger is a <button type=\"button\"> with aria-haspopup=\"menu\", commandfor, and command=\"toggle-popover\", and has no popovertarget or popovertargetaction attribute",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Each popover is the immediate next sibling of its trigger (and each submenu is a popover=\"auto\" placed after its trigger inside the parent menu's focusgroup), so no aria-details relation is exposed on the trigger and closed submenus are not rendered inline",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Focusing a submenu trigger (or a top-level trigger in a menubar) previews its menu and sets aria-expanded=\"true\" without moving focus into the menu, and blurring a trigger that is only previewing closes that menu and sets aria-expanded=\"false\"",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Focus returning to a trigger because the window regained focus does not preview or reopen its menu",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing Enter or Space on a previewed top-level or submenu trigger closes that preview and sets aria-expanded=\"false\" without moving focus from the trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a closed trigger opens its menu, sets aria-expanded=\"true\", and moves focus to the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing ArrowDown on a previewed top-level trigger converts it to open and moves focus to the first enabled item in the same turn",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Inside an open menu, ArrowUp and ArrowDown move focus between enabled items, and Home and End move focus to the first and last enabled item; on a top-level trigger, Home and End enter its menu at the first or last enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing ArrowRight on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing ArrowLeft in a submenu closes only that submenu and restores focus to its parent trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing ArrowRight on a submenu item without a child submenu closes the open hierarchy and previews the next top-level menu with focus on its trigger in a menubar, or keeps focus inside the submenu without switching top-level menus for separate menu buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "From a focused top-level trigger, ArrowRight and ArrowLeft move focus to the next and previous top-level trigger (wrapping at either end) and preview its menu with focus staying on the trigger in a menubar, or leave focus on the current trigger for separate menu buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "From inside an open top-level menu, ArrowRight and ArrowLeft close the current menu and preview the next or previous top-level menu (wrapping at either end) with focus on its trigger and no item focused in a menubar (ArrowDown then enters it), or do not switch top-level menus for separate menu buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing Escape closes only the current menu level, sets its trigger's aria-expanded to \"false\", and restores focus to the trigger that opened it, including for nested submenus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Keyboard"
+            },
+            {
+              "message": "Pressing Tab from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Clicking a closed trigger opens its menu with focus left on the trigger (no item focused), clicking an open or previewed trigger closes its menu and leaves focus on the trigger, and clicking outside closes every open menu level",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Opening a menu by pointer keeps focus on its trigger with no item focused or matching :focus-visible; opening by keyboard focuses the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "With no menu open, hovering a top-level trigger does nothing; while a top-level menu is open, moving the pointer over a different top-level trigger closes the open menu and previews the hovered one with focus on that trigger in a menubar, or leaves the open menu unchanged for separate menu buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a pointer-following safe triangle), while moving to a sibling item outside that path closes it",
+              "unguidedPassed": false,
+              "guidedPassed": false,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Checked items render a visible check mark in the leading slot (::before content is not empty); unchecked items don't",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "At a 375 px viewport, an open submenu sits directly below its trigger item and its box does not intersect the trigger's box",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "After a pointer activation of a command, focus returns to the root trigger without :focus-visible",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "form-fields-automatically-fit-contents": {
+          "prompt": "Add a form with a text input, a textarea, and a select dropdown (with some options) and automatically size them based on their content so they don't have unnecessary whitespace.",
+          "discipline": "forms",
+          "unguided": {
+            "passed": 6,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 67468,
+            "uncachedTokens": 8026,
+            "totalTokens": 104538,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 10,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 73476,
+            "uncachedTokens": 22539,
+            "totalTokens": 172939,
+            "guidesUsed": [
+              "form-fields-automatically-fit-contents",
+              "forms"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The input element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a minimum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit height of auto or fit-content applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit inline size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a minimum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a maximum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "testId": "weekly-2026-10-27_18-00-00-antigravity_cli",
+      "timestamp": "2026-10-27T19:42:10.000Z",
+      "agent": "antigravity_cli",
+      "serving": "skills_cli",
+      "model": "gemini-4-argon",
+      "reasoningEffort": {
+        "level": "medium",
+        "source": "configured"
+      },
+      "taskCount": 197,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 1451,
+        "total": 1629
+      },
+      "unguidedStats": {
+        "passed": 945,
+        "total": 1629
+      },
+      "a11yStats": {
+        "guidedPassed": 176,
+        "guidedTotal": 196,
+        "guidedRate": 90,
+        "unguidedPassed": 102,
+        "unguidedTotal": 196,
+        "unguidedRate": 52,
+        "uplift": 38,
+        "guideCount": 74,
+        "bySubCategory": {
+          "focus_inert": {
+            "guidedPassed": 38,
+            "guidedTotal": 42,
+            "guidedRate": 90,
+            "unguidedPassed": 15,
+            "unguidedTotal": 42,
+            "unguidedRate": 36,
+            "uplift": 54
+          }
+        }
+      },
+      "earlyFailureRate": 1,
+      "guides": {
+        "content-vis": {
+          "guidedPassed": 6,
+          "guidedTotal": 7,
+          "guidedRate": 86,
+          "unguidedPassed": 4,
+          "unguidedTotal": 7,
+          "unguidedRate": 57,
+          "uplift": 29,
+          "taskName": "content-vis-task"
+        }
+      },
+      "showcase": {
+        "swipe-to-remove": {
+          "prompt": "can you add a shopping cart section underneath the seasonal favorites on our menu page? list items like Maple Oat Latte, Dark Roast Espresso, and Cold Brew, and implement a swipe-to-remove gesture on each item in the list. please use our team's naming convention: the list should be a ul with class 'SwipeableList', and each item a li with class 'SwipeableList-item' (adding 'is-initialized' once initialized). inside each item, put a 'SwipeableList-track' container and a 'SwipeableList-content' element. when a user swipes past a certain point, the item should show an action color and smoothly collapse down in height to remove it from the page.",
+          "discipline": "ui-behaviors",
+          "unguided": {
+            "passed": 2,
+            "total": 21,
+            "a11yPassed": 0,
+            "a11yTotal": 1,
+            "runtimeMs": 260710,
+            "uncachedTokens": 43273,
+            "totalTokens": 109287,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 21,
+            "total": 21,
+            "a11yPassed": 1,
+            "a11yTotal": 1,
+            "runtimeMs": 169214,
+            "uncachedTokens": 52191,
+            "totalTokens": 196433,
+            "guidesUsed": [
+              "swipe-to-remove",
+              "animate-to-intrinsic-sizes"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Track has scroll-snap-type x mandatory",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track has overscroll-behavior-x none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track hides its scrollbar with scrollbar-width none",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Track spacers have scroll-snap-align set to be valid snap targets",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has scroll-snap-align set",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Content element has an opaque background to hide action behind it",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target nearest is gated behind initialization class",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector IntersectionObserver is rooted at the track",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Swipe detector has low commit and high activate thresholds",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Updates data-swipe-direction attribute during swipe",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Toggles is-activating class during swipe before commit",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Triggers row collapse animation when swiped past commit threshold",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Does not drive the swipe with manual pointermove transform updates",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "MutationObserver wires up dynamically added list items",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "scroll-initial-target fallback scrolls track programmatically when CSS.supports is false",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is attached to track when fallback is active",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "ResizeObserver is NOT attached to track when scroll-initial-target is supported",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Safari scroll-latching workaround defers item removal and sets inert",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Non-Safari browsers remove the item immediately after collapse",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Uses WAAPI animations to collapse row height and translate content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Projects focus affordance onto content element when track has focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "scrollability-affordance-hints": {
+          "prompt": "add a customer reviews section below seasonal favorites with a scrollable list of reviews. style the scroll container with a fixed height and vertical overflow, with top and bottom scrollability hints that dynamically show/hide based on whether there's more content to scroll. the top hint should only appear when the user has scrolled down, and the bottom hint should only appear when the user can scroll down further. make sure the hints don't block clicks.",
+          "discipline": "ui-atoms",
+          "unguided": {
+            "passed": 5,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 158743,
+            "uncachedTokens": 41232,
+            "totalTokens": 89010,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 260259,
+            "uncachedTokens": 83132,
+            "totalTokens": 444271,
+            "guidesUsed": [
+              "scrollability-affordance-hints",
+              "accessibility",
+              "css",
+              "html"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The hint at the start edge of the scroller is not visible when the scroller is scrolled to the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the start edge of the scroller is visible when the scroller is scrolled away from the start.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is visible when there is more content to scroll to.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hint at the end edge of the scroller is not visible when the scroller is scrolled to the end.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the content fits in the scroller without scrolling, neither hint is visible.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints are drawn with ::before/::after pseudo-elements of the scroller or a mask-image on the scroller, not with extra elements in the markup.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The hints do not intercept clicks on the scrollable content.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Scroll state is detected with CSS scroll-state container queries or scroll-driven animations.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "No scroll event listeners are used to show or hide the hints.",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-state container queries are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and scroll-driven animations are unsupported, the hints still appear and disappear as described above.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When the scroller's scrollbar is hidden and both scroll-driven animations and scroll-state container queries are unsupported, a CSS fallback or an IntersectionObserver-powered fallback is used.",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "progress-ring": {
+          "prompt": "Update `index.html` on The Daily Grind site to add a loyalty rewards section in the main container alongside Seasonal Favorites, featuring a circular progress ring that visually tracks how close a customer is to their next free drink, displays the current progress details in the center of the ring, and uses styling that matches our coffee shop's existing brand palette.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 1,
+            "total": 12,
+            "a11yPassed": 1,
+            "a11yTotal": 2,
+            "runtimeMs": 63540,
+            "uncachedTokens": 27670,
+            "totalTokens": 81012,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 12,
+            "total": 12,
+            "a11yPassed": 2,
+            "a11yTotal": 2,
+            "runtimeMs": 331961,
+            "uncachedTokens": 54380,
+            "totalTokens": 228100,
+            "guidesUsed": [
+              "progress-ring",
+              "css",
+              "html"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The component contains a native HTML <progress> element",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The visual progress ring is implemented using a CSS conic-gradient",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The center of the progress ring is transparent or \"hollowed out\" using background-clip: border-area",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When background-clip: border-area is not supported, the center of the ring is hollowed out with a radial gradient mask",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The value attribute on <progress> is used to drive the visual progress of the ring using attr()",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "When using attr() on non-content properties is not supported, a MutationObserver monitors the value attribute and updates the --value custom property",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The ring smoothly transitions between values when the --value property is updated (requiring @property support in the browser)",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The <progress> element includes an aria-label for accessibility",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "The component has a distinct visual \"track\" (background) behind the progress fill",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The progress ring respects prefers-reduced-motion by changing to a new value immediately, rather than having a smooth transition",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "The component is visible on the page",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The component supports displaying text content (e.g., the percentage) in the center of the ring",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "passkey-authentication": {
+          "prompt": "Implement passkey authentication in index.html, ensuring the sign-in username input field with data-testid=\"username-field\" offers registered passkeys as autofill suggestions on focus, clicking the button with data-testid=\"auth-button\" prompts for biometrics directly, request options are fetched from /api/login/options, and authenticated credentials are sent to /api/login/verify to update the element with data-testid=\"auth-status\" on success.",
+          "discipline": "security",
+          "unguided": {
+            "passed": 2,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 420763,
+            "uncachedTokens": 70558,
+            "totalTokens": 147558,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 7,
+            "total": 7,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 247890,
+            "uncachedTokens": 51571,
+            "totalTokens": 197514,
+            "guidesUsed": [
+              "passkey-authentication",
+              "passkeys"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The HTML form annotates the username input element with autocomplete=\"username webauthn\"",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The application registers Conditional UI suggestions automatically on load with mediation=\"conditional\"",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The explicit passkey sign-in button click aborts pending Conditional UI autofill suggestions prior to prompting users",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A successful credential verification updates the UI status to indicate successful authentication and session establishment",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        },
+        "menu": {
+          "prompt": "Update the navigation bar and seasonal favorite cards in index.html with an interactive menu component that lets users choose from a list of actions and options, including multi-level nested submenus for drink categories and order customizations. Order customizations include at least one on/off option and at least one pick-one option.",
+          "discipline": "ui-components",
+          "unguided": {
+            "passed": 0,
+            "total": 25,
+            "a11yPassed": 0,
+            "a11yTotal": 15,
+            "runtimeMs": 330991,
+            "uncachedTokens": 63186,
+            "totalTokens": 86087,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 25,
+            "total": 25,
+            "a11yPassed": 15,
+            "a11yTotal": 15,
+            "runtimeMs": 490628,
+            "uncachedTokens": 119396,
+            "totalTokens": 426096,
+            "guidesUsed": [
+              "menu",
+              "accessibility",
+              "html",
+              "css"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "Each trigger is a button[type=\"button\"] with aria-haspopup=\"menu\", commandfor, command=\"toggle-popover\", and no popovertarget or popovertargetaction",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menus are anchored to their triggers via CSS Anchor Positioning without per-menu CSS anchor rules, positioning top-level menus below and submenus beside with indented fallback",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Menu items align their content across rows with fixed-size leading icon or check slot and trailing content at inline end, without subgrid",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Each menu list has focusgroup=\"menu nomemory\" on an element inside its popover, exposes role=\"menu\" labeled by its trigger via aria-labelledby, and exposes role=\"menuitem\" on command buttons",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Separators between item groups are <hr> elements, checkable items are button[type=\"button\"] with role=\"menuitemcheckbox\" or \"menuitemradio\" (radios in named role=\"group\") and aria-checked, Space toggles checkbox and keeps open, Enter toggles and closes, radios close on either key",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Each popover is the immediate next sibling of its trigger, submenus are popover=\"auto\" placed after trigger inside parent focusgroup without aria-details, and closed submenus are not inline",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Focusing a submenu trigger previews its submenu and sets aria-expanded=\"true\" without moving focus into the submenu, and moving focus to a sibling item closes that submenu and sets aria-expanded=\"false\"",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a previewed submenu trigger closes that preview and sets aria-expanded=\"false\" without moving focus from the trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing Enter or Space on a closed trigger opens its menu, sets aria-expanded=\"true\", and moves focus to the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "ARIA & Roles"
+            },
+            {
+              "message": "Pressing ArrowDown on a top-level trigger opens its menu if closed and moves focus to the first enabled item, including when opened by pointer and focus is on trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Inside an open menu, ArrowUp and ArrowDown move focus between enabled items, and Home and End move focus to first and last enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing ArrowRight on a submenu trigger opens the submenu and moves focus to its first enabled item, while pressing ArrowLeft in a submenu closes only that submenu and restores focus to its parent trigger",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Pressing Escape closes only current menu level, sets trigger aria-expanded to \"false\", and restores focus to the trigger that opened it, including for nested submenus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Keyboard"
+            },
+            {
+              "message": "Pressing Tab from a trigger or inside an open menu closes all open menus and leaves the menu system instead of stepping through every command",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Clicking a closed trigger opens its menu with focus left on the trigger (no item focused), clicking an open trigger closes its menu and leaves focus on the trigger, and clicking outside closes every open menu level",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Opening a menu by pointer keeps focus on its trigger with no item focused or matching :focus-visible; opening by keyboard focuses the first enabled item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Any open or close animation is under 150 ms, changes only opacity and a small translate, is off under prefers-reduced-motion: reduce, and never delays focus",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Motion & Contrast"
+            },
+            {
+              "message": "Moving the pointer over a menu item focuses that item without a visible focus ring, so at most one item is styled as active at a time",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "Moving the pointer over a submenu trigger previews its submenu after a short delay, and moving to a sibling item closes that submenu",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "A diagonal move from the middle of a submenu trigger to any item in its submenu keeps the submenu open (a safe triangle), while moving to a sibling item outside that path closes it",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Activating a command item closes all open menu levels, restores focus to the root menu trigger, and never leaves focus inside hidden content",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            },
+            {
+              "message": "A submenu trigger only opens its submenu and never also runs a command; a default action is the first submenu item or a separate command item",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "Checked items render a visible check mark in the leading slot (::before content is not empty); unchecked items do not",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "At a 375 px viewport, an open submenu sits directly below its trigger item and its box does not intersect the trigger box",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "After a pointer activation of a command, focus returns to the root trigger without :focus-visible",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": true,
+              "a11yLabel": "Focus & inert"
+            }
+          ]
+        },
+        "form-fields-automatically-fit-contents": {
+          "prompt": "Add a form with a text input, a textarea, and a select dropdown (with some options) and automatically size them based on their content so they don't have unnecessary whitespace.",
+          "discipline": "forms",
+          "unguided": {
+            "passed": 5,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 109872,
+            "uncachedTokens": 26199,
+            "totalTokens": 80335,
+            "guidesUsed": [],
+            "earlyFailure": false
+          },
+          "guided": {
+            "passed": 10,
+            "total": 10,
+            "a11yPassed": 0,
+            "a11yTotal": 0,
+            "runtimeMs": 173645,
+            "uncachedTokens": 43023,
+            "totalTokens": 188439,
+            "guidesUsed": [
+              "form-fields-automatically-fit-contents",
+              "forms"
+            ],
+            "earlyFailure": false
+          },
+          "checks": [
+            {
+              "message": "The input element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a minimum inline size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The input element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit height of auto or fit-content applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has an explicit inline size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a minimum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The textarea element has a maximum block size applied",
+              "unguidedPassed": false,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has field-sizing: content applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            },
+            {
+              "message": "The select element has a maximum inline size applied",
+              "unguidedPassed": true,
+              "guidedPassed": true,
+              "isA11y": false,
+              "a11yLabel": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "testId": "adhoc-2026-10-27_12-00-00-pi",
+      "timestamp": "2026-10-27T12:35:00.000Z",
+      "agent": "pi",
+      "serving": "skills_cli",
+      "model": "openrouter/qwen/qwen3-coder:low",
+      "reasoningEffort": {
+        "level": "low",
+        "source": "model-id"
+      },
+      "taskCount": 40,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 262,
+        "total": 320
+      },
+      "unguidedStats": {
+        "passed": 163,
+        "total": 320
+      },
+      "a11yStats": {
+        "guidedPassed": 34,
+        "guidedTotal": 40,
+        "guidedRate": 85,
+        "unguidedPassed": 21,
+        "unguidedTotal": 40,
+        "unguidedRate": 53,
+        "uplift": 32,
+        "guideCount": 18,
+        "bySubCategory": {}
+      },
+      "earlyFailureRate": 0,
+      "guides": {},
+      "showcase": {}
+    },
+    {
+      "testId": "adhoc-2026-10-26_15-00-00-opencode",
+      "timestamp": "2026-10-26T15:48:00.000Z",
+      "agent": "opencode",
+      "serving": "skills_cli",
+      "model": "gpt-6.1-mini",
+      "reasoningEffort": {
+        "source": "agent-default"
+      },
+      "taskCount": 40,
+      "maxRuns": 1,
+      "guidedStats": {
+        "passed": 250,
+        "total": 320
+      },
+      "unguidedStats": {
+        "passed": 160,
+        "total": 320
+      },
+      "a11yStats": {
+        "guidedPassed": 32,
+        "guidedTotal": 40,
+        "guidedRate": 80,
+        "unguidedPassed": 20,
+        "unguidedTotal": 40,
+        "unguidedRate": 50,
+        "uplift": 30,
+        "guideCount": 18,
+        "bySubCategory": {}
+      },
+      "earlyFailureRate": 0,
+      "guides": {
+        "content-vis": {
+          "guidedPassed": 6,
+          "guidedTotal": 7,
+          "guidedRate": 86,
+          "unguidedPassed": 3,
+          "unguidedTotal": 7,
+          "unguidedRate": 43,
+          "uplift": 43,
+          "taskName": "content-vis-task"
+        }
+      },
+      "showcase": {}
+    }
+  ]
+}

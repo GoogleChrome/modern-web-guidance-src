@@ -1,0 +1,1 @@
+- Update the navigation so each item links to a page section by `id` (via `href="#id"` or `data-scroll-target`), smoothly scrolling to the target element and triggering visual effects, animations, or focus changes on the target only after the smooth scroll has finished.

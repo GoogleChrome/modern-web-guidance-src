@@ -1,0 +1,1 @@
+- Update the navigation bar, action buttons, and footer on the Daily Grind homepage so their text colors automatically adapt to remain readable with high contrast whenever the primary or secondary theme background colors are changed dynamically in the styles.

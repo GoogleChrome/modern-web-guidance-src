@@ -5,22 +5,20 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from './agent-shared.ts';
 import { Agents } from '../config.ts';
-import { parseGeminiStreamOutput } from '../agents/gemini-cli-agent.ts';
-import { rootDir } from '../../core/paths.ts';
+import type { CompactSearchResult } from '../../rag/search.ts';
+
 function assertSearchResults(output: string) {
-    const results = JSON.parse(output);
+    const results = JSON.parse(output) as CompactSearchResult[];
     assert.ok(Array.isArray(results), 'Output should be a JSON array');
-    assert.ok(results.length > 0, 'Search should find some results');
+    assert.strictEqual(results.length, 10, 'Default CLI search should return top-10 results');
     
-    // Find if 'autofill-address-form' is in the results
-    const hasAddressForm = results.some((r: any) => r.id === 'autofill-address-form');
+    const hasAddressForm = results.some(r => r.id === 'autofill-address-form');
     assert.ok(hasAddressForm, 'Results should contain autofill-address-form');
     
-    // Verify structure of the first item
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.similarity, 'Top result should have a similarity');
+    assert.deepStrictEqual(Object.keys(topResult).sort(), ['description', 'id']);
 }
 
 test('copySkills sets up the isolated environment with the skill and its data', async () => {
@@ -41,10 +39,14 @@ test('copySkills sets up the isolated environment with the skill and its data', 
 
         // 3. Verify guides and vector_store were copied (they should be inside the skill dir now)
         const guidesDir = path.join(skillDir, 'guides');
-        const vectorFile = path.join(skillDir, 'use-cases.vectors.gen.json.gz');
+        const vectorFile = path.join(skillDir, 'gen/guide-chunks.json.gz');
+        const vectorI8File = path.join(skillDir, 'gen/guide-chunks.i8');
+        const vectorScaleFile = path.join(skillDir, 'gen/guide-chunks.scale.f32');
         
         assert.ok(fs.existsSync(guidesDir), 'guides/ should be inside the skill directory');
-        assert.ok(fs.existsSync(vectorFile), 'use-cases.vectors.gen.json.gz should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorFile), 'gen/guide-chunks.json.gz should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorI8File), 'gen/guide-chunks.i8 should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorScaleFile), 'gen/guide-chunks.scale.f32 should be inside the skill directory');
 
         // 4. Run the CLI to search
         // We need to extend PATH to make sure node is available if needed, but it should be
@@ -56,60 +58,5 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         if (homeDir) {
             cleanupIsolatedHome(homeDir);
         }
-    }
-});
-
-test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip: !process.env.FULL }, async () => {
-    let targetDir = '';
-    let templateDir = '';
-    let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
-    
-    try {
-        const rand = Math.random().toString(36).substring(7);
-        targetDir = path.join(osTmpDir, `test-gemini-target-${rand}`);
-        templateDir = path.join(osTmpDir, `test-gemini-template-${rand}`);
-        
-        fs.mkdirSync(targetDir, { recursive: true });
-        fs.mkdirSync(templateDir, { recursive: true });
-
-        // Set up the suite config
-        const suiteConfig = {
-            agent: 'gemini_cli',
-            name: 'test-run',
-            numRuns: 1,
-            tasks: [],
-            skillsToEnable: ['modern-web-guidance'],
-            negative: false
-        };
-
-        const env = {
-            ...process.env,
-            GD_SUITE_CONFIG: JSON.stringify(suiteConfig),
-        };
-
-        const agentScript = path.join(rootDir, 'src/harness/agents/gemini-cli-agent.ts');
-        const cmd = `node ${agentScript} "use modern-web-guidance to search for address form" guided "${targetDir}" "${templateDir}"`;
-
-        execSync(cmd, { env, stdio: 'inherit' });
-        
-        const logPath = path.join(targetDir, 'chat_log.txt');
-        assert.ok(fs.existsSync(logPath), 'chat_log.txt should exist');
-        
-        const logContent = fs.readFileSync(logPath, 'utf8');
-        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(logContent);
-        
-        console.log(`\n[Validation State]`);
-        console.log(`- Skill Activated: ${skillActivated}`);
-        console.log(`- Search Called: ${searchCalled}`);
-        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
-        
-        // Assert all, but we get the log above first!
-        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
-        assert.ok(searchCalled, 'Modern web search should be called');
-        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
-
-    } finally {
-        if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
-        if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
     }
 });

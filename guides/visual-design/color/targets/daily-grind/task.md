@@ -1,0 +1,1 @@
+- Refresh the Daily Grind homepage colors around our coffee-brown brand color so the nav, hero, Seasonal Favorites cards, buttons, and footer look good whether visitors use light or dark mode, and add "New" and "Sold out" status badges to the cards.

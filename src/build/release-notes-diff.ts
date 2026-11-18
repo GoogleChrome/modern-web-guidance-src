@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { minimatch } from 'minimatch';
 import { features } from 'web-features';
 import { rootDir } from '../core/paths.ts';
@@ -10,14 +10,11 @@ export interface EvalSummaryItem {
   testId?: string;
   timestamp?: string;
   agent: string;
-  serving?: string;
   model: string;
   taskCount: number;
   assertionCount: number;
   unguidedPassRate: number;
   guidedPassRate: number;
-  skillVersion?: string;
-  cliVersion?: string;
 }
 
 export interface BaselineUpdateInfo {
@@ -53,7 +50,9 @@ const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
-  '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!**/static-model/**',
+  '!**/gen/**',
+  '!**/*.{js,mjs,ts,bin,map,gz,i8,f32}',
   '!**/guides.json',
   '!**/skill-version.txt',
   '!THIRD_PARTY_NOTICES',

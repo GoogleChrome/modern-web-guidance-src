@@ -65,7 +65,7 @@
     .nav-btn.active {
       background: #eff6ff;
       color: var(--primary);
-      border-color: #bfdbfe;
+      border-color: #7b97ba;
     }
 
     /* Main Content Area */
@@ -188,7 +188,7 @@
   <!-- Top Navigation -->
   <nav class="navbar">
     <div class="nav-brand">Performance SPA Demo</div>
-    <button class="nav-btn active" data-target="dashboard-page">Dashboard</button>
+    <button class="nav-btn active" aria-pressed="true" data-target="dashboard-page">Dashboard</button>
     <button class="nav-btn" data-target="analytics-page">Analytics</button>
   </nav>
 
@@ -307,7 +307,9 @@
 
         // Update button active states
         navButtons.forEach(b => b.classList.remove('active'));
+        navButtons.forEach(b => b.setAttribute('aria-pressed', 'false'));
         e.target.classList.add('active');
+        e.target.setAttribute('aria-pressed', 'true')
 
         // Update page visibility
         // Instead of typical SPA behavior (removing DOM or display:none)
@@ -316,10 +318,12 @@
           if (page.id === targetId) {
             page.classList.add('active');
             page.setAttribute('aria-hidden', 'false');
+            page.removeAttribute('inert');
             page.focus();
           } else {
             page.classList.remove('active');
             page.setAttribute('aria-hidden', 'true');
+            page.setAttribute('inert', 'inert');
           }
         });
       });

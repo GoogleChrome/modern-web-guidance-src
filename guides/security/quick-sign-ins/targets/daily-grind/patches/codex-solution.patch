@@ -1,0 +1,411 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..4bf2ef8
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,17 @@
++# The Daily Grind
++
++Run `pnpm install` and `npm run build` to type-check the sign-in client and bundle the homepage into `dist/`. Serve that output through the application's same-origin HTTPS server. The start script previews the built output.
++
++The homepage intercepts ordinary clicks on Rewards, My Account, Order Now, and Sign in. It prepares capabilities and request options without prompting while the visitor browses. When a click occurs before preparation completes or after the challenge expires, it opens the inline sign-in dialog. Otherwise it requests the unified immediate passkey/password chooser directly during the click. Modified clicks preserve normal link behavior.
++
++## Authentication service contract
++
++This repository contains a static homepage, not an authentication server or user database. The deployment must supply these same-origin endpoints; the client never treats a local credential alone as a verified sign-in:
++
++- `POST /api/login/options`: Return WebAuthn request options JSON with a cryptographically random Base64URL challenge, the deployment's `rpId`, `userVerification: "preferred"`, and no credential allowlist. Bind the challenge, expiry, and expected verification preference to the visitor's server session. Allow this endpoint before authentication. Return a fresh challenge on each call.
++- `POST /api/login/verify`: Accept the assertion's `toJSON()` representation. Verify the session-bound, unexpired, single-use challenge, origin, RP ID, signature, and verification preference against the stored credential and public key. Return 404 only for an unknown credential ID, allowing the client to signal its removal when supported. Establish the authenticated session only after successful verification.
++- `POST /api/login/password`: Accept JSON `{ "username": "…", "password": "…" }`. Validate against the account database and establish the same session on success; return 401 for invalid credentials.
++
++Both verification endpoints must return a 2xx response only after establishing the authenticated session using a secure HttpOnly cookie. Apply same-origin/CSRF protection, rate limiting, and non-cacheable responses. Never log credential secrets. Render `data-signed-in="true"` on the body for an existing verified session; protected destinations must also enforce the server session. `/logout` remains the server's logout route. Without these services the homepage shows sign-in errors rather than simulating authentication.
++
++Successful contextual sign-in continues to the original link destination. Signing in from the header leaves the customer on the homepage. Closing the fallback dialog retains the browsing page. The fallback passkey button uses the standard modal request so external security keys and cross-device passkeys remain available; password inputs support browser autofill. No credential requests run on page load.
+diff --git a/index.html b/index.html
+index 66c9173..6d47da8 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,25 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    dialog {
++      margin: auto;
++      width: min(420px, calc(100% - 32px));
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++      color: var(--text);
++    }
++
++    dialog::backdrop { background: rgb(0 0 0 / 50%); }
++    dialog label { display: block; margin-top: 12px; }
++    dialog input { width: 100%; padding: 10px; font: inherit; }
++    dialog button { cursor: pointer; font: inherit; }
++    dialog .btn { border: 0; }
++    .close-dialog { float: right; padding: 4px 10px; }
++    #signin-message { margin-top: 12px; }
++    #auth-status { text-align: center; }
++    [hidden] { display: none !important; }
+   </style>
+ </head>
+ 
+@@ -162,19 +181,21 @@
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/rewards" data-quick-signin>Rewards</a></li>
++      <li><a href="/account" data-quick-signin>My Account</a></li>
++      <li><a href="/signin" class="logout-link" id="signin-link">Sign in</a></li>
++      <li><a href="/logout" class="logout-link" id="logout-link" hidden>Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-quick-signin>Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <p id="auth-status" role="status" aria-live="polite"></p>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +228,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="signin-dialog" aria-labelledby="signin-title" aria-describedby="signin-message">
++    <button type="button" class="close-dialog" id="close-signin" aria-label="Close sign in">×</button>
++    <h2 id="signin-title">Sign in to The Daily Grind</h2>
++    <p id="signin-message" role="status" aria-live="polite">Sign in to continue.</p>
++    <form id="signin-form" action="/api/login/password" method="post">
++      <label for="username">Email or username</label>
++      <input id="username" name="username" autocomplete="username webauthn" required>
++      <label for="password">Password</label>
++      <input id="password" name="password" type="password" autocomplete="current-password" required>
++      <button class="btn" type="submit">Sign in</button>
++    </form>
++    <button class="btn" id="passkey-signin" type="button">Sign in with a passkey</button>
++  </dialog>
++  <script type="module" src="/signin.ts"></script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..2665f19 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,15 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "tsc --noEmit && vite build",
++    "start": "vite preview --host 0.0.0.0 --port ${PORT:-11222}"
++  },
++  "dependencies": {
++    "webauthn-polyfills": "^0.1.7"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^7.1.12"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/signin.ts b/signin.ts
+new file mode 100644
+index 0000000..cb6caad
+--- /dev/null
++++ b/signin.ts
+@@ -0,0 +1,257 @@
++import 'webauthn-polyfills';
++
++type RequestOptionsJSON = {
++  challenge: string;
++  rpId?: string;
++  timeout?: number;
++  userVerification?: UserVerificationRequirement;
++  allowCredentials?: { id: string; type: 'public-key'; transports?: AuthenticatorTransport[] }[];
++};
++
++type WebAuthnAPI = typeof PublicKeyCredential & {
++  getClientCapabilities?: () => Promise<Record<string, boolean>>;
++  parseRequestOptionsFromJSON: (options: RequestOptionsJSON) => PublicKeyCredentialRequestOptions;
++  signalUnknownCredential?: (options: { rpId: string; credentialId: string }) => Promise<void>;
++};
++
++type ImmediateRequest = CredentialRequestOptions & { password: true; uiMode: 'immediate' };
++type Assertion = PublicKeyCredential & { toJSON: () => { id: string } };
++type SavedPassword = Credential & { password: string };
++
++function element<T extends HTMLElement>(id: string, constructor: { new(): T }): T {
++  const node = document.getElementById(id);
++  if (!(node instanceof constructor)) throw new Error(`Missing element: ${id}`);
++  return node;
++}
++
++const dialog = element('signin-dialog', HTMLDialogElement);
++const form = element('signin-form', HTMLFormElement);
++const username = element('username', HTMLInputElement);
++const password = element('password', HTMLInputElement);
++const message = element('signin-message', HTMLParagraphElement);
++const status = element('auth-status', HTMLParagraphElement);
++const signInLink = element('signin-link', HTMLAnchorElement);
++const logoutLink = element('logout-link', HTMLAnchorElement);
++const passkeyButton = element('passkey-signin', HTMLButtonElement);
++const closeButton = element('close-signin', HTMLButtonElement);
++const webauthn = window.PublicKeyCredential as WebAuthnAPI | undefined;
++
++let signedIn = document.body.dataset.signedIn === 'true';
++let busy = false;
++let destination: string | null = null;
++let immediateSupported = false;
++let prepared: { publicKey: PublicKeyCredentialRequestOptions; expires: number } | null = null;
++let preparation: Promise<void> | null = null;
++
++function updateHeader(): void {
++  signInLink.hidden = signedIn;
++  logoutLink.hidden = !signedIn;
++  document.body.dataset.signedIn = String(signedIn);
++}
++
++async function post(path: string, body?: unknown): Promise<Response> {
++  const response = await fetch(path, {
++    method: 'POST',
++    credentials: 'same-origin',
++    cache: 'no-store',
++    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
++  });
++  return response;
++}
++
++async function requestOptions(): Promise<PublicKeyCredentialRequestOptions> {
++  if (!webauthn) throw new Error('Passkeys are unavailable in this browser. Please use your password.');
++  const response = await post('/api/login/options');
++  if (!response.ok) throw new Error('Sign in is temporarily unavailable. Please try again.');
++  const json: RequestOptionsJSON = await response.json();
++  if (!json || typeof json.challenge !== 'string' || !json.challenge) {
++    throw new Error('Sign in is temporarily unavailable. Please try again.');
++  }
++  return webauthn.parseRequestOptionsFromJSON(json);
++}
++
++// Prepare data only. Credential requests must originate from a user action.
++function prepareImmediateSignIn(): Promise<void> {
++  if (preparation) return preparation;
++  const operation = (async () => {
++    try {
++      if (!window.isSecureContext || !navigator.credentials?.get || !webauthn?.getClientCapabilities) return;
++      const capabilities = await webauthn.getClientCapabilities();
++      immediateSupported = Boolean(capabilities?.immediateGet);
++      if (!immediateSupported || signedIn) return;
++      const publicKey = await requestOptions();
++      // Immediate requests must never restrict the credential IDs.
++      delete publicKey.allowCredentials;
++      prepared = { publicKey, expires: Date.now() + Math.min(publicKey.timeout ?? 60000, 60000) };
++    } catch {
++      // Unsupported clients and network failures retain the inline sign-in flow.
++      prepared = null;
++    }
++  })();
++  preparation = operation;
++  void operation.then(() => { if (preparation === operation) preparation = null; });
++  return operation;
++}
++
++async function verifyCredential(credential: Credential | null, publicKey: PublicKeyCredentialRequestOptions): Promise<void> {
++  if (!credential) throw new DOMException('No credential selected', 'NotAllowedError');
++  if (credential.type === 'public-key') {
++    const assertion = credential as Assertion;
++    const encoded = assertion.toJSON();
++    const response = await post('/api/login/verify', encoded);
++    if (response.status === 404) {
++      if (webauthn?.signalUnknownCredential) {
++        try {
++          await webauthn.signalUnknownCredential({
++            rpId: publicKey.rpId || window.location.hostname,
++            credentialId: encoded.id,
++          });
++        } catch {
++          // Password-manager synchronization must not block alternative sign in.
++        }
++      }
++      throw new Error('This passkey is no longer recognized. Use your password or another passkey.');
++    }
++    if (!response.ok) throw new Error('We could not verify this passkey. Please try another sign-in method.');
++    return;
++  }
++  if (credential.type === 'password' && 'password' in credential && typeof credential.password === 'string') {
++    await verifyPassword(credential.id, (credential as SavedPassword).password);
++    return;
++  }
++  throw new Error('Please sign in with your password or a passkey.');
++}
++
++async function verifyPassword(id: string, secret: string): Promise<void> {
++  const response = await post('/api/login/password', { username: id, password: secret });
++  if (!response.ok) {
++    throw new Error(response.status === 401
++      ? 'Your username or password was not recognized. Please try again.'
++      : 'Sign in is temporarily unavailable. Please try again.');
++  }
++}
++
++function setBusy(value: boolean): void {
++  busy = value;
++  form.querySelectorAll('input, button').forEach(node => {
++    if (node instanceof HTMLInputElement || node instanceof HTMLButtonElement) node.disabled = value;
++  });
++  passkeyButton.disabled = value;
++  closeButton.disabled = value;
++  form.setAttribute('aria-busy', String(value));
++  status.textContent = value ? 'Signing you in…' : '';
++}
++
++function showFallback(text = 'Sign in to continue where you left off.'): void {
++  message.textContent = text;
++  if (!dialog.open) dialog.showModal();
++}
++
++function completeSignIn(): void {
++  signedIn = true;
++  prepared = null;
++  password.value = '';
++  updateHeader();
++  dialog.close();
++  status.textContent = 'You are signed in.';
++  const next = destination;
++  destination = null;
++  if (next) window.location.assign(next);
++}
++
++function errorMessage(error: unknown): string {
++  if (error instanceof Error && error.name === 'NotAllowedError') {
++    return 'Sign in with your password, or choose a passkey from another device.';
++  }
++  if (error instanceof TypeError) return 'Unable to connect. Please try signing in again.';
++  return error instanceof Error ? error.message : 'Unable to sign in. Please try again.';
++}
++
++// This handler calls get() synchronously with the click, preserving activation.
++function quickSignIn(event: MouseEvent, link: HTMLAnchorElement): void {
++  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++  if (signedIn && link !== signInLink) return;
++  event.preventDefault();
++  if (busy) return;
++  destination = link === signInLink ? null : link.href;
++  const options = prepared;
++  if (!immediateSupported || !options || options.expires <= Date.now()) {
++    showFallback();
++    return;
++  }
++  prepared = null;
++  setBusy(true);
++  const request: ImmediateRequest = {
++    password: true,
++    publicKey: options.publicKey,
++    uiMode: 'immediate',
++  };
++  // No AbortSignal and no allowCredentials list for immediate UI.
++  void (async () => {
++    try {
++      const credential = await navigator.credentials.get(request);
++      await verifyCredential(credential, options.publicKey);
++      setBusy(false);
++      completeSignIn();
++    } catch (error) {
++      setBusy(false);
++      showFallback(errorMessage(error));
++    }
++  })();
++}
++
++document.querySelectorAll<HTMLAnchorElement>('[data-quick-signin], #signin-link').forEach(link => {
++  link.addEventListener('click', event => quickSignIn(event, link));
++});
++
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  if (busy) return;
++  const id = username.value;
++  const secret = password.value;
++  setBusy(true);
++  void (async () => {
++    try {
++      await verifyPassword(id, secret);
++      setBusy(false);
++      completeSignIn();
++    } catch (error) {
++      setBusy(false);
++      message.textContent = errorMessage(error);
++      password.focus();
++    }
++  })();
++});
++
++passkeyButton.addEventListener('click', () => {
++  if (busy) return;
++  setBusy(true);
++  void (async () => {
++    try {
++      // Finish any preparation first so session challenges cannot overwrite each other.
++      await preparation;
++      prepared = null;
++      const publicKey = await requestOptions();
++      const credential = await navigator.credentials.get({ publicKey });
++      await verifyCredential(credential, publicKey);
++      setBusy(false);
++      completeSignIn();
++    } catch (error) {
++      setBusy(false);
++      message.textContent = errorMessage(error);
++    }
++  })();
++});
++
++closeButton.addEventListener('click', () => { if (!busy) dialog.close(); });
++dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
++dialog.addEventListener('close', () => {
++  password.value = '';
++  destination = null;
++  if (!signedIn) void prepareImmediateSignIn();
++});
++
++passkeyButton.hidden = !window.isSecureContext || !webauthn || !navigator.credentials?.get;
++updateHeader();
++void prepareImmediateSignIn();
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..68657c9
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["signin.ts"]
++}

@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Custom text decorations</title>
+
+  <!-- Colors, spacing, typography and the initial layout (.wrapper, .flow, .box, .callout, .cluster, .switcher) come from this shared stylesheet -->
+  <link rel="stylesheet" href="https://codepen.io/web-dot-dev/pen/EaPZzOb.css">
+
+  <style>
+    /* Every value you might want to restyle is a custom property. */
+    :root {
+      --deco-color: var(--color-primary, #3740ff);
+      --deco-thickness: 2px;
+      --deco-inset: 0.5em;
+
+      --sample-size: 1.75rem;
+      --sample-weight: 500;
+
+      --reveal-duration: 0.35s;
+      --reveal-easing: ease;
+
+      --ring-width: 3px;
+      --ring-start: var(--color-primary, #3740ff);
+      --ring-end: #d93025;
+
+      --shape-stroke: 2px;
+      --shape-color: var(--color-primary-dark, #272eb5);
+
+      --draw-duration: 0.7s;
+    }
+
+    h2 {
+      margin-bottom: 0;
+    }
+
+    h2+p {
+      margin-top: 0.5rem;
+      color: var(--color-mid, #5f6368);
+    }
+
+    code {
+      white-space: nowrap;
+    }
+
+    pre {
+      padding: var(--metric-box-spacing, 1rem);
+      overflow-x: auto;
+      background: var(--color-off-white, #f3f4f4);
+      border: 1px solid var(--color-stroke, #dadce0);
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: none;
+      font-size: inherit;
+      white-space: pre;
+    }
+
+    .sample {
+      font-size: var(--sample-size);
+      font-weight: var(--sample-weight);
+      line-height: 1.3;
+      text-align: left;
+    }
+
+    /* Inside a box the samples stack tightly; the section's flow spacing handles everything else */
+    .box .sample {
+      margin: 0;
+    }
+
+    .box .sample+.sample {
+      margin-top: 0.5rem;
+    }
+
+    .caption {
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--color-mid, #5f6368);
+    }
+
+    /* ---------- Feature support ---------- */
+
+    .support {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.25rem;
+      margin: 0.75rem 0 0;
+      padding: 0;
+    }
+
+    .support li {
+      margin: 0;
+    }
+
+    .support li::before {
+      content: "✕ ";
+      color: #d93025;
+      font-weight: 700;
+    }
+
+    .support li[data-supported="true"]::before {
+      content: "✓ ";
+      color: #1e8e3e;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--deco-color);
+      outline-offset: 3px;
+    }
+
+    /* ---------- 1. text-decoration ---------- */
+
+    /* :where() keeps the defaults at zero specificity so any override wins */
+    :where(.deco, .skip-ink, .skip-spaces, .inset, .reveal) {
+      text-decoration: underline solid var(--deco-color) var(--deco-thickness);
+      text-underline-offset: 0.2em;
+    }
+
+    .deco-over {
+      text-decoration-line: overline;
+    }
+
+    .deco-through {
+      text-decoration-line: line-through;
+    }
+
+    /* ---------- 2. text-decoration-skip-ink ---------- */
+
+    .skip-ink {
+      text-decoration-skip-ink: var(--skip-ink, auto);
+    }
+
+    /* Sit the line on the ideographs so there is ink for skip-ink to skip */
+    .skip-ink[lang="ja"] {
+      text-underline-offset: 0.02em;
+    }
+
+    /* ---------- 3. text-decoration-skip-spaces ---------- */
+
+    .skip-spaces {
+      display: inline-block;
+      white-space: pre;
+      text-decoration-skip-spaces: var(--skip-spaces, start end);
+    }
+
+    /* ---------- 4. text-decoration-inset ---------- */
+
+    .inset-trim {
+      text-decoration-inset: var(--deco-inset);
+    }
+
+    .inset-extend {
+      text-decoration-inset: calc(var(--deco-inset) * -1);
+    }
+
+    /* Hover reveal: the underline starts trimmed to nothing, then grows as the end inset returns to 0 */
+    .reveal {
+      color: var(--color-primary-dark, #272eb5);
+      font-weight: 500;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        text-decoration-inset: 0 100%;
+        transition: text-decoration-inset var(--reveal-duration) var(--reveal-easing);
+      }
+
+      .reveal:is(:hover, :focus-visible) {
+        text-decoration-inset: 0 0;
+      }
+    }
+
+    /* ---------- 5. Pseudo-element line with border-shape ---------- */
+
+    .draw {
+      position: relative;
+      display: inline-block;
+      padding-block-end: 0.4em;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .draw::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      pointer-events: none;
+      /* Straight fallback line where border-shape is unsupported */
+      border-block-end: var(--deco-thickness) solid var(--deco-color);
+    }
+
+    @supports (border-shape: circle(50%)) {
+      .draw::after {
+        block-size: 0.4em;
+        border: var(--deco-thickness) solid var(--deco-color);
+        border-shape: shape(from 0% 50%,
+          curve to 20% 50% with 5% 0% / 15% 100%,
+          smooth to 40% 50% with 35% 100%,
+          smooth to 60% 50% with 55% 100%,
+          smooth to 80% 50% with 75% 100%,
+          smooth to 100% 50% with 95% 100%);
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .draw::after {
+        clip-path: inset(-1em 100% -1em 0);
+        transition: clip-path var(--draw-duration) ease-out;
+      }
+
+      .draw:is(:hover, :focus-visible)::after {
+        clip-path: inset(-1em 0 -1em 0);
+      }
+    }
+
+    /* ---------- 6. background-clip: border-area ---------- */
+
+    .chip {
+      display: inline-block;
+      padding: 0.25em 0.9em;
+      border: var(--ring-width) solid var(--ring-start);
+      border-radius: 999px;
+      font-weight: 500;
+    }
+
+    @supports (background-clip: border-area) {
+      .chip {
+        border-color: transparent;
+        /* The gradient paints only under the border, so the middle stays see-through */
+        background: linear-gradient(135deg, var(--ring-start), var(--ring-end)) border-box;
+        background-clip: border-area;
+      }
+    }
+
+    /* ---------- 7. border-shape ---------- */
+
+    .tag {
+      --stroke: var(--shape-stroke);
+      position: relative;
+      display: inline-block;
+      padding: 0.2em 1.5em 0.2em 0.9em;
+      border: var(--stroke) solid transparent;
+      font-weight: 500;
+    }
+
+    /* Fallback: a clipped pseudo-element draws the outline where border-shape is unsupported */
+    @supports not (border-shape: circle(50%)) {
+      .tag::before {
+        content: "";
+        position: absolute;
+        inset: calc(var(--stroke) * -1);
+        background: var(--shape-color);
+        pointer-events: none;
+        clip-path: polygon(evenodd,
+          0 0, 85% 0, 100% 50%, 85% 100%, 0 100%,
+          var(--stroke) var(--stroke),
+          calc(85% - var(--stroke)) var(--stroke),
+          calc(100% - var(--stroke) * 2) 50%,
+          calc(85% - var(--stroke)) calc(100% - var(--stroke)),
+          var(--stroke) calc(100% - var(--stroke)));
+      }
+    }
+
+    @supports (border-shape: circle(50%)) {
+      .tag {
+        border-color: var(--shape-color);
+        border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrapper flow">
+    <header class="flow" style="--flow-space: 1rem">
+      <h1>Custom text decorations</h1>
+      <p>Style, trim and animate underlines, overlines and strikethroughs on any text, with real text-decoration
+        properties, not borders or background gradients. Each section shows the result and the CSS that produces it.
+        Every value is a custom property, so the styles are easy to change.</p>
+
+      <div class="callout">
+        <p>Several of these properties are new. Most are wrapped in <code>@supports</code> and fall back to a plain
+          underline or border, and the rest are simply ignored where unsupported. The list shows what this browser supports.</p>
+        <ul class="support" id="support" aria-label="Browser support for the properties on this page"></ul>
+      </div>
+    </header>
+
+    <hr>
+
+    <section class="flow" id="text-decoration" style="--flow-space: 1rem">
+      <h2>text-decoration</h2>
+      <p>Line, style, color and thickness in one shorthand, with <code>text-underline-offset</code> for the gap.</p>
+      <p class="sample">
+        <span class="deco">Underline</span>,
+        <span class="deco deco-over">overline</span> and
+        <span class="deco deco-through">strikethrough</span>
+      </p>
+      <pre><code>:where(.deco) {
+  text-decoration: underline solid var(--deco-color) var(--deco-thickness);
+  text-underline-offset: 0.2em;
+}
+
+.deco-over    { text-decoration-line: overline; }
+.deco-through { text-decoration-line: line-through; }</code></pre>
+    </section>
+
+    <hr>
+
+    <section class="flow" id="skip-ink" style="--flow-space: 1rem">
+      <h2>text-decoration-skip-ink</h2>
+      <p><code>auto</code> breaks the line around descenders. <code>none</code> draws straight through. <code>all</code>
+        skips ink everywhere, including ideographic text such as Japanese, where <code>auto</code> does not.</p>
+      <div class="switcher">
+        <div class="box">
+          <p class="sample"><span class="skip-ink" style="--skip-ink: auto">Gypsy jumping</span></p>
+          <p class="sample"><span class="skip-ink" lang="ja" style="--skip-ink: auto">今日は天気</span></p>
+          <span class="caption"><code>auto</code></span>
+        </div>
+        <div class="box">
+          <p class="sample"><span class="skip-ink" style="--skip-ink: none">Gypsy jumping</span></p>
+          <p class="sample"><span class="skip-ink" lang="ja" style="--skip-ink: none">今日は天気</span></p>
+          <span class="caption"><code>none</code></span>
+        </div>
+        <div class="box">
+          <p class="sample"><span class="skip-ink" style="--skip-ink: all">Gypsy jumping</span></p>
+          <p class="sample"><span class="skip-ink" lang="ja" style="--skip-ink: all">今日は天気</span></p>
+          <span class="caption"><code>all</code></span>
+        </div>
+      </div>
+      <pre><code>.skip-ink {
+  text-decoration-skip-ink: all; /* auto | none | all */
+}</code></pre>
+    </section>
+
+    <hr>
+
+    <section class="flow" id="skip-spaces" style="--flow-space: 1rem">
+      <h2>text-decoration-skip-spaces</h2>
+      <p>Controls whether the line is drawn under leading and trailing spaces, or all spaces. Each sample has two spaces
+        at both ends and one between words.</p>
+      <div class="switcher">
+        <div class="box">
+          <p class="sample"><span class="skip-spaces" style="--skip-spaces: none"> two words </span></p><span
+            class="caption"><code>none</code> – spaces are decorated</span>
+        </div>
+        <div class="box">
+          <p class="sample"><span class="skip-spaces" style="--skip-spaces: start end"> two words </span></p><span
+            class="caption"><code>start end</code> – default, ends skipped</span>
+        </div>
+        <div class="box">
+          <p class="sample"><span class="skip-spaces" style="--skip-spaces: all"> two words </span></p><span
+            class="caption"><code>all</code> – every space skipped</span>
+        </div>
+      </div>
+      <pre><code>.skip-spaces {
+  white-space: pre; /* keep the spaces so there is something to skip */
+  text-decoration-skip-spaces: all; /* none | all | start | end | start end */
+}</code></pre>
+    </section>
+
+    <hr>
+
+    <section class="flow" id="inset" style="--flow-space: 1rem">
+      <h2>text-decoration-inset</h2>
+      <p>Positive values pull the ends of the line inward, negative values push them outward. Transitioning it gives a
+        hover reveal with no border or background gradient.</p>
+      <div class="switcher">
+        <div class="box">
+          <p class="sample"><span class="inset inset-trim">Trimmed</span></p><span
+            class="caption"><code>text-decoration-inset: var(--deco-inset)</code></span>
+        </div>
+        <div class="box">
+          <p class="sample"><span class="inset inset-extend">Extended</span></p><span
+            class="caption"><code>text-decoration-inset: calc(var(--deco-inset) * -1)</code></span>
+        </div>
+      </div>
+      <p class="sample">Hover or focus: <a class="reveal" href="#inset">an animated underline</a></p>
+      <pre><code>.inset-trim   { text-decoration-inset: var(--deco-inset); }
+.inset-extend { text-decoration-inset: calc(var(--deco-inset) * -1); }
+
+/* Hover reveal: start with the end trimmed by 100%, then return it to 0 */
+.reveal {
+  text-decoration-inset: 0 100%;
+  transition: text-decoration-inset var(--reveal-duration) var(--reveal-easing);
+}
+
+.reveal:is(:hover, :focus-visible) {
+  text-decoration-inset: 0 0;
+}</code></pre>
+    </section>
+
+    <hr>
+
+    <section class="flow" id="draw" style="--flow-space: 1rem">
+      <h2>Pseudo-element line</h2>
+      <p>A <code>border-shape</code> squiggle on a pseudo-element replaces the underline, and <code>clip-path</code>
+        draws it on. Without <code>border-shape</code> the line is straight but still draws on.</p>
+      <p class="sample">
+        <a class="draw" href="#draw">Hover or focus to draw this</a>
+      </p>
+      <pre><code>.draw::after {
+  border-shape: shape(from 0% 50%, curve to 20% 50% with 5% 0% / 15% 100%, /* … */);
+  clip-path: inset(-1em 100% -1em 0);   /* fully hidden */
+  transition: clip-path var(--draw-duration) ease-out;
+}
+
+.draw:is(:hover, :focus-visible)::after {
+  clip-path: inset(-1em 0 -1em 0);      /* fully drawn */
+}</code></pre>
+    </section>
+
+    <hr>
+
+    <section class="flow" id="border-area" style="--flow-space: 1rem">
+      <h2>background-clip: border-area</h2>
+      <p>The background is painted only under the border, giving a gradient outline while the inside stays transparent.
+      </p>
+      <div class="cluster">
+        <span class="chip">Underline</span>
+        <span class="chip">Overline</span>
+        <span class="chip">Strikethrough</span>
+      </div>
+      <pre><code>.chip {
+  border: var(--ring-width) solid transparent;
+  background: linear-gradient(135deg, var(--ring-start), var(--ring-end)) border-box;
+  background-clip: border-area;
+}</code></pre>
+    </section>
+
+    <hr>
+
+    <section class="flow" id="border-shape" style="--flow-space: 1rem">
+      <h2>border-shape</h2>
+      <p>The border follows a shape <code>border-radius</code> cannot draw, so a word can be tagged without extra markup
+        or SVG.</p>
+      <p class="sample">Read the <span class="tag">new</span> notes.</p>
+      <pre><code>.tag {</code>
+  border: var(--shape-stroke) solid var(--shape-color);
+  border-shape: polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%);
+}</code></pre>
+    </section>
+  </main>
+
+  <script>
+    const checks = [
+      ['text-decoration-skip-ink: all', () => CSS.supports('text-decoration-skip-ink', 'all')],
+      ['text-decoration-skip-spaces', () => CSS.supports('text-decoration-skip-spaces', 'all')],
+      ['text-decoration-inset', () => CSS.supports('text-decoration-inset', '0.25em')],
+      ['background-clip: border-area', () => CSS.supports('background-clip', 'border-area')],
+      ['border-shape', () => CSS.supports('border-shape', 'circle(50%)')]
+    ];
+
+    document.querySelector('#support').append(...checks.map(([name, test]) => {
+      const item = document.createElement('li');
+      item.dataset.supported = test();
+      item.textContent = name;
+      return item;
+    }));
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,241 @@
+diff --git a/index.html b/index.html
+index 66c9173..8f3f014 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,163 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Loyalty Rewards & Progress Ring */
++    @property --value {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 0;
++    }
++
++    .rewards-section {
++      margin-top: 50px;
++      text-align: center;
++    }
++
++    .rewards-card {
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      max-width: 500px;
++      margin: 20px auto 0;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 20px;
++    }
++
++    /* Hide native bars */
++    progress.progress-ring::-webkit-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.progress-ring::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++    progress.progress-ring::-moz-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.progress-ring::slider-fill {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-webkit-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-moz-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::slider-fill {
++      display: none;
++      background: none;
++    }
++
++    .progress-ring-wrapper,
++    .ring-wrapper {
++      position: relative;
++      display: grid;
++      place-items: center;
++    }
++
++    progress.progress-ring {
++      -webkit-appearance: none;
++      appearance: none;
++      --size: 160px;
++      --thickness: 16px;
++      --track-color: var(--secondary);
++      --fill-color: var(--accent);
++      --value: attr(value type(<number>));
++      width: var(--size);
++      height: var(--size);
++
++      transition: --value 0s ease-in-out;
++      @media (prefers-reduced-motion: no-preference) {
++        transition-duration: 0.4s;
++      }
++      border-radius: 50%;
++
++      background: conic-gradient(
++        var(--fill-color) calc(var(--value) * 1%),
++        var(--track-color) 0
++      );
++
++      /* MANDATORY: Clip the background to the border-area. */
++      background-clip: border-area;
++      border: var(--thickness) solid transparent;
++      background-origin: border-box;
++
++      @supports not (background-clip: border-area) {
++        mask-image: radial-gradient(
++          transparent calc(50% - var(--thickness)),
++          black calc(50% - var(--thickness) + 0.5px)
++        );
++        border: 0;
++      }
++    }
++
++    /* Change the fill color when the progress reaches 100% */
++    progress.progress-ring[value="100"] {
++      --fill-color: #10b981;
++    }
++
++    .progress-ring-content,
++    .ring-content {
++      /* Positioned in the center of the wrapper */
++      position: absolute;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .ring-value {
++      font-size: 1.75rem;
++      font-weight: bold;
++      line-height: 1.1;
++    }
++
++    .ring-label {
++      font-size: 0.8rem;
++      color: var(--text);
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .rewards-controls {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++      justify-content: center;
++    }
++
++    .rewards-controls .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn-accent:hover {
++      background: #ff9100;
++    }
+   </style>
+ </head>
+ 
+@@ -195,8 +352,72 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Loyalty Rewards</h2>
++      <div class="rewards-card">
++        <h3>Your Next Free Drink</h3>
++        <div class="progress-ring-wrapper ring-wrapper">
++          <progress id="loyalty-progress" value="75" max="100" aria-label="Loyalty rewards progress toward next free drink" class="progress-ring"></progress>
++          <div id="loyalty-ring-content" class="progress-ring-content ring-content">
++            <span class="ring-value" id="loyalty-percentage">75%</span>
++            <span class="ring-label" id="loyalty-points">75 / 100 Beans</span>
++          </div>
++        </div>
++        <p id="loyalty-status-message">You're only <strong>25 Beans</strong> away from a complimentary handcrafted beverage!</p>
++        <div class="rewards-controls">
++          <button type="button" class="btn btn-accent" id="add-beans-btn">+25 Beans (Log Visit)</button>
++          <a href="/rewards" class="btn">Rewards Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <script>
++    (function () {
++      const progress = document.getElementById('loyalty-progress');
++      const percentageEl = document.getElementById('loyalty-percentage');
++      const pointsEl = document.getElementById('loyalty-points');
++      const statusMessageEl = document.getElementById('loyalty-status-message');
++      const addBeansBtn = document.getElementById('add-beans-btn');
++
++      if (!progress) return;
++
++      // Fallback for browsers that don't support CSS attr() with type(<number>)
++      if (!CSS.supports('width: attr(value type(<number>))')) {
++        progress.style.setProperty('--value', progress.getAttribute('value'));
++        const observer = new MutationObserver(() => {
++          progress.style.setProperty('--value', progress.getAttribute('value'));
++        });
++        observer.observe(progress, {
++          attributes: true,
++          attributeFilter: ['value'],
++        });
++      }
++
++      if (addBeansBtn) {
++        addBeansBtn.addEventListener('click', () => {
++          const currentVal = Number(progress.getAttribute('value')) || 0;
++          const nextVal = currentVal >= 100 ? 25 : Math.min(100, currentVal + 25);
++          progress.setAttribute('value', String(nextVal));
++
++          if (percentageEl) percentageEl.textContent = `${nextVal}%`;
++          if (pointsEl) pointsEl.textContent = `${nextVal} / 100 Beans`;
++          if (statusMessageEl) {
++            if (nextVal >= 100) {
++              statusMessageEl.innerHTML = '<strong>Congratulations!</strong> Your next handcrafted drink is free!';
++              addBeansBtn.textContent = 'Redeem & Reset';
++            } else {
++              const remaining = 100 - nextVal;
++              statusMessageEl.innerHTML = `You're only <strong>${remaining} Beans</strong> away from a complimentary handcrafted beverage!`;
++              addBeansBtn.textContent = '+25 Beans (Log Visit)';
++            }
++          }
++        });
++      }
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

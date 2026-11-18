@@ -1,0 +1,1 @@
+- Update `index.html` on The Daily Grind homepage to include a styled progress bar in the main content area above the Seasonal Favorites grid that communicates order or reward process completion in both determinate and indeterminate states.

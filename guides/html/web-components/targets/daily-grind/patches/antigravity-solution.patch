@@ -1,0 +1,408 @@
+diff --git a/index.html b/index.html
+index 66c9173..8f4b63c 100644
+--- a/index.html
++++ b/index.html
+@@ -153,6 +153,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./src/coffee-favorite.js"></script>
+ </head>
+ 
+ <body>
+@@ -182,16 +183,19 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <coffee-favorite product-name="Maple Oat Latte"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <coffee-favorite product-name="Dark Roast Espresso"></coffee-favorite>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <coffee-favorite product-name="Cold Brew"></coffee-favorite>
+         </div>
+       </div>
+     </section>
+diff --git a/package.json b/package.json
+index 2bd4d77..62613e8 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node serve.js",
++    "build": "tsc"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/serve.js b/serve.js
+new file mode 100644
+index 0000000..590564d
+--- /dev/null
++++ b/serve.js
+@@ -0,0 +1,50 @@
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 11222;
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.d.ts': 'text/plain; charset=utf-8',
++  '.ts': 'text/plain; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.svg': 'image/svg+xml',
++};
++
++const server = http.createServer((req, res) => {
++  let reqPath = req.url ? req.url.split('?')[0] : '/';
++  if (reqPath === '/') {
++    reqPath = '/index.html';
++  }
++  const filePath = path.join(__dirname, reqPath);
++  if (!filePath.startsWith(__dirname)) {
++    res.statusCode = 403;
++    res.end('Forbidden');
++    return;
++  }
++
++  fs.stat(filePath, (err, stats) => {
++    if (err || !stats.isFile()) {
++      res.statusCode = 404;
++      res.end('Not Found');
++      return;
++    }
++
++    const ext = path.extname(filePath).toLowerCase();
++    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++    res.writeHead(200, { 'Content-Type': contentType });
++    fs.createReadStream(filePath).pipe(res);
++  });
++});
++
++server.listen(PORT, '0.0.0.0', () => {
++  console.log(`Server running at http://localhost:${PORT}/`);
++});
+diff --git a/src/coffee-favorite.d.ts b/src/coffee-favorite.d.ts
+new file mode 100644
+index 0000000..ea11f1a
+--- /dev/null
++++ b/src/coffee-favorite.d.ts
+@@ -0,0 +1,18 @@
++/** A latched favorite state; user changes emit a bubbling, composed change event. */
++export declare class CoffeeFavorite extends HTMLElement {
++    #private;
++    static observedAttributes: string[];
++    constructor();
++    get favorite(): boolean;
++    set favorite(value: boolean);
++    get productName(): string;
++    set productName(value: string);
++    connectedCallback(): void;
++    disconnectedCallback(): void;
++    attributeChangedCallback(): void;
++}
++declare global {
++    interface HTMLElementTagNameMap {
++        'coffee-favorite': CoffeeFavorite;
++    }
++}
+diff --git a/src/coffee-favorite.js b/src/coffee-favorite.js
+new file mode 100644
+index 0000000..7b0fa14
+--- /dev/null
++++ b/src/coffee-favorite.js
+@@ -0,0 +1,115 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      margin-top: 12px;
++    }
++    button {
++      font: inherit;
++      color: var(--primary, #4e342e);
++      background: transparent;
++      border: 1px solid currentColor;
++      border-radius: 5px;
++      padding: 8px 14px;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++    button[aria-pressed="true"] {
++      background: var(--secondary, #d7ccc8);
++    }
++    button:hover {
++      background: var(--secondary, #d7ccc8);
++    }
++    button:focus-visible {
++      outline: 3px solid var(--primary, #4e342e);
++      outline-offset: 3px;
++    }
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++  </style>
++  <button type="button" aria-pressed="false" aria-describedby="favorite-desc" part="button">Save favorite</button>
++  <span id="favorite-desc" class="sr-only">Toggle favorite status for this coffee</span>
++`;
++/** A latched favorite state; user changes emit a bubbling, composed change event. */
++export class CoffeeFavorite extends HTMLElement {
++    static observedAttributes = ['favorite', 'product-name'];
++    #button;
++    constructor() {
++        super();
++        const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
++        if (!root.hasChildNodes()) {
++            root.append(template.content.cloneNode(true));
++        }
++        const button = root.querySelector('button');
++        if (!button) {
++            throw new Error('Expected button element in template');
++        }
++        this.#button = button;
++    }
++    get favorite() {
++        return this.hasAttribute('favorite');
++    }
++    set favorite(value) {
++        this.toggleAttribute('favorite', Boolean(value));
++    }
++    get productName() {
++        return this.getAttribute('product-name') ?? '';
++    }
++    set productName(value) {
++        if (value) {
++            this.setAttribute('product-name', value);
++        }
++        else {
++            this.removeAttribute('product-name');
++        }
++    }
++    connectedCallback() {
++        // Preserve state assigned by a consumer before the custom element upgraded.
++        if (Object.prototype.hasOwnProperty.call(this, 'favorite')) {
++            const value = this.favorite;
++            Reflect.deleteProperty(this, 'favorite');
++            this.favorite = value;
++        }
++        if (Object.prototype.hasOwnProperty.call(this, 'productName')) {
++            const value = this.productName;
++            Reflect.deleteProperty(this, 'productName');
++            this.productName = value;
++        }
++        this.#render();
++        this.#button.addEventListener('click', this.#toggle);
++    }
++    disconnectedCallback() {
++        this.#button.removeEventListener('click', this.#toggle);
++    }
++    attributeChangedCallback() {
++        this.#render();
++    }
++    #toggle = () => {
++        this.favorite = !this.favorite;
++        this.dispatchEvent(new CustomEvent('change', {
++            bubbles: true,
++            composed: true,
++            detail: { favorite: this.favorite },
++        }));
++    };
++    #render() {
++        const name = this.getAttribute('product-name')?.trim() || 'this coffee';
++        const isFav = this.favorite;
++        this.#button.setAttribute('aria-pressed', String(isFav));
++        this.#button.setAttribute('aria-label', `Favorite ${name}`);
++        this.#button.textContent = isFav ? 'Saved favorite' : 'Save favorite';
++    }
++}
++if (typeof customElements !== 'undefined' && !customElements.get('coffee-favorite')) {
++    customElements.define('coffee-favorite', CoffeeFavorite);
++}
+diff --git a/src/coffee-favorite.ts b/src/coffee-favorite.ts
+new file mode 100644
+index 0000000..4c7ec3b
+--- /dev/null
++++ b/src/coffee-favorite.ts
+@@ -0,0 +1,133 @@
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      margin-top: 12px;
++    }
++    button {
++      font: inherit;
++      color: var(--primary, #4e342e);
++      background: transparent;
++      border: 1px solid currentColor;
++      border-radius: 5px;
++      padding: 8px 14px;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++    button[aria-pressed="true"] {
++      background: var(--secondary, #d7ccc8);
++    }
++    button:hover {
++      background: var(--secondary, #d7ccc8);
++    }
++    button:focus-visible {
++      outline: 3px solid var(--primary, #4e342e);
++      outline-offset: 3px;
++    }
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++  </style>
++  <button type="button" aria-pressed="false" aria-describedby="favorite-desc" part="button">Save favorite</button>
++  <span id="favorite-desc" class="sr-only">Toggle favorite status for this coffee</span>
++`;
++
++/** A latched favorite state; user changes emit a bubbling, composed change event. */
++export class CoffeeFavorite extends HTMLElement {
++  static observedAttributes = ['favorite', 'product-name'];
++
++  readonly #button: HTMLButtonElement;
++
++  constructor() {
++    super();
++    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
++    if (!root.hasChildNodes()) {
++      root.append(template.content.cloneNode(true));
++    }
++    const button = root.querySelector('button');
++    if (!button) {
++      throw new Error('Expected button element in template');
++    }
++    this.#button = button;
++  }
++
++  get favorite(): boolean {
++    return this.hasAttribute('favorite');
++  }
++
++  set favorite(value: boolean) {
++    this.toggleAttribute('favorite', Boolean(value));
++  }
++
++  get productName(): string {
++    return this.getAttribute('product-name') ?? '';
++  }
++
++  set productName(value: string) {
++    if (value) {
++      this.setAttribute('product-name', value);
++    } else {
++      this.removeAttribute('product-name');
++    }
++  }
++
++  connectedCallback(): void {
++    // Preserve state assigned by a consumer before the custom element upgraded.
++    if (Object.prototype.hasOwnProperty.call(this, 'favorite')) {
++      const value = this.favorite;
++      Reflect.deleteProperty(this, 'favorite');
++      this.favorite = value;
++    }
++    if (Object.prototype.hasOwnProperty.call(this, 'productName')) {
++      const value = this.productName;
++      Reflect.deleteProperty(this, 'productName');
++      this.productName = value;
++    }
++    this.#render();
++    this.#button.addEventListener('click', this.#toggle);
++  }
++
++  disconnectedCallback(): void {
++    this.#button.removeEventListener('click', this.#toggle);
++  }
++
++  attributeChangedCallback(): void {
++    this.#render();
++  }
++
++  #toggle = (): void => {
++    this.favorite = !this.favorite;
++    this.dispatchEvent(new CustomEvent<{ favorite: boolean }>('change', {
++      bubbles: true,
++      composed: true,
++      detail: { favorite: this.favorite },
++    }));
++  };
++
++  #render(): void {
++    const name = this.getAttribute('product-name')?.trim() || 'this coffee';
++    const isFav = this.favorite;
++    this.#button.setAttribute('aria-pressed', String(isFav));
++    this.#button.setAttribute('aria-label', `Favorite ${name}`);
++    this.#button.textContent = isFav ? 'Saved favorite' : 'Save favorite';
++  }
++}
++
++if (typeof customElements !== 'undefined' && !customElements.get('coffee-favorite')) {
++  customElements.define('coffee-favorite', CoffeeFavorite);
++}
++
++declare global {
++  interface HTMLElementTagNameMap {
++    'coffee-favorite': CoffeeFavorite;
++  }
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..723c82a
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "skipLibCheck": true,
++    "esModuleInterop": true,
++    "forceConsistentCasingInFileNames": true,
++    "declaration": true
++  },
++  "include": ["src/**/*"]
++}

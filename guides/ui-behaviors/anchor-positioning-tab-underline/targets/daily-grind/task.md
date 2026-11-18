@@ -1,0 +1,1 @@
+- Update the navigation bar in index.html to display an active underline indicator on the selected nav item (Menu, Locations, Rewards, or My Account) that smoothly transitions from the previous item's position to the newly selected one when clicked.

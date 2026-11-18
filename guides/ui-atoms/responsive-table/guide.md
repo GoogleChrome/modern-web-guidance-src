@@ -4,6 +4,8 @@ description: Build a data table that presents tabular data with proper header se
 web-feature-ids:
   - sticky-positioning
   - container-queries
+guides:
+  - single-line-overflow
 ---
 
 # Responsive tables
@@ -18,15 +20,20 @@ The core of a responsive table is maintaining the relationship between data cell
 2.  **Sticky Context**: Apply `position: sticky` to both column headers and row headers. This ensures that no matter how far a user scrolls in any direction, they never lose the context of what the data represents.
 3.  **Adaptive Transformations**: Use `@container` queries instead of `@media` queries. This allows the table to adapt based on its own width (e.g., when placed in a sidebar or a narrow dashboard widget) rather than the entire viewport.
 4.  **Label Injection**: In the stacked layout, the `<thead>` is hidden, and accessible headers are injected into each cell using `::before` pseudo-elements and CSS variables.
+5.  **Legible Cells**: Keep long cell text on one line instead of letting columns shrink below legibility. See {{ GUIDE_REF("single-line-overflow") }} for techniques for truncating it and revealing the full text on demand without UX friction.
 
 ## Implementation Steps
 
 ### 1. Markup and Layout
-Structure your table with standard semantic headers. Use a `.table-wrapper` to handle overflow and provide a container for queries.
+
+Structure your table with standard semantic headers. Use a `.table-wrapper` to handle overflow and provide a container for queries. Add a `tabindex="0"` attribute to the container, to ensure that people using only a keyboard can consistently scroll the table.
+
+Give the wrapper a `role="region"` attribute to communicate its purpose. Provide it with an accessible name using `aria-labelledby` (referencing the `id` attribute of an existing element that captions/names the table) or an `aria-label` attribute.
 
 ```html
-<div class="table-wrapper">
+<div tabindex="0" role="region" aria-labelledby="employee-table-caption" class="table-wrapper">
   <table>
+    <caption id="employee-table-caption">Current employee directory</caption>
     <thead>
       <tr>
         <th>Employee</th>
@@ -79,7 +86,7 @@ tbody th {
 ```
 
 ### 3. Responsive Stacked Layout
-When space is limited, hide the original header row and transform the table into cards. Inject labels using pseudo-elements, providing the accessible name directly in CSS.
+When space is limited, hide the original header row and transform the table into cards. Inject labels using pseudo-elements. Only provide alternative text for non-text content, otherwise this may result in both the text content and accessible name being announced by screen readers.
 
 ```css
 @container (width < 600px) {
@@ -112,15 +119,14 @@ When space is limited, hide the original header row and transform the table into
     --label-3: "Status";
   }
 
-  /* Inject labels with accessible names */
+  /* Inject labels */
   td:nth-child(2)::before {
-    /* MANDATORY: The accessible name (after the /) ensures screen readers 
-       announce the label correctly without the trailing colon. */
-    content: var(--label-2) ": " / var(--label-2);
+    /* MANDATORY: If using non-text content, provide the accessible name (after the /) which ensures screen readers hear the text alternative. */
+    content: var(--label-2) ": ";
   }
   /* MANDATORY: Map the label for each column */
   td:nth-child(3)::before {
-    content: var(--label-3) ": " / var(--label-3);
+    content: var(--label-3) ": ";
   }
 }
 ```

@@ -1,2 +1,8 @@
-- The implementation MUST use `transition-behavior: allow-discrete` and `@starting-style` when animating discrete entry and exit states (such as `<dialog>` or `[popover]` elements).
-- The implementation MUST honor `@media (prefers-reduced-motion: reduce)` by disabling or dampening animations without using a blanket `* { animation-duration: 0.01ms !important; }` override.
+- Discrete entry and exit animations (such as on `<dialog>`, `[popover]`, or toggled hidden elements) use `transition-behavior: allow-discrete` and `@starting-style`, and include `overlay` when animating top-layer elements.
+- Animations and spatial transitions honor user motion preferences using `@media (prefers-reduced-motion: reduce)` to tone down or disable movement, or `@media (prefers-reduced-motion: no-preference)` to opt into motion.
+- With `prefers-reduced-motion: reduce`, an element that has an entry or scroll-driven reveal animation has the same computed `opacity` once revealed (opened, or scrolled fully into view) as it has with `prefers-reduced-motion: no-preference`.
+- Reduced-motion styles do not use a blanket `0.01ms` duration override.
+- Reduced-motion styles do not disable non-motion transitions such as `color` or `background-color` changes on interactive elements.
+- Auto-running or persistent animations (such as carousels, banners, or continuous status indicators) provide a mechanism to pause and resume the animation.
+- Each control that pauses or stops persistent animations is a button that can be reached and operated with the keyboard.
+- JavaScript `AnimationEvent` and `TransitionEvent` listeners access the triggered animation via `event.animation` rather than filtering `event.target.getAnimations()` by name.

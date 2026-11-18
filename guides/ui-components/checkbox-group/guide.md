@@ -4,7 +4,7 @@ description: Build a checkbox group for non-mutually exclusive multiple-choice s
 web-feature-ids:
   - subgrid
   - indeterminate
-  - customizable-select # pending a11y SME
+  - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
 ---
