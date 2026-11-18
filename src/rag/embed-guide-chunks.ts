@@ -53,7 +53,21 @@ export interface EmbedChunksOptions {
   postBatch?: (url: string, body: unknown, headers?: Record<string, string>) => Promise<unknown>;
 }
 
-function createDefaultVertexAuthProvider(): () => Promise<VertexEmbedAuth | null> {
+function readDotenv(options: EmbedChunksOptions): Record<string, string | undefined> | null {
+  if (options.envPath === null) return null;
+  const envFile = options.envPath ?? path.join(rootDir, ".env");
+  try {
+    const raw = fs.readFileSync(envFile, "utf8");
+    return parseEnv(raw);
+  } catch (err) {
+    if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
+      throw err;
+    }
+    return null;
+  }
+}
+
+function createDefaultVertexAuthProvider(options: EmbedChunksOptions): () => Promise<VertexEmbedAuth | null> {
   let storagePromise: Promise<import("@google-cloud/storage").Storage> | null = null;
   return async () => {
     try {
@@ -75,16 +89,29 @@ function createDefaultVertexAuthProvider(): () => Promise<VertexEmbedAuth | null
       if (!headers.Authorization && !headers.authorization) {
         return null;
       }
+      const dotenv = readDotenv(options);
       const envProject =
         process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
         process.env.GCLOUD_PROJECT?.trim() ||
-        process.env.ANTIGRAVITY_GCP_PROJECT?.trim();
+        process.env.ANTIGRAVITY_GCP_PROJECT?.trim() ||
+        process.env.ANTHROPIC_VERTEX_PROJECT_ID?.trim() ||
+        dotenv?.GOOGLE_CLOUD_PROJECT?.trim() ||
+        dotenv?.GCLOUD_PROJECT?.trim() ||
+        dotenv?.ANTIGRAVITY_GCP_PROJECT?.trim() ||
+        dotenv?.ANTHROPIC_VERTEX_PROJECT_ID?.trim();
       const projectId =
         envProject || (await storage.authClient.getProjectId().catch(() => ""))?.trim();
       if (!projectId) {
         return null;
       }
-      const location = process.env.VERTEX_EMBED_LOCATION?.trim() || "us-central1";
+      const location =
+        process.env.VERTEX_EMBED_LOCATION?.trim() ||
+        dotenv?.VERTEX_EMBED_LOCATION?.trim() ||
+        "us-central1";
+      if (envProject) {
+        if ("x-goog-user-project" in headers) headers["x-goog-user-project"] = projectId;
+        if ("X-Goog-User-Project" in headers) headers["X-Goog-User-Project"] = projectId;
+      }
       return { projectId, location, headers };
     } catch {
       return null;
@@ -99,18 +126,7 @@ function resolveGeminiApiKey(options: EmbedChunksOptions): string | undefined {
   if (process.env.GEMINI_API_KEY !== undefined) {
     return process.env.GEMINI_API_KEY.trim();
   }
-  if (options.envPath !== null) {
-    const envFile = options.envPath ?? path.join(rootDir, ".env");
-    try {
-      const raw = fs.readFileSync(envFile, "utf8");
-      return parseEnv(raw).GEMINI_API_KEY?.trim();
-    } catch (err) {
-      if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
-        throw err;
-      }
-    }
-  }
-  return undefined;
+  return readDotenv(options)?.GEMINI_API_KEY?.trim();
 }
 
 export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promise<{
@@ -161,7 +177,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
       const allowDefaultVertex =
         options.vertexAuth !== null && !(options.apiKey === "" && options.vertexAuth === undefined);
       if (allowDefaultVertex) {
-        vertexAuthProvider = options.vertexAuth ?? createDefaultVertexAuthProvider();
+        vertexAuthProvider = options.vertexAuth ?? createDefaultVertexAuthProvider(options);
         initialVertexAuth = await vertexAuthProvider();
       }
     }
@@ -211,7 +227,8 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
           throw new Error(`Failed to refresh Vertex AI credentials while embedding ${TEACHER_MODEL}`);
         }
         const location = vAuth.location || "us-central1";
-        const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${vAuth.projectId}/locations/${location}/publishers/google/models/${TEACHER_MODEL}:predict`;
+        const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
+        const url = `https://${host}/v1/projects/${vAuth.projectId}/locations/${location}/publishers/google/models/${TEACHER_MODEL}:predict`;
 
         // gemini-embedding-001 on Vertex AI restricts :predict to 1 instance per request.
         rawVectors = await Promise.all(
