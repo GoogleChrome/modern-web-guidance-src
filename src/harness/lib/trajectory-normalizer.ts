@@ -491,9 +491,6 @@ export function detectAgentForTrial(trialDir: string, existingSummary?: Trajecto
   return undefined;
 }
 
-/** @deprecated Use `detectAgentForTrial`. */
-export const detectAgentForRun = detectAgentForTrial;
-
 export function generateNormalizedTrajectorySync(
   targetDir: string,
   agentName: string,

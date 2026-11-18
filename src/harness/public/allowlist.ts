@@ -169,9 +169,6 @@ export function selectJobs(allowlist: PublicAllowlist, candidates: readonly stri
     .sort();
 }
 
-/** @deprecated Use selectJobs */
-export const selectSuites = selectJobs;
-
 /**
  * `retention.maxAgeDays` half of retention: jobs no older than that (all of
  * them when unset). `maxSuites` is applied after the agent/model gate so
@@ -217,9 +214,6 @@ export function withinJobCaps<T extends { jobId?: string; suiteId?: string; id?:
   return kept;
 }
 
-/** @deprecated Use withinJobCaps */
-export const withinSuiteCaps = withinJobCaps;
-
 /** Returns a copy sorted newest-first by `createdAt`. */
 export function newestFirst<T extends { createdAt: Date }>(jobs: readonly T[]): T[] {
   return [...jobs].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -249,9 +243,6 @@ export function jobCreatedAt(jobId: string, fallback: Date): Date {
   }
   return fallback;
 }
-
-/** @deprecated Use jobCreatedAt */
-export const suiteCreatedAt = jobCreatedAt;
 
 /**
  * The policy rules the schema cannot express. Wildcard `include` patterns
@@ -287,9 +278,6 @@ export function isCuratedJob(jobId: string, allowlist?: PublicAllowlist): boolea
   }
   return !/^(nightly|weekly)-/i.test(jobId);
 }
-
-/** @deprecated Use isCuratedJob */
-export const isCuratedSuite = isCuratedJob;
 
 /**
  * Converts a simple glob to an anchored regular expression. Only `*` (any run

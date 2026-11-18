@@ -51,15 +51,9 @@ export const defaultJobConfig: JobConfig = {
   workerCount: undefined,
 };
 
-/** @deprecated Use `defaultJobConfig`. */
-export const defaultSuiteConfig: JobConfig = defaultJobConfig;
-
 export function mergeJobConfig(overrides: Partial<JobConfig>): JobConfig {
   return { ...defaultJobConfig, ...overrides };
 }
-
-/** @deprecated Use `mergeJobConfig`. */
-export const mergeSuiteConfig = mergeJobConfig;
 
 export async function resolveJobConfig(configPath?: string): Promise<JobConfig> {
   const resolvedConfigPath = configPath
@@ -85,9 +79,6 @@ export async function resolveJobConfig(configPath?: string): Promise<JobConfig> 
   return mergeJobConfig(overrides);
 }
 
-/** @deprecated Use `resolveJobConfig`. */
-export const resolveSuiteConfig = resolveJobConfig;
-
 export interface EnvironmentConfig {
   jetskiCliBin: string;
   claudeCodeCliBin: string;
@@ -106,9 +97,6 @@ export interface JobConfig {
   agent: string;
   workerCount?: number;
 }
-
-/** @deprecated Use `JobConfig`. */
-export type SuiteConfig = JobConfig;
 
 export const config = {
   environment: environmentConfig,

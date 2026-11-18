@@ -15,9 +15,6 @@ export interface JobStore {
   readFile(relPath: string): Promise<Buffer | undefined>;
 }
 
-/** @deprecated Use JobStore */
-export type SuiteStore = JobStore;
-
 export interface JobRef {
   id: string;
   /** Changes whenever the job's `evals.json` is rewritten; opaque. */
@@ -25,9 +22,6 @@ export interface JobRef {
   /** When the job's `evals.json` was written. Used for retention. */
   createdAt: Date;
 }
-
-/** @deprecated Use JobRef */
-export type SuiteRef = JobRef;
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -73,11 +67,6 @@ export class GcsJobStore implements JobStore {
     return refs.filter((ref): ref is JobRef => ref !== undefined);
   }
 
-  /** @deprecated Use listJobs */
-  listSuites(): Promise<JobRef[]> {
-    return this.listJobs();
-  }
-
   async readFile(relPath: string): Promise<Buffer | undefined> {
     try {
       const [contents] = await this.bucket.file(relPath).download();
@@ -90,11 +79,6 @@ export class GcsJobStore implements JobStore {
     }
   }
 }
-
-/** @deprecated Use GcsJobStore */
-export const GcsSuiteStore = GcsJobStore;
-/** @deprecated Use GcsJobStore */
-export type GcsSuiteStore = GcsJobStore;
 
 function isNotFound(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 404;
@@ -120,11 +104,6 @@ export class LocalJobStore implements JobStore {
     return refs;
   }
 
-  /** @deprecated Use listJobs */
-  listSuites(): Promise<JobRef[]> {
-    return this.listJobs();
-  }
-
   async readFile(relPath: string): Promise<Buffer | undefined> {
     const absolute = path.join(this.root, relPath);
     if (!absolute.startsWith(this.root + path.sep)) {
@@ -133,8 +112,3 @@ export class LocalJobStore implements JobStore {
     return fs.existsSync(absolute) ? fs.readFileSync(absolute) : undefined;
   }
 }
-
-/** @deprecated Use LocalJobStore */
-export const LocalSuiteStore = LocalJobStore;
-/** @deprecated Use LocalJobStore */
-export type LocalSuiteStore = LocalJobStore;

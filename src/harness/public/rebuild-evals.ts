@@ -41,9 +41,6 @@ export const PUBLIC_JOB_FIELDS = [
   'totalRuntime',
 ] as const;
 
-/** @deprecated Use PUBLIC_JOB_FIELDS */
-export const PUBLIC_SUITE_FIELDS = PUBLIC_JOB_FIELDS;
-
 /** Per-trial fields copied from each entry in `evals.json#results`. `runtime` and `tokenUsage` are picked field-by-field. */
 export const PUBLIC_TRIAL_FIELDS = [
   'runNumber',
@@ -59,9 +56,6 @@ export const PUBLIC_TRIAL_FIELDS = [
   'expectedToolPrefixes',
 ] as const;
 
-/** @deprecated Use PUBLIC_TRIAL_FIELDS */
-export const PUBLIC_RUN_FIELDS = PUBLIC_TRIAL_FIELDS;
-
 /** Per-check fields copied from each trial's `results` array. */
 export const PUBLIC_CHECK_FIELDS = [
   'id',
@@ -74,9 +68,6 @@ export const PUBLIC_CHECK_FIELDS = [
   'pageSnapshot',
   'browserErrors',
 ] as const;
-
-/** @deprecated Use PUBLIC_CHECK_FIELDS */
-export const PUBLIC_ASSERTION_FIELDS = PUBLIC_CHECK_FIELDS;
 
 /**
  * Why a job was not published. Safe to persist and publish; the message is
@@ -202,9 +193,6 @@ export type PublicTrial = Pick<TrialResult, TrialField> & {
   /** Public artifact names written next to this trial (never copied from the raw trial). */
   files?: string[];
 };
-
-/** @deprecated Use PublicTrial */
-export type PublicRun = PublicTrial;
 
 export type PublicCheck = Pick<TrialCheck, CheckField>;
 

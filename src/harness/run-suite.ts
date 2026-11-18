@@ -85,17 +85,11 @@ export interface RunJobOptions {
   skipSkillBuild?: boolean;
   guidedOnly?: boolean;
   jobConfig?: Partial<JobConfig>;
-  /** @deprecated Use `jobConfig`. */
-  suiteConfig?: Partial<JobConfig>;
 }
-
-/** @deprecated Use `RunJobOptions`. */
-export type RunSuiteOptions = RunJobOptions;
 
 export async function runJob(options: RunJobOptions = {}) {
   loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
-  const overrides = options.jobConfig ?? options.suiteConfig;
-  const jobConfig = overrides ? mergeJobConfig(overrides) : defaultJobConfig;
+  const jobConfig = options.jobConfig ? mergeJobConfig(options.jobConfig) : defaultJobConfig;
 
   if (!options.skipSkillBuild) {
     await ensureGuidedEvalDist();
@@ -139,12 +133,12 @@ export async function runJob(options: RunJobOptions = {}) {
     for (let trialIndex = 1; trialIndex < endTrialIndex; trialIndex++) {
       if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
       console.log(`\n${'='.repeat(60)}`);
-      console.log(`>>> STARTING TRIAL ${trialIndex} <<<`);
+      console.log(`>>> STARTING REPETITION ${trialIndex} <<<`);
       console.log(`${'='.repeat(60)}\n`);
 
-      const trialDir = path.join(jobDir, String(trialIndex));
-      if (!fs.existsSync(trialDir)) {
-        fs.mkdirSync(trialDir, { recursive: true });
+      const trialIndexDir = path.join(jobDir, String(trialIndex));
+      if (!fs.existsSync(trialIndexDir)) {
+        fs.mkdirSync(trialIndexDir, { recursive: true });
       }
 
       const pnpmWorkspacePackages: string[] = [];
@@ -176,7 +170,7 @@ export async function runJob(options: RunJobOptions = {}) {
         }
 
         const [guideName, taskName] = resolvedTask.split('/');
-        const workspaceBaseAppDir = await setupWorkspaceBaseApp(taskInfo, trialDir, guideName, taskName);
+        const workspaceBaseAppDir = await setupWorkspaceBaseApp(taskInfo, trialIndexDir, guideName, taskName);
         if (!workspaceBaseAppDir) {
           continue;
         }
@@ -185,7 +179,7 @@ export async function runJob(options: RunJobOptions = {}) {
         const agentScript = getAgentScript(agent);
 
         const conditionsToRun = options.guidedOnly ? ['guided'] : CONDITIONS;
-        const guideFolder = path.join(trialDir, guideName);
+        const guideFolder = path.join(trialIndexDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
         const graderPath = resolveTaskGraderPath(taskInfo, taskName);
         const baseTaskKey = `${guideName}/${taskInfo.baseApp}`;
@@ -212,11 +206,11 @@ export async function runJob(options: RunJobOptions = {}) {
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all trials for Trial ${trialIndex} with pnpm -r run-agent ...`);
+        console.log(`\n>>> Running all trials for repetition ${trialIndex} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the trial repetition directory.
         // We explicitly list the packages to avoid executing leftover tasks from prior jobs
         // (e.g. when switching from unguided to --guided).
-        const pnpmWorkspacePath = path.join(trialDir, 'pnpm-workspace.yaml');
+        const pnpmWorkspacePath = path.join(trialIndexDir, 'pnpm-workspace.yaml');
         const yamlContent = [
           'packages:',
           ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
@@ -234,10 +228,10 @@ export async function runJob(options: RunJobOptions = {}) {
           }
           pnpmArgs.push('run-agent');
           const jobConfigPath = path.resolve(jobDir, 'suite_config.json');
-          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: jobConfigPath, ENABLE_FILE_LOGGING: 'true' }, trialDir);
-          console.log(`✅ Completed Trial ${trialIndex} executions`);
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: jobConfigPath, ENABLE_FILE_LOGGING: 'true' }, trialIndexDir);
+          console.log(`✅ Completed repetition ${trialIndex} executions`);
         } catch (error) {
-          console.error(`❌ Failed during Trial ${trialIndex} execution`, error);
+          console.error(`❌ Failed during repetition ${trialIndex} execution`, error);
           hasErrors = true;
         } finally {
           if (fs.existsSync(pnpmWorkspacePath)) {
@@ -254,7 +248,7 @@ export async function runJob(options: RunJobOptions = {}) {
           for (const task of tasksToRun) {
             const resolvedTask = resolveTaskName(task);
             const [guideName, taskName] = resolvedTask.split('/');
-            const taskBaseAppDir = path.join(trialDir, guideName, taskName, 'base_app');
+            const taskBaseAppDir = path.join(trialIndexDir, guideName, taskName, 'base_app');
             if (fs.existsSync(taskBaseAppDir)) {
               try {
                 fs.rmSync(taskBaseAppDir, { recursive: true, force: true });
@@ -393,8 +387,8 @@ function resolveTaskName(task: string): string {
   return task;
 }
 
-export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, trialDir: string, guideName: string, taskName: string): Promise<string | null> {
-  const guideFolder = path.join(trialDir, guideName);
+export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, trialIndexDir: string, guideName: string, taskName: string): Promise<string | null> {
+  const guideFolder = path.join(trialIndexDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
   const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
   if (!fs.existsSync(workspaceBaseAppDir)) {
@@ -655,9 +649,6 @@ function getAgentScript(agent: string): string {
   }
   return path.join(import.meta.dirname, 'agents', script);
 }
-
-/** @deprecated Use `runJob`. */
-export const runSuite = runJob;
 
 // If invoked directly, retain legacy fallback logic if strictly required (optional).
 // But for native gd.ts import, the exports are used.

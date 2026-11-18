@@ -80,7 +80,7 @@ test('evaluateTrialChecks splits infra errors (isEarlyFailure: true) from agent-
         Array(5).fill({ passed: false, isEarlyFailure: undefined })
       );
       assert.strictEqual(res[0].message, 'check 1: has header element');
-      assert.ok(res[0].failureReason?.includes('Solution app missing'));
+      assert.ok(res[0].failureReason?.includes('Target app missing'));
     });
 
     await t.test('empty suites in grader results JSON without generation_failed.json is an agent failure (0/N checks)', () => {

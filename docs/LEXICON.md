@@ -103,7 +103,7 @@ Umbrella classification for **Trials** that fail due to harness, sandbox, enviro
 - **Generation Error**: agent crash, non-zero exit before completion, setup failure, upstream rate-limit exhaustion, or **Agent Timeout**.
 - **Grading Infra Error**: missing grader file, Playwright runner crash, missing results report, or non-solution server/browser startup failures during grading.
 
-Not to be confused with solution-caused **`Page-Load / Build Error`** (`pageLoadFailed`), missing solution app files (`Solution app missing`), **`Unguided Leak`**, or authoring-time **`Calibration Failure`**.
+Not to be confused with solution-caused **`Page-Load / Build Error`** (`pageLoadFailed`), missing solution app files (`Target app missing`), **`Unguided Leak`**, or authoring-time **`Calibration Failure`**.
 
 * _Reference_: `src/harness/lib/metrics.ts#isInfraErrorTrial`, `src/harness/lib/collection.ts#evaluateTrialChecks`, `src/authoring/dev-report.ts#DevReportFlag` (`INFRASTRUCTURE_ERROR`)
 * _Avoid_: Early Failure, Run failed before grading, System error (for runtime infra failures), Generation Error (when used as the top-level umbrella)

@@ -20,9 +20,6 @@ export interface TrialCheck {
   browserErrors?: string;
 }
 
-/** @deprecated Use `TrialCheck`. */
-export type ScenarioCheck = TrialCheck;
-
 export interface TrialResult {
   runNumber: number;
   results: TrialCheck[];
@@ -42,9 +39,6 @@ export interface TrialResult {
   tokenUsage?: { total: number; cached: number };
   pageLoad?: PageLoadResult;
 }
-
-/** @deprecated Use `TrialResult`. */
-export type RunResult = TrialResult;
 
 export interface Metrics {
   summary: {
@@ -107,9 +101,6 @@ export interface EvalsReport {
 export function isInfraErrorTrial(checks?: TrialCheck[] | null): boolean {
   return !!(checks && checks.some(c => c.isEarlyFailure));
 }
-
-/** @deprecated Use `isInfraErrorTrial`. */
-export const isEarlyFailureRun = isInfraErrorTrial;
 
 export function calculateMetrics(allResults: Record<string, TrialResult[]>, trialsPerCondition: number): Metrics {
   const conditionOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };

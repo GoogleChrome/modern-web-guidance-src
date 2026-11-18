@@ -151,9 +151,6 @@ export interface JobBuildResult {
   summary?: JobSummary;
 }
 
-/** @deprecated Use JobBuildResult */
-export type SuiteBuildResult = JobBuildResult;
-
 /** What each selected job was last built (or skipped) from. */
 interface BuildState {
   builderVersion: string;
@@ -265,9 +262,6 @@ export async function buildSelectedJobs(options: BuildOptions): Promise<JobBuild
   fs.rmSync(path.join(options.outDir, STAGING_DIR), { recursive: true, force: true });
   return results;
 }
-
-/** @deprecated Use buildSelectedJobs */
-export const buildSelectedSuites = buildSelectedJobs;
 
 type GateOutcome =
   | { publishable: true; report: EvalsReport | undefined; identity: JobIdentity }
@@ -422,9 +416,6 @@ export async function buildJob(jobId: string, options: BuildOptions, preloaded?:
   }
 }
 
-/** @deprecated Use buildJob */
-export const buildSuite = buildJob;
-
 /**
  * Rewrites `<outDir>/public-evals/suites.gen.json` so it lists exactly the
  * complete job directories present. Entries come from this build's results
@@ -471,9 +462,6 @@ export function trialRelativePath(resultKey: string, trialIndex: number): string
   }
   return segments.join('/');
 }
-
-/** @deprecated Use trialRelativePath */
-export const runRelativePath = trialRelativePath;
 
 // --- Incremental state ---
 

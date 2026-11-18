@@ -33,9 +33,6 @@ export function formatJobSummary(data: Partial<EvalsReport>): string {
   ].join('\n');
 }
 
-/** @deprecated Use formatJobSummary */
-export const formatSuiteSummary = formatJobSummary;
-
 function main(): void {
   const args = process.argv.slice(2);
   const evalsJsonPath = args[0];

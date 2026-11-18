@@ -6,7 +6,7 @@ import fs from 'fs';
 import { spawn, execSync } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
-import { resolveSuiteConfig } from '../src/harness/config.ts';
+import { resolveJobConfig } from '../src/harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, resultsDir } from '../src/core/paths.ts';
 import { getTaskMap, SUPPORTED_BASE_APPS } from '../src/core/guide-validation.ts';
 import { loadAllowedEnvFile } from '../src/harness/lib/secret-guard.ts';
@@ -293,7 +293,7 @@ async function main() {
         dryRun: !!values['dry-run'],
         limit: values.limit ? Number(values.limit) : undefined,
         verbose: !!values.verbose,
-        suiteConfig: await resolveSuiteConfig(values.config as string | undefined),
+        jobConfig: await resolveJobConfig(values.config as string | undefined),
         targets: parseTargets(values.targets) ?? ['daily-grind'],
       });
       process.exit(success ? 0 : 1);
@@ -328,12 +328,12 @@ async function main() {
         console.warn(cDim(`Could not switch to branch '${branch}'; continuing on the current branch.`));
       }
       const { devGuide } = await import('../src/authoring/dev.ts');
-      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
+      const mergedJobConfig = await resolveJobConfig(values.config as string | undefined);
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
         verbose: !!values.verbose,
         test: !values['no-test'],
-        suiteConfig: mergedSuiteConfig,
+        jobConfig: mergedJobConfig,
         targets: parseTargets(values.targets),
       });
       process.exit(success ? 0 : 1);
@@ -350,10 +350,10 @@ async function main() {
       const tmpl = requireArg(positionals[1], 'gd run <base-app> <prompt>');
       const prompt = requireArg(positionals[2], 'gd run <base-app> <prompt>');
 
-      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
+      const mergedJobConfig = await resolveJobConfig(values.config as string | undefined);
 
       const { runSingleTask } = await import('../src/harness/run-suite.ts');
-      await runSingleTask(tmpl, prompt, mergedSuiteConfig);
+      await runSingleTask(tmpl, prompt, mergedJobConfig);
       break;
     }
 
@@ -366,7 +366,7 @@ async function main() {
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
+      const mergedJobConfig = await resolveJobConfig(values.config as string | undefined);
 
       if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
@@ -376,12 +376,12 @@ async function main() {
         break;
       }
 
-      const { runSuite } = await import('../src/harness/run-suite.ts');
+      const { runJob } = await import('../src/harness/run-suite.ts');
 
-      const runOptions: any = { suiteConfig: mergedSuiteConfig }; // Pass the merged config
+      const runOptions: any = { jobConfig: mergedJobConfig }; // Pass the merged config
       if (tasks.length > 0) runOptions.tasks = tasks;
 
-      await runSuite(runOptions);
+      await runJob(runOptions);
       break;
     }
 

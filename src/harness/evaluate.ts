@@ -118,9 +118,6 @@ export async function evaluateJob(jobResultsDir: string, jobId: string, jobStart
   }
 }
 
-/** @deprecated Use `evaluateJob`. */
-export const evaluateSuite = evaluateJob;
-
 export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 

@@ -423,7 +423,7 @@ export function evaluateTrialChecks(
     }
   }
   if (!solutionPresent) {
-    return makeAgentFailures('Solution app missing');
+    return makeAgentFailures('Target app missing');
   }
 
   try {
@@ -488,9 +488,6 @@ export function evaluateTrialChecks(
     return makeAgentFailures(err.message || 'System Error');
   }
 }
-
-/** @deprecated Use `evaluateTrialChecks`. */
-export const evaluateScenarioResults = evaluateTrialChecks;
 
 export function sanitizeDiagnosticText(text: string): string {
   return stripVTControlCharacters(String(text))

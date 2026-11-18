@@ -127,9 +127,6 @@ export interface PlaywrightCheck {
   location?: { file?: string; line?: number; column?: number };
 }
 
-/** @deprecated Use PlaywrightCheck */
-export type PlaywrightAssertion = PlaywrightCheck;
-
 export interface TrialContext {
   dir: string;
   score: number;
@@ -139,9 +136,6 @@ export interface TrialContext {
   preprocessed: PreprocessedTrajectory;
   initialPrompt: string;
 }
-
-/** @deprecated Use TrialContext */
-export type RunContext = TrialContext;
 
 /**
  * Finds guide.md, expectations.md, task.md, grader.ts, and base app content for a given guide/task name.
@@ -536,9 +530,6 @@ export function loadTrialContext(trialDir: string): TrialContext {
     initialPrompt
   };
 }
-
-/** @deprecated Use loadTrialContext */
-export const loadRunContext = loadTrialContext;
 
 function computeInterTrialDiff(ctxA: TrialContext, ctxB: TrialContext): string {
   if (ctxA.patchContent && ctxB.patchContent) {

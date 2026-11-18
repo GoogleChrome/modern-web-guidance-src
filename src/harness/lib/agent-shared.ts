@@ -137,9 +137,6 @@ export function getJobConfig(): JobConfig {
   throw new Error('GD_SUITE_CONFIG environment variable is missing.');
 }
 
-/** @deprecated Use `getJobConfig`. */
-export const getSuiteConfig = getJobConfig;
-
 /**
  * Promisified version of child_process.spawn.
  */

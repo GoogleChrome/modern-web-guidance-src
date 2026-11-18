@@ -14,7 +14,7 @@ import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
  */
 
 /**
- * @typedef {import('../harness/lib/metrics.ts').RunResult & {
+ * @typedef {import('../harness/lib/metrics.ts').TrialResult & {
  *   discipline?: string;
  *   files?: string[];
  *   runtime?: { agentRuntime?: number; graderRuntime?: number } | null;
@@ -1456,7 +1456,7 @@ function buildTruthMatrixHtml(taskKey, unguidedTrials, guidedTrials) {
     const maxGuided = guidedTrials ? guidedTrials.length : 0;
     const maxTrials = Math.max(maxUnguided, maxGuided);
     const checkMap = new Map();
-    /** @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} trials
+    /** @param {import('../harness/lib/metrics.ts').TrialResult[] | undefined} trials
  * @param {'unguided' | 'guided'} condition */
     const processResultsToMap = (trials, condition) => {
         if (!trials) return;
@@ -1486,7 +1486,7 @@ function buildTruthMatrixHtml(taskKey, unguidedTrials, guidedTrials) {
     };
     processResultsToMap(unguidedTrials, 'unguided');
     processResultsToMap(guidedTrials, 'guided');
-    /** @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} trials */
+    /** @param {import('../harness/lib/metrics.ts').TrialResult[] | undefined} trials */
     const hasInfraErrorInTrials = (trials) => trials && trials.some(r => isInfraErrorTrial(r.results));
     const uFailed = hasInfraErrorInTrials(unguidedTrials);
     const gFailed = hasInfraErrorInTrials(guidedTrials);

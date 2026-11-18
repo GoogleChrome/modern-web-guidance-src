@@ -160,9 +160,6 @@ export async function downloadJobEvalsIfMissing(
   return downloadPromise;
 }
 
-/** @deprecated Use `downloadJobEvalsIfMissing`. */
-export const downloadSuiteEvalsIfMissing = downloadJobEvalsIfMissing;
-
 /**
  * Resolves the absolute native path for a given file or directory path.
  */
@@ -197,12 +194,6 @@ export function resolveTrialPath(trialDir: string): { absoluteTrialDir: string; 
   relativeTrialPath = relativeTrialPath.replaceAll(path.sep, path.posix.sep).replace(/^suites\//, '');
 
   return { absoluteTrialDir, relativeTrialPath };
-}
-
-/** @deprecated Use `resolveTrialPath`. */
-export function resolveRunPath(runDir: string): { absoluteRunDir: string; relativeRunPath: string } | null {
-  const resolved = resolveTrialPath(runDir);
-  return resolved && { absoluteRunDir: resolved.absoluteTrialDir, relativeRunPath: resolved.relativeTrialPath };
 }
 
 async function downloadSingleDirFromGcs(trialDir: string, token: string | undefined): Promise<boolean> {
@@ -322,6 +313,3 @@ export async function downloadTrialFromGcsIfMissing(trialDir: string): Promise<b
   // 2. Download the primary requested directory
   return downloadSingleDirFromGcs(absoluteTrialDir, token);
 }
-
-/** @deprecated Use `downloadTrialFromGcsIfMissing`. */
-export const downloadRunFromGcsIfMissing = downloadTrialFromGcsIfMissing;
