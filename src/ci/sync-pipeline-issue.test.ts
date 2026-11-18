@@ -501,8 +501,8 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
     });
     assert.equal(report.needsGuidanceIssues[0]?.issueNumber, 1742);
     assert.equal(formatShortDate('2026-10-04'), 'Oct 4');
-    assert.deepEqual(filterCatchAllReviewers(['paulirish', 'micahjo7', 'LeaVerou'], 'guidance'), ['LeaVerou']);
-    assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'micahjo7', 'paulirish'], 'guidance'), ['TravenReese']);
+    assert.deepEqual(filterCatchAllReviewers(['paulirish', 'lusayaa', 'LeaVerou'], 'guidance'), ['LeaVerou']);
+    assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'lusayaa', 'paulirish'], 'guidance'), ['TravenReese']);
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'paulirish'], 'evals'), ['TravenReese']);
   });
 
