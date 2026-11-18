@@ -14,4 +14,4 @@
 - When an interactive rating is needed, the filled portion of the stars follows the range input's value, including half stars, by updating `--control-value` when the input changes.
 - When an interactive rating is needed, hovering the pointer over the stars previews the rating under the pointer without committing the input's value until clicked.
 - Under `forced-colors: active`, the stars are redrawn with the system colors `light-dark(CanvasText, Highlight)` (filled) and a `color-mix()` of `CanvasText` and `Canvas` (empty) and set `forced-color-adjust: none`.
-- When a read-only rating is needed and typed `attr()` is unsupported, the `<meter>`'s `--max` and `--control-value` are set from its `max` and `value` attributes by script.
+- When typed `attr()` is unsupported, the `<meter>`'s and range input's `--min`, `--max`, `--step`, and `--control-value` are set from their `min`, `max`, `step`, and `value` attributes by script.

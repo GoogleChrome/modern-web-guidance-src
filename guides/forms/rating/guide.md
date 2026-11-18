@@ -127,7 +127,9 @@ Reset the range input's native styling and size its track to `(max - min + step)
 ```css
 input[type="range"].rating {
   --min: attr(min type(<number>), 0);
+  --max: attr(max type(<number>), 5);
   --step: attr(step type(<number>), 1);
+  --control-value: attr(value type(<number>), 0);
   --_offset: calc((var(--step) - var(--min)) * var(--star-size));
   --_raw-preview: calc(var(--min) - var(--step) / 2 + var(--pointer-x) * (var(--max) - var(--min) + var(--step)));
   --_preview-value: clamp(var(--min), round(nearest, var(--_raw-preview), var(--step)), var(--max));
@@ -175,7 +177,7 @@ input[type="range"].rating {
 }
 ```
 
-On `input` (and on initial load), mirror `range.min`, `range.max`, `range.step`, and `range.value` into `--min`, `--max`, `--step`, and `--control-value` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
+On `input` (and on initial load), set `--control-value` on `range` to `range.value` via `style.setProperty()` (the `value` attribute only provides the initial default through `attr()`, and does not track the live value), and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
 Preview the rating on pointer hover by writing a generic normalized `--pointer-x` (`0` to `1`) on `pointermove` (skipping `touch` and disabled inputs) and clearing it on `pointerleave` and `pointercancel`:
 
@@ -201,15 +203,17 @@ Optional: to show an existing average until the user rates, set `data-average="3
 
 {{ BASELINE_STATUS("attr") }}
 
-`attr()` with a type is not available everywhere, so the `--max` and `--control-value` assignments on `<meter>` need a script fallback. Detect it and copy the attributes into the properties:
+`attr()` with a type is not available everywhere, so the `--min`, `--max`, `--step`, and `--control-value` assignments on `<meter>` and `<input type="range">` need a script fallback. Detect it and copy the attributes into the properties:
 
 ```js
 if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
-  for (const el of document.querySelectorAll('meter.rating')) {
+  for (const el of document.querySelectorAll('meter.rating, input[type="range"].rating')) {
+    el.style.setProperty('--min', el.getAttribute('min') ?? 0);
     el.style.setProperty('--max', el.getAttribute('max') ?? 5);
-    el.style.setProperty('--control-value', el.getAttribute('value'));
+    el.style.setProperty('--step', el.getAttribute('step') ?? 1);
+    el.style.setProperty('--control-value', el.getAttribute('value') ?? 0);
   }
 }
 ```
 
-The experience is identical; only the mechanism differs. The interactive range input reads `--min` and `--step` from its `min` and `step` attributes via typed `attr()`, and the same script path that sets `--min`, `--max`, `--step`, and `--control-value` on `input` and on initial load also covers browsers without typed `attr()`.
+The experience is identical; only the mechanism differs. After the first edit, the range input's script overrides `--control-value` with the live `range.value`.
