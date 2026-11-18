@@ -1,0 +1,15 @@
+- A circular element uses `border-radius: 50%` together with `aspect-ratio: 1`, and its computed width equals its computed height.
+- A pill-shaped element uses `calc(infinity * 1px)` as its `border-radius`, not a large fixed pixel value.
+- An elliptical or organic element uses `border-radius` with slash syntax to give separate horizontal and vertical radii.
+- At least one element sets `corner-shape` to a non-default value (such as `squircle`, `bevel`, `scoop`, `notch`, or `superellipse()`) on an element that also has a non-zero `border-radius`.
+- Every `corner-shape` declaration is inside an `@supports` block that tests `corner-shape`, or the page remains acceptable with plain rounded corners when it is unsupported.
+- At least one element with a custom non-rectangular outline uses `border-shape` with `polygon()` or `shape()`, and has `border-radius: 0`.
+- An element using `border-shape` keeps a visible `border` or `box-shadow` instead of relying on `clip-path`.
+- When `border-shape` is unsupported, the element falls back to `clip-path` with the same outline, a transparent border, and no `box-shadow`, gated by `@supports not (border-shape: ...)`.
+- A rounded polygon uses `polygon(round <length>, ...)` inside `clip-path`.
+- When `polygon(round ...)` is unsupported, the element uses a `polygon()` without `round`, with the rounded version gated by `@supports`.
+- An element clipped with `clip-path` has no `box-shadow` itself, and its shadow comes from `filter: drop-shadow()` on a wrapping ancestor.
+- A responsive curved cutout uses `clip-path: shape()` with percentage coordinates, gated by `@supports` that tests `shape()`, and the element sets `border-radius: 0` when the shape is applied.
+- A shaped interactive element (a button using `border-shape` or `clip-path`) is a native `<button>` that stays focusable, and a click on its clipped-away corner does not trigger its click handler.
+- Every shaped interactive element shows a visible focus indicator through `:focus-visible`.
+- A `@media (forced-colors: active)` rule sets a visible border color on shaped elements that rely on a background fill.
