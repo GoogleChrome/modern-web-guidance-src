@@ -25,3 +25,4 @@
 - If using `immediate` for `where` property then the rule should be very specific and match a maximum of 10 urls, and ideally fewer.
 - The `source` property is no-longer needed and discouraged so should not be present in the rule.
 - URLs that likely trigger state changes (such as "/logout") are not listed as a positive match in `urls` or `where`.
+- When the page links to a state-changing URL, a catch-all `where` pattern (such as `"/*"`) excludes it with `not`.
