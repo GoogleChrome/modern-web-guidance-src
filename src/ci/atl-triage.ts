@@ -5,6 +5,19 @@ import { extractFeatureIds, stripTmpPrefix } from '../core/feature-parser.ts';
 import { getTranscludedFeatureIds } from '../core/macro-parsing.ts';
 
 import { guidesDir, rootDir } from '../core/paths.ts';
+import {
+  AWAITING_CLA_LABEL,
+  INTAKE_CLA_MARKER,
+  INTAKE_CLOSE_MARKER,
+  evaluatePrIntake,
+  extractIssueNumbers,
+  formatAutoCloseComment,
+  formatClaHoldComment,
+  resolveInfraReviewers,
+  type ClaState,
+  type LinkedIssueInfo,
+  type PrIntakeDecision
+} from './pr-intake.ts';
 
 // Define content file name constants inline to avoid importing from 'src/core/guide-validation.ts'
 // which would transitively require external packages (like '@11ty/gray-matter' and 'marked')
@@ -565,6 +578,150 @@ export const githubApi = {
       ['pr', 'edit', String(prNumber), '--body-file', '-'],
       { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
     );
+  },
+
+  hasUserWriteAccess(username: string): boolean {
+    const encoded = encodeURIComponent(username);
+    const out = child_process
+      .execFileSync(
+        'gh',
+        ['api', `repos/{owner}/{repo}/collaborators/${encoded}/permission`, '--jq', '.user.permissions.push // false'],
+        { encoding: 'utf8' }
+      )
+      .trim();
+    return out === 'true';
+  },
+
+  getPrIntakeMetadata(prNumber: number): {
+    title: string;
+    body: string;
+    state: string;
+    isDraft: boolean;
+    additions: number;
+    deletions: number;
+    headRefOid: string;
+    headRefName: string;
+    isSameRepo: boolean;
+    author: string;
+    authorIsBot: boolean;
+    labels: string[];
+    files: string[];
+    reviewRequests: string[];
+    participantLogins: string[];
+    comments: Array<{ author: string; isBot: boolean; body: string }>;
+    claState: ClaState;
+  } {
+    const raw = child_process.execFileSync(
+      'gh',
+      [
+        'pr',
+        'view',
+        String(prNumber),
+        '--json',
+        'title,body,state,isDraft,additions,deletions,headRefOid,headRefName,headRepository,author,labels,files,reviewRequests,reviews,comments,statusCheckRollup'
+      ],
+      { encoding: 'utf8' }
+    );
+    const data = JSON.parse(raw);
+    const author: string = data.author?.login ?? '';
+    const authorIsBot = Boolean(data.author?.is_bot) || author.endsWith('[bot]');
+    const participants = new Set<string>();
+    for (const rev of data.reviews || []) {
+      const login: string | undefined = rev.author?.login;
+      const isBot = Boolean(rev.author?.is_bot) || (login ?? '').endsWith('[bot]');
+      if (login && !isBot && login.toLowerCase() !== author.toLowerCase()) {
+        participants.add(login);
+      }
+    }
+    const comments: Array<{ author: string; isBot: boolean; body: string }> = [];
+    for (const com of data.comments || []) {
+      const login: string = com.author?.login ?? '';
+      const isBot = Boolean(com.author?.is_bot) || login.endsWith('[bot]');
+      comments.push({ author: login, isBot, body: com.body ?? '' });
+      if (login && !isBot && login.toLowerCase() !== author.toLowerCase()) {
+        participants.add(login);
+      }
+    }
+
+    const claCheck = (data.statusCheckRollup || []).find(
+      (c: { context?: string; name?: string }) => (c.context || c.name) === 'cla/google'
+    );
+    let claState: ClaState = 'missing';
+    if (claCheck) {
+      const statusRaw = String(claCheck.conclusion || claCheck.state || claCheck.status || '').toLowerCase();
+      if (statusRaw === 'success') claState = 'success';
+      else if (statusRaw === 'failure' || statusRaw === 'error' || statusRaw === 'action_required') claState = 'failure';
+      else claState = 'pending';
+    }
+
+    const repoOwnerName = `${data.headRepository?.owner?.login ?? ''}/${data.headRepository?.name ?? ''}`.toLowerCase();
+    const isSameRepo =
+      repoOwnerName === 'googlechrome/modern-web-guidance-src' ||
+      data.headRepository?.name?.toLowerCase() === 'modern-web-guidance-src';
+
+    return {
+      title: data.title ?? '',
+      body: data.body ?? '',
+      state: data.state ?? 'OPEN',
+      isDraft: Boolean(data.isDraft),
+      additions: Number(data.additions ?? 0),
+      deletions: Number(data.deletions ?? 0),
+      headRefOid: data.headRefOid ?? '',
+      headRefName: data.headRefName ?? '',
+      isSameRepo,
+      author,
+      authorIsBot,
+      labels: (data.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
+      files: (data.files || []).map((f: { path?: string }) => f.path ?? '').filter(Boolean),
+      reviewRequests: (data.reviewRequests || []).map((r: { login?: string }) => r.login ?? '').filter(Boolean),
+      participantLogins: Array.from(participants),
+      comments,
+      claState
+    };
+  },
+
+  getLinkedIssueInfo(issueNumber: number): LinkedIssueInfo | null {
+    try {
+      const raw = child_process.execFileSync(
+        'gh',
+        ['api', `repos/{owner}/{repo}/issues/${issueNumber}`],
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+      );
+      const iss = JSON.parse(raw);
+      if (iss.pull_request) return null;
+      return {
+        number: Number(iss.number),
+        state: String(iss.state).toLowerCase() === 'open' ? 'open' : 'closed',
+        author: iss.user?.login ?? '',
+        labels: (iss.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
+        assignees: (iss.assignees || []).map((a: { login?: string }) => a.login ?? '').filter(Boolean)
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  addPrComment(prNumber: number, body: string): void {
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'comment', String(prNumber), '--body-file', '-'],
+      { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
+    );
+  },
+
+  closePr(prNumber: number): void {
+    child_process.execFileSync('gh', ['pr', 'close', String(prNumber)], { stdio: 'inherit' });
+  },
+
+  findOpenAwaitingClaPrsForSha(headSha: string): number[] {
+    if (!headSha) return [];
+    const raw = child_process.execFileSync(
+      'gh',
+      ['pr', 'list', '--state', 'open', '--label', AWAITING_CLA_LABEL, '--limit', '50', '--json', 'number,headRefOid'],
+      { encoding: 'utf8' }
+    );
+    const items: Array<{ number: number; headRefOid?: string }> = JSON.parse(raw);
+    return items.filter(i => i.headRefOid === headSha).map(i => i.number);
   }
 };
 
@@ -849,6 +1006,8 @@ export interface HandlePrOptions {
   isDraft?: boolean;
   prBody?: string;
   headRef?: string;
+  preloadedFiles?: string[];
+  includeInfraOwners?: boolean;
 }
 
 export function handlePR(
@@ -902,6 +1061,8 @@ export function handlePR(
   let files: string[] = [];
   if (mockFiles) {
     files = mockFiles;
+  } else if (options?.preloadedFiles) {
+    files = options.preloadedFiles;
   } else {
     try {
       files = githubApi.getPrFiles(prNumber);
@@ -1071,6 +1232,13 @@ export function handlePR(
     }
   }
 
+  if (options?.includeInfraOwners) {
+    for (const owner of resolveInfraReviewers(files)) {
+      matchedAtls.add(owner);
+      allResolvedAtls.add(owner);
+    }
+  }
+
   // Remove the PR author, already requested/reviewed users, and any reviewers whose review request was previously removed
   const excludeLogins = [prAuthor];
   const reviewersToRemove: string[] = [];
@@ -1177,6 +1345,188 @@ export function handlePR(
   return reviewers;
 }
 
+export interface TriagePullRequestOptions {
+  dryRun?: boolean;
+  headRef?: string;
+  guidesRootDir?: string;
+}
+
+export interface TriagePullRequestResult {
+  decision: PrIntakeDecision | null;
+  reviewers: string[];
+}
+
+function clearBotRequestedReviewers(prNumber: number, currentRequests: readonly string[], isDryRun: boolean): void {
+  if (currentRequests.length === 0) return;
+  let botRequested: Set<string>;
+  try {
+    botRequested = new Set(githubApi.getPrBotRequestedReviewers(prNumber).map(r => r.toLowerCase()));
+  } catch (err) {
+    console.warn(`Failed to fetch bot-requested reviewers for PR #${prNumber}:`, err);
+    return;
+  }
+  const toRemove = currentRequests.filter(r => botRequested.has(r.toLowerCase()));
+  if (toRemove.length === 0) return;
+  if (isDryRun) {
+    console.log(`[DRY RUN] Would remove premature bot-requested reviewer(s) from PR #${prNumber}: ${toRemove.join(',')}`);
+    return;
+  }
+  try {
+    githubApi.removePrReviewers(prNumber, toRemove);
+    console.log(`Removed premature bot-requested reviewer(s) from PR #${prNumber}: ${toRemove.join(',')}`);
+  } catch (err) {
+    console.error(`Failed to remove reviewers from PR #${prNumber}:`, err);
+  }
+}
+
+export function triagePullRequest(
+  prNumber: number,
+  atlConfig: AtlConfig,
+  options?: TriagePullRequestOptions
+): TriagePullRequestResult {
+  const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
+  const meta = githubApi.getPrIntakeMetadata(prNumber);
+
+  if (meta.state.toUpperCase() !== 'OPEN') {
+    console.log(`PR #${prNumber} is ${meta.state}. Skipping triage.`);
+    return { decision: null, reviewers: [] };
+  }
+
+  if (hasNoAtlTriageDirective(meta.body)) {
+    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping triage.`);
+    return { decision: null, reviewers: [] };
+  }
+
+  if (meta.isDraft) {
+    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
+    return { decision: null, reviewers: [] };
+  }
+
+  const writeAccessCache = new Map<string, boolean>();
+  const checkWriteAccess = (login: string): boolean => {
+    const key = login.toLowerCase();
+    const cached = writeAccessCache.get(key);
+    if (cached !== undefined) return cached;
+    const allowed = githubApi.hasUserWriteAccess(login);
+    writeAccessCache.set(key, allowed);
+    return allowed;
+  };
+
+  const authorHasWriteAccess = meta.authorIsBot ? true : (meta.isSameRepo || checkWriteAccess(meta.author));
+  let hasMaintainerEngagement = false;
+  if (!authorHasWriteAccess) {
+    for (const participant of meta.participantLogins) {
+      if (checkWriteAccess(participant)) {
+        hasMaintainerEngagement = true;
+        break;
+      }
+    }
+  }
+
+  const linkedIssues = new Map<number, LinkedIssueInfo>();
+  if (!authorHasWriteAccess && !hasMaintainerEngagement) {
+    for (const issueNum of extractIssueNumbers(meta.title, meta.body)) {
+      const info = githubApi.getLinkedIssueInfo(issueNum);
+      if (info) linkedIssues.set(issueNum, info);
+    }
+  }
+
+  const decision = evaluatePrIntake({
+    prAuthor: meta.author,
+    authorIsBot: meta.authorIsBot,
+    authorHasWriteAccess,
+    hasMaintainerEngagement,
+    prLabels: meta.labels,
+    title: meta.title,
+    body: meta.body,
+    files: meta.files,
+    additions: meta.additions,
+    deletions: meta.deletions,
+    claState: meta.claState,
+    linkedIssues
+  });
+
+  const headRef =
+    options?.headRef ?? ((meta.isSameRepo && meta.headRefName) || meta.headRefOid || 'main');
+
+  switch (decision.kind) {
+    case 'close': {
+      clearBotRequestedReviewers(prNumber, meta.reviewRequests, isDryRun);
+      const alreadyCommented = meta.comments.some(c => c.body.includes(INTAKE_CLOSE_MARKER));
+      const closeComment = formatAutoCloseComment(meta.author, decision.referencedIssues);
+      if (isDryRun) {
+        console.log(
+          `[DRY RUN] Intake CLOSE (${decision.reason}, refs=${decision.referencedIssues.join(',') || 'none'}): would comment and close PR #${prNumber}.`
+        );
+      } else {
+        if (!alreadyCommented) {
+          githubApi.addPrComment(prNumber, closeComment);
+        }
+        githubApi.closePr(prNumber);
+        console.log(`Closed unapproved external PR #${prNumber} (${decision.reason}).`);
+      }
+      return { decision, reviewers: [] };
+    }
+
+    case 'hold-cla': {
+      clearBotRequestedReviewers(prNumber, meta.reviewRequests, isDryRun);
+      const hasAwaitingCla = meta.labels.some(l => l.toLowerCase() === AWAITING_CLA_LABEL);
+      const alreadyCommented = meta.comments.some(c => c.body.includes(INTAKE_CLA_MARKER));
+      if (isDryRun) {
+        console.log(
+          `[DRY RUN] Intake HOLD-CLA (cla=${decision.claState}, via=${decision.via}): would ensure '${AWAITING_CLA_LABEL}' label and withhold reviewers on PR #${prNumber}.`
+        );
+      } else {
+        if (!hasAwaitingCla) {
+          githubApi.addPrLabels(prNumber, [AWAITING_CLA_LABEL]);
+        }
+        if (decision.claState === 'failure' && !alreadyCommented) {
+          githubApi.addPrComment(prNumber, formatClaHoldComment(meta.author));
+        }
+      }
+      return { decision, reviewers: [] };
+    }
+
+    case 'allow': {
+      const hasAwaitingCla = meta.labels.some(l => l.toLowerCase() === AWAITING_CLA_LABEL);
+      if (hasAwaitingCla) {
+        if (isDryRun) {
+          console.log(`[DRY RUN] Would remove '${AWAITING_CLA_LABEL}' label from PR #${prNumber}.`);
+        } else {
+          try {
+            githubApi.removePrLabels(prNumber, [AWAITING_CLA_LABEL]);
+          } catch (err) {
+            console.warn(`Failed to remove '${AWAITING_CLA_LABEL}' from PR #${prNumber}:`, err);
+          }
+        }
+      }
+      const activeLabels = meta.labels.filter(l => l.toLowerCase() !== AWAITING_CLA_LABEL);
+      const reviewers = handlePR(
+        prNumber,
+        meta.author,
+        atlConfig,
+        undefined,
+        options?.guidesRootDir,
+        activeLabels,
+        {
+          dryRun: isDryRun,
+          isDraft: false,
+          prBody: meta.body,
+          headRef,
+          preloadedFiles: meta.files,
+          includeInfraOwners: true
+        }
+      );
+      return { decision, reviewers };
+    }
+
+    default: {
+      const _exhaustive: never = decision;
+      throw new Error(`Unhandled intake decision: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+}
+
 export function main() {
   const atlConfig = loadAtlConfig();
   const eventPath = process.env.GITHUB_EVENT_PATH;
@@ -1186,26 +1536,29 @@ export function main() {
     console.log(`Processing GitHub Actions event from ${eventPath}`);
     const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
 
-    // Check if it's an issue event
     if (event.issue) {
       const issueNumber = event.issue.number;
-      const labels = (event.issue.labels || []).map((l: any) => l.name);
+      const labels = (event.issue.labels || []).map((l: { name: string }) => l.name);
       const issueDescription = event.issue.body || '';
       handleIssue(issueNumber, labels, issueDescription, atlConfig, { dryRun: isDryRun });
-    } 
-    // Check if it's a pull request event
-    else if (event.pull_request) {
+    } else if (event.pull_request) {
       const prNumber = event.pull_request.number;
-      const prAuthor = event.pull_request.user.login;
-      const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
-      const isDraft = Boolean(event.pull_request.draft);
-      const prBody = event.pull_request.body || '';
       const isSameRepo = event.pull_request.head?.repo?.full_name?.toLowerCase() === 'googlechrome/modern-web-guidance-src';
       const headRef = (isSameRepo && event.pull_request.head?.ref) || event.pull_request.head?.sha || 'main';
-      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody, headRef });
-    } 
-    else {
-      console.log('Event is neither an issue nor a pull request event. Skipping.');
+      triagePullRequest(prNumber, atlConfig, { dryRun: isDryRun, headRef });
+    } else if (event.check_run) {
+      const checkName: string = event.check_run.name ?? '';
+      const conclusion: string = String(event.check_run.conclusion ?? '').toLowerCase();
+      const headSha: string = event.check_run.head_sha ?? '';
+      if (checkName === 'cla/google' && conclusion === 'success' && headSha) {
+        const waitingPrs = githubApi.findOpenAwaitingClaPrsForSha(headSha);
+        console.log(`cla/google succeeded for ${headSha}; waking ${waitingPrs.length} awaiting-cla PR(s).`);
+        for (const prNumber of waitingPrs) {
+          triagePullRequest(prNumber, atlConfig, { dryRun: isDryRun });
+        }
+      }
+    } else {
+      console.log('Event is not a supported issue, pull_request, or check_run event. Skipping.');
     }
   } else {
     // CLI manual fallback for local testing
@@ -1215,7 +1568,7 @@ export function main() {
     if (args.length < 2) {
       console.log('Usage for manual testing:');
       console.log('  node src/ci/atl-triage.ts issue <number> [label1] [label2] ... [--dry-run]');
-      console.log('  node src/ci/atl-triage.ts pr <number> [author] [label1] [label2] ... [--dry-run]');
+      console.log('  node src/ci/atl-triage.ts pr <number> [--dry-run]');
       process.exit(1);
     }
 
@@ -1244,23 +1597,7 @@ export function main() {
       }
       handleIssue(number, labels, issueDescription, atlConfig, { dryRun: isDryRun });
     } else if (type === 'pr') {
-      let author = args[2] || '';
-      let labels = args.slice(3);
-      if (!author) {
-        try {
-          author = githubApi.getPrAuthor(number);
-        } catch (err) {
-          console.warn(`Failed to fetch author for PR #${number}:`, err);
-        }
-      }
-      if (labels.length === 0) {
-        try {
-          labels = githubApi.getPrLabels(number);
-        } catch (err) {
-          console.warn(`Failed to fetch labels for PR #${number}:`, err);
-        }
-      }
-      handlePR(number, author, atlConfig, undefined, undefined, labels, { dryRun: isDryRun });
+      triagePullRequest(number, atlConfig, { dryRun: isDryRun });
     } else {
       console.error(`Unknown type: ${type}`);
       process.exit(1);
