@@ -779,11 +779,11 @@
         <label for="details-width-slider">Stage width</label>
         <input id="details-width-slider" type="range" min="280" max="760" value="640" data-width-slider>
         <button type="button" class="btn" data-preset-width="360">Narrow (360px)</button>
-        <button type="button" class="btn" data-preset-width="640">Wide (640px)</button>
+        <button type="button" class="btn" data-preset-width="full">Wide (full width)</button>
         <span class="mode-readout" data-mode-readout></span>
       </div>
 
-      <div class="stage-resizer" data-resizer-for="details-stage" style="--stage-width: 640px">
+      <div class="stage-resizer" data-resizer-for="details-stage" style="--stage-width: 100%">
         <div id="details-stage" class="demo-stage details-stage">
           <div class="stage-pad">
             <div class="details-grid">
@@ -824,11 +824,11 @@
         <label for="popover-width-slider">Stage width</label>
         <input id="popover-width-slider" type="range" min="280" max="760" value="640" data-width-slider>
         <button type="button" class="btn" data-preset-width="360">Narrow (360px)</button>
-        <button type="button" class="btn" data-preset-width="640">Wide (640px)</button>
+        <button type="button" class="btn" data-preset-width="full">Wide (full width)</button>
         <span class="mode-readout" data-mode-readout></span>
       </div>
 
-      <div class="stage-resizer" data-resizer-for="popover-stage" style="--stage-width: 640px">
+      <div class="stage-resizer" data-resizer-for="popover-stage" style="--stage-width: 100%">
         <div id="popover-stage" class="demo-stage popover-stage">
           <div class="stage-pad">
             <section class="disclosure-host" aria-label="Popover host">
@@ -892,11 +892,11 @@
         <label for="drawer-width-slider">Stage width</label>
         <input id="drawer-width-slider" type="range" min="280" max="760" value="680" data-width-slider>
         <button type="button" class="btn" data-preset-width="360">Narrow (360px)</button>
-        <button type="button" class="btn" data-preset-width="680">Wide (680px)</button>
+        <button type="button" class="btn" data-preset-width="full">Wide (full width)</button>
         <span class="mode-readout" data-mode-readout></span>
       </div>
 
-      <div class="stage-resizer" data-resizer-for="drawer-stage" style="--stage-width: 680px">
+      <div class="stage-resizer" data-resizer-for="drawer-stage" style="--stage-width: 100%">
         <div id="drawer-stage" class="demo-stage drawer-stage">
           <div class="stage-pad">
             <div class="drawer-layout">
@@ -965,11 +965,11 @@
         <input id="unifying-width-slider" type="range" min="280" max="760" value="660" data-width-slider>
         <button type="button" class="btn" data-preset-width="340">Narrow (340px)</button>
         <button type="button" class="btn" data-preset-width="500">Medium (500px)</button>
-        <button type="button" class="btn" data-preset-width="660">Wide (660px)</button>
+        <button type="button" class="btn" data-preset-width="full">Wide (full width)</button>
         <span class="mode-readout" data-mode-readout></span>
       </div>
 
-      <div class="stage-resizer" data-resizer-for="unifying-stage" style="--stage-width: 660px">
+      <div class="stage-resizer" data-resizer-for="unifying-stage" style="--stage-width: 100%">
         <div id="unifying-stage" class="demo-stage unifying-stage">
           <div class="stage-pad">
             <section class="unifying-host" aria-label="Multi-width host">
@@ -1058,15 +1058,16 @@
         resizer.style.width = '';
         resizer.style.height = '';
         resizer.style.inlineSize = '';
-        resizer.style.setProperty('--stage-width', `${px}px`);
+        resizer.style.setProperty('--stage-width', px === 'full' ? '100%' : `${px}px`);
       };
 
       slider.addEventListener('input', () => applyWidth(Number(slider.value)));
 
       controls.querySelectorAll('[data-preset-width]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          const width = Number(btn.dataset.presetWidth);
-          slider.value = String(width);
+          const preset = btn.dataset.presetWidth;
+          const width = preset === 'full' ? 'full' : Number(preset);
+          if (width !== 'full') slider.value = String(width);
           applyWidth(width);
         });
       });
