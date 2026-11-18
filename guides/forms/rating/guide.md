@@ -94,7 +94,7 @@ meter.rating {
 
 ## Interactive rating: a styled range input
 
-Use `<input type="range" class="rating" min="0" max="5" step="0.5">` (adjust `max` and `step` for other scales or whole-star increments) with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` at `0`). If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
+Use `<input type="range" class="rating" min="0" max="5" step="0.5">` (adjust `max` and `step` for other scales or whole-star increments) with a visible `<label>` and an `aria-valuetext` stating the scale (e.g. `"2.5 out of 5 stars"`, or `"Not rated"` in the unedited initial state, reporting `"0 out of 5 stars"` after interaction unless `0` explicitly represents clearing the rating). If you show a visible `<output>`, set `aria-hidden="true"` on it so screen readers do not announce every change twice alongside `aria-valuetext`.
 
 ```html
 <label for="rate">Rate this product</label>

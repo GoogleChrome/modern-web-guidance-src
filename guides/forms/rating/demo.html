@@ -275,7 +275,7 @@
         return;
       }
       const value = Number(range.value);
-      const text = value === 0 ? 'Not rated' : `${value} out of ${max} stars`;
+      const text = !edited ? 'Not rated' : `${value} out of ${max} stars`;
       range.style.setProperty('--control-value', value);
       range.setAttribute('aria-valuetext', text);
       out.textContent = text;
