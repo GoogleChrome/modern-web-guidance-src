@@ -1,6 +1,8 @@
 ---
 name: security
 description: Preventative security guidelines for web developers (XSS, CSP, Cookies, Cross-Origin Isolation). Use this skill to guide the process of auditing, testing, and deploying security policies safely.
+web-feature-ids:
+  - document-isolation-policy
 ---
 
 # Web Security
