@@ -147,20 +147,21 @@ function classifyCallReturnType(call: CallExpression, method: UnwrappedMethodCal
         (ancestor) => Node.isClassDeclaration(ancestor) || Node.isClassExpression(ancestor),
       );
       if (cls) {
-        const retText = cls.getMethod(method.methodName)?.getReturnTypeNode()?.getText();
+        const methodDecl = cls.getMethod(method.methodName);
+        if (methodDecl?.isGenerator()) return 'non-array';
+        const retText = methodDecl?.getReturnTypeNode()?.getText();
         if (retText) return classifyTypeText(retText, sourceFile);
         const propInit = cls.getProperty(method.methodName)?.getInitializer();
         const unwrappedInit = propInit ? unwrapExpression(propInit) : undefined;
+        if (Node.isFunctionExpression(unwrappedInit) && unwrappedInit.isGenerator()) return 'non-array';
         if (unwrappedInit && isCallableNode(unwrappedInit)) {
           return classifyTypeText(unwrappedInit.getReturnTypeNode()?.getText(), sourceFile);
         }
       }
     } else if (Node.isIdentifier(receiver)) {
-      const retText = sourceFile
-        .getClass(receiver.getText())
-        ?.getStaticMethod(method.methodName)
-        ?.getReturnTypeNode()
-        ?.getText();
+      const staticMethod = sourceFile.getClass(receiver.getText())?.getStaticMethod(method.methodName);
+      if (staticMethod?.isGenerator()) return 'non-array';
+      const retText = staticMethod?.getReturnTypeNode()?.getText();
       if (retText) return classifyTypeText(retText, sourceFile);
     }
     return 'array';
@@ -344,6 +345,10 @@ function classifyReceiverNode(node: Node | undefined, depth = 0): ReceiverKind {
     return leftKind !== 'array' ? leftKind : classifyReceiverNode(unwrapped.getRight(), depth + 1);
   }
 
+  if (Node.isCallExpression(unwrapped) && isGlobalReference(unwrapped.getExpression(), 'String')) {
+    return 'non-array';
+  }
+
   const method = unwrapStrictMethod(unwrapped);
   if (method) {
     if (DOM_OR_STRING_METHOD.test(method.methodName) || STRING_RESULT_METHOD.test(method.methodName)) {
@@ -359,7 +364,6 @@ function classifyReceiverNode(node: Node | undefined, depth = 0): ReceiverKind {
   }
 
   if (Node.isCallExpression(unwrapped)) {
-    if (isGlobalReference(unwrapped.getExpression(), 'String')) return 'non-array';
     return classifyCallReturnType(unwrapped, null);
   }
 

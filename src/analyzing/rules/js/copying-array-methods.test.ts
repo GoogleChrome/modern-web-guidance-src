@@ -427,16 +427,33 @@ void test('js/copying-array-methods matcher', async (t) => {
   await t.test('exempts string and generator receivers (#3636) but keeps split() results and arrays', () => {
     const code = `
       const reverseDigits = (n) => [...String(n)].reverse().join('');
+      const reverseWindowDigits = (n) => [...window.String(n)].reverse().join('');
       const reverseNum = (n) => [...n.toString()].reverse().join('');
+      const reverseFixed = (n) => [...n.toFixed(2)].reverse().join('');
+      const reversePrec = (n) => [...n.toPrecision(3)].reverse().join('');
+      const reverseJoined = (xs) => [...xs.join(',')].reverse();
       const reverseText = (el) => [...el.textContent].reverse().join('');
+      const reverseInner = (el) => [...el.innerText].reverse();
+      const reverseHtml = (el) => [...el.innerHTML].reverse();
+      const reverseOuterHtml = (el) => [...el.outerHTML].reverse();
       function* range(n) { for (let i = 0; i < n; i++) yield i; }
+      async function* asyncRange(n) { for (let i = 0; i < n; i++) yield i; }
       const countdown = () => [...range(5)].reverse();
+      const asyncCountdown = () => [...asyncRange(5)].reverse();
+      class Seq {
+        *gen() { yield 1; }
+        static *sgen() { yield 1; }
+        fieldGen = function* () { yield 1; };
+        a() { return [...this.gen()].reverse(); }
+        b() { return [...Seq.sgen()].reverse(); }
+        c() { return [...this.fieldGen()].reverse(); }
+      }
       const words = (s) => [...s.split(' ')].reverse();
-      const copy = (arr) => [...arr].reverse();
+      const copy = (arr) => { const s = arr.join(','); return [s, [...arr].reverse()]; };
     `;
     assert.deepEqual(
       matchJsRule(copyingArrayMethodsMatcher, 'strings.js', code).map((m) => m.line),
-      [7, 8],
+      [24, 25],
     );
   });
 });
