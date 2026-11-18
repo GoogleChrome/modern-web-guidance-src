@@ -13,8 +13,8 @@ guides:
 
 Build a star rating that supports half stars. Pick exactly one variant from the task before writing any markup or CSS:
 
-* **Read-only** (`<meter>`): displays an existing score.
-* **Interactive** (`<input type="range">`): collects a user rating, optionally displaying an average score in a distinct fill until edited. This is the default when the task is ambiguous.
+* **Read-only** (`<meter class="rating">`): displays an existing score.
+* **Interactive** (`<input type="range" class="rating">`): collects a user rating, optionally displaying an average score in a distinct fill until edited. This is the default when the task is ambiguous.
 
 Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` roles—the native range input already provides keyboard, pointer, touch, and assistive technology behavior.
 
