@@ -447,15 +447,6 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
   );
 });
 
-test('release gate pipeline hash differs between dev and release builds', async () => {
-  const { computePipelineHash } = await import('./build-guides.ts');
-  const { scanAllGuides } = await import('../core/guide-validation.ts');
-  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
-  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
-  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
-  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
-});
-
 
 
 

@@ -12,6 +12,7 @@ import {
   saveChunkCache,
   TEACHER_MODEL,
   TASK_TYPE,
+  TEACHER_DIM,
   STATIC_DIMS,
 } from "./guide-chunk-cache.ts";
 import { scanCorpusChunks } from "../core/guide-chunks.ts";
@@ -187,6 +188,172 @@ describe("guide-chunk-cache", () => {
       );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks fails loudly with missing guide IDs and fix when GEMINI_API_KEY is absent", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-nokey-"));
+    try {
+      let postCalls = 0;
+      await assert.rejects(
+        () =>
+          embedGuideChunks({
+            cacheDir: tmpDir,
+            apiKey: "",
+            envPath: null,
+            scanChunks: () => [
+              { guideId: "alpha-guide", category: "js", embeddedText: "alpha text", hash: "hash-a" },
+              { guideId: "beta-guide", category: "css", embeddedText: "beta text", hash: "hash-b" },
+            ],
+            postBatch: async () => {
+              postCalls++;
+              return { embeddings: [] };
+            },
+          }),
+        (err: Error) => {
+          assert.match(err.message, /GEMINI_API_KEY is required/);
+          assert.match(err.message, /alpha-guide/);
+          assert.match(err.message, /beta-guide/);
+          assert.match(err.message, /embed-guide-chunks\.ts/);
+          return true;
+        }
+      );
+      assert.strictEqual(postCalls, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks seeds from seedCacheDir, embeds only missing chunks into cacheDir, and skips API when complete", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-seed-"));
+    const seedDir = path.join(tmpRoot, "seed");
+    const evalDir = path.join(tmpRoot, "eval");
+    try {
+      const seedVec = new Float32Array(STATIC_DIMS);
+      seedVec[0] = 1.0;
+      saveChunkCache(new Map([["hash-seeded", seedVec]]), seedDir);
+
+      const chunks = [
+        { guideId: "seeded-guide", category: "css", embeddedText: "already cached", hash: "hash-seeded" },
+        { guideId: "uncached-guide", category: "js", embeddedText: "needs embedding", hash: "hash-uncached" },
+      ];
+
+      const batchedTexts: string[] = [];
+      const res1 = await embedGuideChunks({
+        cacheDir: evalDir,
+        seedCacheDir: seedDir,
+        prune: true,
+        apiKey: "test-api-key",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async (_url, body) => {
+          const reqs = (body as { requests: Array<{ content: { parts: Array<{ text: string }> } }> }).requests;
+          for (const r of reqs) batchedTexts.push(r.content.parts[0].text);
+          return {
+            embeddings: reqs.map(() => ({
+              values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 1 ? 1 : 0)),
+            })),
+          };
+        },
+      });
+
+      assert.strictEqual(res1.newEmbeds, 1);
+      assert.strictEqual(res1.cachedCount, 2);
+      assert.deepStrictEqual(batchedTexts, ["needs embedding"]);
+
+      // Seed dir must remain unmodified (still only has hash-seeded).
+      const seedAfter = loadChunkCache(seedDir);
+      assert.strictEqual(seedAfter.size, 1);
+      assert.ok(!seedAfter.has("hash-uncached"));
+
+      // Eval dir must hold both vectors, with non-zero 256-d vector for newly embedded chunk.
+      const evalAfter = loadChunkCache(evalDir);
+      assert.strictEqual(evalAfter.size, 2);
+      const uncachedVec = evalAfter.get("hash-uncached");
+      assert.ok(uncachedVec && uncachedVec.length === STATIC_DIMS);
+      assert.ok(Math.abs(uncachedVec[1] - 1) < 0.01);
+
+      // Re-running when nothing is missing must make zero API calls even without a key.
+      let secondRunCalls = 0;
+      const res2 = await embedGuideChunks({
+        cacheDir: evalDir,
+        seedCacheDir: seedDir,
+        prune: true,
+        apiKey: "",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async () => {
+          secondRunCalls++;
+          return { embeddings: [] };
+        },
+      });
+      assert.strictEqual(secondRunCalls, 0);
+      assert.strictEqual(res2.newEmbeds, 0);
+      assert.strictEqual(res2.cachedCount, 2);
+
+      // Starting from an empty evalDir when seedDir already holds all active chunks still persists evalDir with 0 API calls.
+      const freshEvalDir = path.join(tmpRoot, "eval-seeded-only");
+      const fullSeedDir = path.join(tmpRoot, "seed-complete");
+      saveChunkCache(evalAfter, fullSeedDir);
+      let seededOnlyCalls = 0;
+      const res3 = await embedGuideChunks({
+        cacheDir: freshEvalDir,
+        seedCacheDir: fullSeedDir,
+        prune: true,
+        apiKey: "",
+        envPath: null,
+        scanChunks: () => chunks,
+        postBatch: async () => {
+          seededOnlyCalls++;
+          return { embeddings: [] };
+        },
+      });
+      assert.strictEqual(seededOnlyCalls, 0);
+      assert.strictEqual(res3.newEmbeds, 0);
+      assert.strictEqual(res3.cachedCount, 2);
+      const freshLoaded = loadChunkCache(freshEvalDir);
+      assert.strictEqual(freshLoaded.size, 2);
+      assert.ok(freshLoaded.has("hash-seeded") && freshLoaded.has("hash-uncached"));
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks reads GEMINI_API_KEY from envPath without mutating process.env", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-env-"));
+    const prevGeminiKey = process.env.GEMINI_API_KEY;
+    const prevOtherKey = process.env.OTHER_UNRELATED_SECRET;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.OTHER_UNRELATED_SECRET;
+      const envFile = path.join(tmpRoot, ".env");
+      fs.writeFileSync(envFile, "GEMINI_API_KEY=from-dotenv\nOTHER_UNRELATED_SECRET=do-not-leak\n");
+
+      let seenUrl = "";
+      const res = await embedGuideChunks({
+        cacheDir: path.join(tmpRoot, "cache"),
+        envPath: envFile,
+        scanChunks: () => [
+          { guideId: "js", category: "js", embeddedText: "chunk", hash: "hash-env" },
+        ],
+        postBatch: async (url) => {
+          seenUrl = url;
+          return {
+            embeddings: [{ values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 0 ? 1 : 0)) }],
+          };
+        },
+      });
+
+      assert.strictEqual(res.newEmbeds, 1);
+      assert.match(seenUrl, /key=from-dotenv$/);
+      assert.strictEqual(process.env.GEMINI_API_KEY, undefined);
+      assert.strictEqual(process.env.OTHER_UNRELATED_SECRET, undefined);
+    } finally {
+      if (prevGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = prevGeminiKey;
+      if (prevOtherKey === undefined) delete process.env.OTHER_UNRELATED_SECRET;
+      else process.env.OTHER_UNRELATED_SECRET = prevOtherKey;
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
   });
 });

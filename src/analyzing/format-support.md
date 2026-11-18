@@ -39,12 +39,14 @@ For smaller ecosystems, we lean on domain experts from that community to get the
 
 ## Boundaries (what we won't do)
 
-- **Declared, not guessed.** We only extract embedded CSS or markup when the syntax explicitly declares it (`<style>` and `<script>` tags, file extensions, or tagged templates like `css` and styled-components' `createGlobalStyle`). We never guess from variable names or "looks like CSS" heuristics. Where a file extension collides with an unrelated format, we should check content before treating it as code (see [Known gaps](#known-gaps)).
-- **Never compile or evaluate.** We don't run preprocessors, compilers, or template engines (Sass, Less, MDX, Pug, etc.). Preprocessor stylesheets like SCSS and Less are read as CSS-tolerant text with at most a cheap pre-pass (like masking `//` comments).
+- **Declared, not guessed.** We only extract embedded CSS or markup when the syntax explicitly declares it (`<style>` and `<script>` tags, file extensions, or tagged templates like `css` and styled-components' `createGlobalStyle`). We never guess from variable names or "looks like CSS" heuristics. Where a file extension collides with an unrelated format, we check content before treating it as code (e.g. Gerber PCB files that use `.gts`).
+- **Never compile or evaluate.** We don't run preprocessors, compilers, or template engines (Sass, Less, MDX, Pug, etc.). Preprocessor stylesheets like SCSS and Less are read as CSS-tolerant text with at most a cheap pre-pass (like stripping `//` comments).
 - **Stylesheets, not style objects.** Object-style CSS-in-JS (MUI `sx`, `makeStyles`, vanilla-extract) is `expected-skip` because our CSS rules match stylesheet rules, not JS objects.
 - **Web languages.** Non-web host languages (Python, Ruby, etc.) are `unsupported`. Server-side templates that are mostly HTML get evaluated one by one against the bar above.
 
 ## Current formats
+
+The single source of truth for all formats, applicable engines, and scan statuses is [`src/analyzing/scanners/format-registry.ts`](./scanners/format-registry.ts), which drives file filtering and scanner routing. The summary below reflects that table.
 
 | Format | Status | Notes |
 | --- | --- | --- |
@@ -56,8 +58,8 @@ For smaller ecosystems, we lean on domain experts from that community to get the
 | `.vue`, `.svelte`, `.astro`: script, style and template blocks | supported | |
 | `css` tagged templates in JS/TS (Lit, Emotion, styled-components' `css` helper) | supported | Bodies with no selector rarely match |
 | `.gts`, `.gjs` (Ember template tag) | supported | Well under `.astro`'s scale; taken on Ember-community input and small extraction cost |
-| `<style lang="scss">` / `lang="less"` blocks | supported | `//` comments masked |
-| `.scss`, `.less` | supported | `//` comments masked |
+| `<style lang="scss">` / `lang="less"` blocks | supported | `//` comments stripped |
+| `.scss`, `.less` | supported | `//` comments stripped |
 | `createGlobalStyle` (styled-components) | unsupported | Under review |
 | styled-components and Emotion component styles (`styled.div`) | expected-skip | Mostly bare declarations |
 | Object-style CSS-in-JS | expected-skip | |
@@ -74,10 +76,9 @@ Why are styled-components and Emotion component styles `expected-skip` instead o
 
 - `css` tagged templates inside a `<script>` block of an HTML, Vue, Svelte or Astro file aren't extracted.
 - DOM rules don't run on JSX inside `<script lang="tsx">` / `lang="jsx"` blocks of SFCs.
-- `.gts` files that are actually Gerber PCB files (same extension) aren't filtered out by content yet. They produce no findings, but they shouldn't be parsed as code.
 
 ## Proposing a format
 
-[Open an issue](../../CONTRIBUTING.md#proposal-first-for-non-trivial-changes) before sending a PR. Include real-world examples and what right support looks like in that ecosystem. Maintainers will check real-world use and rule payoff, make the call, and update the table above. (If you open a PR for a new format without an agreed issue first, we'll point you back to the issue tracker.)
+[Open an issue](../../CONTRIBUTING.md#send-us-the-problem-not-the-patch) before sending a PR. Include real-world examples and what right support looks like in that ecosystem. Maintainers will check real-world use and rule payoff, make the call, and update the table above. (If you open a PR for a new format without an agreed issue first, we'll point you back to the issue tracker.)
 
 If the usage or payoff evidence for a supported format stops holding up, it moves to `expected-skip` and we note the change here.

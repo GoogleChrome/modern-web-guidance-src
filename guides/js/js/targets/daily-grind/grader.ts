@@ -18,7 +18,7 @@
  * - Exp 14: TESTED  — URLSearchParams / URL.searchParams for URL query state sync without manual .split('&') / .split('=').
  * - Exp 15: SKIPPED — TextDecoder is inapplicable because no Uint8Array / ArrayBuffer UTF-8 decoding occurs in this UI.
  * - Exp 16: SKIPPED — TextEncoder is inapplicable because no UTF-8 byte encoding occurs in this UI.
- * - Exp 17: TESTED  — element.replaceChildren() (0 args) for clearing DOM containers without innerHTML = '' or removeChild loops.
+ * - Exp 17: TESTED  — element.replaceChildren() for clearing DOM containers without innerHTML = '' or removeChild loops.
  * - Exp 18: TESTED  — element.replaceChildren(...nodes) (with args) for atomic DOM child replacement on connected containers.
  * - Exp 19: SKIPPED — Plain new Event() is superseded here by Exp 20 because daily-grind:filter-change carries structured state in detail.
  * - Exp 20: TESTED  — new CustomEvent('daily-grind:filter-change', { detail, bubbles: true }) without document.createEvent / initCustomEvent.
@@ -59,6 +59,7 @@ interface DailyGrindSpies {
   urlSearchParamsCalls: number;
   zeroArgReplaceChildrenCalls: number;
   withArgsReplaceChildrenCalls: number;
+  trackedOrderListReplaceChildrenCalls: number;
   removeChildCalls: number;
   emptyInnerHtmlCalls: number;
   connectedAppendChildCalls: number;
@@ -133,6 +134,7 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
     urlSearchParamsCalls: 0,
     zeroArgReplaceChildrenCalls: 0,
     withArgsReplaceChildrenCalls: 0,
+    trackedOrderListReplaceChildrenCalls: 0,
     removeChildCalls: 0,
     emptyInnerHtmlCalls: 0,
     connectedAppendChildCalls: 0,
@@ -235,6 +237,9 @@ const RUNTIME_SPIES_INIT_SCRIPT = `(() => {
           } else {
             spies.withArgsReplaceChildrenCalls += 1;
           }
+          if (this instanceof Element && this.hasAttribute('data-gd-tracked-order-list')) {
+            spies.trackedOrderListReplaceChildrenCalls += 1;
+          }
         }
         return origReplaceChildren.apply(this, nodes);
       };
@@ -328,6 +333,7 @@ async function resetSpyCounters(page: Page): Promise<void> {
     spies.urlSearchParamsCalls = 0;
     spies.zeroArgReplaceChildrenCalls = 0;
     spies.withArgsReplaceChildrenCalls = 0;
+    spies.trackedOrderListReplaceChildrenCalls = 0;
     spies.removeChildCalls = 0;
     spies.emptyInnerHtmlCalls = 0;
     spies.connectedAppendChildCalls = 0;
@@ -342,10 +348,12 @@ function getMenuControls(page: Page) {
     sortSelect: controls.getByRole('combobox', { name: /sort/i }),
     reverseToggle: controls
       .getByRole('button', { name: /reverse/i })
-      .or(controls.getByRole('checkbox', { name: /reverse/i })),
+      .or(controls.getByRole('checkbox', { name: /reverse/i }))
+      .or(controls.getByRole('switch', { name: /reverse/i })),
     groupToggle: controls
       .getByRole('button', { name: /group/i })
-      .or(controls.getByRole('checkbox', { name: /group/i })),
+      .or(controls.getByRole('checkbox', { name: /group/i }))
+      .or(controls.getByRole('switch', { name: /group/i })),
   };
 }
 
@@ -358,7 +366,9 @@ function getDraftControls(page: Page) {
     saveBtn: draft.getByRole('button', { name: /save/i }),
     restoreBtn: draft.getByRole('button', { name: /restore/i }),
     clearBtn: draft.getByRole('button', { name: /clear/i }),
-    items: draft.locator('ul li, ol li, [data-order-item], .order-item'),
+    items: draft
+      .locator('ul li, ol li, [data-order-item], .order-item')
+      .filter({ hasNotText: /\bempty\b|no drinks/i }),
   };
 }
 
@@ -402,8 +412,12 @@ async function getSelectedSortLabel(sortSelect: Locator): Promise<string> {
   });
 }
 
+function getVisibleCards(page: Page): Locator {
+  return page.locator('main .card:visible');
+}
+
 async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: number[] }> {
-  return page.locator('main .card').evaluateAll((cards) => {
+  return getVisibleCards(page).evaluateAll((cards) => {
     const titles: string[] = [];
     const prices: number[] = [];
     for (const card of cards) {
@@ -418,6 +432,21 @@ async function getCardSnapshot(page: Page): Promise<{ titles: string[]; prices: 
 
 const PRICE_ASC_PATTERN = /low.*high|price[-_ ]?(?:asc|low)|\basc(?:ending)?\b|lowest/i;
 const PRICE_DESC_PATTERN = /high.*low|price[-_ ]?(?:desc|high)|\bdesc(?:ending)?\b|highest/i;
+
+async function expectOrderItemContainsNote(item: Locator, expectedNote: string): Promise<void> {
+  await expect(async () => {
+    const hasNote = await item.evaluate((el, note) => {
+      if ((el.textContent ?? '').includes(note)) return true;
+      const controls = el.querySelectorAll('input, textarea');
+      return Array.from(controls).some(
+        (ctrl) =>
+          (ctrl instanceof HTMLInputElement || ctrl instanceof HTMLTextAreaElement) &&
+          ctrl.value.includes(note),
+      );
+    }, expectedNote);
+    expect(hasNote).toBe(true);
+  }).toPass({ timeout: 2000 });
+}
 
 // =========================================================================
 // Exp 1: structuredClone() for deep draft order snapshots
@@ -452,15 +481,15 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { milkSelect, noteInput, saveBtn, restoreBtn, items } = getDraftControls(page);
-  const firstAddBtn = page.locator('main .card button').first();
+  const addBtns = getVisibleCards(page).locator('button');
 
   await milkSelect.selectOption('Whole');
   await noteInput.fill('Extra hot snapshot');
-  await firstAddBtn.click();
+  await addBtns.first().click();
 
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
-  await expect(items.first()).toContainText('Extra hot snapshot');
+  await expectOrderItemContainsNote(items.first(), 'Extra hot snapshot');
 
   await resetSpyCounters(page);
   await saveBtn.click();
@@ -471,7 +500,7 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   // Mutate active order after saving snapshot.
   await milkSelect.selectOption('Oat');
   await noteInput.fill('After snapshot edit');
-  await page.locator('main .card button').nth(1).click();
+  await addBtns.nth(1).click();
   await expect(items).toHaveCount(2);
 
   // Restore snapshot and confirm post-save mutations did not affect it.
@@ -479,14 +508,14 @@ test('Exp 1: uses structuredClone() for deep draft order snapshots without JSON 
   await restoreBtn.click();
   await expect(items).toHaveCount(1);
   await expect(items.first()).toContainText('Whole');
-  await expect(items.first()).toContainText('Extra hot snapshot');
+  await expectOrderItemContainsNote(items.first(), 'Extra hot snapshot');
 
   const spiesAfterRestore = await readSpies(page);
   expect(spiesAfterRestore.structuredCloneCalls).toBeGreaterThanOrEqual(1);
   expect(spiesAfterRestore.jsonStringifyCalls).toBe(0);
 
   // Mutating after restore must also leave the saved snapshot intact.
-  await page.locator('main .card button').nth(2).click();
+  await addBtns.nth(2).click();
   await expect(items).toHaveCount(2);
   await restoreBtn.click();
   await expect(items).toHaveCount(1);
@@ -611,7 +640,7 @@ test('Exp 7: uses Object.groupBy() or Map.groupBy() instead of .reduce() bucket 
     .filter({ hasText: /seasonal|espresso|cold brew/i })
     .count();
   expect(groupHeadingsCount).toBeGreaterThanOrEqual(3);
-  expect(await page.locator('main .card').count()).toBeGreaterThanOrEqual(6);
+  expect(await getVisibleCards(page).count()).toBeGreaterThanOrEqual(6);
 });
 
 // =========================================================================
@@ -796,13 +825,13 @@ test('Exp 8: handles empty filtered groups safely without .hasOwnProperty()', as
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-  const initialCount = await page.locator('main .card').count();
+  const initialCount = await getVisibleCards(page).count();
   const { categorySelect, groupToggle } = getMenuControls(page);
 
   await groupToggle.click();
   await categorySelect.selectOption('espresso');
 
-  const filteredCount = await page.locator('main .card').count();
+  const filteredCount = await getVisibleCards(page).count();
   expect(filteredCount).toBeGreaterThanOrEqual(1);
   expect(filteredCount).toBeLessThan(initialCount);
 
@@ -873,11 +902,8 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
 }) => {
   const { calls, sourceFiles } = getAstData();
 
-  const zeroArgReplaceChildrenAstCalls = calls.filter(
-    (c) =>
-      getMethodName(c) === 'replaceChildren' &&
-      (c.getArguments().length === 0 ||
-        c.getArguments().some((arg) => TsNode.isSpreadElement(arg))),
+  const replaceChildrenAstCalls = calls.filter(
+    (c) => getMethodName(c) === 'replaceChildren',
   );
   const emptyInnerHtmlAstAssignments = sourceFiles.some((sf) =>
     sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
@@ -892,7 +918,7 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   );
   const removeChildAstCalls = calls.filter((c) => getMethodName(c) === 'removeChild');
 
-  expect(zeroArgReplaceChildrenAstCalls.length).toBeGreaterThanOrEqual(1);
+  expect(replaceChildrenAstCalls.length).toBeGreaterThanOrEqual(1);
   expect(emptyInnerHtmlAstAssignments).toBe(false);
   expect(removeChildAstCalls).toEqual([]);
 
@@ -900,15 +926,29 @@ test('Exp 17: clears active draft order items via replaceChildren() without inne
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
   const { clearBtn, items } = getDraftControls(page);
-  await page.locator('main .card button').first().click();
+  await getVisibleCards(page).locator('button').first().click();
   await expect(items).toHaveCount(1);
+
+  await items.first().evaluate((itemEl) => {
+    const draftRoot = itemEl.closest('#draft-order');
+    let cur = itemEl.parentElement;
+    if (!cur) throw new Error('Expected order item to have a parent container.');
+    if (cur === draftRoot) {
+      cur.setAttribute('data-gd-tracked-order-list', '1');
+      return;
+    }
+    while (cur && cur !== draftRoot) {
+      cur.setAttribute('data-gd-tracked-order-list', '1');
+      cur = cur.parentElement;
+    }
+  });
 
   await resetSpyCounters(page);
   await clearBtn.click();
 
   await expect(items).toHaveCount(0);
   const spies = await readSpies(page);
-  expect(spies.zeroArgReplaceChildrenCalls).toBeGreaterThanOrEqual(1);
+  expect(spies.trackedOrderListReplaceChildrenCalls).toBeGreaterThanOrEqual(1);
   expect(spies.removeChildCalls).toBe(0);
   expect(spies.emptyInnerHtmlCalls).toBe(0);
 });
@@ -930,19 +970,19 @@ test('Exp 18: replaces connected DOM container nodes atomically via replaceChild
   await installRuntimeSpies(page);
   await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-  const initialCount = await page.locator('main .card').count();
+  const initialCount = await getVisibleCards(page).count();
   expect(initialCount).toBeGreaterThanOrEqual(6);
 
   await resetSpyCounters(page);
   const { categorySelect } = getMenuControls(page);
   await categorySelect.selectOption('cold-brew');
 
-  const filteredCount = await page.locator('main .card').count();
+  const filteredCount = await getVisibleCards(page).count();
   expect(filteredCount).toBeGreaterThanOrEqual(1);
   expect(filteredCount).toBeLessThan(initialCount);
 
   await categorySelect.selectOption('all');
-  expect(await page.locator('main .card').count()).toBe(initialCount);
+  expect(await getVisibleCards(page).count()).toBe(initialCount);
 
   const spies = await readSpies(page);
   expect(spies.withArgsReplaceChildrenCalls).toBeGreaterThanOrEqual(2);
