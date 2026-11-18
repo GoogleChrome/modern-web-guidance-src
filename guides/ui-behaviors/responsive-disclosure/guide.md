@@ -41,7 +41,23 @@ Choose the threshold (examples below use `500px`) based on when the static conte
 
 Use `<details>` as the default for inline secondary content. Place `<summary>` first, and never put headings, links, or buttons inside `<summary>`. Add a shared `name` attribute on sibling `<details>` elements when only one section should stay open at a time.
 
-Because CSS alone cannot synchronize the `open` attribute with the accessibility tree, use `ResizeObserver` on the container to force `open = true` when wide and restore each element's narrow open/closed state when shrinking back:
+In the wide `@container` block, strip `<summary>`'s disclosure marker and pointer affordance so it reads as a static label:
+
+```css
+@container (inline-size >= 520px) {
+  .disclosure-details summary {
+    list-style: none;
+    cursor: default;
+    pointer-events: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+}
+```
+
+Because CSS alone cannot synchronize the `open` attribute with the accessibility tree, use `ResizeObserver` on the container to force `open = true` (removing `<summary>` from the tab order and blocking toggle clicks) when wide and restore each element's narrow open/closed state when shrinking back:
 
 ```js
 const detailsItems = [...stage.querySelectorAll('.disclosure-details')];
@@ -49,6 +65,9 @@ const narrowState = new WeakMap(detailsItems.map((el, i) => [el, i === 0]));
 let currentWide = null;
 
 for (const details of detailsItems) {
+  details.querySelector('summary')?.addEventListener('click', (event) => {
+    if (currentWide) event.preventDefault();
+  });
   details.addEventListener('toggle', () => {
     if (currentWide === false) narrowState.set(details, details.open);
   });
@@ -61,9 +80,12 @@ new ResizeObserver(([entry]) => {
   currentWide = isWide;
 
   for (const details of detailsItems) {
+    const summary = details.querySelector('summary');
     if (isWide) {
       details.open = true;
+      if (summary) summary.tabIndex = -1;
     } else {
+      summary?.removeAttribute('tabindex');
       // Keep open if keyboard focus is currently inside this section
       const hasFocus = details.contains(document.activeElement);
       details.open = hasFocus || Boolean(narrowState.get(details));
@@ -93,6 +115,7 @@ In the wide `@container` block, hide the trigger and internal close button, and 
   /* Undo the UA popover chrome (top-layer positioning, margin, border, background), then lay the content out for the wide design */
   .popover-content[popover] {
     position: static;
+    display: flex;
     inset: auto;
     margin: 0;
     border: 0;
@@ -102,18 +125,27 @@ In the wide `@container` block, hide the trigger and internal close button, and 
 }
 ```
 
-When crossing into wide mode, close any open popover layer with `hidePopover()` so it exits the top layer cleanly, and preserve focus if a descendant control was active:
+When crossing the threshold, close any open popover layer with `hidePopover()` when widening so it exits the top layer cleanly, re-open it with `showPopover()` if a descendant control had focus when narrowing, and preserve focus:
 
 ```js
+const isPopoverOpen = (el) =>
+  el.matches(':popover-open') || el.classList.contains(':popover-open');
+
 panel.addEventListener('toggle', (event) => {
   trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
 });
 
-// Inside ResizeObserver when crossing into wide mode:
-if (isWide && (panel.matches(':popover-open') || panel.classList.contains(':popover-open'))) {
-  const focused = panel.contains(document.activeElement) ? document.activeElement : null;
-  panel.hidePopover?.();
-  focused?.focus({ preventScroll: true });
+// Inside ResizeObserver when crossing the threshold:
+const focused = panel.contains(document.activeElement) ? document.activeElement : null;
+
+if (isWide) {
+  if (isPopoverOpen(panel)) panel.hidePopover?.();
+} else if (focused && !isPopoverOpen(panel)) {
+  panel.showPopover?.();
+}
+
+if (focused && document.activeElement !== focused) {
+  focused.focus({ preventScroll: true });
 }
 ```
 
