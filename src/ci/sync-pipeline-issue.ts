@@ -214,9 +214,8 @@ function getLaDateString(d: Date = new Date()): string {
 }
 
 export function formatShortDate(isoDate: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
-  if (!match) return isoDate;
-  const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const d = new Date(isoDate.trim());
+  if (Number.isNaN(d.getTime())) return isoDate;
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }
 

@@ -21,6 +21,9 @@ import {
 import { MAX_SOURCE_FILE_BYTES } from './scanners/index.ts';
 import type { AnalyzerRule } from './schema.ts';
 
+// Ensure consistent output without ANSI escape codes in tests (https://no-color.org)
+process.env.NO_COLOR = '1';
+
 async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), 'analyzer-cli-test-'));
   try {
@@ -487,6 +490,16 @@ describe('runAnalyzeCli', () => {
         color: false,
       });
       assert.ok(!outputNoColor.includes('\u001b['), 'Expected no ANSI escape codes when color=false');
+
+      const prevForce = process.env.FORCE_COLOR;
+      try {
+        process.env.FORCE_COLOR = '1';
+        const outputEnvNoColor = formatHumanReadable('/workspace', 1, fixtureGuides);
+        assert.ok(!outputEnvNoColor.includes('\u001b['), 'Expected NO_COLOR=1 to override FORCE_COLOR=1');
+      } finally {
+        if (prevForce === undefined) delete process.env.FORCE_COLOR;
+        else process.env.FORCE_COLOR = prevForce;
+      }
     });
 
     it('skips docs, examples, demo, test, spec, and fixtures by default with --include-docs-and-tests opt-in', async () => {
