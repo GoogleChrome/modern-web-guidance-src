@@ -243,4 +243,24 @@ describe('upload-suite CLI validation guards', () => {
       assert.match(res.stderr, /0 tasks were run/);
     });
   });
+
+  test('exits non-zero when evals.json has task keys with empty run arrays', () => {
+    return withTempDir((dir) => {
+      const suiteName = 'empty-runs-suite';
+      const suiteDir = path.join(dir, suiteName);
+      fs.mkdirSync(suiteDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(suiteDir, 'evals.json'),
+        JSON.stringify({ results: { 'some-task': [] } }),
+        'utf8',
+      );
+
+      const res = spawnSync(process.execPath, [uploadSuiteScript, suiteName, dir], {
+        encoding: 'utf8',
+      });
+
+      assert.strictEqual(res.status, 1);
+      assert.match(res.stderr, /0 tasks were run/);
+    });
+  });
 });

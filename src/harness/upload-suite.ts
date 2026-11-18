@@ -287,7 +287,7 @@ async function main() {
     const evalsContent = fs.readFileSync(evalsJsonPath, 'utf8');
     evalsData = JSON.parse(evalsContent);
     const results = evalsData.results || {};
-    if (Object.keys(results).length === 0) {
+    if (Object.values(results).every(runs => !Array.isArray(runs) || runs.length === 0)) {
       console.error(cRed(`❌ Error: No evaluation data found in evals.json (0 tasks were run). Upload blocked.`));
       process.exit(1);
     }
