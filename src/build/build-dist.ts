@@ -120,9 +120,7 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
-export type DistTag = 'latest' | 'next';
-
-export function processSkills(publishRoot: string, distTag: DistTag = 'latest') {
+export function processSkills(publishRoot: string) {
   console.log("Processing standalone skills from configuration...");
   const skills = config.standaloneSkills;
 
@@ -164,16 +162,15 @@ export function processSkills(publishRoot: string, distTag: DistTag = 'latest') 
     fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
 
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
-      .replaceAll('SKILL_VERSION', skillVersion)
-      .replaceAll('modern-web-guidance@latest', `modern-web-guidance@${distTag}`);
+      .replaceAll('SKILL_VERSION', skillVersion);
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, failOnMissingVectors, distTag = 'latest' } = opts;
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, chunkCacheDir?: string }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, failOnMissingVectors, chunkCacheDir } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -197,6 +194,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       outputDir: DIST_DIR,
       target: 'skills-cli',
       failOnMissingVectors,
+      chunkCacheDir,
     });
 
     // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
@@ -291,9 +289,6 @@ const __dirname = __dirnameFunction(__filename);
         platform: "node",
         format: "esm",
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
-        define: {
-          "__MWG_DIST_TAG__": JSON.stringify(distTag),
-        },
         banner: {
           js: `const [__mwg_major] = process.versions.node.split('.').map(Number);
 if (__mwg_major < 22) {
@@ -341,7 +336,7 @@ if (__mwg_major < 22) {
       throw error;
     }
 
-    const { skillsCount, skillNames } = processSkills(publishRoot, distTag);
+    const { skillsCount, skillNames } = processSkills(publishRoot);
 
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { skillsCount, skillNames };
@@ -410,7 +405,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
 }
 
-function getLatestVersion() {
+export function getLatestVersion() {
   const output = gitExec(['tag', '-l', 'v*.*.*', '--merged', 'HEAD', '--sort=-v:refname'], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });

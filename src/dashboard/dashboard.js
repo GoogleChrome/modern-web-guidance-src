@@ -1,4 +1,4 @@
-import { getTrialStats, isInfraErrorTrial, isUnguidedLeakTrial, getEligibleTaskIds, getA11yTrialStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatJobDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip } from './utils.js';
+import { getTrialStats, isInfraErrorTrial, isUnguidedLeakTrial, getEligibleTaskIds, getA11yTrialStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatJobDate, formatRatePct, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractJobSummary } from './summary-extractor.js';
 import { ApiClient, isAuthRejection } from './api.js';
@@ -685,32 +685,19 @@ function renderSummary(data) {
     const tasksWithTools = new Set();
     const tasksWithGuides = new Set();
 
-    let totalAllTrialsCount = 0;
-    let totalUnguidedTrialsCount = 0;
-    let computedInfraErrors = 0;
-    let unguidedLeaksCount = 0;
     Object.keys(results).forEach(key => {
         const base = key.replace(' - guided', '').replace(' - unguided', '');
         baseKeys.add(base);
         const parsed = parseResultKey(key);
+        const isGuided = parsed ? parsed.condition === 'guided' : key.endsWith(' - guided');
+        if (!isGuided) return;
 
-        const trials = results[key] || [];
-        totalAllTrialsCount += trials.length;
-        const isGuided = key.endsWith(' - guided');
-        if (!isGuided) totalUnguidedTrialsCount += trials.length;
-
-        trials.forEach((/** @type {DashboardTrialResult} */ trial) => {
-            if (isInfraErrorTrial(trial.results)) {
-                computedInfraErrors++;
-            }
-            if (!isGuided && isUnguidedLeakTrial(trial, parsed?.guide)) {
-                unguidedLeaksCount++;
-            }
+        (results[key] || []).forEach((/** @type {DashboardTrialResult} */ trial) => {
             const hasTools = trial.guidanceToolsUsed && trial.guidanceToolsUsed.length > 0;
             const hasGuides = (trial.guidesUsed && trial.guidesUsed.length > 0) || (trial.guideUsed && typeof trial.guideUsed === 'object' && trial.guideUsed.guidesUsed && trial.guideUsed.guidesUsed.length > 0);
 
-            if (isGuided && hasTools) tasksWithTools.add(base);
-            if (isGuided && hasGuides) tasksWithGuides.add(base);
+            if (hasTools) tasksWithTools.add(base);
+            if (hasGuides) tasksWithGuides.add(base);
         });
     });
 
@@ -725,13 +712,10 @@ function renderSummary(data) {
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
 
-    const totalInfraErrors = (summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined)
-        ? (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0)
-        : computedInfraErrors;
-    const rawRate = totalAllTrialsCount > 0 ? (totalInfraErrors / totalAllTrialsCount) * 100 : 0;
-    const totalInfraErrorRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
-    const rawLeakRate = totalUnguidedTrialsCount > 0 ? (unguidedLeaksCount / totalUnguidedTrialsCount) * 100 : 0;
-    const unguidedLeakRate = rawLeakRate > 0 && rawLeakRate < 1 ? Number(rawLeakRate.toFixed(1)) : Math.round(rawLeakRate);
+    const totalInfraErrors = extracted.earlyFailureCount ?? 0;
+    const totalInfraErrorRate = formatRatePct(totalInfraErrors, extracted.totalTrials ?? 0);
+    const unguidedLeaksCount = extracted.unguidedLeakCount ?? 0;
+    const unguidedLeakRate = formatRatePct(unguidedLeaksCount, extracted.unguidedTrialCount ?? 0);
 
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];

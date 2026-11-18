@@ -93,8 +93,8 @@ A guide progresses through three sequential stages before its evals land, tracke
 
 1. **Stage 1: Identifying use cases (`Needs use cases`, [`project-use-cases`](../.agents/skills/project-use-cases/SKILL.md))**
    - **Goal**: Translate a web platform feature (from open `new-feature` issues; see [`project-features`](../.agents/skills/project-features/SKILL.md)) into distinct, action-oriented use cases.
-   - **Artifacts**: Directory structure (`guides/<category>/<use-case-slug>/`) and a stub `guide.md` containing only YAML frontmatter (`name`, `description`, `web-feature-ids`), or a `new-use-case` issue.
-   - Contributor aligns with the category Content ATL via an issue or stub PR. *(Onboarded Peers may fast-track and proceed directly to Stage 2).*
+   - **Artifacts**: A [`new-use-case` issue](../.github/ISSUE_TEMPLATE/new-use-case.yml) (filed directly via the issue template, or auto-created by `src/ci/sync-use-cases.ts` when a `draft: stub` guide lands on `main`), or a stub `guide.md` containing YAML frontmatter (`name`, `description`, `draft: stub`, `web-feature-ids`).
+   - External contributors propose new use cases via the [`new-use-case` issue template](../.github/ISSUE_TEMPLATE/new-use-case.yml) to align with the category Content ATL first. *(Onboarded Peers, Content ATLs, and Owners may open a Stage 1 stub PR or fast-track directly to Stage 2).*
 
 2. **Stage 2: Authoring guidance (`Needs guidance`, [`project-guides`](../.agents/skills/project-guides/SKILL.md))**
    - **Goal**: Flesh out the guidance content, build a working reference demo, and define testable expectations.

@@ -26,7 +26,7 @@ When assigned to validate a guide, create a task list artifact based on this che
 
 Before performing qualitative or browser verification, read the `guide.md` file in its entirety and run the automated guide validation suite:
 *   **Understand the Problem & Solution**: Identify the core developer problem the guide addresses and the recommended API, property, or architectural approach.
-*   **Run Automated Validation**: Run `node --test src/authoring/guides-integrity.test.ts` to validate frontmatter, `web-feature-ids`, markdown soundness, transclusion macros, and grader expectation coverage (and inspect the macro-expanded output in `out/build/skills-cli/guides/<category>/<slug>.md` after `pnpm build` when using macros).
+*   **Run Automated Validation**: Run `node --test src/authoring/guides-integrity.test.ts` to validate frontmatter, `web-feature-ids` (including that every feature a macro references is listed), markdown soundness, transclusion macros, and grader expectation coverage (and inspect the macro-expanded output in `out/build/skills-cli/guides/<category>/<slug>.md` after `pnpm build` when using macros).
 *   **When Reviewing a PR (Splits, Merges, & Reorgs)**: Inspect existing review threads first to avoid duplicating open feedback or rehashing settled discussions. Compare full `BASE` and `HEAD` files (`git show <base_sha>:<path>`) bullet-by-bullet and code-block-by-code-block to catch silently dropped guidance or duplicate bullets, and check for stale `GUIDE_REF` or `INCLUDE` targets across `guides/` and `features/`.
 
 ## 2. Qualitative & Best Practices Review

@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import {
-  softEdgeContentFadeCssMatcher
-} from './soft-edge-content-fade.ts';
-void test('soft-edge-content-fade: positive matches', async (t) => {
+  teaserCssMatcher
+} from './teaser.ts';
+void test('teaser: positive matches', async (t) => {
   await t.test('flags -webkit-mask-image: linear-gradient(...) without standard mask-image', () => {
     const css = `
       .scroll-fade {
@@ -12,7 +12,7 @@ void test('soft-edge-content-fade: positive matches', async (t) => {
         -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
       }
     `;
-    const matches = scanCss('fade.css', css, [softEdgeContentFadeCssMatcher]);
+    const matches = scanCss('fade.css', css, [teaserCssMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
@@ -23,12 +23,12 @@ void test('soft-edge-content-fade: positive matches', async (t) => {
         -webkit-mask-image: -webkit-gradient(linear, left top, left bottom, from(rgba(0,0,0,1)), to(rgba(0,0,0,0)));
       }
     `;
-    const matches = scanCss('legacy-fade.css', css, [softEdgeContentFadeCssMatcher]);
+    const matches = scanCss('legacy-fade.css', css, [teaserCssMatcher]);
     assert.equal(matches.length, 1);
   });
 });
 
-void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
+void test('teaser: negative / exempt cases', async (t) => {
   await t.test('exempts rules that also declare standard mask-image', () => {
     const css = `
       .modern-fade {
@@ -36,7 +36,7 @@ void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
         mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
       }
     `;
-    const matches = scanCss('modern.css', css, [softEdgeContentFadeCssMatcher]);
+    const matches = scanCss('modern.css', css, [teaserCssMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -52,7 +52,7 @@ void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
         -webkit-mask-image: repeating-linear-gradient(45deg, black 0 10px, transparent 10px 20px);
       }
     `;
-    const matches = scanCss('icon.css', css, [softEdgeContentFadeCssMatcher]);
+    const matches = scanCss('icon.css', css, [teaserCssMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -65,7 +65,7 @@ void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
         -webkit-mask-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7));
       }
     `;
-    const matches = scanCss('night.css', css, [softEdgeContentFadeCssMatcher]);
+    const matches = scanCss('night.css', css, [teaserCssMatcher]);
     assert.equal(matches.length, 0);
   });
 });

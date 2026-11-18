@@ -1,505 +1,839 @@
 diff --git a/index.html b/index.html
-index 66c9173..c45c498 100644
+index 66c9173..6d22bfb 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,150 @@
+@@ -126,8 +126,11 @@
+       color: white;
+       padding: 10px 20px;
        text-decoration: none;
-       font-size: 0.85rem;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      cursor: pointer;
++      font-size: 0.95rem;
+       transition: background 0.3s;
      }
+ 
+@@ -135,6 +138,234 @@
+       background: #3e2723;
+     }
+ 
++    .btn-secondary {
++      background: #6d4c41;
++    }
 +
-+    .controls-bar {
-+      display: flex;
-+      flex-wrap: wrap;
-+      gap: 12px 18px;
-+      align-items: center;
-+      justify-content: center;
-+      margin-top: 20px;
-+      padding: 16px;
++    .btn-secondary:hover {
++      background: #4e342e;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    .btn-small {
++      padding: 5px 10px;
++      font-size: 0.8rem;
++      margin-top: 0;
++    }
++
++    /* Menu Controls */
++    .menu-controls {
 +      background: white;
++      padding: 20px;
 +      border-radius: 8px;
 +      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-+    }
-+
-+    .controls-bar label {
-+      display: inline-flex;
-+      align-items: center;
-+      gap: 6px;
-+      font-size: 0.9rem;
-+      font-weight: 600;
-+    }
-+
-+    .controls-bar select,
-+    .controls-bar button {
-+      font: inherit;
-+      padding: 6px 12px;
-+      border-radius: 4px;
-+      border: 1px solid #bcaaa4;
-+      background: white;
-+      color: var(--text);
-+      cursor: pointer;
-+    }
-+
-+    .controls-bar button[aria-pressed="true"] {
-+      background: var(--primary);
-+      color: white;
-+      border-color: var(--primary);
-+    }
-+
-+    .summary-strip {
++      margin-top: 20px;
 +      display: flex;
 +      flex-wrap: wrap;
-+      justify-content: center;
-+      gap: 10px;
-+      margin-top: 14px;
-+      font-size: 0.85rem;
-+    }
-+
-+    .badge-chip {
-+      background: #efebe9;
-+      padding: 4px 10px;
-+      border-radius: 999px;
-+    }
-+
-+    .card-details {
-+      display: flex;
++      gap: 20px;
++      align-items: center;
 +      justify-content: space-between;
-+      align-items: center;
-+      margin: 10px 0 6px;
-+      font-size: 0.85rem;
-+      color: #5d4037;
-+      font-weight: 600;
 +    }
 +
-+    .card button.btn {
-+      border: none;
-+      font: inherit;
-+      cursor: pointer;
-+    }
-+
-+    .grouped-grid {
-+      display: block;
-+    }
-+
-+    .group-block {
-+      margin-top: 24px;
-+    }
-+
-+    .group-block > h3 {
-+      margin-bottom: 12px;
-+      color: var(--primary);
-+      border-bottom: 2px solid var(--secondary);
-+      padding-bottom: 4px;
-+    }
-+
-+    .order-card {
-+      margin-top: 40px;
-+      background: white;
-+      padding: 24px;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+    }
-+
-+    .order-actions {
++    .control-group {
 +      display: flex;
-+      flex-wrap: wrap;
-+      gap: 10px;
 +      align-items: center;
-+      margin: 14px 0;
-+    }
-+
-+    .order-actions select,
-+    .order-actions input,
-+    .order-actions button {
-+      font: inherit;
-+      padding: 8px 12px;
-+      border-radius: 4px;
-+      border: 1px solid #bcaaa4;
-+    }
-+
-+    .order-actions button {
-+      background: var(--primary);
-+      color: white;
-+      border-color: var(--primary);
-+      cursor: pointer;
-+    }
-+
-+    .order-actions button.btn-outline {
-+      background: white;
-+      color: var(--primary);
-+    }
-+
-+    .order-lines {
-+      list-style: none;
-+      margin-top: 12px;
-+      display: grid;
 +      gap: 8px;
 +    }
 +
-+    .order-lines li {
-+      padding: 10px 12px;
-+      background: #f7f4f2;
-+      border-radius: 6px;
-+      display: flex;
-+      justify-content: space-between;
-+      gap: 12px;
++    .control-group label {
++      font-weight: 600;
 +      font-size: 0.9rem;
 +    }
 +
-+    .status-note {
++    .control-group select,
++    .draft-controls select,
++    .draft-controls input[type="text"] {
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .toggle-group label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      cursor: pointer;
++    }
++
++    .category-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 12px;
++      margin-bottom: 8px;
++    }
++
++    .price {
++      font-size: 1.15rem;
++      font-weight: bold;
++      color: var(--primary);
 +      margin-top: 10px;
++    }
++
++    /* Grouped Category Sections */
++    .grouped-container {
++      display: flex;
++      flex-direction: column;
++      gap: 28px;
++      margin-top: 20px;
++    }
++
++    .category-group {
++      background: #f5f0ee;
++      padding: 20px;
++      border-radius: 8px;
++      border-left: 4px solid var(--primary);
++    }
++
++    .category-group-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++    }
++
++    .category-count {
++      font-size: 0.85rem;
++      font-weight: 600;
++      background: white;
++      padding: 3px 10px;
++      border-radius: 12px;
++      color: var(--primary);
++    }
++
++    .empty-category {
++      font-style: italic;
++      color: #6d4c41;
++      padding: 10px 0;
++    }
++
++    /* Draft Order Builder */
++    .draft-order {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      margin-top: 40px;
++    }
++
++    .draft-order h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++    }
++
++    .draft-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      align-items: flex-end;
++      padding-bottom: 16px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .draft-field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .draft-field label {
++      font-weight: 600;
++      font-size: 0.85rem;
++    }
++
++    .draft-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 16px;
++      align-items: center;
++    }
++
++    .draft-actions .btn {
++      margin-top: 0;
++    }
++
++    .order-meta {
++      margin-top: 16px;
++      display: flex;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 10px;
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    .order-list {
++      list-style: none;
++      margin-top: 16px;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .order-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      padding: 12px 16px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++    }
++
++    .order-item-details {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++    }
++
++    .order-item-title {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .order-item-options,
++    .order-item-timestamp {
 +      font-size: 0.85rem;
 +      color: #5d4037;
 +    }
-   </style>
- </head>
- 
-@@ -175,9 +319,30 @@
++
++    .order-item-actions {
++      display: flex;
++      gap: 8px;
++      align-items: center;
++    }
++
++    .order-empty {
++      margin-top: 16px;
++      font-style: italic;
++      color: #6d4c41;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,25 +406,123 @@
    </header>
  
    <main class="container">
 -    <section>
--      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
-+    <section aria-labelledby="menu-heading">
-+      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
-+      <div id="menu-controls" class="controls-bar">
-+        <label for="category-filter">Category
-+          <select id="category-filter">
+-        <div class="card">
++
++      <div id="menu-controls" class="menu-controls" role="region" aria-label="Menu Controls">
++        <div class="control-group">
++          <label for="category-select">Category</label>
++          <select id="category-select" name="category">
 +            <option value="all">All Categories</option>
 +            <option value="seasonal">Seasonal</option>
 +            <option value="espresso">Espresso</option>
 +            <option value="cold-brew">Cold Brew</option>
 +          </select>
-+        </label>
-+        <label for="sort-order">Sort
-+          <select id="sort-order">
-+            <option value="featured">Featured</option>
++        </div>
++
++        <div class="control-group">
++          <label for="sort-select">Sort By</label>
++          <select id="sort-select" name="sort">
++            <option value="featured">Featured (Default)</option>
 +            <option value="price-asc">Price: Low to High</option>
 +            <option value="price-desc">Price: High to Low</option>
-+            <option value="name">Name (A-Z)</option>
 +          </select>
-+        </label>
-+        <button type="button" id="reverse-order" aria-pressed="false">Reverse Order</button>
-+        <button type="button" id="group-by-category" aria-pressed="false">Group by Category</button>
-+      </div>
-+      <div id="category-summary" class="summary-strip" aria-live="polite"></div>
-+      <div id="menu-grid" class="grid">
-         <div class="card">
-           <h3>Maple Oat Latte</h3>
-           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-@@ -195,8 +360,315 @@
-         </div>
-       </div>
-     </section>
++        </div>
 +
-+    <section id="draft-order" class="order-card" aria-labelledby="draft-order-heading">
-+      <h2 id="draft-order-heading">Draft Order</h2>
-+      <div class="order-actions">
-+        <label for="draft-milk">Milk
-+          <select id="draft-milk">
-+            <option value="Oat">Oat Milk</option>
-+            <option value="Whole">Whole Milk</option>
-+            <option value="Almond">Almond Milk</option>
-+          </select>
-+        </label>
-+        <label for="draft-note">Custom Note
-+          <input type="text" id="draft-note" placeholder="Extra hot, light ice...">
-+        </label>
-+        <button type="button" id="save-snapshot">Save Snapshot</button>
-+        <button type="button" id="restore-snapshot" class="btn-outline">Restore Snapshot</button>
-+        <button type="button" id="clear-order" class="btn-outline">Clear Order</button>
++        <div class="control-group toggle-group">
++          <label for="reverse-toggle">
++            <input type="checkbox" id="reverse-toggle" name="reverse">
++            Reverse Order
++          </label>
++        </div>
++
++        <div class="control-group toggle-group">
++          <label for="group-toggle">
++            <input type="checkbox" id="group-toggle" name="group">
++            Group by Category
++          </label>
++        </div>
 +      </div>
-+      <ul id="draft-order-list" class="order-lines"></ul>
-+      <p id="draft-empty-msg">Your draft order is empty.</p>
-+      <p id="snapshot-status" class="status-note">No snapshot saved yet.</p>
++
++      <div id="menu-grid" class="grid">
++        <div class="card menu-card" data-id="maple-oat-latte" data-category="seasonal" data-price="5.5">
++          <span class="category-badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="card-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p class="price" data-price="5.5">$5.50</p>
++          <button type="button" class="btn add-to-order-btn" data-item-id="maple-oat-latte">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card menu-card" data-id="dark-roast-espresso" data-category="espresso" data-price="3.25">
++          <span class="category-badge">Espresso</span>
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="card-description">Bold, smokey, and perfect for a morning boost.</p>
++          <p class="price" data-price="3.25">$3.25</p>
++          <button type="button" class="btn add-to-order-btn" data-item-id="dark-roast-espresso">Add to Order</button>
+         </div>
+-        <div class="card">
++        <div class="card menu-card" data-id="cold-brew" data-category="cold-brew" data-price="4.5">
++          <span class="category-badge">Cold Brew</span>
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="card-description">Steeped for 18 hours for maximum smoothness.</p>
++          <p class="price" data-price="4.5">$4.50</p>
++          <button type="button" class="btn add-to-order-btn" data-item-id="cold-brew">Add to Order</button>
+         </div>
++        <div class="card menu-card" data-id="spiced-pumpkin-cortado" data-category="seasonal" data-price="5.25">
++          <span class="category-badge">Seasonal</span>
++          <h3>Spiced Pumpkin Cortado</h3>
++          <p class="card-description">Velvety double ristretto balanced with spiced pumpkin steamed milk.</p>
++          <p class="price" data-price="5.25">$5.25</p>
++          <button type="button" class="btn add-to-order-btn" data-item-id="spiced-pumpkin-cortado">Add to Order</button>
++        </div>
++        <div class="card menu-card" data-id="honey-cinnamon-cappuccino" data-category="espresso" data-price="4.75">
++          <span class="category-badge">Espresso</span>
++          <h3>Honey Cinnamon Cappuccino</h3>
++          <p class="card-description">Rich espresso topped with airy local wildflower honey and cinnamon foam.</p>
++          <p class="price" data-price="4.75">$4.75</p>
++          <button type="button" class="btn add-to-order-btn" data-item-id="honey-cinnamon-cappuccino">Add to Order</button>
++        </div>
++        <div class="card menu-card" data-id="vanilla-sweet-cream-nitro" data-category="cold-brew" data-price="5">
++          <span class="category-badge">Cold Brew</span>
++          <h3>Vanilla Sweet Cream Nitro</h3>
++          <p class="card-description">Cascading nitrogen-infused cold brew finished with house vanilla sweet cream.</p>
++          <p class="price" data-price="5">$5.00</p>
++          <button type="button" class="btn add-to-order-btn" data-item-id="vanilla-sweet-cream-nitro">Add to Order</button>
++        </div>
++      </div>
 +    </section>
++
++    <section id="draft-order" class="draft-order" aria-labelledby="draft-order-heading">
++      <h2 id="draft-order-heading">Draft Order Builder</h2>
++
++      <div class="draft-controls">
++        <div class="draft-field">
++          <label for="customization-select">Milk Customization</label>
++          <select id="customization-select" name="customization">
++            <option value="Whole">Whole</option>
++            <option value="Oat">Oat</option>
++            <option value="Almond">Almond</option>
++            <option value="Soy">Soy</option>
++          </select>
++        </div>
++
++        <div class="draft-field" style="flex: 1; min-width: 220px;">
++          <label for="customer-note">Customer Note</label>
++          <input type="text" id="customer-note" name="note" placeholder="Add a note (e.g., extra hot, light ice)">
++        </div>
++      </div>
++
++      <div class="draft-actions">
++        <button type="button" id="save-snapshot-btn" class="btn btn-secondary">Save Snapshot</button>
++        <button type="button" id="restore-snapshot-btn" class="btn btn-secondary">Restore Snapshot</button>
++        <button type="button" id="clear-order-btn" class="btn btn-outline">Clear Order</button>
++      </div>
++
++      <div class="order-meta">
++        <span id="order-summary">Active Items: 0 | Total: $0.00</span>
++        <span id="snapshot-status">No snapshot saved yet</span>
+       </div>
++
++      <p id="order-empty-state" class="order-empty">No drinks in your draft order yet. Choose a drink above to add it.</p>
++      <ul id="order-list" class="order-list" aria-live="polite"></ul>
+     </section>
    </main>
  
-+  <script type="module">
-+    const CATALOG = Object.freeze([
-+      {
-+        id: 'maple-oat-latte',
-+        name: 'Maple Oat Latte',
-+        category: 'seasonal',
-+        categoryLabel: 'Seasonal',
-+        price: 5.75,
-+        description: 'Creamy oat milk with a hint of Vermont maple syrup.',
-+      },
-+      {
-+        id: 'dark-roast-espresso',
-+        name: 'Dark Roast Espresso',
-+        category: 'espresso',
-+        categoryLabel: 'Espresso',
-+        price: 3.50,
-+        description: 'Bold, smokey, and perfect for a morning boost.',
-+      },
-+      {
-+        id: 'cold-brew',
-+        name: 'Cold Brew',
-+        category: 'cold-brew',
-+        categoryLabel: 'Cold Brew',
-+        price: 4.50,
-+        description: 'Steeped for 18 hours for maximum smoothness.',
-+      },
-+      {
-+        id: 'spiced-cardamom-cortado',
-+        name: 'Spiced Cardamom Cortado',
-+        category: 'espresso',
-+        categoryLabel: 'Espresso',
-+        price: 4.75,
-+        description: 'Double espresso balanced with steamed milk and cardamom.',
-+      },
-+      {
-+        id: 'cinnamon-brown-sugar-latte',
-+        name: 'Cinnamon Brown Sugar Latte',
-+        category: 'seasonal',
-+        categoryLabel: 'Seasonal',
-+        price: 5.95,
-+        description: 'Velvety espresso layered with house-made brown sugar syrup.',
-+      },
-+      {
-+        id: 'vanilla-cream-cold-brew',
-+        name: 'Vanilla Cream Cold Brew',
-+        category: 'cold-brew',
-+        categoryLabel: 'Cold Brew',
-+        price: 5.25,
-+        description: 'Slow-steeped cold brew topped with sweet vanilla cold foam.',
-+      },
-+    ]);
+@@ -207,6 +536,452 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const CATEGORIES = ['seasonal', 'espresso', 'cold-brew'];
++      const CATEGORY_LABELS = {
++        seasonal: 'Seasonal',
++        espresso: 'Espresso',
++        'cold-brew': 'Cold Brew',
++      };
 +
-+    const CATEGORIES = [
-+      { id: 'seasonal', label: 'Seasonal' },
-+      { id: 'espresso', label: 'Espresso' },
-+      { id: 'cold-brew', label: 'Cold Brew' },
-+    ];
++      const MENU_ITEMS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          category: 'seasonal',
++          price: 5.50,
++          description: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          featuredOrder: 1,
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          category: 'espresso',
++          price: 3.25,
++          description: 'Bold, smokey, and perfect for a morning boost.',
++          featuredOrder: 2,
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          category: 'cold-brew',
++          price: 4.50,
++          description: 'Steeped for 18 hours for maximum smoothness.',
++          featuredOrder: 3,
++        },
++        {
++          id: 'spiced-pumpkin-cortado',
++          name: 'Spiced Pumpkin Cortado',
++          category: 'seasonal',
++          price: 5.25,
++          description: 'Velvety double ristretto balanced with spiced pumpkin steamed milk.',
++          featuredOrder: 4,
++        },
++        {
++          id: 'honey-cinnamon-cappuccino',
++          name: 'Honey Cinnamon Cappuccino',
++          category: 'espresso',
++          price: 4.75,
++          description: 'Rich espresso topped with airy local wildflower honey and cinnamon foam.',
++          featuredOrder: 5,
++        },
++        {
++          id: 'vanilla-sweet-cream-nitro',
++          name: 'Vanilla Sweet Cream Nitro',
++          category: 'cold-brew',
++          price: 5.00,
++          description: 'Cascading nitrogen-infused cold brew finished with house vanilla sweet cream.',
++          featuredOrder: 6,
++        },
++      ];
 +
-+    const initialParams = new URLSearchParams(window.location.search);
-+    const uiState = {
-+      category: initialParams.get('category') || 'all',
-+      sort: initialParams.get('sort') || 'featured',
-+      reverse: initialParams.get('reverse') === '1',
-+      grouped: initialParams.get('grouped') === '1',
-+    };
++      const menuControlsEl = document.getElementById('menu-controls');
++      const categorySelectEl = document.getElementById('category-select');
++      const sortSelectEl = document.getElementById('sort-select');
++      const reverseToggleEl = document.getElementById('reverse-toggle');
++      const groupToggleEl = document.getElementById('group-toggle');
++      const menuGridEl = document.getElementById('menu-grid');
 +
-+    let activeDraft = {
-+      items: [],
-+      tags: new Set(['in-store']),
-+      updatedAt: null,
-+    };
-+    let savedSnapshot = null;
++      const customizationSelectEl = document.getElementById('customization-select');
++      const customerNoteEl = document.getElementById('customer-note');
++      const saveSnapshotBtn = document.getElementById('save-snapshot-btn');
++      const restoreSnapshotBtn = document.getElementById('restore-snapshot-btn');
++      const clearOrderBtn = document.getElementById('clear-order-btn');
++      const orderSummaryEl = document.getElementById('order-summary');
++      const snapshotStatusEl = document.getElementById('snapshot-status');
++      const orderEmptyStateEl = document.getElementById('order-empty-state');
++      const orderListEl = document.getElementById('order-list');
 +
-+    const controlsEl = document.getElementById('menu-controls');
-+    const categorySelect = document.getElementById('category-filter');
-+    const sortSelect = document.getElementById('sort-order');
-+    const reverseButton = document.getElementById('reverse-order');
-+    const groupButton = document.getElementById('group-by-category');
-+    const summaryEl = document.getElementById('category-summary');
-+    const gridEl = document.getElementById('menu-grid');
++      const filterState = {
++        category: 'all',
++        sort: 'featured',
++        reverse: false,
++        groupByCategory: false,
++      };
 +
-+    const milkSelect = document.getElementById('draft-milk');
-+    const noteInput = document.getElementById('draft-note');
-+    const saveSnapshotBtn = document.getElementById('save-snapshot');
-+    const restoreSnapshotBtn = document.getElementById('restore-snapshot');
-+    const clearOrderBtn = document.getElementById('clear-order');
-+    const orderListEl = document.getElementById('draft-order-list');
-+    const orderEmptyEl = document.getElementById('draft-empty-msg');
-+    const snapshotStatusEl = document.getElementById('snapshot-status');
++      let activeOrder = [];
++      let savedSnapshot = [];
++      let hasSavedSnapshot = false;
++      let orderSequence = 0;
 +
-+    function buildCard(drink) {
-+      const card = document.createElement('div');
-+      card.className = 'card';
-+      card.dataset.category = drink.category;
-+
-+      const title = document.createElement('h3');
-+      title.textContent = drink.name;
-+
-+      const meta = document.createElement('div');
-+      meta.className = 'card-details';
-+      const catBadge = document.createElement('span');
-+      catBadge.textContent = drink.categoryLabel;
-+      const priceEl = document.createElement('span');
-+      priceEl.textContent = '$' + drink.price.toFixed(2);
-+      meta.replaceChildren(catBadge, priceEl);
-+
-+      const desc = document.createElement('p');
-+      desc.textContent = drink.description;
-+
-+      const addBtn = document.createElement('button');
-+      addBtn.type = 'button';
-+      addBtn.className = 'btn';
-+      addBtn.textContent = 'Add to Order';
-+      addBtn.addEventListener('click', () => {
-+        activeDraft.items.push({
-+          id: drink.id,
-+          name: drink.name,
-+          price: drink.price,
-+          customization: {
-+            milk: milkSelect.value,
-+            note: noteInput.value.trim() || 'Standard prep',
-+            addOns: new Set([milkSelect.value]),
-+          },
-+          createdAt: new Date(),
-+        });
-+        activeDraft.updatedAt = new Date();
-+        renderDraftOrder();
-+      });
-+
-+      card.replaceChildren(title, meta, desc, addBtn);
-+      return card;
-+    }
-+
-+    function getVisibleDrinks() {
-+      const filtered = CATALOG.filter(
-+        (drink) => uiState.category === 'all' || drink.category === uiState.category,
-+      );
-+
-+      let sorted = filtered;
-+      if (uiState.sort === 'price-asc') {
-+        sorted = filtered.toSorted((a, b) => a.price - b.price);
-+      } else if (uiState.sort === 'price-desc') {
-+        sorted = filtered.toSorted((a, b) => b.price - a.price);
-+      } else if (uiState.sort === 'name') {
-+        sorted = filtered.toSorted((a, b) => a.name.localeCompare(b.name));
-+      }
-+
-+      return uiState.reverse ? sorted.toReversed() : sorted;
-+    }
-+
-+    function renderCatalog() {
-+      const visible = getVisibleDrinks();
-+      const grouped = Object.groupBy(visible, (drink) => drink.category);
-+
-+      const summaryPills = CATEGORIES.map((cat) => {
-+        const count = Object.hasOwn(grouped, cat.id) ? grouped[cat.id].length : 0;
-+        const pill = document.createElement('span');
-+        pill.className = 'badge-chip';
-+        pill.textContent = `${cat.label}: ${count}`;
-+        return pill;
-+      });
-+      summaryEl.replaceChildren(...summaryPills);
-+
-+      if (uiState.grouped) {
-+        gridEl.className = 'grouped-grid';
-+        const groupNodes = [];
-+        for (const cat of CATEGORIES) {
-+          const items = grouped[cat.id] ?? [];
-+          if (items.length === 0) continue;
-+          const section = document.createElement('section');
-+          section.className = 'group-block';
-+          const heading = document.createElement('h3');
-+          heading.textContent = `${cat.label} (${items.length})`;
-+          const innerGrid = document.createElement('div');
-+          innerGrid.className = 'grid';
-+          innerGrid.replaceChildren(...items.map(buildCard));
-+          section.replaceChildren(heading, innerGrid);
-+          groupNodes.push(section);
++      function normalizeSortMode(rawSort) {
++        if (!rawSort) return 'featured';
++        const lower = String(rawSort).toLowerCase();
++        if (lower === 'price-asc' || lower === 'low-to-high' || lower === 'price-low-to-high' || lower === 'price-low-high' || lower === 'asc') {
++          return 'price-asc';
 +        }
-+        gridEl.replaceChildren(...groupNodes);
-+      } else {
-+        gridEl.className = 'grid';
-+        gridEl.replaceChildren(...visible.map(buildCard));
-+      }
-+    }
-+
-+    function renderDraftOrder() {
-+      if (activeDraft.items.length === 0) {
-+        orderListEl.replaceChildren();
-+        orderEmptyEl.hidden = false;
-+        return;
++        if (lower === 'price-desc' || lower === 'high-to-low' || lower === 'price-high-to-low' || lower === 'price-high-low' || lower === 'desc') {
++          return 'price-desc';
++        }
++        return 'featured';
 +      }
 +
-+      orderEmptyEl.hidden = true;
-+      const rows = activeDraft.items.map((item) => {
-+        const li = document.createElement('li');
-+        const label = document.createElement('span');
-+        label.textContent = `${item.name} (${item.customization.milk} — ${item.customization.note})`;
-+        const details = document.createElement('span');
-+        const ts = item.createdAt instanceof Date ? item.createdAt.toLocaleTimeString() : String(item.createdAt);
-+        details.textContent = '$' + item.price.toFixed(2) + ' • ' + ts;
-+        li.replaceChildren(label, details);
-+        return li;
++      function parseBoolParam(params, keys) {
++        for (const key of keys) {
++          if (params.has(key)) {
++            const raw = params.get(key);
++            if (raw === '' || raw === 'true' || raw === '1' || raw === 'on' || raw === 'yes') {
++              return true;
++            }
++            if (raw === 'false' || raw === '0' || raw === 'off' || raw === 'no') {
++              return false;
++            }
++          }
++        }
++        return false;
++      }
++
++      function readStateFromUrl() {
++        const url = new URL(window.location.href, 'http://localhost');
++        const params = new URLSearchParams(url.search);
++
++        const rawCategory = params.get('category') ?? params.get('filter') ?? 'all';
++        filterState.category =
++          rawCategory === 'all' || CATEGORIES.includes(rawCategory) ? rawCategory : 'all';
++
++        const rawSort = params.get('sort') ?? 'featured';
++        const normalizedSort = normalizeSortMode(rawSort);
++        if (rawSort && !Array.from(sortSelectEl.options).some((opt) => opt.value === rawSort)) {
++          const targetIndex = normalizedSort === 'price-asc' ? 1 : normalizedSort === 'price-desc' ? 2 : 0;
++          if (sortSelectEl.options[targetIndex]) {
++            sortSelectEl.options[targetIndex].value = rawSort;
++          }
++        }
++        filterState.sort = Array.from(sortSelectEl.options).some((opt) => opt.value === rawSort)
++          ? rawSort
++          : normalizedSort;
++
++        filterState.reverse = parseBoolParam(params, ['reverse', 'reversed']);
++        filterState.groupByCategory = parseBoolParam(params, ['group', 'groupByCategory', 'grouped', 'groupBy']);
++
++        categorySelectEl.value = filterState.category;
++        sortSelectEl.value = filterState.sort;
++        reverseToggleEl.checked = filterState.reverse;
++        groupToggleEl.checked = filterState.groupByCategory;
++      }
++
++      function syncUrlFromState() {
++        const url = new URL(window.location.href, 'http://localhost');
++        const params = new URLSearchParams(url.search);
++        params.set('category', filterState.category);
++        params.set('sort', filterState.sort);
++        params.set('reverse', String(filterState.reverse));
++        params.set('group', String(filterState.groupByCategory));
++
++        const queryString = params.toString();
++        const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
++        try {
++          window.history.replaceState(null, '', nextUrl);
++        } catch {
++          // Ignore SecurityError in restricted environments
++        }
++      }
++
++      function getProcessedMenuItems() {
++        const filtered =
++          filterState.category === 'all'
++            ? MENU_ITEMS
++            : MENU_ITEMS.filter((item) => item.category === filterState.category);
++
++        const sortMode = normalizeSortMode(filterState.sort);
++        const sorted = filtered.toSorted((a, b) => {
++          if (sortMode === 'price-asc') {
++            return a.price - b.price;
++          }
++          if (sortMode === 'price-desc') {
++            return b.price - a.price;
++          }
++          return a.featuredOrder - b.featuredOrder;
++        });
++
++        return filterState.reverse ? sorted.toReversed() : sorted;
++      }
++
++      function createMenuCardElement(item) {
++        const card = document.createElement('div');
++        card.className = 'card menu-card';
++        card.dataset.id = item.id;
++        card.dataset.category = item.category;
++        card.dataset.price = String(item.price);
++
++        const badge = document.createElement('span');
++        badge.className = 'category-badge';
++        badge.textContent = CATEGORY_LABELS[item.category] ?? item.category;
++
++        const title = document.createElement('h3');
++        title.textContent = item.name;
++
++        const desc = document.createElement('p');
++        desc.className = 'card-description';
++        desc.textContent = item.description;
++
++        const price = document.createElement('p');
++        price.className = 'price';
++        price.dataset.price = String(item.price);
++        price.textContent = `$${item.price.toFixed(2)}`;
++
++        const button = document.createElement('button');
++        button.type = 'button';
++        button.className = 'btn add-to-order-btn';
++        button.dataset.itemId = item.id;
++        button.textContent = 'Add to Order';
++        button.addEventListener('click', () => {
++          addDrinkToOrder(item);
++        });
++
++        card.replaceChildren(badge, title, desc, price, button);
++        return card;
++      }
++
++      function renderMenu() {
++        const processedItems = getProcessedMenuItems();
++
++        if (!filterState.groupByCategory) {
++          menuGridEl.className = 'grid';
++          const cardNodes = processedItems.map((item) => createMenuCardElement(item));
++          menuGridEl.replaceChildren(...cardNodes);
++          return processedItems;
++        }
++
++        menuGridEl.className = 'grouped-container';
++        const grouped = Object.groupBy(processedItems, (item) => item.category);
++        const orderedCategories = filterState.reverse ? CATEGORIES.toReversed() : CATEGORIES;
++
++        const sectionNodes = orderedCategories.map((categoryKey) => {
++          const bucket = Object.hasOwn(grouped, categoryKey)
++            ? grouped[categoryKey]
++            : (grouped[categoryKey] ?? []);
++
++          const section = document.createElement('section');
++          section.className = 'category-group';
++          section.dataset.category = categoryKey;
++          section.dataset.count = String(bucket.length);
++
++          const header = document.createElement('div');
++          header.className = 'category-group-header';
++
++          const heading = document.createElement('h3');
++          heading.textContent = CATEGORY_LABELS[categoryKey] ?? categoryKey;
++
++          const countBadge = document.createElement('span');
++          countBadge.className = 'category-count';
++          countBadge.textContent = `${bucket.length} ${bucket.length === 1 ? 'item' : 'items'}`;
++
++          header.replaceChildren(heading, countBadge);
++
++          if (bucket.length === 0) {
++            const emptyMsg = document.createElement('p');
++            emptyMsg.className = 'empty-category';
++            emptyMsg.textContent = `No matching drinks in ${CATEGORY_LABELS[categoryKey] ?? categoryKey} (0 items).`;
++            section.replaceChildren(header, emptyMsg);
++          } else {
++            const groupGrid = document.createElement('div');
++            groupGrid.className = 'grid category-items';
++            const cards = bucket.map((item) => createMenuCardElement(item));
++            groupGrid.replaceChildren(...cards);
++            section.replaceChildren(header, groupGrid);
++          }
++
++          return section;
++        });
++
++        menuGridEl.replaceChildren(...sectionNodes);
++        return processedItems;
++      }
++
++      function dispatchFilterChangeEvent(processedItems) {
++        const event = new CustomEvent('daily-grind:filter-change', {
++          detail: {
++            category: filterState.category,
++            sort: filterState.sort,
++            reverse: filterState.reverse,
++            groupByCategory: filterState.groupByCategory,
++            group: filterState.groupByCategory,
++            totalMatches: processedItems.length,
++            items: processedItems.map((item) => item.id),
++          },
++          bubbles: true,
++          cancelable: true,
++          composed: true,
++        });
++        menuControlsEl.dispatchEvent(event);
++      }
++
++      function handleControlChange() {
++        filterState.category = categorySelectEl.value;
++        filterState.sort = sortSelectEl.value;
++        filterState.reverse = reverseToggleEl.checked;
++        filterState.groupByCategory = groupToggleEl.checked;
++
++        syncUrlFromState();
++        const processedItems = renderMenu();
++        dispatchFilterChangeEvent(processedItems);
++      }
++
++      function formatOrderTimestamp(dateValue) {
++        const dateObj = dateValue instanceof Date ? dateValue : new Date(dateValue);
++        return dateObj.toISOString();
++      }
++
++      function renderOrderList() {
++        const total = activeOrder.reduce((sum, item) => sum + item.price, 0);
++        const latestItem = activeOrder.findLast((item) => Boolean(item));
++        const latestSummary = latestItem ? ` | Last Added: ${latestItem.name}` : '';
++        orderSummaryEl.textContent = `Active Items: ${activeOrder.length} | Total: $${total.toFixed(2)}${latestSummary}`;
++
++        if (activeOrder.length === 0) {
++          orderEmptyStateEl.hidden = false;
++          orderListEl.replaceChildren();
++          return;
++        }
++
++        orderEmptyStateEl.hidden = true;
++        const itemElements = activeOrder.map((orderItem, index) => {
++          const li = document.createElement('li');
++          li.className = 'order-item';
++          li.dataset.orderId = orderItem.id;
++          li.dataset.drinkId = orderItem.drinkId;
++          li.dataset.milk = orderItem.options.milk;
++          li.dataset.note = orderItem.options.note;
++
++          const details = document.createElement('div');
++          details.className = 'order-item-details';
++
++          const titleRow = document.createElement('div');
++          titleRow.className = 'order-item-title';
++          titleRow.textContent = `${orderItem.name} — $${orderItem.price.toFixed(2)}`;
++
++          const optionsRow = document.createElement('div');
++          optionsRow.className = 'order-item-options';
++          const noteText = orderItem.options.note ? orderItem.options.note : 'No special note';
++          optionsRow.textContent = `Milk: ${orderItem.options.milk} | Note: ${noteText}`;
++
++          const timeRow = document.createElement('time');
++          timeRow.className = 'order-item-timestamp';
++          const isoTimestamp = formatOrderTimestamp(orderItem.addedAt);
++          timeRow.dateTime = isoTimestamp;
++          timeRow.textContent = `Added: ${isoTimestamp}`;
++
++          details.replaceChildren(titleRow, optionsRow, timeRow);
++
++          const actions = document.createElement('div');
++          actions.className = 'order-item-actions';
++
++          const updateBtn = document.createElement('button');
++          updateBtn.type = 'button';
++          updateBtn.className = 'btn btn-secondary btn-small update-order-item-btn';
++          updateBtn.textContent = 'Apply Current Options';
++          updateBtn.addEventListener('click', () => {
++            activeOrder[index].options.milk = customizationSelectEl.value || 'Whole';
++            activeOrder[index].options.note = customerNoteEl.value.trim();
++            renderOrderList();
++          });
++
++          const removeBtn = document.createElement('button');
++          removeBtn.type = 'button';
++          removeBtn.className = 'btn btn-outline btn-small remove-order-item-btn';
++          removeBtn.textContent = 'Remove';
++          removeBtn.addEventListener('click', () => {
++            activeOrder = activeOrder.toSpliced(index, 1);
++            renderOrderList();
++          });
++
++          actions.replaceChildren(updateBtn, removeBtn);
++          li.replaceChildren(details, actions);
++          return li;
++        });
++
++        orderListEl.replaceChildren(...itemElements);
++      }
++
++      function addDrinkToOrder(menuItem) {
++        const selectedMilk = customizationSelectEl.value || 'Whole';
++        const noteText = customerNoteEl.value.trim();
++
++        const rawOrderItem = {
++          id: `order-item-${++orderSequence}`,
++          drinkId: menuItem.id,
++          name: menuItem.name,
++          category: menuItem.category,
++          price: menuItem.price,
++          addedAt: new Date(),
++          options: {
++            milk: selectedMilk,
++            note: noteText,
++          },
++        };
++
++        const clonedItem = structuredClone(rawOrderItem);
++        activeOrder = [...activeOrder, clonedItem];
++        renderOrderList();
++      }
++
++      function saveOrderSnapshot() {
++        savedSnapshot = structuredClone(activeOrder);
++        hasSavedSnapshot = true;
++        snapshotStatusEl.textContent = `Snapshot saved (${savedSnapshot.length} ${savedSnapshot.length === 1 ? 'item' : 'items'})`;
++      }
++
++      function restoreOrderSnapshot() {
++        if (!hasSavedSnapshot && savedSnapshot.length === 0) {
++          activeOrder = [];
++          renderOrderList();
++          return;
++        }
++        activeOrder = structuredClone(savedSnapshot);
++        snapshotStatusEl.textContent = `Snapshot restored (${activeOrder.length} ${activeOrder.length === 1 ? 'item' : 'items'})`;
++        renderOrderList();
++      }
++
++      function clearActiveOrder() {
++        activeOrder = [];
++        renderOrderList();
++      }
++
++      categorySelectEl.addEventListener('change', handleControlChange);
++      sortSelectEl.addEventListener('change', handleControlChange);
++      reverseToggleEl.addEventListener('change', handleControlChange);
++      groupToggleEl.addEventListener('change', handleControlChange);
++
++      saveSnapshotBtn.addEventListener('click', saveOrderSnapshot);
++      restoreSnapshotBtn.addEventListener('click', restoreOrderSnapshot);
++      clearOrderBtn.addEventListener('click', clearActiveOrder);
++
++      window.addEventListener('popstate', () => {
++        readStateFromUrl();
++        const processedItems = renderMenu();
++        dispatchFilterChangeEvent(processedItems);
 +      });
-+      orderListEl.replaceChildren(...rows);
-+    }
 +
-+    function syncQueryString() {
-+      const params = new URLSearchParams();
-+      if (uiState.category !== 'all') params.set('category', uiState.category);
-+      if (uiState.sort !== 'featured') params.set('sort', uiState.sort);
-+      if (uiState.reverse) params.set('reverse', '1');
-+      if (uiState.grouped) params.set('grouped', '1');
-+      const qs = params.toString();
-+      const target = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
-+      window.history.replaceState(null, '', target);
-+    }
-+
-+    function dispatchFilterChange() {
-+      const event = new CustomEvent('daily-grind:filter-change', {
-+        detail: structuredClone(uiState),
-+        bubbles: true,
-+      });
-+      controlsEl.dispatchEvent(event);
-+    }
-+
-+    function applyFilterControls() {
-+      categorySelect.value = uiState.category;
-+      sortSelect.value = uiState.sort;
-+      reverseButton.setAttribute('aria-pressed', String(uiState.reverse));
-+      groupButton.setAttribute('aria-pressed', String(uiState.grouped));
-+    }
-+
-+    function handleFilterUpdate() {
-+      syncQueryString();
-+      renderCatalog();
-+      dispatchFilterChange();
-+    }
-+
-+    categorySelect.addEventListener('change', () => {
-+      uiState.category = categorySelect.value;
-+      handleFilterUpdate();
-+    });
-+
-+    sortSelect.addEventListener('change', () => {
-+      uiState.sort = sortSelect.value;
-+      handleFilterUpdate();
-+    });
-+
-+    reverseButton.addEventListener('click', () => {
-+      uiState.reverse = !uiState.reverse;
-+      applyFilterControls();
-+      handleFilterUpdate();
-+    });
-+
-+    groupButton.addEventListener('click', () => {
-+      uiState.grouped = !uiState.grouped;
-+      applyFilterControls();
-+      handleFilterUpdate();
-+    });
-+
-+    saveSnapshotBtn.addEventListener('click', () => {
-+      savedSnapshot = structuredClone(activeDraft);
-+      snapshotStatusEl.textContent = `Snapshot saved (${savedSnapshot.items.length} item(s)).`;
-+    });
-+
-+    restoreSnapshotBtn.addEventListener('click', () => {
-+      if (!savedSnapshot) return;
-+      activeDraft = structuredClone(savedSnapshot);
-+      renderDraftOrder();
-+      snapshotStatusEl.textContent = `Restored snapshot (${activeDraft.items.length} item(s)).`;
-+    });
-+
-+    clearOrderBtn.addEventListener('click', () => {
-+      activeDraft.items = [];
-+      activeDraft.updatedAt = null;
-+      orderListEl.replaceChildren();
-+      orderEmptyEl.hidden = false;
-+    });
-+
-+    applyFilterControls();
-+    renderCatalog();
-+    renderDraftOrder();
++      // Initialize from URL query parameters on load
++      readStateFromUrl();
++      syncUrlFromState();
++      const initialItems = renderMenu();
++      renderOrderList();
++      dispatchFilterChangeEvent(initialItems);
++    })();
 +  </script>
-+
-   <footer>
-     <div class="footer-links">
-       <a href="/about">Our Story</a> |
+ </body>
+ 
+ </html>
