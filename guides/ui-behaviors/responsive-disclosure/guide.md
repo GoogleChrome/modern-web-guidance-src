@@ -35,87 +35,29 @@ Instead, keep **one** semantic DOM subtree and adapt its presentation with conta
 
 MANDATORY: Define `container-type: inline-size` on the host wrapper so the disclosure adapts to its own container width rather than the viewport. Default to the narrow (disclosure) presentation, then use an `@container (inline-size >= …)` rule to hide the trigger and show the content inline.
 
-Choose the threshold (examples below use `500px`) based on when the static content fits comfortably without wrapping or clipping, and use the same value in the JavaScript handoff.
+Choose the threshold based on when the static content fits comfortably without wrapping or clipping, and use the same value in the JavaScript handoff.
+
+For the JavaScript handoff, attach a single `ResizeObserver` to the container wrapper and measure `entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width` so threshold checks match `@container (inline-size)` pixel-for-pixel. Only run state transitions when crossing between narrow and wide; before altering disclosure state across a breakpoint, capture `document.activeElement` if it lies inside the disclosed subtree and restore it afterward with `.focus({ preventScroll: true })` if focus moved.
 
 ## Static to `<details>`
 
 Use `<details>` as the default for inline secondary content. Place `<summary>` first, and never put headings, links, or buttons inside `<summary>`. Add a shared `name` attribute on sibling `<details>` elements when only one section should stay open at a time.
 
-In the wide `@container` block, strip `<summary>`'s disclosure marker and pointer affordance so it reads as a static label:
+In the wide `@container` block, strip `<summary>`'s disclosure marker and pointer affordance so it reads as a static label by setting `list-style: none`, `cursor: default`, and `pointer-events: none` on `<summary>`, and `display: none` on `summary::-webkit-details-marker`.
 
-```css
-@container (inline-size >= 520px) {
-  .disclosure-details summary {
-    list-style: none;
-    cursor: default;
-    pointer-events: none;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-  }
-}
-```
-
-Because CSS alone cannot synchronize the `open` attribute with the accessibility tree, use `ResizeObserver` on the container to force `open = true` (removing `<summary>` from the tab order and blocking toggle clicks) when wide and restore each element's narrow open/closed state when shrinking back:
-
-```js
-const detailsItems = [...stage.querySelectorAll('.disclosure-details')];
-const narrowState = new WeakMap(detailsItems.map((el, i) => [el, i === 0]));
-let currentWide = null;
-
-for (const details of detailsItems) {
-  details.querySelector('summary')?.addEventListener('click', (event) => {
-    if (currentWide) event.preventDefault();
-  });
-  details.addEventListener('toggle', () => {
-    if (currentWide === false) narrowState.set(details, details.open);
-  });
-}
-
-new ResizeObserver(([entry]) => {
-  const inlineSize = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
-  const isWide = inlineSize >= 520; // Example threshold matching @container
-  if (isWide === currentWide) return;
-  currentWide = isWide;
-
-  for (const details of detailsItems) {
-    const summary = details.querySelector('summary');
-    if (isWide) {
-      details.open = true;
-      if (summary) summary.tabIndex = -1;
-    } else {
-      summary?.removeAttribute('tabindex');
-      // Keep open if keyboard focus is currently inside this section
-      const hasFocus = details.contains(document.activeElement);
-      details.open = hasFocus || Boolean(narrowState.get(details));
-    }
-  }
-}).observe(stage);
-```
+Because CSS alone cannot synchronize the `open` attribute with the accessibility tree, track each element's narrow `open` state (e.g., in a `WeakMap` updated on `toggle` events only while narrow) and call `event.preventDefault()` on `<summary>` `click` events while wide. When crossing to wide in the `ResizeObserver`, set `details.open = true` and `summary.tabIndex = -1`; when returning to narrow, remove `tabindex` from `<summary>` and keep `details.open` true if the element contains `document.activeElement` or its saved narrow state was open.
 
 ## Static to `[popover]`
 
-Use `popover="auto"` with a `popovertarget` trigger for short, transient, light-dismiss panels. Give the trigger `popovertarget`, `aria-controls`, and an initial `aria-expanded="false"`, keep the panel inside the container-query host, and add an internal close button (`popovertargetaction="hide"`) that is hidden when wide. Sync `aria-expanded` on the trigger via the `toggle` event.
+Use `popover="auto"` with a `popovertarget` trigger for short, transient, light-dismiss panels. Give the trigger `popovertarget`, `aria-controls`, and an initial `aria-expanded="false"`, keep the panel inside the container-query host, and add an internal close button (`popovertargetaction="hide"`) that is hidden when wide. Sync `aria-expanded` on the trigger from `event.newState === 'open'` in the panel's `toggle` event.
 
-In the wide `@container` block, hide the trigger and internal close button, and override the `[popover]` positioning so the same element participates in normal flow:
+Scope any narrow `display` override on the `[popover]` element to `:is(:popover-open, .\:popover-open)` (`.\:popover-open` matches the popover polyfill) so closed popovers stay hidden. In the wide `@container` block, hide the trigger and internal close button with `display: none`, undo the UA `[popover]` chrome, and set the wide layout `display` using at least `(0, 2, 0)` specificity (such as `.panel[popover]`) so it overrides the UA `[popover]:not(:popover-open)` `display: none` rule:
 
 ```css
-/* Scope any display override to the open state (`.\:popover-open` matches the polyfill) so a closed popover stays hidden */
-.popover-content:is(:popover-open, .\:popover-open) {
-  display: grid;
-}
-
-@container (inline-size >= 500px) {
-  .popover-trigger,
-  .popover-close {
-    display: none;
-  }
-
-  /* Undo the UA popover chrome (top-layer positioning, margin, border, background), then lay the content out for the wide design */
-  .popover-content[popover] {
+@container (inline-size >= 500px) { /* Example threshold */
+  .panel[popover] {
     position: static;
-    display: flex;
+    display: flex; /* Or your wide layout display */
     inset: auto;
     margin: 0;
     border: 0;
@@ -125,74 +67,21 @@ In the wide `@container` block, hide the trigger and internal close button, and 
 }
 ```
 
-When crossing the threshold, close any open popover layer with `hidePopover()` when widening so it exits the top layer cleanly, re-open it with `showPopover()` if a descendant control had focus when narrowing, and preserve focus:
-
-```js
-const isPopoverOpen = (el) =>
-  el.matches(':popover-open') || el.classList.contains(':popover-open');
-
-panel.addEventListener('toggle', (event) => {
-  trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
-});
-
-// Inside ResizeObserver when crossing the threshold:
-const focused = panel.contains(document.activeElement) ? document.activeElement : null;
-
-if (isWide) {
-  if (isPopoverOpen(panel)) panel.hidePopover?.();
-} else if (focused && !isPopoverOpen(panel)) {
-  panel.showPopover?.();
-}
-
-if (focused && document.activeElement !== focused) {
-  focused.focus({ preventScroll: true });
-}
-```
+When crossing the threshold in the `ResizeObserver`, detect whether the popover is open via `el.matches(':popover-open') || el.classList.contains(':popover-open')`. Call `hidePopover()` when widening if it is open so it exits the top layer cleanly, call `showPopover()` when narrowing if a descendant held focus and it is not already open, and restore focus with `{ preventScroll: true }`.
 
 ## Static to modal `<dialog>` drawer
 
 Use `<dialog>` with `.showModal()` when the disclosed content is task-focused or needs modal isolation (focus trap, backdrop, and `Escape` dismissal). Dismiss the modal with a native `<form method="dialog">` button inside the dialog header and a backdrop click check (`event.target === dialog`).
 
-Author the `<dialog>` with `aria-labelledby` pointing at a heading in its header, plus the native close form, and a trigger with `aria-controls` and `aria-expanded="false"` outside the dialog. Keep `aria-expanded` in sync on open and close.
-
-In wide containers, hide the trigger and modal header, place the layout as a sidebar plus main content as the design requires, and dock `<dialog>` statically. A closed `<dialog>` is `display: none` by default, so the docked rule must set `display: block` and undo the modal positioning and size limits:
-
-```css
-@container (inline-size >= 580px) {
-  .drawer-trigger,
-  .drawer-header {
-    display: none;
-  }
-
-  .drawer-dialog {
-    position: static;
-    display: block;
-    inline-size: 100%;
-    block-size: auto;
-    max-block-size: none;
-    box-shadow: none;
-  }
-}
-```
-
-In the `ResizeObserver` handoff, close an open modal when widening and re-open it if focus was inside when narrowing:
+Author the `<dialog>` with `aria-labelledby` pointing at a heading in its header, plus the native close form, and a trigger with `aria-controls` and `aria-expanded="false"` outside the dialog. Set `aria-expanded="true"` when calling `dialog.showModal()` and reset it on the `close` event so `Escape`, form submission, backdrop clicks, and breakpoint `.close()` calls all stay in sync:
 
 ```js
-// Measure contentBoxSize so JS matches @container (inline-size) pixel-for-pixel
-const inlineSize = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
-const isWide = inlineSize >= 580; // Example threshold matching @container
-const focused = drawerDialog.contains(document.activeElement) ? document.activeElement : null;
-
-if (isWide) {
-  if (drawerDialog.open) drawerDialog.close();
-} else if (focused && !drawerDialog.open) {
-  drawerDialog.showModal();
-}
-
-if (focused && document.activeElement !== focused) {
-  focused.focus({ preventScroll: true });
-}
+dialog.addEventListener('close', () => trigger.setAttribute('aria-expanded', 'false'));
 ```
+
+In wide containers, hide the trigger and modal header (`display: none`), arrange the sidebar and main content to suit the layout, and dock `<dialog>` statically. Because a closed `<dialog>` defaults to `display: none`, the wide `@container` rule must set `position: static`, `display: block`, `inline-size: 100%`, `block-size: auto`, `max-block-size: none`, and `box-shadow: none` to undo modal positioning and size limits.
+
+In the `ResizeObserver` handoff, call `dialog.close()` if `dialog.open` is true when widening, call `dialog.showModal()` if a descendant held focus and `!dialog.open` when narrowing, and restore focus with `{ preventScroll: true }`.
 
 > [!NOTE]
 > If your layout cannot share one wrapper element (for example, moving a live `<iframe>` or video between two separate containers), see {{ GUIDE_REF("move-dom-element-without-losing-state") }} to reparent the subtree atomically without resetting element state.
