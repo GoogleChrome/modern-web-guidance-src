@@ -202,9 +202,18 @@
 
     @media (forced-colors: active) {
       .rating {
-        --color-star-filled: Highlight;
-        --color-star-average: Highlight;
-        --color-star-empty: CanvasText;
+        --color-star-filled: light-dark(CanvasText, Highlight);
+        --color-star-average: light-dark(CanvasText, Highlight);
+        --color-star-empty: color-mix(in srgb, CanvasText 40%, Canvas);
+        forced-color-adjust: none;
+      }
+
+      meter.rating,
+      meter.rating::-webkit-meter-bar,
+      input[type="range"].rating::-webkit-slider-runnable-track,
+      input[type="range"].rating::-moz-range-track,
+      input[type="range"].rating::-webkit-slider-thumb,
+      input[type="range"].rating::-moz-range-thumb {
         forced-color-adjust: none;
       }
     }

@@ -20,7 +20,7 @@ Do not build a rating from radio buttons, clickable `<span>`s, or ARIA `slider` 
 
 ## Draw the stars with a mask and a gradient
 
-Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `Highlight` and `CanvasText` (both guaranteed to contrast with `Canvas`) and opt out of color adjustment.
+Define custom properties for `--star-size` (at least `3rem` so each half star is `1.5rem` / `24px`, shrinking via `clamp()` only on very narrow viewports), filled and empty colors for light and dark schemes, and `--icon-star` holding a `url()` to a star icon, such as an SVG file or data URI (see {{ GUIDE_REF("icons") }}). Repeat `--icon-star` `--max` times (default `5`) with `repeat-x` as a `mask` over a hard-stop `linear-gradient` driven by `--control-value`. In forced-colors mode, override the star colors with `light-dark(CanvasText, Highlight)` for filled stars and a `color-mix()` of `CanvasText` and `Canvas` for empty stars (so contrast with `Canvas` holds in any scheme) and opt out of color adjustment.
 
 ```css
 :root {
@@ -41,10 +41,18 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
   --_stars-mask: var(--icon-star) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
 
   @media (forced-colors: active) {
-    --color-star-filled: Highlight;
-    --color-star-average: Highlight;
-    --color-star-empty: CanvasText;
+    --color-star-filled: light-dark(CanvasText, Highlight);
+    --color-star-average: light-dark(CanvasText, Highlight);
+    --color-star-empty: color-mix(in srgb, CanvasText 40%, Canvas);
     forced-color-adjust: none;
+
+    &::-webkit-meter-bar,
+    &::-webkit-slider-runnable-track,
+    &::-moz-range-track,
+    &::-webkit-slider-thumb,
+    &::-moz-range-thumb {
+      forced-color-adjust: none;
+    }
   }
 }
 ```
