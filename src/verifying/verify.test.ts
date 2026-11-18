@@ -22,7 +22,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { resolveAxeScriptSource, summarizeHydrationMessage } from './browser-pass.ts';
-import { findChromiumExecutable } from './cdp.ts';
+import { findPlaywrightChromiumExecutable } from './cdp.ts';
 import { installPluginConfigs, runStopHook } from './cli.ts';
 import { resolveContextGuides } from './context-guides.ts';
 import {
@@ -70,7 +70,10 @@ function hasGitBinary(): boolean {
 }
 
 const gitAvailable = hasGitBinary();
-const chromeBinary = findChromiumExecutable();
+// Browser-backed tests require Playwright's headless Chromium; CI's `basics` job does not install Playwright browsers.
+const NO_CHROMIUM = findPlaywrightChromiumExecutable()
+  ? false
+  : 'Playwright Chromium is not installed (run pnpm run setup:playwright)';
 
 test('routeFromFilePath normalizes Next.js App/Pages Router, SvelteKit, SolidStart, Nuxt 4, and Astro routes', () => {
   assert.equal(routeFromFilePath('src/app/checkout/page.tsx'), '/checkout');
@@ -433,7 +436,7 @@ test('Stop hook CLI works via symlinks and spaced paths, merges plugin configs n
 test(
   'End-to-end 4-in-1 live verification (<5s): catches hydration, async 500s, WCAG Tier-1 + geometry + CDP click divs, trapped <dialog>, form crashes, and passes cleanly with native <dialog> + [popover]',
   {
-    skip: !chromeBinary ? 'No Chromium executable available in sandbox' : false,
+    skip: NO_CHROMIUM,
   },
   async () => {
     await withTempDir(async (dir) => {
@@ -791,7 +794,7 @@ test('context-guides maps git diff + bespoke glue to verified MWG guide IDs via 
 test(
   'Vertical Packs (--pack commerce | media | saas) & --perf CDP pass detect live domain/perf defects and pass when remediated',
   {
-    skip: !chromeBinary ? 'No Chromium executable available in sandbox' : false,
+    skip: NO_CHROMIUM,
   },
   async () => {
     const mwgGuideSet = getVerifiedMwgGuideSet();

@@ -1,10 +1,40 @@
 # Modern Web Guidance Verifier (`src/verifying`)
 
-`src/verifying` pairs [Modern Web Guidance](../../guides) authoring retrieval (`search`, `retrieve`) and static legacy detection (`legacy-scan`) with fast, deterministic live-browser verification and agent lifecycle hooks. Every finding cites a verified guide ID from `gen/guides.json` and emits a copy-pasteable `npx -y modern-web-guidance@latest retrieve "<guide-ids>"` remediation command.
+`src/verifying` pairs [Modern Web Guidance](../../guides) authoring retrieval (`search`, `retrieve`) and static legacy detection (`legacy-scan`) with sub-4-second live-browser verification and pre-completion agent lifecycle hooks. Every finding cites a verified guide ID from `gen/guides.json` and emits a copy-pasteable `npx -y modern-web-guidance@latest retrieve "<guide-ids>"` remediation command.
+
+![What build & unit tests miss on a live checkout route](./assets/blind-spot-before.png)
 
 ---
 
-## 1. CLI Commands
+## 1. Closed-Loop Agent Lifecycle
+
+```mermaid
+flowchart LR
+  subgraph Start["1. Task Start"]
+    S["modern-web-guidance search + retrieve"]
+  end
+  subgraph Mid["2. Mid-Flight Diff"]
+    C["modern-web-guidance context-guides<br/>(in-process legacy-scan + search)"]
+  end
+  subgraph Gate["3. Pre-Completion Stop Hook (<4s)"]
+    V["modern-web-guidance verify<br/>(CDP Runtime + WCAG + Smoke + Packs)"]
+  end
+  subgraph Critic["4. Fresh-Context Review"]
+    R["modern-web-critic subagent<br/>(compaction-proof spec audit)"]
+  end
+
+  S --> Mid --> Gate
+  Gate -- "FAIL -> retrieve guide IDs" --> Mid
+  Gate -- "PASS" --> Critic
+```
+
+![Closed-loop Stop hook verification and self-repair](./assets/verifier-cli-loop.png)
+
+![Verified modern checkout after 1 self-repair turn](./assets/verified-modern-after.png)
+
+---
+
+## 2. CLI Commands
 
 ```bash
 # 1. Live 4-in-1 parallel browser + static verification (<4s)
@@ -21,7 +51,7 @@ Locally inside `modern-web-guidance-src`, you can also invoke `node bin/gd.ts ve
 
 ---
 
-## 2. Architecture (`src/verifying/`)
+## 3. Architecture (`src/verifying/`)
 
 | Module | Responsibility |
 | :--- | :--- |

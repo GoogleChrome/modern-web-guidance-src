@@ -82,17 +82,22 @@ function findPlaywrightHeadlessShell(cacheRoot: string | undefined): string | nu
   return null;
 }
 
+export function findPlaywrightChromiumExecutable(): string | null {
+  const home = os.homedir();
+  return (
+    findPlaywrightHeadlessShell(process.env.PLAYWRIGHT_BROWSERS_PATH) ||
+    findPlaywrightHeadlessShell(path.join(home, '.cache', 'ms-playwright')) ||
+    findPlaywrightHeadlessShell('/var/cache/ms-playwright') ||
+    findPlaywrightHeadlessShell(path.join(home, 'Library', 'Caches', 'ms-playwright'))
+  );
+}
+
 export function findChromiumExecutable(): string | null {
   if (process.env.MODERN_WEB_CHROME_PATH && existsSync(process.env.MODERN_WEB_CHROME_PATH)) {
     return process.env.MODERN_WEB_CHROME_PATH;
   }
 
-  const home = os.homedir();
-  const pwHit =
-    findPlaywrightHeadlessShell(process.env.PLAYWRIGHT_BROWSERS_PATH) ||
-    findPlaywrightHeadlessShell(path.join(home, '.cache', 'ms-playwright')) ||
-    findPlaywrightHeadlessShell('/var/cache/ms-playwright') ||
-    findPlaywrightHeadlessShell(path.join(home, 'Library', 'Caches', 'ms-playwright'));
+  const pwHit = findPlaywrightChromiumExecutable();
   if (pwHit) return pwHit;
 
   const systemCandidates = [
@@ -259,10 +264,9 @@ export async function launchHeadlessBrowser(
     ? null
     : mkdtempSync(path.join(os.tmpdir(), 'mw-verify-chrome-'));
   const args = [
-    ...(isHeadlessShell ? ['--headless'] : ['--headless=new']),
+    ...(isHeadlessShell ? ['--headless', '--single-process'] : ['--headless=new']),
     '--remote-debugging-port=0',
     '--no-sandbox',
-    '--single-process',
     '--disable-setuid-sandbox',
     '--disable-gpu',
     '--disable-software-rasterizer',
@@ -319,6 +323,7 @@ export async function launchHeadlessBrowser(
         }
       });
     }
+    proc.unref();
     if (userDataDir) {
       try {
         rmSync(userDataDir, { recursive: true, force: true });
