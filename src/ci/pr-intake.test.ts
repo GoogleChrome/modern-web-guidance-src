@@ -12,7 +12,7 @@ import {
   type LinkedIssueInfo,
   type PrIntakeInput
 } from './pr-intake.ts';
-import { githubApi, triagePullRequest, type AtlConfig } from './atl-triage.ts';
+import { githubApi, parsePrIntakeMetadata, triagePullRequest, type AtlConfig } from './atl-triage.ts';
 
 function makeInput(overrides: Partial<PrIntakeInput> = {}): PrIntakeInput {
   return {
@@ -224,11 +224,13 @@ describe('evaluatePrIntake', () => {
 });
 
 describe('resolveInfraReviewers', () => {
-  it('returns empty array for pure SME content files', () => {
+  it('returns empty array for pure SME content files, demo variants, and guide assets', () => {
     assert.deepEqual(
       resolveInfraReviewers([
         'guides/css/anchor/guide.md',
         'guides/css/anchor/demo.html',
+        'guides/ui-components/carousel/demo-vertical.html',
+        'guides/pwa/install-web-app/manifest.webmanifest',
         'guides/css/anchor/expectations.md',
         'features/popover.md',
         'skills-src/web-baseline/SKILL.md'
@@ -460,5 +462,63 @@ describe('triagePullRequest orchestration', () => {
       m7.mock.restore();
       m8.mock.restore();
     }
+  });
+});
+
+describe('parsePrIntakeMetadata (real gh pr view shapes)', () => {
+  it('marks default-named external forks as isSameRepo=false and filters google-cla app comments', () => {
+    const parsed = parsePrIntakeMetadata({
+      title: 'docs(guides): align dialog examples',
+      body: '<!-- no-atl-triage -->\nFixes #3615',
+      state: 'OPEN',
+      isDraft: false,
+      isCrossRepository: true,
+      additions: 13,
+      deletions: 10,
+      headRefOid: '7eddac9f226',
+      headRefName: 'fix-dialog',
+      headRepository: {
+        id: 'R_123',
+        name: 'modern-web-guidance-src',
+        nameWithOwner: 'mschoi0411/modern-web-guidance-src'
+      },
+      headRepositoryOwner: { login: 'mschoi0411' },
+      author: { login: 'mschoi0411' },
+      labels: [],
+      files: [{ path: 'guides/html/html/guide.md' }],
+      reviewRequests: [],
+      reviews: [],
+      comments: [
+        { author: { login: 'google-cla' }, body: 'Thanks for your pull request!' },
+        { author: { login: 'mschoi0411' }, body: 'I signed it' }
+      ],
+      statusCheckRollup: [{ name: 'cla/google', status: 'COMPLETED', conclusion: 'FAILURE' }]
+    });
+
+    assert.equal(parsed.isSameRepo, false);
+    assert.deepEqual(parsed.participantLogins, []);
+    assert.equal(parsed.claState, 'failure');
+  });
+
+  it('marks upstream branches as isSameRepo=true', () => {
+    const parsed = parsePrIntakeMetadata({
+      title: 'legacy-scan: fix',
+      body: '',
+      state: 'OPEN',
+      isDraft: false,
+      isCrossRepository: false,
+      headRefOid: '111111',
+      headRefName: 'fix/legacy-scan',
+      headRepository: {
+        name: 'modern-web-guidance-src',
+        nameWithOwner: 'GoogleChrome/modern-web-guidance-src'
+      },
+      headRepositoryOwner: { login: 'GoogleChrome' },
+      author: { login: 'paulirish' },
+      statusCheckRollup: [{ name: 'cla/google', conclusion: 'SUCCESS' }]
+    });
+
+    assert.equal(parsed.isSameRepo, true);
+    assert.equal(parsed.claState, 'success');
   });
 });

@@ -582,35 +582,25 @@ export const githubApi = {
 
   hasUserWriteAccess(username: string): boolean {
     const encoded = encodeURIComponent(username);
-    const out = child_process
-      .execFileSync(
-        'gh',
-        ['api', `repos/{owner}/{repo}/collaborators/${encoded}/permission`, '--jq', '.user.permissions.push // false'],
-        { encoding: 'utf8' }
-      )
-      .trim();
-    return out === 'true';
+    try {
+      const out = child_process
+        .execFileSync(
+          'gh',
+          ['api', `repos/{owner}/{repo}/collaborators/${encoded}/permission`, '--jq', '.user.permissions.push // false'],
+          { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+        )
+        .trim();
+      return out === 'true';
+    } catch (err) {
+      const stderr = String((err as { stderr?: unknown }).stderr ?? '');
+      if (stderr.includes('HTTP 404') || stderr.includes('is not a user')) {
+        return false;
+      }
+      throw err;
+    }
   },
 
-  getPrIntakeMetadata(prNumber: number): {
-    title: string;
-    body: string;
-    state: string;
-    isDraft: boolean;
-    additions: number;
-    deletions: number;
-    headRefOid: string;
-    headRefName: string;
-    isSameRepo: boolean;
-    author: string;
-    authorIsBot: boolean;
-    labels: string[];
-    files: string[];
-    reviewRequests: string[];
-    participantLogins: string[];
-    comments: Array<{ author: string; isBot: boolean; body: string }>;
-    claState: ClaState;
-  } {
+  getPrIntakeMetadata(prNumber: number): PrIntakeMetadata {
     const raw = child_process.execFileSync(
       'gh',
       [
@@ -618,66 +608,11 @@ export const githubApi = {
         'view',
         String(prNumber),
         '--json',
-        'title,body,state,isDraft,additions,deletions,headRefOid,headRefName,headRepository,author,labels,files,reviewRequests,reviews,comments,statusCheckRollup'
+        'title,body,state,isDraft,isCrossRepository,additions,deletions,headRefOid,headRefName,headRepository,headRepositoryOwner,author,labels,files,reviewRequests,reviews,comments,statusCheckRollup'
       ],
       { encoding: 'utf8' }
     );
-    const data = JSON.parse(raw);
-    const author: string = data.author?.login ?? '';
-    const authorIsBot = Boolean(data.author?.is_bot) || author.endsWith('[bot]');
-    const participants = new Set<string>();
-    for (const rev of data.reviews || []) {
-      const login: string | undefined = rev.author?.login;
-      const isBot = Boolean(rev.author?.is_bot) || (login ?? '').endsWith('[bot]');
-      if (login && !isBot && login.toLowerCase() !== author.toLowerCase()) {
-        participants.add(login);
-      }
-    }
-    const comments: Array<{ author: string; isBot: boolean; body: string }> = [];
-    for (const com of data.comments || []) {
-      const login: string = com.author?.login ?? '';
-      const isBot = Boolean(com.author?.is_bot) || login.endsWith('[bot]');
-      comments.push({ author: login, isBot, body: com.body ?? '' });
-      if (login && !isBot && login.toLowerCase() !== author.toLowerCase()) {
-        participants.add(login);
-      }
-    }
-
-    const claCheck = (data.statusCheckRollup || []).find(
-      (c: { context?: string; name?: string }) => (c.context || c.name) === 'cla/google'
-    );
-    let claState: ClaState = 'missing';
-    if (claCheck) {
-      const statusRaw = String(claCheck.conclusion || claCheck.state || claCheck.status || '').toLowerCase();
-      if (statusRaw === 'success') claState = 'success';
-      else if (statusRaw === 'failure' || statusRaw === 'error' || statusRaw === 'action_required') claState = 'failure';
-      else claState = 'pending';
-    }
-
-    const repoOwnerName = `${data.headRepository?.owner?.login ?? ''}/${data.headRepository?.name ?? ''}`.toLowerCase();
-    const isSameRepo =
-      repoOwnerName === 'googlechrome/modern-web-guidance-src' ||
-      data.headRepository?.name?.toLowerCase() === 'modern-web-guidance-src';
-
-    return {
-      title: data.title ?? '',
-      body: data.body ?? '',
-      state: data.state ?? 'OPEN',
-      isDraft: Boolean(data.isDraft),
-      additions: Number(data.additions ?? 0),
-      deletions: Number(data.deletions ?? 0),
-      headRefOid: data.headRefOid ?? '',
-      headRefName: data.headRefName ?? '',
-      isSameRepo,
-      author,
-      authorIsBot,
-      labels: (data.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
-      files: (data.files || []).map((f: { path?: string }) => f.path ?? '').filter(Boolean),
-      reviewRequests: (data.reviewRequests || []).map((r: { login?: string }) => r.login ?? '').filter(Boolean),
-      participantLogins: Array.from(participants),
-      comments,
-      claState
-    };
+    return parsePrIntakeMetadata(JSON.parse(raw));
   },
 
   getLinkedIssueInfo(issueNumber: number): LinkedIssueInfo | null {
@@ -1345,6 +1280,99 @@ export function handlePR(
   return reviewers;
 }
 
+export interface PrIntakeMetadata {
+  title: string;
+  body: string;
+  state: string;
+  isDraft: boolean;
+  additions: number;
+  deletions: number;
+  headRefOid: string;
+  headRefName: string;
+  isSameRepo: boolean;
+  author: string;
+  authorIsBot: boolean;
+  labels: string[];
+  files: string[];
+  reviewRequests: string[];
+  participantLogins: string[];
+  comments: Array<{ author: string; isBot: boolean; body: string }>;
+  claState: ClaState;
+}
+
+const KNOWN_APP_LOGINS = new Set(['google-cla', 'dependabot', 'github-actions', 'chrome-devrel-infra']);
+
+function isBotAuthor(authorObj: { login?: string; is_bot?: boolean } | null | undefined): boolean {
+  const login = (authorObj?.login ?? '').toLowerCase();
+  if (!login) return false;
+  return (
+    Boolean(authorObj?.is_bot) ||
+    login.endsWith('[bot]') ||
+    login.startsWith('app/') ||
+    KNOWN_APP_LOGINS.has(login)
+  );
+}
+
+export function parsePrIntakeMetadata(data: Record<string, any>): PrIntakeMetadata {
+  const author: string = data.author?.login ?? '';
+  const authorIsBot = isBotAuthor(data.author);
+  const participants = new Set<string>();
+  for (const rev of data.reviews || []) {
+    const login: string | undefined = rev.author?.login;
+    if (login && !isBotAuthor(rev.author) && login.toLowerCase() !== author.toLowerCase()) {
+      participants.add(login);
+    }
+  }
+  const comments: Array<{ author: string; isBot: boolean; body: string }> = [];
+  for (const com of data.comments || []) {
+    const login: string = com.author?.login ?? '';
+    const isBot = isBotAuthor(com.author);
+    comments.push({ author: login, isBot, body: com.body ?? '' });
+    if (login && !isBot && login.toLowerCase() !== author.toLowerCase()) {
+      participants.add(login);
+    }
+  }
+
+  const claCheck = (data.statusCheckRollup || []).find(
+    (c: { context?: string; name?: string }) => (c.context || c.name) === 'cla/google'
+  );
+  let claState: ClaState = 'missing';
+  if (claCheck) {
+    const statusRaw = String(claCheck.conclusion || claCheck.state || claCheck.status || '').toLowerCase();
+    if (statusRaw === 'success') claState = 'success';
+    else if (statusRaw === 'failure' || statusRaw === 'error' || statusRaw === 'action_required') claState = 'failure';
+    else claState = 'pending';
+  }
+
+  const nameWithOwner = String(data.headRepository?.nameWithOwner ?? '').toLowerCase();
+  const ownerLogin = String(data.headRepositoryOwner?.login ?? '').toLowerCase();
+  const repoName = String(data.headRepository?.name ?? '').toLowerCase();
+  const isSameRepo =
+    data.isCrossRepository === false &&
+    (nameWithOwner === 'googlechrome/modern-web-guidance-src' ||
+      (ownerLogin === 'googlechrome' && repoName === 'modern-web-guidance-src'));
+
+  return {
+    title: data.title ?? '',
+    body: data.body ?? '',
+    state: data.state ?? 'OPEN',
+    isDraft: Boolean(data.isDraft),
+    additions: Number(data.additions ?? 0),
+    deletions: Number(data.deletions ?? 0),
+    headRefOid: data.headRefOid ?? '',
+    headRefName: data.headRefName ?? '',
+    isSameRepo,
+    author,
+    authorIsBot,
+    labels: (data.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
+    files: (data.files || []).map((f: { path?: string }) => f.path ?? '').filter(Boolean),
+    reviewRequests: (data.reviewRequests || []).map((r: { login?: string }) => r.login ?? '').filter(Boolean),
+    participantLogins: Array.from(participants),
+    comments,
+    claState
+  };
+}
+
 export interface TriagePullRequestOptions {
   dryRun?: boolean;
   headRef?: string;
@@ -1389,11 +1417,6 @@ export function triagePullRequest(
 
   if (meta.state.toUpperCase() !== 'OPEN') {
     console.log(`PR #${prNumber} is ${meta.state}. Skipping triage.`);
-    return { decision: null, reviewers: [] };
-  }
-
-  if (hasNoAtlTriageDirective(meta.body)) {
-    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping triage.`);
     return { decision: null, reviewers: [] };
   }
 
@@ -1478,7 +1501,11 @@ export function triagePullRequest(
         );
       } else {
         if (!hasAwaitingCla) {
-          githubApi.addPrLabels(prNumber, [AWAITING_CLA_LABEL]);
+          try {
+            githubApi.addPrLabels(prNumber, [AWAITING_CLA_LABEL]);
+          } catch (err) {
+            console.warn(`Failed to add '${AWAITING_CLA_LABEL}' label to PR #${prNumber}:`, err);
+          }
         }
         if (decision.claState === 'failure' && !alreadyCommented) {
           githubApi.addPrComment(prNumber, formatClaHoldComment(meta.author));

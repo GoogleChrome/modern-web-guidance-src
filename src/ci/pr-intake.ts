@@ -192,30 +192,6 @@ export const CONFIG_OWNERS = ['paulirish', 'rviscomi', 'micahjo7', 'lusayaa'] as
 export const PUBLIC_HARNESS_OWNERS = ['paulirish', 'micahjo7', 'TravenReese'] as const;
 export const EVAL_OWNERS = ['TravenReese', 'micahjo7', 'lusayaa'] as const;
 
-const CONTENT_BASENAMES = new Set(['guide.md', 'demo.html', 'expectations.md', 'SKILL.md']);
-
-function isOwnerlessContentPath(rawFile: string): boolean {
-  const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
-  const parts = file.split('/');
-  if (parts.includes('..')) return false;
-
-  if (parts[0] === 'features' && parts.length === 2) return true;
-  if (parts[0] === 'skills-src' && parts.length >= 2) return true;
-  if (parts[0] === 'guides' && parts.length >= 3) {
-    const base = parts[parts.length - 1];
-    if (
-      parts.includes('targets') ||
-      parts.includes('tasks') ||
-      base === 'grader.ts' ||
-      base === 'negative-demo.html'
-    ) {
-      return false;
-    }
-    return CONTENT_BASENAMES.has(base);
-  }
-  return false;
-}
-
 function isEvalPath(rawFile: string): boolean {
   const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
   if (file.startsWith('src/grading/')) return true;
@@ -223,6 +199,14 @@ function isEvalPath(rawFile: string): boolean {
   if (/(?:^|\/)grader\.ts$/.test(file)) return true;
   if (/(?:^|\/)tasks\/task\.md$/.test(file)) return true;
   return false;
+}
+
+function isOwnerlessContentPath(rawFile: string): boolean {
+  const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
+  const parts = file.split('/');
+  if (parts.includes('..') || parts.length < 2) return false;
+  if (isEvalPath(file)) return false;
+  return parts[0] === 'guides' || parts[0] === 'features' || parts[0] === 'skills-src';
 }
 
 export function resolveInfraReviewers(files: readonly string[]): string[] {

@@ -22,8 +22,7 @@ jobs:
       github.repository == 'GoogleChrome/modern-web-guidance-src' &&
       (github.event_name != 'issues' || github.event.issue.state != 'closed') &&
       (github.event_name != 'check_run' || (github.event.check_run.name == 'cla/google' && github.event.check_run.conclusion == 'success')) &&
-      (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`')) &&
-      (!contains(github.event.pull_request.body, '<!-- no-atl-triage -->') || contains(github.event.pull_request.body, '`<!-- no-atl-triage -->`'))
+      (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`'))
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
