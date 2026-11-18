@@ -392,7 +392,8 @@
           filter: var(--drop-shadow-shape);
         }
 
-        .poly-hex {
+        .poly-hex,
+        .poly-hex-sharp {
           clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
         }
 
@@ -716,9 +717,15 @@
         <div class="stage">
           <figure class="specimen">
             <div class="shadow-frame">
+              <div class="shape-box poly-shape poly-hex-sharp">Hex</div>
+            </div>
+            <figcaption>Plain <code>polygon()</code></figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shadow-frame">
               <div class="shape-box poly-shape poly-hex">Hex</div>
             </div>
-            <figcaption>Rounded hexagon</figcaption>
+            <figcaption><code>polygon(round 14px, ...)</code></figcaption>
           </figure>
           <figure class="specimen">
             <div class="shadow-frame">
