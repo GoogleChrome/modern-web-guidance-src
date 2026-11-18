@@ -232,8 +232,8 @@
     <p class="lede">Native meter and range elements, drawn as stars with CSS masks.</p>
 
     <section class="card">
-      <h2 id="avg-label">Average rating: 3.5 out of 5 (128 reviews)</h2>
-      <meter class="rating" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label">3.5 out of 5</meter>
+      <p id="avg-label">Average rating: <output id="avg-text">3.5 out of 5</output> (128 reviews)</p>
+      <meter class="rating" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label" aria-valuetext="3.5 out of 5">3.5 out of 5</meter>
       <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>.</p>
     </section>
 

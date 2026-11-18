@@ -2,6 +2,7 @@
 - When a read-only rating is needed, it is a `<meter>` with `min="0"`, a `max` (such as `5`), and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
 - When a read-only rating is needed, the `<meter>` has its native appearance removed and renders the same mask-and-gradient stars, with its filled portion matching its `value`.
 - When a read-only rating is needed, the `<meter>` contains text fallback content stating its value.
+- When a read-only rating is needed, the `<meter>` has an `aria-valuetext` that states the score on its scale (such as "3.5 out of 5") and its `aria-labelledby` references visible text that includes the score.
 - When a read-only rating is needed, the `<meter>`'s `--max` and `--control-value` are derived from its `max` and `value` attributes, either with typed `attr()` or by copying the attributes with script.
 - When an interactive rating is needed, it is an `<input type="range">` with `min="0"`, a `max` (such as `5`), and `step="0.5"`.
 - When an interactive rating is needed, the range input has an associated `<label>` that gives it an accessible name.
