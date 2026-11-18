@@ -129,3 +129,46 @@ test('fetchPublicEvalsManifest reads public-evals/suites.gen.json from gh-pages 
     fs.rmSync(remoteDir, { recursive: true, force: true });
   }
 });
+
+test('collectSummariesFromPublicEvals preserves slower-cadence agents when other agents have 10+ newer runs', () => {
+  const makeEntry = (testId: string, timestamp: string, agent: string, model: string): PublicSuiteManifestEntry => ({
+    testId,
+    timestamp,
+    agent,
+    model,
+    taskCount: 229,
+    guidedStats: { passed: 1800, total: 1960 },
+    unguidedStats: { passed: 1000, total: 1960 },
+  });
+
+  const manifest: PublicSuiteManifestEntry[] = [
+    // 5 nights * 2 agents = 10 newer runs that would otherwise fill a global top-10 slice
+    makeEntry('nightly-2026-11-20_06-00-00-antigravity_cli', '2026-11-20T06:00:00.000Z', 'antigravity_cli', 'gemini-4-argon'),
+    makeEntry('nightly-2026-11-20_04-00-00-claude_code', '2026-11-20T04:00:00.000Z', 'claude_code', 'claude-opus-5-5'),
+    makeEntry('nightly-2026-11-19_06-00-00-antigravity_cli', '2026-11-19T06:00:00.000Z', 'antigravity_cli', 'gemini-4-argon'),
+    makeEntry('nightly-2026-11-19_04-00-00-claude_code', '2026-11-19T04:00:00.000Z', 'claude_code', 'claude-opus-5-5'),
+    makeEntry('nightly-2026-11-18_06-00-00-antigravity_cli', '2026-11-18T06:00:00.000Z', 'antigravity_cli', 'gemini-4-argon'),
+    makeEntry('nightly-2026-11-18_04-00-00-claude_code', '2026-11-18T04:00:00.000Z', 'claude_code', 'claude-opus-5-5'),
+    makeEntry('nightly-2026-11-17_06-00-00-antigravity_cli', '2026-11-17T06:00:00.000Z', 'antigravity_cli', 'gemini-4-argon'),
+    makeEntry('nightly-2026-11-17_04-00-00-claude_code', '2026-11-17T04:00:00.000Z', 'claude_code', 'claude-opus-5-5'),
+    makeEntry('nightly-2026-11-16_06-00-00-antigravity_cli', '2026-11-16T06:00:00.000Z', 'antigravity_cli', 'gemini-4-argon'),
+    makeEntry('nightly-2026-11-16_04-00-00-claude_code', '2026-11-16T04:00:00.000Z', 'claude_code', 'claude-opus-5-5'),
+    // Older codex_cli runs
+    makeEntry('nightly-2026-11-15_05-00-00-codex_cli', '2026-11-15T05:00:00.000Z', 'codex_cli', 'gpt-6.1-sol'),
+    makeEntry('nightly-2026-11-14_05-00-00-codex_cli', '2026-11-14T05:00:00.000Z', 'codex_cli', 'gpt-6.1-sol'),
+    makeEntry('nightly-2026-11-13_05-00-00-codex_cli', '2026-11-13T05:00:00.000Z', 'codex_cli', 'gpt-6.1-sol'),
+  ];
+
+  const result = collectSummariesFromPublicEvals(manifest, 10);
+  assert.strictEqual(result.length, 10);
+  assert.deepStrictEqual(
+    result.filter(r => r.agent === 'codex_cli').map(r => r.testId),
+    [
+      'nightly-2026-11-15_05-00-00-codex_cli',
+      'nightly-2026-11-14_05-00-00-codex_cli',
+    ],
+  );
+  // Output remains sorted newest-first overall
+  const timestamps = result.map(r => Date.parse(r.timestamp));
+  assert.deepStrictEqual(timestamps, [...timestamps].sort((a, b) => b - a));
+});

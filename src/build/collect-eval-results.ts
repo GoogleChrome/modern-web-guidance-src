@@ -3,8 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { rootDir } from '../core/paths.ts';
-
 const ALLOWED_AGENTS = new Set(['claude_code', 'codex_cli', 'antigravity_cli']);
+const MIN_RUNS_PER_AGENT = 2;
 const OUTPUT_PATH = path.join(rootDir, 'src/build/eval-results-summary.json');
 
 export interface EvalsSummary {
@@ -31,7 +31,10 @@ export interface PublicSuiteManifestEntry {
 export function collectSummariesFromPublicEvals(
   manifest: PublicSuiteManifestEntry[],
   limit = 10,
+  minPerAgent = MIN_RUNS_PER_AGENT,
 ): EvalsSummary[] {
+  if (limit <= 0) return [];
+
   const summaries: EvalsSummary[] = [];
 
   for (const entry of manifest) {
@@ -66,7 +69,39 @@ export function collectSummariesFromPublicEvals(
   }
 
   summaries.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
-  return summaries.slice(0, limit);
+
+  const byAgent = new Map<string, EvalsSummary[]>();
+  for (const summary of summaries) {
+    const list = byAgent.get(summary.agent);
+    if (list) {
+      list.push(summary);
+    } else {
+      byAgent.set(summary.agent, [summary]);
+    }
+  }
+
+  const selected: EvalsSummary[] = [];
+  const reservedCount = Math.max(0, minPerAgent);
+  for (let pass = 0; pass < reservedCount && selected.length < limit; pass++) {
+    for (const runs of byAgent.values()) {
+      if (selected.length >= limit) break;
+      if (pass < runs.length) {
+        selected.push(runs[pass]);
+      }
+    }
+  }
+
+  if (selected.length < limit) {
+    const remaining: EvalsSummary[] = [];
+    for (const runs of byAgent.values()) {
+      remaining.push(...runs.slice(reservedCount));
+    }
+    remaining.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+    selected.push(...remaining.slice(0, limit - selected.length));
+  }
+
+  selected.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+  return selected;
 }
 
 export function fetchPublicEvalsManifest(remoteUrl?: string): PublicSuiteManifestEntry[] {
