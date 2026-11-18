@@ -12,7 +12,7 @@ import {
   unwrapMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -376,7 +376,7 @@ export const structuredCloneMatcher: JsRuleMatcher = createJsCallMatcher({
   },
 });
 
-export const structuredCloneRule: LegacyScanRule = {
+export const structuredCloneRule: ScanRule = {
   id: 'js/structured-clone',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -397,4 +397,4 @@ export const structuredCloneRule: LegacyScanRule = {
   },
 };
 
-export default [structuredCloneRule] satisfies readonly LegacyScanRule[];
+export default [structuredCloneRule] satisfies readonly ScanRule[];

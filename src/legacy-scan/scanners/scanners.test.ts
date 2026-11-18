@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { SyntaxKind } from 'ts-morph';
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssRuleMatcher,
   DomRuleMatcher,
 } from '../schema.ts';
@@ -26,7 +26,7 @@ import {
 } from './index.ts';
 
 void test('scanFiles: Lit CSS tag whitespace preserves finding locations', async (t) => {
-  const rule: LegacyScanRule = {
+  const rule: ScanRule = {
     id: 'test-lit-anchor',
     guideId: 'anchor-positioning',
     guideHash: '000000000000',
@@ -247,7 +247,7 @@ const showMenu = true;
   </div>
 </template>`;
 
-    const menuRule: LegacyScanRule = {
+    const menuRule: ScanRule = {
       id: 'test/vue-nested-template-menu',
       guideId: 'menu',
       guideHash: '000000000000',
@@ -509,7 +509,7 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     }
     `;
 
-    const dummyRule1: LegacyScanRule & { matcher: CssRuleMatcher } = {
+    const dummyRule1: ScanRule & { matcher: CssRuleMatcher } = {
       id: 'rule-1',
       guideId: 'rule-1',
       guideHash: '111111111111',
@@ -527,7 +527,7 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
       },
     };
 
-    const dummyRule2: LegacyScanRule & { matcher: CssRuleMatcher } = {
+    const dummyRule2: ScanRule & { matcher: CssRuleMatcher } = {
       id: 'rule-2',
       guideId: 'rule-2',
       guideHash: '222222222222',
@@ -616,7 +616,7 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
   const hash = computeGuideHash(guideContent);
   assert.equal(hash.length, 12);
 
-  const sampleRule: LegacyScanRule = {
+  const sampleRule: ScanRule = {
     id: 'forms-autofill-password',
     guideId: 'autofill-sign-in-form',
     guideHash: hash,
@@ -666,7 +666,7 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
 });
 
 void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Lit CSS', async (t) => {
-  const domRule: LegacyScanRule = {
+  const domRule: ScanRule = {
     id: 'test-dom-dialog',
     guideId: 'dialog-guide',
     guideHash: '123456789012',
@@ -680,7 +680,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     },
   };
 
-  const jsRule: LegacyScanRule = {
+  const jsRule: ScanRule = {
     id: 'test-js-temporal',
     guideId: 'temporal-guide',
     guideHash: '123456789012',
@@ -705,7 +705,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     },
   };
 
-  const cssRule: LegacyScanRule = {
+  const cssRule: ScanRule = {
     id: 'test-css-anchor',
     guideId: 'anchor-guide',
     guideHash: '123456789012',
@@ -868,7 +868,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
   });
 
   // Reports each TypeScript syntax error, so code mis-read around a template is a finding.
-  const syntaxErrorRule: LegacyScanRule = {
+  const syntaxErrorRule: ScanRule = {
     id: 'test-js-syntax-error',
     guideId: 'syntax-guide',
     guideHash: '123456789012',
@@ -1111,7 +1111,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
 });
 
 void test('scanFiles: SCSS/Less files and // comments in <style lang="scss|less"> (#3553)', () => {
-  const thumbRule: LegacyScanRule = {
+  const thumbRule: ScanRule = {
     id: 'test-css-scrollbar-thumb',
     guideId: 'customize-scrollbar-color-and-thickness',
     guideHash: '123456789012',
@@ -1156,7 +1156,7 @@ void test('scanFiles: SCSS/Less files and // comments in <style lang="scss|less"
 });
 
 void test('scanFiles: SCSS // edge cases, URL preservation, and CRLF line numbers (#3553)', () => {
-  const thumbRule: LegacyScanRule = {
+  const thumbRule: ScanRule = {
     id: 'test-css-scrollbar-thumb',
     guideId: 'customize-scrollbar-color-and-thickness',
     guideHash: '123456789012',
@@ -1208,7 +1208,7 @@ void test('scanFiles: SCSS // edge cases, URL preservation, and CRLF line number
 });
 
 void test('slice-c: vendored library whole-file detection & AST matcher suppression', async (testingContext) => {
-  const fittextRule: LegacyScanRule = {
+  const fittextRule: ScanRule = {
     id: 'dependency-jquery-fittext',
     guideId: 'fittext-modernization',
     guideHash: 'abcdef123456',
@@ -1223,7 +1223,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     },
   };
 
-  const bslRule: LegacyScanRule = {
+  const bslRule: ScanRule = {
     id: 'dependency-body-scroll-lock',
     guideId: 'body-scroll-lock-modernization',
     guideHash: 'abcdef123456',
@@ -1235,7 +1235,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     },
   };
 
-  const jsAstRule: LegacyScanRule = {
+  const jsAstRule: ScanRule = {
     id: 'js-legacy-measurements',
     guideId: 'measurement-guide',
     guideHash: 'abcdef123456',
@@ -1586,7 +1586,7 @@ void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags pr
   </form>
 </template>`;
 
-    const rule: LegacyScanRule = {
+    const rule: ScanRule = {
       id: 'test/form-pwd',
       guideId: 'autofill-sign-in-form',
       guideHash: '000000000000',
@@ -1619,7 +1619,7 @@ void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, a
     let sawHasOperator = false;
     let sawPrototype = false;
 
-    const rule: LegacyScanRule = {
+    const rule: ScanRule = {
       id: 'test/lazy-sf',
       guideId: 'dialog',
       guideHash: '000000000000',
@@ -1681,7 +1681,7 @@ void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, a
       }
 
       const seenProjects = new Set<unknown>();
-      const rule: LegacyScanRule = {
+      const rule: ScanRule = {
         id: 'test/batched-scan',
         guideId: 'dialog',
         guideHash: '000000000000',

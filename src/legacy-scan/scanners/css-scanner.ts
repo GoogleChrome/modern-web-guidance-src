@@ -13,7 +13,7 @@ import {
   type CSSRule,
 } from 'cssomnom';
 import type {
-  LegacyScanMatch,
+  ScanMatch,
   CssDeclaration,
   CssMatcherContext,
   CssRuleMatcher,
@@ -169,7 +169,7 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   cssContent: string,
   rules: readonly T[],
   rawFileText?: string,
-): { rule: T; match: LegacyScanMatch }[] {
+): { rule: T; match: ScanMatch }[] {
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(cssContent, rule.matcher.fastTokens),
   );
@@ -183,7 +183,7 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   }
 
   const { styleRules, ctx } = prepared;
-  const results: { rule: T; match: LegacyScanMatch }[] = [];
+  const results: { rule: T; match: ScanMatch }[] = [];
 
   for (const view of styleRules) {
     for (const rule of activeRules) {
@@ -214,7 +214,7 @@ export function scanCss(
   cssContent: string,
   rules: readonly CssRuleMatcher[],
   rawFileText?: string,
-): LegacyScanMatch[] {
+): ScanMatch[] {
   return scanCssRules(
     filePath,
     cssContent,

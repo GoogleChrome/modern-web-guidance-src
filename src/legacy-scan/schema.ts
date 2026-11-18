@@ -60,7 +60,7 @@ export interface VerifierRubric {
   readonly dropWhen: readonly string[];
 }
 
-export interface LegacyScanMatch {
+export interface ScanMatch {
   readonly line: number;
   readonly column?: number;
   readonly message: string;
@@ -130,7 +130,7 @@ export type FastTokenSpec = readonly string[] | readonly (readonly string[])[];
 export interface JsRuleMatcher {
   readonly kind: 'js';
   readonly fastTokens: FastTokenSpec;
-  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[];
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[];
 }
 
 export interface DomRuleMatcher {
@@ -167,7 +167,7 @@ export type RuleMatcher =
 /**
  * Static Matcher rule contract binding a pattern id, guide hash, high-recall matcher (JS, CSS, DOM, or dependency), and VerifierRubric.
  */
-export interface LegacyScanRule {
+export interface ScanRule {
   readonly id: string;
   readonly guideId: string;
   readonly guideHash: string;
@@ -176,7 +176,7 @@ export interface LegacyScanRule {
   readonly verifierRubric: VerifierRubric;
 }
 
-export interface LegacyScanFinding {
+export interface ScanFinding {
   readonly cardId: string;
   readonly ruleId: string;
   readonly guideId: string;

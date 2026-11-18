@@ -10,7 +10,7 @@ import {
 import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   DependencyRuleMatcher,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -80,7 +80,7 @@ export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = createJsCallMatche
   matchCall: matchScrollRevealCall,
 });
 
-export const scrollEntryExitEffectsPackageRule: LegacyScanRule = {
+export const scrollEntryExitEffectsPackageRule: ScanRule = {
   id: 'scroll-entry-exit-effects/package-scroll-reveal',
   guideId: 'scroll-entry-exit-effects',
   guideHash: SCROLL_ENTRY_EXIT_EFFECTS_GUIDE_HASH,
@@ -98,7 +98,7 @@ export const scrollEntryExitEffectsPackageRule: LegacyScanRule = {
   },
 };
 
-export const scrollEntryExitEffectsJsRule: LegacyScanRule = {
+export const scrollEntryExitEffectsJsRule: ScanRule = {
   id: 'scroll-entry-exit-effects/js-scroll-reveal',
   guideId: 'scroll-entry-exit-effects',
   guideHash: SCROLL_ENTRY_EXIT_EFFECTS_GUIDE_HASH,
@@ -120,4 +120,4 @@ export const scrollEntryExitEffectsJsRule: LegacyScanRule = {
 export default [
   scrollEntryExitEffectsPackageRule,
   scrollEntryExitEffectsJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

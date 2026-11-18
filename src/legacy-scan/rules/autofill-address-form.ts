@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -167,7 +167,7 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
   },
 };
 
-export const autofillAddressFormRule: LegacyScanRule = {
+export const autofillAddressFormRule: ScanRule = {
   id: 'autofill-address-form',
   guideId: 'autofill-address-form',
   guideHash: AUTOFILL_ADDRESS_FORM_GUIDE_HASH,
@@ -189,4 +189,4 @@ export const autofillAddressFormRule: LegacyScanRule = {
 
 export default [
   autofillAddressFormRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

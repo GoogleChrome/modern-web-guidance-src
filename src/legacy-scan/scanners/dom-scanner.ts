@@ -1,6 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { Node, type JsxOpeningElement, type JsxSelfClosingElement, type SourceFile } from 'ts-morph';
-import type { LegacyScanMatch, DomElementView, DomMatcherContext, DomRuleMatcher } from '../schema.ts';
+import type { ScanMatch, DomElementView, DomMatcherContext, DomRuleMatcher } from '../schema.ts';
 import { matchesFastTokens } from './js-scanner.ts';
 
 interface HtmlTagToken {
@@ -350,7 +350,7 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
   htmlContent: string,
   rules: readonly T[],
   rawDocumentText?: string,
-): { rule: T; match: LegacyScanMatch }[] {
+): { rule: T; match: ScanMatch }[] {
   const activeRules = rules.filter((r) =>
     matchesFastTokens(htmlContent, r.matcher.fastTokens),
   );
@@ -368,7 +368,7 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
     documentText: rawDocumentText ?? htmlContent,
   };
 
-  const results: { rule: T; match: LegacyScanMatch }[] = [];
+  const results: { rule: T; match: ScanMatch }[] = [];
 
   for (const rule of activeRules) {
     const { matcher } = rule;
@@ -429,7 +429,7 @@ export function scanHtml(
   htmlContent: string,
   rules: readonly DomRuleMatcher[],
   rawDocumentText?: string,
-): LegacyScanMatch[] {
+): ScanMatch[] {
   return scanHtmlRules(
     filePath,
     htmlContent,
@@ -486,7 +486,7 @@ export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
   filePath: string,
   sourceFile: SourceFile,
   rules: readonly T[],
-): { rule: T; match: LegacyScanMatch }[] {
+): { rule: T; match: ScanMatch }[] {
   const fileContent = sourceFile.getFullText();
   const activeRules = rules.filter((r) =>
     matchesFastTokens(fileContent, r.matcher.fastTokens),
@@ -535,7 +535,7 @@ export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
     return { view, mockEl, hasSpread, dynamicAttrs };
   });
 
-  const results: { rule: T; match: LegacyScanMatch }[] = [];
+  const results: { rule: T; match: ScanMatch }[] = [];
 
   for (const rule of activeRules) {
     const { matcher } = rule;
@@ -587,7 +587,7 @@ export function scanJsx(
   filePath: string,
   sourceFile: SourceFile,
   rules: readonly DomRuleMatcher[],
-): LegacyScanMatch[] {
+): ScanMatch[] {
   return scanJsxRules(
     filePath,
     sourceFile,

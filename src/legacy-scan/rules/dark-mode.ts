@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -57,7 +57,7 @@ const darkModeCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const darkModeCssRule: LegacyScanRule = {
+export const darkModeCssRule: ScanRule = {
   id: 'dark-mode',
   guideId: 'dark-mode',
   guideHash: DARK_MODE_GUIDE_HASH,
@@ -79,4 +79,4 @@ export const darkModeCssRule: LegacyScanRule = {
 
 export default [
   darkModeCssRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

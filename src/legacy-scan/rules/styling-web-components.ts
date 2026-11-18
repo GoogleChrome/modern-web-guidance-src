@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -50,7 +50,7 @@ export const stylingWebComponentsCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const stylingWebComponentsRule: LegacyScanRule = {
+export const stylingWebComponentsRule: ScanRule = {
   id: 'styling-web-components',
   guideId: 'styling-web-components',
   guideHash: STYLING_WEB_COMPONENTS_GUIDE_HASH,
@@ -72,4 +72,4 @@ export const stylingWebComponentsRule: LegacyScanRule = {
 
 export default [
   stylingWebComponentsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

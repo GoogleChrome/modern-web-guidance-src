@@ -18,7 +18,7 @@ import {
   unwrapMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsAstMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -372,7 +372,7 @@ export const jsTextDecoderMatcher: JsRuleMatcher = createJsAstMatcher({
   },
 });
 
-export const jsTextDecoderRule: LegacyScanRule = {
+export const jsTextDecoderRule: ScanRule = {
   id: 'js/text-decoder',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -392,4 +392,4 @@ export const jsTextDecoderRule: LegacyScanRule = {
   },
 };
 
-export default [jsTextDecoderRule] satisfies readonly LegacyScanRule[];
+export default [jsTextDecoderRule] satisfies readonly ScanRule[];

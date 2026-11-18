@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
-import type { LegacyScanRule } from '../schema.ts';
+import type { ScanRule } from '../schema.ts';
 import {
   createInMemoryProject,
   createJsAstMatcher,
@@ -15,7 +15,7 @@ import {
   withVirtualSourceFile,
 } from './index.ts';
 
-function createCallExpressionRule(id: string, guideId: string, targetCallee: string): LegacyScanRule {
+function createCallExpressionRule(id: string, guideId: string, targetCallee: string): ScanRule {
   return {
     id,
     guideId,
@@ -47,7 +47,7 @@ function createCallExpressionRule(id: string, guideId: string, targetCallee: str
 }
 
 test('scanFiles memoizes sourceFile.getDescendantsOfKind, getFullText, and getText across multiple JS rules', async (t) => {
-  const rules: readonly LegacyScanRule[] = [
+  const rules: readonly ScanRule[] = [
     createCallExpressionRule('rule-alpha', 'guide-alpha', 'legacyAlpha'),
     createCallExpressionRule('rule-beta', 'guide-beta', 'legacyBeta'),
     createCallExpressionRule('rule-gamma', 'guide-gamma', 'legacyGamma'),

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { promisify } from 'node:util';
 import { SyntaxKind } from 'ts-morph';
-import type { LegacyScanRule } from '../schema.ts';
+import type { ScanRule } from '../schema.ts';
 import {
   BUILD_OR_INSTALL_DIR_SEGMENTS,
   DOCS_AND_TESTS_DIR_SEGMENTS,
@@ -398,7 +398,7 @@ describe('file-filter vendored and hashed asset exclusions', () => {
 });
 
 describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and walker fallback', () => {
-  const scanMeRule: LegacyScanRule = {
+  const scanMeRule: ScanRule = {
     id: 'test-scan-me',
     guideId: 'test-guide',
     guideHash: '0123456789ab',
@@ -622,7 +622,7 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
         join(tempDir, 'front_end', 'third_party', 'lib', 'jquery.fittext.js'),
         '/*! FitText */\n',
       );
-      const depRule: LegacyScanRule = {
+      const depRule: ScanRule = {
         id: 'test-fittext',
         guideId: 'test-guide',
         guideHash: '0123456789ab',

@@ -7,8 +7,8 @@ import {
 } from 'ts-morph';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -127,7 +127,7 @@ function isDatasetThemeAssignment(binExpr: BinaryExpression): boolean {
 export const darkModeToggleJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: DARK_MODE_TOGGLE_FAST_TOKENS,
-  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[] {
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[] {
     for (const guard of DARK_MODE_TOGGLE_GUARD_TOKENS) {
       if (ctx.fileContent.includes(guard)) {
         return [];
@@ -172,7 +172,7 @@ export const darkModeToggleJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const darkModeToggleRule: LegacyScanRule = {
+export const darkModeToggleRule: ScanRule = {
   id: 'dark-mode-toggle',
   guideId: 'dark-mode-toggle',
   guideHash: DARK_MODE_TOGGLE_GUIDE_HASH,
@@ -193,4 +193,4 @@ export const darkModeToggleRule: LegacyScanRule = {
 
 export default [
   darkModeToggleRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

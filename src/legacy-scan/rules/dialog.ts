@@ -11,8 +11,8 @@ import {
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -224,7 +224,7 @@ export const dialogJsMatcher: JsRuleMatcher = {
     ['close'],
     ['target', 'dialog', 'Dialog', 'DIALOG', 'getBoundingClientRect'],
   ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[] => {
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[] => {
     if (!/\bclose\b/.test(ctx.fileContent)) {
       return [];
     }
@@ -237,7 +237,7 @@ export const dialogJsMatcher: JsRuleMatcher = {
       return [];
     }
 
-    const matches: LegacyScanMatch[] = [];
+    const matches: ScanMatch[] = [];
 
     for (const node of getCallAndBinaryDescendants(sourceFile)) {
       const candidate = matchClickRegistration(node);
@@ -262,7 +262,7 @@ export const dialogJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const dialogRule: LegacyScanRule = {
+export const dialogRule: ScanRule = {
   id: 'dialog',
   guideId: 'dialog',
   guideHash: DIALOG_GUIDE_HASH,
@@ -285,4 +285,4 @@ export const dialogRule: LegacyScanRule = {
 
 export default [
   dialogRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

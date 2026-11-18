@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import { SyntaxKind } from 'ts-morph';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   CssRuleMatcher,
   DependencyRuleMatcher,
   DomRuleMatcher,
@@ -21,7 +21,7 @@ const CONTRACT_JS_SNIPPET = '__contractJsTest__();';
 const CONTRACT_CSS_SNIPPET = '.contract-css-target { color: red; }';
 const CONTRACT_DEP_SNIPPET = '"contract-legacy-pkg": "^1.0.0"';
 
-const testDomRule: LegacyScanRule = {
+const testDomRule: ScanRule = {
   id: 'contract-dom-rule',
   guideId: 'contract-test',
   guideHash: '000000000000',
@@ -40,7 +40,7 @@ const testDomRule: LegacyScanRule = {
   } satisfies DomRuleMatcher,
 };
 
-const testJsRule: LegacyScanRule = {
+const testJsRule: ScanRule = {
   id: 'contract-js-rule',
   guideId: 'contract-test',
   guideHash: '000000000000',
@@ -50,7 +50,7 @@ const testJsRule: LegacyScanRule = {
     kind: 'js',
     fastTokens: ['__contractJsTest__'],
     matchFile(sourceFile) {
-      const matches: LegacyScanMatch[] = [];
+      const matches: ScanMatch[] = [];
       sourceFile.forEachDescendant((node) => {
         if (
           node.getKind() === SyntaxKind.CallExpression &&
@@ -65,7 +65,7 @@ const testJsRule: LegacyScanRule = {
   } satisfies JsRuleMatcher,
 };
 
-const testCssRule: LegacyScanRule = {
+const testCssRule: ScanRule = {
   id: 'contract-css-rule',
   guideId: 'contract-test',
   guideHash: '000000000000',
@@ -83,7 +83,7 @@ const testCssRule: LegacyScanRule = {
   } satisfies CssRuleMatcher,
 };
 
-const testDepRule: LegacyScanRule = {
+const testDepRule: ScanRule = {
   id: 'contract-dep-rule',
   guideId: 'contract-test',
   guideHash: '000000000000',
@@ -101,7 +101,7 @@ const testDepRule: LegacyScanRule = {
   } satisfies DependencyRuleMatcher,
 };
 
-const RULE_BY_ENGINE: Readonly<Record<FormatEngine, LegacyScanRule>> = {
+const RULE_BY_ENGINE: Readonly<Record<FormatEngine, ScanRule>> = {
   dom: testDomRule,
   js: testJsRule,
   css: testCssRule,
@@ -517,7 +517,7 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
   });
 
   describe('spread attributes in markup suppress skipIfHasSpread rules', () => {
-    const testSpreadSkipRule: LegacyScanRule = {
+    const testSpreadSkipRule: ScanRule = {
       id: 'contract-spread-skip-rule',
       guideId: 'contract-test',
       guideHash: '000000000000',
@@ -538,7 +538,7 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
     };
 
     let observedSpread = false;
-    const testSpreadInspectRule: LegacyScanRule = {
+    const testSpreadInspectRule: ScanRule = {
       id: 'contract-spread-inspect-rule',
       guideId: 'contract-test',
       guideHash: '000000000000',

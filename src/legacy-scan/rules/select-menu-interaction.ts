@@ -1,6 +1,6 @@
 import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -126,7 +126,7 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const selectMenuInteractionCssRule: LegacyScanRule = {
+export const selectMenuInteractionCssRule: ScanRule = {
   id: 'select-menu-interaction/css-select-invalid',
   guideId: 'select-menu-interaction',
   guideHash: SELECT_MENU_INTERACTION_GUIDE_HASH,
@@ -149,4 +149,4 @@ export const selectMenuInteractionCssRule: LegacyScanRule = {
 
 export default [
   selectMenuInteractionCssRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

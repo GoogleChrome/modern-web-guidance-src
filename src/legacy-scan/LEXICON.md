@@ -59,16 +59,16 @@ A published feature guide in `guides/<guideId>/guide.md` representing one modern
 
 ### Rule (`ruleId`)
 
-A **Static Matcher** entry (`LegacyScanRule`) targeting a specific language or scanner layer (JS/TS AST, CSS, HTML/JSX DOM, or `package.json`) for a given `guideId`. A single guide may have multiple rules across layers (e.g., a `package.json` dependency rule plus a JS AST rule).
+A **Static Matcher** entry (`ScanRule`) targeting a specific language or scanner layer (JS/TS AST, CSS, HTML/JSX DOM, or `package.json`) for a given `guideId`. A single guide may have multiple rules across layers (e.g., a `package.json` dependency rule plus a JS AST rule).
 
-* _Reference_: `src/legacy-scan/schema.ts#LegacyScanRule`, `src/legacy-scan/rules/index.ts#QUALIFIED_RULES`
+* _Reference_: `src/legacy-scan/schema.ts#ScanRule`, `src/legacy-scan/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `AnalyzerRule`, `Detector`, `Check`, `Linter Rule`
 
 ### Sub-Pattern (`subPattern`)
 
 A distinct syntactic or payoff variant within a single **Rule**. A **Deferred Sub-Pattern** is a sub-pattern held back from default execution because its precision or payoff profile differs from the rule's active sub-patterns.
 
-* _Reference_: `src/legacy-scan/schema.ts#LegacyScanMatch`, `src/legacy-scan/README.md#4-rule-authoring-legacyscanrule`
+* _Reference_: `src/legacy-scan/schema.ts#ScanMatch`, `src/legacy-scan/README.md#4-rule-authoring-scanrule`
 * _Avoid_: `Sub-Rule`, `Rule Variant`, `Branch`
 
 ## Corpus Splits

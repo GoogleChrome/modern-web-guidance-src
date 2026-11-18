@@ -1,6 +1,6 @@
 import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -153,7 +153,7 @@ export const validateInputAfterInteractionCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const validateInputAfterInteractionRule: LegacyScanRule = {
+export const validateInputAfterInteractionRule: ScanRule = {
   id: 'validate-input-after-interaction',
   guideId: 'validate-input-after-interaction',
   guideHash: VALIDATE_INPUT_AFTER_INTERACTION_GUIDE_HASH,
@@ -174,4 +174,4 @@ export const validateInputAfterInteractionRule: LegacyScanRule = {
 
 export default [
   validateInputAfterInteractionRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

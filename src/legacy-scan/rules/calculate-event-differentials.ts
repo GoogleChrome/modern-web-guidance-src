@@ -5,8 +5,8 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -201,12 +201,12 @@ export const durationJsMatcher: JsRuleMatcher = {
     '86400',
     '3600',
   ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[] => {
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[] => {
     if (isTestBenchOrCliFile(ctx, ctx.fileContent)) {
       return [];
     }
 
-    const matches: LegacyScanMatch[] = [];
+    const matches: ScanMatch[] = [];
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
@@ -234,7 +234,7 @@ export const durationJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const formatHumanReadableDurationsJsRule: LegacyScanRule = {
+export const formatHumanReadableDurationsJsRule: ScanRule = {
   id: 'format-human-readable-durations/js-duration-formatter',
   guideId: 'calculate-event-differentials',
   guideHash: FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH,
@@ -257,4 +257,4 @@ export const formatHumanReadableDurationsJsRule: LegacyScanRule = {
 
 export default [
   formatHumanReadableDurationsJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

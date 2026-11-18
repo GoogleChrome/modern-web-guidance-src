@@ -1,4 +1,4 @@
-import type { LegacyScanRule } from '../schema.ts';
+import type { ScanRule } from '../schema.ts';
 import { abortSignalTimeoutRule } from './js/abort-signal-timeout.ts';
 import { copyingArrayMethodsRule } from './js/copying-array-methods.ts';
 import { jsCreateEventRule } from './js/create-event.ts';
@@ -25,7 +25,7 @@ export {
   structuredCloneRule,
 };
 
-export const jsRules: readonly LegacyScanRule[] = [
+export const jsRules: readonly ScanRule[] = [
   structuredCloneRule,
   jsReplaceChildrenRule,
   jsReplaceChildrenInnerHtmlRule,

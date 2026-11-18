@@ -11,7 +11,7 @@ import {
 } from '../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -145,7 +145,7 @@ export const sliderJsMatcher: JsRuleMatcher = createJsCallMatcher({
   matchCall: matchNoUiSliderCreate,
 });
 
-export const sliderJsRule: LegacyScanRule = {
+export const sliderJsRule: ScanRule = {
   id: 'slider/js-slider',
   guideId: 'slider',
   guideHash: SLIDER_GUIDE_HASH,
@@ -167,4 +167,4 @@ export const sliderJsRule: LegacyScanRule = {
 
 export default [
   sliderJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

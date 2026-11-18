@@ -12,8 +12,8 @@ import {
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -53,7 +53,7 @@ function isSanitizerCall(expr: Node): boolean {
  * Checks whether a binary expression is an assignment to innerHTML or outerHTML
  * receiving a sanitized string value.
  */
-function matchHtmlPropertyAssignment(binaryExpr: BinaryExpression): LegacyScanMatch | null {
+function matchHtmlPropertyAssignment(binaryExpr: BinaryExpression): ScanMatch | null {
   if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
     return null;
   }
@@ -83,7 +83,7 @@ function matchHtmlPropertyAssignment(binaryExpr: BinaryExpression): LegacyScanMa
  * Checks whether a call expression is a DOM insertion sink receiving sanitized HTML,
  * such as insertAdjacentHTML or $(...).html().
  */
-function matchDomInsertionSink(callExpr: CallExpression): LegacyScanMatch | null {
+function matchDomInsertionSink(callExpr: CallExpression): ScanMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr)) {
     return null;
@@ -117,8 +117,8 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
     ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane'],
     ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'html'],
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): LegacyScanMatch[] => {
-    const matches: LegacyScanMatch[] = [];
+  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): ScanMatch[] => {
+    const matches: ScanMatch[] = [];
     const visitedLines = new Set<number>();
 
     for (const node of getCallAndBinaryDescendants(sourceFile)) {
@@ -139,7 +139,7 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const sanitizeUntrustedHtmlJsRule: LegacyScanRule = {
+export const sanitizeUntrustedHtmlJsRule: ScanRule = {
   id: 'sanitize-untrusted-html/js-dompurify-innerhtml',
   guideId: 'sanitize-untrusted-html',
   guideHash: SANITIZE_UNTRUSTED_HTML_GUIDE_HASH,
@@ -161,4 +161,4 @@ export const sanitizeUntrustedHtmlJsRule: LegacyScanRule = {
 
 export default [
   sanitizeUntrustedHtmlJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

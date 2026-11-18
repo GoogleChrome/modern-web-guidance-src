@@ -12,7 +12,7 @@ import {
 } from '../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -155,7 +155,7 @@ export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher = createJsCallMat
   matchCall: matchTippyCall,
 });
 
-export const interestTriggeredTooltipsJsRule: LegacyScanRule = {
+export const interestTriggeredTooltipsJsRule: ScanRule = {
   id: 'interest-triggered-tooltips/js-tooltip',
   guideId: 'interest-triggered-tooltips',
   guideHash: INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
@@ -176,4 +176,4 @@ export const interestTriggeredTooltipsJsRule: LegacyScanRule = {
 
 export default [
   interestTriggeredTooltipsJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

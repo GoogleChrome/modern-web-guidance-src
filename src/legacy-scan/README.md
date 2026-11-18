@@ -168,12 +168,12 @@ Candidate matches carry rule-specific rubrics defined in [`schema.ts`](./schema.
 
 ---
 
-## 4. Rule Authoring (`LegacyScanRule`)
+## 4. Rule Authoring (`ScanRule`)
 
-Each `legacy-scan` rule implements the `LegacyScanRule` interface from [`schema.ts`](./schema.ts):
+Each `legacy-scan` rule implements the `ScanRule` interface from [`schema.ts`](./schema.ts):
 
 ```typescript
-export interface LegacyScanRule {
+export interface ScanRule {
   readonly id: string;
   readonly guideId: string;
   readonly guideHash: string;
@@ -193,7 +193,7 @@ export interface LegacyScanRule {
 ### Example Rule Implementation
 
 ```typescript
-import type { LegacyScanRule, DomRuleMatcher } from '../schema.ts';
+import type { ScanRule, DomRuleMatcher } from '../schema.ts';
 
 const matcher: DomRuleMatcher = {
   kind: 'dom',
@@ -212,7 +212,7 @@ const matcher: DomRuleMatcher = {
   },
 };
 
-export const autofillSignInFormRule: LegacyScanRule = {
+export const autofillSignInFormRule: ScanRule = {
   id: 'autofill-sign-in-form',
   guideId: 'autofill-sign-in-form',
   guideHash: 'a1b2c3d4e5f6',

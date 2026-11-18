@@ -1,6 +1,6 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { Node, SyntaxKind, type CallExpression, type JsxAttribute, type SourceFile } from 'ts-morph';
-import type { LegacyScanMatch, LegacyScanRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
+import type { ScanMatch, ScanRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
 export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '99e3b42fb16a';
@@ -90,7 +90,7 @@ function requiresCtrlOrMetaModifier(condText: string): boolean {
 /**
  * Checks a handler function for an Enter key check lacking isComposing / keyCode 229 guards.
  */
-function checkHandlerForUnsafeEnter(handler: Node): LegacyScanMatch | null {
+function checkHandlerForUnsafeEnter(handler: Node): ScanMatch | null {
   const handlerText = handler.getText();
 
   // If the handler already checks isComposing, keyCode 229, or key === 'Process', skip!
@@ -198,7 +198,7 @@ function resolveHandlerFunction(fnExpr: Node): Node | null {
 /**
  * Checks CallExpression for keydown event listener registration.
  */
-function matchKeydownCall(callExpr: CallExpression): LegacyScanMatch | null {
+function matchKeydownCall(callExpr: CallExpression): ScanMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
 
   if (Node.isPropertyAccessExpression(expr)) {
@@ -282,7 +282,7 @@ function matchKeydownCall(callExpr: CallExpression): LegacyScanMatch | null {
 /**
  * Checks JSX attributes like onKeyDown={...}.
  */
-function matchJsxKeydown(jsxAttr: JsxAttribute): LegacyScanMatch | null {
+function matchJsxKeydown(jsxAttr: JsxAttribute): ScanMatch | null {
   const name = jsxAttr.getNameNode().getText();
   if (name !== 'onKeyDown' && name !== 'onkeydown') {
     return null;
@@ -327,7 +327,7 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
     ["'Enter'", '"Enter"'],
     ['key', 'code', 'case '],
   ],
-  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[] {
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];
     }
@@ -335,9 +335,9 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
       return [];
     }
 
-    const matches: LegacyScanMatch[] = [];
+    const matches: ScanMatch[] = [];
     const reportedLines = new Set<number>();
-    const recordMatch = (match: LegacyScanMatch | null): void => {
+    const recordMatch = (match: ScanMatch | null): void => {
       if (match && !reportedLines.has(match.line)) {
         reportedLines.add(match.line);
         matches.push(match);
@@ -376,7 +376,7 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   },
 };
 
-export const imeSafeEnterSubmitRule: LegacyScanRule = {
+export const imeSafeEnterSubmitRule: ScanRule = {
   id: 'ime-safe-enter-submit',
   guideId: 'ime-safe-enter-submit',
   guideHash: IME_SAFE_ENTER_SUBMIT_GUIDE_HASH,
@@ -401,4 +401,4 @@ export const imeSafeEnterSubmitRule: LegacyScanRule = {
 
 export default [
   imeSafeEnterSubmitRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

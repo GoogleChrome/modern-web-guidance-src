@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -198,7 +198,7 @@ export const checkboxCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const checkboxRule: LegacyScanRule = {
+export const checkboxRule: ScanRule = {
   id: 'checkbox',
   guideId: 'checkbox',
   guideHash: '485476bc63e0',
@@ -220,4 +220,4 @@ export const checkboxRule: LegacyScanRule = {
   },
 };
 
-export default [checkboxRule] satisfies readonly LegacyScanRule[];
+export default [checkboxRule] satisfies readonly ScanRule[];

@@ -12,8 +12,8 @@ import {
 } from '../scanners/ast-helpers.ts';
 import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
@@ -83,8 +83,8 @@ export const improveTextLayoutAndLegibilityPackageMatcher: DependencyRuleMatcher
 export const improveTextLayoutAndLegibilityJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['balanceText', 'Balancer'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): LegacyScanMatch[] => {
-    const matches: LegacyScanMatch[] = [];
+  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): ScanMatch[] => {
+    const matches: ScanMatch[] = [];
 
     sourceFile.forEachDescendant((node) => {
       if (
@@ -115,7 +115,7 @@ export const improveTextLayoutAndLegibilityJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const improveTextLayoutAndLegibilityPackageRule: LegacyScanRule = {
+export const improveTextLayoutAndLegibilityPackageRule: ScanRule = {
   id: 'improve-text-layout-and-legibility/package-text-balance',
   guideId: 'improve-text-layout-and-legibility',
   guideHash: IMPROVE_TEXT_LAYOUT_AND_LEGIBILITY_GUIDE_HASH,
@@ -133,7 +133,7 @@ export const improveTextLayoutAndLegibilityPackageRule: LegacyScanRule = {
   },
 };
 
-export const improveTextLayoutAndLegibilityJsRule: LegacyScanRule = {
+export const improveTextLayoutAndLegibilityJsRule: ScanRule = {
   id: 'improve-text-layout-and-legibility/js-text-balance',
   guideId: 'improve-text-layout-and-legibility',
   guideHash: IMPROVE_TEXT_LAYOUT_AND_LEGIBILITY_GUIDE_HASH,
@@ -154,4 +154,4 @@ export const improveTextLayoutAndLegibilityJsRule: LegacyScanRule = {
 export default [
   improveTextLayoutAndLegibilityPackageRule,
   improveTextLayoutAndLegibilityJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

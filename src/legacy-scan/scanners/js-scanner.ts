@@ -8,7 +8,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import type {
-  LegacyScanMatch,
+  ScanMatch,
   FastTokenSpec,
   JsMatcherContext,
   JsRuleMatcher,
@@ -76,7 +76,7 @@ export function matchJsRule(
   matcher: JsRuleMatcher,
   filePath: string,
   fileContent: string,
-): LegacyScanMatch[] {
+): ScanMatch[] {
   const matches = withVirtualSourceFile(filePath, fileContent, (sourceFile) =>
     matcher.matchFile(sourceFile, { filePath, fileContent }),
   );
@@ -218,7 +218,7 @@ export function createJsAstMatcher(config: JsAstMatcherConfig): JsRuleMatcher {
   return {
     kind: 'js',
     fastTokens: config.fastTokens ?? [],
-    matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[] {
+    matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[] {
       if (config.excludePathRegex?.test(ctx.filePath)) return [];
       if (
         config.excludePackages?.length &&
@@ -231,7 +231,7 @@ export function createJsAstMatcher(config: JsAstMatcherConfig): JsRuleMatcher {
       const candidates = collectOrderedDescendants(sourceFile, config.kinds);
       if (candidates.length === 0) return [];
 
-      const matches: LegacyScanMatch[] = [];
+      const matches: ScanMatch[] = [];
       const visitedLines = dedupeLines ? new Set<number>() : null;
       const fullText = config.maxLineLength !== undefined ? sourceFile.getFullText() : '';
 
@@ -306,7 +306,7 @@ export function scanJsSource(
   fileContent: string,
   rules: readonly JsRuleMatcher[],
   project?: Project,
-): { readonly matches: LegacyScanMatch[]; readonly sourceFile?: SourceFile } {
+): { readonly matches: ScanMatch[]; readonly sourceFile?: SourceFile } {
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(fileContent, rule.fastTokens),
   );
@@ -323,7 +323,7 @@ export function scanJsSource(
     overwrite: true,
   });
   const ctx: JsMatcherContext = { filePath, fileContent };
-  const matches: LegacyScanMatch[] = [];
+  const matches: ScanMatch[] = [];
 
   try {
     for (const rule of activeRules) {

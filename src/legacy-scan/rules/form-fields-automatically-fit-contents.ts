@@ -12,8 +12,8 @@ import {
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -239,8 +239,8 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
     'scrollHeight',
     'scrollWidth',
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): LegacyScanMatch[] => {
-    const matches: LegacyScanMatch[] = [];
+  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): ScanMatch[] => {
+    const matches: ScanMatch[] = [];
     const visitedLines = new Set<number>();
 
     for (const node of getCallAndBinaryDescendants(sourceFile)) {
@@ -265,7 +265,7 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
   },
 };
 
-export const formFieldsAutomaticallyFitContentsRule: LegacyScanRule = {
+export const formFieldsAutomaticallyFitContentsRule: ScanRule = {
   id: 'form-fields-automatically-fit-contents',
   guideId: 'form-fields-automatically-fit-contents',
   guideHash: FORM_FIELDS_AUTOMATICALLY_FIT_GUIDE_HASH,
@@ -288,4 +288,4 @@ export const formFieldsAutomaticallyFitContentsRule: LegacyScanRule = {
 
 export default [
   formFieldsAutomaticallyFitContentsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

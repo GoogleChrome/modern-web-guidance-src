@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -280,7 +280,7 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
   },
 };
 
-export const autofillPaymentFormRule: LegacyScanRule = {
+export const autofillPaymentFormRule: ScanRule = {
   id: 'autofill-payment-form',
   guideId: 'autofill-payment-form',
   guideHash: AUTOFILL_PAYMENT_FORM_GUIDE_HASH,
@@ -304,4 +304,4 @@ export const autofillPaymentFormRule: LegacyScanRule = {
 
 export default [
   autofillPaymentFormRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

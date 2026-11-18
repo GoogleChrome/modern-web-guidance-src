@@ -7,8 +7,8 @@ import {
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -223,8 +223,8 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
       'POPOVER',
     ],
   ],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): LegacyScanMatch[] {
-    const matches: LegacyScanMatch[] = [];
+  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): ScanMatch[] {
+    const matches: ScanMatch[] = [];
     const seenPositions = new Set<number>();
 
     for (const node of getCallAndBinaryDescendants(sourceFile)) {
@@ -313,7 +313,7 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
   },
 };
 
-export const declarativeDialogPopoverControlClickListenerRule: LegacyScanRule = {
+export const declarativeDialogPopoverControlClickListenerRule: ScanRule = {
   id: 'declarative-dialog-popover-control/click-listener',
   guideId: 'declarative-dialog-popover-control',
   guideHash: '87f6a7ad8849',
@@ -333,9 +333,9 @@ export const declarativeDialogPopoverControlClickListenerRule: LegacyScanRule = 
   },
 };
 
-export const declarativeDialogPopoverControlJsRule: LegacyScanRule =
+export const declarativeDialogPopoverControlJsRule: ScanRule =
   declarativeDialogPopoverControlClickListenerRule;
 
 export default [
   declarativeDialogPopoverControlClickListenerRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

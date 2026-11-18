@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -64,7 +64,7 @@ const complexShapesCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const complexShapesRule: LegacyScanRule = {
+export const complexShapesRule: ScanRule = {
   id: 'complex-shapes',
   guideId: 'complex-shapes',
   guideHash: COMPLEX_SHAPES_GUIDE_HASH,
@@ -84,4 +84,4 @@ export const complexShapesRule: LegacyScanRule = {
   },
 };
 
-export default [complexShapesRule] satisfies readonly LegacyScanRule[];
+export default [complexShapesRule] satisfies readonly ScanRule[];

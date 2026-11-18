@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -153,7 +153,7 @@ const dynamicSiblingAnimationsCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const dynamicSiblingAnimationsCssRule: LegacyScanRule = {
+export const dynamicSiblingAnimationsCssRule: ScanRule = {
   id: 'dynamic-sibling-animations',
   guideId: 'dynamic-sibling-animations',
   guideHash: DYNAMIC_SIBLING_ANIMATIONS_GUIDE_HASH,
@@ -174,4 +174,4 @@ export const dynamicSiblingAnimationsCssRule: LegacyScanRule = {
 
 export default [
   dynamicSiblingAnimationsCssRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

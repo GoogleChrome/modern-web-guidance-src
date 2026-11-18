@@ -1,6 +1,6 @@
 import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -332,7 +332,7 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const customizeScrollbarColorAndThicknessRule: LegacyScanRule = {
+export const customizeScrollbarColorAndThicknessRule: ScanRule = {
   id: 'customize-scrollbar-color-and-thickness',
   guideId: 'customize-scrollbar-color-and-thickness',
   guideHash: '6797d5c85622',
@@ -356,4 +356,4 @@ export const customizeScrollbarColorAndThicknessRule: LegacyScanRule = {
 
 export default [
   customizeScrollbarColorAndThicknessRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

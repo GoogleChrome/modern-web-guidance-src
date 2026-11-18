@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -127,7 +127,7 @@ export const secureExternalSubresourcesMatcher: DomRuleMatcher = {
   },
 };
 
-export const secureExternalSubresourcesRule: LegacyScanRule = {
+export const secureExternalSubresourcesRule: ScanRule = {
   id: 'secure-external-subresources',
   guideId: 'secure-external-subresources',
   guideHash: SECURE_EXTERNAL_SUBRESOURCES_GUIDE_HASH,
@@ -148,4 +148,4 @@ export const secureExternalSubresourcesRule: LegacyScanRule = {
 
 export default [
   secureExternalSubresourcesRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

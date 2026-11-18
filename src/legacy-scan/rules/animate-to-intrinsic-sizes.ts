@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -123,7 +123,7 @@ const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const animateToIntrinsicSizesRule: LegacyScanRule = {
+export const animateToIntrinsicSizesRule: ScanRule = {
   id: 'animate-to-intrinsic-sizes',
   guideId: 'animate-to-intrinsic-sizes',
   guideHash: '1193fea41a0b',
@@ -146,4 +146,4 @@ export const animateToIntrinsicSizesRule: LegacyScanRule = {
 
 export default [
   animateToIntrinsicSizesRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

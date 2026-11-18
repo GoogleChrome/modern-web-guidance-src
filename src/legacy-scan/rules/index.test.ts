@@ -19,14 +19,14 @@ import {
   matchesFastTokens,
   normalizeFastTokenGroups,
 } from '../scanners/js-scanner.ts';
-import type { LegacyScanMatch, LegacyScanRule } from '../schema.ts';
+import type { ScanMatch, ScanRule } from '../schema.ts';
 import {
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
   RULE_MODULES,
 } from './index.ts';
 
-export function isLegacyScanRuleExport(value: unknown): value is LegacyScanRule {
+export function isScanRuleExport(value: unknown): value is ScanRule {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -42,7 +42,7 @@ export function isLegacyScanRuleExport(value: unknown): value is LegacyScanRule 
 export interface InspectedRuleModule {
   readonly moduleFiles: readonly string[];
   readonly defaultRules: readonly unknown[];
-  readonly exportedRules: readonly LegacyScanRule[];
+  readonly exportedRules: readonly ScanRule[];
   readonly definedRuleCount: number;
 }
 
@@ -66,7 +66,7 @@ export async function inspectRuleModuleFiles(
     }
   }
 
-  const exportedRuleSet = new Set<LegacyScanRule>();
+  const exportedRuleSet = new Set<ScanRule>();
   let definedRuleCount = 0;
 
   for (const candidateFile of moduleFiles) {
@@ -77,20 +77,20 @@ export async function inspectRuleModuleFiles(
 
     if (Array.isArray(candidateMod.default)) {
       for (const item of candidateMod.default) {
-        if (isLegacyScanRuleExport(item)) {
+        if (isScanRuleExport(item)) {
           exportedRuleSet.add(item);
         }
       }
     }
     for (const value of Object.values(candidateMod)) {
-      if (isLegacyScanRuleExport(value)) {
+      if (isScanRuleExport(value)) {
         exportedRuleSet.add(value);
       }
     }
     for (const [key, value] of Object.entries(candidateMod)) {
       if (key !== 'default' && Array.isArray(value)) {
         for (const item of value) {
-          if (isLegacyScanRuleExport(item)) {
+          if (isScanRuleExport(item)) {
             exportedRuleSet.add(item);
           }
         }
@@ -109,7 +109,7 @@ export async function inspectRuleModuleFiles(
   };
 }
 
-export function assertValidFastTokenSpecs(rules: readonly LegacyScanRule[]): void {
+export function assertValidFastTokenSpecs(rules: readonly ScanRule[]): void {
   for (const rule of rules) {
     if (rule.matcher.kind === 'dependency') {
       assert.ok(
@@ -150,7 +150,7 @@ export function assertValidFastTokenSpecs(rules: readonly LegacyScanRule[]): voi
   }
 }
 
-export function assertAntiSpongeSelectivity(rules: readonly LegacyScanRule[]): void {
+export function assertAntiSpongeSelectivity(rules: readonly ScanRule[]): void {
   const bannedUltraGenericSingleGroupTokens = new Set([
     'scroll',
     'click',
@@ -521,13 +521,13 @@ export function assertNoInlinePositiveTextPreChecks(ruleDirs: readonly string[])
  *    we assert that `matchesFastTokens(f', rule.matcher.fastTokens)` is also `true`.
  */
 export function assertFastTokensRecallOnMutatedTestFixtures(
-  rules: readonly LegacyScanRule[],
+  rules: readonly ScanRule[],
   testSearchDirs: readonly string[],
 ): void {
   const project = createInMemoryProject();
   const snippetCache = new Map<string, readonly string[]>();
 
-  function getTestSnippetsForRule(rule: LegacyScanRule): readonly string[] {
+  function getTestSnippetsForRule(rule: ScanRule): readonly string[] {
     const subSlug = rule.id.includes('/') ? rule.id.split('/')[1]! : rule.guideId;
     const candidateFiles = testSearchDirs.flatMap((dir) => [
       join(dir, `${rule.guideId}.test.ts`),
@@ -568,7 +568,7 @@ export function assertFastTokensRecallOnMutatedTestFixtures(
     return list;
   }
 
-  function runMatcherIgnoringFastTokens(rule: LegacyScanRule, snippet: string): LegacyScanMatch[] {
+  function runMatcherIgnoringFastTokens(rule: ScanRule, snippet: string): ScanMatch[] {
     const matcher = rule.matcher;
     if (matcher.kind === 'dependency') {
       return [];
@@ -715,7 +715,7 @@ describe('qualified rules architectural invariants', () => {
 
       assert.ok(
         inspected.exportedRules.length > 0,
-        `Rule module "${guideId}.ts" must export at least one LegacyScanRule`,
+        `Rule module "${guideId}.ts" must export at least one ScanRule`,
       );
       for (const exportedRule of inspected.exportedRules) {
         assert.ok(
@@ -727,7 +727,7 @@ describe('qualified rules architectural invariants', () => {
       assert.strictEqual(
         moduleRules.length,
         inspected.definedRuleCount,
-        `Module "${guideId}.ts" defines ${inspected.definedRuleCount} LegacyScanRule object(s) (by verifierRubric:) but default-exports ${moduleRules.length}`,
+        `Module "${guideId}.ts" defines ${inspected.definedRuleCount} ScanRule object(s) (by verifierRubric:) but default-exports ${moduleRules.length}`,
       );
 
       for (const rule of moduleRules) {

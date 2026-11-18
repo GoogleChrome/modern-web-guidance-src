@@ -1,4 +1,4 @@
-import type { LegacyScanRule } from '../schema.ts';
+import type { ScanRule } from '../schema.ts';
 
 import animateToIntrinsicSizes from './animate-to-intrinsic-sizes.ts';
 import autofillAddressForm from './autofill-address-form.ts';
@@ -39,7 +39,7 @@ import stylingWebComponents from './styling-web-components.ts';
 import switchRules from './switch.ts';
 import validateInputAfterInteraction from './validate-input-after-interaction.ts';
 
-export const RULE_MODULES: readonly (readonly LegacyScanRule[])[] = [
+export const RULE_MODULES: readonly (readonly ScanRule[])[] = [
   animateToIntrinsicSizes,
   autofillAddressForm,
   autofillPaymentForm,
@@ -87,12 +87,12 @@ export const RULE_MODULES: readonly (readonly LegacyScanRule[])[] = [
  * - Post-Verifier Precision >= 90% and either Static Matcher Precision >= 80% at n >= 10,
  *   or >= 90% at n >= 5 for rare patterns.
  */
-export const QUALIFIED_RULES: readonly LegacyScanRule[] = RULE_MODULES.flat();
+export const QUALIFIED_RULES: readonly ScanRule[] = RULE_MODULES.flat();
 
 /**
  * Alias for callers in `src/legacy-scan/eval/` that iterate over all public rules.
  */
-export const ALL_RULES: readonly LegacyScanRule[] = QUALIFIED_RULES;
+export const ALL_RULES: readonly ScanRule[] = QUALIFIED_RULES;
 
 /**
  * Sorted list of guide IDs that have at least one qualified rule.

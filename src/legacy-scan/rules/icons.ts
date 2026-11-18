@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -82,7 +82,7 @@ export const iconsCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const iconsRule: LegacyScanRule = {
+export const iconsRule: ScanRule = {
   id: 'icons',
   guideId: 'icons',
   guideHash: ICONS_GUIDE_HASH,
@@ -101,4 +101,4 @@ export const iconsRule: LegacyScanRule = {
   },
 };
 
-export default [iconsRule] satisfies readonly LegacyScanRule[];
+export default [iconsRule] satisfies readonly ScanRule[];

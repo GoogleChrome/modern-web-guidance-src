@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -52,7 +52,7 @@ const deliverOptimizedDecorativeImagesCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const deliverOptimizedDecorativeImagesRule: LegacyScanRule = {
+export const deliverOptimizedDecorativeImagesRule: ScanRule = {
   id: 'deliver-optimized-decorative-images',
   guideId: 'deliver-optimized-decorative-images',
   guideHash: DELIVER_OPTIMIZED_DECORATIVE_IMAGES_GUIDE_HASH,
@@ -72,4 +72,4 @@ export const deliverOptimizedDecorativeImagesRule: LegacyScanRule = {
   },
 };
 
-export default [deliverOptimizedDecorativeImagesRule] satisfies readonly LegacyScanRule[];
+export default [deliverOptimizedDecorativeImagesRule] satisfies readonly ScanRule[];

@@ -12,7 +12,7 @@ import {
   type UnwrappedMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsAstMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -456,7 +456,7 @@ export const objectGroupByMatcher: JsRuleMatcher = createJsAstMatcher({
   },
 });
 
-export const objectGroupByRule: LegacyScanRule = {
+export const objectGroupByRule: ScanRule = {
   id: 'js/object-group-by',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -473,4 +473,4 @@ export const objectGroupByRule: LegacyScanRule = {
   },
 };
 
-export default [objectGroupByRule] satisfies readonly LegacyScanRule[];
+export default [objectGroupByRule] satisfies readonly ScanRule[];

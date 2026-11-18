@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import type { LegacyScanFinding, LegacyScanRule } from './schema.ts';
+import type { ScanFinding, ScanRule } from './schema.ts';
 import {
   GEMINI_API_BASE,
   LLM_VERIFIER_MODEL,
@@ -28,7 +28,7 @@ function geminiVerdictResponse(
   );
 }
 
-const mockRule: LegacyScanRule = {
+const mockRule: ScanRule = {
   id: 'test-rule',
   guideId: 'animate-element-entry-exit',
   guideHash: '1234567890ab',
@@ -50,7 +50,7 @@ const mockRule: LegacyScanRule = {
   },
 };
 
-const mockFindings: LegacyScanFinding[] = [
+const mockFindings: ScanFinding[] = [
   {
     cardId: 'card-1',
     ruleId: 'test-rule',
@@ -149,7 +149,7 @@ describe('LLM verifier', () => {
   });
 
   test('runLlmVerifier returns kept findings and verdicts via mock fetch', async () => {
-    const rulesById = new Map<string, LegacyScanRule>([['test-rule', mockRule]]);
+    const rulesById = new Map<string, ScanRule>([['test-rule', mockRule]]);
 
     const mockFetch: typeof fetch = async (_url, options) => {
       const body = JSON.parse(options?.body as string) as {
@@ -194,7 +194,7 @@ describe('LLM verifier', () => {
   });
 
   test('runLlmVerifier retries on transient 429 and succeeds', async () => {
-    const rulesById = new Map<string, LegacyScanRule>([['test-rule', mockRule]]);
+    const rulesById = new Map<string, ScanRule>([['test-rule', mockRule]]);
     let attempts = 0;
 
     const mockFetch: typeof fetch = async () => {
@@ -215,7 +215,7 @@ describe('LLM verifier', () => {
   });
 
   test('runLlmVerifier fails fast and throws when error persists', async () => {
-    const rulesById = new Map<string, LegacyScanRule>([['test-rule', mockRule]]);
+    const rulesById = new Map<string, ScanRule>([['test-rule', mockRule]]);
 
     await assert.rejects(
       () =>
@@ -272,7 +272,7 @@ describe('LLM verifier', () => {
       // runLlmVerifier works against a custom baseUrl without requiring GEMINI_API_KEY
       delete process.env.GEMINI_API_BASE;
       delete process.env.GOOGLE_GEMINI_BASE_URL;
-      const rulesById = new Map<string, LegacyScanRule>([['test-rule', mockRule]]);
+      const rulesById = new Map<string, ScanRule>([['test-rule', mockRule]]);
       let requestedUrl = '';
       const result = await runLlmVerifier([mockFindings[0]], rulesById, {
         baseUrl: 'http://127.0.0.1:41234',

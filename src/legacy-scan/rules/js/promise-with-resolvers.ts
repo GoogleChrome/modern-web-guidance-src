@@ -8,7 +8,7 @@ import {
   unwrapExpression,
 } from '../../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -181,7 +181,7 @@ export const promiseWithResolversMatcher: JsRuleMatcher = createJsCallMatcher({
   },
 });
 
-export const jsPromiseWithResolversRule: LegacyScanRule = {
+export const jsPromiseWithResolversRule: ScanRule = {
   id: 'js/promise-with-resolvers',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -197,4 +197,4 @@ export const jsPromiseWithResolversRule: LegacyScanRule = {
   },
 };
 
-export default [jsPromiseWithResolversRule] satisfies readonly LegacyScanRule[];
+export default [jsPromiseWithResolversRule] satisfies readonly ScanRule[];

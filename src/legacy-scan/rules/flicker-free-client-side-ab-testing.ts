@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -41,7 +41,7 @@ export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
   },
 };
 
-export const flickerFreeClientSideAbTestingRule: LegacyScanRule = {
+export const flickerFreeClientSideAbTestingRule: ScanRule = {
   id: 'flicker-free-client-side-ab-testing',
   guideId: 'flicker-free-client-side-ab-testing',
   guideHash: FLICKER_FREE_CLIENT_SIDE_AB_TESTING_GUIDE_HASH,
@@ -61,4 +61,4 @@ export const flickerFreeClientSideAbTestingRule: LegacyScanRule = {
 
 export default [
   flickerFreeClientSideAbTestingRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

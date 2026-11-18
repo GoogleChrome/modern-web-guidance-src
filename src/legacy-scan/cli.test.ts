@@ -4,22 +4,22 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
-  LEGACY_SCAN_CLI_HELP,
+  CLI_HELP,
   elideText,
   formatHumanReadable,
   runLegacyScanCli,
   sampleDiversifiedFindings,
   writeLegacyScanCliResult,
-  type LegacyScanCliFinding,
-  type LegacyScanCliGuideGroup,
-  type LegacyScanJsonOutput,
+  type CliFinding,
+  type CliGuideGroup,
+  type ScanJsonOutput,
 } from './cli.ts';
 import {
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
 } from './rules/index.ts';
 import { MAX_SOURCE_FILE_BYTES } from './scanners/index.ts';
-import type { LegacyScanRule } from './schema.ts';
+import type { ScanRule } from './schema.ts';
 
 async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), 'legacy-scan-cli-test-'));
@@ -35,17 +35,17 @@ describe('runLegacyScanCli', () => {
     const res1 = await runLegacyScanCli(['--help']);
     assert.equal(res1.exitCode, 0);
     assert.match(res1.output, /Usage: modern-web-guidance legacy-scan/);
-    assert.equal(res1.output, `${LEGACY_SCAN_CLI_HELP}\n`);
+    assert.equal(res1.output, `${CLI_HELP}\n`);
 
     const res2 = await runLegacyScanCli(['legacy-scan', '-h']);
     assert.equal(res2.exitCode, 0);
     assert.match(res2.output, /Usage: modern-web-guidance legacy-scan/);
-    assert.equal(res2.output, `${LEGACY_SCAN_CLI_HELP}\n`);
+    assert.equal(res2.output, `${CLI_HELP}\n`);
 
     const res3 = await runLegacyScanCli(['analyze', '-h']);
     assert.equal(res3.exitCode, 0);
     assert.match(res3.output, /Usage: modern-web-guidance legacy-scan/);
-    assert.equal(res3.output, `${LEGACY_SCAN_CLI_HELP}\n`);
+    assert.equal(res3.output, `${CLI_HELP}\n`);
   });
 
   it('handles non-existent target path with error and exit code 1', async () => {
@@ -57,7 +57,7 @@ describe('runLegacyScanCli', () => {
     const resJson = await runLegacyScanCli([nonExistentPath, '--json']);
     assert.equal(resJson.exitCode, 1);
     assert.ok(resJson.data, 'Expected data payload on --json error');
-    const parsed = JSON.parse(resJson.output) as LegacyScanJsonOutput;
+    const parsed = JSON.parse(resJson.output) as ScanJsonOutput;
     assert.equal(parsed.totalFindings, 0);
     assert.equal(parsed.guides.length, 0);
     assert.match(parsed.error ?? '', /Target path not found/);
@@ -106,7 +106,7 @@ describe('runLegacyScanCli', () => {
       const resJson = await runLegacyScanCli([largeFile, '--json']);
       assert.equal(resJson.exitCode, 1);
       assert.ok(resJson.data, 'Expected data payload on --json error');
-      const parsed = JSON.parse(resJson.output) as LegacyScanJsonOutput;
+      const parsed = JSON.parse(resJson.output) as ScanJsonOutput;
       assert.equal(parsed.totalFindings, 0);
       assert.equal(parsed.guides.length, 0);
       assert.match(parsed.error ?? '', /Target file exceeds maximum size/);
@@ -130,7 +130,7 @@ describe('runLegacyScanCli', () => {
 
       const resDefaultJson = await runLegacyScanCli([emptyDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
-      const parsedDefault = JSON.parse(resDefaultJson.output) as LegacyScanJsonOutput;
+      const parsedDefault = JSON.parse(resDefaultJson.output) as ScanJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.targetDir, emptyDir);
@@ -244,7 +244,7 @@ describe('runLegacyScanCli', () => {
       const res = await runLegacyScanCli([testDir, '--json']);
       assert.equal(res.exitCode, 0);
 
-      const parsed = JSON.parse(res.output) as LegacyScanJsonOutput;
+      const parsed = JSON.parse(res.output) as ScanJsonOutput;
       assert.equal(parsed.targetDir, testDir);
       assert.ok(parsed.totalFindings >= 1);
       assert.equal(
@@ -298,7 +298,7 @@ describe('runLegacyScanCli', () => {
         '--json',
       ]);
       assert.equal(resCssOnly.exitCode, 0);
-      const parsedCss = JSON.parse(resCssOnly.output) as LegacyScanJsonOutput;
+      const parsedCss = JSON.parse(resCssOnly.output) as ScanJsonOutput;
       assert.deepEqual(parsedCss.guides.map((g) => g.guideId), ['animate-to-intrinsic-sizes']);
 
       const resHtmlOnly = await runLegacyScanCli([
@@ -308,7 +308,7 @@ describe('runLegacyScanCli', () => {
         '--json',
       ]);
       assert.equal(resHtmlOnly.exitCode, 0);
-      const parsedHtml = JSON.parse(resHtmlOnly.output) as LegacyScanJsonOutput;
+      const parsedHtml = JSON.parse(resHtmlOnly.output) as ScanJsonOutput;
       assert.deepEqual(parsedHtml.guides.map((g) => g.guideId), ['autofill-sign-in-form']);
 
       const resNone = await runLegacyScanCli([testDir, '--guide', 'non-matching-guide', '--json']);
@@ -334,7 +334,7 @@ describe('runLegacyScanCli', () => {
 
       const resDefault = await runLegacyScanCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
-      const parsedDefault = JSON.parse(resDefault.output) as LegacyScanJsonOutput;
+      const parsedDefault = JSON.parse(resDefault.output) as ScanJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
@@ -347,7 +347,7 @@ describe('runLegacyScanCli', () => {
       const resAllJson = await runLegacyScanCli([testDir, '--all', '--json']);
       assert.equal(resAllJson.exitCode, 1);
       assert.ok(resAllJson.data);
-      const parsedAllJson = JSON.parse(resAllJson.output) as LegacyScanJsonOutput;
+      const parsedAllJson = JSON.parse(resAllJson.output) as ScanJsonOutput;
       assert.match(parsedAllJson.error ?? '', /Unknown option '--all'/);
 
       const resExperimentalHuman = await runLegacyScanCli([testDir, '--experimental']);
@@ -371,7 +371,7 @@ describe('runLegacyScanCli', () => {
     ]);
     assert.equal(resSkillVer.exitCode, 1);
     assert.ok(resSkillVer.data);
-    const parsedSkillVer = JSON.parse(resSkillVer.output) as LegacyScanJsonOutput;
+    const parsedSkillVer = JSON.parse(resSkillVer.output) as ScanJsonOutput;
     assert.equal(parsedSkillVer.targetDir, 'some/dir');
     assert.match(parsedSkillVer.error ?? '', /Unknown option '--unknown-flag'/);
 
@@ -384,7 +384,7 @@ describe('runLegacyScanCli', () => {
     ]);
     assert.equal(resGuide.exitCode, 1);
     assert.ok(resGuide.data);
-    const parsedGuide = JSON.parse(resGuide.output) as LegacyScanJsonOutput;
+    const parsedGuide = JSON.parse(resGuide.output) as ScanJsonOutput;
     assert.equal(parsedGuide.targetDir, 'other/dir');
     assert.match(parsedGuide.error ?? '', /Unknown option '--unknown-flag'/);
 
@@ -396,7 +396,7 @@ describe('runLegacyScanCli', () => {
     ]);
     assert.equal(resNoDir.exitCode, 1);
     assert.ok(resNoDir.data);
-    const parsedNoDir = JSON.parse(resNoDir.output) as LegacyScanJsonOutput;
+    const parsedNoDir = JSON.parse(resNoDir.output) as ScanJsonOutput;
     assert.equal(parsedNoDir.targetDir, '.');
   });
 
@@ -413,7 +413,7 @@ describe('runLegacyScanCli', () => {
 
       const resJson = await runLegacyScanCli([testDir, '--json']);
       assert.equal(resJson.exitCode, 0);
-      const parsedJson = JSON.parse(resJson.output) as LegacyScanJsonOutput;
+      const parsedJson = JSON.parse(resJson.output) as ScanJsonOutput;
       assert.equal(parsedJson.totalFindings, 8);
       assert.equal(parsedJson.guides[0]?.rules[0]?.findings.length, 8);
     });
@@ -427,14 +427,14 @@ describe('runLegacyScanCli', () => {
     });
 
     it('sampleDiversifiedFindings diversifies findings across files round-robin up to cap', () => {
-      const makeFinding = (file: string, id: string): LegacyScanCliFinding => ({
+      const makeFinding = (file: string, id: string): CliFinding => ({
         file,
         line: 1,
         message: id,
         lineContent: 'line',
       });
 
-      const findings: LegacyScanCliFinding[] = [
+      const findings: CliFinding[] = [
         makeFinding('a.ts', 'a1'),
         makeFinding('a.ts', 'a2'),
         makeFinding('a.ts', 'a3'),
@@ -454,7 +454,7 @@ describe('runLegacyScanCli', () => {
     });
 
     it('formatHumanReadable emits ANSI styling when color option is enabled', () => {
-      const fixtureGuides: LegacyScanCliGuideGroup[] = [
+      const fixtureGuides: CliGuideGroup[] = [
         {
           guideId: 'autofill-sign-in-form',
           retrieveCommand: 'npx retrieve autofill-sign-in-form',
@@ -516,7 +516,7 @@ describe('runLegacyScanCli', () => {
 
         const resJson = await runLegacyScanCli([testDir, '--json']);
         assert.equal(resJson.exitCode, 0);
-        const parsed = JSON.parse(resJson.output) as LegacyScanJsonOutput;
+        const parsed = JSON.parse(resJson.output) as ScanJsonOutput;
         assert.equal(parsed.totalFindings, 1);
         assert.equal(
           parsed.guides[0]?.rules[0]?.findings[0]?.file,
@@ -535,14 +535,14 @@ describe('runLegacyScanCli', () => {
 
         const resIncluded = await runLegacyScanCli([testDir, '--include-docs-and-tests', '--json']);
         assert.equal(resIncluded.exitCode, 0);
-        const parsedIncluded = JSON.parse(resIncluded.output) as LegacyScanJsonOutput;
+        const parsedIncluded = JSON.parse(resIncluded.output) as ScanJsonOutput;
         assert.equal(parsedIncluded.totalFindings, 10);
         assert.equal(parsedIncluded.skippedDocsAndTestsCount, undefined);
 
         const docsDir = join(testDir, 'docs');
         const resDocs = await runLegacyScanCli([docsDir, '--json']);
         assert.equal(resDocs.exitCode, 0);
-        const parsedDocs = JSON.parse(resDocs.output) as LegacyScanJsonOutput;
+        const parsedDocs = JSON.parse(resDocs.output) as ScanJsonOutput;
         assert.equal(parsedDocs.totalFindings, 1);
         assert.equal(parsedDocs.guides[0]?.rules[0]?.findings[0]?.file, 'sample.html');
       });
@@ -550,7 +550,7 @@ describe('runLegacyScanCli', () => {
 
     it('accurately associates each finding with its own rule summary and rubric in multi-rule guides', async () => {
       await withTempDir(async (testDir) => {
-        const ruleA: LegacyScanRule = {
+        const ruleA: ScanRule = {
           id: 'test-multirule/package-rule',
           guideId: 'test-multirule',
           guideHash: '111122223333',
@@ -566,7 +566,7 @@ describe('runLegacyScanCli', () => {
           },
         };
 
-        const ruleB: LegacyScanRule = {
+        const ruleB: ScanRule = {
           id: 'test-multirule/css-rule',
           guideId: 'test-multirule',
           guideHash: '111122223333',
@@ -590,7 +590,7 @@ describe('runLegacyScanCli', () => {
 
         const resBOnly = await runLegacyScanCli([testDir, '--json'], { rules: [ruleA, ruleB] });
         assert.equal(resBOnly.exitCode, 0);
-        const parsedBOnly = JSON.parse(resBOnly.output) as LegacyScanJsonOutput;
+        const parsedBOnly = JSON.parse(resBOnly.output) as ScanJsonOutput;
         assert.equal(parsedBOnly.totalFindings, 1);
 
         const guideBOnly = parsedBOnly.guides[0];
@@ -620,7 +620,7 @@ describe('runLegacyScanCli', () => {
 
         const resBoth = await runLegacyScanCli([testDir, '--json'], { rules: [ruleA, ruleB] });
         assert.equal(resBoth.exitCode, 0);
-        const parsedBoth = JSON.parse(resBoth.output) as LegacyScanJsonOutput;
+        const parsedBoth = JSON.parse(resBoth.output) as ScanJsonOutput;
         assert.equal(parsedBoth.totalFindings, 2);
 
         const guideBoth = parsedBoth.guides[0];
@@ -648,7 +648,7 @@ describe('runLegacyScanCli', () => {
         assert.ok(resHumanBoth.output.includes('Summary for Rule B'));
 
         // 3. Fail fast: a rule without a summary throws an error rather than silent fallback
-        const brokenRule: LegacyScanRule = {
+        const brokenRule: ScanRule = {
           ...ruleA,
           id: 'test-multirule/broken-rule',
           summary: '   ',
@@ -663,7 +663,7 @@ describe('runLegacyScanCli', () => {
 
   it('scans a single file path and returns findings when legacy pattern exists, 0 after modernization', async () => {
     await withTempDir(async (testDir) => {
-      const TEST_RULES: readonly LegacyScanRule[] = [
+      const TEST_RULES: readonly ScanRule[] = [
         {
           id: 'test-single-file/form-autofill',
           guideId: 'autofill-sign-in-form',
@@ -698,7 +698,7 @@ describe('runLegacyScanCli', () => {
       const resFindings = await runLegacyScanCli([filePath, '--json'], { rules: TEST_RULES });
       assert.equal(resFindings.exitCode, 0);
       assert.ok(resFindings.data, 'Expected JSON data in result');
-      const parsedFindings = JSON.parse(resFindings.output) as LegacyScanJsonOutput;
+      const parsedFindings = JSON.parse(resFindings.output) as ScanJsonOutput;
       assert.equal(parsedFindings.totalFindings, 1);
       assert.equal(parsedFindings.targetDir, filePath);
       assert.equal(parsedFindings.guides.length, 1);
@@ -720,7 +720,7 @@ describe('runLegacyScanCli', () => {
       );
       const resTestFile = await runLegacyScanCli([testFilePath, '--json'], { rules: TEST_RULES });
       assert.equal(resTestFile.exitCode, 0);
-      const parsedTestFile = JSON.parse(resTestFile.output) as LegacyScanJsonOutput;
+      const parsedTestFile = JSON.parse(resTestFile.output) as ScanJsonOutput;
       assert.equal(parsedTestFile.totalFindings, 1);
 
       // 2. Modernize the file: add autocomplete="current-password"
@@ -734,7 +734,7 @@ describe('runLegacyScanCli', () => {
       const resClean = await runLegacyScanCli([filePath, '--json'], { rules: TEST_RULES });
       assert.equal(resClean.exitCode, 0);
       assert.ok(resClean.data, 'Expected JSON data in result');
-      const parsedClean = JSON.parse(resClean.output) as LegacyScanJsonOutput;
+      const parsedClean = JSON.parse(resClean.output) as ScanJsonOutput;
       assert.equal(parsedClean.totalFindings, 0);
       assert.deepEqual(parsedClean.guides, []);
     });

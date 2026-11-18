@@ -13,7 +13,7 @@ import {
   unwrapExpression,
 } from '../../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -298,7 +298,7 @@ export const jsCreateEventMatcher: JsRuleMatcher = createJsCallMatcher({
   },
 });
 
-export const jsCreateEventRule: LegacyScanRule = {
+export const jsCreateEventRule: ScanRule = {
   id: 'js/create-event',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -315,4 +315,4 @@ export const jsCreateEventRule: LegacyScanRule = {
   },
 };
 
-export default [jsCreateEventRule] satisfies readonly LegacyScanRule[];
+export default [jsCreateEventRule] satisfies readonly ScanRule[];

@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -53,7 +53,7 @@ export const progressDomMatcher: DomRuleMatcher = {
   },
 };
 
-export const progressRule: LegacyScanRule = {
+export const progressRule: ScanRule = {
   id: 'progress',
   guideId: 'progress',
   guideHash: PROGRESS_GUIDE_HASH,
@@ -75,4 +75,4 @@ export const progressRule: LegacyScanRule = {
 
 export default [
   progressRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

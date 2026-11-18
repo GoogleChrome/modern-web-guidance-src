@@ -11,7 +11,7 @@ import {
   unwrapMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -363,7 +363,7 @@ export const abortSignalTimeoutMatcher: JsRuleMatcher = createJsCallMatcher({
   },
 });
 
-export const abortSignalTimeoutRule: LegacyScanRule = {
+export const abortSignalTimeoutRule: ScanRule = {
   id: 'js/abort-signal-timeout',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -380,4 +380,4 @@ export const abortSignalTimeoutRule: LegacyScanRule = {
   },
 };
 
-export default [abortSignalTimeoutRule] satisfies readonly LegacyScanRule[];
+export default [abortSignalTimeoutRule] satisfies readonly ScanRule[];

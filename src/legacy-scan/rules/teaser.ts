@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -46,7 +46,7 @@ export const teaserCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const teaserRule: LegacyScanRule = {
+export const teaserRule: ScanRule = {
   id: 'teaser',
   guideId: 'teaser',
   guideHash: TEASER_GUIDE_HASH,
@@ -68,4 +68,4 @@ export const teaserRule: LegacyScanRule = {
 
 export default [
   teaserRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

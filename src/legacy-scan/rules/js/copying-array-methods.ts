@@ -14,7 +14,7 @@ import {
   type UnwrappedMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule } from '../../schema.ts';
+import type { ScanRule } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export const JS_COPYING_ARRAY_METHODS_GUIDE_HASH = JS_GUIDE_HASH;
@@ -640,7 +640,7 @@ export const copyingArrayMethodsMatcher = createJsCallMatcher({
   },
 });
 
-export const copyingArrayMethodsRule: LegacyScanRule = {
+export const copyingArrayMethodsRule: ScanRule = {
   id: 'js/copying-array-methods',
   guideId: 'js',
   guideHash: JS_COPYING_ARRAY_METHODS_GUIDE_HASH,
@@ -656,4 +656,4 @@ export const copyingArrayMethodsRule: LegacyScanRule = {
   },
 };
 
-export default [copyingArrayMethodsRule] satisfies readonly LegacyScanRule[];
+export default [copyingArrayMethodsRule] satisfies readonly ScanRule[];

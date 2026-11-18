@@ -27,7 +27,7 @@ import { isKnownCategory } from '../../core/categories.ts';
 import { DISCIPLINE_GUIDES } from '../../core/guide-validation.ts';
 import { extractCompactSnippet } from '../scanners/context-slicer.ts';
 import { computeGuideHash } from '../scanners/index.ts';
-import type { LegacyScanRule } from '../schema.ts';
+import type { ScanRule } from '../schema.ts';
 import {
   GEMINI_API_BASE,
   RETRYABLE_HTTP_STATUSES,
@@ -48,9 +48,9 @@ export {
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
-const RULES_BY_ID: ReadonlyMap<string, LegacyScanRule> = new Map(ALL_RULES.map((r) => [r.id, r]));
-const RULES_BY_GUIDE_ID: ReadonlyMap<string, readonly LegacyScanRule[]> = (() => {
-  const byGuideId = new Map<string, LegacyScanRule[]>();
+const RULES_BY_ID: ReadonlyMap<string, ScanRule> = new Map(ALL_RULES.map((r) => [r.id, r]));
+const RULES_BY_GUIDE_ID: ReadonlyMap<string, readonly ScanRule[]> = (() => {
+  const byGuideId = new Map<string, ScanRule[]>();
   for (const rule of ALL_RULES) {
     const group = byGuideId.get(rule.guideId) ?? [];
     group.push(rule);
@@ -59,7 +59,7 @@ const RULES_BY_GUIDE_ID: ReadonlyMap<string, readonly LegacyScanRule[]> = (() =>
   return byGuideId;
 })();
 
-function findMatchingRule(ruleId: string | undefined, guideId: string): LegacyScanRule | undefined {
+function findMatchingRule(ruleId: string | undefined, guideId: string): ScanRule | undefined {
   const normalizedRuleId = ruleId?.trim();
   if (normalizedRuleId) {
     const byId = RULES_BY_ID.get(normalizedRuleId);
@@ -263,7 +263,7 @@ const INVALID_SENTINEL_HASHES: ReadonlySet<string> = new Set([
   '', 'canary', 'calibration', 'none', 'unknown',
 ]);
 
-export function computeRuleHash(rule: LegacyScanRule): string {
+export function computeRuleHash(rule: ScanRule): string {
   return sha256Hex12(`${rule.id}:${JSON.stringify(rule.verifierRubric)}`);
 }
 

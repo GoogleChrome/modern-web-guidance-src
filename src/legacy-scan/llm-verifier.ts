@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import type { LegacyScanFinding, LegacyScanRule } from './schema.ts';
+import type { ScanFinding, ScanRule } from './schema.ts';
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
@@ -289,12 +289,12 @@ export interface VerifierOptions {
 export interface LlmVerifierResult {
   readonly results: readonly VerifierVerdict[];
   readonly verdicts: readonly VerifierVerdict[];
-  readonly keptFindings: readonly LegacyScanFinding[];
+  readonly keptFindings: readonly ScanFinding[];
 }
 
 export function buildVerifierRequestBody(
-  finding: LegacyScanFinding,
-  rule: LegacyScanRule,
+  finding: ScanFinding,
+  rule: ScanRule,
   guideMarkdown?: string,
 ): unknown {
   return {
@@ -378,8 +378,8 @@ export async function fetchWithRetry(
  * (`keepWhen` / `dropWhen`) and canonical `guide.md` using `gemini-3.8-flash`.
  */
 export async function runLlmVerifier(
-  findings: readonly LegacyScanFinding[],
-  rulesById: ReadonlyMap<string, LegacyScanRule>,
+  findings: readonly ScanFinding[],
+  rulesById: ReadonlyMap<string, ScanRule>,
   options?: VerifierOptions,
 ): Promise<LlmVerifierResult> {
   if (findings.length === 0) {

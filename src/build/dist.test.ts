@@ -409,7 +409,7 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
   // Executes --json cleanly
   const jsonOut = execSync(`node ${JSON.stringify(legacyScanPath)} ${JSON.stringify(STAGING_DIR)} --json`, { encoding: 'utf8', cwd: ROOT_DIR });
   const parsed = JSON.parse(jsonOut);
-  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid LegacyScanJsonOutput');
+  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid ScanJsonOutput');
   assert.ok(Array.isArray(parsed.guides), 'legacy-scan.mjs --json should return guides array');
 });
 

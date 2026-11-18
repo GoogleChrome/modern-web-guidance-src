@@ -6,9 +6,9 @@ import { extname, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
-  LegacyScanFinding,
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanFinding,
+  ScanMatch,
+  ScanRule,
   CssRuleMatcher,
   DependencyRuleMatcher,
   DomRuleMatcher,
@@ -100,7 +100,7 @@ export interface RepoScanOptions extends ScanOptions {
   readonly stats?: { skippedDocsAndTestsCount?: number };
 }
 
-type RuleWith<M extends RuleMatcher> = LegacyScanRule & { readonly matcher: M };
+type RuleWith<M extends RuleMatcher> = ScanRule & { readonly matcher: M };
 
 interface FileRuleBundle {
   readonly dom: readonly RuleWith<DomRuleMatcher>[];
@@ -117,10 +117,10 @@ interface FileContext {
 
 function materializeFinding(
   ctx: FileContext,
-  rule: LegacyScanRule,
-  match: LegacyScanMatch,
+  rule: ScanRule,
+  match: ScanMatch,
   sourceFile?: SourceFile,
-): LegacyScanFinding {
+): ScanFinding {
   const { codeSnippet, contextSlice, lineContent } = sliceStructuredContext(
     ctx.relPath,
     ctx.content,
@@ -147,9 +147,9 @@ function materializeFinding(
 
 function materializeRuleMatches(
   ctx: FileContext,
-  hits: readonly { readonly rule: LegacyScanRule; readonly match: LegacyScanMatch }[],
+  hits: readonly { readonly rule: ScanRule; readonly match: ScanMatch }[],
   sourceFile?: SourceFile,
-): LegacyScanFinding[] {
+): ScanFinding[] {
   return hits.map(({ rule, match }) => materializeFinding(ctx, rule, match, sourceFile));
 }
 
@@ -214,7 +214,7 @@ function scanJsAst(
   jsRules: readonly RuleWith<JsRuleMatcher>[],
   domRules: readonly RuleWith<DomRuleMatcher>[],
   pool: JsProjectPool,
-): LegacyScanFinding[] {
+): ScanFinding[] {
   const activeDomRules = domRules.filter((rule) =>
     matchesFastTokens(parseContent, rule.matcher.fastTokens),
   );
@@ -257,7 +257,7 @@ function scanJsAst(
     fileContent: parseContent,
   };
 
-  const findings: LegacyScanFinding[] = [];
+  const findings: ScanFinding[] = [];
   try {
     if (activeDomRules.length > 0) {
       const sf = getSourceFile();
@@ -285,11 +285,11 @@ function scanJsAst(
 function scanExtractedStyles(
   ctx: FileContext,
   rules: readonly RuleWith<CssRuleMatcher>[],
-): LegacyScanFinding[] {
+): ScanFinding[] {
   if (rules.length === 0) {
     return [];
   }
-  const findings: LegacyScanFinding[] = [];
+  const findings: ScanFinding[] = [];
   for (const strippedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
     if (!isMinifiedContent(strippedCss)) {
       findings.push(
@@ -304,8 +304,8 @@ function processMultiBlockFile(
   ctx: FileContext,
   rules: FileRuleBundle,
   pool: JsProjectPool,
-): LegacyScanFinding[] {
-  const findings: LegacyScanFinding[] = [];
+): ScanFinding[] {
+  const findings: ScanFinding[] = [];
 
   if (rules.dom.length > 0) {
     const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
@@ -355,13 +355,13 @@ function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | un
 }
 
 /**
- * Scans an in-memory map of files (relPath -> content) against a suite of LegacyScanRules.
+ * Scans an in-memory map of files (relPath -> content) against a suite of ScanRules.
  */
 export function scanFiles(
   files: ReadonlyMap<string, string>,
-  rules: readonly LegacyScanRule[],
+  rules: readonly ScanRule[],
   options?: ScanOptions,
-): LegacyScanFinding[] {
+): ScanFinding[] {
   const repo = options?.repo ?? 'unknown';
   const commit = options?.commit ?? 'unknown';
 
@@ -373,7 +373,7 @@ export function scanFiles(
   );
 
   const ruleBundle: FileRuleBundle = { dom: domRules, js: jsRules, css: cssRules };
-  const findings: LegacyScanFinding[] = [];
+  const findings: ScanFinding[] = [];
   const pool: JsProjectPool = {
     project: options?.project ?? createInMemoryProject(),
     isExternalProject: Boolean(options?.project),
@@ -643,13 +643,13 @@ async function tryEnumerateGitFiles(
 }
 
 /**
- * Traverses a repository directory on disk and scans all eligible files against LegacyScanRules.
+ * Traverses a repository directory on disk and scans all eligible files against ScanRules.
  */
 export async function scanRepoFiles(
   repoDirPath: string,
-  rules: readonly LegacyScanRule[],
+  rules: readonly ScanRule[],
   options?: RepoScanOptions,
-): Promise<LegacyScanFinding[]> {
+): Promise<ScanFinding[]> {
   const fileMap = new Map<string, string>();
   const fileFilterOptions = resolveFileFilterOptions(options);
   const state: ScanRepoState = {

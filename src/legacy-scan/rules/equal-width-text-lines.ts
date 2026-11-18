@@ -13,7 +13,7 @@ import {
 } from '../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -214,7 +214,7 @@ export const equalWidthTextLinesJsMatcher: JsRuleMatcher = createJsCallMatcher({
       : null,
 });
 
-export const equalWidthTextLinesJsRule: LegacyScanRule = {
+export const equalWidthTextLinesJsRule: ScanRule = {
   id: 'equal-width-text-lines/js-fittext',
   guideId: 'equal-width-text-lines',
   guideHash: EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH,
@@ -237,4 +237,4 @@ export const equalWidthTextLinesJsRule: LegacyScanRule = {
 
 export default [
   equalWidthTextLinesJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -134,7 +134,7 @@ export const customTextDecorationsCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const customTextDecorationsRule: LegacyScanRule = {
+export const customTextDecorationsRule: ScanRule = {
   id: 'custom-text-decorations',
   guideId: 'custom-text-decorations',
   guideHash: CUSTOM_TEXT_DECORATIONS_GUIDE_HASH,
@@ -157,4 +157,4 @@ export const customTextDecorationsRule: LegacyScanRule = {
 
 export default [
   customTextDecorationsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

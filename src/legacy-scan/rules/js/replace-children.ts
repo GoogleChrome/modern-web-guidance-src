@@ -16,7 +16,7 @@ import {
   unwrapMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsAstMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH, isTemplateReceiver } from './shared.ts';
 export const JS_REPLACE_CHILDREN_GUIDE_HASH = JS_GUIDE_HASH;
@@ -453,7 +453,7 @@ export const jsReplaceChildrenMatcher: JsRuleMatcher = createJsAstMatcher({
   },
 });
 
-export const jsReplaceChildrenRule: LegacyScanRule = {
+export const jsReplaceChildrenRule: ScanRule = {
   id: 'js/replace-children',
   guideId: 'js',
   guideHash: JS_REPLACE_CHILDREN_GUIDE_HASH,
@@ -476,4 +476,4 @@ export const jsReplaceChildrenRule: LegacyScanRule = {
   },
 };
 
-export default [jsReplaceChildrenRule] satisfies readonly LegacyScanRule[];
+export default [jsReplaceChildrenRule] satisfies readonly ScanRule[];

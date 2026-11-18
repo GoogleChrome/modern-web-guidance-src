@@ -1,5 +1,5 @@
 import type {
-  LegacyScanRule,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -38,7 +38,7 @@ const autofillSignInFormMatcher: DomRuleMatcher = {
   },
 };
 
-export const autofillSignInFormRule: LegacyScanRule = {
+export const autofillSignInFormRule: ScanRule = {
   id: 'autofill-sign-in-form',
   guideId: 'autofill-sign-in-form',
   guideHash: '6b56be1d16b8',
@@ -63,4 +63,4 @@ export const autofillSignInFormRule: LegacyScanRule = {
 
 export default [
   autofillSignInFormRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

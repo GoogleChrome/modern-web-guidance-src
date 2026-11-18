@@ -1,7 +1,7 @@
 import { parseHTML } from 'linkedom';
 import { tokenizeHtmlTags } from '../scanners/dom-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -287,7 +287,7 @@ export const switchMatcher: DomRuleMatcher = {
   },
 };
 
-export const switchRule: LegacyScanRule = {
+export const switchRule: ScanRule = {
   id: 'switch',
   guideId: 'switch',
   guideHash: SWITCH_GUIDE_HASH,
@@ -307,4 +307,4 @@ export const switchRule: LegacyScanRule = {
   },
 };
 
-export default [switchRule] satisfies readonly LegacyScanRule[];
+export default [switchRule] satisfies readonly ScanRule[];

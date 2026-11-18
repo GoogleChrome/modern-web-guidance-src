@@ -14,7 +14,7 @@ import {
 import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   DependencyRuleMatcher,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -243,7 +243,7 @@ export const improveNextPageLoadPerformanceJsMatcher: JsRuleMatcher = createJsCa
   matchCall: (node, sourceFile) => matchQuicklinkCall(node, sourceFile),
 });
 
-export const improveNextPageLoadPerformancePackageRule: LegacyScanRule = {
+export const improveNextPageLoadPerformancePackageRule: ScanRule = {
   id: 'improve-next-page-load-performance/package-prefetch',
   guideId: 'improve-next-page-load-performance',
   guideHash: IMPROVE_NEXT_PAGE_LOAD_PERFORMANCE_GUIDE_HASH,
@@ -261,7 +261,7 @@ export const improveNextPageLoadPerformancePackageRule: LegacyScanRule = {
   },
 };
 
-export const improveNextPageLoadPerformanceJsRule: LegacyScanRule = {
+export const improveNextPageLoadPerformanceJsRule: ScanRule = {
   id: 'improve-next-page-load-performance/js-quicklink',
   guideId: 'improve-next-page-load-performance',
   guideHash: IMPROVE_NEXT_PAGE_LOAD_PERFORMANCE_GUIDE_HASH,
@@ -282,4 +282,4 @@ export const improveNextPageLoadPerformanceJsRule: LegacyScanRule = {
 export default [
   improveNextPageLoadPerformancePackageRule,
   improveNextPageLoadPerformanceJsRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

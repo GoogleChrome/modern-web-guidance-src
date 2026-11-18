@@ -5,37 +5,37 @@ import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
 import { MAX_SOURCE_FILE_BYTES, scanFiles, scanRepoFiles } from './scanners/index.ts';
 import type {
-  LegacyScanFinding,
-  LegacyScanRule,
+  ScanFinding,
+  ScanRule,
   VerifierRubric,
 } from './schema.ts';
 
-export interface LegacyScanCliFinding {
+export interface CliFinding {
   readonly file: string;
   readonly line: number;
   readonly message: string;
   readonly lineContent: string;
 }
 
-export interface LegacyScanCliRuleGroup {
+export interface CliRuleGroup {
   readonly ruleId: string;
   readonly summary: string;
   readonly verifierRubric?: VerifierRubric;
   readonly count: number;
-  readonly findings: readonly LegacyScanCliFinding[];
+  readonly findings: readonly CliFinding[];
 }
 
-export interface LegacyScanCliGuideGroup {
+export interface CliGuideGroup {
   readonly guideId: string;
   readonly retrieveCommand: string;
   readonly count: number;
-  readonly rules: readonly LegacyScanCliRuleGroup[];
+  readonly rules: readonly CliRuleGroup[];
 }
 
-export interface LegacyScanJsonOutput {
+export interface ScanJsonOutput {
   readonly targetDir: string;
   readonly totalFindings: number;
-  readonly guides: readonly LegacyScanCliGuideGroup[];
+  readonly guides: readonly CliGuideGroup[];
   readonly activeRuleCount?: number;
   readonly activeGuideCount?: number;
   readonly error?: string;
@@ -43,18 +43,18 @@ export interface LegacyScanJsonOutput {
   readonly note?: string;
 }
 
-export interface LegacyScanCliExecutionOptions {
-  readonly rules?: readonly LegacyScanRule[];
+export interface CliExecutionOptions {
+  readonly rules?: readonly ScanRule[];
   readonly cwd?: string;
   readonly maxFiles?: number;
 }
 
-export interface LegacyScanCliResult {
+export interface CliResult {
   readonly exitCode: number;
   readonly output: string;
   readonly stdout?: string;
   readonly stderr?: string;
-  readonly data?: LegacyScanJsonOutput;
+  readonly data?: ScanJsonOutput;
 }
 
 export interface FormatHumanReadableOptions {
@@ -83,12 +83,12 @@ export function elideText(text: string, maxLen = 110): string {
 }
 
 export function sampleDiversifiedFindings(
-  findings: readonly LegacyScanCliFinding[],
+  findings: readonly CliFinding[],
   maxTotal = 5,
-): LegacyScanCliFinding[] {
+): CliFinding[] {
   if (findings.length <= maxTotal) return [...findings];
   const fileLists = Array.from(Map.groupBy(findings, (f) => f.file).values());
-  const sampled: LegacyScanCliFinding[] = [];
+  const sampled: CliFinding[] = [];
   for (let round = 0; sampled.length < maxTotal; round++) {
     for (const list of fileLists) {
       const item = list[round];
@@ -101,7 +101,7 @@ export function sampleDiversifiedFindings(
   return sampled;
 }
 
-export const LEGACY_SCAN_CLI_HELP = `
+export const CLI_HELP = `
 Usage: modern-web-guidance legacy-scan [path] [options]
 
 Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
@@ -125,7 +125,7 @@ function joinRubricItems(items: readonly string[]): string {
 
 function appendFindingGroupBlock(
   lines: string[],
-  group: LegacyScanCliRuleGroup,
+  group: CliRuleGroup,
   indent: string,
   fmt: (style: TextStyle, text: string) => string,
 ): void {
@@ -157,7 +157,7 @@ function appendFindingGroupBlock(
 export function formatHumanReadable(
   targetDir: string,
   totalFindings: number,
-  guides: readonly LegacyScanCliGuideGroup[],
+  guides: readonly CliGuideGroup[],
   guideFilter?: string,
   formatOptions?: FormatHumanReadableOptions,
 ): string {
@@ -231,9 +231,9 @@ export function formatHumanReadable(
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
-function errorCliResult(error: string, isJson: boolean, targetDir = '.'): LegacyScanCliResult {
+function errorCliResult(error: string, isJson: boolean, targetDir = '.'): CliResult {
   if (isJson) {
-    const data: LegacyScanJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
+    const data: ScanJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
     const output = `${JSON.stringify(data, null, 2)}\n`;
     return { exitCode: 1, output, stdout: output, stderr: '', data };
   }
@@ -242,9 +242,9 @@ function errorCliResult(error: string, isJson: boolean, targetDir = '.'): Legacy
 }
 
 function groupFindingsByGuide(
-  findings: readonly LegacyScanFinding[],
-  activeRules: readonly LegacyScanRule[],
-): LegacyScanCliGuideGroup[] {
+  findings: readonly ScanFinding[],
+  activeRules: readonly ScanRule[],
+): CliGuideGroup[] {
   const ruleMap = new Map(activeRules.map((r) => [r.id, r]));
   const findingsByGuide = Map.groupBy(findings, (f) => f.guideId);
 
@@ -252,7 +252,7 @@ function groupFindingsByGuide(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([gid, guideFindings]) => {
       const byRule = Map.groupBy(guideFindings, (f) => f.ruleId);
-      const rules: LegacyScanCliRuleGroup[] = Array.from(byRule.entries())
+      const rules: CliRuleGroup[] = Array.from(byRule.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([rid, rf]) => {
           const rule = ruleMap.get(rid);
@@ -263,7 +263,7 @@ function groupFindingsByGuide(
             throw new Error(`Rule "${rule.id}" is missing a required summary string`);
           }
           rf.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
-          const cliFindings: LegacyScanCliFinding[] = rf.map((f) => ({
+          const cliFindings: CliFinding[] = rf.map((f) => ({
             file: f.file,
             line: f.line,
             message: f.message,
@@ -293,8 +293,8 @@ function groupFindingsByGuide(
  */
 export async function runLegacyScanCli(
   args: readonly string[],
-  options?: LegacyScanCliExecutionOptions,
-): Promise<LegacyScanCliResult> {
+  options?: CliExecutionOptions,
+): Promise<CliResult> {
   const cleanArgs = (args[0] === 'legacy-scan' || args[0] === 'analyze') ? args.slice(1) : args;
 
   let parsed: ReturnType<typeof parseArgs>;
@@ -325,7 +325,7 @@ export async function runLegacyScanCli(
   }
 
   if (parsed.values.help) {
-    const output = `${LEGACY_SCAN_CLI_HELP}\n`;
+    const output = `${CLI_HELP}\n`;
     return { exitCode: 0, output, stdout: output, stderr: '' };
   }
 
@@ -354,7 +354,7 @@ export async function runLegacyScanCli(
   }
 
   const scanStats: { skippedDocsAndTestsCount?: number } = {};
-  let findings: LegacyScanFinding[] = [];
+  let findings: ScanFinding[] = [];
 
   if (activeRuleCount > 0) {
     if (dirStat.isFile()) {
@@ -379,7 +379,7 @@ export async function runLegacyScanCli(
 
   const guides = groupFindingsByGuide(findings, activeRules);
   const totalFindings = findings.length;
-  const data: LegacyScanJsonOutput = {
+  const data: ScanJsonOutput = {
     targetDir,
     totalFindings,
     guides,
@@ -409,7 +409,7 @@ export async function runLegacyScanCli(
   return { exitCode: 0, output, stdout: output, stderr: '', data };
 }
 
-export function writeLegacyScanCliResult(result: LegacyScanCliResult): number {
+export function writeLegacyScanCliResult(result: CliResult): number {
   const stream =
     result.exitCode === 0 || result.data !== undefined ? process.stdout : process.stderr;
   stream.write(result.output);

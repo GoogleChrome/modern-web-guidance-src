@@ -8,7 +8,7 @@ import {
 } from '../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  LegacyScanRule,
+  ScanRule,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -342,7 +342,7 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatche
       : null,
 });
 
-export const childStateBasedStylingJsParentClassRule: LegacyScanRule = {
+export const childStateBasedStylingJsParentClassRule: ScanRule = {
   id: 'child-state-based-styling/js-parent-class',
   guideId: 'child-state-based-styling',
   guideHash: '938e4db9a7d7',
@@ -364,4 +364,4 @@ export const childStateBasedStylingJsParentClassRule: LegacyScanRule = {
 
 export default [
   childStateBasedStylingJsParentClassRule,
-] satisfies readonly LegacyScanRule[];
+] satisfies readonly ScanRule[];

@@ -14,7 +14,7 @@ import {
   unwrapMethodCall,
 } from '../../scanners/ast-helpers.ts';
 import { createJsCallMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH } from './shared.ts';
 export { JS_GUIDE_HASH };
@@ -286,7 +286,7 @@ export const jsErrorCauseMatcher: JsRuleMatcher = createJsCallMatcher({
   },
 });
 
-export const jsErrorCauseRule: LegacyScanRule = {
+export const jsErrorCauseRule: ScanRule = {
   id: 'js/error-cause',
   guideId: 'js',
   guideHash: JS_GUIDE_HASH,
@@ -307,4 +307,4 @@ export const jsErrorCauseRule: LegacyScanRule = {
   },
 };
 
-export default [jsErrorCauseRule] satisfies readonly LegacyScanRule[];
+export default [jsErrorCauseRule] satisfies readonly ScanRule[];

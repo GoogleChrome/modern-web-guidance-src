@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
 import type {
-  LegacyScanMatch,
+  ScanMatch,
   DependencyMatcherContext,
   DependencyRuleMatcher,
 } from '../schema.ts';
@@ -178,7 +178,7 @@ export function scanVendoredLibraryRules<T extends { readonly matcher: Dependenc
   relPath: string,
   content: string,
   rules: readonly T[],
-): { rule: T; match: LegacyScanMatch }[] {
+): { rule: T; match: ScanMatch }[] {
   if (rules.length === 0 || !isCandidateVendoredFile(relPath, content)) {
     return [];
   }
@@ -198,7 +198,7 @@ export function scanVendoredLibraryRules<T extends { readonly matcher: Dependenc
     filePath: relPath,
     packageJson: {},
   };
-  const results: { rule: T; match: LegacyScanMatch }[] = [];
+  const results: { rule: T; match: ScanMatch }[] = [];
 
   for (const rule of rules) {
     const { matcher } = rule;
@@ -229,14 +229,14 @@ export function scanVendoredLibraryRules<T extends { readonly matcher: Dependenc
 
 /**
  * Scans a vendored or minified library file against dependency matchers (Slice C).
- * Emits at most 1 LegacyScanMatch at line 1 per matching rule when the file's name
+ * Emits at most 1 ScanMatch at line 1 per matching rule when the file's name
  * or opening license header identifies one of the target packages.
  */
 export function scanVendoredLibraryFile(
   relPath: string,
   content: string,
   matchers: readonly DependencyRuleMatcher[],
-): LegacyScanMatch[] {
+): ScanMatch[] {
   return scanVendoredLibraryRules(
     relPath,
     content,
@@ -405,7 +405,7 @@ export function scanPackageJsonRules<T extends { readonly matcher: DependencyRul
   filePath: string,
   packageJsonContent: string,
   rules: readonly T[],
-): { rule: T; match: LegacyScanMatch }[] {
+): { rule: T; match: ScanMatch }[] {
   if (rules.length === 0) {
     return [];
   }
@@ -450,7 +450,7 @@ export function scanPackageJsonRules<T extends { readonly matcher: DependencyRul
     filePath,
     packageJson: pkgData,
   };
-  const results: { rule: T; match: LegacyScanMatch }[] = [];
+  const results: { rule: T; match: ScanMatch }[] = [];
 
   for (const rule of rules) {
     const { matcher } = rule;
@@ -483,7 +483,7 @@ export function scanPackageJson(
   filePath: string,
   packageJsonContent: string,
   rules: readonly DependencyRuleMatcher[],
-): LegacyScanMatch[] {
+): ScanMatch[] {
   return scanPackageJsonRules(
     filePath,
     packageJsonContent,

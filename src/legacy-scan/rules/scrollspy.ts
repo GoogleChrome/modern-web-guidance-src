@@ -16,8 +16,8 @@ import {
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
-  LegacyScanMatch,
-  LegacyScanRule,
+  ScanMatch,
+  ScanRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
@@ -84,7 +84,7 @@ const scrollspyDomMatcher: DomRuleMatcher = {
   },
 };
 
-export const scrollspyRule: LegacyScanRule = {
+export const scrollspyRule: ScanRule = {
   id: 'scrollspy',
   guideId: 'scrollspy',
   guideHash: SCROLLSPY_GUIDE_HASH,
@@ -571,8 +571,8 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
     ['scrollspy', 'ScrollSpy', 'nav', 'toc', 'menu', 'link', 'href', 'section'],
     ['scrollspy', 'ScrollSpy', 'classList', 'addClass', 'toggleClass', 'className', 'setAttribute', 'aria-current'],
   ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): LegacyScanMatch[] => {
-    const matches: LegacyScanMatch[] = [];
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): ScanMatch[] => {
+    const matches: ScanMatch[] = [];
     const hasPluginOrObserver =
       ctx.fileContent.includes('scrollspy') ||
       ctx.fileContent.includes('ScrollSpy') ||
@@ -684,7 +684,7 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const scrollspyJsRule: LegacyScanRule = {
+export const scrollspyJsRule: ScanRule = {
   id: 'scrollspy/js',
   guideId: 'scrollspy',
   guideHash: SCROLLSPY_GUIDE_HASH,
@@ -709,4 +709,4 @@ export const scrollspyJsRule: LegacyScanRule = {
   },
 };
 
-export default [scrollspyRule, scrollspyJsRule] satisfies readonly LegacyScanRule[];
+export default [scrollspyRule, scrollspyJsRule] satisfies readonly ScanRule[];

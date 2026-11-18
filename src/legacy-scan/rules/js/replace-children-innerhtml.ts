@@ -10,7 +10,7 @@ import {
   unwrapPropertyAccess,
 } from '../../scanners/ast-helpers.ts';
 import { createJsAstMatcher } from '../../scanners/js-scanner.ts';
-import type { LegacyScanRule, JsRuleMatcher } from '../../schema.ts';
+import type { ScanRule, JsRuleMatcher } from '../../schema.ts';
 
 import { JS_GUIDE_HASH, findReceiverDeclaration, isTemplateReceiver } from './shared.ts';
 export const JS_REPLACE_CHILDREN_GUIDE_HASH = JS_GUIDE_HASH;
@@ -159,7 +159,7 @@ export const jsReplaceChildrenInnerHtmlMatcher: JsRuleMatcher = createJsAstMatch
   },
 });
 
-export const jsReplaceChildrenInnerHtmlRule: LegacyScanRule = {
+export const jsReplaceChildrenInnerHtmlRule: ScanRule = {
   id: 'js/replace-children-innerhtml',
   guideId: 'js',
   guideHash: JS_REPLACE_CHILDREN_GUIDE_HASH,
@@ -180,4 +180,4 @@ export const jsReplaceChildrenInnerHtmlRule: LegacyScanRule = {
   },
 };
 
-export default [jsReplaceChildrenInnerHtmlRule] satisfies readonly LegacyScanRule[];
+export default [jsReplaceChildrenInnerHtmlRule] satisfies readonly ScanRule[];
