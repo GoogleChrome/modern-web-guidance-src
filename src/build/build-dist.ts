@@ -253,8 +253,8 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       );
 
       console.log("Bundling legacy-scan.mjs...");
-      const resultAnalyze = await esbuild.build({
-        entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
+      const resultLegacyScan = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/legacy-scan/cli.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
@@ -279,7 +279,7 @@ const __dirname = __dirnameFunction(__filename);
 
       fs.writeFileSync(
         path.join(ROOT_DIST_DIR, "legacy-scan.meta.json"),
-        JSON.stringify(resultAnalyze.metafile)
+        JSON.stringify(resultLegacyScan.metafile)
       );
 
       console.log("Bundling modern-web.mjs...");
@@ -303,7 +303,7 @@ if (__mwg_major < 22) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
             });
-            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
+            build.onResolve({ filter: /(?:legacy-scan\/cli|cli)\.ts$/ }, _args => {
               return { path: './legacy-scan.mjs', external: true }
             });
           },
@@ -327,7 +327,7 @@ if (__mwg_major < 22) {
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultLegacyScan.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
@@ -434,7 +434,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 /**
  * Strips unused 2.37 MB TypeScript .d.ts standard library strings (lib.dom.d.ts,
  * lib.webworker.d.ts, etc.) inlined in @ts-morph/common for in-memory type checking,
- * which analyzer rules never invoke.
+ * which legacy-scan rules never invoke.
  *
  * Fails fast if the file is never matched or if the replacement fails.
  */
