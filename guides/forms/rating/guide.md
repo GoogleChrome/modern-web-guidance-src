@@ -203,7 +203,7 @@ Optional: to show an existing average until the user rates, set `data-average="3
 
 {{ BASELINE_STATUS("attr") }}
 
-`attr()` with a type is not available everywhere, so the `--min`, `--max`, `--step`, and `--control-value` assignments on `<meter>` and `<input type="range">` need a script fallback. Detect it and copy the attributes into the properties:
+`attr()` with a type keeps the custom properties in sync with the attributes without script, but it is not available everywhere. Where it is unsupported, the `--min`, `--max`, `--step`, and `--control-value` assignments on `<meter>` and `<input type="range">` need a script fallback. Detect it and copy the attributes into the properties:
 
 ```js
 if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
@@ -215,5 +215,3 @@ if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
   }
 }
 ```
-
-The experience is identical; only the mechanism differs. After the first edit, the range input's script overrides `--control-value` with the live `range.value`.
