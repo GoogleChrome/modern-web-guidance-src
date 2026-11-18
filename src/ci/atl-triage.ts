@@ -11,9 +11,12 @@ import {
   INTAKE_CLOSE_MARKER,
   evaluatePrIntake,
   extractIssueNumbers,
+  extractNoreplyLogin,
   formatAutoCloseComment,
   formatClaHoldComment,
+  parsePrimaryBlameAuthor,
   resolveInfraReviewers,
+  selectLeadReviewer,
   type ClaState,
   type LinkedIssueInfo,
   type PrIntakeDecision
@@ -247,52 +250,46 @@ function getFeatureIdVariants(fid: string): string[] {
   return [fid, base, `tmp-${base}`];
 }
 
+function toAtlList(val: string | string[] | undefined): string[] {
+  if (!val) return [];
+  return Array.isArray(val) ? [...val] : [val];
+}
+
+export function resolveFeatureDirectAtls(featureIds: readonly string[], atlConfig: AtlConfig): string[] {
+  const out = new Set<string>();
+  for (const fid of featureIds) {
+    for (const variant of getFeatureIdVariants(fid)) {
+      for (const atl of toAtlList(atlConfig.web_features[variant])) {
+        out.add(atl);
+      }
+    }
+  }
+  return Array.from(out);
+}
+
+export function resolveFeatureGroupAtls(featureIds: readonly string[], atlConfig: AtlConfig): string[] {
+  const out = new Set<string>();
+  for (const fid of featureIds) {
+    for (const variant of getFeatureIdVariants(fid)) {
+      const groups = featureGroups[variant] || [];
+      for (const group of groups) {
+        for (const atl of toAtlList(atlConfig.web_features_groups[group])) {
+          out.add(atl);
+        }
+      }
+    }
+  }
+  return Array.from(out);
+}
+
 export function resolveAtl(category: string, featureIds: string[], atlConfig: AtlConfig): string[] {
-  const resolved = new Set<string>();
+  const direct = resolveFeatureDirectAtls(featureIds, atlConfig);
+  if (direct.length > 0) return direct;
 
-  // Add category default ATL
-  const categoryDefault = atlConfig.default[category];
-  if (categoryDefault) {
-    if (Array.isArray(categoryDefault)) {
-      categoryDefault.forEach(a => resolved.add(a));
-    } else {
-      resolved.add(categoryDefault);
-    }
-  }
+  const grouped = resolveFeatureGroupAtls(featureIds, atlConfig);
+  if (grouped.length > 0) return grouped;
 
-  if (featureIds && featureIds.length > 0) {
-    // Check specific feature ID overrides
-    for (const fid of featureIds) {
-      for (const variant of getFeatureIdVariants(fid)) {
-        if (atlConfig.web_features[variant]) {
-          const override = atlConfig.web_features[variant];
-          if (Array.isArray(override)) {
-            override.forEach(a => resolved.add(a));
-          } else {
-            resolved.add(override);
-          }
-        }
-      }
-    }
-    // Check feature group overrides
-    for (const fid of featureIds) {
-      for (const variant of getFeatureIdVariants(fid)) {
-        const groups = featureGroups[variant] || [];
-        for (const group of groups) {
-          if (atlConfig.web_features_groups[group]) {
-            const override = atlConfig.web_features_groups[group];
-            if (Array.isArray(override)) {
-              override.forEach(a => resolved.add(a));
-            } else {
-              resolved.add(override);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return Array.from(resolved);
+  return toAtlList(atlConfig.default[category]);
 }
 
 export function getAtlsFromDescription(description: string, atlConfig: AtlConfig): string[] {
@@ -657,6 +654,54 @@ export const githubApi = {
     );
     const items: Array<{ number: number; headRefOid?: string }> = JSON.parse(raw);
     return items.filter(i => i.headRefOid === headSha).map(i => i.number);
+  },
+
+  getGuideBlamePorcelain(guideAbsPath: string): string | null {
+    try {
+      return child_process.execFileSync(
+        'git',
+        ['-C', path.dirname(guideAbsPath), 'blame', '-w', '-M', '--line-porcelain', '--', path.basename(guideAbsPath)],
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  getCommitAuthorLogin(sha: string): string | null {
+    try {
+      const out = child_process
+        .execFileSync(
+          'gh',
+          ['api', `repos/{owner}/{repo}/commits/${encodeURIComponent(sha)}`, '--jq', '.author.login // ""'],
+          { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+        )
+        .trim();
+      return out || null;
+    } catch {
+      return null;
+    }
+  },
+
+  getOpenPrReviewCounts(): Map<string, number> {
+    const counts = new Map<string, number>();
+    try {
+      const raw = child_process.execFileSync(
+        'gh',
+        ['pr', 'list', '--state', 'open', '--limit', '100', '--json', 'reviewRequests'],
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+      );
+      const prs: Array<{ reviewRequests?: Array<{ login?: string }> }> = JSON.parse(raw);
+      for (const pr of prs) {
+        for (const req of pr.reviewRequests || []) {
+          const login = req.login?.toLowerCase();
+          if (login) counts.set(login, (counts.get(login) ?? 0) + 1);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch open PR review counts:', err);
+    }
+    return counts;
   }
 };
 
@@ -943,6 +988,8 @@ export interface HandlePrOptions {
   headRef?: string;
   preloadedFiles?: string[];
   includeInfraOwners?: boolean;
+  enableGitAuthorRouting?: boolean;
+  openReviewCounts?: ReadonlyMap<string, number>;
 }
 
 export function handlePR(
@@ -1028,9 +1075,123 @@ export function handlePR(
   const matchedAtls = new Set<string>();
   const allResolvedAtls = new Set<string>();
   let hasEvaluatedContent = false;
+  let hasAnyConfiguredOwner = false;
 
   const touchesSmeContent = files.some(isSmeContentFile);
   const knownCategories = getKnownCategories(guidesRootDir, atlConfig);
+
+  let prReviewRequests: string[] = [];
+  let prReviews: string[] = [];
+  let removedReviewers: string[] = [];
+
+  if (!mockFiles) {
+    try {
+      const prData = githubApi.getPrReviewState(prNumber);
+      prReviewRequests = prData.reviewRequests;
+      prReviews = prData.reviews;
+    } catch (err) {
+      console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
+    }
+
+    try {
+      removedReviewers = githubApi.getPrRemovedReviewers(prNumber);
+    } catch (err) {
+      console.warn(`Failed to fetch removed review requests for PR #${prNumber}:`, err);
+    }
+  }
+
+  const excludedForSelection = new Set<string>([
+    prAuthor.toLowerCase(),
+    ...removedReviewers.map(r => r.toLowerCase())
+  ]);
+  const alreadyReviewedLogins = new Set<string>(prReviews.map(r => r.toLowerCase()));
+  const alreadyRequestedLogins = new Set<string>(prReviewRequests.map(r => r.toLowerCase()));
+
+  let cachedOpenCounts: ReadonlyMap<string, number> | undefined = options?.openReviewCounts;
+  const getOpenCountsLazy = (): ReadonlyMap<string, number> => {
+    if (cachedOpenCounts) return cachedOpenCounts;
+    cachedOpenCounts = mockFiles ? new Map() : githubApi.getOpenPrReviewCounts();
+    return cachedOpenCounts;
+  };
+
+  const writeAccessCache = new Map<string, boolean>();
+  const emailLoginCache = new Map<string, string | null>();
+
+  const resolveGuidePrimaryAuthor = (guideAbsPath: string): string | null => {
+    if (!options?.enableGitAuthorRouting) return null;
+    let guideMarkdown: string;
+    try {
+      guideMarkdown = fs.readFileSync(guideAbsPath, 'utf8');
+    } catch {
+      return null;
+    }
+    const porcelain = githubApi.getGuideBlamePorcelain(guideAbsPath);
+    if (!porcelain) return null;
+
+    const primary = parsePrimaryBlameAuthor(guideMarkdown, porcelain);
+    if (!primary) return null;
+
+    let login = emailLoginCache.get(primary.email);
+    if (login === undefined) {
+      login = githubApi.getCommitAuthorLogin(primary.sha) ?? extractNoreplyLogin(primary.email);
+      emailLoginCache.set(primary.email, login);
+    }
+    if (!login || isBotAuthor({ login })) return null;
+
+    const lower = login.toLowerCase();
+    let hasWrite = writeAccessCache.get(lower);
+    if (hasWrite === undefined) {
+      try {
+        hasWrite = githubApi.hasUserWriteAccess(login);
+      } catch {
+        hasWrite = false;
+      }
+      writeAccessCache.set(lower, hasWrite);
+    }
+    return hasWrite ? login : null;
+  };
+
+  const pickLeadFromTiers = (labelForLog: string, tiers: string[][]): void => {
+    if (tiers.some(t => t.length > 0)) {
+      hasAnyConfiguredOwner = true;
+    }
+    // Only fetch repo-wide open review counts if the first eligible tier has >=2 non-sticky candidates.
+    let needsLoadTieBreak = false;
+    const hasReviewedMatch =
+      alreadyReviewedLogins.size > 0 &&
+      tiers.some(t =>
+        t.some(c => !excludedForSelection.has(c.toLowerCase()) && alreadyReviewedLogins.has(c.toLowerCase()))
+      );
+    if (!hasReviewedMatch) {
+      for (const tier of tiers) {
+        const eligible = Array.from(
+          new Set(tier.filter(c => c && !excludedForSelection.has(c.toLowerCase())))
+        );
+        if (eligible.length === 0) continue;
+        const hasSticky = eligible.some(c => alreadyRequestedLogins.has(c.toLowerCase()));
+        needsLoadTieBreak = !hasSticky && eligible.length >= 2;
+        break;
+      }
+    }
+
+    const lead = selectLeadReviewer({
+      tiers,
+      excludedLogins: excludedForSelection,
+      alreadyReviewedLogins,
+      alreadyRequestedLogins,
+      openReviewCounts: needsLoadTieBreak ? getOpenCountsLazy() : cachedOpenCounts,
+      tieSeed: prNumber
+    });
+    if (lead) {
+      console.log(`${labelForLog} -> Lead reviewer: @${lead}`);
+      matchedAtls.add(lead);
+      allResolvedAtls.add(lead);
+    }
+  };
+
+  const seenGuides = new Set<string>();
+  const seenSkills = new Set<string>();
+  const seenFeatures = new Set<string>();
 
   for (const file of files) {
     const parts = file.split(/[/\\]/);
@@ -1048,6 +1209,10 @@ export function handlePR(
       const filename = parts[parts.length - 1];
       if (SME_CONTENT_FILENAMES.has(filename)) {
         hasEvaluatedContent = true;
+        const guideKey = `${category}/${guideName}`.toLowerCase();
+        if (seenGuides.has(guideKey)) continue;
+        seenGuides.add(guideKey);
+
         const relativeGuidePath = `guides/${category}/${guideName}/${GUIDE_FILE}`;
         const guideDir = path.join(guidesRootDir, category, guideName);
         const guidePath = path.join(guideDir, GUIDE_FILE);
@@ -1069,15 +1234,17 @@ export function handlePR(
           featureIds = getFeatureIdsFromGuide(guidePath);
         }
 
-        const atl = resolveAtl(category, featureIds, atlConfig);
-        if (atl) {
-          const atls = Array.isArray(atl) ? atl : [atl];
-          for (const a of atls) {
-            console.log(`File "${file}" is a content file in category "${category}" (feature IDs: ${featureIds.join(', ')}). ATL: @${a}`);
-            matchedAtls.add(a);
-            allResolvedAtls.add(a);
-          }
-        }
+        const primaryAuthor = resolveGuidePrimaryAuthor(guidePath);
+        const tiers: string[][] = [
+          primaryAuthor ? [primaryAuthor] : [],
+          resolveFeatureDirectAtls(featureIds, atlConfig),
+          resolveFeatureGroupAtls(featureIds, atlConfig),
+          toAtlList(atlConfig.default[category])
+        ];
+        pickLeadFromTiers(
+          `Guide "${category}/${guideName}" (feature IDs: ${featureIds.join(', ') || 'none'})`,
+          tiers
+        );
       }
     }
 
@@ -1085,42 +1252,29 @@ export function handlePR(
     if (parts[0] === 'skills-src' && parts.length >= 3 && !parts.some(p => p === '..')) {
       const skillName = parts[1].toLowerCase();
       hasEvaluatedContent = true;
-      const skillAtls = resolveAtl(skillName, [], atlConfig);
-      for (const a of skillAtls) {
-        console.log(`File "${file}" is in standalone skill "${skillName}". ATL: @${a}`);
-        matchedAtls.add(a);
-        allResolvedAtls.add(a);
-      }
+      if (seenSkills.has(skillName)) continue;
+      seenSkills.add(skillName);
+
+      pickLeadFromTiers(`Standalone skill "${skillName}"`, [toAtlList(atlConfig.default[skillName])]);
     }
 
     // 3. Feature definition files (features/<feature-id>.md)
     if (parts[0] === 'features' && file.endsWith('.md')) {
       hasEvaluatedContent = true;
       const featureId = path.basename(file, '.md');
+      if (seenFeatures.has(featureId.toLowerCase())) continue;
+      seenFeatures.add(featureId.toLowerCase());
 
-      // Auto-assign feature-level owners
-      const featureAtls = resolveAtl('', [featureId], atlConfig);
-      for (const a of featureAtls) {
-        console.log(`File "${file}" is a feature definition for "${featureId}". Feature ATL: @${a}`);
-        matchedAtls.add(a);
-        allResolvedAtls.add(a);
+      const transcludedCatAtls: string[] = [];
+      for (const guide of findGuidesTranscludingFeature(featureId, guidesRootDir)) {
+        transcludedCatAtls.push(...toAtlList(atlConfig.default[guide.category]));
       }
-
-      // Look for guides in which that feature is being transcluded, and assign category-level owners
-      const transcludedGuides = findGuidesTranscludingFeature(featureId, guidesRootDir);
-      for (const guide of transcludedGuides) {
-        const category = guide.category;
-        if (atlConfig.default[category]) {
-          const catAtls = Array.isArray(atlConfig.default[category])
-            ? atlConfig.default[category]
-            : [atlConfig.default[category]];
-          for (const a of catAtls) {
-            console.log(`Feature "${featureId}" is transcluded in guide "${guide.relativePath}" (category: "${category}"). Category ATL: @${a}`);
-            matchedAtls.add(a);
-            allResolvedAtls.add(a);
-          }
-        }
-      }
+      const tiers: string[][] = [
+        resolveFeatureDirectAtls([featureId], atlConfig),
+        resolveFeatureGroupAtls([featureId], atlConfig),
+        transcludedCatAtls
+      ];
+      pickLeadFromTiers(`Feature "${featureId}"`, tiers);
     }
   }
 
@@ -1153,7 +1307,7 @@ export function handlePR(
     }
   }
 
-  if (hasEvaluatedContent && allResolvedAtls.size === 0) {
+  if (hasEvaluatedContent && !hasAnyConfiguredOwner) {
     if (!hasNeedsAtl) {
       if (!getUnlabeledLabels().has('needs-atl')) {
         prLabelsToAdd.push('needs-atl');
@@ -1161,7 +1315,7 @@ export function handlePR(
         console.log(`Skipping adding 'needs-atl' to PR #${prNumber} because it was previously removed.`);
       }
     }
-  } else if (allResolvedAtls.size > 0 || !hasEvaluatedContent) {
+  } else if (hasAnyConfiguredOwner || !hasEvaluatedContent) {
     if (hasNeedsAtl) {
       prLabelsToRemove.push('needs-atl');
     }
@@ -1174,33 +1328,21 @@ export function handlePR(
     }
   }
 
-  // Remove the PR author, already requested/reviewed users, and any reviewers whose review request was previously removed
-  const excludeLogins = [prAuthor];
+  // Filter out the PR author, already requested/reviewed users, and manually removed reviewers
+  const excludeLogins = [prAuthor, ...prReviewRequests, ...prReviews, ...removedReviewers];
   const reviewersToRemove: string[] = [];
 
-  if (!mockFiles) {
-    try {
-      const prData = githubApi.getPrReviewState(prNumber);
-      excludeLogins.push(...prData.reviewRequests, ...prData.reviews);
-
-      const resolvedLower = new Set(Array.from(allResolvedAtls, a => a.toLowerCase()));
-      const staleCandidates = prData.reviewRequests.filter(r => !resolvedLower.has(r.toLowerCase()));
-      if (staleCandidates.length > 0) {
+  if (!mockFiles && prReviewRequests.length > 0) {
+    const resolvedLower = new Set(Array.from(allResolvedAtls, a => a.toLowerCase()));
+    const staleCandidates = prReviewRequests.filter(r => !resolvedLower.has(r.toLowerCase()));
+    if (staleCandidates.length > 0) {
+      try {
         const botRequested = new Set(
           githubApi.getPrBotRequestedReviewers(prNumber).map(r => r.toLowerCase())
         );
         reviewersToRemove.push(...staleCandidates.filter(c => botRequested.has(c.toLowerCase())));
-      }
-    } catch (err) {
-      console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
-    }
-
-    if (matchedAtls.size > 0) {
-      try {
-        const removedReviewers = githubApi.getPrRemovedReviewers(prNumber);
-        excludeLogins.push(...removedReviewers);
       } catch (err) {
-        console.warn(`Failed to fetch removed review requests for PR #${prNumber}:`, err);
+        console.error(`Failed to fetch bot-requested reviewers for PR #${prNumber}:`, err);
       }
     }
   }
@@ -1541,7 +1683,8 @@ export function triagePullRequest(
           prBody: meta.body,
           headRef,
           preloadedFiles: meta.files,
-          includeInfraOwners: true
+          includeInfraOwners: true,
+          enableGitAuthorRouting: true
         }
       );
       return { decision, reviewers };

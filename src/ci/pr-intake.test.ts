@@ -1,10 +1,16 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   extractIssueNumbers,
+  extractNoreplyLogin,
   isSmallProseTypoFix,
   evaluatePrIntake,
+  parsePrimaryBlameAuthor,
   resolveInfraReviewers,
+  selectLeadReviewer,
   formatAutoCloseComment,
   formatClaHoldComment,
   INTAKE_CLOSE_MARKER,
@@ -12,7 +18,7 @@ import {
   type LinkedIssueInfo,
   type PrIntakeInput
 } from './pr-intake.ts';
-import { githubApi, parsePrIntakeMetadata, triagePullRequest, type AtlConfig } from './atl-triage.ts';
+import { githubApi, handlePR, parsePrIntakeMetadata, triagePullRequest, type AtlConfig } from './atl-triage.ts';
 
 function makeInput(overrides: Partial<PrIntakeInput> = {}): PrIntakeInput {
   return {
@@ -520,5 +526,216 @@ describe('parsePrIntakeMetadata (real gh pr view shapes)', () => {
 
     assert.equal(parsed.isSameRepo, true);
     assert.equal(parsed.claState, 'success');
+  });
+});
+
+describe('parsePrimaryBlameAuthor & extractNoreplyLogin', () => {
+  it('extracts login only from numeric-ID GitHub noreply emails', () => {
+    assert.equal(extractNoreplyLogin('41588129+dvdherron@users.noreply.github.com'), 'dvdherron');
+    assert.equal(extractNoreplyLogin('stu@alwaystwisted.com'), null);
+    assert.equal(extractNoreplyLogin('rviscomi@users.noreply.github.com'), null);
+  });
+
+  it('ignores YAML frontmatter and blank lines when computing primary guide author', () => {
+    const guide = [
+      '---',
+      'name: sample',
+      'description: Sample guide',
+      'web-feature-ids:',
+      '  - popover',
+      '---',
+      '',
+      '# Sample Guide',
+      ...Array.from({ length: 12 }, (_, i) => `Body line ${i + 1}`)
+    ].join('\n');
+
+    const stubSha = 'a'.repeat(40);
+    const bodySha = 'b'.repeat(40);
+    const driveBySha = 'c'.repeat(40);
+
+    const lines = guide.split('\n');
+    const porcelain: string[] = [];
+    lines.forEach((text, idx) => {
+      const lineNo = idx + 1;
+      const isFrontmatter = lineNo <= 6;
+      const isLastLine = lineNo === lines.length;
+      const sha = isFrontmatter ? stubSha : isLastLine ? driveBySha : bodySha;
+      const mail = isFrontmatter
+        ? '<rviscomi@users.noreply.github.com>'
+        : isLastLine
+        ? '<ext@example.com>'
+        : '<jamesnw@gmail.com>';
+      porcelain.push(`${sha} ${lineNo} ${lineNo} 1`, `author Test`, `author-mail ${mail}`, `\t${text}`);
+    });
+
+    const res = parsePrimaryBlameAuthor(guide, porcelain.join('\n'));
+    assert.ok(res);
+    assert.equal(res.email, 'jamesnw@gmail.com');
+    assert.equal(res.sha, bodySha);
+    assert.equal(res.bodyLines, 12);
+  });
+
+  it('returns null on frontmatter-only stubs or guides under 10 substantive lines', () => {
+    const stub = '---\nname: stub\ndraft: stub\n---\n';
+    const sha = 'a'.repeat(40);
+    const porcelain = stub
+      .split('\n')
+      .map((t, i) => `${sha} ${i + 1} ${i + 1} 1\nauthor-mail <a@b.com>\n\t${t}`)
+      .join('\n');
+    assert.equal(parsePrimaryBlameAuthor(stub, porcelain), null);
+  });
+});
+
+describe('selectLeadReviewer waterfall & stickiness', () => {
+  it('stops at the first non-empty eligible tier and cascades when excluded', () => {
+    const tiers = [['jamesnw'], ['bramus'], ['LeaVerou']];
+    assert.equal(
+      selectLeadReviewer({ tiers, excludedLogins: new Set() }),
+      'jamesnw'
+    );
+    assert.equal(
+      selectLeadReviewer({ tiers, excludedLogins: new Set(['jamesnw']) }),
+      'bramus'
+    );
+    assert.equal(
+      selectLeadReviewer({ tiers, excludedLogins: new Set(['jamesnw', 'bramus']) }),
+      'LeaVerou'
+    );
+  });
+
+  it('keeps an already-reviewed candidate across tiers without paging a new reviewer mid-review', () => {
+    const tiers = [['jamesnw'], ['LeaVerou']];
+    assert.equal(
+      selectLeadReviewer({
+        tiers,
+        excludedLogins: new Set(),
+        alreadyReviewedLogins: new Set(['leaverou'])
+      }),
+      'LeaVerou'
+    );
+  });
+
+  it('keeps sticky already-requested candidate within winning tier and uses openReviewCounts otherwise', () => {
+    const tiers = [['LJWatson', 'jenjknoll']];
+    const counts = new Map([
+      ['ljwatson', 5],
+      ['jenjknoll', 1]
+    ]);
+    assert.equal(
+      selectLeadReviewer({
+        tiers,
+        excludedLogins: new Set(),
+        openReviewCounts: counts,
+        tieSeed: 100
+      }),
+      'jenjknoll'
+    );
+    assert.equal(
+      selectLeadReviewer({
+        tiers,
+        excludedLogins: new Set(),
+        alreadyRequestedLogins: new Set(['ljwatson']),
+        openReviewCounts: counts,
+        tieSeed: 100
+      }),
+      'LJWatson'
+    );
+  });
+});
+
+describe('handlePR git-author Tier 1 integration', () => {
+  it('routes existing guide update to active git-blame primary author, and cascades when PR author or removed', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guidance-author-tier1-'));
+    const bodyLines = Array.from({ length: 15 }, (_, i) => `Rule ${i + 1}: use native popover.`).join('\n');
+    const guideText = `---\nname: popover-menu\nweb-feature-ids:\n  - popover\n---\n\n${bodyLines}\n`;
+    const guideDir = path.join(tmpDir, 'ui-behaviors', 'popover-menu');
+    fs.mkdirSync(guideDir, { recursive: true });
+    fs.writeFileSync(path.join(guideDir, 'guide.md'), guideText, 'utf8');
+
+    const sha = 'd'.repeat(40);
+    const porcelain = guideText
+      .split('\n')
+      .map((t, i) => `${sha} ${i + 1} ${i + 1} 1\nauthor-mail <jamesnw@gmail.com>\n\t${t}`)
+      .join('\n');
+
+    const mBlame = mock.method(githubApi, 'getGuideBlamePorcelain', () => porcelain);
+    const mCommitLogin = mock.method(githubApi, 'getCommitAuthorLogin', () => 'jamesnw');
+    const mWrite = mock.method(githubApi, 'hasUserWriteAccess', (u: string) => u.toLowerCase() === 'jamesnw');
+    const mRevState = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
+    const mRemoved = mock.method(githubApi, 'getPrRemovedReviewers', () => []);
+    const mFileContent = mock.method(githubApi, 'getPrFileContent', () => null);
+    const mUnlabeled = mock.method(githubApi, 'getPrUnlabeledEvents', () => []);
+
+    const cfg: AtlConfig = {
+      default: { 'ui-behaviors': 'LeaVerou' },
+      web_features: {},
+      web_features_groups: {}
+    };
+
+    try {
+      // 1. Someone else updates jamesnw's guide -> routes to jamesnw instead of LeaVerou!
+      const r1 = handlePR(
+        4001,
+        'other-peer',
+        cfg,
+        undefined,
+        tmpDir,
+        ['content'],
+        {
+          dryRun: true,
+          isDraft: false,
+          prBody: '',
+          preloadedFiles: ['guides/ui-behaviors/popover-menu/guide.md'],
+          enableGitAuthorRouting: true
+        }
+      );
+      assert.deepEqual(r1, ['jamesnw']);
+
+      // 2. jamesnw updates his own guide -> cascades to LeaVerou!
+      const r2 = handlePR(
+        4002,
+        'jamesnw',
+        cfg,
+        undefined,
+        tmpDir,
+        ['content'],
+        {
+          dryRun: true,
+          isDraft: false,
+          prBody: '',
+          preloadedFiles: ['guides/ui-behaviors/popover-menu/guide.md'],
+          enableGitAuthorRouting: true
+        }
+      );
+      assert.deepEqual(r2, ['LeaVerou']);
+
+      // 3. jamesnw was manually unassigned -> cascades to LeaVerou!
+      mRemoved.mock.mockImplementation(() => ['jamesnw']);
+      const r3 = handlePR(
+        4003,
+        'other-peer',
+        cfg,
+        undefined,
+        tmpDir,
+        ['content'],
+        {
+          dryRun: true,
+          isDraft: false,
+          prBody: '',
+          preloadedFiles: ['guides/ui-behaviors/popover-menu/guide.md'],
+          enableGitAuthorRouting: true
+        }
+      );
+      assert.deepEqual(r3, ['LeaVerou']);
+    } finally {
+      mBlame.mock.restore();
+      mCommitLogin.mock.restore();
+      mWrite.mock.restore();
+      mRevState.mock.restore();
+      mRemoved.mock.restore();
+      mFileContent.mock.restore();
+      mUnlabeled.mock.restore();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

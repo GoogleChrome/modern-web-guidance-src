@@ -691,30 +691,27 @@ describe('handlePR', () => {
     getPrBodyMock.mock.restore();
   });
 
-  it('requests review from matching ATLs for content files', () => {
+  it('selects 1 lead ATL per guide using the feature > group > category waterfall', () => {
     const mockFiles = [
-      'guides/performance/deliver-optimized-decorative-images/guide.md', // Has 'image-set' feature, will be overridden!
+      'guides/performance/deliver-optimized-decorative-images/guide.md', // Has 'image-set' feature -> 'override-pr-reviewer' overrides default performance!
       'guides/motion/carousel-slide-effects/expectations.md',
       'guides/css-layout/grid-layout/guide.md',
       'guides/css-layout/grid-layout/other-file.json' // shouldn't trigger
     ];
 
     const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles);
-    // 'deliver-optimized-decorative-images' resolves to 'override-pr-reviewer' (via feature 'image-set' override) + 'rviscomi', 'paulirish' (default performance)
-    // 'carousel-slide-effects' resolves to 'philipwalton' (default motion)
-    // 'grid-layout' resolves to 'malchata' (default css-layout)
-    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton', 'malchata'].sort());
+    assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'philipwalton', 'malchata'].sort());
   });
 
-  it('does not request review from the PR author', () => {
+  it('cascades to the category default lead when the PR author is the feature override ATL', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/guide.md',
       'guides/motion/carousel-slide-effects/expectations.md'
     ];
 
-    // Author is override-pr-reviewer, so only rviscomi, paulirish, and philipwalton should be requested
-    const result = handlePR(99999, 'override-pr-reviewer', mockConfig, mockFiles);
-    assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
+    // Author is override-pr-reviewer -> cascades to default performance ['rviscomi', 'paulirish'] and picks 1 lead (99998 % 2 === 0 -> 'rviscomi')
+    const result = handlePR(99998, 'override-pr-reviewer', mockConfig, mockFiles);
+    assert.deepStrictEqual(result.sort(), ['rviscomi', 'philipwalton'].sort());
   });
 
   it('returns empty array when only eval files are touched and no gd-dev-content label is set', () => {
@@ -740,7 +737,7 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result, []);
   });
 
-  it('requests review from configured skill owners when skills-src/<skill>/** is modified', () => {
+  it('selects 1 lead reviewer from configured skill owners when skills-src/<skill>/** is modified', () => {
     const configWithExtensions = {
       ...mockConfig,
       default: {
@@ -749,12 +746,15 @@ describe('handlePR', () => {
       }
     };
     const result = handlePR(
-      99999,
+      99998,
       'some-contributor',
       configWithExtensions,
-      ['skills-src/chrome-extensions/SKILL.md']
+      ['skills-src/chrome-extensions/SKILL.md'],
+      undefined,
+      [],
+      { openReviewCounts: new Map([['oliverdunk', 3], ['patrickkettner', 1]]) }
     );
-    assert.deepStrictEqual(result.sort(), ['oliverdunk', 'patrickkettner'].sort());
+    assert.deepStrictEqual(result, ['patrickkettner']);
   });
 
   it('filters out already requested and reviewed ATLs case-insensitively', () => {
@@ -798,7 +798,7 @@ describe('handlePR', () => {
     }
   });
 
-  it('auto-assigns feature-level owners and transcluding guide category owners when features/*.md is modified', () => {
+  it('prefers direct feature owner over transcluding guide category owners when features/*.md is modified', () => {
     const config = {
       default: {
         'visual-design': 'visual-owner',
@@ -812,12 +812,10 @@ describe('handlePR', () => {
 
     const mockFiles = ['features/scrollbar-color.md'];
     const result = handlePR(99999, 'some-contributor', config, mockFiles);
-    // 'scrollbar-color' has feature owner 'feature-scrollbar-owner'
-    // and is transcluded in 'visual-design' guides -> category owner 'visual-owner'
-    assert.deepStrictEqual(result.sort(), ['feature-scrollbar-owner', 'visual-owner'].sort());
+    assert.deepStrictEqual(result, ['feature-scrollbar-owner']);
   });
 
-  it('auto-assigns feature group owners and transcluding guide category owners for feature files', () => {
+  it('prefers feature group owner over transcluding guide category owners for feature files', () => {
     const config = {
       default: {
         'visual-design': 'visual-owner'
@@ -830,9 +828,7 @@ describe('handlePR', () => {
 
     const mockFiles = ['features/scrollbar-color.md'];
     const result = handlePR(99999, 'some-contributor', config, mockFiles);
-    // 'scrollbar-color' belongs to group 'scrolling' -> 'scrolling-group-owner'
-    // and is transcluded in 'visual-design' -> 'visual-owner'
-    assert.deepStrictEqual(result.sort(), ['scrolling-group-owner', 'visual-owner'].sort());
+    assert.deepStrictEqual(result, ['scrolling-group-owner']);
   });
 
   it('resolves pending temporary features to their group owner', () => {
@@ -870,7 +866,29 @@ describe('handlePR', () => {
     }
   });
 
-  it('auto-assigns category owners across multiple categories where a feature is transcluded', () => {
+  it('falls back to transcluding category lead when feature has no direct or group owner', () => {
+    const config = {
+      default: {
+        css: 'css-owner',
+        forms: 'forms-owner'
+      },
+      web_features: {},
+      web_features_groups: {}
+    };
+
+    const result = handlePR(
+      99998,
+      'some-contributor',
+      config,
+      ['features/user-pseudos.md'],
+      undefined,
+      [],
+      { openReviewCounts: new Map([['css-owner', 4], ['forms-owner', 1]]) }
+    );
+    assert.deepStrictEqual(result, ['forms-owner']);
+  });
+
+  it('cascades to transcluding category lead when PR author is the feature owner', () => {
     const config = {
       default: {
         css: 'css-owner',
@@ -882,34 +900,24 @@ describe('handlePR', () => {
       web_features_groups: {}
     };
 
-    const mockFiles = ['features/user-pseudos.md'];
-    const result = handlePR(99999, 'some-contributor', config, mockFiles);
-    // 'user-pseudos' is transcluded in css/style-parent-with-has and forms/* guides
-    assert.deepStrictEqual(result.sort(), ['user-pseudos-owner', 'css-owner', 'forms-owner'].sort());
+    // Author is user-pseudos-owner -> cascades to transcluding categories and picks least-loaded lead
+    const result1 = handlePR(
+      99998,
+      'user-pseudos-owner',
+      config,
+      ['features/user-pseudos.md'],
+      undefined,
+      [],
+      { openReviewCounts: new Map([['css-owner', 0], ['forms-owner', 2]]) }
+    );
+    assert.deepStrictEqual(result1, ['css-owner']);
+
+    // Author is forms-owner -> direct feature owner 'user-pseudos-owner' wins Tier 1
+    const result2 = handlePR(99998, 'forms-owner', config, ['features/user-pseudos.md']);
+    assert.deepStrictEqual(result2, ['user-pseudos-owner']);
   });
 
-  it('excludes author when author is the feature owner or category owner of modified feature file', () => {
-    const config = {
-      default: {
-        css: 'css-owner',
-        forms: 'forms-owner'
-      },
-      web_features: {
-        'user-pseudos': 'user-pseudos-owner'
-      },
-      web_features_groups: {}
-    };
-
-    // Author is user-pseudos-owner
-    const result1 = handlePR(99999, 'user-pseudos-owner', config, ['features/user-pseudos.md']);
-    assert.deepStrictEqual(result1.sort(), ['css-owner', 'forms-owner'].sort());
-
-    // Author is forms-owner
-    const result2 = handlePR(99999, 'forms-owner', config, ['features/user-pseudos.md']);
-    assert.deepStrictEqual(result2.sort(), ['user-pseudos-owner', 'css-owner'].sort());
-  });
-
-  it('supports custom guides directory for testing transclusion matching in handlePR', () => {
+  it('supports custom guides directory for testing transclusion fallback in handlePR', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guidance-triage-pr-test-'));
     try {
       const customCategoryDir = path.join(tmpDir, 'custom-category', 'my-guide');
@@ -924,18 +932,16 @@ describe('handlePR', () => {
         default: {
           'custom-category': 'custom-cat-owner'
         },
-        web_features: {
-          'my-feature': 'my-feature-owner'
-        },
+        web_features: {},
         web_features_groups: {}
       };
 
       const result = handlePR(99999, 'some-contributor', config, ['features/my-feature.md'], tmpDir);
-      assert.deepStrictEqual(result.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
+      assert.deepStrictEqual(result, ['custom-cat-owner']);
 
       // Also matches when the feature file or transclusion has a tmp- prefix difference
       const resultTmp = handlePR(99999, 'some-contributor', config, ['features/tmp-my-feature.md'], tmpDir);
-      assert.deepStrictEqual(resultTmp.sort(), ['my-feature-owner', 'custom-cat-owner'].sort());
+      assert.deepStrictEqual(resultTmp, ['custom-cat-owner']);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -1202,7 +1208,7 @@ web-feature-ids:
     try {
       const result = handlePR(789, 'fork-contributor', customConfig);
       assert.strictEqual(getPrFileContentMock.mock.callCount(), 1);
-      assert.deepStrictEqual(result.sort(), ['category-owner', 'feature-pseudos-owner'].sort());
+      assert.deepStrictEqual(result, ['feature-pseudos-owner']);
       assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
       assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [789, ['content']]);
       assert.strictEqual(addReviewersMock.mock.callCount(), 1);

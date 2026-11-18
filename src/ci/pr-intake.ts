@@ -256,3 +256,151 @@ export function formatClaHoldComment(prAuthor: string): string {
     `Reviewers will be requested automatically once \`cla/google\` turns green.`
   ].join('\n');
 }
+
+const MIN_AUTHOR_BODY_LINES = 10;
+const MIN_AUTHOR_BODY_SHARE = 0.3;
+const ZERO_SHA_REGEX = /^0+$/;
+
+export interface PrimaryBlameAuthor {
+  email: string;
+  sha: string;
+  bodyLines: number;
+  share: number;
+}
+
+export function extractNoreplyLogin(email: string): string | null {
+  const match = email.trim().toLowerCase().match(/^\d+\+([a-z0-9-]+)@users\.noreply\.github\.com$/);
+  return match ? match[1] : null;
+}
+
+export function parsePrimaryBlameAuthor(
+  guideMarkdown: string,
+  blamePorcelain: string
+): PrimaryBlameAuthor | null {
+  const fmMatch = guideMarkdown.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+  const fmLines = fmMatch ? fmMatch[0].replace(/\r?\n$/, '').split('\n').length : 0;
+
+  const byEmail = new Map<string, { lines: number; sha: string }>();
+  let totalBodyLines = 0;
+  let curSha = '';
+  let curFinalLine = 0;
+  let curMail = '';
+
+  for (const line of blamePorcelain.split('\n')) {
+    const header = line.match(/^([0-9a-f]{40}) \d+ (\d+)/);
+    if (header) {
+      curSha = header[1];
+      curFinalLine = Number(header[2]);
+      continue;
+    }
+    if (line.startsWith('author-mail ')) {
+      curMail = line
+        .slice('author-mail '.length)
+        .trim()
+        .replace(/^<|>$/g, '')
+        .toLowerCase();
+      continue;
+    }
+    if (line.startsWith('\t')) {
+      const content = line.slice(1).trim();
+      if (curFinalLine <= fmLines || !content || !curMail || ZERO_SHA_REGEX.test(curSha)) {
+        continue;
+      }
+      totalBodyLines++;
+      const existing = byEmail.get(curMail);
+      if (existing) {
+        existing.lines++;
+      } else {
+        byEmail.set(curMail, { lines: 1, sha: curSha });
+      }
+    }
+  }
+
+  if (totalBodyLines === 0) return null;
+
+  let bestEmail = '';
+  let bestEntry: { lines: number; sha: string } | null = null;
+  for (const [email, entry] of byEmail) {
+    if (!bestEntry || entry.lines > bestEntry.lines) {
+      bestEmail = email;
+      bestEntry = entry;
+    }
+  }
+
+  if (!bestEntry) return null;
+  const share = bestEntry.lines / totalBodyLines;
+  if (bestEntry.lines < MIN_AUTHOR_BODY_LINES || share < MIN_AUTHOR_BODY_SHARE) {
+    return null;
+  }
+
+  return {
+    email: bestEmail,
+    sha: bestEntry.sha,
+    bodyLines: bestEntry.lines,
+    share
+  };
+}
+
+export interface SelectLeadReviewerInput {
+  tiers: readonly (readonly string[])[];
+  excludedLogins: ReadonlySet<string>;
+  alreadyReviewedLogins?: ReadonlySet<string>;
+  alreadyRequestedLogins?: ReadonlySet<string>;
+  openReviewCounts?: ReadonlyMap<string, number>;
+  tieSeed?: number;
+}
+
+function dedupeEligible(candidates: readonly string[], excludedLogins: ReadonlySet<string>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of candidates) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (excludedLogins.has(lower) || seen.has(lower)) continue;
+    seen.add(lower);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+export function selectLeadReviewer(input: SelectLeadReviewerInput): string | null {
+  const reviewed = input.alreadyReviewedLogins ?? new Set<string>();
+  const requested = input.alreadyRequestedLogins ?? new Set<string>();
+  const tieSeed = input.tieSeed ?? 0;
+
+  // If any eligible candidate across any tier has already submitted a review on this PR,
+  // keep them rather than paging a new reviewer mid-review.
+  if (reviewed.size > 0) {
+    for (const tier of input.tiers) {
+      for (const candidate of dedupeEligible(tier, input.excludedLogins)) {
+        if (reviewed.has(candidate.toLowerCase())) {
+          return candidate;
+        }
+      }
+    }
+  }
+
+  for (const tier of input.tiers) {
+    const eligible = dedupeEligible(tier, input.excludedLogins);
+    if (eligible.length === 0) continue;
+
+    // Preserve an already-requested reviewer within the winning tier to avoid thrashing on synchronize.
+    const sticky = eligible.find(c => requested.has(c.toLowerCase()));
+    if (sticky) return sticky;
+
+    if (eligible.length === 1) return eligible[0];
+
+    let minLoad = Infinity;
+    for (const candidate of eligible) {
+      const load = input.openReviewCounts?.get(candidate.toLowerCase()) ?? 0;
+      if (load < minLoad) minLoad = load;
+    }
+    const tied = eligible.filter(
+      c => (input.openReviewCounts?.get(c.toLowerCase()) ?? 0) === minLoad
+    );
+    return tied[Math.abs(tieSeed) % tied.length];
+  }
+
+  return null;
+}
