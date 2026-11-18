@@ -157,7 +157,9 @@ input[type="range"].rating {
 
 On `input` (and on initial load), mirror `range.min`, `range.max`, `range.step`, and `range.value` into `--min`, `--max`, `--step`, and `--control-value` on `range` via `style.setProperty()`, and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Preview the rating on pointer hover by writing a generic normalized `--pointer-x` (`0` to `1`) on `pointermove` (skipping `touch` and disabled inputs) and clearing it on `pointerleave` and `pointercancel`. Because CSS computes `--_preview-value` solely from `--pointer-x`, the script can be replaced directly with CSS `pointer-animations-1` (`animation-timeline: pointer(...)`) once supported:
+Preview the rating on pointer hover by writing a generic normalized `--pointer-x` (`0` to `1`) on `pointermove` (skipping `touch` and disabled inputs) and clearing it on `pointerleave` and `pointercancel`:
+
+<!-- Maintainer note: because CSS computes --_preview-value solely from --pointer-x, this script can be replaced directly with CSS pointer-animations-1 (animation-timeline: pointer(...)) once supported. -->
 
 ```js
 range.addEventListener('pointermove', (event) => {
