@@ -126,8 +126,8 @@ Reset the range input's native styling and size its track to `(max - min + step)
 
 ```css
 input[type="range"].rating {
-  --min: 0;
-  --step: 0.5;
+  --min: attr(min type(<number>), 0);
+  --step: attr(step type(<number>), 1);
   --_offset: calc((var(--step) - var(--min)) * var(--star-size));
   --_raw-preview: calc(var(--min) - var(--step) / 2 + var(--pointer-x) * (var(--max) - var(--min) + var(--step)));
   --_preview-value: clamp(var(--min), round(nearest, var(--_raw-preview), var(--step)), var(--max));
@@ -212,4 +212,4 @@ if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
 }
 ```
 
-The experience is identical; only the mechanism differs. The interactive range input does not depend on `attr()` because its script already sets `--control-value`.
+The experience is identical; only the mechanism differs. The interactive range input reads `--min` and `--step` from its `min` and `step` attributes via typed `attr()`, and the same script path that sets `--min`, `--max`, `--step`, and `--control-value` on `input` and on initial load also covers browsers without typed `attr()`.
