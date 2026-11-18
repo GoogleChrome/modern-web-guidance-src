@@ -136,7 +136,8 @@ targetWindow.postMessage({ action: 'update' }, 'https://trusted-origin.com');
 ### 1.6 Secure WebSocket Connections
 Browsers do **not** enforce CORS on WebSocket handshakes and still attach eligible cookies to upgrade requests (including `SameSite=Lax` and `SameSite=Strict` cookies from same-site subdomains or ports, `SameSite=None` cookies cross-site, and unattributed cookies in browsers without `Lax`-by-default), so WebSocket endpoints require explicit server-side `Origin` validation to prevent Cross-Site WebSocket Hijacking (CSWSH).
 - **DO**: Use `wss://` (TLS) for non-local public WebSocket endpoints. Although `https://` Mixed Content blocks public `ws://` connections, `http://` pages and hardcoded `ws://` configurations remain vulnerable; reserve `ws://` for loopback development or explicit Local Network Access exemptions (private IP literals and `.local` mDNS hostnames; see {{ GUIDE_REF("local-network-access") }}).
-- **DO**: Strictly validate the `Origin` header against an explicit allowlist of trusted origins inside the WebSocket handshake handler (for example, an HTTP/1.1 `upgrade` or HTTP/2 Extended `CONNECT` handler), rejecting missing or unexpected origins with HTTP `403` before completing the handshake. {# Chromium issue 40922285: Chromium omits Sec-Fetch-* on WebSocket upgrades #} Because not all browsers send `Sec-Fetch-*` headers on WebSocket upgrades, treat `Sec-Fetch-Site === 'cross-site'` only as optional defense-in-depth and never reject requests solely because `Sec-Fetch-Site` is absent.
+- **DO**: Strictly validate the `Origin` header against an explicit allowlist of trusted origins inside the WebSocket handshake handler (for example, an HTTP/1.1 `upgrade` or HTTP/2 Extended `CONNECT` handler), rejecting missing or unexpected origins with HTTP `403` before completing the handshake.
+- **DO NOT**: Rely on `Sec-Fetch-*` headers instead of `Origin` on WebSocket handshakes — not all browsers send `Sec-Fetch-*` on WebSocket upgrades (so rejecting missing headers breaks connections, while allowing missing headers leaves those browsers unprotected), and `Sec-Fetch-Site: same-site` still permits untrusted subdomains. {# Chromium issue 40922285: Chromium omits Sec-Fetch-* on WebSocket upgrades #}
 - **DO NOT**: Pass authentication tokens or secrets in WebSocket URL query parameters (`wss://example.com/ws?token=...`) or `Sec-WebSocket-Protocol` headers — both leak credentials into server access logs and proxies.
 - **DO**: Authenticate WebSocket sessions by pairing strict server-side `Origin` validation with hardened session cookies (§1.3 — note that `__Host-` cookies are host-only and will not be sent to a separate WebSocket subdomain, which requires `__Secure-` with `Domain` or non-cookie auth), or by requiring authentication in the first WebSocket message over `wss://` (closing the socket after a short timeout if unauthenticated).
 
@@ -153,11 +154,7 @@ server.on('upgrade', (req, socket, head) => {
   socket.on('error', () => {});
 
   const origin = req.headers.origin;
-  const fetchSite = req.headers['sec-fetch-site'];
-
-  // Omit fetchSite if any allowlisted origin is on a different registrable domain (eTLD+1);
-  // never reject when fetchSite is absent, as not all browsers send it on WebSocket upgrades.
-  if (!origin || !ALLOWED_ORIGINS.has(origin) || fetchSite === 'cross-site') {
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
     return;
   }
