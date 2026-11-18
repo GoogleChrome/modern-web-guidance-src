@@ -25,6 +25,7 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 ```css
 :root {
   --color-star-filled: #fbbf24;
+  --color-star-average: light-dark(#6366f1, #a5b4fc);
   --color-star-empty: light-dark(#c9c9d4, #4a4a58);
 }
 
@@ -192,7 +193,7 @@ for (const type of ['pointerleave', 'pointercancel']) {
 }
 ```
 
-Optional: to show an existing average until the user rates, set `data-average="3.5"` on `input[type="range"].rating`, override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited]):not(:hover)` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.5 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
+Optional: to show an existing average until the user rates, set `data-average="3.7"` on `input[type="range"].rating` (since `--control-value` is not constrained by `step`, the displayed average does not need to be quantized to it), override `--color-star-filled: var(--color-star-average)` on `.rating[data-average]:not([data-edited]):not(:hover)` with a distinct color, and initialize `--control-value` and `aria-valuetext` (e.g. `"Not rated, average 3.7 out of 5 stars"`) from `dataset.average` until the first `input` sets `range.dataset.edited = ''`.
 
 ## Fallbacks
 
