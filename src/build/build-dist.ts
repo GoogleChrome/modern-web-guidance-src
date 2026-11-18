@@ -282,6 +282,36 @@ const __dirname = __dirnameFunction(__filename);
         JSON.stringify(resultAnalyze.metafile)
       );
 
+      console.log("Bundling verify.mjs...");
+      const resultVerify = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/verifying/cli.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/verify.mjs"),
+        sourcemap: false,
+        sourcesContent: false,
+        metafile: true,
+        minify: true,
+        legalComments: "none",
+        plugins: [{
+          name: 'external-verify-siblings',
+          setup(build) {
+            build.onResolve({ filter: /search\.ts$/ }, _args => {
+              return { path: './search.mjs', external: true };
+            });
+            build.onResolve({ filter: /analyzing\/cli\.ts$/ }, _args => {
+              return { path: './legacy-scan.mjs', external: true };
+            });
+          },
+        }],
+      });
+
+      fs.writeFileSync(
+        path.join(ROOT_DIST_DIR, "verify.meta.json"),
+        JSON.stringify(resultVerify.metafile)
+      );
+
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/cli/modern-web.ts")],
@@ -303,7 +333,10 @@ if (__mwg_major < 22) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
             });
-            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
+            build.onResolve({ filter: /verifying\/cli\.ts$/ }, _args => {
+              return { path: './verify.mjs', external: true }
+            });
+            build.onResolve({ filter: /analyzing\/cli\.ts$/ }, _args => {
               return { path: './legacy-scan.mjs', external: true }
             });
           },
@@ -327,7 +360,7 @@ if (__mwg_major < 22) {
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultAnalyze.metafile, resultVerify.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 

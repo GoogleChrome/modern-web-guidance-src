@@ -67,6 +67,9 @@ Commands:
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   legacy-scan [path] [options]  Analyze codebase for legacy web platform patterns
+  verify [path] [options]   Run live browser + static verification against modern web guidance
+  context-guides [path] [options]  Map git diff and touched files to relevant guide IDs
+  install-hooks [options]   Install Stop hook and modern-web-critic subagent into a project
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
@@ -109,6 +112,35 @@ async function main() {
     const logger = new ClearcutLogger({ skillVersion });
     await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.LEGACY_SCAN);
     process.exit(writeAnalyzeCliResult(result));
+  }
+
+  if (
+    command === "verify" ||
+    command === "context-guides" ||
+    command === "stop-hook" ||
+    command === "install-hooks" ||
+    command === "install-plugin"
+  ) {
+    if (command !== "stop-hook") {
+      maybeEmitUpdateMessage(skillVersion);
+    }
+    const { runVerifyingCli, writeVerifyingCliResult } = await import("../verifying/cli.ts");
+    const args = process.argv.slice(2);
+    const cmdIdx = args.indexOf(command);
+    if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const startTime = Date.now();
+    const result = await runVerifyingCli(command, args);
+    if (command !== "stop-hook") {
+      const cmdType =
+        command === "verify"
+          ? CommandType.VERIFY
+          : command === "context-guides"
+            ? CommandType.CONTEXT_GUIDES
+            : CommandType.INSTALL_HOOKS;
+      const logger = new ClearcutLogger({ skillVersion });
+      await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, cmdType);
+    }
+    process.exit(writeVerifyingCliResult(result));
   }
 
   if (values.help || positionals.length === 0) {
