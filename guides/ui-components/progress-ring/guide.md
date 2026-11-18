@@ -6,6 +6,8 @@ web-feature-ids:
   - conic-gradients
   - masks
   - registered-custom-properties
+  - background-clip-border-area
+  - attr
 ---
 
 # Progress ring

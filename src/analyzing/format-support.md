@@ -79,6 +79,6 @@ Why are styled-components and Emotion component styles `expected-skip` instead o
 
 ## Proposing a format
 
-[Open an issue](../../CONTRIBUTING.md#proposal-first-for-non-trivial-changes) before sending a PR. Include real-world examples and what right support looks like in that ecosystem. Maintainers will check real-world use and rule payoff, make the call, and update the table above. (If you open a PR for a new format without an agreed issue first, we'll point you back to the issue tracker.)
+[Open an issue](../../CONTRIBUTING.md#send-us-the-problem-not-the-patch) before sending a PR. Include real-world examples and what right support looks like in that ecosystem. Maintainers will check real-world use and rule payoff, make the call, and update the table above. (If you open a PR for a new format without an agreed issue first, we'll point you back to the issue tracker.)
 
 If the usage or payoff evidence for a supported format stops holding up, it moves to `expected-skip` and we note the change here.

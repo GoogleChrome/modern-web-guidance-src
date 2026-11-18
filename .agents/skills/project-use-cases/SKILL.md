@@ -44,6 +44,8 @@ This guidance is ultimately served through a RAG (Retrieval-Augmented Generation
 
 ## Implementation and scaffolding
 
+External contributors (non-Peers/ATLs/Owners) should use Steps 1–3 to draft the proposal and open a [`new-use-case` issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml) rather than opening a stub PR. Steps 4–6 apply to onboarded [Peers](../../../GOVERNANCE.md#peers), Content ATLs, and Owners (or external contributors working on an approved issue).
+
 The following steps are REQUIRED for creating a new use case:
 
 * **Step 1: Describe the use case**
@@ -79,10 +81,11 @@ The following steps are REQUIRED for creating a new use case:
 
   Create a `guide.md` file in the new subdirectory. For now, the guide should only contain metadata about the use case. The actual content of the guide will be filled in later after peer review.
 
-  The required YAML frontmatter fields are:
+  The required YAML frontmatter fields for a stub are:
 
   - **name**: Guide ID matching the `<guide-id>` subdirectory name.
   - **description**: Action-oriented imperative sentence describing the use case.
+  - **draft**: Set to `stub` to withhold the placeholder from distribution until full guidance is authored.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
 
   For example:
@@ -91,6 +94,7 @@ The following steps are REQUIRED for creating a new use case:
   ---
   name: background-fetch-priority
   description: Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests.
+  draft: stub
   web-feature-ids:
     - fetch-priority
     - fetch
@@ -103,6 +107,6 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 6: Get the use case approved**
 
-  Submit the use case for review by creating a Pull Request with the `guide.md` frontmatter stub (or by filing a [new-use-case issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml)) for review by the category's [Content Area Tech Lead (ATL)](../../../docs/ATLS.md).
+  External contributors propose new use cases by filing a [`new-use-case` issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml) for review by the category's [Content Area Tech Lead (ATL)](../../../docs/ATLS.md). Onboarded [Peers](../../../GOVERNANCE.md#peers), Content ATLs, and Owners may submit a Stage 1 stub PR with the `guide.md` frontmatter stub (or fast-track directly to Stage 2).
 
 After the use case is approved, proceed to **Stage 2** using the [`project-guides`](../project-guides/SKILL.md) skill to author the full `guide.md`, `demo.html`, and `expectations.md`.

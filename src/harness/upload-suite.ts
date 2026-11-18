@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { cRed, cGreen, cCyan, cBold } from '../core/colors.ts';
 import { suitesDir as baseResultsDir } from '../core/paths.ts';
 import { extractJobSummary } from '../dashboard/summary-extractor.js';
+import { isInfraErrorTrial } from './lib/metrics.ts';
 import {
   BASE64_TRAJECTORY_SCRIPT_RE,
   extractBase64TrajectoryPayloads,
@@ -287,9 +288,9 @@ async function main() {
     const evalsContent = fs.readFileSync(evalsJsonPath, 'utf8');
     evalsData = JSON.parse(evalsContent);
     const results = evalsData.results || {};
-    if (Object.keys(results).length === 0) {
-      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 trials were recorded). Sync skipped.`));
-      process.exit(0);
+    if (Object.values(results).every(trials => !Array.isArray(trials) || trials.length === 0)) {
+      console.error(cRed(`❌ Error: No evaluation data found in evals.json (0 tasks were run). Upload blocked.`));
+      process.exit(1);
     }
 
     // Guard: Prevent uploading jobs with 100% infra errors (catastrophic crash)
@@ -300,8 +301,7 @@ async function main() {
       const trials = results[resultKey] || [];
       for (const trial of trials) {
         totalTrialsCount++;
-        const checks = trial.results || [];
-        if (checks.some((check: any) => check.isEarlyFailure)) {
+        if (isInfraErrorTrial(trial.results)) {
           infraErrorsCount++;
         }
       }

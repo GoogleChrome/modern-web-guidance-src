@@ -5,7 +5,7 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
-export const SOFT_EDGE_CONTENT_FADE_GUIDE_HASH = '2f9aef74b480';
+export const TEASER_GUIDE_HASH = '2f9aef74b480';
 
 const LINEAR_GRADIENT_MASK_REGEX =
   /(?:^|[^a-zA-Z0-9_-])(?:-webkit-|-moz-|-o-)?linear-gradient\s*\(|-webkit-gradient\s*\(\s*linear\b/i;
@@ -20,7 +20,7 @@ function isLinearFadeGradientMask(value: string | null): boolean {
   return TRANSPARENT_COLOR_STOP_REGEX.test(value);
 }
 
-export const softEdgeContentFadeCssMatcher: CssRuleMatcher = {
+export const teaserCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['-webkit-mask-image', '-webkit-mask'],
   matchRule: (styleRule: CssRuleView, _ctx: CssMatcherContext) => {
@@ -46,13 +46,13 @@ export const softEdgeContentFadeCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const softEdgeContentFadeRule: AnalyzerRule = {
-  id: 'soft-edge-content-fade',
-  guideId: 'soft-edge-content-fade',
-  guideHash: SOFT_EDGE_CONTENT_FADE_GUIDE_HASH,
+export const teaserRule: AnalyzerRule = {
+  id: 'teaser',
+  guideId: 'teaser',
+  guideHash: TEASER_GUIDE_HASH,
   summary:
     'CSS rules with -webkit-mask-image: linear-gradient(...) without standard mask-image should include unprefixed mask-image: linear-gradient(...).',
-  matcher: softEdgeContentFadeCssMatcher,
+  matcher: teaserCssMatcher,
   verifierRubric: {
     keepWhen: [
       'A CSS rule declares -webkit-mask-image or -webkit-mask with linear-gradient(...) or -webkit-gradient(linear, ...) transitioning to transparent (or alpha 0) without declaring standard unprefixed mask-image or mask.',
@@ -67,5 +67,5 @@ export const softEdgeContentFadeRule: AnalyzerRule = {
 };
 
 export default [
-  softEdgeContentFadeRule,
+  teaserRule,
 ] satisfies readonly AnalyzerRule[];

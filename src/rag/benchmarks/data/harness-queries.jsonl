@@ -1,6 +1,6 @@
 {"qid":"h0000","query":"tool AI assistant","stratum":"antigravity_cli","expectedGuide":"agentic-javascript-tools","agent":"antigravity_cli","runDate":"2026-10-01","words":3}
 {"qid":"h0001","query":"shipping address form autofill validation","stratum":"antigravity_cli","expectedGuide":"autofill-address-form","agent":"antigravity_cli","runDate":"2026-10-06","words":5}
-{"qid":"h0002","query":"mask-image content fade out preview","stratum":"antigravity_cli","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-06","words":5}
+{"qid":"h0002","query":"mask-image content fade out preview","stratum":"antigravity_cli","expectedGuide":"teaser","agent":"antigravity_cli","runDate":"2026-10-06","words":5}
 {"qid":"h0003","query":"font fallback layout shift size","stratum":"antigravity_cli","expectedGuide":"visually-stable-font-fallbacks","agent":"antigravity_cli","runDate":"2026-10-09","words":5}
 {"qid":"h0004","query":"form validation user-invalid required select","stratum":"antigravity_cli","expectedGuide":"select-menu-interaction","agent":"antigravity_cli","runDate":"2026-10-09","words":5}
 {"qid":"h0005","query":"yield long tasks","stratum":"antigravity_cli","expectedGuide":"break-up-long-tasks","agent":"antigravity_cli","runDate":"2026-10-07","words":3}
@@ -157,4 +157,4 @@
 {"qid":"h0156","query":"ab testing anti flicker hide original content","stratum":"jetski_cli","expectedGuide":"flicker-free-client-side-ab-testing","agent":"jetski_cli","runDate":"2026-09-18","words":7}
 {"qid":"h0157","query":"spotlight reveal mask","stratum":"jetski_cli","expectedGuide":"interactive-content-reveal","agent":"jetski_cli","runDate":"2026-09-09","words":3}
 {"qid":"h0158","query":"accessible form","stratum":"jetski_cli","expectedGuide":"forms","agent":"jetski_cli","runDate":"2026-09-25","words":2}
-{"qid":"h0159","query":"fade out transparent preview paywall mask","stratum":"jetski_cli","expectedGuide":"soft-edge-content-fade","agent":"jetski_cli","runDate":"2026-09-09","words":6}
+{"qid":"h0159","query":"fade out transparent preview paywall mask","stratum":"jetski_cli","expectedGuide":"teaser","agent":"jetski_cli","runDate":"2026-09-09","words":6}

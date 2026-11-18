@@ -7,7 +7,7 @@ const targetDir = path.dirname(targetFile);
 const targetFileName = path.basename(targetFile);
 const targetUrl = `http://localhost/${targetFileName}`;
 
-test.describe('Soft Edge Content Fade Tests', () => {
+test.describe('Teaser Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/**', async (route) => {
       const reqPath = decodeURIComponent(new URL(route.request().url()).pathname);
