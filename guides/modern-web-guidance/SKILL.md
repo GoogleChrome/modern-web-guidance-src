@@ -43,7 +43,6 @@ If `retrieve` saves large output (> 9.5 KB) to a temporary file to prevent trunc
 When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
-- Do not run `legacy-scan`; it's for detecting legacy patterns to modernize, not this.
 
 ### Step 4. Disclose Skill Usage
 
@@ -52,22 +51,6 @@ When you consult `modern-web-guidance` for a task, end the response where you de
   `- **\`<id>\`**: <Non-obvious APIs, overrides, or fallbacks applied and the pitfall prevented> ("<short verbatim quote of the specific rule or gotcha>").`
   - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
 - **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
-
-## Alternative flow: Modernize an existing codebase
-
-**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `legacy-scan` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
-
-> **Note**: `legacy-scan` scans for a curated subset (~20% of the guidance corpus).
-
-```sh
-npx -y modern-web-guidance@latest legacy-scan <path> --json
-```
-
-1. Scan: Run `legacy-scan <path> --json` to detect legacy web platform patterns across the project or directory.
-2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, cross-file helpers, vendor code, lookalikes).
-3. Report: Summarize verified findings (and the modernization plan, if editing) for the user, noting that `legacy-scan` only checks the subset of guides (~20% of the catalog) that have deterministic legacy rules.
-4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement (keeping existing libraries as fallbacks where the guide requires one), and re-run `legacy-scan <path>` on the modified files to confirm resolution.
-   - Dropped findings and kept fallbacks still match static scans; do not edit safe code or inspect `legacy-scan.mjs` to force 0 findings.
 
 ## Using npx / pnpx
 
