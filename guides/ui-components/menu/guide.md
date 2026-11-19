@@ -351,7 +351,7 @@ if (!('focusGroup' in HTMLElement.prototype)) {
 
 ### Fallbacks & browser support for Anchor positioning
 
-{{ BASELINE_STATUS("anchor-positioning") }}
+{{ BASELINE_STATUS("anchor-positioning", "css.properties.position-area") }}
 
 Without CSS Anchor Positioning, a popover falls back to the UA's centered viewport placement. Never ship that for a menu: it detaches the menu from its trigger, and a centered submenu covers its parent. Gate the anchored rules behind `@supports (position-area: block-end)` and position the menu from script when it fails:
 
