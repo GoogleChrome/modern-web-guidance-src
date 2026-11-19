@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Translator
 
-The **Translator API** allows developers to perform client-side text translation using built-in AI models in Chrome and Edge. This approach eliminates the need for cloud-based translation services for ephemeral content, reducing costs and improving privacy by keeping data on the user's device.
+The **Translator API** allows developers to perform client-side text translation using AI models built into the browser. This approach eliminates the need for cloud-based translation services for ephemeral content, reducing costs and improving privacy by keeping data on the user's device.
 
 ## Prerequisites & Requirements
 
@@ -19,20 +19,13 @@ The **Translator API** allows developers to perform client-side text translation
 
 ### Browser Support
 
-- **Chrome:** Version 138+ (Desktop only).
-- **Edge:** Version 148+ (Desktop only).
-- **Not Supported:** Mobile (Android/iOS), Firefox, Safari.
+For current browser support, see [Fallback Strategy](#fallback-strategy).
 
 ### Hardware Requirements
 
-To run Gemini Nano and associated models, the system needs:
+The translation models, the supported platforms, and any hardware requirements are **browser-specific implementation details that may change**. Don't hardcode them or try to detect them yourself. Instead, call `Translator.availability(options)` at runtime, which returns `'unavailable'` when the current device or language pair isn't supported.
 
-- **Operating System:** Windows 10/11, macOS 13+, Linux, or ChromeOS (Chromebook
-  Plus).
-- **Storage:** At least **22 GB** free on the profile volume.
-- **Memory/CPU:** 16 GB+ RAM and 4+ CPU cores.
-- **GPU:** 4 GB+ VRAM (Mandatory for Prompt API with audio).
-- **Network:** Required only for the initial download of language packs/models.
+- **Network:** Typically required only for the initial download of language packs or models.
 
 ## Implementation & Code Samples
 
@@ -118,47 +111,18 @@ for await (const chunk of stream) {
 
 ## Supported Languages
 
-The API supports a wide range of BCP 47 language codes: Here are the languages supported by Chrome's implementation of the Translator API:
+The API accepts BCP 47 language codes for `sourceLanguage` and `targetLanguage`. Which language pairs are supported is **browser-specific and may change** as browsers add or remove language packs. Don't hardcode a list of supported languages. Instead, check each pair at runtime:
 
-- **ar**: Arabic
-- **bg**: Bulgarian
-- **bn**: Bengali
-- **cs**: Czech
-- **da**: Danish
-- **de**: German
-- **el**: Greek
-- **en**: English
-- **es**: Spanish
-- **fi**: Finnish
-- **fr**: French
-- **hi**: Hindi
-- **hr**: Croatian
-- **hu**: Hungarian
-- **id**: Indonesian
-- **it**: Italian
-- **he**: Hebrew
-- **ja**: Japanese
-- **kn**: Kannada
-- **ko**: Korean
-- **lt**: Lithuanian
-- **mr**: Marathi
-- **nl**: Dutch
-- **no**: Norwegian
-- **pl**: Polish
-- **pt**: Portuguese
-- **ro**: Romanian
-- **ru**: Russian
-- **sk**: Slovak
-- **sl**: Slovenian
-- **sv**: Swedish
-- **ta**: Tamil
-- **te**: Telugu
-- **th**: Thai
-- **tr**: Turkish
-- **uk**: Ukrainian
-- **vi**: Vietnamese
-- **zh**: Chinese
-- **zh-Hant**: Chinese (Traditional)
+```javascript
+const availability = await Translator.availability({
+  sourceLanguage: 'en',
+  targetLanguage: 'ja',
+});
+
+if (availability === 'unavailable') {
+  // This language pair isn't supported in this browser. Execute fallback strategy.
+}
+```
 
 ## Accessibility considerations
 
@@ -174,8 +138,8 @@ The API supports a wide range of BCP 47 language codes: Here are the languages s
 
 - **Web Workers:** Currently **not supported** due to Permission Policy
   complexities.
-- **Privacy:** No data is sent to Google servers during the translation process
-  once the model is downloaded.
+- **Privacy:** No data is sent to the browser vendor or third parties during the
+  translation process once the model is downloaded.
 
 ## Fallback Strategy
 
@@ -195,8 +159,8 @@ If the `Translator` API is unsupported or availability checks return `'unavailab
 
 Recommended options:
 
-1. **Remote API Fallback**: Redirect the translation request to a server endpoint or cloud remote API (such as the Vertex AI Gemini API) to deliver translation functionality.
+1. **Remote API Fallback**: Redirect the translation request to a server endpoint or cloud translation API to deliver translation functionality.
 2. **Graceful Degradation**: Visually disable translation control elements or buttons while showing an end-user friendly note (e.g., `"Client-side translation is currently unsupported in this browser"`). Do not allow unhandled exceptions.
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services.
 
-> **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud), though local processing is an option, too. Remote processing completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will often incur server-side API usage costs.
+> **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as a cloud LLM API), though local processing is an option, too. Remote processing completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will often incur server-side API usage costs.

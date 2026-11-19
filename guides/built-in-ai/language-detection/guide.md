@@ -19,10 +19,7 @@ The **Language Detector API** is a client-side web API designed to identify the 
 
 ## Hardware & System Requirements
 
-- **OS:** Windows 10/11, macOS 13+, Linux, or Chromebook Plus.
-- **Storage:** 22 GB free space (model is removed if space drops below 10 GB).
-- **RAM/CPU:** 16 GB RAM and 4+ CPU cores.
-- **VRAM:** 4 GB+ if using a GPU.
+The detection model, the supported platforms, and any hardware requirements are **browser-specific implementation details that may change**. Don't hardcode them or try to detect them yourself. Instead, call `LanguageDetector.availability()` at runtime, which returns `'unavailable'` when the current device isn't supported.
 
 ## Implementation Guide
 
@@ -78,7 +75,7 @@ Avoid using the detector on very short phrases or single words, as accuracy drop
   ```
 
 - **Web Workers:** The API is **not** currently available in Web Workers due to Permission Policy complexities.
-- **Privacy:** No data is sent to Google or third parties during the detection process.
+- **Privacy:** No data is sent to the browser vendor or third parties during the detection process.
 
 ## Fallback Strategy
 
@@ -96,5 +93,5 @@ if ('LanguageDetector' in self) {
 
 If the `LanguageDetector` API is unsupported or availability checks return `'unavailable'`, you must gracefully fall back:
 
-1. **Remote API Fallback**: Redirect the detection request to a server endpoint or a cloud API (such as the Vertex AI Gemini API) to identify the language.
+1. **Remote API Fallback**: Redirect the detection request to a server endpoint or a cloud language detection API to identify the language.
 2. **Graceful Degradation**: Disable language detection elements/buttons and inform the user that client-side detection is currently unsupported in this browser, preventing any unhandled exceptions or crashes.
