@@ -209,8 +209,8 @@ async function main() {
 
     // Expected formats:
     // gs://guidance-evals/nightly-YYYY-MM-DD_HH-MM-SS-agent/
-    // gs://guidance-evals/nightly-YYYY-MM-DD_HH-MM-SS-agent-user/
-    const match = cleanLine.match(/gs:\/\/guidance-evals\/(nightly-([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-(jetski_cli|codex_cli|claude_code|antigravity_cli|agy|claude|codex|jetski)(?:-([a-zA-Z0-9_]+))?)\//);
+    // gs://guidance-evals/nightly-YYYY-MM-DD_HH-MM-SS-agent-suffix/
+    const match = cleanLine.match(/gs:\/\/guidance-evals\/(nightly-([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-(jetski_cli|codex_cli|claude_code|antigravity_cli|agy|claude|codex|jetski)(?:-([a-zA-Z0-9_.-]+))?)\//);
     if (!match) continue;
 
     const [_, folderName, timestampStr, agentStr] = match;

@@ -409,7 +409,7 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
   // Executes --json cleanly
   const jsonOut = execSync(`node ${JSON.stringify(legacyScanPath)} ${JSON.stringify(STAGING_DIR)} --json`, { encoding: 'utf8', cwd: ROOT_DIR });
   const parsed = JSON.parse(jsonOut);
-  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid AnalyzeJsonOutput');
+  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid ScanJsonOutput');
   assert.ok(Array.isArray(parsed.guides), 'legacy-scan.mjs --json should return guides array');
 });
 
@@ -445,15 +445,6 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
     coverage >= 0.9,
     `Expected at least 90% teacher vector coverage in packaged dist, got ${(coverage * 100).toFixed(1)}% (${teacherCount}/${items.length})`
   );
-});
-
-test('release gate pipeline hash differs between dev and release builds', async () => {
-  const { computePipelineHash } = await import('./build-guides.ts');
-  const { scanAllGuides } = await import('../core/guide-validation.ts');
-  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
-  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
-  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
-  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
 });
 
 

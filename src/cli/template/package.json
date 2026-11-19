@@ -30,5 +30,13 @@
   },
   "bin": {
     "modern-web-guidance": "skills/modern-web-guidance/modern-web.mjs"
+  },
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
   }
 }

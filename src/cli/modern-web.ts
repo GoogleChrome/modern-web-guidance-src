@@ -20,8 +20,6 @@ import { getSkillUpdateLevel, isFrozenClaudeMarketplaceVersion } from "./skill-v
 import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent, KNOWN_AGENTS } from "./telemetry/detect-agent.ts";
 
-declare const __MWG_DIST_TAG__: string | undefined;
-
 const MAX_INLINE_STDOUT_BYTES = 9500;
 
 const { values, positionals } = parseArgs({
@@ -95,22 +93,22 @@ async function main() {
 
   if (command === "legacy-scan" || command === "analyze") {
     maybeEmitUpdateMessage(skillVersion);
-    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
-    const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
+    // Dynamic import to keep the CLI loading fast -- only load legacy-scan dependencies if needed.
+    const { runLegacyScanCli, writeLegacyScanCliResult } = await import("../legacy-scan/cli.ts");
     const args = process.argv.slice(2);
     const cmdIdx = args.indexOf(command);
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
     const startTime = Date.now();
-    const result = await runAnalyzeCli(args);
+    const result = await runLegacyScanCli(args);
     if (result.exitCode === 0 && result.data) {
       logToolResult(
-        "analyze",
+        "legacy-scan",
         result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
       );
     }
     const logger = new ClearcutLogger({ skillVersion });
     await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.LEGACY_SCAN);
-    process.exit(writeAnalyzeCliResult(result));
+    process.exit(writeLegacyScanCliResult(result));
   }
 
   if (values.help || positionals.length === 0) {
@@ -238,11 +236,7 @@ async function main() {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
     const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
-    const distTag = typeof __MWG_DIST_TAG__ !== "undefined" ? __MWG_DIST_TAG__ : "latest";
-    const repoSource = distTag === "next"
-      ? "https://github.com/GoogleChrome/modern-web-guidance/tree/next"
-      : "GoogleChrome/modern-web-guidance";
-    const installArgs = `-y skills add ${repoSource} ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
       .concat(extraArgs);
