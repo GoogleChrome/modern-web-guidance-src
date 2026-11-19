@@ -96,7 +96,7 @@ Ensure the draggable element can also be moved or operated using a single pointe
 * Re-ordering a UI in a builder tool: directional buttons for adjusting the position of the content in a page, within a UI builder tool
 * File-management systems: a "move" menu
 
-Provide feedback for screen reader users when the draggable element is succesfully moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
+Provide feedback for screen reader users when the draggable element is successfully moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
 
 ```html
 <div class="visually-hidden" aria-live="polite"></div>
