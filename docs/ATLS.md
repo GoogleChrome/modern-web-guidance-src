@@ -18,13 +18,14 @@ Content ATLs ensure that all guidance within their domain is technically accurat
 
 ATL stewardship spans both **domain verticals** (directory categories) and **guidance horizontals** (cross-cutting feature groups like Motion or WebAuthn).
 
-Official ownership mapping is maintained in **[`.github/atls.json`](../.github/atls.json)**, which routes ATL assignments across three tables (unioning matched category, feature, and group ATLs via `src/ci/atl-triage.ts`):
+Official ownership mapping is maintained in **[`.github/atls.json`](../.github/atls.json)**. When routing pull requests, `src/ci/atl-triage.ts` resolves a **single lead reviewer** per modified guide using a strict precedence waterfall (falling through to the next tier only when no eligible reviewer matches or the reviewer is the PR author):
 
-1. **`web_features`**: Specific feature-level assignments (e.g., `prefers-reduced-motion`, `canvas-html`).
-2. **`web_features_groups`**: Cross-cutting guidance horizontals and feature groups (e.g., `animation`, `transitions`, `view-transitions`, `scrolling`, `webauthn`).
-3. **`default`**: Domain vertical defaults across guidance directories (`css`, `forms`, `performance`, `ui-behaviors`, `ui-components`, `built-in-ai`, `privacy`, `security`, `webmcp`, etc.).
+1. **Primary Guide Author (`git blame`)**: For updates to existing guides, the active [Peer](../GOVERNANCE.md#peers)/ATL/Owner with write access who authored the primary share of `guide.md` (Peers do first-pass review and tag the category ATL for merge sign-off per [`GOVERNANCE.md`](../GOVERNANCE.md); ATLs/Owners may merge directly or tag another reviewer when needed).
+2. **`web_features`**: Specific feature-level assignments in `.github/atls.json` (e.g., `prefers-reduced-motion`, `canvas-html`).
+3. **`web_features_groups`**: Cross-cutting guidance horizontals and feature groups (e.g., `animation`, `transitions`, `view-transitions`, `scrolling`, `webauthn`); broad vertical groups that already exist as a `default` category (e.g., `css`, `security`) do not override another directory's category ATL on guide PRs.
+4. **`default`**: Domain vertical defaults across guidance directories (`css`, `forms`, `performance`, `ui-behaviors`, `ui-components`, `built-in-ai`, `privacy`, `security`, `webmcp`, etc.), picking the candidate with the fewest open review requests when a tier lists multiple leads.
 
-The `.github/workflows/atl-triage.yml` workflow automatically uses [`.github/atls.json`](../.github/atls.json) to assign and request review from the designated Content ATL on issues and pull requests.
+The `.github/workflows/atl-triage.yml` workflow gates external contributor PRs on an approved (`pr-welcome` or author-assigned) issue and a passing `cla/google` check before requesting review.
 
 
 ## Review & Triage Workflows

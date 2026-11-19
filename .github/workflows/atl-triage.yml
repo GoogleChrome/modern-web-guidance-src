@@ -5,13 +5,19 @@ on:
     types: [opened, labeled, assigned, edited]
   # zizmor: ignore[dangerous-triggers] Trusted checkout of main; no PR code executed; queries API via execFileSync
   pull_request_target:
-    types: [opened, synchronize, labeled, ready_for_review]
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
     branches: [main]
+  check_run:
+    types: [completed]
 
 permissions:
   issues: write
   pull-requests: write
   contents: read
+
+concurrency:
+  group: atl-triage-${{ github.event.pull_request.head.sha || github.event.check_run.head_sha || github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   triage:
@@ -19,12 +25,13 @@ jobs:
     if: >-
       github.repository == 'GoogleChrome/modern-web-guidance-src' &&
       (github.event_name != 'issues' || github.event.issue.state != 'closed') &&
-      (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`')) &&
-      (!contains(github.event.pull_request.body, '<!-- no-atl-triage -->') || contains(github.event.pull_request.body, '`<!-- no-atl-triage -->`'))
+      (github.event_name != 'check_run' || (github.event.check_run.name == 'cla/google' && github.event.check_run.conclusion == 'success')) &&
+      (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`'))
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
