@@ -16,6 +16,7 @@ import {
   isDocsOrTestsPath,
   isExcludedCorpusNonAppPath,
   isMinifiedContent,
+  isPackageJsonPath,
   isVendoredOrGeneratedPath,
   shouldScanFile,
 } from './file-filter.ts';
@@ -394,6 +395,15 @@ describe('file-filter vendored and hashed asset exclusions', () => {
   it('rejects files exceeding 1 MB source cap', () => {
     assert.equal(shouldScanFile('src/small.js', 'const x = 1;\n'.repeat(100)), true);
     assert.equal(shouldScanFile('src/bundle.js', 'a'.repeat(1_000_001)), false);
+  });
+
+  it('matches package.json paths while rejecting lookalike filenames', () => {
+    assert.equal(isPackageJsonPath('package.json'), true);
+    assert.equal(isPackageJsonPath('packages/app/package.json'), true);
+    assert.equal(isPackageJsonPath('not-package.json'), false);
+    assert.equal(isPackageJsonPath('foo.package.json'), false);
+    assert.equal(shouldScanFile('not-package.json'), false);
+    assert.equal(shouldScanFile('foo.package.json'), false);
   });
 });
 

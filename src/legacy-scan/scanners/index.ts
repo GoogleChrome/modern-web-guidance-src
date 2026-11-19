@@ -614,6 +614,8 @@ function classifyCandidatePath(
     return 'skip';
   }
 
+  // Dependency-only scans match package.json and path-recognizable vendored files
+  // (isCandidateVendoredFile) rather than reading arbitrary first-party .js/.css files.
   if (shouldScanFile(relPath, undefined, session.filterOpts)) {
     return pathMatchesActiveEngines(relPath, session.activeEngines) ? 'candidate' : 'skip';
   }
