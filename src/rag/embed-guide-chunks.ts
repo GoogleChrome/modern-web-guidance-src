@@ -31,7 +31,14 @@ import {
 import {
   postWithRetry,
   isBatchEmbeddingResponse,
+  isVertexPredictionResponse,
 } from "./gemini-api.ts";
+
+export interface VertexEmbedAuth {
+  projectId: string;
+  location?: string;
+  headers: Record<string, string>;
+}
 
 export interface EmbedChunksOptions {
   check?: boolean;
@@ -41,8 +48,75 @@ export interface EmbedChunksOptions {
   seedCacheDir?: string;
   envPath?: string | null;
   apiKey?: string;
+  vertexAuth?: (() => Promise<VertexEmbedAuth | null>) | null;
   scanChunks?: typeof scanCorpusChunks;
-  postBatch?: (url: string, body: unknown) => Promise<unknown>;
+  postBatch?: (url: string, body: unknown, headers?: Record<string, string>) => Promise<unknown>;
+}
+
+function readDotenv(options: EmbedChunksOptions): Record<string, string | undefined> | null {
+  if (options.envPath === null) return null;
+  const envFile = options.envPath ?? path.join(rootDir, ".env");
+  try {
+    const raw = fs.readFileSync(envFile, "utf8");
+    return parseEnv(raw);
+  } catch (err) {
+    if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
+      throw err;
+    }
+    return null;
+  }
+}
+
+function createDefaultVertexAuthProvider(options: EmbedChunksOptions): () => Promise<VertexEmbedAuth | null> {
+  let storagePromise: Promise<import("@google-cloud/storage").Storage> | null = null;
+  return async () => {
+    try {
+      if (!storagePromise) {
+        storagePromise = import("@google-cloud/storage").then(({ Storage }) => new Storage());
+      }
+      const storage = await storagePromise;
+      const rawHeaders = await storage.authClient.getRequestHeaders();
+      const headers: Record<string, string> = {};
+      if (rawHeaders instanceof Headers) {
+        rawHeaders.forEach((v, k) => {
+          headers[k] = v;
+        });
+      } else if (rawHeaders && typeof rawHeaders === "object") {
+        for (const [k, v] of Object.entries(rawHeaders as Record<string, unknown>)) {
+          if (typeof v === "string") headers[k] = v;
+        }
+      }
+      if (!headers.Authorization && !headers.authorization) {
+        return null;
+      }
+      const dotenv = readDotenv(options);
+      const envProject =
+        process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
+        process.env.GCLOUD_PROJECT?.trim() ||
+        process.env.ANTIGRAVITY_GCP_PROJECT?.trim() ||
+        process.env.ANTHROPIC_VERTEX_PROJECT_ID?.trim() ||
+        dotenv?.GOOGLE_CLOUD_PROJECT?.trim() ||
+        dotenv?.GCLOUD_PROJECT?.trim() ||
+        dotenv?.ANTIGRAVITY_GCP_PROJECT?.trim() ||
+        dotenv?.ANTHROPIC_VERTEX_PROJECT_ID?.trim();
+      const projectId =
+        envProject || (await storage.authClient.getProjectId().catch(() => ""))?.trim();
+      if (!projectId) {
+        return null;
+      }
+      const location =
+        process.env.VERTEX_EMBED_LOCATION?.trim() ||
+        dotenv?.VERTEX_EMBED_LOCATION?.trim() ||
+        "us-central1";
+      if (envProject) {
+        if ("x-goog-user-project" in headers) headers["x-goog-user-project"] = projectId;
+        if ("X-Goog-User-Project" in headers) headers["X-Goog-User-Project"] = projectId;
+      }
+      return { projectId, location, headers };
+    } catch {
+      return null;
+    }
+  };
 }
 
 function resolveGeminiApiKey(options: EmbedChunksOptions): string | undefined {
@@ -52,18 +126,7 @@ function resolveGeminiApiKey(options: EmbedChunksOptions): string | undefined {
   if (process.env.GEMINI_API_KEY !== undefined) {
     return process.env.GEMINI_API_KEY.trim();
   }
-  if (options.envPath !== null) {
-    const envFile = options.envPath ?? path.join(rootDir, ".env");
-    try {
-      const raw = fs.readFileSync(envFile, "utf8");
-      return parseEnv(raw).GEMINI_API_KEY?.trim();
-    } catch (err) {
-      if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
-        throw err;
-      }
-    }
-  }
-  return undefined;
+  return readDotenv(options)?.GEMINI_API_KEY?.trim();
 }
 
 export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promise<{
@@ -107,44 +170,92 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
   let newEmbeds = 0;
   if (missingChunks.length > 0) {
     const apiKey = resolveGeminiApiKey(options);
+    let vertexAuthProvider: (() => Promise<VertexEmbedAuth | null>) | null = null;
+    let initialVertexAuth: VertexEmbedAuth | null = null;
+
     if (!apiKey) {
+      const allowDefaultVertex =
+        options.vertexAuth !== null && !(options.apiKey === "" && options.vertexAuth === undefined);
+      if (allowDefaultVertex) {
+        vertexAuthProvider = options.vertexAuth ?? createDefaultVertexAuthProvider(options);
+        initialVertexAuth = await vertexAuthProvider();
+      }
+    }
+
+    if (!apiKey && !initialVertexAuth) {
       const missingGuides = [...new Set(missingChunks.map((c) => c.guideId))];
       throw new Error(
-        `GEMINI_API_KEY is required to embed ${missingChunks.length} missing chunk(s) across ${missingGuides.length} guide(s) (${missingGuides.join(", ")}). Set GEMINI_API_KEY in .env or your environment, or run 'node src/rag/embed-guide-chunks.ts' with GEMINI_API_KEY set.`
+        `GEMINI_API_KEY is required to embed ${missingChunks.length} missing chunk(s) across ${missingGuides.length} guide(s) (${missingGuides.join(", ")}). Set GEMINI_API_KEY in .env or your environment (or configure Vertex AI ADC), or run 'node src/rag/embed-guide-chunks.ts' with GEMINI_API_KEY set.`
       );
     }
 
     const postBatch = options.postBatch ?? postWithRetry;
+    const useVertex = !apiKey && Boolean(initialVertexAuth);
     console.log(
-      `Embedding ${missingChunks.length} missing chunks using ${TEACHER_MODEL} (${TASK_TYPE}, ${TEACHER_DIM}-d -> ${STATIC_DIMS}-d)...`
+      `Embedding ${missingChunks.length} missing chunks using ${TEACHER_MODEL}${useVertex ? " via Vertex AI" : ""} (${TASK_TYPE}, ${TEACHER_DIM}-d -> ${STATIC_DIMS}-d)...`
     );
 
-    const BATCH_SIZE = 100;
+    const batchSize = useVertex ? 8 : 100;
     const batches: GuideChunk[][] = [];
-    for (let i = 0; i < missingChunks.length; i += BATCH_SIZE) {
-      batches.push(missingChunks.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < missingChunks.length; i += batchSize) {
+      batches.push(missingChunks.slice(i, i + batchSize));
     }
 
     for (let bIdx = 0; bIdx < batches.length; bIdx++) {
       const batch = batches[bIdx];
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${TEACHER_MODEL}:batchEmbedContents?key=${apiKey}`;
-      const body = {
-        requests: batch.map((c) => ({
-          model: `models/${TEACHER_MODEL}`,
-          content: { parts: [{ text: c.embeddedText.slice(0, 8000) }] },
-          taskType: TASK_TYPE,
-          outputDimensionality: TEACHER_DIM,
-        })),
-      };
+      let rawVectors: number[][];
 
-      const res = await postBatch(url, body);
-      if (!isBatchEmbeddingResponse(res)) {
-        throw new Error(`Invalid batchEmbedContents response shape from ${TEACHER_MODEL}`);
+      if (!useVertex) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${TEACHER_MODEL}:batchEmbedContents?key=${apiKey}`;
+        const body = {
+          requests: batch.map((c) => ({
+            model: `models/${TEACHER_MODEL}`,
+            content: { parts: [{ text: c.embeddedText.slice(0, 8000) }] },
+            taskType: TASK_TYPE,
+            outputDimensionality: TEACHER_DIM,
+          })),
+        };
+
+        const res = await postBatch(url, body);
+        if (!isBatchEmbeddingResponse(res) || res.embeddings.length !== batch.length) {
+          throw new Error(`Invalid batchEmbedContents response shape from ${TEACHER_MODEL}`);
+        }
+        rawVectors = res.embeddings.map((e) => e.values);
+      } else {
+        const vAuth = bIdx === 0 ? initialVertexAuth! : await vertexAuthProvider!();
+        if (!vAuth) {
+          throw new Error(`Failed to refresh Vertex AI credentials while embedding ${TEACHER_MODEL}`);
+        }
+        const location = vAuth.location || "us-central1";
+        const host = location === "global" ? "aiplatform.googleapis.com" : `${location}-aiplatform.googleapis.com`;
+        const url = `https://${host}/v1/projects/${vAuth.projectId}/locations/${location}/publishers/google/models/${TEACHER_MODEL}:predict`;
+
+        // gemini-embedding-001 on Vertex AI restricts :predict to 1 instance per request.
+        rawVectors = await Promise.all(
+          batch.map(async (c) => {
+            const body = {
+              instances: [
+                {
+                  content: c.embeddedText.slice(0, 8000),
+                  task_type: TASK_TYPE,
+                },
+              ],
+              parameters: {
+                outputDimensionality: TEACHER_DIM,
+              },
+            };
+            const res = await postBatch(url, body, vAuth.headers);
+            if (!isVertexPredictionResponse(res) || res.predictions.length !== 1) {
+              throw new Error(`Invalid Vertex predict response shape from ${TEACHER_MODEL}`);
+            }
+            return res.predictions[0].embeddings.values;
+          }),
+        );
       }
 
-      res.embeddings.forEach((e, i) => {
+      rawVectors.forEach((values, i) => {
         const chunk = batch[i];
-        const v256 = truncateAndNormalize256(e.values);
+        const v256 = truncateAndNormalize256(values);
         workingCache.set(chunk.hash, v256);
         newEmbeds++;
       });
