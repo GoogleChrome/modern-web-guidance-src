@@ -16,7 +16,7 @@
 npx modern-web-guidance@latest install
 ```
 
-This command runs an interactive wizard to install Modern Web Guidance. See [Alternative Installation Methods](#-alternative-installation-methods) below.
+This command runs an interactive wizard to install Modern Web Guidance. See [Alternative Installation Methods](#-alternative-installation-methods) below. Requires Node.js 22 or later.
 
 #### Try it out (without installing)
 
