@@ -178,10 +178,10 @@ describe('modern-web CLI', () => {
     assert.ok(res2.stdout.includes('Usage: modern-web-guidance legacy-scan'));
   });
 
-  it('forwards --help and --skill-version cleanly for verify, context-guides, and install-hooks', () => {
+  it('forwards --help and --skill-version cleanly for verify', () => {
     const helpVerify = runCLI(['--help', 'verify']);
     assert.strictEqual(helpVerify.status, 0);
-    assert.ok(helpVerify.stdout.includes('modern-web-guidance verify [workspace] [options]'));
+    assert.ok(helpVerify.stdout.includes('Usage: modern-web-guidance verify <url> [options]'));
 
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-verify-cli-test-'));
     try {
@@ -189,19 +189,14 @@ describe('modern-web CLI', () => {
         '--skill-version',
         '2026_01_01-test',
         'verify',
+        '--dir',
         tempDir,
-        '--static-only',
         '--json',
       ]);
       assert.strictEqual(verifyRes.status, 0);
       const parsed = JSON.parse(verifyRes.stdout);
       assert.strictEqual(parsed.passed, true);
-      assert.strictEqual(parsed.staticOnly, true);
-
-      const ctxRes = runCLI(['context-guides', tempDir, '--json', '--skill-version', '2026_01_01-test']);
-      assert.strictEqual(ctxRes.status, 0);
-      const ctxParsed = JSON.parse(ctxRes.stdout);
-      assert.ok(Array.isArray(ctxParsed.guideIds));
+      assert.strictEqual(parsed.targetDir, tempDir);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

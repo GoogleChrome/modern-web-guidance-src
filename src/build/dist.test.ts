@@ -394,25 +394,28 @@ test('no build-machine rootDir path leak in bundled dist binaries', async () => 
   assert.strictEqual(verifyMjs.includes(ROOT_DIR), false, 'verify.mjs should not contain build-machine rootDir');
 });
 
-test('bundled verify.mjs externalizes sibling bundles and executes verify & context-guides cleanly', async () => {
+test('bundled verify.mjs prebundles browser-audit, externalizes legacy-scan.mjs, and executes cleanly', async () => {
   const modernWebPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
   const verifyPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/verify.mjs');
   const stat = await fs.stat(verifyPath);
 
   assert.ok(
-    stat.size < 250 * 1024,
-    `verify.mjs should stay compact (<250 KB) by externalizing legacy-scan.mjs & search.mjs, was ${(stat.size / 1024).toFixed(1)} KB`,
+    stat.size < 100 * 1024,
+    `verify.mjs should stay compact (<100 KB) by externalizing legacy-scan.mjs, was ${(stat.size / 1024).toFixed(1)} KB`,
   );
+
+  const verifyContent = await fs.readFile(verifyPath, 'utf8');
+  assert.strictEqual(verifyContent.includes('import("esbuild")'), false, 'verify.mjs must not import esbuild at runtime');
 
   const helpOut = execSync(`node ${JSON.stringify(modernWebPath)} --help verify`, {
     encoding: 'utf8',
     cwd: ROOT_DIR,
     env: { ...process.env, DISABLE_TELEMETRY: '1' },
   });
-  assert.ok(helpOut.includes('modern-web-guidance verify [workspace] [options]'));
+  assert.ok(helpOut.includes('Usage: modern-web-guidance verify <url> [options]'));
 
   const verifyJsonOut = execSync(
-    `node ${JSON.stringify(modernWebPath)} verify ${JSON.stringify(STAGING_DIR)} --static-only --json`,
+    `node ${JSON.stringify(modernWebPath)} verify --dir ${JSON.stringify(STAGING_DIR)} --json`,
     {
       encoding: 'utf8',
       cwd: ROOT_DIR,
@@ -421,19 +424,7 @@ test('bundled verify.mjs externalizes sibling bundles and executes verify & cont
   );
   const parsedVerify = JSON.parse(verifyJsonOut);
   assert.strictEqual(typeof parsedVerify.passed, 'boolean');
-  assert.strictEqual(parsedVerify.staticOnly, true);
-  assert.strictEqual(parsedVerify.passes?.static?.legacyScanAvailable, true);
-
-  const ctxJsonOut = execSync(
-    `node ${JSON.stringify(modernWebPath)} context-guides ${JSON.stringify(STAGING_DIR)} --json`,
-    {
-      encoding: 'utf8',
-      cwd: ROOT_DIR,
-      env: { ...process.env, DISABLE_TELEMETRY: '1' },
-    },
-  );
-  const parsedCtx = JSON.parse(ctxJsonOut);
-  assert.ok(Array.isArray(parsedCtx.guideIds));
+  assert.strictEqual(parsedVerify.targetDir, STAGING_DIR);
 });
 
 test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .d.ts library payload', async () => {

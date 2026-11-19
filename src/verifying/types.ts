@@ -14,204 +14,99 @@
  * limitations under the License.
  */
 
-export type ActivePackName = 'commerce' | 'media' | 'saas';
-export type PackSource = 'explicit' | 'package.json' | 'auto' | 'none';
-export type DiscoverySource = 'explicit' | 'git-diff' | 'workspace' | 'none';
+export type FindingCategory = 'RUNTIME' | 'A11Y' | 'LAYOUT' | 'MODERNITY' | 'PERF' | 'SMOKE';
 
-export type FrameworkId =
-  | 'nextjs'
-  | 'nuxt'
-  | 'solidjs'
-  | 'astro'
-  | 'angular'
-  | 'svelte'
-  | 'vue'
-  | 'react'
-  | 'vanilla';
+export type FindingSeverity = 'error' | 'warning' | 'info';
 
-export type FindingCategory =
-  | 'RUNTIME'
-  | 'A11Y'
-  | 'SMOKE'
-  | 'PACK:COMMERCE'
-  | 'PACK:MEDIA'
-  | 'PACK:SAAS'
-  | 'PERF'
-  | 'MODERNITY';
-
-export type FindingSeverity = 'error' | 'warning';
+export interface ResolvedSourceLocation {
+  framework: string;
+  component: string;
+  file: string | null;
+  line: number | null;
+  column: number | null;
+}
 
 export interface VerificationFinding {
+  id: string;
+  fingerprint: string;
   category: FindingCategory;
   severity: FindingSeverity;
-  route?: string;
+  url?: string;
+  selector?: string | null;
   file?: string | null;
   line?: number | null;
-  ruleId?: string;
+  column?: number | null;
+  framework?: string | null;
   message: string;
-  guides: string[];
   fix: string;
+  guides: string[];
 }
 
-export interface ProjectConfig {
-  workspaceDir: string;
-  framework: FrameworkId;
-  frameworkName: string;
-  pack: ActivePackName | null;
-  packSource: PackSource;
-  packageManager: 'pnpm' | 'yarn' | 'bun' | 'npm';
-  devCmd: string | null;
-  port: number;
-  scripts: Record<string, string | undefined>;
-  dependencies: string[];
+export interface BrowserAuditFinding {
+  id: string;
+  category: FindingCategory;
+  severity: FindingSeverity;
+  selector: string;
+  file: string | null;
+  line: number | null;
+  column: number | null;
+  framework: string | null;
+  message: string;
+  fix: string;
+  guides: string[];
 }
 
-export interface FileRecord {
-  relPath: string;
-  raw: string;
-  stripped: string;
+export interface InteractiveCandidate {
+  smokeIdx: number;
+  selector: string;
+  label: string;
+  file: string | null;
+  line: number | null;
+  column: number | null;
+  framework: string | null;
 }
 
-export interface NodeHint {
-  tag?: string;
-  id?: string | null;
-  testId?: string | null;
-  className?: string | null;
-  text?: string;
-  html?: string;
-  selector?: string;
-  debugFile?: string | null;
-  debugLine?: number | null;
-  ownerComponent?: string | null;
-  hasFrameworkClick?: boolean;
-}
-
-export interface PerfRouteMetrics {
-  route: string;
+export interface PageAuditResult {
+  finalUrl: string;
+  findings: BrowserAuditFinding[];
+  interactiveCandidates: InteractiveCandidate[];
+  openModalCount: number;
   cls: number;
-  lcpMs: number;
-  loafCount: number;
-  maxLoafMs: number;
-  interactionLoafMs: number;
-  domNodes: number;
-  detachedDomNodes: number;
-  jsHeapUsedMb: number;
-  jsHeapTotalMb: number;
-  globalWindowListeners: number;
-  globalDocumentListeners: number;
-  maxListenerTypeCount: number;
-}
-
-export interface PerfSummary {
-  maxCls: number;
-  maxLcpMs: number;
-  maxLoafMs: number;
-  maxInteractionLoafMs: number;
-  maxDomNodes: number;
-  maxDetachedDomNodes: number;
-  maxJsHeapUsedMb: number;
-  maxGlobalListeners: number;
-  routes: PerfRouteMetrics[];
-}
-
-export interface StaticPassSummary {
-  durationMs: number;
-  scannedFilesCount: number;
-  legacyScanAvailable: boolean;
-  matchedGuides: string[];
-}
-
-export interface BrowserPassSummary {
-  durationMs: number;
-  axeInjected: boolean;
-  wcagRulesEvaluatedCount: number;
-  packMetrics: Array<Record<string, unknown>>;
-}
-
-export interface VerificationReport {
-  passed: boolean;
-  staticOnly: boolean;
-  durationMs: number;
-  workspaceDir: string;
-  framework: FrameworkId;
-  frameworkName: string;
-  pack: ActivePackName | null;
-  packSource: PackSource;
-  discoverySource: DiscoverySource;
-  touchedFiles: string[];
-  routes: string[];
-  errorCount: number;
-  warningCount: number;
-  infraWarning: string | null;
-  infraFailed: boolean;
-  passes: {
-    static: StaticPassSummary | null;
-    browser: BrowserPassSummary | null;
-    perf: PerfSummary | null;
-  };
-  findings: VerificationFinding[];
-  formatted: string;
+  lcpMs: number | null;
 }
 
 export interface VerifyOptions {
-  workspaceDir?: string;
   url?: string;
-  port?: number;
-  routes?: string[];
-  maxRoutes?: number;
-  pack?: string;
-  perf?: boolean;
-  devCmd?: string;
-  boot?: boolean;
-  forceBoot?: boolean;
-  startupTimeoutMs?: number;
-  chromePath?: string;
-  launchTimeoutMs?: number;
+  targetDir?: string;
+  mobile?: boolean;
+  cpuThrottle?: number;
+  baselinePath?: string;
   smokeProbe?: boolean;
-  staticOnly?: boolean;
-  allFiles?: boolean;
-  strict?: boolean;
-  requireBrowser?: boolean;
-  allowMissingBrowser?: boolean;
-  maxFindings?: number;
+  timeoutMs?: number;
+  chromePath?: string;
 }
 
-export interface MaintainabilityHint {
-  file: string;
-  lineCount: number;
-  ruleId: string;
-  reason: string;
-  guides: string[];
-}
-
-export interface ContextGuideItem {
-  id: string;
-  score: number;
-  reasons: string[];
-  content?: string;
-  source?: 'local-corpus';
-}
-
-export interface ContextGuidesResult {
+export interface VerifyReport {
+  passed: boolean;
+  url: string | null;
+  targetDir: string | null;
+  viewport: { width: number; height: number; mobile: boolean } | null;
+  cpuThrottle: number | null;
   durationMs: number;
-  workspaceDir: string;
-  framework: FrameworkId;
-  frameworkName: string;
-  pack: ActivePackName | null;
-  touchedFiles: string[];
-  routes: string[];
-  guideIds: string[];
-  retrieveCommand: string | null;
-  guides: ContextGuideItem[];
-  maintainabilityHints: MaintainabilityHint[];
+  findingsCount: number;
+  suppressedCount: number;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+  cls: number | null;
+  lcpMs: number | null;
+  guides: string[];
+  findings: VerificationFinding[];
 }
 
-export interface ContextGuidesOptions {
-  workspaceDir?: string;
-  files?: string[];
-  pack?: string;
-  limit?: number;
-  includeContent?: boolean;
-  allFiles?: boolean;
-  mwgGuidesDir?: string;
+export interface VerifyingCliResult {
+  exitCode: number;
+  stdout?: string;
+  stderr?: string;
+  data?: VerifyReport;
 }

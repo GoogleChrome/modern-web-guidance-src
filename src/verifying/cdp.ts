@@ -30,16 +30,22 @@ export interface PageSession {
   on(method: string, handler: CdpEventHandler): () => boolean;
 }
 
+export interface PageSessionOptions {
+  mobile?: boolean;
+  cpuThrottle?: number;
+}
+
 export interface LaunchBrowserOptions {
   executablePath?: string;
-  useSystemProxy?: boolean;
   launchTimeoutMs?: number;
 }
 
 export interface HeadlessBrowser {
   executablePath: string;
-  wsUrl: string;
-  withPageSession<T>(fn: (session: PageSession) => Promise<T>): Promise<T>;
+  withPageSession<T>(
+    options: PageSessionOptions,
+    fn: (session: PageSession) => Promise<T>,
+  ): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -48,12 +54,6 @@ interface PendingCommand {
   reject: (reason: Error) => void;
   timer: ReturnType<typeof setTimeout>;
   method: string;
-}
-
-interface CdpTargetInfo {
-  id?: string;
-  type?: string;
-  webSocketDebuggerUrl?: string;
 }
 
 function findPlaywrightHeadlessShell(cacheRoot: string | undefined): string | null {
@@ -93,21 +93,19 @@ export function findPlaywrightChromiumExecutable(): string | null {
 }
 
 export function findChromiumExecutable(): string | null {
-  if (process.env.MODERN_WEB_CHROME_PATH && existsSync(process.env.MODERN_WEB_CHROME_PATH)) {
-    return process.env.MODERN_WEB_CHROME_PATH;
+  for (const envVar of [process.env.MODERN_WEB_CHROME_PATH, process.env.CHROME_BIN]) {
+    if (envVar && existsSync(envVar)) return envVar;
   }
-
   const pwHit = findPlaywrightChromiumExecutable();
   if (pwHit) return pwHit;
 
-  const systemCandidates = [
+  for (const bin of [
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  ];
-  for (const bin of systemCandidates) {
+  ]) {
     if (existsSync(bin)) return bin;
   }
   return null;
@@ -124,7 +122,7 @@ export class CdpConnection {
     this.wsUrl = wsUrl;
   }
 
-  async connect(timeoutMs = 4000): Promise<void> {
+  async connect(timeoutMs = 5000): Promise<void> {
     const ws = new WebSocket(this.wsUrl);
     this.ws = ws;
     await new Promise<void>((resolve, reject) => {
@@ -156,14 +154,12 @@ export class CdpConnection {
       let msg: {
         id?: number;
         method?: string;
-        sessionId?: string;
         params?: Record<string, unknown>;
         result?: unknown;
         error?: { message?: string };
       };
       try {
-        const raw = typeof event.data === 'string' ? event.data : String(event.data);
-        msg = JSON.parse(raw) as typeof msg;
+        msg = JSON.parse(typeof event.data === 'string' ? event.data : String(event.data)) as typeof msg;
       } catch {
         return;
       }
@@ -173,17 +169,14 @@ export class CdpConnection {
         this.pending.delete(msg.id);
         clearTimeout(entry.timer);
         if (msg.error) {
-          entry.reject(
-            new Error(`CDP ${entry.method}: ${msg.error.message || JSON.stringify(msg.error)}`),
-          );
+          entry.reject(new Error(`CDP ${entry.method}: ${msg.error.message || JSON.stringify(msg.error)}`));
         } else {
           entry.resolve(msg.result);
         }
         return;
       }
       if (msg.method) {
-        const key = msg.sessionId ? `${msg.sessionId}:${msg.method}` : `*:${msg.method}`;
-        const handlers = this.listeners.get(key);
+        const handlers = this.listeners.get(msg.method);
         if (handlers) {
           for (const fn of Array.from(handlers)) fn(msg.params ?? {});
         }
@@ -202,7 +195,6 @@ export class CdpConnection {
   send<T = Record<string, unknown>>(
     method: string,
     params: Record<string, unknown> = {},
-    sessionId: string | null = null,
     timeoutMs = 8000,
   ): Promise<T> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -210,42 +202,34 @@ export class CdpConnection {
     }
     const ws = this.ws;
     const id = this.nextId++;
-    const payload = sessionId ? { id, method, params, sessionId } : { id, method, params };
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`CDP command timed out after ${timeoutMs}ms: ${method}`));
       }, timeoutMs);
-      this.pending.set(id, {
-        resolve: (val) => resolve(val as T),
-        reject,
-        timer,
-        method,
-      });
-      ws.send(JSON.stringify(payload));
+      this.pending.set(id, { resolve: (val) => resolve(val as T), reject, timer, method });
+      ws.send(JSON.stringify({ id, method, params }));
     });
   }
 
-  on(method: string, handler: CdpEventHandler, sessionId: string | null = null): () => boolean {
-    const normKey = sessionId ? `${sessionId}:${method}` : `*:${method}`;
-    let set = this.listeners.get(normKey);
+  on(method: string, handler: CdpEventHandler): () => boolean {
+    let set = this.listeners.get(method);
     if (!set) {
       set = new Set();
-      this.listeners.set(normKey, set);
+      this.listeners.set(method, set);
     }
     set.add(handler);
     return () => set.delete(handler);
   }
 
   close(): void {
-    if (this.ws) {
-      try {
-        this.ws.close();
-      } catch {
-        // Ignore close errors
-      }
-      this.ws = null;
+    if (!this.ws) return;
+    try {
+      this.ws.close();
+    } catch {
+      // Ignore close errors.
     }
+    this.ws = null;
   }
 }
 
@@ -255,7 +239,7 @@ export async function launchHeadlessBrowser(
   const executablePath = options.executablePath || findChromiumExecutable();
   if (!executablePath) {
     throw new Error(
-      'No Chromium/Chrome executable found. Set MODERN_WEB_CHROME_PATH or install Playwright Chromium.',
+      'No Chromium/Chrome executable found. Set MODERN_WEB_CHROME_PATH (or CHROME_BIN) or install Playwright Chromium.',
     );
   }
 
@@ -269,15 +253,13 @@ export async function launchHeadlessBrowser(
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-gpu',
-    '--disable-software-rasterizer',
-    '--disable-features=VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks',
     '--disable-dev-shm-usage',
     '--disable-background-networking',
     '--disable-extensions',
     '--disable-sync',
     '--no-first-run',
     '--mute-audio',
-    ...(options.useSystemProxy ? ['--proxy-bypass-list=<-loopback>'] : ['--no-proxy-server']),
+    '--no-proxy-server',
     '--window-size=1280,800',
     ...(userDataDir ? [`--user-data-dir=${userDataDir}`] : []),
     'about:blank',
@@ -288,7 +270,7 @@ export async function launchHeadlessBrowser(
     stdio: ['ignore', 'ignore', 'pipe'],
   });
 
-  const signalBrowserProc = (sig: NodeJS.Signals): void => {
+  const signalProc = (sig: NodeJS.Signals): void => {
     if (!proc.pid) return;
     try {
       process.kill(-proc.pid, sig);
@@ -296,7 +278,7 @@ export async function launchHeadlessBrowser(
       try {
         proc.kill(sig);
       } catch {
-        // Already exited
+        // Already exited.
       }
     }
   };
@@ -308,19 +290,17 @@ export async function launchHeadlessBrowser(
     try {
       proc.stderr?.destroy();
     } catch {
-      // Ignore
+      // Ignore destroy errors.
     }
     if (proc.exitCode === null) {
       await new Promise<void>((resolve) => {
         proc.once('exit', () => resolve());
-        signalBrowserProc('SIGTERM');
+        signalProc('SIGTERM');
         const killTimer = setTimeout(() => {
-          signalBrowserProc('SIGKILL');
+          signalProc('SIGKILL');
           resolve();
         }, 300);
-        if (typeof killTimer === 'object' && 'unref' in killTimer) {
-          killTimer.unref();
-        }
+        if (typeof killTimer === 'object' && 'unref' in killTimer) killTimer.unref();
       });
     }
     proc.unref();
@@ -328,7 +308,7 @@ export async function launchHeadlessBrowser(
       try {
         rmSync(userDataDir, { recursive: true, force: true });
       } catch {
-        // Ignore cleanup race
+        // Ignore cleanup races.
       }
     }
   };
@@ -337,14 +317,10 @@ export async function launchHeadlessBrowser(
   try {
     wsUrl = await new Promise<string>((resolve, reject) => {
       let stderrText = '';
-      const timer = setTimeout(() => {
-        reject(
-          new Error(
-            `Timed out launching headless Chromium (${executablePath}): ${stderrText.slice(-400)}`,
-          ),
-        );
-      }, options.launchTimeoutMs ?? 5000);
-
+      const timer = setTimeout(
+        () => reject(new Error(`Timed out launching Chromium (${executablePath}): ${stderrText.slice(-300)}`)),
+        options.launchTimeoutMs ?? 8000,
+      );
       const onData = (chunk: Buffer): void => {
         stderrText += chunk.toString('utf8');
         const match = stderrText.match(/DevTools listening on (ws:\/\/[^\s]+)/);
@@ -361,7 +337,7 @@ export async function launchHeadlessBrowser(
       });
       proc.once('exit', (code) => {
         clearTimeout(timer);
-        reject(new Error(`Chromium exited prematurely (code ${code}): ${stderrText.slice(-400)}`));
+        reject(new Error(`Chromium exited prematurely (code ${code}): ${stderrText.slice(-300)}`));
       });
     });
   } catch (err) {
@@ -369,61 +345,67 @@ export async function launchHeadlessBrowser(
     throw err;
   }
 
-  // Drain any further stderr so pipe buffer never blocks while keeping process ref'd until close()
   proc.stderr?.resume();
-
   const httpBase = wsUrl.replace(/^ws:/, 'http:').replace(/\/devtools\/browser\/.*$/, '');
   let warmTabClaimed = false;
 
-  const withPageSession = async <T>(fn: (session: PageSession) => Promise<T>): Promise<T> => {
-    let targetInfo: CdpTargetInfo | null = null;
+  const withPageSession = async <T>(
+    sessionOpts: PageSessionOptions,
+    fn: (session: PageSession) => Promise<T>,
+  ): Promise<T> => {
+    let target: { id?: string; type?: string; webSocketDebuggerUrl?: string } | null = null;
     let createdNewTab = false;
+
     if (!warmTabClaimed) {
       warmTabClaimed = true;
       const list = (await fetch(`${httpBase}/json/list`).then((r) => r.json())) as unknown;
       if (Array.isArray(list)) {
-        targetInfo =
-          (list as CdpTargetInfo[]).find(
+        target =
+          (list as Array<{ id?: string; type?: string; webSocketDebuggerUrl?: string }>).find(
             (t) => t.type === 'page' && Boolean(t.webSocketDebuggerUrl),
           ) ?? null;
       }
     }
-    if (!targetInfo?.webSocketDebuggerUrl) {
-      targetInfo = (await fetch(`${httpBase}/json/new?about:blank`, { method: 'PUT' }).then((r) =>
+    if (!target?.webSocketDebuggerUrl) {
+      target = (await fetch(`${httpBase}/json/new?about:blank`, { method: 'PUT' }).then((r) =>
         r.json(),
-      )) as CdpTargetInfo;
+      )) as { id?: string; webSocketDebuggerUrl?: string };
       createdNewTab = true;
     }
-
-    if (!targetInfo.webSocketDebuggerUrl) {
-      throw new Error('Failed to acquire CDP page WebSocket debugger URL.');
+    if (!target?.webSocketDebuggerUrl) {
+      throw new Error('Failed to acquire CDP page target WebSocket URL.');
     }
 
-    const pageCdp = new CdpConnection(targetInfo.webSocketDebuggerUrl);
+    const pageCdp = new CdpConnection(target.webSocketDebuggerUrl);
     await pageCdp.connect();
     const session: PageSession = {
-      send: <R = Record<string, unknown>>(
-        method: string,
-        params: Record<string, unknown> = {},
-        timeoutMs = 8000,
-      ) => pageCdp.send<R>(method, params, null, timeoutMs),
-      on: (method: string, handler: CdpEventHandler) => pageCdp.on(method, handler, null),
+      send: <R = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}, timeoutMs = 8000) =>
+        pageCdp.send<R>(method, params, timeoutMs),
+      on: (method: string, handler: CdpEventHandler) => pageCdp.on(method, handler),
     };
+
     try {
+      const mobile = Boolean(sessionOpts.mobile);
       await session.send('Emulation.setDeviceMetricsOverride', {
-        width: 1280,
-        height: 800,
-        deviceScaleFactor: 1,
-        mobile: false,
+        width: mobile ? 390 : 1280,
+        height: mobile ? 844 : 800,
+        deviceScaleFactor: mobile ? 3 : 1,
+        mobile,
       });
+      if (mobile) {
+        await session.send('Emulation.setTouchEmulationEnabled', { enabled: true }).catch(() => {});
+      }
+      if (sessionOpts.cpuThrottle && sessionOpts.cpuThrottle > 1) {
+        await session.send('Emulation.setCPUThrottlingRate', { rate: sessionOpts.cpuThrottle });
+      }
       return await fn(session);
     } finally {
       pageCdp.close();
-      if (createdNewTab && targetInfo.id) {
-        await fetch(`${httpBase}/json/close/${targetInfo.id}`).catch(() => {});
+      if (createdNewTab && target.id) {
+        await fetch(`${httpBase}/json/close/${target.id}`).catch(() => {});
       }
     }
   };
 
-  return { executablePath, wsUrl, withPageSession, close };
+  return { executablePath, withPageSession, close };
 }

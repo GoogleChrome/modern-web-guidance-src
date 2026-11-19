@@ -14,364 +14,202 @@
  * limitations under the License.
  */
 
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { formatContextGuidesReport, resolveContextGuides } from './context-guides.ts';
-import { installPluginConfigs } from './critic-agent.ts';
-import { runStopHook } from './stop-hook.ts';
-import { runVerification } from './verify.ts';
+import type { VerificationFinding, VerifyReport, VerifyingCliResult } from './types.ts';
+import { runVerify } from './verify.ts';
 
-export { installPluginConfigs, runStopHook, resolveContextGuides, runVerification };
+export const VERIFY_USAGE = `Usage: modern-web-guidance verify <url> [options]
+       modern-web-guidance verify --dir <path> [options]
 
-const SELF_SCRIPT_PATH = fileURLToPath(import.meta.url);
+Verify a live rendered web page (and/or local source directory) against
+Modern Web Guidance runtime, layout, accessibility, and CWV checks.
 
-export const VERIFY_CLI_HELP = `
-Usage:
-  modern-web-guidance verify [workspace] [options]
-  modern-web-guidance context-guides [workspace] [options]
-  modern-web-guidance install-hooks [--target antigravity|claude|cursor|all] [--dir <projectDir>]
+Options:
+  --mobile                 Emulate mobile viewport (390x844, DPR 3, touch)
+  --cpu-throttle <rate>    Apply CDP CPU throttling multiplier (e.g. 4)
+  --baseline <path>        Suppress findings already present in a baseline JSON report
+  --dir <path>             Also run legacy-scan static checks on a local directory
+  --no-smoke               Skip interactive click and Escape focus-trap probing
+  --chrome <path>          Explicit Chrome/Chromium executable path
+  --timeout <ms>           Browser launch/navigation timeout in ms (default: 10000)
+  --json                   Output structured JSON report
+  --github                 Output GitHub Actions workflow annotations
+  -h, --help               Show this help
+`;
 
-Verify Options:
-  -w, --workspace <dir>     Target web project directory (default: cwd)
-  -u, --url <url>           Verify an explicit running server URL
-  -p, --port <port>         Expected dev server port override
-  -r, --route <path>        Explicit route to probe (repeatable, e.g. -r /checkout -r /cart)
-      --pack <name>         Vertical pack: commerce | media | saas | auto | none (default: auto)
-      --perf                Run opt-in CDP Perf & Memory UX pass (CLS, LCP, LoAF, heap, listeners)
-      --dev-cmd <cmd>       Custom command to boot dev server headlessly
-      --no-boot             Do not auto-boot dev server if port is not listening
-      --no-smoke            Skip interactive click/Escape smoke probe
-      --static-only         Run only the static Modernity + ESLint + Pack pass (no browser/server)
-      --all                 Scan all workspace files instead of git diff
-      --strict              Exit non-zero on warnings as well as errors
-      --require-browser     Require live browser/server verification (default: true unless --static-only)
-      --allow-no-browser    Downgrade missing browser/server errors to advisory warnings
-      --json                Emit machine-readable JSON report
-  -h, --help                Show this help message
-
-Context-Guides Options:
-  -w, --workspace <dir>     Target web project directory (default: cwd)
-      --pack <name>         Vertical pack boost: commerce | media | saas | auto | none
-  -l, --limit <n>           Maximum MWG guides to return (default: 8)
-      --include-content     Inline verbatim .md guide bodies from the local corpus
-      --all                 Inspect all workspace files instead of git diff
-      --json                Emit machine-readable JSON report
-`.trim();
-
-export interface VerifyingCliResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
+export function formatGithubAnnotations(findings: readonly VerificationFinding[]): string {
+  const lines: string[] = [];
+  for (const f of findings) {
+    const level = f.severity === 'error' ? 'error' : f.severity === 'info' ? 'notice' : 'warning';
+    const props = [`title=${escapeGhProp(`${f.category} ${f.id}`)}`];
+    if (f.file) {
+      props.push(`file=${escapeGhProp(f.file)}`);
+      if (f.line && f.line > 0) props.push(`line=${f.line}`);
+      if (f.column && f.column > 0) props.push(`col=${f.column}`);
+    }
+    const loc = f.selector ? ` [${f.selector}]` : '';
+    const guideHint =
+      f.guides.length > 0 ? ` (npx modern-web-guidance retrieve ${f.guides.join(',')})` : '';
+    lines.push(`::${level} ${props.join(',')}::${escapeGhData(`${f.message}${loc} — ${f.fix}${guideHint}`)}`);
+  }
+  return lines.join('\n');
 }
 
-function isValidDirectory(dirPath: string): boolean {
-  try {
-    return existsSync(dirPath) && statSync(dirPath).isDirectory();
-  } catch {
-    return false;
+export function formatHumanReport(report: VerifyReport): string {
+  const target = [report.url, report.targetDir].filter(Boolean).join(' + ') || 'workspace';
+  const envBits: string[] = [];
+  if (report.viewport) {
+    envBits.push(`${report.viewport.width}x${report.viewport.height}${report.viewport.mobile ? ' mobile' : ''}`);
   }
+  if (report.cpuThrottle) envBits.push(`${report.cpuThrottle}x CPU`);
+  if (report.cls !== null) envBits.push(`CLS ${report.cls.toFixed(3)}`);
+  if (report.lcpMs !== null) envBits.push(`LCP ${report.lcpMs}ms`);
+  envBits.push(`${report.durationMs}ms`);
+
+  const suppressed = report.suppressedCount > 0 ? ` (${report.suppressedCount} baseline suppressed)` : '';
+  const status = report.passed ? 'PASS' : 'FAIL';
+  const lines = [
+    `modern-web-guidance verify: ${status} — ${target} [${envBits.join(', ')}]`,
+    `${report.errorCount} error(s), ${report.warningCount} warning(s), ${report.infoCount} info${suppressed}`,
+  ];
+
+  for (const f of report.findings) {
+    const loc = f.file
+      ? `${f.file}:${f.line ?? 1}${f.column ? `:${f.column}` : ''}`
+      : f.selector || f.url || '';
+    lines.push(`  [${f.severity.toUpperCase()}][${f.category}] ${f.id}${loc ? ` (${loc})` : ''}: ${f.message}`);
+    lines.push(`    Fix: ${f.fix}`);
+  }
+
+  if (report.guides.length > 0) {
+    lines.push(`Guides: npx modern-web-guidance retrieve ${report.guides.join(',')}`);
+  }
+  return `${lines.join('\n')}\n`;
 }
 
-function stripSkillVersionArgs(rawArgs: readonly string[]): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < rawArgs.length; i++) {
-    if (rawArgs[i] === '--skill-version') {
-      i += 1;
-      continue;
-    }
-    if (rawArgs[i].startsWith('--skill-version=')) {
-      continue;
-    }
-    out.push(rawArgs[i]);
-  }
-  return out;
-}
-
-export async function runVerifyingCli(
-  subcommand: 'verify' | 'context-guides' | 'stop-hook' | 'install-hooks' | 'install-plugin',
-  rawArgs: readonly string[],
-): Promise<VerifyingCliResult> {
-  const cleanArgs = stripSkillVersionArgs(rawArgs);
-
-  if (subcommand === 'stop-hook') {
-    let rawStdin = '';
-    try {
-      rawStdin = readFileSync(0, 'utf8');
-    } catch {
-      rawStdin = '';
-    }
-    try {
-      const out = await runStopHook(rawStdin);
-      return { exitCode: 0, stdout: `${JSON.stringify(out)}\n`, stderr: '' };
-    } catch {
-      return { exitCode: 0, stdout: '{}\n', stderr: '' };
-    }
-  }
-
-  if (subcommand === 'install-hooks' || subcommand === 'install-plugin') {
-    let parsed;
-    try {
-      parsed = parseArgs({
-        args: cleanArgs,
-        options: {
-          target: { type: 'string', short: 't', default: 'all' },
-          dir: { type: 'string', short: 'd', default: process.cwd() },
-          help: { type: 'boolean', short: 'h', default: false },
-        },
-        strict: true,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { exitCode: 1, stdout: '', stderr: `Error: ${msg}\n` };
-    }
-
-    if (parsed.values.help) {
-      return { exitCode: 0, stdout: `${VERIFY_CLI_HELP}\n`, stderr: '' };
-    }
-
-    try {
-      const files = installPluginConfigs(
-        parsed.values.target ?? 'all',
-        path.resolve(parsed.values.dir ?? process.cwd()),
-        SELF_SCRIPT_PATH,
-      );
-      return {
-        exitCode: 0,
-        stdout: `Installed modern-web-guidance Stop hook + modern-web-critic subagent:\n${files.map((f) => `  - ${f}`).join('\n')}\n`,
-        stderr: '',
-      };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return {
-        exitCode: 1,
-        stdout: '',
-        stderr: `❌ FAIL modern-web-guidance ${subcommand}: ${msg}\n`,
-      };
-    }
-  }
-
-  if (subcommand === 'context-guides') {
-    let parsed;
-    try {
-      parsed = parseArgs({
-        args: cleanArgs,
-        allowPositionals: true,
-        options: {
-          workspace: { type: 'string', short: 'w' },
-          pack: { type: 'string' },
-          limit: { type: 'string', short: 'l' },
-          'include-content': { type: 'boolean', default: false },
-          all: { type: 'boolean', default: false },
-          json: { type: 'boolean', default: false },
-          help: { type: 'boolean', short: 'h', default: false },
-        },
-        strict: true,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { exitCode: 1, stdout: '', stderr: `Error: ${msg}\n` };
-    }
-
-    if (parsed.values.help) {
-      return { exitCode: 0, stdout: `${VERIFY_CLI_HELP}\n`, stderr: '' };
-    }
-
-    const workspaceDir = path.resolve(
-      parsed.values.workspace || parsed.positionals[0] || process.cwd(),
-    );
-    if (!isValidDirectory(workspaceDir)) {
-      const errMsg = `Workspace directory does not exist: ${workspaceDir}`;
-      if (parsed.values.json) {
-        return {
-          exitCode: 1,
-          stdout: `${JSON.stringify({ passed: false, workspaceDir, error: errMsg }, null, 2)}\n`,
-          stderr: '',
-        };
-      }
-      return {
-        exitCode: 1,
-        stdout: '',
-        stderr: `❌ FAIL modern-web-guidance context-guides: ${errMsg}\n`,
-      };
-    }
-
-    try {
-      const result = await resolveContextGuides({
-        workspaceDir,
-        pack: parsed.values.pack,
-        limit: parsed.values.limit ? Number(parsed.values.limit) : 8,
-        includeContent: Boolean(parsed.values['include-content']),
-        allFiles: Boolean(parsed.values.all),
-      });
-      if (parsed.values.json) {
-        return { exitCode: 0, stdout: `${JSON.stringify(result, null, 2)}\n`, stderr: '' };
-      }
-      return { exitCode: 0, stdout: `${formatContextGuidesReport(result)}\n`, stderr: '' };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return {
-        exitCode: 1,
-        stdout: '',
-        stderr: `❌ FAIL modern-web-guidance context-guides: ${msg}\n`,
-      };
-    }
-  }
-
-  let parsed;
+export async function runVerifyingCli(argv: string[]): Promise<VerifyingCliResult> {
+  let parsed: ReturnType<typeof parseArgs>;
   try {
     parsed = parseArgs({
-      args: cleanArgs,
-      allowPositionals: true,
+      args: argv,
       options: {
-        workspace: { type: 'string', short: 'w' },
-        url: { type: 'string', short: 'u' },
-        port: { type: 'string', short: 'p' },
-        route: { type: 'string', short: 'r', multiple: true },
-        pack: { type: 'string' },
-        perf: { type: 'boolean', default: false },
-        'dev-cmd': { type: 'string' },
-        'no-boot': { type: 'boolean', default: false },
-        'no-smoke': { type: 'boolean', default: false },
-        'static-only': { type: 'boolean', default: false },
-        all: { type: 'boolean', default: false },
-        strict: { type: 'boolean', default: false },
-        'require-browser': { type: 'boolean', default: true },
-        'allow-no-browser': { type: 'boolean', default: false },
-        json: { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
+        json: { type: 'boolean', default: false },
+        github: { type: 'boolean', default: false },
+        mobile: { type: 'boolean', default: false },
+        'no-smoke': { type: 'boolean', default: false },
+        'cpu-throttle': { type: 'string' },
+        baseline: { type: 'string' },
+        dir: { type: 'string' },
+        chrome: { type: 'string' },
+        timeout: { type: 'string' },
+        'skill-version': { type: 'string' },
       },
+      allowPositionals: true,
       strict: true,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { exitCode: 1, stdout: '', stderr: `Error: ${msg}\n` };
+    return { exitCode: 1, stderr: `Invalid arguments: ${msg}\n\n${VERIFY_USAGE}` };
   }
 
   if (parsed.values.help) {
-    return { exitCode: 0, stdout: `${VERIFY_CLI_HELP}\n`, stderr: '' };
+    return { exitCode: 0, stdout: VERIFY_USAGE };
   }
 
-  const workspaceDir = path.resolve(
-    parsed.values.workspace || parsed.positionals[0] || process.cwd(),
-  );
-  if (!isValidDirectory(workspaceDir)) {
-    const errMsg = `Workspace directory does not exist: ${workspaceDir}`;
-    if (parsed.values.json) {
+  const positional = parsed.positionals[0];
+  let url: string | undefined;
+  let targetDir = typeof parsed.values.dir === 'string' ? path.resolve(parsed.values.dir) : undefined;
+
+  if (positional) {
+    if (/^https?:\/\//i.test(positional)) {
+      url = positional;
+    } else if (!targetDir && existsSync(path.resolve(positional))) {
+      targetDir = path.resolve(positional);
+    } else {
       return {
         exitCode: 1,
-        stdout: `${JSON.stringify(
-          {
-            passed: false,
-            workspaceDir,
-            errorCount: 1,
-            warningCount: 0,
-            infraFailed: true,
-            infraWarning: errMsg,
-            findings: [],
-          },
-          null,
-          2,
-        )}\n`,
-        stderr: '',
+        stderr: `Target must be an http(s) URL or an existing local directory: ${positional}\n\n${VERIFY_USAGE}`,
       };
     }
-    return {
-      exitCode: 1,
-      stdout: '',
-      stderr: `❌ FAIL modern-web-guidance verify: ${errMsg}\n`,
-    };
   }
 
-  const requireBrowser = parsed.values['static-only']
-    ? false
-    : parsed.values['allow-no-browser']
-      ? false
-      : Boolean(parsed.values['require-browser']);
+  if (!url && !targetDir) {
+    return { exitCode: 1, stderr: `Missing <url> or --dir <path>.\n\n${VERIFY_USAGE}` };
+  }
+  if (targetDir && !existsSync(targetDir)) {
+    return { exitCode: 1, stderr: `Directory does not exist: ${targetDir}\n` };
+  }
+
+  let cpuThrottle: number | undefined;
+  if (typeof parsed.values['cpu-throttle'] === 'string') {
+    const val = Number(parsed.values['cpu-throttle']);
+    if (!Number.isFinite(val) || val < 1) {
+      return { exitCode: 1, stderr: `Invalid --cpu-throttle value: ${parsed.values['cpu-throttle']} (expected number >= 1)\n` };
+    }
+    cpuThrottle = val;
+  }
+
+  let timeoutMs: number | undefined;
+  if (typeof parsed.values.timeout === 'string') {
+    const val = Number(parsed.values.timeout);
+    if (!Number.isFinite(val) || val < 500) {
+      return { exitCode: 1, stderr: `Invalid --timeout value: ${parsed.values.timeout} (expected ms >= 500)\n` };
+    }
+    timeoutMs = val;
+  }
 
   try {
-    const report = await runVerification({
-      workspaceDir,
-      url: parsed.values.url,
-      port: parsed.values.port ? Number(parsed.values.port) : undefined,
-      routes: parsed.values.route,
-      pack: parsed.values.pack,
-      perf: Boolean(parsed.values.perf),
-      devCmd: parsed.values['dev-cmd'],
-      boot: !parsed.values['no-boot'],
+    const report = await runVerify({
+      url,
+      targetDir,
+      mobile: Boolean(parsed.values.mobile),
+      cpuThrottle,
+      baselinePath: typeof parsed.values.baseline === 'string' ? path.resolve(parsed.values.baseline) : undefined,
       smokeProbe: !parsed.values['no-smoke'],
-      staticOnly: Boolean(parsed.values['static-only']),
-      allFiles: Boolean(parsed.values.all),
-      strict: Boolean(parsed.values.strict),
-      requireBrowser,
+      chromePath: typeof parsed.values.chrome === 'string' ? parsed.values.chrome : undefined,
+      timeoutMs,
     });
 
-    if (parsed.values.json) {
-      return {
-        exitCode: report.passed ? 0 : 1,
-        stdout: `${JSON.stringify(report, null, 2)}\n`,
-        stderr: '',
-      };
-    }
+    const stdout = parsed.values.json
+      ? `${JSON.stringify(report, null, 2)}\n`
+      : parsed.values.github
+        ? `${formatGithubAnnotations(report.findings)}${report.findings.length > 0 ? '\n' : ''}`
+        : formatHumanReport(report);
+
     return {
       exitCode: report.passed ? 0 : 1,
-      stdout: `${report.formatted}\n`,
-      stderr: '',
+      stdout,
+      data: report,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (parsed.values.json) {
-      return {
-        exitCode: 1,
-        stdout: `${JSON.stringify({ passed: false, errorCount: 1, error: msg }, null, 2)}\n`,
-        stderr: '',
-      };
-    }
-    return {
-      exitCode: 1,
-      stdout: '',
-      stderr: `❌ FAIL modern-web-guidance verify: ${msg}\n`,
-    };
+    return { exitCode: 1, stderr: `Verification failed: ${msg}\n` };
   }
 }
 
 export function writeVerifyingCliResult(result: VerifyingCliResult): number {
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
-  process.exitCode = result.exitCode;
   return result.exitCode;
 }
 
-function isExecutedDirectly(): boolean {
-  if (!process.argv[1]) return false;
-  if (import.meta.main) return true;
-  if (process.argv[1].endsWith('verify.mjs')) return true;
-  try {
-    return realpathSync(SELF_SCRIPT_PATH) === realpathSync(path.resolve(process.argv[1]));
-  } catch {
-    return path.resolve(SELF_SCRIPT_PATH) === path.resolve(process.argv[1]);
-  }
+function escapeGhData(val: string): string {
+  return val.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
 }
 
-if (isExecutedDirectly()) {
-  const argv = process.argv.slice(2);
-  let sub: 'verify' | 'context-guides' | 'stop-hook' | 'install-hooks' | 'install-plugin' =
-    'verify';
-  if (
-    argv[0] === 'verify' ||
-    argv[0] === 'context-guides' ||
-    argv[0] === 'stop-hook' ||
-    argv[0] === 'install-hooks' ||
-    argv[0] === 'install-plugin'
-  ) {
-    sub = argv.shift() as typeof sub;
-  }
-  runVerifyingCli(sub, argv)
-    .then(writeVerifyingCliResult)
-    .catch((err: unknown) => {
-      const msg = err instanceof Error ? err.stack || err.message : String(err);
-      process.stderr.write(`modern-web-guidance verify failed: ${msg}\n`);
-      process.exitCode = 2;
+function escapeGhProp(val: string): string {
+  return escapeGhData(val).replace(/:/g, '%3A').replace(/,/g, '%2C');
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  runVerifyingCli(process.argv.slice(2))
+    .then((res) => process.exit(writeVerifyingCliResult(res)))
+    .catch((err) => {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
     });
 }

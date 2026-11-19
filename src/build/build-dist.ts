@@ -283,6 +283,18 @@ const __dirname = __dirnameFunction(__filename);
       );
 
       console.log("Bundling verify.mjs...");
+      const browserAuditBuild = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/verifying/browser-audit.ts")],
+        bundle: true,
+        platform: "browser",
+        format: "iife",
+        globalName: "__mwgAudit",
+        minify: true,
+        write: false,
+        legalComments: "none",
+      });
+      const browserAuditCode = browserAuditBuild.outputFiles[0].text;
+
       const resultVerify = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/verifying/cli.ts")],
         bundle: true,
@@ -295,14 +307,15 @@ const __dirname = __dirnameFunction(__filename);
         minify: true,
         legalComments: "none",
         plugins: [{
-          name: 'external-verify-siblings',
+          name: 'verify-bundle-plugin',
           setup(build) {
-            build.onResolve({ filter: /search\.ts$/ }, _args => {
-              return { path: './search.mjs', external: true };
-            });
             build.onResolve({ filter: /analyzing\/cli\.ts$/ }, _args => {
               return { path: './legacy-scan.mjs', external: true };
             });
+            build.onLoad({ filter: /verifying[/\\]browser-bundle\.ts$/ }, () => ({
+              contents: `const BUNDLE = ${JSON.stringify(browserAuditCode)};\nexport async function loadBrowserAuditBundle() { return BUNDLE; }\n`,
+              loader: 'js',
+            }));
           },
         }],
       });
