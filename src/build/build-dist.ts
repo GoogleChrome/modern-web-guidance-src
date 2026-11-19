@@ -303,7 +303,7 @@ if (__mwg_major < 22) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
             });
-            build.onResolve({ filter: /(?:legacy-scan\/cli|cli)\.ts$/ }, _args => {
+            build.onResolve({ filter: /\/legacy-scan\/cli\.ts$/ }, _args => {
               return { path: './legacy-scan.mjs', external: true }
             });
           },
