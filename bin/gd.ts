@@ -30,8 +30,8 @@ const ALL_OPTIONS = {
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
   targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
-  json: { type: 'boolean', desc: 'Output analyzer findings in structured JSON format' },
-  guide: { type: 'string', desc: 'Filter analyzer to a specific guide ID' },
+  json: { type: 'boolean', desc: 'Output legacy-scan findings in structured JSON format' },
+  guide: { type: 'string', desc: 'Filter legacy-scan to a specific guide ID' },
   'include-docs-and-tests': { type: 'boolean', desc: 'Include documentation, example, demo, and test files in analysis' },
 } as const;
 
@@ -251,9 +251,9 @@ async function main() {
   const command = positionals[0];
 
   if (command === 'legacy-scan' || command === 'analyze') {
-    const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
-    const result = await runAnalyzeCli(process.argv.slice(3));
-    writeAnalyzeCliResult(result);
+    const { runLegacyScanCli, writeLegacyScanCliResult } = await import('../src/legacy-scan/cli.ts');
+    const result = await runLegacyScanCli(process.argv.slice(3));
+    writeLegacyScanCliResult(result);
     process.exit(result.exitCode);
   }
 
