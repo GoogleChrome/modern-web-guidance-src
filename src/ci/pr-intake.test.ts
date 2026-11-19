@@ -308,6 +308,7 @@ describe('triagePullRequest orchestration', () => {
       labels: [],
       files: ['guides/css/tabs/guide.md', 'src/analyzing/foo.ts'],
       reviewRequests: ['LeaVerou'],
+      reviews: [],
       participantLogins: [],
       comments: [],
       claState: 'success' as const
@@ -370,6 +371,7 @@ describe('triagePullRequest orchestration', () => {
       labels: [],
       files: ['guides/css/dialog/guide.md'],
       reviewRequests: [],
+      reviews: [],
       participantLogins: [],
       comments: [],
       claState: 'failure' as const
@@ -427,6 +429,7 @@ describe('triagePullRequest orchestration', () => {
       labels: ['awaiting-cla', 'content'],
       files: ['guides/css/anchor-positioning-tab-underline/guide.md', 'src/cli/foo.ts'],
       reviewRequests: [],
+      reviews: [],
       participantLogins: [],
       comments: [],
       claState: 'success' as const
@@ -727,6 +730,35 @@ describe('handlePR git-author Tier 1 integration', () => {
         }
       );
       assert.deepEqual(r3, ['LeaVerou']);
+
+      // 4. Unowned category (e.g. js) when git-blame primary author opens their own PR -> still adds needs-atl!
+      mRemoved.mock.mockImplementation(() => []);
+      const addedLabels: string[][] = [];
+      const mAddLabels = mock.method(githubApi, 'addPrLabels', (_pr: number, labels: string[]) => {
+        addedLabels.push(labels);
+      });
+      try {
+        const emptyCfg: AtlConfig = { default: {}, web_features: {}, web_features_groups: {} };
+        const r4 = handlePR(
+          4004,
+          'jamesnw',
+          emptyCfg,
+          undefined,
+          tmpDir,
+          ['content'],
+          {
+            dryRun: false,
+            isDraft: false,
+            prBody: '',
+            preloadedFiles: ['guides/ui-behaviors/popover-menu/guide.md'],
+            enableGitAuthorRouting: true
+          }
+        );
+        assert.deepEqual(r4, []);
+        assert.deepEqual(addedLabels, [['needs-atl']]);
+      } finally {
+        mAddLabels.mock.restore();
+      }
     } finally {
       mBlame.mock.restore();
       mCommitLogin.mock.restore();
@@ -736,6 +768,50 @@ describe('handlePR git-author Tier 1 integration', () => {
       mFileContent.mock.restore();
       mUnlabeled.mock.restore();
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('propagates transient linked-issue API failures instead of auto-closing external PRs', () => {
+    const closedPrs: number[] = [];
+    const m1 = mock.method(githubApi, 'getPrIntakeMetadata', () => ({
+      title: 'Fix tabs',
+      body: 'Fixes #500',
+      state: 'OPEN',
+      isDraft: false,
+      additions: 20,
+      deletions: 5,
+      headRefOid: 'abc1234',
+      headRefName: 'fix-tabs',
+      isSameRepo: false,
+      author: 'ext-user',
+      authorIsBot: false,
+      labels: [],
+      files: ['guides/css/tabs/guide.md'],
+      reviewRequests: [],
+      reviews: [],
+      participantLogins: [],
+      comments: [],
+      claState: 'success' as const
+    }));
+    const m2 = mock.method(githubApi, 'hasUserWriteAccess', () => false);
+    const m3 = mock.method(githubApi, 'getLinkedIssueInfo', () => {
+      throw new Error('gh: HTTP 502 Bad Gateway');
+    });
+    const m4 = mock.method(githubApi, 'closePr', (pr: number) => {
+      closedPrs.push(pr);
+    });
+
+    try {
+      assert.throws(
+        () => triagePullRequest(4005, sampleAtlConfig, { dryRun: false }),
+        /HTTP 502/
+      );
+      assert.deepEqual(closedPrs, []);
+    } finally {
+      m1.mock.restore();
+      m2.mock.restore();
+      m3.mock.restore();
+      m4.mock.restore();
     }
   });
 });

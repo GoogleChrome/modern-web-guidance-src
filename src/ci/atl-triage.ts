@@ -9,6 +9,7 @@ import {
   AWAITING_CLA_LABEL,
   INTAKE_CLA_MARKER,
   INTAKE_CLOSE_MARKER,
+  PR_WELCOME_LABEL,
   evaluatePrIntake,
   extractIssueNumbers,
   extractNoreplyLogin,
@@ -282,56 +283,20 @@ export function resolveFeatureGroupAtls(featureIds: readonly string[], atlConfig
   return Array.from(out);
 }
 
-export function resolveAtl(category: string, featureIds: string[], atlConfig: AtlConfig): string[] {
-  const direct = resolveFeatureDirectAtls(featureIds, atlConfig);
-  if (direct.length > 0) return direct;
-
-  const grouped = resolveFeatureGroupAtls(featureIds, atlConfig);
-  if (grouped.length > 0) return grouped;
-
-  return toAtlList(atlConfig.default[category]);
-}
-
 export function getAtlsFromDescription(description: string, atlConfig: AtlConfig): string[] {
   if (!description) return [];
 
-  // Extract feature IDs from known patterns (fields, URLs, etc.)
-  const featureIds = new Set(extractFeatureIds(description));
+  const featureIds = Array.from(new Set(extractFeatureIds(description)));
+  if (featureIds.length === 0) return [];
 
-  if (featureIds.size === 0) return [];
+  console.log(`Matched/extracted feature IDs in description: ${featureIds.join(', ')}`);
 
-  if (featureIds.size > 0) {
-    console.log(`Matched/extracted feature IDs in description: ${Array.from(featureIds).join(', ')}`);
-  }
-
-  const resolvedAtls = new Set<string>();
-  for (const fid of featureIds) {
-    for (const variant of getFeatureIdVariants(fid)) {
-      // 1. Direct match
-      if (atlConfig.web_features[variant]) {
-        const val = atlConfig.web_features[variant];
-        if (Array.isArray(val)) {
-          val.forEach(a => resolvedAtls.add(a));
-        } else {
-          resolvedAtls.add(val);
-        }
-      }
-      // 2. Group match
-      const groups = featureGroups[variant] || [];
-      for (const group of groups) {
-        if (atlConfig.web_features_groups[group]) {
-          const val = atlConfig.web_features_groups[group];
-          if (Array.isArray(val)) {
-            val.forEach(a => resolvedAtls.add(a));
-          } else {
-            resolvedAtls.add(val);
-          }
-        }
-      }
-    }
-  }
-
-  return Array.from(resolvedAtls);
+  return Array.from(
+    new Set([
+      ...resolveFeatureDirectAtls(featureIds, atlConfig),
+      ...resolveFeatureGroupAtls(featureIds, atlConfig)
+    ])
+  );
 }
 
 const JQ_ACTOR_IS_BOT = '(.actor != null and (.actor.type == "Bot" or ((.actor.login // "") | endswith("[bot]"))))';
@@ -429,26 +394,6 @@ export const githubApi = {
       { encoding: 'utf8' }
     );
     return output.trim().split('\n').map(f => f.trim()).filter(Boolean);
-  },
-
-  getPrAuthor(prNumber: number): string {
-    return child_process.execFileSync(
-      'gh',
-      ['pr', 'view', String(prNumber), '--json', 'author', '--jq', '.author.login'],
-      { encoding: 'utf8' }
-    ).trim();
-  },
-
-  getPrLabels(prNumber: number): string[] {
-    const output = child_process.execFileSync(
-      'gh',
-      ['pr', 'view', String(prNumber), '--json', 'labels', '--jq', '.labels[].name'],
-      { encoding: 'utf8' }
-    );
-    return output
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getPrReviewState(prNumber: number): { reviewRequests: string[]; reviews: string[] } {
@@ -617,7 +562,7 @@ export const githubApi = {
       const raw = child_process.execFileSync(
         'gh',
         ['api', `repos/{owner}/{repo}/issues/${issueNumber}`],
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
       );
       const iss = JSON.parse(raw);
       if (iss.pull_request) return null;
@@ -628,8 +573,12 @@ export const githubApi = {
         labels: (iss.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
         assignees: (iss.assignees || []).map((a: { login?: string }) => a.login ?? '').filter(Boolean)
       };
-    } catch {
-      return null;
+    } catch (err) {
+      const stderr = String((err as { stderr?: unknown }).stderr ?? '');
+      if (stderr.includes('HTTP 404') || stderr.includes('HTTP 410')) {
+        return null;
+      }
+      throw err;
     }
   },
 
@@ -649,7 +598,7 @@ export const githubApi = {
     if (!headSha) return [];
     const raw = child_process.execFileSync(
       'gh',
-      ['pr', 'list', '--state', 'open', '--label', AWAITING_CLA_LABEL, '--limit', '50', '--json', 'number,headRefOid'],
+      ['pr', 'list', '--state', 'open', '--label', AWAITING_CLA_LABEL, '--limit', '200', '--json', 'number,headRefOid'],
       { encoding: 'utf8' }
     );
     const items: Array<{ number: number; headRefOid?: string }> = JSON.parse(raw);
@@ -661,7 +610,7 @@ export const githubApi = {
       return child_process.execFileSync(
         'git',
         ['-C', path.dirname(guideAbsPath), 'blame', '-w', '-M', '--line-porcelain', '--', path.basename(guideAbsPath)],
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, stdio: ['pipe', 'pipe', 'ignore'] }
       );
     } catch {
       return null;
@@ -688,7 +637,7 @@ export const githubApi = {
     try {
       const raw = child_process.execFileSync(
         'gh',
-        ['pr', 'list', '--state', 'open', '--limit', '100', '--json', 'reviewRequests'],
+        ['pr', 'list', '--state', 'open', '--limit', '500', '--json', 'reviewRequests'],
         { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
       );
       const prs: Array<{ reviewRequests?: Array<{ login?: string }> }> = JSON.parse(raw);
@@ -987,6 +936,7 @@ export interface HandlePrOptions {
   prBody?: string;
   headRef?: string;
   preloadedFiles?: string[];
+  preloadedReviewState?: { reviewRequests: string[]; reviews: string[] };
   includeInfraOwners?: boolean;
   enableGitAuthorRouting?: boolean;
   openReviewCounts?: ReadonlyMap<string, number>;
@@ -1085,12 +1035,17 @@ export function handlePR(
   let removedReviewers: string[] = [];
 
   if (!mockFiles) {
-    try {
-      const prData = githubApi.getPrReviewState(prNumber);
-      prReviewRequests = prData.reviewRequests;
-      prReviews = prData.reviews;
-    } catch (err) {
-      console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
+    if (options?.preloadedReviewState) {
+      prReviewRequests = options.preloadedReviewState.reviewRequests;
+      prReviews = options.preloadedReviewState.reviews;
+    } else {
+      try {
+        const prData = githubApi.getPrReviewState(prNumber);
+        prReviewRequests = prData.reviewRequests;
+        prReviews = prData.reviews;
+      } catch (err) {
+        console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
+      }
     }
 
     try {
@@ -1151,37 +1106,22 @@ export function handlePR(
     return hasWrite ? login : null;
   };
 
-  const pickLeadFromTiers = (labelForLog: string, tiers: string[][]): void => {
-    if (tiers.some(t => t.length > 0)) {
-      hasAnyConfiguredOwner = true;
-    }
-    // Only fetch repo-wide open review counts if the first eligible tier has >=2 non-sticky candidates.
-    let needsLoadTieBreak = false;
-    const hasReviewedMatch =
-      alreadyReviewedLogins.size > 0 &&
-      tiers.some(t =>
-        t.some(c => !excludedForSelection.has(c.toLowerCase()) && alreadyReviewedLogins.has(c.toLowerCase()))
-      );
-    if (!hasReviewedMatch) {
-      for (const tier of tiers) {
-        const eligible = Array.from(
-          new Set(tier.filter(c => c && !excludedForSelection.has(c.toLowerCase())))
-        );
-        if (eligible.length === 0) continue;
-        const hasSticky = eligible.some(c => alreadyRequestedLogins.has(c.toLowerCase()));
-        needsLoadTieBreak = !hasSticky && eligible.length >= 2;
-        break;
-      }
-    }
-
+  const pickLeadFromTiers = (
+    labelForLog: string,
+    tiers: string[][],
+    hasStaticConfigOwner: boolean
+  ): void => {
     const lead = selectLeadReviewer({
       tiers,
       excludedLogins: excludedForSelection,
       alreadyReviewedLogins,
       alreadyRequestedLogins,
-      openReviewCounts: needsLoadTieBreak ? getOpenCountsLazy() : cachedOpenCounts,
+      openReviewCounts: getOpenCountsLazy,
       tieSeed: prNumber
     });
+    if (lead || hasStaticConfigOwner) {
+      hasAnyConfiguredOwner = true;
+    }
     if (lead) {
       console.log(`${labelForLog} -> Lead reviewer: @${lead}`);
       matchedAtls.add(lead);
@@ -1235,15 +1175,15 @@ export function handlePR(
         }
 
         const primaryAuthor = resolveGuidePrimaryAuthor(guidePath);
-        const tiers: string[][] = [
-          primaryAuthor ? [primaryAuthor] : [],
+        const configTiers: string[][] = [
           resolveFeatureDirectAtls(featureIds, atlConfig),
           resolveFeatureGroupAtls(featureIds, atlConfig),
           toAtlList(atlConfig.default[category])
         ];
         pickLeadFromTiers(
           `Guide "${category}/${guideName}" (feature IDs: ${featureIds.join(', ') || 'none'})`,
-          tiers
+          [primaryAuthor ? [primaryAuthor] : [], ...configTiers],
+          configTiers.some(t => t.length > 0)
         );
       }
     }
@@ -1255,7 +1195,8 @@ export function handlePR(
       if (seenSkills.has(skillName)) continue;
       seenSkills.add(skillName);
 
-      pickLeadFromTiers(`Standalone skill "${skillName}"`, [toAtlList(atlConfig.default[skillName])]);
+      const skillOwners = toAtlList(atlConfig.default[skillName]);
+      pickLeadFromTiers(`Standalone skill "${skillName}"`, [skillOwners], skillOwners.length > 0);
     }
 
     // 3. Feature definition files (features/<feature-id>.md)
@@ -1274,7 +1215,7 @@ export function handlePR(
         resolveFeatureGroupAtls([featureId], atlConfig),
         transcludedCatAtls
       ];
-      pickLeadFromTiers(`Feature "${featureId}"`, tiers);
+      pickLeadFromTiers(`Feature "${featureId}"`, tiers, tiers.some(t => t.length > 0));
     }
   }
 
@@ -1437,6 +1378,7 @@ export interface PrIntakeMetadata {
   labels: string[];
   files: string[];
   reviewRequests: string[];
+  reviews: string[];
   participantLogins: string[];
   comments: Array<{ author: string; isBot: boolean; body: string }>;
   claState: ClaState;
@@ -1459,8 +1401,10 @@ export function parsePrIntakeMetadata(data: Record<string, any>): PrIntakeMetada
   const author: string = data.author?.login ?? '';
   const authorIsBot = isBotAuthor(data.author);
   const participants = new Set<string>();
+  const reviews: string[] = [];
   for (const rev of data.reviews || []) {
     const login: string | undefined = rev.author?.login;
+    if (login) reviews.push(login);
     if (login && !isBotAuthor(rev.author) && login.toLowerCase() !== author.toLowerCase()) {
       participants.add(login);
     }
@@ -1509,6 +1453,7 @@ export function parsePrIntakeMetadata(data: Record<string, any>): PrIntakeMetada
     labels: (data.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
     files: (data.files || []).map((f: { path?: string }) => f.path ?? '').filter(Boolean),
     reviewRequests: (data.reviewRequests || []).map((r: { login?: string }) => r.login ?? '').filter(Boolean),
+    reviews,
     participantLogins: Array.from(participants),
     comments,
     claState
@@ -1588,11 +1533,21 @@ export function triagePullRequest(
     }
   }
 
+  const hasPrWelcomeLabel = meta.labels.some(l => l.trim().toLowerCase() === PR_WELCOME_LABEL);
   const linkedIssues = new Map<number, LinkedIssueInfo>();
-  if (!authorHasWriteAccess && !hasMaintainerEngagement) {
-    for (const issueNum of extractIssueNumbers(meta.title, meta.body)) {
+  if (!authorHasWriteAccess && !hasMaintainerEngagement && !hasPrWelcomeLabel) {
+    const authorLower = meta.author.toLowerCase();
+    for (const issueNum of extractIssueNumbers(meta.title, meta.body).slice(0, 10)) {
       const info = githubApi.getLinkedIssueInfo(issueNum);
-      if (info) linkedIssues.set(issueNum, info);
+      if (!info) continue;
+      linkedIssues.set(issueNum, info);
+      if (
+        info.state === 'open' &&
+        (info.labels.some(l => l.trim().toLowerCase() === PR_WELCOME_LABEL) ||
+          info.assignees.some(a => a.toLowerCase() === authorLower))
+      ) {
+        break;
+      }
     }
   }
 
@@ -1683,6 +1638,7 @@ export function triagePullRequest(
           prBody: meta.body,
           headRef,
           preloadedFiles: meta.files,
+          preloadedReviewState: { reviewRequests: meta.reviewRequests, reviews: meta.reviews },
           includeInfraOwners: true,
           enableGitAuthorRouting: true
         }
@@ -1712,10 +1668,7 @@ export function main() {
       const issueDescription = event.issue.body || '';
       handleIssue(issueNumber, labels, issueDescription, atlConfig, { dryRun: isDryRun });
     } else if (event.pull_request) {
-      const prNumber = event.pull_request.number;
-      const isSameRepo = event.pull_request.head?.repo?.full_name?.toLowerCase() === 'googlechrome/modern-web-guidance-src';
-      const headRef = (isSameRepo && event.pull_request.head?.ref) || event.pull_request.head?.sha || 'main';
-      triagePullRequest(prNumber, atlConfig, { dryRun: isDryRun, headRef });
+      triagePullRequest(event.pull_request.number, atlConfig, { dryRun: isDryRun });
     } else if (event.check_run) {
       const checkName: string = event.check_run.name ?? '';
       const conclusion: string = String(event.check_run.conclusion ?? '').toLowerCase();

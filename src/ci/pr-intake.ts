@@ -231,12 +231,12 @@ export function resolveInfraReviewers(files: readonly string[]): string[] {
 export function formatAutoCloseComment(prAuthor: string, referencedIssues: readonly number[]): string {
   const issueNote =
     referencedIssues.length > 0
-      ? `The linked issue (${referencedIssues.map(n => `#${n}`).join(', ')}) isn't marked \`${PR_WELCOME_LABEL}\` or assigned to you yet—open issues here are often internal maintainer tasks or still being scoped.`
+      ? `The linked issue (${referencedIssues.map(n => `#${n}`).join(', ')}) isn't marked \`${PR_WELCOME_LABEL}\` or assigned to you yet (open issues here are often internal maintainer tasks or still being scoped).`
       : `We didn't find a linked issue marked \`${PR_WELCOME_LABEL}\` (or assigned to you) for this change.`;
 
   return [
     INTAKE_CLOSE_MARKER,
-    `Hi @${prAuthor} — thanks for your interest in Modern Web Guidance!`,
+    `Hi @${prAuthor}, thanks for your interest in Modern Web Guidance!`,
     '',
     `Because guidance here feeds coding agents and an automated evaluation suite, we align on the problem in an issue before reviewing pull requests (see [\`CONTRIBUTING.md\`](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/CONTRIBUTING.md#send-us-the-problem-not-the-patch)). ${issueNote}`,
     '',
@@ -249,8 +249,8 @@ export function formatAutoCloseComment(prAuthor: string, referencedIssues: reado
 export function formatClaHoldComment(prAuthor: string): string {
   return [
     INTAKE_CLA_MARKER,
-    `Hi @${prAuthor} — holding reviewer assignment until the \`cla/google\` check passes:`,
-    `1. Sign the [Google CLA](https://cla.developers.google.com/) using the **exact email address** in your commit (\`git log -1 --format='%ae'\` — GitHub \`@users.noreply.github.com\` emails fail unless registered on your CLA).`,
+    `Hi @${prAuthor}, holding reviewer assignment until the \`cla/google\` check passes:`,
+    `1. Sign the [Google CLA](https://cla.developers.google.com/) using the **exact email address** in your commit (\`git log -1 --format='%ae'\`; GitHub \`@users.noreply.github.com\` emails fail unless registered on your CLA).`,
     `2. Strip any AI \`Co-Authored-By:\` trailers from your commits and force-push if needed.`,
     '',
     `Reviewers will be requested automatically once \`cla/google\` turns green.`
@@ -346,7 +346,7 @@ export interface SelectLeadReviewerInput {
   excludedLogins: ReadonlySet<string>;
   alreadyReviewedLogins?: ReadonlySet<string>;
   alreadyRequestedLogins?: ReadonlySet<string>;
-  openReviewCounts?: ReadonlyMap<string, number>;
+  openReviewCounts?: ReadonlyMap<string, number> | (() => ReadonlyMap<string, number>);
   tieSeed?: number;
 }
 
@@ -391,13 +391,16 @@ export function selectLeadReviewer(input: SelectLeadReviewerInput): string | nul
 
     if (eligible.length === 1) return eligible[0];
 
+    const counts =
+      typeof input.openReviewCounts === 'function' ? input.openReviewCounts() : input.openReviewCounts;
+
     let minLoad = Infinity;
     for (const candidate of eligible) {
-      const load = input.openReviewCounts?.get(candidate.toLowerCase()) ?? 0;
+      const load = counts?.get(candidate.toLowerCase()) ?? 0;
       if (load < minLoad) minLoad = load;
     }
     const tied = eligible.filter(
-      c => (input.openReviewCounts?.get(c.toLowerCase()) ?? 0) === minLoad
+      c => (counts?.get(c.toLowerCase()) ?? 0) === minLoad
     );
     return tied[Math.abs(tieSeed) % tied.length];
   }
