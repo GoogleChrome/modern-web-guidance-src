@@ -1,5 +1,6 @@
 const MAX_TYPO_LINES = 5;
 const MAX_ISSUE_NUMBER = 999_999;
+const MAX_LINKED_ISSUE_LOOKUPS = 10;
 
 export const INTAKE_CLOSE_MARKER = '<!-- mwg-intake-gate:close -->';
 export const INTAKE_CLA_MARKER = '<!-- mwg-intake-gate:cla -->';
@@ -16,6 +17,16 @@ export interface LinkedIssueInfo {
   assignees: readonly string[];
 }
 
+export type AllowVia =
+  | 'write-access'
+  | 'bot'
+  | 'maintainer-engaged'
+  | 'pr-welcome-label'
+  | 'approved-issue'
+  | 'prose-typo-fix';
+
+export type HoldClaVia = Exclude<AllowVia, 'write-access' | 'bot'>;
+
 export interface PrIntakeInput {
   prAuthor: string;
   authorIsBot: boolean;
@@ -28,66 +39,59 @@ export interface PrIntakeInput {
   additions: number;
   deletions: number;
   claState: ClaState;
-  linkedIssues: ReadonlyMap<number, LinkedIssueInfo>;
+  resolveIssue: (issueNumber: number) => LinkedIssueInfo | null;
 }
-
-export type AllowVia =
-  | 'write-access'
-  | 'bot'
-  | 'maintainer-engaged'
-  | 'pr-welcome-label'
-  | 'approved-issue'
-  | 'prose-typo-fix';
-
-export type HoldClaVia = Exclude<AllowVia, 'write-access' | 'bot'>;
 
 export type PrIntakeDecision =
   | { kind: 'allow'; via: AllowVia; approvedIssue?: number }
   | { kind: 'hold-cla'; claState: Exclude<ClaState, 'success'>; via: HoldClaVia; approvedIssue?: number }
   | { kind: 'close'; reason: 'no-approved-issue'; referencedIssues: number[] };
 
-function stripCodeAndComments(markdown: string): string {
+export function hasLabel(labels: readonly string[], target: string): boolean {
+  const lower = target.toLowerCase();
+  return labels.some(l => l.trim().toLowerCase() === lower);
+}
+
+/**
+ * Strips fenced code blocks (``` or ~~~) and inline code spans (`...`) first so
+ * HTML comments or `#123` tokens inside code examples are ignored.
+ */
+export function stripMarkdownCode(markdown: string): string {
   return markdown
-    .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/^(?:`{3,}|~{3,})[\s\S]*?^(?:`{3,}|~{3,})/gm, ' ')
     .replace(/`+[^`]*`+/g, ' ');
 }
 
-const ISSUE_URL_PATTERN = 'https?:\\/\\/github\\.com\\/GoogleChrome\\/modern-web-guidance-src\\/issues\\/(\\d+)\\b';
-
-function addValidIssueNumber(found: Set<number>, raw: string | undefined): void {
-  if (!raw) return;
-  const num = Number(raw);
-  if (num > 0 && num <= MAX_ISSUE_NUMBER) found.add(num);
+function stripCodeAndComments(markdown: string): string {
+  return stripMarkdownCode(markdown).replace(/<!--[\s\S]*?-->/g, ' ');
 }
 
+export function hasNoAtlTriageDirective(body?: string | null): boolean {
+  if (!body) return false;
+  return /<!--\s*no-atl-triage\s*-->/i.test(stripMarkdownCode(body));
+}
+
+const ISSUE_REF = String.raw`(?:#(\d+)|https?:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/issues\/(\d+))(?![\w-])`;
+const TITLE_REF_RE = new RegExp(String.raw`(?:^|[\s([\],:;])${ISSUE_REF}`, 'gi');
+const ISSUE_REF_RE = new RegExp(ISSUE_REF, 'gi');
+const BODY_CLAUSE_RE = new RegExp(
+  String.raw`\b(?:fix(?:es|ed)?|clos(?:e|es|ed)|resolv(?:e|es|ed)|address(?:es|ed)?|issues?|refs?|part\s+of|for)\b[\s:]*(${ISSUE_REF}(?:\s*(?:,|and|&)\s*${ISSUE_REF})*)`,
+  'gi'
+);
+
 export function extractIssueNumbers(title: string, body: string): number[] {
-  const cleanTitle = stripCodeAndComments(title);
-  const cleanBody = stripCodeAndComments(body);
   const found = new Set<number>();
-
-  // 1. Any #NNN or issue URL in the PR title (e.g. "[#1216] rating guide" or "fix: ... (#2102)")
-  for (const match of cleanTitle.matchAll(/(?:^|[\s([\],:;])#(\d+)(?=$|[\s)\],.:;])/g)) {
-    addValidIssueNumber(found, match[1]);
-  }
-  for (const match of cleanTitle.matchAll(new RegExp(ISSUE_URL_PATTERN, 'gi'))) {
-    addValidIssueNumber(found, match[1]);
-  }
-
-  // 2. Target/closing references in the PR body (e.g. "Fixes #123", "Closes #1, #2", "Issue: #42", or full issue URL)
-  // Avoids matching casual prose asides like "(unrelated to #3618-adjacent)" or CSS hex colors like "#888".
-  const targetClauseRegex =
-    /\b(?:fix(?:es|ed)?|clos(?:e|es|ed)|resolv(?:e|es|ed)|address(?:es|ed)?|issues?|refs?|part\s+of|for)\b[\s:]*((?:#\d+\b|https?:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/issues\/\d+\b)(?:\s*(?:,|and|&)\s*(?:#\d+\b|https?:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/issues\/\d+\b))*)/gi;
-  for (const clauseMatch of cleanBody.matchAll(targetClauseRegex)) {
-    const listText = clauseMatch[1];
-    for (const numMatch of listText.matchAll(/#(\d+)\b/g)) {
-      addValidIssueNumber(found, numMatch[1]);
+  const collect = (text: string, re: RegExp): void => {
+    for (const match of text.matchAll(re)) {
+      const num = Number(match[1] ?? match[2]);
+      if (num > 0 && num <= MAX_ISSUE_NUMBER) found.add(num);
     }
-    for (const urlMatch of listText.matchAll(new RegExp(ISSUE_URL_PATTERN, 'gi'))) {
-      addValidIssueNumber(found, urlMatch[1]);
-    }
-  }
+  };
 
+  collect(stripCodeAndComments(title), TITLE_REF_RE);
+  for (const clause of stripCodeAndComments(body).matchAll(BODY_CLAUSE_RE)) {
+    collect(clause[1], ISSUE_REF_RE);
+  }
   return Array.from(found);
 }
 
@@ -118,114 +122,33 @@ export function isSmallProseTypoFix(input: {
   return guideDirs.size <= 1;
 }
 
-function hasLabel(labels: readonly string[], target: string): boolean {
-  const lower = target.toLowerCase();
-  return labels.some(l => l.trim().toLowerCase() === lower);
-}
-
 export function evaluatePrIntake(input: PrIntakeInput): PrIntakeDecision {
-  if (input.authorIsBot) {
-    return { kind: 'allow', via: 'bot' };
-  }
-  if (input.authorHasWriteAccess) {
-    return { kind: 'allow', via: 'write-access' };
-  }
+  if (input.authorIsBot) return { kind: 'allow', via: 'bot' };
+  if (input.authorHasWriteAccess) return { kind: 'allow', via: 'write-access' };
 
-  const candidateRefs = extractIssueNumbers(input.title, input.body);
-  const resolvedIssues: LinkedIssueInfo[] = [];
-  for (const num of candidateRefs) {
-    const info = input.linkedIssues.get(num);
-    if (info) resolvedIssues.push(info);
-  }
+  const finalize = (via: HoldClaVia, approvedIssue?: number): PrIntakeDecision =>
+    input.claState === 'success'
+      ? { kind: 'allow', via, approvedIssue }
+      : { kind: 'hold-cla', claState: input.claState, via, approvedIssue };
+
+  if (input.hasMaintainerEngagement) return finalize('maintainer-engaged');
+  if (hasLabel(input.prLabels, PR_WELCOME_LABEL)) return finalize('pr-welcome-label');
 
   const authorLower = input.prAuthor.toLowerCase();
-  const approvedIssue = resolvedIssues.find(
-    iss =>
+  const referencedIssues: number[] = [];
+  for (const num of extractIssueNumbers(input.title, input.body).slice(0, MAX_LINKED_ISSUE_LOOKUPS)) {
+    const iss = input.resolveIssue(num);
+    if (!iss) continue;
+    referencedIssues.push(iss.number);
+    const isApproved =
       iss.state === 'open' &&
       (hasLabel(iss.labels, PR_WELCOME_LABEL) ||
-        iss.assignees.some(a => a.toLowerCase() === authorLower))
-  );
-
-  let via: HoldClaVia | null = null;
-  if (input.hasMaintainerEngagement) {
-    via = 'maintainer-engaged';
-  } else if (hasLabel(input.prLabels, PR_WELCOME_LABEL)) {
-    via = 'pr-welcome-label';
-  } else if (approvedIssue) {
-    via = 'approved-issue';
-  } else if (
-    isSmallProseTypoFix({
-      files: input.files,
-      additions: input.additions,
-      deletions: input.deletions
-    })
-  ) {
-    via = 'prose-typo-fix';
+        iss.assignees.some(a => a.toLowerCase() === authorLower));
+    if (isApproved) return finalize('approved-issue', iss.number);
   }
 
-  if (!via) {
-    return {
-      kind: 'close',
-      reason: 'no-approved-issue',
-      referencedIssues: resolvedIssues.map(i => i.number)
-    };
-  }
-
-  if (input.claState !== 'success') {
-    return {
-      kind: 'hold-cla',
-      claState: input.claState,
-      via,
-      approvedIssue: approvedIssue?.number
-    };
-  }
-
-  return {
-    kind: 'allow',
-    via,
-    approvedIssue: approvedIssue?.number
-  };
-}
-
-export const DEFAULT_INFRA_OWNERS = ['paulirish', 'micahjo7', 'lusayaa'] as const;
-export const CONFIG_OWNERS = ['paulirish', 'rviscomi', 'micahjo7', 'lusayaa'] as const;
-export const PUBLIC_HARNESS_OWNERS = ['paulirish', 'micahjo7', 'TravenReese'] as const;
-export const EVAL_OWNERS = ['TravenReese', 'micahjo7', 'lusayaa'] as const;
-
-function isEvalPath(rawFile: string): boolean {
-  const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
-  if (file.startsWith('src/grading/')) return true;
-  if (/(?:^|\/)targets\//.test(file)) return true;
-  if (/(?:^|\/)grader\.ts$/.test(file)) return true;
-  if (/(?:^|\/)tasks\/task\.md$/.test(file)) return true;
-  return false;
-}
-
-function isOwnerlessContentPath(rawFile: string): boolean {
-  const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
-  const parts = file.split('/');
-  if (parts.includes('..') || parts.length < 2) return false;
-  if (isEvalPath(file)) return false;
-  return parts[0] === 'guides' || parts[0] === 'features' || parts[0] === 'skills-src';
-}
-
-export function resolveInfraReviewers(files: readonly string[]): string[] {
-  const owners = new Set<string>();
-  for (const rawFile of files) {
-    const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
-    if (isOwnerlessContentPath(file)) continue;
-
-    if (file === 'CODEOWNERS' || file === '.github/atls.json') {
-      CONFIG_OWNERS.forEach(o => owners.add(o));
-    } else if (file.startsWith('src/harness/public/')) {
-      PUBLIC_HARNESS_OWNERS.forEach(o => owners.add(o));
-    } else if (isEvalPath(file)) {
-      EVAL_OWNERS.forEach(o => owners.add(o));
-    } else {
-      DEFAULT_INFRA_OWNERS.forEach(o => owners.add(o));
-    }
-  }
-  return Array.from(owners);
+  if (isSmallProseTypoFix(input)) return finalize('prose-typo-fix');
+  return { kind: 'close', reason: 'no-approved-issue', referencedIssues };
 }
 
 export function formatAutoCloseComment(prAuthor: string, referencedIssues: readonly number[]): string {
@@ -255,155 +178,4 @@ export function formatClaHoldComment(prAuthor: string): string {
     '',
     `Reviewers will be requested automatically once \`cla/google\` turns green.`
   ].join('\n');
-}
-
-const MIN_AUTHOR_BODY_LINES = 10;
-const MIN_AUTHOR_BODY_SHARE = 0.3;
-const ZERO_SHA_REGEX = /^0+$/;
-
-export interface PrimaryBlameAuthor {
-  email: string;
-  sha: string;
-  bodyLines: number;
-  share: number;
-}
-
-export function extractNoreplyLogin(email: string): string | null {
-  const match = email.trim().toLowerCase().match(/^\d+\+([a-z0-9-]+)@users\.noreply\.github\.com$/);
-  return match ? match[1] : null;
-}
-
-export function parsePrimaryBlameAuthor(
-  guideMarkdown: string,
-  blamePorcelain: string
-): PrimaryBlameAuthor | null {
-  const fmMatch = guideMarkdown.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
-  const fmLines = fmMatch ? fmMatch[0].replace(/\r?\n$/, '').split('\n').length : 0;
-
-  const byEmail = new Map<string, { lines: number; sha: string }>();
-  let totalBodyLines = 0;
-  let curSha = '';
-  let curFinalLine = 0;
-  let curMail = '';
-
-  for (const line of blamePorcelain.split('\n')) {
-    const header = line.match(/^([0-9a-f]{40}) \d+ (\d+)/);
-    if (header) {
-      curSha = header[1];
-      curFinalLine = Number(header[2]);
-      continue;
-    }
-    if (line.startsWith('author-mail ')) {
-      curMail = line
-        .slice('author-mail '.length)
-        .trim()
-        .replace(/^<|>$/g, '')
-        .toLowerCase();
-      continue;
-    }
-    if (line.startsWith('\t')) {
-      const content = line.slice(1).trim();
-      if (curFinalLine <= fmLines || !content || !curMail || ZERO_SHA_REGEX.test(curSha)) {
-        continue;
-      }
-      totalBodyLines++;
-      const existing = byEmail.get(curMail);
-      if (existing) {
-        existing.lines++;
-      } else {
-        byEmail.set(curMail, { lines: 1, sha: curSha });
-      }
-    }
-  }
-
-  if (totalBodyLines === 0) return null;
-
-  let bestEmail = '';
-  let bestEntry: { lines: number; sha: string } | null = null;
-  for (const [email, entry] of byEmail) {
-    if (!bestEntry || entry.lines > bestEntry.lines) {
-      bestEmail = email;
-      bestEntry = entry;
-    }
-  }
-
-  if (!bestEntry) return null;
-  const share = bestEntry.lines / totalBodyLines;
-  if (bestEntry.lines < MIN_AUTHOR_BODY_LINES || share < MIN_AUTHOR_BODY_SHARE) {
-    return null;
-  }
-
-  return {
-    email: bestEmail,
-    sha: bestEntry.sha,
-    bodyLines: bestEntry.lines,
-    share
-  };
-}
-
-export interface SelectLeadReviewerInput {
-  tiers: readonly (readonly string[])[];
-  excludedLogins: ReadonlySet<string>;
-  alreadyReviewedLogins?: ReadonlySet<string>;
-  alreadyRequestedLogins?: ReadonlySet<string>;
-  openReviewCounts?: ReadonlyMap<string, number> | (() => ReadonlyMap<string, number>);
-  tieSeed?: number;
-}
-
-function dedupeEligible(candidates: readonly string[], excludedLogins: ReadonlySet<string>): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of candidates) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-    const lower = trimmed.toLowerCase();
-    if (excludedLogins.has(lower) || seen.has(lower)) continue;
-    seen.add(lower);
-    out.push(trimmed);
-  }
-  return out;
-}
-
-export function selectLeadReviewer(input: SelectLeadReviewerInput): string | null {
-  const reviewed = input.alreadyReviewedLogins ?? new Set<string>();
-  const requested = input.alreadyRequestedLogins ?? new Set<string>();
-  const tieSeed = input.tieSeed ?? 0;
-
-  // If any eligible candidate across any tier has already submitted a review on this PR,
-  // keep them rather than paging a new reviewer mid-review.
-  if (reviewed.size > 0) {
-    for (const tier of input.tiers) {
-      for (const candidate of dedupeEligible(tier, input.excludedLogins)) {
-        if (reviewed.has(candidate.toLowerCase())) {
-          return candidate;
-        }
-      }
-    }
-  }
-
-  for (const tier of input.tiers) {
-    const eligible = dedupeEligible(tier, input.excludedLogins);
-    if (eligible.length === 0) continue;
-
-    // Preserve an already-requested reviewer within the winning tier to avoid thrashing on synchronize.
-    const sticky = eligible.find(c => requested.has(c.toLowerCase()));
-    if (sticky) return sticky;
-
-    if (eligible.length === 1) return eligible[0];
-
-    const counts =
-      typeof input.openReviewCounts === 'function' ? input.openReviewCounts() : input.openReviewCounts;
-
-    let minLoad = Infinity;
-    for (const candidate of eligible) {
-      const load = counts?.get(candidate.toLowerCase()) ?? 0;
-      if (load < minLoad) minLoad = load;
-    }
-    const tied = eligible.filter(
-      c => (counts?.get(c.toLowerCase()) ?? 0) === minLoad
-    );
-    return tied[Math.abs(tieSeed) % tied.length];
-  }
-
-  return null;
 }

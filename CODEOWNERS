@@ -1,5 +1,5 @@
 # All reviewer requests (both Content ATLs in .github/atls.json and infra/eval
-# owners in src/ci/pr-intake.ts) are routed by src/ci/atl-triage.ts AFTER PR
+# owners in src/ci/reviewer-routing.ts) are routed by src/ci/atl-triage.ts AFTER PR
 # intake checks pass (approved issue + Google CLA), so external drive-by PRs do
 # not page maintainers at PR creation time.
 #

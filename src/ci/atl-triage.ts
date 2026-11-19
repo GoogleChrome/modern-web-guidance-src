@@ -1,687 +1,40 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import child_process from 'node:child_process';
-import { extractFeatureIds, stripTmpPrefix } from '../core/feature-parser.ts';
-import { getTranscludedFeatureIds } from '../core/macro-parsing.ts';
-
-import { guidesDir, rootDir } from '../core/paths.ts';
 import {
   AWAITING_CLA_LABEL,
   INTAKE_CLA_MARKER,
   INTAKE_CLOSE_MARKER,
-  PR_WELCOME_LABEL,
   evaluatePrIntake,
-  extractIssueNumbers,
-  extractNoreplyLogin,
   formatAutoCloseComment,
   formatClaHoldComment,
-  parsePrimaryBlameAuthor,
-  resolveInfraReviewers,
-  selectLeadReviewer,
-  type ClaState,
-  type LinkedIssueInfo,
+  hasLabel,
+  hasNoAtlTriageDirective,
   type PrIntakeDecision
 } from './pr-intake.ts';
+import {
+  extractNoreplyLogin,
+  loadAtlConfig,
+  parsePrimaryBlameAuthor,
+  planIssueTriage,
+  planPrRouting,
+  upsertDemoPreviewInBody,
+  type AtlConfig
+} from './reviewer-routing.ts';
+import { githubApi, isBotLogin, type IssueTimelineSummary } from './github-client.ts';
 
-// Define content file name constants inline to avoid importing from 'src/core/guide-validation.ts'
-// which would transitively require external packages (like '@11ty/gray-matter' and 'marked')
-// in the GitHub Actions runner, slowing down the triage job.
-export const GUIDE_FILE = 'guide.md';
-export const SKILL_FILE = 'SKILL.md';
-export const EXPECTATIONS_FILE = 'expectations.md';
-export const DEMO_FILE = 'demo.html';
-
-export const SME_CONTENT_FILENAMES = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
-
-const DEFAULT_GUIDES_DIR = guidesDir;
-const NON_CATEGORY_DIRS = new Set(['lib', 'node_modules', 'modern-web-guidance']);
-
-function isCategoryDirectory(dirPath: string): boolean {
-  try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    // If it contains a guide.md directly (e.g. discipline guide like guides/css/guide.md)
-    if (entries.some(e => e.isFile() && e.name === GUIDE_FILE)) {
-      return true;
-    }
-    // If it contains child directories with guide files
-    for (const entry of entries) {
-      if (entry.isDirectory() && !entry.name.startsWith('.')) {
-        const subDirPath = path.join(dirPath, entry.name);
-        const subEntries = fs.readdirSync(subDirPath, { withFileTypes: true });
-        if (subEntries.some(e => e.isFile() && (e.name === GUIDE_FILE || e.name === DEMO_FILE || e.name === EXPECTATIONS_FILE))) {
-          return true;
-        }
-      }
-    }
-  } catch {
-    return false;
-  }
-  return false;
+function isEnvDryRun(): boolean {
+  return process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1';
 }
 
-export function getKnownCategories(
-  guidesRootDir: string = DEFAULT_GUIDES_DIR,
-  atlConfig?: AtlConfig
-): Set<string> {
-  const categories = new Set<string>([
-    'accessibility',
-    'built-in-ai',
-    'css',
-    'forms',
-    'html',
-    'js',
-    'motion',
-    'performance',
-    'privacy',
-    'pwa',
-    'security',
-    'ui-atoms',
-    'ui-behaviors',
-    'ui-components',
-    'visual-design',
-    'webmcp'
-  ]);
-
-  if (atlConfig?.default) {
-    for (const cat of Object.keys(atlConfig.default)) {
-      categories.add(cat.toLowerCase());
-    }
+function runMutation(isDryRun: boolean, actionDesc: string, fn: () => void): void {
+  if (isDryRun) {
+    console.log(`[DRY RUN] Would ${actionDesc}`);
+    return;
   }
-
   try {
-    if (fs.existsSync(guidesRootDir)) {
-      const entries = fs.readdirSync(guidesRootDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory() || entry.name.startsWith('.') || NON_CATEGORY_DIRS.has(entry.name)) {
-          continue;
-        }
-        if (isCategoryDirectory(path.join(guidesRootDir, entry.name))) {
-          categories.add(entry.name.toLowerCase());
-        }
-      }
-    }
+    fn();
   } catch (err) {
-    console.warn(`Could not discover categories from ${guidesRootDir}:`, err);
+    console.error(`Failed to ${actionDesc}:`, err);
   }
-
-  return categories;
-}
-
-export const KNOWN_CATEGORIES = getKnownCategories();
-
-export function isSmeContentFile(file: string): boolean {
-  let normalized = file.replace(/^\.[/\\]/, '');
-  if (path.isAbsolute(normalized)) {
-    normalized = path.relative(rootDir, normalized);
-  }
-  const parts = normalized.split(/[/\\]/);
-  if (parts.some(p => p === '..')) {
-    return false;
-  }
-  if (parts[0] === 'features' && parts.length === 2 && (file.endsWith('.md') || file.endsWith('.json'))) {
-    return true;
-  }
-  if (parts[0] === 'skills-src' && parts.length >= 3) {
-    return true;
-  }
-  if (parts[0] !== 'guides' || parts.length < 3) {
-    return false;
-  }
-  const filename = parts[parts.length - 1];
-  return SME_CONTENT_FILENAMES.has(filename);
-}
-
-const ATL_CONFIG_PATH = path.join(rootDir, '.github', 'atls.json');
-
-export interface AtlConfig {
-  default: Record<string, string | string[]>;
-  web_features: Record<string, string | string[]>;
-  web_features_groups: Record<string, string | string[]>;
-}
-
-const FEATURE_GROUPS_PATH = path.join(rootDir, 'src', 'ci', 'feature-to-groups.gen.json');
-export let featureGroups: Record<string, string[]> = {};
-try {
-  if (fs.existsSync(FEATURE_GROUPS_PATH)) {
-    featureGroups = JSON.parse(fs.readFileSync(FEATURE_GROUPS_PATH, 'utf8'));
-  }
-} catch (err) {
-  console.warn(`Could not load feature-to-groups.gen.json:`, err);
-}
-
-export function loadAtlConfig(): AtlConfig {
-  try {
-    const content = fs.readFileSync(ATL_CONFIG_PATH, 'utf8');
-    return JSON.parse(content);
-  } catch (err) {
-    console.error(`Failed to load ATL config from ${ATL_CONFIG_PATH}:`, err);
-    process.exit(1);
-  }
-}
-
-export function normalizeLabel(label: string): string {
-  // Normalize labels like "category:performance" or "Performance" to "performance"
-  let clean = label.trim().toLowerCase();
-  if (clean.startsWith('category:')) {
-    clean = clean.slice('category:'.length);
-  }
-  if (clean.startsWith('guide:')) {
-    clean = clean.slice('guide:'.length);
-  }
-  if (clean.startsWith('guides:')) {
-    clean = clean.slice('guides:'.length);
-  }
-  clean = clean.trim();
-  if (clean === 'extensions') {
-    return 'chrome-extensions';
-  }
-  return clean;
-}
-
-export function isContentRelatedIssue(
-  labels: string[],
-  issueDescription: string,
-  atlConfig?: AtlConfig,
-  guidesRootDir?: string
-): boolean {
-  const categories = getKnownCategories(guidesRootDir, atlConfig);
-  const contentLabels = new Set(['new-feature', 'new-use-case', 'content', 'gd-dev-content']);
-  for (const label of labels) {
-    const normalized = normalizeLabel(label);
-    if (contentLabels.has(normalized)) return true;
-    if (categories.has(normalized)) return true;
-    if (atlConfig?.default && atlConfig.default[normalized]) return true;
-    if (atlConfig?.web_features && atlConfig.web_features[normalized]) return true;
-    if (atlConfig?.web_features_groups && atlConfig.web_features_groups[normalized]) return true;
-    if (featureGroups[normalized]) return true;
-    if (label.startsWith('category:') || label.startsWith('guide:') || label.startsWith('guides:')) return true;
-  }
-
-  // Check description for use case subdir or template Category field
-  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription) || /###\s+Category\s*\r?\n+([^\r\n#]+)/i.test(issueDescription)) {
-    return true;
-  }
-
-  // Check description for web feature IDs
-  if (extractFeatureIds(issueDescription).length > 0) {
-    return true;
-  }
-
-  return false;
-}
-
-export function extractFeatureIdsFromContent(content: string): string[] {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return [];
-  const fm = match[1];
-  
-  const lines = fm.split('\n');
-  const featureIds: string[] = [];
-  let inWebFeatures = false;
-  for (const line of lines) {
-    if (line.startsWith('web-feature-ids:')) {
-      inWebFeatures = true;
-      continue;
-    }
-    if (inWebFeatures) {
-      if (line.trim().startsWith('-')) {
-        const fid = line.replace(/^\s*-\s*/, '').trim();
-        if (fid) featureIds.push(fid);
-      } else if (line.match(/^[a-zA-Z0-9_-]+:/)) {
-        inWebFeatures = false;
-      }
-    }
-  }
-  return featureIds;
-}
-
-export function getFeatureIdsFromGuide(guidePath: string): string[] {
-  try {
-    if (!fs.existsSync(guidePath)) return [];
-    const content = fs.readFileSync(guidePath, 'utf8');
-    return extractFeatureIdsFromContent(content);
-  } catch (err) {
-    console.error(`Error reading feature IDs from ${guidePath}:`, err);
-    return [];
-  }
-}
-
-function getFeatureIdVariants(fid: string): string[] {
-  const base = stripTmpPrefix(fid);
-  return [fid, base, `tmp-${base}`];
-}
-
-function toAtlList(val: string | string[] | undefined): string[] {
-  if (!val) return [];
-  return Array.isArray(val) ? [...val] : [val];
-}
-
-export function resolveFeatureDirectAtls(featureIds: readonly string[], atlConfig: AtlConfig): string[] {
-  const out = new Set<string>();
-  for (const fid of featureIds) {
-    for (const variant of getFeatureIdVariants(fid)) {
-      for (const atl of toAtlList(atlConfig.web_features[variant])) {
-        out.add(atl);
-      }
-    }
-  }
-  return Array.from(out);
-}
-
-export function resolveFeatureGroupAtls(featureIds: readonly string[], atlConfig: AtlConfig): string[] {
-  const out = new Set<string>();
-  for (const fid of featureIds) {
-    for (const variant of getFeatureIdVariants(fid)) {
-      const groups = featureGroups[variant] || [];
-      for (const group of groups) {
-        for (const atl of toAtlList(atlConfig.web_features_groups[group])) {
-          out.add(atl);
-        }
-      }
-    }
-  }
-  return Array.from(out);
-}
-
-export function getAtlsFromDescription(description: string, atlConfig: AtlConfig): string[] {
-  if (!description) return [];
-
-  const featureIds = Array.from(new Set(extractFeatureIds(description)));
-  if (featureIds.length === 0) return [];
-
-  console.log(`Matched/extracted feature IDs in description: ${featureIds.join(', ')}`);
-
-  return Array.from(
-    new Set([
-      ...resolveFeatureDirectAtls(featureIds, atlConfig),
-      ...resolveFeatureGroupAtls(featureIds, atlConfig)
-    ])
-  );
-}
-
-const JQ_ACTOR_IS_BOT = '(.actor != null and (.actor.type == "Bot" or ((.actor.login // "") | endswith("[bot]"))))';
-
-function queryIssueEvents(issueOrPrNumber: number, jqFilter: string): string[] {
-  return child_process
-    .execFileSync(
-      'gh',
-      ['api', `repos/{owner}/{repo}/issues/${issueOrPrNumber}/events`, '--paginate', '--jq', jqFilter],
-      { encoding: 'utf8' }
-    )
-    .split('\n')
-    .map(l => l.trim())
-    .filter(Boolean);
-}
-
-export const githubApi = {
-  getIssueUnassignedLogins(issueNumber: number): string[] {
-    return queryIssueEvents(
-      issueNumber,
-      `.[] | select(.event == "unassigned" and (${JQ_ACTOR_IS_BOT} | not)) | .assignee.login`
-    );
-  },
-
-  getIssueUnlabeledEvents(issueNumber: number): string[] {
-    return queryIssueEvents(
-      issueNumber,
-      `.[] | select(.event == "unlabeled" and (${JQ_ACTOR_IS_BOT} | not)) | .label.name`
-    );
-  },
-
-  getIssueCurrentAssignees(issueNumber: number): string[] {
-    const assigneesOutput = child_process.execFileSync(
-      'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'assignees', '--jq', '.assignees[].login'],
-      { encoding: 'utf8' }
-    );
-    return assigneesOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
-  },
-
-  getIssueLabels(issueNumber: number): string[] {
-    const output = child_process.execFileSync(
-      'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'labels', '--jq', '.labels[].name'],
-      { encoding: 'utf8' }
-    );
-    return output
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
-  },
-
-  addIssueAssignees(issueNumber: number, assignees: string[]): void {
-    if (assignees.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'edit', String(issueNumber), '--add-assignee', assignees.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  addIssueLabels(issueNumber: number, labels: string[]): void {
-    if (labels.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'edit', String(issueNumber), '--add-label', labels.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  removeIssueLabels(issueNumber: number, labels: string[]): void {
-    if (labels.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['issue', 'edit', String(issueNumber), '--remove-label', labels.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  getIssueBody(issueNumber: number): string {
-    return child_process.execFileSync(
-      'gh',
-      ['issue', 'view', String(issueNumber), '--json', 'body', '--jq', '.body // ""'],
-      { encoding: 'utf8' }
-    ).trim();
-  },
-
-  getPrFiles(prNumber: number): string[] {
-    const output = child_process.execFileSync(
-      'gh',
-      ['pr', 'view', String(prNumber), '--json', 'files', '--jq', '.files[].path'],
-      { encoding: 'utf8' }
-    );
-    return output.trim().split('\n').map(f => f.trim()).filter(Boolean);
-  },
-
-  getPrReviewState(prNumber: number): { reviewRequests: string[]; reviews: string[] } {
-    const output = child_process.execFileSync(
-      'gh',
-      ['pr', 'view', String(prNumber), '--json', 'reviews,reviewRequests'],
-      { encoding: 'utf8' }
-    );
-    const prData = JSON.parse(output);
-    const reviewRequests = (prData.reviewRequests || []).map((r: any) => r.login).filter(Boolean);
-    const reviews = (prData.reviews || []).map((r: any) => r.author?.login).filter(Boolean);
-    return { reviewRequests, reviews };
-  },
-
-  addPrReviewers(prNumber: number, reviewers: string[]): void {
-    if (reviewers.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['pr', 'edit', String(prNumber), '--add-reviewer', reviewers.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  removePrReviewers(prNumber: number, reviewers: string[]): void {
-    if (reviewers.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['pr', 'edit', String(prNumber), '--remove-reviewer', reviewers.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  getPrBotRequestedReviewers(prNumber: number): string[] {
-    const botRequested = new Set<string>();
-    const lines = queryIssueEvents(
-      prNumber,
-      `.[] | select(.event == "review_requested" and .requested_reviewer.login != null) | [(.requested_reviewer.login | ascii_downcase), (${JQ_ACTOR_IS_BOT} | tostring)] | @tsv`
-    );
-    for (const line of lines) {
-      const [login, isBot] = line.split('\t');
-      if (isBot === 'true') botRequested.add(login);
-      else botRequested.delete(login);
-    }
-    return Array.from(botRequested);
-  },
-
-  addPrLabels(prNumber: number, labels: string[]): void {
-    if (labels.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['pr', 'edit', String(prNumber), '--add-label', labels.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  removePrLabels(prNumber: number, labels: string[]): void {
-    if (labels.length === 0) return;
-    child_process.execFileSync(
-      'gh',
-      ['pr', 'edit', String(prNumber), '--remove-label', labels.join(',')],
-      { stdio: 'inherit' }
-    );
-  },
-
-  getPrUnlabeledEvents(prNumber: number): string[] {
-    return queryIssueEvents(
-      prNumber,
-      `.[] | select(.event == "unlabeled" and (${JQ_ACTOR_IS_BOT} | not)) | .label.name`
-    );
-  },
-
-  getPrRemovedReviewers(prNumber: number): string[] {
-    return queryIssueEvents(
-      prNumber,
-      `.[] | select(.event == "review_request_removed" and (${JQ_ACTOR_IS_BOT} | not)) | .requested_reviewer.login`
-    );
-  },
-
-  getPrFileContent(prNumber: number, filePath: string): string | null {
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    if (normalizedPath.includes('..') || !normalizedPath.startsWith('guides/')) {
-      return null;
-    }
-    const encodedPath = normalizedPath
-      .split('/')
-      .map(segment => encodeURIComponent(segment))
-      .join('/');
-    try {
-      return child_process.execFileSync(
-        'gh',
-        [
-          'api',
-          `repos/{owner}/{repo}/contents/${encodedPath}?ref=refs/pull/${prNumber}/head`,
-          '-H',
-          'Accept: application/vnd.github.raw+json'
-        ],
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
-      );
-    } catch {
-      return null;
-    }
-  },
-
-  getPrIsDraft(prNumber: number): boolean {
-    const output = child_process.execFileSync(
-      'gh',
-      ['pr', 'view', String(prNumber), '--json', 'isDraft', '--jq', '.isDraft'],
-      { encoding: 'utf8' }
-    ).trim();
-    return output === 'true';
-  },
-
-  getPrBody(prNumber: number): string {
-    return child_process.execFileSync(
-      'gh',
-      ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body // ""'],
-      { encoding: 'utf8' }
-    ).trim();
-  },
-
-  updatePrBody(prNumber: number, body: string): void {
-    child_process.execFileSync(
-      'gh',
-      ['pr', 'edit', String(prNumber), '--body-file', '-'],
-      { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
-    );
-  },
-
-  hasUserWriteAccess(username: string): boolean {
-    const encoded = encodeURIComponent(username);
-    try {
-      const out = child_process
-        .execFileSync(
-          'gh',
-          ['api', `repos/{owner}/{repo}/collaborators/${encoded}/permission`, '--jq', '.user.permissions.push // false'],
-          { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
-        )
-        .trim();
-      return out === 'true';
-    } catch (err) {
-      const stderr = String((err as { stderr?: unknown }).stderr ?? '');
-      if (stderr.includes('HTTP 404') || stderr.includes('is not a user')) {
-        return false;
-      }
-      throw err;
-    }
-  },
-
-  getPrIntakeMetadata(prNumber: number): PrIntakeMetadata {
-    const raw = child_process.execFileSync(
-      'gh',
-      [
-        'pr',
-        'view',
-        String(prNumber),
-        '--json',
-        'title,body,state,isDraft,isCrossRepository,additions,deletions,headRefOid,headRefName,headRepository,headRepositoryOwner,author,labels,files,reviewRequests,reviews,comments,statusCheckRollup'
-      ],
-      { encoding: 'utf8' }
-    );
-    return parsePrIntakeMetadata(JSON.parse(raw));
-  },
-
-  getLinkedIssueInfo(issueNumber: number): LinkedIssueInfo | null {
-    try {
-      const raw = child_process.execFileSync(
-        'gh',
-        ['api', `repos/{owner}/{repo}/issues/${issueNumber}`],
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
-      );
-      const iss = JSON.parse(raw);
-      if (iss.pull_request) return null;
-      return {
-        number: Number(iss.number),
-        state: String(iss.state).toLowerCase() === 'open' ? 'open' : 'closed',
-        author: iss.user?.login ?? '',
-        labels: (iss.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
-        assignees: (iss.assignees || []).map((a: { login?: string }) => a.login ?? '').filter(Boolean)
-      };
-    } catch (err) {
-      const stderr = String((err as { stderr?: unknown }).stderr ?? '');
-      if (stderr.includes('HTTP 404') || stderr.includes('HTTP 410')) {
-        return null;
-      }
-      throw err;
-    }
-  },
-
-  addPrComment(prNumber: number, body: string): void {
-    child_process.execFileSync(
-      'gh',
-      ['pr', 'comment', String(prNumber), '--body-file', '-'],
-      { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
-    );
-  },
-
-  closePr(prNumber: number): void {
-    child_process.execFileSync('gh', ['pr', 'close', String(prNumber)], { stdio: 'inherit' });
-  },
-
-  findOpenAwaitingClaPrsForSha(headSha: string): number[] {
-    if (!headSha) return [];
-    const raw = child_process.execFileSync(
-      'gh',
-      ['pr', 'list', '--state', 'open', '--label', AWAITING_CLA_LABEL, '--limit', '200', '--json', 'number,headRefOid'],
-      { encoding: 'utf8' }
-    );
-    const items: Array<{ number: number; headRefOid?: string }> = JSON.parse(raw);
-    return items.filter(i => i.headRefOid === headSha).map(i => i.number);
-  },
-
-  getGuideBlamePorcelain(guideAbsPath: string): string | null {
-    try {
-      return child_process.execFileSync(
-        'git',
-        ['-C', path.dirname(guideAbsPath), 'blame', '-w', '-M', '--line-porcelain', '--', path.basename(guideAbsPath)],
-        { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, stdio: ['pipe', 'pipe', 'ignore'] }
-      );
-    } catch {
-      return null;
-    }
-  },
-
-  getCommitAuthorLogin(sha: string): string | null {
-    try {
-      const out = child_process
-        .execFileSync(
-          'gh',
-          ['api', `repos/{owner}/{repo}/commits/${encodeURIComponent(sha)}`, '--jq', '.author.login // ""'],
-          { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
-        )
-        .trim();
-      return out || null;
-    } catch {
-      return null;
-    }
-  },
-
-  getOpenPrReviewCounts(): Map<string, number> {
-    const counts = new Map<string, number>();
-    try {
-      const raw = child_process.execFileSync(
-        'gh',
-        ['pr', 'list', '--state', 'open', '--limit', '500', '--json', 'reviewRequests'],
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
-      );
-      const prs: Array<{ reviewRequests?: Array<{ login?: string }> }> = JSON.parse(raw);
-      for (const pr of prs) {
-        for (const req of pr.reviewRequests || []) {
-          const login = req.login?.toLowerCase();
-          if (login) counts.set(login, (counts.get(login) ?? 0) + 1);
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to fetch open PR review counts:', err);
-    }
-    return counts;
-  }
-};
-
-const PREVIEW_START = '<!-- mwg-demo-preview:start -->';
-const PREVIEW_END = '<!-- mwg-demo-preview:end -->';
-const PREVIEW_BLOB_BASE = 'https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob';
-
-export function upsertDemoPreviewInBody(headRef: string, currentBody: string, files: string[]): string {
-  const links = files
-    .filter(f => /^guides\/[^/.][^/]*\/[^/.][^/]*\/demo(?:-.+)?\.html$/.test(f))
-    .sort()
-    .map(f => `[\`${f.replace(/^guides\/|\/demo\.html$/g, '')}\`](${PREVIEW_BLOB_BASE}/${headRef}/${f})`);
-
-  if (!links.length && !currentBody.includes(PREVIEW_START)) {
-    return currentBody;
-  }
-
-  const list = links.length === 1 ? links[0] : links.map(l => `\n- ${l}`).join('');
-  const section = links.length ? `${PREVIEW_START}\n---\n🎨 **Demo preview:** ${list}\n${PREVIEW_END}` : '';
-  const stripped = currentBody.replace(/\s*<!-- mwg-demo-preview:start -->[\s\S]*?<!-- mwg-demo-preview:end -->/g, '').trimEnd();
-  return [stripped, section].filter(Boolean).join('\n\n');
-}
-
-export function hasNoAtlTriageDirective(body?: string | null): boolean {
-  if (!body) return false;
-  // Strip fenced code blocks (``` or ~~~) and inline code spans (`...`)
-  // so prose mentions like `<!-- no-atl-triage -->` do not trigger the directive.
-  const withoutCode = body
-    .replace(/^(?:`{3,}|~{3,})[\s\S]*?^(?:`{3,}|~{3,})/gm, '')
-    .replace(/`+[^`]*`+/g, '');
-  return /<!--\s*no-atl-triage\s*-->/i.test(withoutCode);
 }
 
 export interface HandleIssueOptions {
@@ -697,767 +50,56 @@ export function handleIssue(
   atlConfig: AtlConfig,
   options?: HandleIssueOptions
 ): string[] {
-  const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
+  const isDryRun = options?.dryRun ?? isEnvDryRun();
   console.log(`Triaging issue #${issueNumber} with labels: ${labels.join(', ')}`);
 
   if (hasNoAtlTriageDirective(issueDescription)) {
     console.log(`Issue #${issueNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
     return [];
   }
-  
-  const assignedAtls = new Set<string>();
-  
-  // 1. Check labels
-  for (const label of labels) {
-    const normalized = normalizeLabel(label);
-    
-    if (atlConfig.web_features[normalized]) {
-      const atls = Array.isArray(atlConfig.web_features[normalized]) ? atlConfig.web_features[normalized] : [atlConfig.web_features[normalized]];
-      atls.forEach(a => assignedAtls.add(a));
-    }
-    else if (atlConfig.web_features_groups[normalized]) {
-      const atls = Array.isArray(atlConfig.web_features_groups[normalized]) ? atlConfig.web_features_groups[normalized] : [atlConfig.web_features_groups[normalized]];
-      atls.forEach(a => assignedAtls.add(a));
-    }
-    else if (atlConfig.default[normalized]) {
-      const atls = Array.isArray(atlConfig.default[normalized]) ? atlConfig.default[normalized] : [atlConfig.default[normalized]];
-      atls.forEach(a => assignedAtls.add(a));
-    }
-  }
 
-  // 2. Check issue description for web-feature IDs
-  const descriptionAtls = getAtlsFromDescription(issueDescription, atlConfig);
-  if (descriptionAtls.length > 0) {
-    console.log(`Found ATLs from description: ${descriptionAtls.join(', ')}`);
-    descriptionAtls.forEach(a => assignedAtls.add(a));
-  }
-
-  // 3. Check issue description for use case category (subdir link or issue template Category field)
-  const categoryMatch =
-    issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i) ||
-    issueDescription.match(/###\s+Category\s*\r?\n+([^\r\n#]+)/i);
-  if (categoryMatch) {
-    const category = categoryMatch[1].trim().toLowerCase();
-    if (atlConfig.default[category]) {
-      const atls = Array.isArray(atlConfig.default[category]) ? atlConfig.default[category] : [atlConfig.default[category]];
-      console.log(`Found category "${category}" from description. ATL: ${atls.join(', ')}`);
-      atls.forEach(a => assignedAtls.add(a));
-    }
-  }
-
-  // Check current assignees and known ATLs
-  const currentAssignees = new Set<string>();
-  if (options?.currentAssignees) {
-    options.currentAssignees.forEach(l => currentAssignees.add(l.toLowerCase()));
-  } else {
+  let currentAssignees = options?.currentAssignees;
+  if (!currentAssignees) {
     try {
-      const assignees = githubApi.getIssueCurrentAssignees(issueNumber);
-      assignees.forEach(l => currentAssignees.add(l.toLowerCase()));
+      currentAssignees = githubApi.getIssueSnapshot(issueNumber).assignees;
     } catch (err) {
       console.warn(`Failed to fetch current assignees for issue #${issueNumber}:`, err);
+      currentAssignees = [];
     }
   }
 
-  const allKnownAtls = new Set<string>();
-  Object.values(atlConfig.default).forEach(val => {
-    if (Array.isArray(val)) val.forEach(a => allKnownAtls.add(a.toLowerCase()));
-    else allKnownAtls.add(val.toLowerCase());
-  });
-  Object.values(atlConfig.web_features).forEach(val => {
-    if (Array.isArray(val)) val.forEach(a => allKnownAtls.add(a.toLowerCase()));
-    else allKnownAtls.add(val.toLowerCase());
-  });
-  Object.values(atlConfig.web_features_groups).forEach(val => {
-    if (Array.isArray(val)) val.forEach(a => allKnownAtls.add(a.toLowerCase()));
-    else allKnownAtls.add(val.toLowerCase());
-  });
-  const hasAssignedKnownAtl = Array.from(currentAssignees).some(a => allKnownAtls.has(a));
-
-  const isContent = isContentRelatedIssue(labels, issueDescription, atlConfig, options?.guidesRootDir);
-  const foundAtls = new Set(assignedAtls);
-  const hasNeedsAtl = labels.some(l => l.toLowerCase() === 'needs-atl');
-  const hasAtl = foundAtls.size > 0 || hasAssignedKnownAtl;
-
-  const issueLabelsToAdd: string[] = [];
-  const issueLabelsToRemove: string[] = [];
-
-  if (isContent && !hasAtl) {
-    if (!hasNeedsAtl) {
-      let wasPreviouslyUnlabeled = false;
-      try {
-        const unlabeled = githubApi.getIssueUnlabeledEvents(issueNumber);
-        wasPreviouslyUnlabeled = unlabeled.some(l => l.toLowerCase() === 'needs-atl');
-      } catch (err) {
-        console.warn(`Failed to fetch event history for issue #${issueNumber}:`, err);
-      }
-
-      if (!wasPreviouslyUnlabeled) {
-        issueLabelsToAdd.push('needs-atl');
-      } else {
-        console.log(`Skipping adding 'needs-atl' to issue #${issueNumber} because it was previously removed.`);
-      }
-    }
-  } else if (hasAtl || !isContent) {
-    if (hasNeedsAtl) {
-      issueLabelsToRemove.push('needs-atl');
-    }
-  }
-
-  if (issueLabelsToAdd.length > 0) {
-    if (isDryRun) {
-      console.log(`[DRY RUN] Would add label(s) to issue #${issueNumber}: ${issueLabelsToAdd.join(', ')}`);
-    } else {
-      try {
-        githubApi.addIssueLabels(issueNumber, issueLabelsToAdd);
-        console.log(`Successfully added label(s) to issue #${issueNumber}: ${issueLabelsToAdd.join(', ')}`);
-      } catch (err) {
-        console.error(`Failed to add labels to issue #${issueNumber}:`, err);
-      }
-    }
-  }
-
-  if (issueLabelsToRemove.length > 0) {
-    if (isDryRun) {
-      console.log(`[DRY RUN] Would remove label(s) from issue #${issueNumber}: ${issueLabelsToRemove.join(', ')}`);
-    } else {
-      try {
-        githubApi.removeIssueLabels(issueNumber, issueLabelsToRemove);
-        console.log(`Successfully removed label(s) from issue #${issueNumber}: ${issueLabelsToRemove.join(', ')}`);
-      } catch (err) {
-        console.error(`Failed to remove labels from issue #${issueNumber}:`, err);
-      }
-    }
-  }
-
-  if (assignedAtls.size === 0) {
-    console.log('No matching ATL signals found for this issue.');
-    return [];
-  }
-
-  for (const atl of Array.from(assignedAtls)) {
-    if (currentAssignees.has(atl.toLowerCase())) {
-      console.log(`ATL @${atl} is already assigned to issue #${issueNumber}.`);
-      assignedAtls.delete(atl);
-    }
-  }
-
-  if (assignedAtls.size === 0) {
-    console.log('No new ATLs to assign to this issue.');
-    return [];
-  }
-
-  const unassignedLogins = new Set<string>();
+  let timeline: IssueTimelineSummary | undefined;
   try {
-    const unassigned = githubApi.getIssueUnassignedLogins(issueNumber);
-    unassigned.forEach(l => unassignedLogins.add(l.toLowerCase()));
+    timeline = githubApi.getIssueTimelineSummary(issueNumber);
   } catch (err) {
     console.warn(`Failed to fetch event history for issue #${issueNumber}:`, err);
   }
 
-  for (const atl of Array.from(assignedAtls)) {
-    const lowerAtl = atl.toLowerCase();
-    if (unassignedLogins.has(lowerAtl)) {
-      console.log(`Skipping ATL @${atl} for issue #${issueNumber} because they were previously unassigned.`);
-      assignedAtls.delete(atl);
-    }
+  const plan = planIssueTriage({
+    labels,
+    description: issueDescription,
+    atlConfig,
+    guidesRootDir: options?.guidesRootDir,
+    currentAssignees,
+    unassignedLoginsLower: timeline?.unassignedLower,
+    unlabeledLower: timeline?.unlabeledLower
+  });
+
+  if (plan.labelsToAdd.length > 0 || plan.labelsToRemove.length > 0 || plan.assigneesToAdd.length > 0) {
+    const parts: string[] = [];
+    if (plan.labelsToAdd.length > 0) parts.push(`add label(s) [${plan.labelsToAdd.join(', ')}]`);
+    if (plan.labelsToRemove.length > 0) parts.push(`remove label(s) [${plan.labelsToRemove.join(', ')}]`);
+    if (plan.assigneesToAdd.length > 0) parts.push(`assign [${plan.assigneesToAdd.join(', ')}]`);
+    runMutation(isDryRun, `update issue #${issueNumber}: ${parts.join('; ')}`, () =>
+      githubApi.editItem('issue', issueNumber, {
+        addLabels: plan.labelsToAdd,
+        removeLabels: plan.labelsToRemove,
+        addAssignees: plan.assigneesToAdd
+      })
+    );
   }
 
-  if (assignedAtls.size === 0) {
-    console.log('No new ATLs to assign to this issue.');
-    return [];
-  }
-
-  const assignees = Array.from(assignedAtls);
-  if (isDryRun) {
-    console.log(`[DRY RUN] Would assign issue #${issueNumber} to: ${assignees.join(',')}`);
-  } else {
-    console.log(`Assigning issue #${issueNumber} to: ${assignees.join(',')}`);
-    try {
-      githubApi.addIssueAssignees(issueNumber, assignees);
-      console.log('Successfully assigned issue.');
-    } catch (err) {
-      console.error(`Failed to assign issue #${issueNumber}:`, err);
-    }
-  }
-  return assignees;
-}
-
-export interface TranscludedGuide {
-  category: string;
-  relativePath: string;
-  fullPath: string;
-}
-
-export function findGuidesTranscludingFeature(
-  featureId: string,
-  guidesRootDir: string = guidesDir
-): TranscludedGuide[] {
-  const matches: TranscludedGuide[] = [];
-
-  function scanDir(dir: string) {
-    if (!fs.existsSync(dir)) return;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name === 'node_modules' || entry.name.startsWith('.')) {
-        continue;
-      }
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        scanDir(fullPath);
-      } else if (entry.isFile() && (entry.name === GUIDE_FILE || entry.name === SKILL_FILE)) {
-        const rel = path.relative(guidesRootDir, fullPath);
-        const parts = rel.split(path.sep);
-        const category = parts[0];
-        try {
-          const content = fs.readFileSync(fullPath, 'utf8');
-          const transcluded = getTranscludedFeatureIds(content);
-          const targetBaseId = stripTmpPrefix(featureId);
-          if (transcluded.some(t => stripTmpPrefix(t) === targetBaseId)) {
-            matches.push({
-              category,
-              relativePath: path.relative(rootDir, fullPath),
-              fullPath
-            });
-          }
-        } catch (err) {
-          console.warn(`Could not read guide file ${fullPath}:`, err);
-        }
-      }
-    }
-  }
-
-  scanDir(guidesRootDir);
-  return matches;
-}
-
-export interface HandlePrOptions {
-  dryRun?: boolean;
-  isDraft?: boolean;
-  prBody?: string;
-  headRef?: string;
-  preloadedFiles?: string[];
-  preloadedReviewState?: { reviewRequests: string[]; reviews: string[] };
-  includeInfraOwners?: boolean;
-  enableGitAuthorRouting?: boolean;
-  openReviewCounts?: ReadonlyMap<string, number>;
-}
-
-export function handlePR(
-  prNumber: number,
-  prAuthor: string,
-  atlConfig: AtlConfig,
-  mockFiles?: string[],
-  guidesRootDir: string = guidesDir,
-  labels: string[] = [],
-  options?: HandlePrOptions
-) {
-  const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
-  console.log(`Triaging PR #${prNumber} by author: @${prAuthor}`);
-
-  if (hasNoAtlTriageDirective(options?.prBody)) {
-    console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
-    return [];
-  }
-
-  if (options?.isDraft) {
-    console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
-    return [];
-  }
-
-  let prBody = options?.prBody;
-  if (prBody === undefined && !mockFiles) {
-    try {
-      prBody = githubApi.getPrBody(prNumber);
-    } catch (err) {
-      console.warn(`Failed to fetch body for PR #${prNumber}:`, err);
-    }
-    if (hasNoAtlTriageDirective(prBody)) {
-      console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
-      return [];
-    }
-  }
-
-  let isDraft = options?.isDraft;
-  if (isDraft === undefined && !mockFiles) {
-    try {
-      isDraft = githubApi.getPrIsDraft(prNumber);
-    } catch (err) {
-      console.warn(`Failed to check if PR #${prNumber} is draft:`, err);
-    }
-    if (isDraft) {
-      console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
-      return [];
-    }
-  }
-  
-  let files: string[] = [];
-  if (mockFiles) {
-    files = mockFiles;
-  } else if (options?.preloadedFiles) {
-    files = options.preloadedFiles;
-  } else {
-    try {
-      files = githubApi.getPrFiles(prNumber);
-    } catch (err) {
-      console.error(`Failed to fetch files for PR #${prNumber}:`, err);
-      return [];
-    }
-  }
-
-  console.log(`PR modified ${files.length} files.`);
-
-  if (!mockFiles && prBody !== undefined && options?.headRef) {
-    const nextBody = upsertDemoPreviewInBody(options.headRef, prBody, files);
-    if (nextBody !== prBody) {
-      if (isDryRun) {
-        console.log(`[DRY RUN] Would update demo preview links in PR #${prNumber} description.`);
-      } else {
-        try {
-          githubApi.updatePrBody(prNumber, nextBody);
-          console.log(`Updated demo preview links in PR #${prNumber} description.`);
-        } catch (err) {
-          console.error(`Failed to update description for PR #${prNumber}:`, err);
-        }
-      }
-    }
-  }
-  
-  const matchedAtls = new Set<string>();
-  const allResolvedAtls = new Set<string>();
-  let hasEvaluatedContent = false;
-  let hasAnyConfiguredOwner = false;
-
-  const touchesSmeContent = files.some(isSmeContentFile);
-  const knownCategories = getKnownCategories(guidesRootDir, atlConfig);
-
-  let prReviewRequests: string[] = [];
-  let prReviews: string[] = [];
-  let removedReviewers: string[] = [];
-
-  if (!mockFiles) {
-    if (options?.preloadedReviewState) {
-      prReviewRequests = options.preloadedReviewState.reviewRequests;
-      prReviews = options.preloadedReviewState.reviews;
-    } else {
-      try {
-        const prData = githubApi.getPrReviewState(prNumber);
-        prReviewRequests = prData.reviewRequests;
-        prReviews = prData.reviews;
-      } catch (err) {
-        console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
-      }
-    }
-
-    try {
-      removedReviewers = githubApi.getPrRemovedReviewers(prNumber);
-    } catch (err) {
-      console.warn(`Failed to fetch removed review requests for PR #${prNumber}:`, err);
-    }
-  }
-
-  const excludedForSelection = new Set<string>([
-    prAuthor.toLowerCase(),
-    ...removedReviewers.map(r => r.toLowerCase())
-  ]);
-  const alreadyReviewedLogins = new Set<string>(prReviews.map(r => r.toLowerCase()));
-  const alreadyRequestedLogins = new Set<string>(prReviewRequests.map(r => r.toLowerCase()));
-
-  let cachedOpenCounts: ReadonlyMap<string, number> | undefined = options?.openReviewCounts;
-  const getOpenCountsLazy = (): ReadonlyMap<string, number> => {
-    if (cachedOpenCounts) return cachedOpenCounts;
-    cachedOpenCounts = mockFiles ? new Map() : githubApi.getOpenPrReviewCounts();
-    return cachedOpenCounts;
-  };
-
-  const writeAccessCache = new Map<string, boolean>();
-  const emailLoginCache = new Map<string, string | null>();
-
-  const resolveGuidePrimaryAuthor = (guideAbsPath: string): string | null => {
-    if (!options?.enableGitAuthorRouting) return null;
-    let guideMarkdown: string;
-    try {
-      guideMarkdown = fs.readFileSync(guideAbsPath, 'utf8');
-    } catch {
-      return null;
-    }
-    const porcelain = githubApi.getGuideBlamePorcelain(guideAbsPath);
-    if (!porcelain) return null;
-
-    const primary = parsePrimaryBlameAuthor(guideMarkdown, porcelain);
-    if (!primary) return null;
-
-    let login = emailLoginCache.get(primary.email);
-    if (login === undefined) {
-      login = githubApi.getCommitAuthorLogin(primary.sha) ?? extractNoreplyLogin(primary.email);
-      emailLoginCache.set(primary.email, login);
-    }
-    if (!login || isBotAuthor({ login })) return null;
-
-    const lower = login.toLowerCase();
-    let hasWrite = writeAccessCache.get(lower);
-    if (hasWrite === undefined) {
-      try {
-        hasWrite = githubApi.hasUserWriteAccess(login);
-      } catch {
-        hasWrite = false;
-      }
-      writeAccessCache.set(lower, hasWrite);
-    }
-    return hasWrite ? login : null;
-  };
-
-  const pickLeadFromTiers = (
-    labelForLog: string,
-    tiers: string[][],
-    hasStaticConfigOwner: boolean
-  ): void => {
-    const lead = selectLeadReviewer({
-      tiers,
-      excludedLogins: excludedForSelection,
-      alreadyReviewedLogins,
-      alreadyRequestedLogins,
-      openReviewCounts: getOpenCountsLazy,
-      tieSeed: prNumber
-    });
-    if (lead || hasStaticConfigOwner) {
-      hasAnyConfiguredOwner = true;
-    }
-    if (lead) {
-      console.log(`${labelForLog} -> Lead reviewer: @${lead}`);
-      matchedAtls.add(lead);
-      allResolvedAtls.add(lead);
-    }
-  };
-
-  const seenGuides = new Set<string>();
-  const seenSkills = new Set<string>();
-  const seenFeatures = new Set<string>();
-
-  for (const file of files) {
-    const parts = file.split(/[/\\]/);
-
-    // 1. Content files under guides/<category>/<guide-name>/...
-    if (parts[0] === 'guides' && parts.length >= 4) {
-      const category = parts[1];
-      if (NON_CATEGORY_DIRS.has(category.toLowerCase())) {
-        continue;
-      }
-      if (fs.existsSync(path.join(guidesRootDir, category)) && !knownCategories.has(category.toLowerCase())) {
-        continue;
-      }
-      const guideName = parts[2];
-      const filename = parts[parts.length - 1];
-      if (SME_CONTENT_FILENAMES.has(filename)) {
-        hasEvaluatedContent = true;
-        const guideKey = `${category}/${guideName}`.toLowerCase();
-        if (seenGuides.has(guideKey)) continue;
-        seenGuides.add(guideKey);
-
-        const relativeGuidePath = `guides/${category}/${guideName}/${GUIDE_FILE}`;
-        const guideDir = path.join(guidesRootDir, category, guideName);
-        const guidePath = path.join(guideDir, GUIDE_FILE);
-
-        let featureIds: string[] = [];
-        let guideContent: string | null = null;
-
-        if (!mockFiles) {
-          try {
-            guideContent = githubApi.getPrFileContent(prNumber, relativeGuidePath);
-          } catch (err) {
-            console.warn(`Failed to fetch ${relativeGuidePath} from PR #${prNumber}:`, err);
-          }
-        }
-
-        if (guideContent) {
-          featureIds = extractFeatureIdsFromContent(guideContent);
-        } else if (fs.existsSync(guidePath)) {
-          featureIds = getFeatureIdsFromGuide(guidePath);
-        }
-
-        const primaryAuthor = resolveGuidePrimaryAuthor(guidePath);
-        const configTiers: string[][] = [
-          resolveFeatureDirectAtls(featureIds, atlConfig),
-          resolveFeatureGroupAtls(featureIds, atlConfig),
-          toAtlList(atlConfig.default[category])
-        ];
-        pickLeadFromTiers(
-          `Guide "${category}/${guideName}" (feature IDs: ${featureIds.join(', ') || 'none'})`,
-          [primaryAuthor ? [primaryAuthor] : [], ...configTiers],
-          configTiers.some(t => t.length > 0)
-        );
-      }
-    }
-
-    // 2. Standalone skill files under skills-src/<skill-name>/...
-    if (parts[0] === 'skills-src' && parts.length >= 3 && !parts.some(p => p === '..')) {
-      const skillName = parts[1].toLowerCase();
-      hasEvaluatedContent = true;
-      if (seenSkills.has(skillName)) continue;
-      seenSkills.add(skillName);
-
-      const skillOwners = toAtlList(atlConfig.default[skillName]);
-      pickLeadFromTiers(`Standalone skill "${skillName}"`, [skillOwners], skillOwners.length > 0);
-    }
-
-    // 3. Feature definition files (features/<feature-id>.md)
-    if (parts[0] === 'features' && file.endsWith('.md')) {
-      hasEvaluatedContent = true;
-      const featureId = path.basename(file, '.md');
-      if (seenFeatures.has(featureId.toLowerCase())) continue;
-      seenFeatures.add(featureId.toLowerCase());
-
-      const transcludedCatAtls: string[] = [];
-      for (const guide of findGuidesTranscludingFeature(featureId, guidesRootDir)) {
-        transcludedCatAtls.push(...toAtlList(atlConfig.default[guide.category]));
-      }
-      const tiers: string[][] = [
-        resolveFeatureDirectAtls([featureId], atlConfig),
-        resolveFeatureGroupAtls([featureId], atlConfig),
-        transcludedCatAtls
-      ];
-      pickLeadFromTiers(`Feature "${featureId}"`, tiers, tiers.some(t => t.length > 0));
-    }
-  }
-
-  const prLabelsToAdd: string[] = [];
-  const prLabelsToRemove: string[] = [];
-  const hasNeedsAtl = labels.some(l => l.toLowerCase() === 'needs-atl');
-  const hasContent = labels.some(l => l.toLowerCase() === 'content');
-
-  let unlabeledLabels: Set<string> | null = null;
-  function getUnlabeledLabels(): Set<string> {
-    if (!unlabeledLabels) {
-      unlabeledLabels = new Set<string>();
-      if (!mockFiles) {
-        try {
-          const unlabeled = githubApi.getPrUnlabeledEvents(prNumber);
-          unlabeled.forEach(l => unlabeledLabels!.add(l.toLowerCase()));
-        } catch (err) {
-          console.warn(`Failed to fetch event history for PR #${prNumber}:`, err);
-        }
-      }
-    }
-    return unlabeledLabels;
-  }
-
-  if (touchesSmeContent && !hasContent) {
-    if (!getUnlabeledLabels().has('content')) {
-      prLabelsToAdd.push('content');
-    } else {
-      console.log(`Skipping adding 'content' to PR #${prNumber} because it was previously removed.`);
-    }
-  }
-
-  if (hasEvaluatedContent && !hasAnyConfiguredOwner) {
-    if (!hasNeedsAtl) {
-      if (!getUnlabeledLabels().has('needs-atl')) {
-        prLabelsToAdd.push('needs-atl');
-      } else {
-        console.log(`Skipping adding 'needs-atl' to PR #${prNumber} because it was previously removed.`);
-      }
-    }
-  } else if (hasAnyConfiguredOwner || !hasEvaluatedContent) {
-    if (hasNeedsAtl) {
-      prLabelsToRemove.push('needs-atl');
-    }
-  }
-
-  if (options?.includeInfraOwners) {
-    for (const owner of resolveInfraReviewers(files)) {
-      matchedAtls.add(owner);
-      allResolvedAtls.add(owner);
-    }
-  }
-
-  // Filter out the PR author, already requested/reviewed users, and manually removed reviewers
-  const excludeLogins = [prAuthor, ...prReviewRequests, ...prReviews, ...removedReviewers];
-  const reviewersToRemove: string[] = [];
-
-  if (!mockFiles && prReviewRequests.length > 0) {
-    const resolvedLower = new Set(Array.from(allResolvedAtls, a => a.toLowerCase()));
-    const staleCandidates = prReviewRequests.filter(r => !resolvedLower.has(r.toLowerCase()));
-    if (staleCandidates.length > 0) {
-      try {
-        const botRequested = new Set(
-          githubApi.getPrBotRequestedReviewers(prNumber).map(r => r.toLowerCase())
-        );
-        reviewersToRemove.push(...staleCandidates.filter(c => botRequested.has(c.toLowerCase())));
-      } catch (err) {
-        console.error(`Failed to fetch bot-requested reviewers for PR #${prNumber}:`, err);
-      }
-    }
-  }
-
-  for (const login of excludeLogins) {
-    const lowerLogin = login.toLowerCase();
-    for (const match of matchedAtls) {
-      if (match.toLowerCase() === lowerLogin) {
-        matchedAtls.delete(match);
-      }
-    }
-  }
-
-  const reviewers = Array.from(matchedAtls);
-
-  if (isDryRun) {
-    if (prLabelsToAdd.length > 0) {
-      console.log(`[DRY RUN] Would add label(s) to PR #${prNumber}: ${prLabelsToAdd.join(', ')}`);
-    }
-    if (prLabelsToRemove.length > 0) {
-      console.log(`[DRY RUN] Would remove label(s) from PR #${prNumber}: ${prLabelsToRemove.join(', ')}`);
-    }
-    if (reviewersToRemove.length > 0) {
-      console.log(`[DRY RUN] Would remove stale ATL review request(s) from PR #${prNumber}: ${reviewersToRemove.join(',')}`);
-    }
-    if (reviewers.length > 0) {
-      console.log(`[DRY RUN] Would request review on PR #${prNumber} from: ${reviewers.join(',')}`);
-    } else {
-      console.log('No ATL review requests needed for this PR.');
-    }
-    return reviewers;
-  }
-
-  if (!mockFiles) {
-    if (prLabelsToAdd.length > 0) {
-      try {
-        githubApi.addPrLabels(prNumber, prLabelsToAdd);
-        console.log(`Successfully added label(s) to PR #${prNumber}: ${prLabelsToAdd.join(', ')}`);
-      } catch (err) {
-        console.error(`Failed to add labels to PR #${prNumber}:`, err);
-      }
-    }
-
-    if (prLabelsToRemove.length > 0) {
-      try {
-        githubApi.removePrLabels(prNumber, prLabelsToRemove);
-        console.log(`Successfully removed label(s) from PR #${prNumber}: ${prLabelsToRemove.join(', ')}`);
-      } catch (err) {
-        console.error(`Failed to remove labels from PR #${prNumber}:`, err);
-      }
-    }
-
-    if (reviewersToRemove.length > 0) {
-      try {
-        githubApi.removePrReviewers(prNumber, reviewersToRemove);
-        console.log(`Successfully removed stale ATL review request(s) from PR #${prNumber}: ${reviewersToRemove.join(',')}`);
-      } catch (err) {
-        console.error(`Failed to remove stale review requests from PR #${prNumber}:`, err);
-      }
-    }
-  }
-
-  if (matchedAtls.size === 0) {
-    console.log('No ATL review requests needed for this PR.');
-    return [];
-  }
-
-  console.log(`Requesting review on PR #${prNumber} from: ${reviewers.join(',')}`);
-  if (!mockFiles) {
-    try {
-      githubApi.addPrReviewers(prNumber, reviewers);
-      console.log('Successfully requested reviews.');
-    } catch (err) {
-      console.error(`Failed to request reviews for PR #${prNumber}:`, err);
-    }
-  }
-  return reviewers;
-}
-
-export interface PrIntakeMetadata {
-  title: string;
-  body: string;
-  state: string;
-  isDraft: boolean;
-  additions: number;
-  deletions: number;
-  headRefOid: string;
-  headRefName: string;
-  isSameRepo: boolean;
-  author: string;
-  authorIsBot: boolean;
-  labels: string[];
-  files: string[];
-  reviewRequests: string[];
-  reviews: string[];
-  participantLogins: string[];
-  comments: Array<{ author: string; isBot: boolean; body: string }>;
-  claState: ClaState;
-}
-
-const KNOWN_APP_LOGINS = new Set(['google-cla', 'dependabot', 'github-actions', 'chrome-devrel-infra']);
-
-function isBotAuthor(authorObj: { login?: string; is_bot?: boolean } | null | undefined): boolean {
-  const login = (authorObj?.login ?? '').toLowerCase();
-  if (!login) return false;
-  return (
-    Boolean(authorObj?.is_bot) ||
-    login.endsWith('[bot]') ||
-    login.startsWith('app/') ||
-    KNOWN_APP_LOGINS.has(login)
-  );
-}
-
-export function parsePrIntakeMetadata(data: Record<string, any>): PrIntakeMetadata {
-  const author: string = data.author?.login ?? '';
-  const authorIsBot = isBotAuthor(data.author);
-  const participants = new Set<string>();
-  const reviews: string[] = [];
-  for (const rev of data.reviews || []) {
-    const login: string | undefined = rev.author?.login;
-    if (login) reviews.push(login);
-    if (login && !isBotAuthor(rev.author) && login.toLowerCase() !== author.toLowerCase()) {
-      participants.add(login);
-    }
-  }
-  const comments: Array<{ author: string; isBot: boolean; body: string }> = [];
-  for (const com of data.comments || []) {
-    const login: string = com.author?.login ?? '';
-    const isBot = isBotAuthor(com.author);
-    comments.push({ author: login, isBot, body: com.body ?? '' });
-    if (login && !isBot && login.toLowerCase() !== author.toLowerCase()) {
-      participants.add(login);
-    }
-  }
-
-  const claCheck = (data.statusCheckRollup || []).find(
-    (c: { context?: string; name?: string }) => (c.context || c.name) === 'cla/google'
-  );
-  let claState: ClaState = 'missing';
-  if (claCheck) {
-    const statusRaw = String(claCheck.conclusion || claCheck.state || claCheck.status || '').toLowerCase();
-    if (statusRaw === 'success') claState = 'success';
-    else if (statusRaw === 'failure' || statusRaw === 'error' || statusRaw === 'action_required') claState = 'failure';
-    else claState = 'pending';
-  }
-
-  const nameWithOwner = String(data.headRepository?.nameWithOwner ?? '').toLowerCase();
-  const ownerLogin = String(data.headRepositoryOwner?.login ?? '').toLowerCase();
-  const repoName = String(data.headRepository?.name ?? '').toLowerCase();
-  const isSameRepo =
-    data.isCrossRepository === false &&
-    (nameWithOwner === 'googlechrome/modern-web-guidance-src' ||
-      (ownerLogin === 'googlechrome' && repoName === 'modern-web-guidance-src'));
-
-  return {
-    title: data.title ?? '',
-    body: data.body ?? '',
-    state: data.state ?? 'OPEN',
-    isDraft: Boolean(data.isDraft),
-    additions: Number(data.additions ?? 0),
-    deletions: Number(data.deletions ?? 0),
-    headRefOid: data.headRefOid ?? '',
-    headRefName: data.headRefName ?? '',
-    isSameRepo,
-    author,
-    authorIsBot,
-    labels: (data.labels || []).map((l: { name?: string }) => l.name ?? '').filter(Boolean),
-    files: (data.files || []).map((f: { path?: string }) => f.path ?? '').filter(Boolean),
-    reviewRequests: (data.reviewRequests || []).map((r: { login?: string }) => r.login ?? '').filter(Boolean),
-    reviews,
-    participantLogins: Array.from(participants),
-    comments,
-    claState
-  };
+  return plan.assigneesToAdd;
 }
 
 export interface TriagePullRequestOptions {
@@ -1471,42 +113,18 @@ export interface TriagePullRequestResult {
   reviewers: string[];
 }
 
-function clearBotRequestedReviewers(prNumber: number, currentRequests: readonly string[], isDryRun: boolean): void {
-  if (currentRequests.length === 0) return;
-  let botRequested: Set<string>;
-  try {
-    botRequested = new Set(githubApi.getPrBotRequestedReviewers(prNumber).map(r => r.toLowerCase()));
-  } catch (err) {
-    console.warn(`Failed to fetch bot-requested reviewers for PR #${prNumber}:`, err);
-    return;
-  }
-  const toRemove = currentRequests.filter(r => botRequested.has(r.toLowerCase()));
-  if (toRemove.length === 0) return;
-  if (isDryRun) {
-    console.log(`[DRY RUN] Would remove premature bot-requested reviewer(s) from PR #${prNumber}: ${toRemove.join(',')}`);
-    return;
-  }
-  try {
-    githubApi.removePrReviewers(prNumber, toRemove);
-    console.log(`Removed premature bot-requested reviewer(s) from PR #${prNumber}: ${toRemove.join(',')}`);
-  } catch (err) {
-    console.error(`Failed to remove reviewers from PR #${prNumber}:`, err);
-  }
-}
-
 export function triagePullRequest(
   prNumber: number,
   atlConfig: AtlConfig,
   options?: TriagePullRequestOptions
 ): TriagePullRequestResult {
-  const isDryRun = options?.dryRun ?? (process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1');
+  const isDryRun = options?.dryRun ?? isEnvDryRun();
   const meta = githubApi.getPrIntakeMetadata(prNumber);
 
   if (meta.state.toUpperCase() !== 'OPEN') {
     console.log(`PR #${prNumber} is ${meta.state}. Skipping triage.`);
     return { decision: null, reviewers: [] };
   }
-
   if (meta.isDraft) {
     console.log(`PR #${prNumber} is in draft mode. Skipping triage until marked ready for review.`);
     return { decision: null, reviewers: [] };
@@ -1514,7 +132,8 @@ export function triagePullRequest(
 
   const writeAccessCache = new Map<string, boolean>();
   const checkWriteAccess = (login: string): boolean => {
-    const key = login.toLowerCase();
+    const key = login.trim().toLowerCase();
+    if (!key) return false;
     const cached = writeAccessCache.get(key);
     if (cached !== undefined) return cached;
     const allowed = githubApi.hasUserWriteAccess(login);
@@ -1522,34 +141,9 @@ export function triagePullRequest(
     return allowed;
   };
 
-  const authorHasWriteAccess = meta.authorIsBot ? true : (meta.isSameRepo || checkWriteAccess(meta.author));
-  let hasMaintainerEngagement = false;
-  if (!authorHasWriteAccess) {
-    for (const participant of meta.participantLogins) {
-      if (checkWriteAccess(participant)) {
-        hasMaintainerEngagement = true;
-        break;
-      }
-    }
-  }
-
-  const hasPrWelcomeLabel = meta.labels.some(l => l.trim().toLowerCase() === PR_WELCOME_LABEL);
-  const linkedIssues = new Map<number, LinkedIssueInfo>();
-  if (!authorHasWriteAccess && !hasMaintainerEngagement && !hasPrWelcomeLabel) {
-    const authorLower = meta.author.toLowerCase();
-    for (const issueNum of extractIssueNumbers(meta.title, meta.body).slice(0, 10)) {
-      const info = githubApi.getLinkedIssueInfo(issueNum);
-      if (!info) continue;
-      linkedIssues.set(issueNum, info);
-      if (
-        info.state === 'open' &&
-        (info.labels.some(l => l.trim().toLowerCase() === PR_WELCOME_LABEL) ||
-          info.assignees.some(a => a.toLowerCase() === authorLower))
-      ) {
-        break;
-      }
-    }
-  }
+  const authorHasWriteAccess = meta.authorIsBot ? true : meta.isSameRepo || checkWriteAccess(meta.author);
+  const hasMaintainerEngagement =
+    !authorHasWriteAccess && meta.participantLogins.some(checkWriteAccess);
 
   const decision = evaluatePrIntake({
     prAuthor: meta.author,
@@ -1563,15 +157,36 @@ export function triagePullRequest(
     additions: meta.additions,
     deletions: meta.deletions,
     claState: meta.claState,
-    linkedIssues
+    resolveIssue: githubApi.getLinkedIssueInfo
   });
 
-  const headRef =
-    options?.headRef ?? ((meta.isSameRepo && meta.headRefName) || meta.headRefOid || 'main');
+  let cachedTimeline: IssueTimelineSummary | null | undefined;
+  const getTimeline = (): IssueTimelineSummary | null => {
+    if (cachedTimeline !== undefined) return cachedTimeline;
+    try {
+      cachedTimeline = githubApi.getIssueTimelineSummary(prNumber);
+    } catch (err) {
+      console.warn(`Failed to fetch timeline events for PR #${prNumber}:`, err);
+      cachedTimeline = null;
+    }
+    return cachedTimeline;
+  };
+
+  const findStaleBotReviewers = (keepResolvedLower: ReadonlySet<string>): string[] => {
+    const stale = meta.reviewRequests.filter(r => !keepResolvedLower.has(r.toLowerCase()));
+    if (stale.length === 0) return [];
+    const botRequested = getTimeline()?.botRequestedLower ?? new Set<string>();
+    return stale.filter(c => botRequested.has(c.toLowerCase()));
+  };
 
   switch (decision.kind) {
     case 'close': {
-      clearBotRequestedReviewers(prNumber, meta.reviewRequests, isDryRun);
+      const toRemove = findStaleBotReviewers(new Set());
+      if (toRemove.length > 0) {
+        runMutation(isDryRun, `remove premature bot reviewer(s) from PR #${prNumber}: ${toRemove.join(',')}`, () =>
+          githubApi.editItem('pr', prNumber, { removeReviewers: toRemove })
+        );
+      }
       const alreadyCommented = meta.comments.some(c => c.body.includes(INTAKE_CLOSE_MARKER));
       const closeComment = formatAutoCloseComment(meta.author, decision.referencedIssues);
       if (isDryRun) {
@@ -1579,9 +194,7 @@ export function triagePullRequest(
           `[DRY RUN] Intake CLOSE (${decision.reason}, refs=${decision.referencedIssues.join(',') || 'none'}): would comment and close PR #${prNumber}.`
         );
       } else {
-        if (!alreadyCommented) {
-          githubApi.addPrComment(prNumber, closeComment);
-        }
+        if (!alreadyCommented) githubApi.addPrComment(prNumber, closeComment);
         githubApi.closePr(prNumber);
         console.log(`Closed unapproved external PR #${prNumber} (${decision.reason}).`);
       }
@@ -1589,20 +202,24 @@ export function triagePullRequest(
     }
 
     case 'hold-cla': {
-      clearBotRequestedReviewers(prNumber, meta.reviewRequests, isDryRun);
-      const hasAwaitingCla = meta.labels.some(l => l.toLowerCase() === AWAITING_CLA_LABEL);
+      const toRemove = findStaleBotReviewers(new Set());
+      const needLabel = !hasLabel(meta.labels, AWAITING_CLA_LABEL);
       const alreadyCommented = meta.comments.some(c => c.body.includes(INTAKE_CLA_MARKER));
       if (isDryRun) {
+        if (toRemove.length > 0) {
+          console.log(`[DRY RUN] Would remove premature bot reviewer(s) from PR #${prNumber}: ${toRemove.join(',')}`);
+        }
         console.log(
           `[DRY RUN] Intake HOLD-CLA (cla=${decision.claState}, via=${decision.via}): would ensure '${AWAITING_CLA_LABEL}' label and withhold reviewers on PR #${prNumber}.`
         );
       } else {
-        if (!hasAwaitingCla) {
-          try {
-            githubApi.addPrLabels(prNumber, [AWAITING_CLA_LABEL]);
-          } catch (err) {
-            console.warn(`Failed to add '${AWAITING_CLA_LABEL}' label to PR #${prNumber}:`, err);
-          }
+        if (needLabel || toRemove.length > 0) {
+          runMutation(false, `hold PR #${prNumber} on CLA`, () =>
+            githubApi.editItem('pr', prNumber, {
+              addLabels: needLabel ? [AWAITING_CLA_LABEL] : undefined,
+              removeReviewers: toRemove
+            })
+          );
         }
         if (decision.claState === 'failure' && !alreadyCommented) {
           githubApi.addPrComment(prNumber, formatClaHoldComment(meta.author));
@@ -1612,38 +229,100 @@ export function triagePullRequest(
     }
 
     case 'allow': {
-      const hasAwaitingCla = meta.labels.some(l => l.toLowerCase() === AWAITING_CLA_LABEL);
-      if (hasAwaitingCla) {
-        if (isDryRun) {
-          console.log(`[DRY RUN] Would remove '${AWAITING_CLA_LABEL}' label from PR #${prNumber}.`);
-        } else {
-          try {
-            githubApi.removePrLabels(prNumber, [AWAITING_CLA_LABEL]);
-          } catch (err) {
-            console.warn(`Failed to remove '${AWAITING_CLA_LABEL}' from PR #${prNumber}:`, err);
-          }
+      console.log(`Triaging PR #${prNumber} by author: @${meta.author} (${meta.files.length} file(s))`);
+
+      if (hasNoAtlTriageDirective(meta.body)) {
+        if (hasLabel(meta.labels, AWAITING_CLA_LABEL)) {
+          runMutation(isDryRun, `remove '${AWAITING_CLA_LABEL}' from PR #${prNumber}`, () =>
+            githubApi.editItem('pr', prNumber, { removeLabels: [AWAITING_CLA_LABEL] })
+          );
         }
+        console.log(`PR #${prNumber} contains <!-- no-atl-triage --> directive. Skipping ATL triage.`);
+        return { decision, reviewers: [] };
       }
-      const activeLabels = meta.labels.filter(l => l.toLowerCase() !== AWAITING_CLA_LABEL);
-      const reviewers = handlePR(
-        prNumber,
-        meta.author,
-        atlConfig,
-        undefined,
-        options?.guidesRootDir,
-        activeLabels,
-        {
-          dryRun: isDryRun,
-          isDraft: false,
-          prBody: meta.body,
-          headRef,
-          preloadedFiles: meta.files,
-          preloadedReviewState: { reviewRequests: meta.reviewRequests, reviews: meta.reviews },
-          includeInfraOwners: true,
-          enableGitAuthorRouting: true
+
+      const headRef =
+        options?.headRef ?? ((meta.isSameRepo && meta.headRefName) || meta.headRefOid || 'main');
+      const nextBody = upsertDemoPreviewInBody(headRef, meta.body, meta.files);
+      if (nextBody !== meta.body) {
+        runMutation(isDryRun, `update demo preview links in PR #${prNumber} description`, () =>
+          githubApi.updatePrBody(prNumber, nextBody)
+        );
+      }
+
+      const timeline = getTimeline();
+      const emailLoginCache = new Map<string, string | null>();
+      let cachedOpenCounts: ReadonlyMap<string, number> | undefined;
+
+      const readGuidePrimaryAuthor = (guideAbsPath: string): string | null => {
+        let guideMarkdown: string;
+        try {
+          guideMarkdown = fs.readFileSync(guideAbsPath, 'utf8');
+        } catch {
+          return null;
         }
-      );
-      return { decision, reviewers };
+        const porcelain = githubApi.getGuideBlamePorcelain(guideAbsPath);
+        if (!porcelain) return null;
+        const primary = parsePrimaryBlameAuthor(guideMarkdown, porcelain);
+        if (!primary) return null;
+
+        let login = emailLoginCache.get(primary.email);
+        if (login === undefined) {
+          login = githubApi.getCommitAuthorLogin(primary.sha) ?? extractNoreplyLogin(primary.email);
+          emailLoginCache.set(primary.email, login);
+        }
+        if (!login || isBotLogin(login)) return null;
+        return checkWriteAccess(login) ? login : null;
+      };
+
+      const plan = planPrRouting({
+        prNumber,
+        author: meta.author,
+        labels: meta.labels,
+        files: meta.files,
+        atlConfig,
+        guidesRootDir: options?.guidesRootDir,
+        reviewRequests: meta.reviewRequests,
+        reviews: meta.reviews,
+        removedReviewers: timeline?.removedReviewersLower,
+        unlabeledLabels: timeline?.unlabeledLower,
+        openReviewCounts: () => (cachedOpenCounts ??= githubApi.getOpenPrReviewCounts()),
+        readPrGuideContent: relPath => githubApi.getPrFileContent(prNumber, relPath),
+        readGuidePrimaryAuthor
+      });
+
+      for (const choice of plan.leadChoices) {
+        console.log(`${choice.target} -> Lead reviewer: @${choice.lead}`);
+      }
+
+      const resolvedLower = new Set(plan.allResolvedReviewers.map(r => r.toLowerCase()));
+      const reviewersToRemove = findStaleBotReviewers(resolvedLower);
+
+      const hasEdits =
+        plan.labelsToAdd.length > 0 ||
+        plan.labelsToRemove.length > 0 ||
+        reviewersToRemove.length > 0 ||
+        plan.reviewersToRequest.length > 0;
+
+      if (hasEdits) {
+        const summary: string[] = [];
+        if (plan.labelsToAdd.length) summary.push(`+labels [${plan.labelsToAdd.join(', ')}]`);
+        if (plan.labelsToRemove.length) summary.push(`-labels [${plan.labelsToRemove.join(', ')}]`);
+        if (reviewersToRemove.length) summary.push(`-reviewers [${reviewersToRemove.join(', ')}]`);
+        if (plan.reviewersToRequest.length) summary.push(`+reviewers [${plan.reviewersToRequest.join(', ')}]`);
+        runMutation(isDryRun, `edit PR #${prNumber}: ${summary.join('; ')}`, () =>
+          githubApi.editItem('pr', prNumber, {
+            addLabels: plan.labelsToAdd,
+            removeLabels: plan.labelsToRemove,
+            removeReviewers: reviewersToRemove,
+            addReviewers: plan.reviewersToRequest
+          })
+        );
+      } else {
+        console.log('No label or reviewer changes needed for this PR.');
+      }
+
+      return { decision, reviewers: plan.reviewersToRequest };
     }
 
     default: {
@@ -1653,25 +332,23 @@ export function triagePullRequest(
   }
 }
 
-export function main() {
+export function main(): void {
   const atlConfig = loadAtlConfig();
   const eventPath = process.env.GITHUB_EVENT_PATH;
-  const isDryRun = process.argv.includes('--dry-run') || process.env.DRY_RUN === 'true' || process.env.DRY_RUN === '1';
+  const isDryRun = process.argv.includes('--dry-run') || isEnvDryRun();
 
   if (eventPath && fs.existsSync(eventPath)) {
     console.log(`Processing GitHub Actions event from ${eventPath}`);
     const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
 
     if (event.issue) {
-      const issueNumber = event.issue.number;
       const labels = (event.issue.labels || []).map((l: { name: string }) => l.name);
-      const issueDescription = event.issue.body || '';
-      handleIssue(issueNumber, labels, issueDescription, atlConfig, { dryRun: isDryRun });
+      handleIssue(event.issue.number, labels, event.issue.body || '', atlConfig, { dryRun: isDryRun });
     } else if (event.pull_request) {
       triagePullRequest(event.pull_request.number, atlConfig, { dryRun: isDryRun });
     } else if (event.check_run) {
       const checkName: string = event.check_run.name ?? '';
-      const conclusion: string = String(event.check_run.conclusion ?? '').toLowerCase();
+      const conclusion = String(event.check_run.conclusion ?? '').toLowerCase();
       const headSha: string = event.check_run.head_sha ?? '';
       if (checkName === 'cla/google' && conclusion === 'success' && headSha) {
         const waitingPrs = githubApi.findOpenAwaitingClaPrsForSha(headSha);
@@ -1683,48 +360,29 @@ export function main() {
     } else {
       console.log('Event is not a supported issue, pull_request, or check_run event. Skipping.');
     }
+    return;
+  }
+
+  const args = process.argv.slice(2).filter(arg => arg !== '--dry-run');
+  const type = args[0];
+  const number = Number.parseInt(args[1] ?? '', 10);
+
+  if (args.length < 2 || Number.isNaN(number) || (type !== 'issue' && type !== 'pr')) {
+    console.log('Usage for manual testing:');
+    console.log('  node src/ci/atl-triage.ts issue <number> [label1] [label2] ... [--dry-run]');
+    console.log('  node src/ci/atl-triage.ts pr <number> [--dry-run]');
+    process.exit(1);
+  }
+
+  if (type === 'issue') {
+    const cliLabels = args.slice(2);
+    const snap = githubApi.getIssueSnapshot(number);
+    handleIssue(number, cliLabels.length > 0 ? cliLabels : snap.labels, snap.body, atlConfig, {
+      dryRun: isDryRun,
+      currentAssignees: snap.assignees
+    });
   } else {
-    // CLI manual fallback for local testing
-    const rawArgs = process.argv.slice(2);
-    const args = rawArgs.filter(arg => arg !== '--dry-run');
-
-    if (args.length < 2) {
-      console.log('Usage for manual testing:');
-      console.log('  node src/ci/atl-triage.ts issue <number> [label1] [label2] ... [--dry-run]');
-      console.log('  node src/ci/atl-triage.ts pr <number> [--dry-run]');
-      process.exit(1);
-    }
-
-    const type = args[0];
-    const number = parseInt(args[1], 10);
-
-    if (isNaN(number)) {
-      console.error('Invalid issue/PR number');
-      process.exit(1);
-    }
-
-    if (type === 'issue') {
-      let labels = args.slice(2);
-      if (labels.length === 0) {
-        try {
-          labels = githubApi.getIssueLabels(number);
-        } catch (err) {
-          console.warn(`Failed to fetch labels for issue #${number}:`, err);
-        }
-      }
-      let issueDescription = '';
-      try {
-        issueDescription = githubApi.getIssueBody(number);
-      } catch (err) {
-        console.warn(`Failed to fetch issue body for issue #${number}:`, err);
-      }
-      handleIssue(number, labels, issueDescription, atlConfig, { dryRun: isDryRun });
-    } else if (type === 'pr') {
-      triagePullRequest(number, atlConfig, { dryRun: isDryRun });
-    } else {
-      console.error(`Unknown type: ${type}`);
-      process.exit(1);
-    }
+    triagePullRequest(number, atlConfig, { dryRun: isDryRun });
   }
 }
 

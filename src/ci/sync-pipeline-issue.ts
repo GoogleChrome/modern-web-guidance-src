@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseBooleanEnv } from '../core/env.ts';
 import { gitExec, readGitObjectsBatch } from '../core/git-utils.ts';
-import { DEFAULT_INFRA_OWNERS, EVAL_OWNERS } from './pr-intake.ts';
+import { DEFAULT_INFRA_OWNERS, EVAL_OWNERS } from './reviewer-routing.ts';
 import {
   classifyGuide,
   detectEvals,
