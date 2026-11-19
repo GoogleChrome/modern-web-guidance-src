@@ -26,7 +26,7 @@ Peers are formally onboarded Subject Matter Experts with write access to the rep
 
 Peers:
 * Author brand-new guidance (use cases, `guide.md`, `demo.html`, and `expectations.md`), and may fast-track directly to Stage 2 without separate Stage 1 use-case sign-off.
-* Review pull requests across the codebase (peer reviews), and review, approve, and merge updates to guides they authored.
+* Review pull requests across the codebase (peer reviews).
 * Submit pull requests subject to review and merge by the assigned [Content ATL](./docs/ATLS.md) or [Owner](#owners).
 
 To become a Peer, one must:

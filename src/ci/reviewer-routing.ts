@@ -291,11 +291,19 @@ export function resolveFeatureDirectAtls(featureIds: readonly string[], atlConfi
   return Array.from(out);
 }
 
-export function resolveFeatureGroupAtls(featureIds: readonly string[], atlConfig: AtlConfig): string[] {
+export function resolveFeatureGroupAtls(
+  featureIds: readonly string[],
+  atlConfig: AtlConfig,
+  guideCategory?: string
+): string[] {
   const out = new Set<string>();
+  const guideCatLower = guideCategory?.toLowerCase();
   for (const fid of featureIds) {
     for (const variant of getFeatureIdVariants(fid)) {
       for (const group of featureGroups[variant] || []) {
+        // On guide PRs, don't let broad vertical groups (e.g. `css`, `security`) hijack
+        // a guide that lives in another category directory (e.g. `performance/`, `accessibility/`).
+        if (guideCatLower && group !== guideCatLower && atlConfig.default[group]) continue;
         toAtlList(atlConfig.web_features_groups[group]).forEach(a => out.add(a));
       }
     }
@@ -584,7 +592,7 @@ export function planPrRouting(input: PrRoutingInput): PrRoutingPlan {
       const primaryAuthor = input.readGuidePrimaryAuthor?.(guideAbsPath) ?? null;
       const configTiers = [
         resolveFeatureDirectAtls(featureIds, input.atlConfig),
-        resolveFeatureGroupAtls(featureIds, input.atlConfig),
+        resolveFeatureGroupAtls(featureIds, input.atlConfig, c.category),
         toAtlList(input.atlConfig.default[c.category])
       ];
       pickLead(

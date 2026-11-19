@@ -257,6 +257,36 @@ describe('planPrRouting', () => {
     });
     assert.deepEqual(pSkillAndFork.contentReviewers.sort(), ['patrickkettner', 'pseudos-owner'].sort());
 
+    // Broad vertical groups (like `css`) must NOT hijack guides in another category (e.g. `performance`),
+    // while narrow horizontals (`scrolling`, `webauthn`) still override cleanly:
+    const pPerfWithCss = planPrRouting({
+      prNumber: 99998,
+      author: 'some-author',
+      labels: [],
+      files: ['guides/performance/defer-rendering-heavy-content/guide.md'],
+      atlConfig: {
+        default: { css: 'LeaVerou', performance: ['tunetheweb', 'malchata'] },
+        web_features: {},
+        web_features_groups: { css: 'LeaVerou', scrolling: 'bramus' }
+      },
+      readPrGuideContent: () => '---\nweb-feature-ids:\n  - content-visibility\n---\n# Perf Guide\n'
+    });
+    assert.deepEqual(pPerfWithCss.contentReviewers, ['tunetheweb']);
+
+    const pPerfWithHorizontal = planPrRouting({
+      prNumber: 99998,
+      author: 'some-author',
+      labels: [],
+      files: ['guides/performance/defer-work-until-scroll-ends/guide.md'],
+      atlConfig: {
+        default: { css: 'LeaVerou', performance: ['tunetheweb', 'malchata'] },
+        web_features: {},
+        web_features_groups: { css: 'LeaVerou', scrolling: 'bramus' }
+      },
+      readPrGuideContent: () => '---\nweb-feature-ids:\n  - scrollend\n---\n# Scroll Guide\n'
+    });
+    assert.deepEqual(pPerfWithHorizontal.contentReviewers, ['bramus']);
+
     // Feature file direct > group > transcluding category waterfall
     const pFeature = planPrRouting({
       prNumber: 99998,
