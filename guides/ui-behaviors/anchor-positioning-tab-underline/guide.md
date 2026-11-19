@@ -98,7 +98,7 @@ This is only a visual indicator, and must not be a replacement for setting the a
 If the browser lacks the anchor positioning used here, hide the pseudo-element and draw a static `border-block-end` on the active tab. The border follows the tab's writing mode.
 
 ```css
-@supports not ((position-anchor: --active) and (inset-inline-start: anchor(self-start))) {
+@supports not (position-anchor: --active) {
   ul::before {
     content: none;
   }

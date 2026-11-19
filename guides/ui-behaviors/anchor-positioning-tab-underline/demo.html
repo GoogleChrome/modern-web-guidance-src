@@ -32,7 +32,7 @@
         color: red;
       }
 
-      @supports not ((position-anchor: --active) and (inset-inline-start: anchor(self-start))) {
+      @supports not (position-anchor: --active) {
         ul::before {
           content: none;
         }
