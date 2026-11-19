@@ -72,10 +72,12 @@ export function hasNoAtlTriageDirective(body?: string | null): boolean {
 }
 
 const ISSUE_REF = String.raw`(?:#(\d+)|https?:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/issues\/(\d+))(?![\w-])`;
+const MD_ISSUE_LINK = String.raw`\[[^\]]*\]\(https?:\/\/github\.com\/GoogleChrome\/modern-web-guidance-src\/issues\/(\d+)\)`;
+const BODY_ISSUE_TOKEN = String.raw`(?:${MD_ISSUE_LINK}|${ISSUE_REF})`;
 const TITLE_REF_RE = new RegExp(String.raw`(?:^|[\s([\],:;])${ISSUE_REF}`, 'gi');
-const ISSUE_REF_RE = new RegExp(ISSUE_REF, 'gi');
+const ISSUE_REF_RE = new RegExp(BODY_ISSUE_TOKEN, 'gi');
 const BODY_CLAUSE_RE = new RegExp(
-  String.raw`\b(?:fix(?:es|ed)?|clos(?:e|es|ed)|resolv(?:e|es|ed)|address(?:es|ed)?|issues?|refs?|part\s+of|for)\b[\s:]*(${ISSUE_REF}(?:\s*(?:,|and|&)\s*${ISSUE_REF})*)`,
+  String.raw`\b(?:fix(?:es|ed)?|clos(?:e|es|ed)|resolv(?:e|es|ed)|address(?:es|ed)?|issues?|refs?|part\s+of|for)\b[\s:]*(${BODY_ISSUE_TOKEN}(?:\s*(?:,\s*(?:and|&)|,|and|&)\s*${BODY_ISSUE_TOKEN})*)`,
   'gi'
 );
 
@@ -83,7 +85,7 @@ export function extractIssueNumbers(title: string, body: string): number[] {
   const found = new Set<number>();
   const collect = (text: string, re: RegExp): void => {
     for (const match of text.matchAll(re)) {
-      const num = Number(match[1] ?? match[2]);
+      const num = Number(match[1] ?? match[2] ?? match[3]);
       if (num > 0 && num <= MAX_ISSUE_NUMBER) found.add(num);
     }
   };
@@ -95,31 +97,33 @@ export function extractIssueNumbers(title: string, body: string): number[] {
   return Array.from(found);
 }
 
+const PROSE_DOC_ALLOWLIST = new Set([
+  'README.md',
+  'CONTRIBUTING.md',
+  'guides/README.md',
+  'guides/CONTRIBUTING.md'
+]);
+
 export function isSmallProseTypoFix(input: {
   files: readonly string[];
   additions: number;
   deletions: number;
 }): boolean {
   const { files, additions, deletions } = input;
-  if (files.length === 0) return false;
+  if (files.length !== 1) return false;
   if (additions > MAX_TYPO_LINES || deletions > MAX_TYPO_LINES) return false;
   if (additions === 0 && deletions === 0) return false;
 
-  const guideDirs = new Set<string>();
-  for (const rawFile of files) {
-    const file = rawFile.replace(/\\/g, '/').replace(/^\.\//, '');
-    if (!file.endsWith('.md')) return false;
-    const base = file.split('/').pop() ?? '';
-    if (base === 'expectations.md' || base === 'task.md') return false;
-    if (file.startsWith('guides/')) {
-      const parts = file.split('/');
-      if (parts.length >= 4) {
-        guideDirs.add(`${parts[0]}/${parts[1]}/${parts[2]}`);
-      }
-    }
-  }
+  const file = files[0].replace(/\\/g, '/').replace(/^\.\//, '');
+  const parts = file.split('/');
+  if (!file.endsWith('.md') || parts.includes('..')) return false;
 
-  return guideDirs.size <= 1;
+  if (PROSE_DOC_ALLOWLIST.has(file) || /^docs\/[^/]+\.md$/.test(file)) return true;
+  if (parts.length === 4 && parts[0] === 'guides' && parts[3] === 'guide.md') {
+    const cat = parts[1].toLowerCase();
+    return cat !== 'lib' && cat !== 'node_modules' && cat !== 'modern-web-guidance';
+  }
+  return false;
 }
 
 export function evaluatePrIntake(input: PrIntakeInput): PrIntakeDecision {

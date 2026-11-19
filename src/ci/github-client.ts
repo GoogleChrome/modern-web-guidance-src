@@ -234,14 +234,23 @@ export const githubApi = {
   },
 
   editItem(kind: 'issue' | 'pr', number: number, edits: GhEditSpec): void {
-    const args = [kind, 'edit', String(number)];
+    const base = [kind, 'edit', String(number)];
+    const args = [...base];
     if (edits.addLabels?.length) args.push('--add-label', edits.addLabels.join(','));
     if (edits.removeLabels?.length) args.push('--remove-label', edits.removeLabels.join(','));
     if (edits.addAssignees?.length) args.push('--add-assignee', edits.addAssignees.join(','));
-    if (edits.addReviewers?.length) args.push('--add-reviewer', edits.addReviewers.join(','));
     if (edits.removeReviewers?.length) args.push('--remove-reviewer', edits.removeReviewers.join(','));
-    if (args.length === 3) return;
-    child_process.execFileSync('gh', args, { stdio: 'inherit' });
+    if (edits.addReviewers?.length && !edits.removeReviewers?.length) {
+      args.push('--add-reviewer', edits.addReviewers.join(','));
+    }
+    if (args.length > 3) {
+      child_process.execFileSync('gh', args, { stdio: 'inherit' });
+    }
+    if (edits.addReviewers?.length && edits.removeReviewers?.length) {
+      child_process.execFileSync('gh', [...base, '--add-reviewer', edits.addReviewers.join(',')], {
+        stdio: 'inherit'
+      });
+    }
   },
 
   getPrFileContent(prNumber: number, filePath: string): string | null {

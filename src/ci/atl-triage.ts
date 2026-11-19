@@ -1,9 +1,12 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { guidesDir } from '../core/paths.ts';
 import {
   AWAITING_CLA_LABEL,
   INTAKE_CLA_MARKER,
   INTAKE_CLOSE_MARKER,
   evaluatePrIntake,
+  extractIssueNumbers,
   formatAutoCloseComment,
   formatClaHoldComment,
   hasLabel,
@@ -106,11 +109,37 @@ export interface TriagePullRequestOptions {
   dryRun?: boolean;
   headRef?: string;
   guidesRootDir?: string;
+  _recheckedCla?: boolean;
 }
 
 export interface TriagePullRequestResult {
   decision: PrIntakeDecision | null;
   reviewers: string[];
+}
+
+const FRONTMATTER_BLOCK_RE = /^---\r?\n[\s\S]*?\r?\n---/;
+
+function hasFrontmatterEdit(prNumber: number, files: readonly string[], guidesRoot: string): boolean {
+  if (files.length !== 1) return false;
+  const rel = files[0].replace(/\\/g, '/').replace(/^\.\//, '');
+  if (!/^guides\/[^/]+\/[^/]+\/guide\.md$/.test(rel)) return false;
+
+  const prContent = githubApi.getPrFileContent(prNumber, rel);
+  if (prContent === null) return false;
+
+  const parts = rel.split('/');
+  const localGuidePath = path.join(guidesRoot, parts[1], parts[2], 'guide.md');
+  let localContent: string;
+  try {
+    localContent = fs.readFileSync(localGuidePath, 'utf8');
+  } catch {
+    // A brand-new guide.md that does not exist on main is never a prose typo fix.
+    return true;
+  }
+
+  const prFm = prContent.match(FRONTMATTER_BLOCK_RE)?.[0] ?? '';
+  const localFm = localContent.match(FRONTMATTER_BLOCK_RE)?.[0] ?? '';
+  return prFm !== localFm;
 }
 
 export function triagePullRequest(
@@ -119,6 +148,7 @@ export function triagePullRequest(
   options?: TriagePullRequestOptions
 ): TriagePullRequestResult {
   const isDryRun = options?.dryRun ?? isEnvDryRun();
+  const guidesRoot = options?.guidesRootDir ?? guidesDir;
   const meta = githubApi.getPrIntakeMetadata(prNumber);
 
   if (meta.state.toUpperCase() !== 'OPEN') {
@@ -145,7 +175,7 @@ export function triagePullRequest(
   const hasMaintainerEngagement =
     !authorHasWriteAccess && meta.participantLogins.some(checkWriteAccess);
 
-  const decision = evaluatePrIntake({
+  let decision = evaluatePrIntake({
     prAuthor: meta.author,
     authorIsBot: meta.authorIsBot,
     authorHasWriteAccess,
@@ -159,6 +189,18 @@ export function triagePullRequest(
     claState: meta.claState,
     resolveIssue: githubApi.getLinkedIssueInfo
   });
+
+  if (
+    (decision.kind === 'allow' || decision.kind === 'hold-cla') &&
+    decision.via === 'prose-typo-fix' &&
+    hasFrontmatterEdit(prNumber, meta.files, guidesRoot)
+  ) {
+    decision = {
+      kind: 'close',
+      reason: 'no-approved-issue',
+      referencedIssues: extractIssueNumbers(meta.title, meta.body)
+    };
+  }
 
   let cachedTimeline: IssueTimelineSummary | null | undefined;
   const getTimeline = (): IssueTimelineSummary | null => {
@@ -214,15 +256,19 @@ export function triagePullRequest(
         );
       } else {
         if (needLabel || toRemove.length > 0) {
-          runMutation(false, `hold PR #${prNumber} on CLA`, () =>
-            githubApi.editItem('pr', prNumber, {
-              addLabels: needLabel ? [AWAITING_CLA_LABEL] : undefined,
-              removeReviewers: toRemove
-            })
-          );
+          githubApi.editItem('pr', prNumber, {
+            addLabels: needLabel ? [AWAITING_CLA_LABEL] : undefined,
+            removeReviewers: toRemove
+          });
         }
         if (decision.claState === 'failure' && !alreadyCommented) {
           githubApi.addPrComment(prNumber, formatClaHoldComment(meta.author));
+        }
+        // Guard against a fork check_run completing while pull_request_target was applying awaiting-cla:
+        if (needLabel && decision.claState !== 'failure' && !options?._recheckedCla) {
+          if (githubApi.getPrIntakeMetadata(prNumber).claState === 'success') {
+            return triagePullRequest(prNumber, atlConfig, { ...options, _recheckedCla: true });
+          }
         }
       }
       return { decision, reviewers: [] };

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import child_process from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it, type TestContext } from 'node:test';
 import { getTranscludedFeatureIds, parseArguments } from '../core/macro-parsing.ts';
-import { handleIssue, triagePullRequest } from './atl-triage.ts';
+import { handleIssue, main, triagePullRequest } from './atl-triage.ts';
 import {
   githubApi,
   isBotLogin,
@@ -306,5 +307,132 @@ describe('triagePullRequest orchestration', () => {
 
     assert.throws(() => triagePullRequest(4005, sampleAtlConfig, { dryRun: false }), /HTTP 502/);
     assert.deepEqual(calls.closed, []);
+  });
+
+  it('re-checks claState right after adding awaiting-cla so fork check_run races immediately wake', t => {
+    const calls = setupPrMocks(t, {
+      issues: {
+        500: { number: 500, state: 'open', author: 'LeaVerou', labels: ['pr-welcome'], assignees: [] }
+      }
+    });
+    let metaReads = 0;
+    t.mock.method(githubApi, 'getPrIntakeMetadata', () => {
+      metaReads++;
+      if (metaReads === 1) return { ...BASE_PR_META, claState: 'pending' as const };
+      return { ...BASE_PR_META, labels: ['awaiting-cla'], claState: 'success' as const };
+    });
+
+    const res = triagePullRequest(4006, sampleAtlConfig, { dryRun: false });
+    assert.equal(res.decision?.kind, 'allow');
+    assert.deepEqual(res.reviewers, ['LeaVerou']);
+    assert.equal(calls.prEdits.length, 2);
+  });
+
+  it('rejects unapproved prose-typo-fix PRs that modify guide.md YAML frontmatter', t => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-fm-tamper-'));
+    try {
+      const guideDir = path.join(tmpDir, 'css', 'tabs');
+      fs.mkdirSync(guideDir, { recursive: true });
+      fs.writeFileSync(path.join(guideDir, 'guide.md'), '---\nname: tabs\n---\n# Tabs\n', 'utf8');
+
+      const calls = setupPrMocks(t, {
+        meta: {
+          body: 'Fix typo',
+          files: ['guides/css/tabs/guide.md'],
+          additions: 1,
+          deletions: 1
+        }
+      });
+      t.mock.method(githubApi, 'getPrFileContent', () => '---\nname: tabs\nweb-feature-ids:\n  - popover\n---\n# Tabs\n');
+
+      const res = triagePullRequest(4007, sampleAtlConfig, { dryRun: false, guidesRootDir: tmpDir });
+      assert.equal(res.decision?.kind, 'close');
+      assert.deepEqual(calls.closed, [4007]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('githubApi wrappers & main() check_run wakeup', () => {
+  it('splits --remove-reviewer from --add-reviewer in editItem and discriminates 404/410 vs 5xx errors', t => {
+    const ghArgs: string[][] = [];
+    t.mock.method(child_process, 'execFileSync', (_cmd: unknown, args?: readonly string[]) => {
+      const list = [...(args ?? [])];
+      ghArgs.push(list);
+      const joined = list.join(' ');
+      if (joined.includes('collaborators/ghost/permission')) {
+        throw Object.assign(new Error('404'), { stderr: 'gh: HTTP 404 (Not Found)' });
+      }
+      if (joined.includes('collaborators/flaky/permission')) {
+        throw Object.assign(new Error('502'), { stderr: 'gh: HTTP 502 Bad Gateway' });
+      }
+      if (joined.includes('issues/404')) {
+        throw Object.assign(new Error('410'), { stderr: 'gh: HTTP 410 Gone' });
+      }
+      if (joined.includes('issues/999')) {
+        return JSON.stringify({ number: 999, pull_request: {} });
+      }
+      if (joined.includes('commits/deadbeef')) {
+        throw Object.assign(new Error('422'), { stderr: 'gh: HTTP 422' });
+      }
+      if (list[0] === 'pr' && list[1] === 'list') {
+        return JSON.stringify([
+          { number: 11, headRefOid: 'sha-match' },
+          { number: 12, headRefOid: 'sha-other' }
+        ]);
+      }
+      return '';
+    });
+
+    githubApi.editItem('pr', 55, {
+      addLabels: ['content'],
+      removeReviewers: ['bramus'],
+      addReviewers: ['LeaVerou']
+    });
+    assert.deepEqual(ghArgs.slice(0, 2), [
+      ['pr', 'edit', '55', '--add-label', 'content', '--remove-reviewer', 'bramus'],
+      ['pr', 'edit', '55', '--add-reviewer', 'LeaVerou']
+    ]);
+
+    assert.equal(githubApi.hasUserWriteAccess(''), false);
+    assert.equal(githubApi.hasUserWriteAccess('ghost'), false);
+    assert.throws(() => githubApi.hasUserWriteAccess('flaky'), /502/);
+    assert.equal(githubApi.getLinkedIssueInfo(404), null);
+    assert.equal(githubApi.getLinkedIssueInfo(999), null);
+    assert.equal(githubApi.getCommitAuthorLogin('deadbeef'), null);
+    assert.deepEqual(githubApi.findOpenAwaitingClaPrsForSha('sha-match'), [11]);
+  });
+
+  it('wakes open awaiting-cla PRs matching check_run head_sha in main()', t => {
+    const tmpEvent = path.join(os.tmpdir(), `mwg-check-run-${process.pid}.json`);
+    fs.writeFileSync(
+      tmpEvent,
+      JSON.stringify({
+        check_run: { name: 'cla/google', conclusion: 'success', head_sha: 'abc1234' }
+      }),
+      'utf8'
+    );
+    const prevEventPath = process.env.GITHUB_EVENT_PATH;
+    process.env.GITHUB_EVENT_PATH = tmpEvent;
+
+    try {
+      const calls = setupPrMocks(t, {
+        meta: { labels: ['awaiting-cla'], headRefOid: 'abc1234' },
+        issues: { 500: { number: 500, state: 'open', author: 'LeaVerou', labels: ['pr-welcome'], assignees: [] } }
+      });
+      t.mock.method(githubApi, 'findOpenAwaitingClaPrsForSha', (sha: string) =>
+        sha === 'abc1234' ? [3700] : []
+      );
+
+      main();
+      assert.equal(calls.prEdits.length, 1);
+      assert.deepEqual(calls.prEdits[0].removeLabels, ['awaiting-cla']);
+      assert.deepEqual(calls.prEdits[0].addReviewers, ['LeaVerou']);
+    } finally {
+      if (prevEventPath === undefined) delete process.env.GITHUB_EVENT_PATH;
+      else process.env.GITHUB_EVENT_PATH = prevEventPath;
+      fs.rmSync(tmpEvent, { force: true });
+    }
   });
 });

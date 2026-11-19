@@ -48,7 +48,7 @@ describe('extractIssueNumbers', () => {
       '<!-- unclosed comment inside code fence',
       'Fixes #777',
       '```',
-      'Part of #321 and #654'
+      'Part of #321, and [#654](https://github.com/GoogleChrome/modern-web-guidance-src/issues/654)'
     ].join('\n');
 
     assert.deepEqual(extractIssueNumbers('[#42] Update guide (#77)', body), [42, 77, 123, 456, 321, 654]);
@@ -73,11 +73,17 @@ describe('isSmallProseTypoFix', () => {
     const cases: Array<{ name: string; files: string[]; additions: number; deletions: number; expected: boolean }> = [
       { name: '2-line guide.md fix', files: ['guides/css/popover/guide.md'], additions: 2, deletions: 2, expected: true },
       { name: '1-line README fix', files: ['README.md'], additions: 1, deletions: 1, expected: true },
+      { name: '1-line docs/*.md fix', files: ['docs/ATLS.md'], additions: 1, deletions: 1, expected: true },
       { name: '0-line empty diff', files: ['README.md'], additions: 0, deletions: 0, expected: false },
       { name: '>5 additions', files: ['guides/css/popover/guide.md'], additions: 6, deletions: 1, expected: false },
       { name: 'demo.html edit', files: ['guides/css/popover/demo.html'], additions: 1, deletions: 1, expected: false },
       { name: 'expectations.md edit', files: ['guides/css/popover/expectations.md'], additions: 1, deletions: 1, expected: false },
       { name: 'task.md edit', files: ['guides/css/popover/tasks/task.md'], additions: 1, deletions: 1, expected: false },
+      { name: 'GOVERNANCE.md edit', files: ['GOVERNANCE.md'], additions: 1, deletions: 1, expected: false },
+      { name: '.github template edit', files: ['.github/PULL_REQUEST_TEMPLATE.md'], additions: 1, deletions: 1, expected: false },
+      { name: 'features/*.md edit', files: ['features/popover.md'], additions: 1, deletions: 1, expected: false },
+      { name: 'skills-src edit', files: ['skills-src/baseline/SKILL.md'], additions: 1, deletions: 1, expected: false },
+      { name: '2-file doc sweep', files: ['README.md', 'CONTRIBUTING.md'], additions: 2, deletions: 2, expected: false },
       {
         name: 'sweeping 2 guides',
         files: ['guides/css/a/guide.md', 'guides/css/b/guide.md'],

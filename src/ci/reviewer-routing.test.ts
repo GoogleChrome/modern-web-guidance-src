@@ -178,6 +178,16 @@ describe('parsePrimaryBlameAuthor & selectLeadReviewer', () => {
       }),
       'LeaVerou'
     );
+    // Pending Tier 1 lead is NOT displaced when a Tier 2 reviewer reviews first:
+    assert.equal(
+      selectLeadReviewer({
+        tiers: [['jamesnw'], ['LeaVerou']],
+        excludedLogins: new Set(),
+        alreadyRequestedLogins: new Set(['jamesnw']),
+        alreadyReviewedLogins: new Set(['leaverou'])
+      }),
+      'jamesnw'
+    );
   });
 });
 
@@ -207,6 +217,18 @@ describe('planPrRouting', () => {
       readGuidePrimaryAuthor: () => 'jamesnw'
     });
     assert.deepEqual(pAuthor.contentReviewers, ['jamesnw']);
+
+    // Manual removal of Tier 1 primary author cascades to category default:
+    const pRemovedAuthor = planPrRouting({
+      prNumber: 4001,
+      author: 'other-peer',
+      labels: ['content'],
+      files: ['guides/css/style-parent-with-has/guide.md'],
+      atlConfig: baseConfig,
+      removedReviewers: new Set(['jamesnw']),
+      readGuidePrimaryAuthor: () => 'jamesnw'
+    });
+    assert.deepEqual(pRemovedAuthor.contentReviewers, ['LeaVerou']);
 
     const pUnownedSelf = planPrRouting({
       prNumber: 4002,

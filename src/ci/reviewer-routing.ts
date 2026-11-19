@@ -452,9 +452,10 @@ export function selectLeadReviewer(input: SelectLeadReviewerInput): string | nul
 
   if (reviewed.size > 0) {
     for (const tier of input.tiers) {
-      for (const candidate of dedupeEligible(tier, input.excludedLogins)) {
-        if (reviewed.has(candidate.toLowerCase())) return candidate;
-      }
+      const eligible = dedupeEligible(tier, input.excludedLogins);
+      const alreadyReviewed = eligible.find(c => reviewed.has(c.toLowerCase()));
+      if (alreadyReviewed) return alreadyReviewed;
+      if (eligible.some(c => requested.has(c.toLowerCase()))) break;
     }
   }
 
