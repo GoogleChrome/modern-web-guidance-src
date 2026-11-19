@@ -104,12 +104,12 @@ Configure Origin Trial and volatile feature opt-ins for a repository with an opt
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
 1. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web-guidance` CLI for web platform queries.
-2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, zero-dependency embedding model and BM25 search engine (no network calls, no API keys).
+2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide locally using an offline, zero-dependency embedding model and BM25 search engine (no search API calls or API keys).
 3. **Guide Fetch**: The agent retrieves the guide via `modern-web-guidance retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
 
 > [!TIP]
-> Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
-> The npm package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
+> Note: We use `npx` to keep guides up to date, but the CLI itself works completely offline (once cached, via `npx --offline`) with a self-contained, zero-dependency npm package for low latency and supply-chain security.
+> When online, it sends anonymous usage telemetry in the background without blocking execution—see [Telemetry & Privacy](#-telemetry--privacy) for what's collected and how to opt out.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
 
